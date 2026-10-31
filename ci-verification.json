@@ -1,0 +1,258 @@
+{
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+  "integration_tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+  "run": 41211196540,
+  "run_attempt": 1,
+  "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540",
+  "event": "workflow_dispatch",
+  "status": "completed",
+  "conclusion": "success",
+  "job_results": [
+    {
+      "name": "scope",
+      "id": 124566383690,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566383690",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:40:14Z",
+      "completed_at": "2026-10-31T14:40:23Z"
+    },
+    {
+      "name": "checks",
+      "id": 124566383750,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566383750",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:40:14Z",
+      "completed_at": "2026-10-31T14:42:29Z"
+    },
+    {
+      "name": "postgres_image",
+      "id": 124566431101,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566431101",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:40:26Z",
+      "completed_at": "2026-10-31T14:40:31Z"
+    },
+    {
+      "name": "packaging",
+      "id": 124566909174,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909174",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:44:13Z"
+    },
+    {
+      "name": "api (serial)",
+      "id": 124566909231,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909231",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:44:18Z"
+    },
+    {
+      "name": "acceptance (1)",
+      "id": 124566909247,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909247",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:33Z",
+      "completed_at": "2026-10-31T15:00:30Z"
+    },
+    {
+      "name": "build",
+      "id": 124566909249,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909249",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:43:07Z"
+    },
+    {
+      "name": "api (3/3)",
+      "id": 124566909255,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909255",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:51:12Z"
+    },
+    {
+      "name": "browser (2)",
+      "id": 124566909257,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909257",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:47:46Z"
+    },
+    {
+      "name": "api (2/3)",
+      "id": 124566909279,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909279",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:33Z",
+      "completed_at": "2026-10-31T14:52:10Z"
+    },
+    {
+      "name": "api (1/3)",
+      "id": 124566909289,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909289",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:33Z",
+      "completed_at": "2026-10-31T14:53:58Z"
+    },
+    {
+      "name": "browser (3)",
+      "id": 124566909294,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909294",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:33Z",
+      "completed_at": "2026-10-31T14:47:30Z"
+    },
+    {
+      "name": "browser (1)",
+      "id": 124566909311,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909311",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:33Z",
+      "completed_at": "2026-10-31T14:48:50Z"
+    },
+    {
+      "name": "acceptance (2)",
+      "id": 124566909334,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909334",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:59:21Z"
+    },
+    {
+      "name": "web_unit",
+      "id": 124566909356,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124566909356",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T14:42:32Z",
+      "completed_at": "2026-10-31T14:52:39Z"
+    },
+    {
+      "name": "quality",
+      "id": 124570978594,
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/41211196540/job/124570978594",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+      "started_at": "2026-10-31T15:00:33Z",
+      "completed_at": "2026-10-31T15:01:05Z"
+    }
+  ],
+  "actual_runtime_test_steps": [
+    {
+      "job": "api (serial)",
+      "step": "Test API",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:00Z",
+      "completed_at": "2026-10-31T14:44:16Z"
+    },
+    {
+      "job": "acceptance (1)",
+      "step": "Test acceptance",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:10Z",
+      "completed_at": "2026-10-31T15:00:16Z"
+    },
+    {
+      "job": "api (3/3)",
+      "step": "Test API",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:09Z",
+      "completed_at": "2026-10-31T14:51:09Z"
+    },
+    {
+      "job": "browser (2)",
+      "step": "Test browser",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:42:58Z",
+      "completed_at": "2026-10-31T14:47:40Z"
+    },
+    {
+      "job": "api (2/3)",
+      "step": "Test API",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:06Z",
+      "completed_at": "2026-10-31T14:52:05Z"
+    },
+    {
+      "job": "api (1/3)",
+      "step": "Test API",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:04Z",
+      "completed_at": "2026-10-31T14:53:55Z"
+    },
+    {
+      "job": "browser (3)",
+      "step": "Test browser",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:42:56Z",
+      "completed_at": "2026-10-31T14:47:24Z"
+    },
+    {
+      "job": "browser (1)",
+      "step": "Test browser",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:00Z",
+      "completed_at": "2026-10-31T14:48:40Z"
+    },
+    {
+      "job": "acceptance (2)",
+      "step": "Test acceptance",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:43:07Z",
+      "completed_at": "2026-10-31T14:59:14Z"
+    },
+    {
+      "job": "web_unit",
+      "step": "Test Web unit",
+      "conclusion": "success",
+      "started_at": "2026-10-31T14:42:48Z",
+      "completed_at": "2026-10-31T14:52:37Z"
+    }
+  ],
+  "acceptance_failure_probe_disposition": [
+    {
+      "job": "acceptance (1)",
+      "conclusion": "success"
+    },
+    {
+      "job": "acceptance (2)",
+      "conclusion": "skipped"
+    }
+  ],
+  "probe_qualification": "One probe per run, selected only on shard1 by unchanged canonical workflow; shard2 conditional skip is expected.",
+  "runtime_test_reuse": false,
+  "qualification": "Independent GitHub public runners; all10 runtime test steps executed. Current aggregate retrieval/inspection remains incomplete and still blocks merge. No complete local verify-local pass claimed."
+}

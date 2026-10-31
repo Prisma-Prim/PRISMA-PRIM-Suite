@@ -1,0 +1,208 @@
+[
+  {
+    "width": 1440,
+    "body": "Limba interfeței\nRomână\nAlăturați-vă spațiului de lucru\n\nConectați-vă cu contul care a primit această invitație.\n\nAutentifică-te în PRISMA CERT\n\nBine ai revenit! Te rugăm să te autentifici pentru a continua\n\nContinuă cu Google\n\nsau\n\nAdresă de email\nContinuă\n\nSecured by\n\nDevelopment mode",
+    "controls": [
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "name": "identifier",
+        "autocomplete": "email",
+        "label": null
+      }
+    ],
+    "errors": [],
+    "forbiddenActions": [],
+    "network": [
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 307,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 307,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "fetch"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "fetch"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "fetch"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      }
+    ],
+    "failed": [
+      {
+        "host": "img.clerk.com",
+        "reason": "net::ERR_TUNNEL_CONNECTION_FAILED"
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "body": "Limba interfeței\nRomână\nAlăturați-vă spațiului de lucru\n\nConectați-vă cu contul care a primit această invitație.\n\nAutentifică-te în PRISMA CERT\n\nBine ai revenit! Te rugăm să te autentifici pentru a continua\n\nContinuă cu Google\n\nsau\n\nAdresă de email\nContinuă\n\nSecured by\n\nDevelopment mode",
+    "controls": [
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "name": "identifier",
+        "autocomplete": "email",
+        "label": null
+      }
+    ],
+    "errors": [],
+    "forbiddenActions": [],
+    "network": [
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 307,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 307,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "fetch"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "fetch"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "fetch"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      },
+      {
+        "host": "boss-tarpon-28.clerk.accounts.dev",
+        "status": 200,
+        "resource": "script"
+      }
+    ],
+    "failed": [
+      {
+        "host": "img.clerk.com",
+        "reason": "net::ERR_TUNNEL_CONNECTION_FAILED"
+      }
+    ]
+  }
+]

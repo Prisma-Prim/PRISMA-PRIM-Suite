@@ -1,0 +1,33 @@
+{
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "current_base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+  "tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+  "utc": "2026-10-31T14:47:24.329575+00:00",
+  "method": "Original PNG bytes individually rendered with view_image and inspected by root; no crop or visual transformation.",
+  "inspected": [
+    "provider-readiness-1440.png",
+    "provider-readiness-390.png",
+    "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-desktop/sdk-recovered-desktop.png",
+    "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-desktop/sdk-unavailable-desktop.png",
+    "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-narrow/sdk-recovered-narrow.png",
+    "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-narrow/sdk-unavailable-narrow.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-en-desktop-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-en-desktop-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-fr-desktop-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-fr-desktop-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ro-desktop-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ro-desktop-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ru-desktop-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ru-desktop-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-en-narrow-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-en-narrow-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-fr-narrow-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-fr-narrow-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ro-narrow-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ro-narrow-native-required.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ru-narrow-literal.png",
+    "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ru-narrow-native-required.png"
+  ],
+  "result": "Four configured locales, literal work, translated required feedback, visible selector focus and recovery form fit desktop1440/narrow390; no horizontal overflow. SDK-blocked control shows existing Romanian loading state; no draft preservation or timed error-state claim. Readiness pair is original reviewed944 before mechanical source composition.",
+  "qualification": "Vendor Secured by Clerk/Development mode is outside feature-owned localization keys. Decorative img.clerk.com remains denied. Earlier provider001 desktop incomplete config is excluded from final configured-form proof."
+}

@@ -1,0 +1,36 @@
+{
+  "pre_composition_readiness": {
+    "source": "94412f88f62fd9e1a63ef5c41cf36bfab5575051",
+    "doctor": "selected-logs/doctor-web-original.log",
+    "receipt": "provider-original-source-receipt.json",
+    "captures": [
+      "provider-readiness-1440.png",
+      "provider-readiness-390.png"
+    ],
+    "qualification": "Own fresh harness readiness before mechanical integration; no new feature edit. Public FAPI and SDK200, actual configured form ready, no auth action/page error. Browser fr-FR; interface Romanian fallback."
+  },
+  "final_provider_proof": {
+    "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+    "base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+    "tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+    "cases": 4,
+    "test_exit": 0,
+    "native_required": true,
+    "configured_title": "PRISMA CERT",
+    "actual_provider": "boss-tarpon-28.clerk.accounts.dev",
+    "locale_switch_fetches": 0,
+    "auth_business_actions": 0,
+    "page_errors": 0,
+    "viewport_widths": [
+      1440,
+      390
+    ],
+    "languages": [
+      "ro",
+      "ru",
+      "fr",
+      "en"
+    ],
+    "qualification": "Anonymous SignIn/configured restriction state only; SignUp not mounted because ticket may create attempt on mount. No valid identifier/credentials/OTP/resend/OAuth/email/SMS/password reset or business request. SDK-unavailable control proves recovery after removing local script fault and reloading only."
+  }
+}

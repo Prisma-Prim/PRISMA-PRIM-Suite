@@ -1,0 +1,77 @@
+{
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "profile": "narrow",
+  "pageErrors": [],
+  "failedResources": [
+    {
+      "host": "img.clerk.com",
+      "type": "image",
+      "reason": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    }
+  ],
+  "forbiddenActions": [],
+  "providerFetches": [
+    {
+      "method": "POST",
+      "category": "public-provider-read"
+    },
+    {
+      "method": "POST",
+      "category": "public-provider-read"
+    },
+    {
+      "method": "GET",
+      "category": "anonymous-client-initialization"
+    }
+  ],
+  "locales": [
+    {
+      "locale": "ro",
+      "title": "Autentifică-te în PRISMA CERT",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    },
+    {
+      "locale": "ru",
+      "title": "Войти в \"PRISMA CERT\"",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    },
+    {
+      "locale": "fr",
+      "title": "Se connecter à PRISMA CERT",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    },
+    {
+      "locale": "en",
+      "title": "Sign in to PRISMA CERT",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    }
+  ]
+}

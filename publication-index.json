@@ -1,0 +1,361 @@
+{
+  "utc": "2026-10-31T15:07:55.833366+00:00",
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+  "integration_tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+  "run": 41211196540,
+  "merge_eligible": false,
+  "remaining": "Current aggregate retrieval/digest verification/desktop-narrow inspection",
+  "selection_is_complete_archive": false,
+  "origin_exceptions": {
+    "historical-ci40880099309": "reviewed944 historical native CI screenshots, not current-main qualification",
+    "provider-readiness-1440.png": "reviewed944 original before mechanical composition",
+    "provider-readiness-390.png": "reviewed944 original before mechanical composition"
+  },
+  "files": [
+    {
+      "path": "ci-verification.json",
+      "bytes": 9171,
+      "sha256": "336d9538cf7ab6bc6b9c3cda3deba90a2d474297927802c9edc7192047cb57a3",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "current-artifact-blocker.json",
+      "bytes": 1609,
+      "sha256": "a196a3555ab9b9770b4742cf0c7802fbc4bd4708e9ed122f114912a05f4da85f",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "current-artifact-provider-metadata.json",
+      "bytes": 704,
+      "sha256": "fd5b1935b92b2f5c8227195233729bcb5ab89868be19fcb5a679465451a79a79",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "diagnostics/outcomes.json",
+      "bytes": 1200,
+      "sha256": "4719c1f8b7692461778bad08f9c7a079c4c5e216fe894ef858a70ef8e2d4ffcb",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "diagnostics/provider-001/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-desktop/sanitized-recovery-proof.json",
+      "bytes": 732,
+      "sha256": "5022be0373c9d938c729f38a3409df9403f3615b343a6c79fc2fd9b4fd8b523d",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "diagnostics/provider-001/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-narrow/sanitized-recovery-proof.json",
+      "bytes": 731,
+      "sha256": "981626becec77f303bf62a277e3bfdf978df163d334d6d3ebcb80ff44d70188c",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "diagnostics/provider-001/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/sanitized-provider-proof.json",
+      "bytes": 1570,
+      "sha256": "40a1fed74d082874156eb6e1ae159916429173a567a4ad9fe5950d2003b6bb24",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "diagnostics/provider-001/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/sanitized-provider-proof.json",
+      "bytes": 1605,
+      "sha256": "415f2f83485423a52dcb20c3ad2189274947a570148d80877a61dc06a6d0e65f",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "historical-artifact-receipt.json",
+      "bytes": 419,
+      "sha256": "16b2a671a5d249eeeb5769874ee8d64a9196d9cc49db6e59a715b4970acc2e3a",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "historical-ci40880099309/desktop/invitation-safe-denial.png",
+      "bytes": 71502,
+      "sha256": "91f66bdde499f1c5fe137f525ef0108d9bd8c630b0f53ca13d467a3e0b49bfe7",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "historical-ci40880099309/desktop/invitation-storage-recovery.png",
+      "bytes": 176221,
+      "sha256": "07c8cf3412c3c74bd8a46e5e0f17562e9f8ae34db1403106295171e45d77dd12",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "historical-ci40880099309/narrow/invitation-safe-denial.png",
+      "bytes": 54739,
+      "sha256": "8d93241d276d8ff0a4817599c582bbab2edf88c849869ed6a3f72a5e018bcab3",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "historical-ci40880099309/narrow/invitation-storage-recovery.png",
+      "bytes": 112477,
+      "sha256": "06de18490e321b6e7fea72d898b78839ddc55a513c9682e58de2a5e8b10c4cd5",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "integration-qualification.json",
+      "bytes": 1152,
+      "sha256": "5afea3170a7ea53464ec286afa42ca56c3b36813e0ed4be8a84c0476665b4d71",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "local-checks.json",
+      "bytes": 1881,
+      "sha256": "e3666b87eee628d33355044a343eb086222aa48cdcfa34f8c10e0c8ae9552514",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "owned-resource-cleanup.json",
+      "bytes": 265,
+      "sha256": "8be4fc2af925be02b44c70cbfabcec0d697108864a9c2afc05c0b208c1b81f72",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "provider-original-source-receipt.json",
+      "bytes": 5372,
+      "sha256": "7b408ff4070d9bd6e6ba673f0e4e9a686d3311ad0df07af65a14e7525425ff46",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "provider-qualification.json",
+      "bytes": 1442,
+      "sha256": "80a436b85974b533fde90ca76eba27be553192957d13b904ad7281d1acaed95c",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "provider-readiness-1440.png",
+      "bytes": 85541,
+      "sha256": "2c1847cdebc8f507cf6ee338f2bc0a508f03aab07e80387afe751368c3fdd6cc",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "provider-readiness-390.png",
+      "bytes": 59093,
+      "sha256": "e76da2975a243093033c68f07ba045e380eb5d5465b2a0dd3d2a6e8afabf456e",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-desktop/sanitized-recovery-proof.json",
+      "bytes": 854,
+      "sha256": "995799b2cc6821ef29801415f24e222ed4ce77d1aa7238f5e5d8670ea1c9692d",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-desktop/sdk-recovered-desktop.png",
+      "bytes": 85541,
+      "sha256": "2c1847cdebc8f507cf6ee338f2bc0a508f03aab07e80387afe751368c3fdd6cc",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-desktop/sdk-unavailable-desktop.png",
+      "bytes": 14713,
+      "sha256": "0b4fb389fc449765948ad4c7b63c144baef3b82c32a9909cebd1d8ec397ec741",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-narrow/sanitized-recovery-proof.json",
+      "bytes": 854,
+      "sha256": "66e523cdc7ed838ca474d56a80b51ddd61deefc21f363ad0407c384a143e23a0",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-narrow/sdk-recovered-narrow.png",
+      "bytes": 59093,
+      "sha256": "e76da2975a243093033c68f07ba045e380eb5d5465b2a0dd3d2a6e8afabf456e",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-anonymous-SD-097a0-e-local-fault-and-reloading-narrow/sdk-unavailable-narrow.png",
+      "bytes": 11204,
+      "sha256": "f10debdd034cb75da40af79c55b8a93b377c769b6190b4ae808f92c5f16e8b21",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-en-desktop-literal.png",
+      "bytes": 81817,
+      "sha256": "e2889e10920b29adc3a4d2c8824577b05eb5997c6d4279d8878146a57ec27a7e",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-en-desktop-native-required.png",
+      "bytes": 85855,
+      "sha256": "57970a4cb3825e8b0df19c80940e03171674f0438157d538810e7c6c3291cf8a",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-fr-desktop-literal.png",
+      "bytes": 89054,
+      "sha256": "47afbd6d686e8f18505ea18efac86927e913e665652711f96183f5090d1dc5fb",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-fr-desktop-native-required.png",
+      "bytes": 94469,
+      "sha256": "503a677d2bad4d18bd5ff2178ca88628723d1d36a8b95592801cf35ad2602fbc",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ro-desktop-literal.png",
+      "bytes": 85652,
+      "sha256": "f0d9615748902a80285cd2eb33ff6b1541a2d3b740ffb1495b2f1ec10be7f778",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ro-desktop-native-required.png",
+      "bytes": 90771,
+      "sha256": "815a943ac1d11a78c75e7b8ef04e7ab6b302f9e90c9022776ca00cd5761f8b98",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ru-desktop-literal.png",
+      "bytes": 95484,
+      "sha256": "872dc2af172288688152015ff32c4ebfccbf36e8d71a52231b1d5796321df5ad",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/clerk-ru-desktop-native-required.png",
+      "bytes": 101995,
+      "sha256": "71a3864ee65b65324db029177ddbe270a4761745b487c0963bfe4a74ad48e51a",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-desktop/sanitized-provider-proof.json",
+      "bytes": 1606,
+      "sha256": "ffcb1552e8863e7c784677b3d4463644c00cc541c609e95f8b04090658819731",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-en-narrow-literal.png",
+      "bytes": 56339,
+      "sha256": "300c54942d1d88891828eb6a82917fb2aae6422c2fe95065791f14c1f8f14457",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-en-narrow-native-required.png",
+      "bytes": 60788,
+      "sha256": "47bdc8bf1e78afd119337a4b2c937d50f397bce311e427ac954bfa7d5bb13647",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-fr-narrow-literal.png",
+      "bytes": 60486,
+      "sha256": "ff573e9d8fc46cb373191f3b87351ced103e76864f136aa2b78f125203411996",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-fr-narrow-native-required.png",
+      "bytes": 65581,
+      "sha256": "dc9cebc874a91aaab37ce5945a4a88d06a25043f3c796565ab7299af20e45f36",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ro-narrow-literal.png",
+      "bytes": 59229,
+      "sha256": "a5e4fa77622573da442c3d052e0d5b712a2a31ebd2007cd401a68b94adc40849",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ro-narrow-native-required.png",
+      "bytes": 63988,
+      "sha256": "24fb78ffdaa20cf5a658932394d635d45f67c5551c14e743898df0644d392a29",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ru-narrow-literal.png",
+      "bytes": 63174,
+      "sha256": "a2e104bd50472f61664cef67c8cd4c284e4da56d1ff3065686ba65c26070cee9",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/clerk-ru-narrow-native-required.png",
+      "bytes": 69245,
+      "sha256": "738edef8aa9f10837668edb158248bdcda418f11ec62e5d16c3ee81c59659a67",
+      "selection": "unchanged original synthetic capture"
+    },
+    {
+      "path": "real-provider/real-provider-real-anonymo-ee711-e-feedback-and-continuation-narrow/sanitized-provider-proof.json",
+      "bytes": 1605,
+      "sha256": "415f2f83485423a52dcb20c3ad2189274947a570148d80877a61dc06a6d0e65f",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "report.md",
+      "bytes": 7442,
+      "sha256": "0cc875da033cf4b2bfcdc8ad5b8d0e74ad13928457a65a6e93bacbf78312ef46",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "review-disposition.json",
+      "bytes": 2083,
+      "sha256": "cfbe90abdded15ea71adb6d317c518e256a8221d1aedf3871434aa903e577c8a",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/doctor-web-original.log",
+      "bytes": 624,
+      "sha256": "6a66f23796e6a5b5194d67d36d47ea6eadd80c1e6e7d63ed3f186081c57baa2e",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/focused-postgres.log",
+      "bytes": 1300,
+      "sha256": "1b880770f68c0af09ffd1472e98204d61de061a2d5dfd61f172f826a4a863a77",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/focused-web.log",
+      "bytes": 228,
+      "sha256": "2944688cea68b66ea78b20ef069dcd6ad1d457638da87a7036878bc3d86e6933",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/format.log",
+      "bytes": 66,
+      "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/lint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/provider-full.log",
+      "bytes": 1451,
+      "sha256": "627f80b721c78183f93e258e25529e4942e8743ca418b3a82f5ef3bee486cadb",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "selected-logs/types.log",
+      "bytes": 187,
+      "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "temporary-harness/config.cjs",
+      "bytes": 676,
+      "sha256": "896f39d9cf7c5807d81fba33069e7502b90fc5c71e7cc695c35a3162f63bbde5",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "temporary-harness/provider-readiness.cjs",
+      "bytes": 2725,
+      "sha256": "e29da32f51fd3fed4af441e6d928c8677c8dbd2975e5d1bf0a51f699ceec1732",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "temporary-harness/real-provider.spec.cjs",
+      "bytes": 6485,
+      "sha256": "babe5114253ede6fd4116a1190879e9a473704d2956648e64f03bd5e99ca7c61",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    },
+    {
+      "path": "visual-inspection.json",
+      "bytes": 3457,
+      "sha256": "a2301e9755a6af641516c40c07a96ba5935cc4473a33d5a593d00d59546abfa0",
+      "selection": "selected sanitized or derived qualification record; complete originals retained locally"
+    }
+  ],
+  "total_selected_bytes": 2013547,
+  "retention": "At least14 days after merge; preserve open-review proof."
+}

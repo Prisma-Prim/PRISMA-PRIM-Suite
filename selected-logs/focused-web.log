@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 /workspace/work/pr983/source/apps/web
+
+
+ Test Files  5 passed (5)
+      Tests  47 passed (47)
+   Start at  14:31:18
+   Duration  5.76s (transform 2.95s, setup 859ms, import 4.26s, tests 1.68s, environment 3.43s)
+

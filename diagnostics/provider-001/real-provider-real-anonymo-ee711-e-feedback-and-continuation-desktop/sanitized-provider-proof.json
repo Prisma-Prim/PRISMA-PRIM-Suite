@@ -1,0 +1,77 @@
+{
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "profile": "desktop",
+  "pageErrors": [],
+  "failedResources": [
+    {
+      "host": "boss-tarpon-28.clerk.accounts.dev",
+      "type": "fetch",
+      "reason": "net::ERR_NETWORK_CHANGED"
+    }
+  ],
+  "forbiddenActions": [],
+  "providerFetches": [
+    {
+      "method": "POST",
+      "category": "public-provider-read"
+    },
+    {
+      "method": "POST",
+      "category": "public-provider-read"
+    },
+    {
+      "method": "GET",
+      "category": "anonymous-client-initialization"
+    }
+  ],
+  "locales": [
+    {
+      "locale": "ro",
+      "title": "Autentifică-te în",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    },
+    {
+      "locale": "ru",
+      "title": "Войти в \"\"",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    },
+    {
+      "locale": "fr",
+      "title": "Se connecter à",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    },
+    {
+      "locale": "en",
+      "title": "Sign in to",
+      "stable": {
+        "provider": true,
+        "input": true,
+        "url": true,
+        "intent": true
+      },
+      "noOverflow": true,
+      "switchProviderFetches": 0
+    }
+  ]
+}

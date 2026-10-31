@@ -1,0 +1,33 @@
+{
+  "profile": "narrow",
+  "pageErrors": [],
+  "failedResources": [
+    {
+      "host": "boss-tarpon-28.clerk.accounts.dev",
+      "type": "script",
+      "reason": "net::ERR_FAILED"
+    },
+    {
+      "host": "img.clerk.com",
+      "type": "image",
+      "reason": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    }
+  ],
+  "forbiddenActions": [],
+  "providerFetches": [
+    {
+      "method": "POST",
+      "category": "public-provider-read"
+    },
+    {
+      "method": "POST",
+      "category": "public-provider-read"
+    },
+    {
+      "method": "GET",
+      "category": "anonymous-client-initialization"
+    }
+  ],
+  "qualification": "Reload recovery; no claim of draft preservation across an unavailable SDK.",
+  "blockedScripts": 1
+}

@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-31T14:53:35.051701+00:00",
+  "owned_vite_pid": 419621,
+  "action": "SIGTERM after exact command/path/port verification",
+  "docker_containers_remaining": 0,
+  "docker_volumes_remaining": 0,
+  "shared_images_cache": "retained; no global prune"
+}

@@ -1,0 +1,26 @@
+{
+  "utc": "2026-10-31T15:07:55.778889+00:00",
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+  "tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+  "run": 41211196540,
+  "artifact_id": 13047111562,
+  "archive_size_bytes": 494750747,
+  "provider_sha256": "0b10623c74b5498b9838e42fd0747128a3240fa13be1d3c603b928a5db57170a",
+  "connector_retrieval": "Canonical artifact connector successfully returned a File Service reference; bytes are not yet materialized in this workspace.",
+  "file_reference_route": {
+    "host": "sdmntpritalynorth.oaiusercontent.com",
+    "failure": "CONNECT403 Forbidden",
+    "host_in_current_allowlist": false
+  },
+  "official_github_route": {
+    "host": "api.github.com",
+    "status": 302,
+    "redirect_host": "productionresultssa8.blob.core.windows.net",
+    "redirect_host_in_current_allowlist": false,
+    "redirect_followed": false
+  },
+  "policy": "restricted/enforced, revision1; no supported policy-mutation tool available. Existing allowed File Service host sdmntprnortheu.oaiusercontent.com does not cover italynorth.",
+  "minimum_required_change": "Add sdmntpritalynorth.oaiusercontent.com to this task network allowlist through supported environment configuration, or supply the complete original archive through a supported authorized file route. No provider/environment restart, TLS/proxy bypass or source change is requested.",
+  "merge_disposition": "blocked until current complete archive is downloaded/digest-verified and relevant original desktop/narrow images inspected; all16 CI jobs passed."
+}

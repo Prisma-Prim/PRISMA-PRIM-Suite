@@ -1,0 +1,25 @@
+{
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+  "tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+  "issue_added_removed_lines_unchanged": true,
+  "issue_line_sha256": "e8b5de645c8f91203c263b87f46f0a0e52af8c03bf31d68422670e5c30345fc5",
+  "identical_feature_blobs": [
+    "apps/api/src/demonstration/demonstration-target-concurrency.rest.test.ts",
+    "apps/web/package.json",
+    "apps/web/src/access-composition.tsx",
+    "apps/web/src/access/ClerkNativeValidation.tsx",
+    "apps/web/src/access/WorkspaceInvitationAuthentication.test.tsx",
+    "apps/web/src/access/WorkspaceInvitationEntry.tsx",
+    "apps/web/src/access/clerk-authentication-localization.test.ts",
+    "apps/web/src/access/clerk-authentication-localization.ts",
+    "apps/web/src/access/clerk-authentication.copy.ts",
+    "apps/web/src/access/clerk-native-validation.copy.ts",
+    "apps/web/src/clerk-access-composition.test.tsx",
+    "apps/web/src/localization/first-journey-coverage.ts",
+    "apps/web/src/production-shell/application-shell.css"
+  ],
+  "mechanically_composed_paths": [
+    "pnpm-lock.yaml"
+  ]
+}

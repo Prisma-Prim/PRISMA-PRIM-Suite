@@ -1,0 +1,22 @@
+{
+  "historical_full_CI_failed": {
+    "run": 40869856002,
+    "failure": "PostgreSQL55P03; historical holder unproven; retained as failed"
+  },
+  "historical_full_CI_passed": 40880099309,
+  "original_readiness": [
+    "Initial forced proxied-loopback attempts failed; supported local-only routing fixed that harness mistake. External proxy/TLS unchanged.",
+    "Original944 pre-composition actual configured-form readiness2/2 passed."
+  ],
+  "provider001": {
+    "test_exit": 0,
+    "qualification": "Desktop environment fetch ERR_NETWORK_CHANGED left app-name absent. Not sufficient final configured-provider visual proof. Captures and logs retained locally; sanitized records selected here."
+  },
+  "provider_final": {
+    "test_exit": 0,
+    "passed": 4,
+    "changed_prerequisite": "Temporary harness additionally requires fully configured PRISMA CERT title before any proof; no product source edit.",
+    "external_resource_denial": "Decorative img.clerk.com only, apart from deliberate SDK-blocking recovery control."
+  },
+  "archive_transport": "Historical connector ReadTimeout/native403 resolved by canonical artifact connector and returned file reference; no denied destination bypass."
+}

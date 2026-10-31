@@ -1,0 +1,10 @@
+{
+  "utc": "2026-10-31T14:22:40.274672+00:00",
+  "artifact_id": 12900892556,
+  "run": 40880099309,
+  "source": "94412f88f62fd9e1a63ef5c41cf36bfab5575051",
+  "bytes": 443819487,
+  "sha256": "3b4fecb6c6516e0cbd0de6d8ebd755689409091b362bbe2e9ea2970f717da411",
+  "provider_digest_match": true,
+  "route": "canonical GitHub artifact connector, then returned file-reference download URL; inherited proxy and TLS unchanged"
+}

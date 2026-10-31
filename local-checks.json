@@ -1,0 +1,46 @@
+{
+  "source": "7c86aabc200c4b62547341a0c1dbdc57470df3dc",
+  "base": "f0147f3ee0e2a91adadd4173978b8325af018c35",
+  "tree": "1eaa5985248b3e4f090f796b7a19679ba75a1b23",
+  "gate_policy": "Requested public queue uses complete independent GitHub CI under747/comment6332942799. This packet records targeted local qualification; no complete verify-local pass claimed.",
+  "checks": [
+    {
+      "command": "pnpm --filter @prisma-prim/web exec vitest run src/clerk-access-composition.test.tsx src/access/clerk-authentication-localization.test.ts src/access/WorkspaceInvitationAuthentication.test.tsx src/localization/messages.test.ts src/localization/interface-locale.test.tsx",
+      "tests_passed": 47,
+      "files_passed": 5,
+      "result": "passed"
+    },
+    {
+      "command": "node scripts/managed-postgres.mjs -- pnpm --filter @prisma-prim/api exec vitest run src/demonstration/demonstration-target-concurrency.rest.test.ts",
+      "tests_passed": 6,
+      "result": "passed",
+      "exit": 0,
+      "budgets": "Original repository assertions and deadlines"
+    },
+    {
+      "command": "pnpm typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "changed-file Prettier check and scoped ESLint",
+      "result": "passed"
+    },
+    {
+      "command": "PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK=1 pnpm --filter @prisma-prim/web exec playwright test --config /workspace/work/pr983/provider-tests/config.cjs",
+      "tests_passed": 4,
+      "result": "passed",
+      "exit": 0,
+      "source_change": false,
+      "public_configuration_only": true
+    }
+  ],
+  "docker_capacity": {
+    "free_space": "15GiB",
+    "images": 1,
+    "containers": 0,
+    "volumes": 0,
+    "build_cache": "1.558GB",
+    "profile": "Docker28.4/vfs",
+    "production_packaging": "Independent current-source CI job packaging completed success; actual production image smoke."
+  }
+}

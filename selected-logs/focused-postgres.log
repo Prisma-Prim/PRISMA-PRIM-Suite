@@ -1,0 +1,17 @@
+$ pnpm --filter @prisma-prim/api db:migrate
+$ drizzle-kit migrate
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/workspace/work/pr983/source/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[⡿] applying migrations...[⢿] applying migrations...[⣻] applying migrations...[⣽] applying migrations...[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[⡿] applying migrations...[⢿] applying migrations...[⣻] applying migrations...[⣽] applying migrations...[⣷] applying migrations...[✓] migrations applied successfully!(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/work/pr983/source/apps/api
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  14:35:03
+   Duration  20.04s (transform 2.69s, setup 0ms, import 4.05s, tests 15.88s, environment 0ms)
+
