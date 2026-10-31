@@ -1,3 +1,4 @@
+import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
 import { useProjectNextActionCopy } from '../project/project-next-action.copy';
 import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
@@ -43,6 +44,7 @@ const stageOperationKeys = {
 
 export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
+  const internalTask = useInternalTaskCopy();
   const knowledgeAssignments = useKnowledgeAssignmentActivityCopy();
   const ideas = useIdeasCopy();
   const missionPlan = useMissionPlanCopy();
@@ -188,6 +190,8 @@ export function useActivityLogDisplay() {
       'contract_version.signature_recorded',
     ),
     'contract_project.linked': message('contract_project.linked'),
+    'company_internal_task_manager_assignment.granted': internalTask('granted'),
+    'company_internal_task_manager_assignment.revoked': internalTask('revoked'),
     'company_task_manager_assignment.granted': message(
       'company_task_manager_assignment.granted',
     ),

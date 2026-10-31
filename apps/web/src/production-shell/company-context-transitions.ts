@@ -63,6 +63,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_ideas_recorder_assignment.revoked'
     | 'company_ideas_reviewer_assignment.granted'
     | 'company_ideas_reviewer_assignment.revoked'
+    | 'company_internal_task_manager_assignment.granted'
+    | 'company_internal_task_manager_assignment.revoked'
     | 'company_task_manager_assignment.granted'
     | 'company_task_manager_assignment.revoked'
     | 'company_project_assignment.granted'

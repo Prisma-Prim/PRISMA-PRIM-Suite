@@ -1,3 +1,4 @@
+import { InternalTaskAccessService } from './internal-task-access.service.js';
 import { MissionApplicabilityAccessService } from './mission-applicability-access.service.js';
 import { MissionPlanAccessService } from './mission-plan-access.service.js';
 import { TaskAccessService } from './task-access.service.js';
@@ -23,6 +24,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
     ContractModelAccessService,
     OfferModelAccessService,
     OperationalRiskAccessService,
+    InternalTaskAccessService,
     TaskAccessService,
     ProjectResponsibleAccessService,
     CommercialResponsibleAccessService,
@@ -61,6 +63,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
     OperationalRiskAccessService,
     ACCESS_ADMISSION,
     CompanyContextAuthorization,
+    InternalTaskAccessService,
     TaskAccessService,
     ProjectResponsibleAccessService,
     CommercialResponsibleAccessService,

@@ -24,6 +24,7 @@ const CAPTURED_VERSIONS = {
   'Company Commercial Intake': ['v1', 'v2', 'v3', 'v4'],
   'Company Document Project Organizer': ['v1'],
   'Company Project Access': ['v1', 'v2'],
+  'Company Internal Task Manager': ['v1'],
   'Company Task Manager': ['v1'],
   'Company Task Result Recorder': ['v1'],
   'Company Mission Result Reviewer': ['v1'],

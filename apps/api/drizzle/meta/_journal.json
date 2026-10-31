@@ -645,6 +645,13 @@
       "when": 1793439133226,
       "tag": "0091_project_next_action",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793479399921,
+      "tag": "0092_company_internal_tasks",
+      "breakpoints": true
     }
   ]
 }

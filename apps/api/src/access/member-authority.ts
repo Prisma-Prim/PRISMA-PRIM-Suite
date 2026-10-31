@@ -18,6 +18,7 @@ import {
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
+  COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE,
   commercialIntakePermissionsFor,
   companyDirectorClientPermissionsFor,
@@ -42,6 +43,7 @@ export interface MemberAuthority {
   projectReader: boolean;
   /** Effective Company context and live Commercial Intake read in the Company. */
   commercialIntakeReader: boolean;
+  internalTaskRead: boolean;
   taskRead: boolean;
   taskManage: boolean;
   operationalRiskReader: boolean;
@@ -135,6 +137,7 @@ export async function readMemberAuthority(
   let client = grants.some((row) => row.permission === 'client.manage');
   let project = false,
     intakeRead = false,
+    internalTaskRead = false,
     taskRead = false,
     taskManage = false,
     riskRead = false,
@@ -180,6 +183,9 @@ export async function readMemberAuthority(
         );
         break;
       }
+      case COMPANY_INTERNAL_TASK_MANAGER_BUNDLE:
+        internalTaskRead = assignment.version === 'v1';
+        break;
       case COMPANY_TASK_MANAGER_BUNDLE: {
         const permissions = taskPermissionsFor(assignment.version);
         taskRead = permissions.includes('task.read');
@@ -243,6 +249,7 @@ export async function readMemberAuthority(
     displayLabel: memberDisplayLabel(member.displayName, input.membershipId),
     projectReader: context && client && project,
     commercialIntakeReader: context && intakeRead,
+    internalTaskRead: context && internalTaskRead,
     taskRead,
     taskManage,
     operationalRiskReader: context && riskRead,

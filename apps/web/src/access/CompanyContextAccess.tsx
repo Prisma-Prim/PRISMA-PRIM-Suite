@@ -1,3 +1,4 @@
+import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
 import { useProjectNextActionCopy } from '../project/project-next-action.copy';
 import { useAuthorityLifetime } from './use-authority-lifetime';
@@ -58,6 +59,7 @@ type AssignmentBundle =
   | 'mission-applicability-approver'
   | 'mission-result-reviewer'
   | 'task-result-recorder'
+  | 'internal-task-manager'
   | 'task-manager'
   | 'company-context'
   | 'director-client'
@@ -119,6 +121,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'operational-risk-recorder': '/company-operational-risk-recorder-assignments',
   'profitability-contributor': '/company-profitability-contributor-assignments',
   'profitability-director': '/company-profitability-director-assignments',
+  'internal-task-manager': '/company-internal-task-manager-assignments',
   'task-manager': '/company-task-manager-assignments',
   'company-context': '/company-context-assignments',
   'director-client': '/company-director-client-assignments',
@@ -185,6 +188,7 @@ export function CompanyContextAccess({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useCompanyAssignmentCopy();
+  const internalTaskCopy = useInternalTaskCopy();
   const ideasCopy = useIdeasCopy();
   const missionPlanCopy = useMissionPlanCopy();
   const modelCopy = useOfferModelCopy();
@@ -734,6 +738,10 @@ export function CompanyContextAccess({
                 value: 'project-approver',
                 label: copy('projectApproverBundle'),
               },
+              {
+                value: 'internal-task-manager',
+                label: internalTaskCopy('bundle'),
+              },
               { value: 'task-manager', label: copy('taskManagerBundle') },
               {
                 value: 'project-next-action-coordinator',
@@ -766,6 +774,7 @@ export function CompanyContextAccess({
                 value === 'profitability-director' ||
                 value === 'operational-risk-reader' ||
                 value === 'operational-risk-recorder' ||
+                value === 'internal-task-manager' ||
                 value === 'task-manager' ||
                 value === 'project-next-action-coordinator' ||
                 value === 'mission-applicability-coordinator' ||
@@ -822,6 +831,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'operational-risk-recorder' && (
             <p>{riskCopy('recorderPrerequisites')}</p>
+          )}
+          {bundle === 'internal-task-manager' && (
+            <p>{internalTaskCopy('prerequisites')}</p>
           )}
           {bundle === 'task-manager' && (
             <p>{copy('taskManagerPrerequisites')}</p>
@@ -1027,6 +1039,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'project-template-user': 'Company Project Template User',
     'project-template-configuration': 'Company Project Template Configuration',
     'project-stage-advancer': 'Company Project Stage Advancer',
+    'internal-task-manager': 'Company Internal Task Manager',
     'task-manager': 'Company Task Manager',
     'mission-result-reviewer': 'Company Mission Result Reviewer',
     'mission-applicability-coordinator':

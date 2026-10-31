@@ -1,3 +1,6 @@
+import { InternalTaskModule } from './internal-task/internal-task.module.js';
+import { InternalTaskController } from './internal-task/internal-task.controller.js';
+import { CompanyInternalTaskManagerAssignmentController } from './access/company-internal-task-manager-assignment.controller.js';
 import { ProjectNextActionModule } from './project-next-action/project-next-action.module.js';
 import { ProjectNextActionController } from './project-next-action/project-next-action.controller.js';
 import { MissionApplicabilityModule } from './project-mission-applicability/mission-applicability.module.js';
@@ -164,6 +167,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalRiskModule,
     ProjectTemplateModule,
     MissionResultReviewModule,
+    InternalTaskModule,
     ProjectNextActionModule,
     MissionApplicabilityModule,
     TaskModule,
@@ -210,6 +214,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProjectContractsController,
     TaskController,
     TaskResultsController,
+    InternalTaskController,
+    CompanyInternalTaskManagerAssignmentController,
     CompanyTaskManagerAssignmentController,
     DocumentsController,
     DocumentVersionsController,
