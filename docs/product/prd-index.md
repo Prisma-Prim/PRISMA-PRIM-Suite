@@ -230,7 +230,12 @@ The Commercial Workflow PRD owns the reusable Request → Opportunity → pricin
 the bounded exact non-official PDF download of existing model-based Offer and
 ordinary Contract Versions, including history. Its status is Approved following
 [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/955#issuecomment-6479686845)
-under #955; runtime follows canonical merge and separate readiness.
+under #955; the original runtime is delivered by [#965 / PR #970](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/970).
+Its [illustrative Offer v1 extension §33.13](release-3-commercial-33-non-official-pdf-download.md#3313-exact-illustrative-offer-v1-extension-987)
+under [#987](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/987) is Approved following
+ordered Standards then Spec preparation and [actual delegated technical approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/987#issuecomment-6499422361).
+Canonical merge and all twelve fresh-child gates still precede a separate runtime;
+this contract approval does not make that runtime ready or delivered.
 
 The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the governed illustrative fixed net discount created atomically with a new Snapshot (delivered by #458 / #470). It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
 
