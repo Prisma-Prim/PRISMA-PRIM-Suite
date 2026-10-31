@@ -274,6 +274,8 @@ Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
 
+The [bounded manual external Invoice Record contract](release-5-external-invoice-record-prd.md) is Approved after ordered Standards then Spec preparation and [actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1009#issuecomment-6549665126). It selects complete confidential source preservation before dependent manual Record entry/correction; canonical merge, actual-head readiness and central-interface ownership precede runtime work. The broader Release 5 remains unready; this contract supplies no fiscal issuance, payment/balance/overdue claim, real assignment or activation.
+
 The [complete My attention drill-down](release-1-operational-dashboard-acceptance-prd.md#20-approved-complete-my-attention-drill-down--2026-10-21)
 extends only the existing own-Task attention preview with complete bounded pages,
 under delegated agent product review. Its §20 owns the set, unchanged rights,
