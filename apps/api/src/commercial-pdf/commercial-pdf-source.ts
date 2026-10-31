@@ -1,5 +1,6 @@
 import { UnprocessableEntityException } from '@nestjs/common';
 import { parse, type DefaultTreeAdapterMap } from 'parse5';
+import { projectIllustrativeOfferPdf } from './illustrative-offer-pdf-source.js';
 
 type CommercialPdfIdentity = {
   workspaceId: string;
@@ -9,7 +10,6 @@ type CommercialPdfIdentity = {
   reference: number;
   versionId: string;
   versionNumber: number;
-  language: 'ro';
   createdAt: string;
   sourceRendererVersion: 1;
   sourceHtmlSha256: string;
@@ -20,12 +20,20 @@ export type CommercialPdfSource = CommercialPdfIdentity &
     | {
         kind: 'offer';
         provenance: 'COMPANY_MODEL_ESTIMATE';
+        language: 'ro';
         sourceRendererCode: 'OFFER_COMPANY_CONSULTING_RO';
       }
     | {
         kind: 'contract';
         provenance: 'COMPANY_MODEL_OFFER';
+        language: 'ro';
         sourceRendererCode: 'COMPANY_CONSULTING_CONTRACT_RO';
+      }
+    | {
+        kind: 'offer';
+        provenance: 'ILLUSTRATIVE';
+        language: 'en';
+        sourceRendererCode: 'OFFER_ILLUSTRATIVE';
       }
   );
 export type PdfBlock =
@@ -52,6 +60,8 @@ export function projectCommercialPdfSource(
     pdfRefusal('PDF_CONTENT_LIMIT');
   if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(source.html.replace(/[\t\r\n]/gu, '')))
     pdfRefusal('PDF_TEXT_UNSUPPORTED');
+  if (source.provenance === 'ILLUSTRATIVE')
+    return projectIllustrativeOfferPdf(source.html);
   const document = parse(source.html, {
     onParseError: () => pdfRefusal('PDF_SOURCE_UNSUPPORTED'),
   });

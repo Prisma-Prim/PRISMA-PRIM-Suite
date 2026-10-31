@@ -32,6 +32,19 @@ const maximumPdfBytes = 16 * 1024 * 1024;
 const shaping = { liga: false, clig: false };
 const segmenter = new Intl.Segmenter('ro', { granularity: 'grapheme' });
 export const COMMERCIAL_PDF_RENDERER = 'COMMERCIAL_MODEL_PDF';
+export function commercialPdfRendererCode(
+  source: Pick<CommercialPdfSource, 'provenance'>,
+) {
+  const codes = {
+    ILLUSTRATIVE: 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF',
+    COMPANY_MODEL_ESTIMATE: COMMERCIAL_PDF_RENDERER,
+    COMPANY_MODEL_OFFER: COMMERCIAL_PDF_RENDERER,
+  } satisfies Record<
+    CommercialPdfSource['provenance'],
+    typeof COMMERCIAL_PDF_RENDERER | 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF'
+  >;
+  return codes[source.provenance];
+}
 
 @Injectable()
 export class CommercialPdfRenderer {
@@ -55,31 +68,54 @@ async function render(
 ): Promise<Uint8Array> {
   await checkpoint(signal);
   const blocks = projectCommercialPdfSource(source);
-  const provenance = [
-    'Proveniența exactă a copiei PDF neoficiale',
-    `Tip: ${source.kind === 'offer' ? 'Ofertă' : 'Contract'}`,
-    `Workspace: ${source.workspaceId}`,
-    `Companie: ${source.companyId}`,
-    `Oportunitate: ${source.opportunityId}`,
-    `Document: ${source.rootId}`,
-    `Referință internă: ${source.reference}; versiune: ${source.versionNumber}`,
-    `Versiune exactă: ${source.versionId}`,
-    `Proveniență: ${source.provenance}`,
-    `Limbă: ${source.language}; creat la: ${source.createdAt}`,
-    `HTML: ${source.sourceRendererCode} / ${source.sourceRendererVersion}`,
-    `SHA-256 HTML sursă: ${source.sourceHtmlSha256}`,
-    `PDF: ${COMMERCIAL_PDF_RENDERER} / 1; DejaVu Sans 2.37 Regular/Bold`,
-    'Copie neoficială; nu alocă număr oficial, nu confirmă semnarea sau efectul juridic.',
-  ];
-  const header = 'COPIE PDF NEOFICIALĂ — fără număr oficial sau efect juridic';
-  const identity = `${source.kind === 'offer' ? 'Ofertă' : 'Contract'} ${source.reference} / versiunea ${source.versionNumber}`;
+  const illustrative = source.provenance === 'ILLUSTRATIVE';
+  const rendererCode = commercialPdfRendererCode(source);
+  const provenance = illustrative
+    ? [
+        'Exact provenance of this non-official PDF copy',
+        'Kind: Offer',
+        `Workspace: ${source.workspaceId}`,
+        `Company: ${source.companyId}`,
+        `Opportunity: ${source.opportunityId}`,
+        `Document: ${source.rootId}`,
+        `Internal reference: ${source.reference}; version: ${source.versionNumber}`,
+        `Exact version: ${source.versionId}`,
+        `Provenance: ${source.provenance}`,
+        `Source language: ${source.language}; created at: ${source.createdAt}`,
+        `HTML Template: ${source.sourceRendererCode} / ${source.sourceRendererVersion}`,
+        `SHA-256 HTML: ${source.sourceHtmlSha256}`,
+        `PDF: ${rendererCode} / 1; DejaVu Sans 2.37 Regular/Bold`,
+        'Non-official copy; no official number or legal effect.',
+      ]
+    : [
+        'Proveniența exactă a copiei PDF neoficiale',
+        `Tip: ${source.kind === 'offer' ? 'Ofertă' : 'Contract'}`,
+        `Workspace: ${source.workspaceId}`,
+        `Companie: ${source.companyId}`,
+        `Oportunitate: ${source.opportunityId}`,
+        `Document: ${source.rootId}`,
+        `Referință internă: ${source.reference}; versiune: ${source.versionNumber}`,
+        `Versiune exactă: ${source.versionId}`,
+        `Proveniență: ${source.provenance}`,
+        `Limbă: ${source.language}; creat la: ${source.createdAt}`,
+        `HTML: ${source.sourceRendererCode} / ${source.sourceRendererVersion}`,
+        `SHA-256 HTML sursă: ${source.sourceHtmlSha256}`,
+        `PDF: ${COMMERCIAL_PDF_RENDERER} / 1; DejaVu Sans 2.37 Regular/Bold`,
+        'Copie neoficială; nu alocă număr oficial, nu confirmă semnarea sau efectul juridic.',
+      ];
+  const header = illustrative
+    ? 'NON-OFFICIAL PDF COPY — no official number or legal effect'
+    : 'COPIE PDF NEOFICIALĂ — fără număr oficial sau efect juridic';
+  const identity = illustrative
+    ? `Offer ${source.reference} / version ${source.versionNumber}`
+    : `${source.kind === 'offer' ? 'Ofertă' : 'Contract'} ${source.reference} / versiunea ${source.versionNumber}`;
   const footer = `SHA-256 HTML: ${source.sourceHtmlSha256}`;
   const text = [
     header,
     identity,
     footer,
-    'Pagina 256',
-    'Rând 18 — continuare',
+    illustrative ? 'Page 256' : 'Pagina 256',
+    illustrative ? 'Row 20 — continuation' : 'Rând 18 — continuare',
     ...provenance,
     ...blocks.flatMap((block) =>
       block.kind === 'text' ? [block.text] : block.rows.flat(),
@@ -148,10 +184,12 @@ async function render(
   document.registerFontkit(fontkit);
   document.setCreationDate(new Date(source.createdAt));
   document.setModificationDate(new Date(source.createdAt));
-  document.setTitle(`Copie neoficială — ${identity}`);
+  document.setTitle(
+    `${illustrative ? 'Non-official copy' : 'Copie neoficială'} — ${identity}`,
+  );
   document.setSubject(`SHA-256 HTML: ${source.sourceHtmlSha256}`);
   document.setProducer(
-    `${COMMERCIAL_PDF_RENDERER}/1; pdf-lib/1.17.1; fontkit/1.1.1; DejaVu Sans/2.37 Regular/Bold`,
+    `${rendererCode}/1; pdf-lib/1.17.1; fontkit/1.1.1; DejaVu Sans/2.37 Regular/Bold`,
   );
   const regular = await document.embedFont(regularBytes, {
     subset: false,
@@ -206,7 +244,7 @@ async function render(
     draw(identity, left, 792, 9, bold, 'Pagination');
     draw(footer, left, 49, 9, regular, 'Pagination');
     draw(
-      `Pagina ${document.getPageCount()}`,
+      `${illustrative ? 'Page' : 'Pagina'} ${document.getPageCount()}`,
       left,
       33,
       9,
@@ -235,8 +273,15 @@ async function render(
       paragraph(block.text, block.bold ? bold : regular, block.heading);
       continue;
     }
-    const widths = [150, 180, 181.28],
-      xs = [left, left + 150, left + 330];
+    const widths = illustrative
+      ? [120, 57, 38, 80, 70, 76, 70.28]
+      : [150, 180, 181.28];
+    let columnX = left;
+    const xs = widths.map((width) => {
+      const x = columnX;
+      columnX += width;
+      return x;
+    });
     const headings = block.rows[0];
     if (!headings) pdfRefusal('PDF_SOURCE_UNSUPPORTED');
     const tableHeadings = headings;
@@ -309,7 +354,9 @@ async function render(
           nextPage();
           tableHead();
           draw(
-            `Rând ${index + 1} — continuare`,
+            illustrative
+              ? `Row ${index + 1} — continuation`
+              : `Rând ${index + 1} — continuare`,
             left,
             y,
             9,

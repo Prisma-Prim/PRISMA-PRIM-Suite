@@ -1371,13 +1371,15 @@ withPostgres('Exact non-official commercial PDF public REST', () => {
       ),
     ).toEqual(PDF_A);
   }, 30_000);
-  it.each(['legacy', 'internal'])(
+  it.each(['adjusted', 'internal'])(
     'refuses the %s Offer PDF without changing its preserved original representation or receipts',
     async (kind) => {
       const source = await fixture.prepare(),
         path = `/offers/opportunities/${source.opportunityId}`;
       const snapshot =
-        kind === 'legacy' ? await fixture.illustrativeSnapshot(source) : null;
+        kind === 'adjusted'
+          ? await fixture.illustrativeSnapshot(source, true)
+          : null;
       const offer = responseRecord(
         await fixture.command({
           path: path + (kind === 'internal' ? '/from-approved-estimate' : ''),

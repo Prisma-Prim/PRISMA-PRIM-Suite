@@ -16,6 +16,13 @@ export const pdfTarget: CommercialPdfTarget = {
   sourceRendererVersion: 1,
   sourceHtmlSha256: 'a'.repeat(64),
 };
+export const illustrativePdfTarget: CommercialPdfTarget = {
+  ...pdfTarget,
+  kind: 'offer',
+  provenance: 'ILLUSTRATIVE',
+  language: 'en',
+  sourceRendererCode: 'OFFER_ILLUSTRATIVE',
+};
 export async function pdfReply(
   target: CommercialPdfTarget = pdfTarget,
   suppliedBytes?: Uint8Array,
@@ -34,9 +41,12 @@ export async function pdfReply(
     headers: {
       'content-type': 'application/pdf',
       'content-length': String(bytes.length),
-      'content-disposition': `attachment; filename="${target.kind}-${target.reference}-v${target.versionNumber}-non-official-ro.pdf"`,
+      'content-disposition': `attachment; filename="${target.kind}-${target.reference}-v${target.versionNumber}-non-official-${target.language}.pdf"`,
       'x-commercial-pdf-source': JSON.stringify(target),
-      'x-commercial-pdf-renderer': 'COMMERCIAL_MODEL_PDF/1',
+      'x-commercial-pdf-renderer':
+        target.provenance === 'ILLUSTRATIVE'
+          ? 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF/1'
+          : 'COMMERCIAL_MODEL_PDF/1',
       'x-commercial-pdf-sha256': hash,
     },
   });

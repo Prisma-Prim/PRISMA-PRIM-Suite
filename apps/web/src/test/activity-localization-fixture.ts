@@ -1200,6 +1200,7 @@ export function activityOfferAt(versionNumber: 1 | 2) {
     illustrativeReference: 1234,
     revision: 4,
     version: {
+      createdAt: activityInstant,
       id:
         versionNumber === 1
           ? activityLocaleIds.offerVersion
