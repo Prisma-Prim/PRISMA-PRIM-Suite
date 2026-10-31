@@ -1,0 +1,22 @@
+{
+  "mode": "complete",
+  "started": "2026-10-31T08:58:01.982558+00:00",
+  "finished": "2026-10-31T10:27:09.563192+00:00",
+  "argv": [
+    "node",
+    "scripts/managed-postgres.mjs",
+    "--",
+    "node",
+    "scripts/verify-local.mjs",
+    "run",
+    "--source",
+    "c9020836b73e747b5c11e149fa9a04da959fad0a",
+    "--base",
+    "origin/main",
+    "--output",
+    "/workspace/work/pr998/complete003"
+  ],
+  "native_outer_exit": 0,
+  "safety_abort": false,
+  "reservation_bytes": 0
+}

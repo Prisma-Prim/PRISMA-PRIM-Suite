@@ -1,0 +1,15 @@
+{
+  "mode": "targeted",
+  "started": "2026-10-31T08:54:39.456410+00:00",
+  "finished": "2026-10-31T08:57:14.688156+00:00",
+  "argv": [
+    "node",
+    "scripts/managed-postgres.mjs",
+    "--",
+    "bash",
+    "/workspace/work/pr998/packaging-command.sh"
+  ],
+  "native_outer_exit": 0,
+  "safety_abort": false,
+  "reservation_bytes": 805306368
+}

@@ -1,0 +1,9 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: a2fd07edd1d11c607be6a6c06fdb98ef3502ae6fab3e54a1ee96fc73b842e7cb
+
+[WebServer] $ vite preview --host 127.0.0.1 --port 4173
+
+Running 148 tests using 1 worker
+················································································
+····································································
+  148 passed (24.0m)

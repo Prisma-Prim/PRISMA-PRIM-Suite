@@ -1,0 +1,4 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577
+
+Acceptance evidence verified: intentional failure, context, PNG, trace, exact Client statuses and sanitized timeline.

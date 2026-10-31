@@ -1,0 +1,19 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: 7aec7881f1357dffff58aff915e47361df61a7b2c7e20d4b9936f71f310136c5
+
+apps/web build: computing gzip size...
+apps/web build: dist/index.html                                    0.59 kB │ gzip:   0.35 kB
+apps/web build: dist/assets/PrismaCertUiBaseline-DM0fZBM-.css     54.19 kB │ gzip:  10.19 kB
+apps/web build: dist/assets/index-C7K2SDOF.css                   178.73 kB │ gzip:  26.27 kB
+apps/web build: dist/assets/rolldown-runtime-CbXtAM7H.js           0.58 kB │ gzip:   0.36 kB
+apps/web build: dist/assets/PrismaCertUiBaseline-HARG2I3l.js     259.87 kB │ gzip: 139.93 kB
+apps/web build: dist/assets/es-DxTCZjYs.js                       419.96 kB │ gzip: 175.56 kB
+apps/web build: dist/assets/fiber-renderer-C0o1c45X.js           484.48 kB │ gzip: 121.91 kB
+apps/web build: dist/assets/index-3q-yDZX2.js                  2,374.73 kB │ gzip: 596.55 kB
+apps/web build: [plugin builtin:vite-reporter] 
+apps/web build: (!) Some chunks are larger than 500 kB after minification. Consider:
+apps/web build: - Using dynamic import() to code-split the application
+apps/web build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+apps/web build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+apps/web build: ✓ built in 1.90s
+apps/web build: Done

@@ -1,0 +1,13 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: ecd979e5c0e163ed07c50660c36b891e9cd2f20c34c82f2d1ab49115dba91bb0
+
+$ node --test config.test.mjs
+✔ SDK renders root builds, CI gating, private database reference and migration (2.353019ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 106.251903

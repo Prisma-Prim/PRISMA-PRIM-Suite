@@ -1,0 +1,19 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: f36b48d97a5ff39db371a24ce2fc88c21d947cff8821f27c9b5f69141a169d1b
+
+✔ new untracked source is not omitted from the input contract (18.77597ms)
+✔ interruption persists failed partial evidence and removes the child process group (139.711807ms)
+✔ changing a synthetic report label cannot replace the fixed production command plan (114.53741ms)
+✔ a failed acceptance child still produces its evidence probe before stopping (142.907797ms)
+✔ a tracked source edit restored before child exit still invalidates evidence (115.196699ms)
+✔ the public complete plan fixes local execution policy without replacing scripts or serial requirements (1.367863ms)
+✔ the separate frozen Railway dependency prerequisite cannot silently use missing dependencies (49.3588ms)
+✔ a finite process deadline terminates a real child and cannot produce successful evidence (134.697769ms)
+ℹ tests 628
+ℹ suites 0
+ℹ pass 628
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 40116.624615

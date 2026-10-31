@@ -1,0 +1,9 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: 2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997
+
+$ pnpm --recursive typecheck
+Scope: 2 of 3 workspace projects
+apps/api typecheck$ tsc --noEmit
+apps/web typecheck$ tsc -b --pretty false
+apps/api typecheck: Done
+apps/web typecheck: Done

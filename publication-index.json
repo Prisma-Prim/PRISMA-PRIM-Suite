@@ -1,0 +1,261 @@
+{
+  "schema": "prisma-prim-selected-publication/v1",
+  "run": "complete003",
+  "source": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "base": "e706662adb82dca6b462b64472f1df872a274756",
+  "integration_tree": "f9ddc4554aabcee9cbbbcfac6640ff539904be7c",
+  "generated_at": "2026-10-31T10:30:55.717808+00:00",
+  "files": [
+    {
+      "path": "report.md",
+      "bytes": 3557,
+      "sha256": "f16233b2b3cb64b6adfd20e6fac942463bd90c36cdc1e19ba4e881660f420e0d",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/report.md",
+      "original_sha256": "f16233b2b3cb64b6adfd20e6fac942463bd90c36cdc1e19ba4e881660f420e0d"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1029165,
+      "sha256": "fade0c796b01263cce7a38b81dfc47760b79ffbc41d5360b3aef2ce4ec8e9bf9",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/manifest.json",
+      "original_sha256": "fade0c796b01263cce7a38b81dfc47760b79ffbc41d5360b3aef2ce4ec8e9bf9"
+    },
+    {
+      "path": "native-outer-result.json",
+      "bytes": 484,
+      "sha256": "05da1029b3093c2a15a594bc2475149ff5aa8ae63038f1ed4288c41c18ca38f1",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete-result.json",
+      "original_sha256": "05da1029b3093c2a15a594bc2475149ff5aa8ae63038f1ed4288c41c18ca38f1"
+    },
+    {
+      "path": "targeted/native-outer-result.json",
+      "bytes": 345,
+      "sha256": "851bb62bfb7bea90e680872418dde8c76faea1926fbdc0c46a9e8a8133b87dce",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/targeted-result.json",
+      "original_sha256": "851bb62bfb7bea90e680872418dde8c76faea1926fbdc0c46a9e8a8133b87dce"
+    },
+    {
+      "path": "targeted/capacity.json",
+      "bytes": 271,
+      "sha256": "92eaaa26c8202fc543e36a9e511cd59c57989a9b8e560e41126190fd12cecb3f",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/targeted-capacity.json",
+      "original_sha256": "92eaaa26c8202fc543e36a9e511cd59c57989a9b8e560e41126190fd12cecb3f"
+    },
+    {
+      "path": "validation.log",
+      "bytes": 71,
+      "sha256": "fee091ed8ff0ff5e914f62d5710e7c0d8bd68ab26f7599a845f2d804238aaa55",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/validation.log",
+      "original_sha256": "fee091ed8ff0ff5e914f62d5710e7c0d8bd68ab26f7599a845f2d804238aaa55"
+    },
+    {
+      "path": "cleanup-receipt.json",
+      "bytes": 512,
+      "sha256": "7a1e0a57190e38e27ca594e72632e4cfb966a395dfc5e612865afec815f6b448",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/cleanup-receipt.json",
+      "original_sha256": "7a1e0a57190e38e27ca594e72632e4cfb966a395dfc5e612865afec815f6b448"
+    },
+    {
+      "path": "local-browser/browser/manifest.json",
+      "bytes": 1117513,
+      "sha256": "1bb62c100b7fb904bfaa37ca0c43c914c91fef1b390419f3be384e28c473982d",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/local-browser/browser/manifest.json",
+      "original_sha256": "1bb62c100b7fb904bfaa37ca0c43c914c91fef1b390419f3be384e28c473982d"
+    },
+    {
+      "path": "local-browser/acceptance/manifest.json",
+      "bytes": 1362234,
+      "sha256": "514fcbf80550a6f6e8b4badc58b6342c4eedc131c49e8c21af0116e2b80fb6b5",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/local-browser/acceptance/manifest.json",
+      "original_sha256": "514fcbf80550a6f6e8b4badc58b6342c4eedc131c49e8c21af0116e2b80fb6b5"
+    },
+    {
+      "path": "logs/doctor.log",
+      "bytes": 749,
+      "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/logs/doctor.log",
+      "original_sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+    },
+    {
+      "path": "logs/packaging.log",
+      "bytes": 6702,
+      "sha256": "26dbc8f205c65f90906c4d9a48602247592865f2a6c52ffa0b90d533e03b2da9",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/logs/packaging.log",
+      "original_sha256": "26dbc8f205c65f90906c4d9a48602247592865f2a6c52ffa0b90d533e03b2da9"
+    },
+    {
+      "path": "logs/acceptance-evidence.log",
+      "bytes": 118,
+      "sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577",
+      "qualification": "byte-identical original",
+      "original_path": "/workspace/work/pr998/complete003/logs/acceptance-evidence.log",
+      "original_sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577"
+    },
+    {
+      "path": "summaries/doctor.txt",
+      "bytes": 903,
+      "sha256": "fa9ecaebd0929b3f57666cc6c13bb88d499c0008cbcee1c8cc63def5590be0d7",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/format.txt",
+      "bytes": 241,
+      "sha256": "a82a7761510ee79ead00bb5f6c7546b3435133d6fdb53a9ecd0cdeb0e3acd10f",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/lint.txt",
+      "bytes": 165,
+      "sha256": "64976172beed2b8e6a901f1ced728bb585b0dc214c676eddce814ae4c44a1a7b",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/types.txt",
+      "bytes": 341,
+      "sha256": "859b5887fa797aafcc50be6741032e76c06be4f0646da9476526c6dc638c2786",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/scripts.txt",
+      "bytes": 1081,
+      "sha256": "3c752d4c26d6b513c8711d0cbe01f440bf6deffa96eac7a59ff31df100921293",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/documentation.txt",
+      "bytes": 2106,
+      "sha256": "4cf2de5dba55aebc04e2c9a8064245ae4563015139dc3dc489198dcccf6573f9",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/api-parallel.txt",
+      "bytes": 16841,
+      "sha256": "d817a83e7150871cbc2e55c7aaa1cd64e5b33cf3cc6827e63135f21b1072b9e6",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/issue995-public-postgres.txt",
+      "bytes": 1167,
+      "sha256": "924237701b0dbc784f475b46012bb67c560ccca58dd7873b2965f52be8e146fd",
+      "qualification": "selected issue995 result excerpt; no assertion or outcome altered"
+    },
+    {
+      "path": "summaries/api-serial.txt",
+      "bytes": 1779,
+      "sha256": "b52a709a17e5c3ed0ff44d70e5794abd05b629d69315511b2ce572e90802f15e",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/web-unit.txt",
+      "bytes": 17112,
+      "sha256": "219ac898e9e3f862989f62a0c695d2a6541bfd29449232fb9e5ee4fb7ecc21fa",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/browser.txt",
+      "bytes": 1703,
+      "sha256": "6dbdd2972bfc8b5e19704cf50a116c2fb2ed5d7cfbdc88287daebca0af60de2d",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/acceptance.txt",
+      "bytes": 563,
+      "sha256": "4f6531f15fbfa9420b4c934f5e1d11f13c9a9fdba5e8473efac86ef1045fe922",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/acceptance-evidence.txt",
+      "bytes": 272,
+      "sha256": "e80ddb743fbca30aa844a64d61b542a682885b5b7545fb6fbaea933b223e311a",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/build.txt",
+      "bytes": 1449,
+      "sha256": "9116310461c5049e3b18a47033ca53f29961c8cd138e7fe00f3690141c0d50fb",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/railway-types.txt",
+      "bytes": 404,
+      "sha256": "11190a91fe63f1b373f215d45c413b440e210813d7b6a66336a33fa4ebc849ab",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/railway-tests.txt",
+      "bytes": 393,
+      "sha256": "9980d52af7aade0b69dd3776c623b7b29b76c72a0e61b436ec93aacd045e9f14",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "summaries/packaging.txt",
+      "bytes": 1948,
+      "sha256": "e2d709e0cd898f87e37ef4e509a3eec28934420c716d4af3016dd68081e94e75",
+      "qualification": "selected derived log summary; original retained locally"
+    },
+    {
+      "path": "captures/client-documents-window-desktop.png",
+      "bytes": 30482,
+      "sha256": "ba293a5d53c441f9a1f268d3ee21bea5ab542350316abdfe7797a8c2bb0386a6",
+      "qualification": "visually reviewed synthetic real-App/PostgreSQL element capture; original bytes",
+      "original_path": "/workspace/work/pr998/source/apps/web/test-results/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-window-desktop.png",
+      "original_sha256": "ba293a5d53c441f9a1f268d3ee21bea5ab542350316abdfe7797a8c2bb0386a6"
+    },
+    {
+      "path": "captures/client-documents-history-desktop.png",
+      "bytes": 82378,
+      "sha256": "5c874e4e8647cc87c30bc434b5484860769f76987ff1bf4fe364a1b8fc537ae2",
+      "qualification": "visually reviewed synthetic real-App/PostgreSQL element capture; original bytes",
+      "original_path": "/workspace/work/pr998/source/apps/web/test-results/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-history-desktop.png",
+      "original_sha256": "5c874e4e8647cc87c30bc434b5484860769f76987ff1bf4fe364a1b8fc537ae2"
+    },
+    {
+      "path": "captures/client-documents-content-denied-desktop.png",
+      "bytes": 59918,
+      "sha256": "050195822a49cafa271b399f1494cc91b9081298c28267eaf561dc52e2a47dca",
+      "qualification": "visually reviewed synthetic real-App/PostgreSQL element capture; original bytes",
+      "original_path": "/workspace/work/pr998/source/apps/web/test-results/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-content-denied-desktop.png",
+      "original_sha256": "050195822a49cafa271b399f1494cc91b9081298c28267eaf561dc52e2a47dca"
+    },
+    {
+      "path": "captures/client-documents-window-narrow.png",
+      "bytes": 27131,
+      "sha256": "364e41819271985b1b54553392fa1c1bc6c9204d9cc9b416340daa6defc2c250",
+      "qualification": "visually reviewed synthetic real-App/PostgreSQL element capture; original bytes",
+      "original_path": "/workspace/work/pr998/source/apps/web/test-results/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-window-narrow.png",
+      "original_sha256": "364e41819271985b1b54553392fa1c1bc6c9204d9cc9b416340daa6defc2c250"
+    },
+    {
+      "path": "captures/client-documents-content-denied-narrow.png",
+      "bytes": 54844,
+      "sha256": "1fbff053e4e170922e3ee1b08ae7ac95e93f30fd65cbadcfaf6104fb777e5710",
+      "qualification": "visually reviewed synthetic real-App/PostgreSQL element capture; original bytes",
+      "original_path": "/workspace/work/pr998/source/apps/web/test-results/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-content-denied-narrow.png",
+      "original_sha256": "1fbff053e4e170922e3ee1b08ae7ac95e93f30fd65cbadcfaf6104fb777e5710"
+    },
+    {
+      "path": "capacity-and-review.json",
+      "bytes": 825,
+      "sha256": "41ac89f052c3820a1cbc475367537482a09fbb049241c1f1adf47ecbdb84cd4b",
+      "qualification": "source-qualified execution/resource and review-reuse summary"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3085,
+      "sha256": "4dc20df7155955764fd9e6cd884871f6b83771b1a9eea9cba7bb4ffea162f176",
+      "qualification": "operator publication context and explicit selection limitations"
+    }
+  ],
+  "index_excludes_itself": true
+}

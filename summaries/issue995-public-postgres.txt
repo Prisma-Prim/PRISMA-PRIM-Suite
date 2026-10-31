@@ -1,0 +1,14 @@
+Selected original ten-case public PostgreSQL result; ANSI removed.
+Original SHA256: cda8ede0f887e9ef3b35953f9cc9f623cd83e0daeb1024a931b5aeaa9e874399
+
+ ✓ src/documents/activity-document-visibility.rest.test.ts (10 tests) 13649ms
+     ✓ qualifies registration before the event limit and keeps distinct events  1508ms
+     ✓ qualifies correction before the event limit and keeps distinct events  1188ms
+     ✓ qualifies version before the event limit and keeps distinct events  1111ms
+     ✓ qualifies association before the event limit and keeps distinct events  1102ms
+     ✓ preserves supplied-Actor admission and the Workspace Client alternative  955ms
+     ✓ keeps live family revocation and regrant semantics for the unchanged Actor  1141ms
+     ✓ hides every family source for unsupported live capture null with the Actor unchanged  1268ms
+     ✓ hides every family source for unsupported live capture v999 with the Actor unchanged  1185ms
+     ✓ reads recorded link and unlink after removal, with exact original Client and both endpoint rights  1253ms
+     ✓ rejects a recorded Project with another original Client or foreign scope  1230ms

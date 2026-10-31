@@ -1,0 +1,4 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: 050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1
+
+$ eslint .

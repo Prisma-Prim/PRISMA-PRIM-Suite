@@ -1,0 +1,12 @@
+{
+  "source": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "base": "e706662adb82dca6b462b64472f1df872a274756",
+  "integration_tree": "f9ddc4554aabcee9cbbbcfac6640ff539904be7c",
+  "minimum_workspace_free_bytes": 14447181824,
+  "peak_cgroup_working_set_bytes": 9408126976,
+  "memory_limit_bytes": 17179869184,
+  "sample_count": 10680,
+  "review": "Configured automatic review completed with zero findings on c902083; no duplicate trigger. New base changes only two Markdown paths; reviewed product patch SHA256 ad8c9a0c0e06e975b60ce73501c42027e463cc127d2ca19c145cbd758c5a4bd3 is unchanged.",
+  "review_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/998#issuecomment-6530319580",
+  "prior_complete_attempts": "Both original failures remain failed and preserved; complete003 is wholly fresh, with no API reuse."
+}

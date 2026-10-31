@@ -1,0 +1,19 @@
+Selected execution summary; ANSI removed, intermediate output omitted.
+Original SHA256: 26dbc8f205c65f90906c4d9a48602247592865f2a6c52ffa0b90d533e03b2da9
+
+#20 exporting layers done
+#20 writing image sha256:830db87fb270d8e8450121fed1e9f186288fbd695eab6716790cff5c26dd84cf done
+#20 naming to docker.io/library/prisma-prim-web:railway-packaging-409980 done
+#20 DONE 0.0s
+
+ 1 warning found (use docker --debug to expand):
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_CLERK_PUBLISHABLE_KEY") (line 16)
+{"check":"commercial-pdf-production-package","outcome":"PASS","cwd":"/tmp","sourceHtmlSha256":"c9922ddb1d2897b133172b5395061f8daf99707e8457dc1d3390db5cf77f11bd","pdfSha256":"c82a44db12aafa09f34e62173d38bf0ace99a5e3fc621e6bb691f478c65b1341","bytes":939793,"assets":[{"name":"DejaVuSans.ttf","bytes":759720,"sha256":"57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e"},{"name":"DejaVuSans-Bold.ttf","bytes":708920,"sha256":"a4c5bc453ca281d90ea079e596da7ae0dfeb5777497c29ec254e76d97ff6f890"}],"licensed":true,"renderer":"COMMERCIAL_MODEL_PDF/1"}
+CLERK_PUBLISHABLE_KEY is required.
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[⡿] applying migrations...[⢿] applying migrations...[⣻] applying migrations...[⣽] applying migrations...[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[✓] migrations applied successfully!No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[✓] migrations applied successfully!PASS image startup, hosting ports, health, direct SPA navigation, production identity rejection and repeatable migrations.
