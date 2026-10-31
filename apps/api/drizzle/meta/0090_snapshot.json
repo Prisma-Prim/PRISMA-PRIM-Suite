@@ -1,6 +1,6 @@
 {
-  "id": "3a30048f-086f-400d-970b-0ea742b66e84",
-  "prevId": "96eac410-7ffc-4a52-8b55-37e5ce47c681",
+  "id": "e0368db2-97f2-45fb-9ff8-067ad6e3df7b",
+  "prevId": "bfd1d929-4cba-4fdc-86e3-e4ded9e1ac95",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_commercial_intake' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3', 'v4'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_project_access' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_opportunity_manager' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_offer_preparer' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_contract_preparer' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_contract_approver' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_offer_approver' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_project_template_user' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_contract_early_preparation', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_project_next_action_coordinator', 'company_mission_applicability_coordinator', 'company_mission_applicability_approver', 'company_mission_result_reviewer', 'company_mission_deliverable_access', 'company_contract_signature_declarer', 'company_received_contract_access', 'company_offer_model_editor', 'company_offer_model_approver', 'company_contract_model_editor', 'company_contract_model_approver', 'company_mission_plan_configuration', 'company_mission_plan_user') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_project_next_action_coordinator', 'company_mission_applicability_coordinator', 'company_mission_applicability_approver', 'company_mission_result_reviewer', 'company_mission_deliverable_access', 'company_contract_signature_declarer', 'company_received_contract_access', 'company_offer_model_editor', 'company_offer_model_approver', 'company_contract_model_editor', 'company_contract_model_approver', 'company_mission_plan_configuration', 'company_mission_plan_user')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_commercial_intake' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3', 'v4'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_project_access' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_opportunity_manager' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_offer_preparer' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_contract_preparer' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_contract_approver' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_offer_approver' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_project_template_user' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_contract_early_preparation', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_applicability_coordinator', 'company_mission_applicability_approver', 'company_mission_result_reviewer', 'company_mission_deliverable_access', 'company_contract_signature_declarer', 'company_received_contract_access', 'company_offer_model_editor', 'company_offer_model_approver', 'company_contract_model_editor', 'company_contract_model_approver', 'company_mission_plan_configuration', 'company_mission_plan_user', 'company_knowledge_source_administrator', 'company_knowledge_evidence_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_applicability_coordinator', 'company_mission_applicability_approver', 'company_mission_result_reviewer', 'company_mission_deliverable_access', 'company_contract_signature_declarer', 'company_received_contract_access', 'company_offer_model_editor', 'company_offer_model_approver', 'company_contract_model_editor', 'company_contract_model_approver', 'company_mission_plan_configuration', 'company_mission_plan_user', 'company_knowledge_source_administrator', 'company_knowledge_evidence_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -28294,8 +28294,101 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.project_next_action_commands": {
-      "name": "project_next_action_commands",
+    "public.knowledge_interactions": {
+      "name": "knowledge_interactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "capability_version": {
+          "name": "capability_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation": {
+          "name": "operation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_references": {
+          "name": "source_references",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "knowledge_interactions_company_fk": {
+          "name": "knowledge_interactions_company_fk",
+          "tableFrom": "knowledge_interactions",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "knowledge_interactions_actor_fk": {
+          "name": "knowledge_interactions_actor_fk",
+          "tableFrom": "knowledge_interactions",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "actor_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.knowledge_passages": {
+      "name": "knowledge_passages",
       "schema": "",
       "columns": {
         "workspace_id": {
@@ -28310,116 +28403,40 @@
           "primaryKey": false,
           "notNull": true
         },
-        "project_id": {
-          "name": "project_id",
+        "source_id": {
+          "name": "source_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "original_client_account_id": {
-          "name": "original_client_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "actor_internal_user_id": {
-          "name": "actor_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_membership_id": {
-          "name": "actor_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "assignment_id": {
-          "name": "assignment_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revision": {
-          "name": "revision",
+        "position": {
+          "name": "position",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "client_use_version": {
-          "name": "client_use_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
+        "locator": {
+          "name": "locator",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "response": {
-          "name": "response",
-          "type": "jsonb",
+        "text": {
+          "name": "text",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         }
       },
       "indexes": {
-        "pna_command_actor_key_unique": {
-          "name": "pna_command_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "pna_command_material_revision_unique": {
-          "name": "pna_command_material_revision_unique",
+        "knowledge_passages_position_unique": {
+          "name": "knowledge_passages_position_unique",
           "columns": [
             {
               "expression": "workspace_id",
@@ -28434,71 +28451,71 @@
               "nulls": "last"
             },
             {
-              "expression": "project_id",
+              "expression": "source_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "revision",
+              "expression": "position",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "where": "\"project_next_action_commands\".\"outcome\"='changed'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "knowledge_passages_identity_unique": {
+          "name": "knowledge_passages_identity_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "locator",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "project_next_action_commands_assignment_id_company_role_assignments_id_fk": {
-          "name": "project_next_action_commands_assignment_id_company_role_assignments_id_fk",
-          "tableFrom": "project_next_action_commands",
-          "tableTo": "company_role_assignments",
-          "columnsFrom": [
-            "assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pna_command_project_fk": {
-          "name": "pna_command_project_fk",
-          "tableFrom": "project_next_action_commands",
-          "tableTo": "projects",
+        "knowledge_passages_source_fk": {
+          "name": "knowledge_passages_source_fk",
+          "tableFrom": "knowledge_passages",
+          "tableTo": "knowledge_sources",
           "columnsFrom": [
             "workspace_id",
             "company_id",
-            "original_client_account_id",
-            "project_id"
+            "source_id"
           ],
           "columnsTo": [
             "workspace_id",
             "company_id",
-            "client_account_id",
             "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pna_command_actor_fk": {
-          "name": "pna_command_actor_fk",
-          "tableFrom": "project_next_action_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_membership_id",
-            "actor_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -28508,23 +28525,15 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "pna_command_revision_check": {
-          "name": "pna_command_revision_check",
-          "value": "\"project_next_action_commands\".\"revision\">=0 AND \"project_next_action_commands\".\"outcome\" IN ('changed','unchanged') AND (\"project_next_action_commands\".\"outcome\"<>'changed' OR \"project_next_action_commands\".\"revision\">0)"
-        },
-        "pna_command_key_check": {
-          "name": "pna_command_key_check",
-          "value": "length(\"project_next_action_commands\".\"idempotency_key\")>0"
-        },
-        "pna_command_client_use_check": {
-          "name": "pna_command_client_use_check",
-          "value": "\"project_next_action_commands\".\"client_use_version\">=0"
+        "knowledge_passages_literal_check": {
+          "name": "knowledge_passages_literal_check",
+          "value": "\"knowledge_passages\".\"position\" BETWEEN 1 AND 20 AND length(\"knowledge_passages\".\"locator\") BETWEEN 1 AND 120 AND \"knowledge_passages\".\"locator\" NOT IN ('.','..') AND length(\"knowledge_passages\".\"text\") BETWEEN 1 AND 16384 AND \"knowledge_passages\".\"sha256\" ~ '^[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false
     },
-    "public.project_next_action_events": {
-      "name": "project_next_action_events",
+    "public.knowledge_source_commands": {
+      "name": "knowledge_source_commands",
       "schema": "",
       "columns": {
         "id": {
@@ -28546,8 +28555,131 @@
           "primaryKey": false,
           "notNull": true
         },
-        "project_id": {
-          "name": "project_id",
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "knowledge_source_commands_key_unique": {
+          "name": "knowledge_source_commands_key_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "knowledge_source_commands_source_fk": {
+          "name": "knowledge_source_commands_source_fk",
+          "tableFrom": "knowledge_source_commands",
+          "tableTo": "knowledge_sources",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "source_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "knowledge_source_commands_actor_fk": {
+          "name": "knowledge_source_commands_actor_fk",
+          "tableFrom": "knowledge_source_commands",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "actor_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.knowledge_source_events": {
+      "name": "knowledge_source_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -28564,34 +28696,40 @@
           "primaryKey": false,
           "notNull": true
         },
-        "actor_internal_user_id": {
-          "name": "actor_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
         "actor_membership_id": {
           "name": "actor_membership_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp with time zone",
+        "actor_internal_user_id": {
+          "name": "actor_internal_user_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
+        "actor_display_name": {
+          "name": "actor_display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "command_fingerprint": {
+          "name": "command_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         }
       },
       "indexes": {
-        "pna_event_revision_unique": {
-          "name": "pna_event_revision_unique",
+        "knowledge_source_events_revision_unique": {
+          "name": "knowledge_source_events_revision_unique",
           "columns": [
             {
               "expression": "workspace_id",
@@ -28606,7 +28744,7 @@
               "nulls": "last"
             },
             {
-              "expression": "project_id",
+              "expression": "source_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -28625,38 +28763,34 @@
         }
       },
       "foreignKeys": {
-        "pna_event_history_fk": {
-          "name": "pna_event_history_fk",
-          "tableFrom": "project_next_action_events",
-          "tableTo": "project_next_action_history",
+        "knowledge_source_events_source_fk": {
+          "name": "knowledge_source_events_source_fk",
+          "tableFrom": "knowledge_source_events",
+          "tableTo": "knowledge_sources",
           "columnsFrom": [
             "workspace_id",
             "company_id",
-            "project_id",
-            "revision"
+            "source_id"
           ],
           "columnsTo": [
             "workspace_id",
             "company_id",
-            "project_id",
-            "revision"
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "pna_event_actor_fk": {
-          "name": "pna_event_actor_fk",
-          "tableFrom": "project_next_action_events",
+        "knowledge_source_events_actor_fk": {
+          "name": "knowledge_source_events_actor_fk",
+          "tableFrom": "knowledge_source_events",
           "tableTo": "workspace_memberships",
           "columnsFrom": [
             "workspace_id",
-            "actor_membership_id",
-            "actor_internal_user_id"
+            "actor_membership_id"
           ],
           "columnsTo": [
             "workspace_id",
-            "id",
-            "internal_user_id"
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -28666,17 +28800,24 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "pna_event_check": {
-          "name": "pna_event_check",
-          "value": "\"project_next_action_events\".\"action\"='project.next_action.updated' AND \"project_next_action_events\".\"metadata\"=jsonb_build_object('revision',\"project_next_action_events\".\"revision\")"
+        "knowledge_source_events_revision_check": {
+          "name": "knowledge_source_events_revision_check",
+          "value": "\"knowledge_source_events\".\"revision\" >= 1 AND \"knowledge_source_events\".\"action\" IN ('drafted','admitted','revoked') AND \"knowledge_source_events\".\"command_fingerprint\" ~ '^[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false
     },
-    "public.project_next_action_heads": {
-      "name": "project_next_action_heads",
+    "public.knowledge_sources": {
+      "name": "knowledge_sources",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "workspace_id": {
           "name": "workspace_id",
           "type": "uuid",
@@ -28689,39 +28830,21 @@
           "primaryKey": false,
           "notNull": true
         },
-        "project_id": {
-          "name": "project_id",
+        "document_id": {
+          "name": "document_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "original_client_account_id": {
-          "name": "original_client_account_id",
+        "document_version_id": {
+          "name": "document_version_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "actor_internal_user_id": {
-          "name": "actor_internal_user_id",
+        "representation_id": {
+          "name": "representation_id",
           "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_membership_id": {
-          "name": "actor_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_display_name": {
-          "name": "actor_display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -28729,21 +28852,107 @@
           "name": "revision",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": 1
         },
-        "text": {
-          "name": "text",
+        "state": {
+          "name": "state",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "source_sha256": {
+          "name": "source_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "projection_sha256": {
+          "name": "projection_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_reference": {
+          "name": "owner_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rights_evidence_reference": {
+          "name": "rights_evidence_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permitted_purpose": {
+          "name": "permitted_purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidentiality": {
+          "name": "confidentiality",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_from": {
+          "name": "effective_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "effective_until": {
+          "name": "effective_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_membership_id": {
+          "name": "created_by_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
-        "pna_head_project_unique": {
-          "name": "pna_head_project_unique",
+        "knowledge_sources_scope_unique": {
+          "name": "knowledge_sources_scope_unique",
           "columns": [
             {
-              "expression": "project_id",
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -28753,60 +28962,102 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "knowledge_sources_company_page": {
+          "name": "knowledge_sources_company_page",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "pna_head_project_fk": {
-          "name": "pna_head_project_fk",
-          "tableFrom": "project_next_action_heads",
-          "tableTo": "projects",
+        "knowledge_sources_company_fk": {
+          "name": "knowledge_sources_company_fk",
+          "tableFrom": "knowledge_sources",
+          "tableTo": "companies",
           "columnsFrom": [
             "workspace_id",
-            "company_id",
-            "original_client_account_id",
-            "project_id"
+            "company_id"
           ],
           "columnsTo": [
             "workspace_id",
-            "company_id",
-            "client_account_id",
             "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "pna_head_history_fk": {
-          "name": "pna_head_history_fk",
-          "tableFrom": "project_next_action_heads",
-          "tableTo": "project_next_action_history",
+        "knowledge_sources_version_fk": {
+          "name": "knowledge_sources_version_fk",
+          "tableFrom": "knowledge_sources",
+          "tableTo": "document_versions",
           "columnsFrom": [
             "workspace_id",
             "company_id",
-            "project_id",
-            "revision"
+            "document_id",
+            "document_version_id"
           ],
           "columnsTo": [
             "workspace_id",
             "company_id",
-            "project_id",
-            "revision"
+            "document_id",
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "pna_head_actor_fk": {
-          "name": "pna_head_actor_fk",
-          "tableFrom": "project_next_action_heads",
-          "tableTo": "workspace_memberships",
+        "knowledge_sources_pdf_fk": {
+          "name": "knowledge_sources_pdf_fk",
+          "tableFrom": "knowledge_sources",
+          "tableTo": "document_pdfs",
           "columnsFrom": [
             "workspace_id",
-            "actor_membership_id",
-            "actor_internal_user_id"
+            "company_id",
+            "document_id",
+            "document_version_id",
+            "representation_id"
           ],
           "columnsTo": [
             "workspace_id",
-            "id",
-            "internal_user_id"
+            "company_id",
+            "document_id",
+            "version_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "knowledge_sources_actor_fk": {
+          "name": "knowledge_sources_actor_fk",
+          "tableFrom": "knowledge_sources",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "created_by_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -28816,205 +29067,9 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "pna_head_revision_check": {
-          "name": "pna_head_revision_check",
-          "value": "\"project_next_action_heads\".\"revision\">0"
-        },
-        "pna_head_text_bound": {
-          "name": "pna_head_text_bound",
-          "value": "pna_text_valid(\"project_next_action_heads\".\"text\")"
-        },
-        "pna_head_timestamp_check": {
-          "name": "pna_head_timestamp_check",
-          "value": "date_trunc('milliseconds',\"project_next_action_heads\".\"occurred_at\")=\"project_next_action_heads\".\"occurred_at\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.project_next_action_history": {
-      "name": "project_next_action_history",
-      "schema": "",
-      "columns": {
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "original_client_account_id": {
-          "name": "original_client_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_internal_user_id": {
-          "name": "actor_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_membership_id": {
-          "name": "actor_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_display_name": {
-          "name": "actor_display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "revision": {
-          "name": "revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "predecessor_revision": {
-          "name": "predecessor_revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "before_text": {
-          "name": "before_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "text": {
-          "name": "text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lifecycle_revision": {
-          "name": "lifecycle_revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_use_version": {
-          "name": "client_use_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "assignment_id": {
-          "name": "assignment_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "project_next_action_history_assignment_id_company_role_assignments_id_fk": {
-          "name": "project_next_action_history_assignment_id_company_role_assignments_id_fk",
-          "tableFrom": "project_next_action_history",
-          "tableTo": "company_role_assignments",
-          "columnsFrom": [
-            "assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pna_history_project_fk": {
-          "name": "pna_history_project_fk",
-          "tableFrom": "project_next_action_history",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "original_client_account_id",
-            "project_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "client_account_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pna_history_actor_fk": {
-          "name": "pna_history_actor_fk",
-          "tableFrom": "project_next_action_history",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_membership_id",
-            "actor_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "pna_history_scope_revision_unique": {
-          "name": "pna_history_scope_revision_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "workspace_id",
-            "company_id",
-            "project_id",
-            "revision"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "pna_history_revision_check": {
-          "name": "pna_history_revision_check",
-          "value": "\"project_next_action_history\".\"revision\">0 AND \"project_next_action_history\".\"predecessor_revision\"=\"project_next_action_history\".\"revision\"-1 AND \"project_next_action_history\".\"lifecycle_revision\">=0 AND \"project_next_action_history\".\"client_use_version\">0"
-        },
-        "pna_history_material_check": {
-          "name": "pna_history_material_check",
-          "value": "\"project_next_action_history\".\"before_text\" IS DISTINCT FROM \"project_next_action_history\".\"text\""
-        },
-        "pna_history_text_bound": {
-          "name": "pna_history_text_bound",
-          "value": "pna_text_valid(\"project_next_action_history\".\"text\") AND pna_text_valid(\"project_next_action_history\".\"before_text\")"
-        },
-        "pna_history_timestamp_check": {
-          "name": "pna_history_timestamp_check",
-          "value": "date_trunc('milliseconds',\"project_next_action_history\".\"occurred_at\")=\"project_next_action_history\".\"occurred_at\""
+        "knowledge_sources_state_check": {
+          "name": "knowledge_sources_state_check",
+          "value": "\"knowledge_sources\".\"revision\" >= 1 AND \"knowledge_sources\".\"state\" IN ('draft', 'admitted', 'revoked') AND \"knowledge_sources\".\"language\" IN ('ro','ru','en') AND \"knowledge_sources\".\"permitted_purpose\" = 'cited-evidence' AND \"knowledge_sources\".\"confidentiality\" = 'company-confidential' AND \"knowledge_sources\".\"effective_until\" > \"knowledge_sources\".\"effective_from\" AND \"knowledge_sources\".\"source_sha256\" ~ '^[a-f0-9]{64}$' AND \"knowledge_sources\".\"projection_sha256\" ~ '^[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false
@@ -29052,7 +29107,6 @@
         "company_received_contract_access_assignment.granted",
         "company_task_result_recorder_assignment.granted",
         "company_mission_result_reviewer_assignment.granted",
-        "company_project_next_action_coordinator_assignment.granted",
         "company_mission_applicability_coordinator_assignment.granted",
         "company_mission_applicability_approver_assignment.granted",
         "company_document_content_reader_assignment.revoked",
@@ -29060,7 +29114,6 @@
         "company_received_contract_access_assignment.revoked",
         "company_task_result_recorder_assignment.revoked",
         "company_mission_result_reviewer_assignment.revoked",
-        "company_project_next_action_coordinator_assignment.revoked",
         "company_mission_applicability_coordinator_assignment.revoked",
         "company_mission_applicability_approver_assignment.revoked",
         "company_document_content_uploader_assignment.granted",
@@ -29131,7 +29184,11 @@
         "company_mission_plan_configuration_assignment.granted",
         "company_mission_plan_configuration_assignment.revoked",
         "company_mission_plan_user_assignment.granted",
-        "company_mission_plan_user_assignment.revoked"
+        "company_mission_plan_user_assignment.revoked",
+        "company_knowledge_source_administrator_assignment.granted",
+        "company_knowledge_source_administrator_assignment.revoked",
+        "company_knowledge_evidence_reader_assignment.granted",
+        "company_knowledge_evidence_reader_assignment.revoked"
       ]
     },
     "public.activity_log_target_type": {
@@ -29214,7 +29271,6 @@
         "company_received_contract_access",
         "company_task_result_recorder",
         "company_mission_result_reviewer",
-        "company_project_next_action_coordinator",
         "company_mission_applicability_coordinator",
         "company_mission_applicability_approver",
         "company_offer_model_editor",
@@ -29222,7 +29278,9 @@
         "company_offer_model_approver",
         "company_contract_model_approver",
         "company_mission_plan_configuration",
-        "company_mission_plan_user"
+        "company_mission_plan_user",
+        "company_knowledge_source_administrator",
+        "company_knowledge_evidence_reader"
       ]
     },
     "public.company_status": {

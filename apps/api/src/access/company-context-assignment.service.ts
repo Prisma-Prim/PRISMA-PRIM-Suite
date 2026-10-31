@@ -1,4 +1,8 @@
 import {
+  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+} from './company-permissions.js';
+import {
   COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
   COMPANY_MISSION_PLAN_USER_BUNDLE,
 } from './company-permissions.js';
@@ -298,6 +302,8 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
   COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
   COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
@@ -464,6 +470,75 @@ export class CompanyContextAssignmentService {
         isolationLevel: 'repeatable read',
         accessMode: 'read only',
       },
+    );
+  }
+
+  async grantKnowledgeSourceAdministrator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeKnowledgeSourceAdministrator(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+  async grantKnowledgeEvidenceReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeKnowledgeEvidenceReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
     );
   }
 
@@ -2119,6 +2194,14 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE:
+      return granted
+        ? 'company_knowledge_source_administrator_assignment.granted'
+        : 'company_knowledge_source_administrator_assignment.revoked';
+    case COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE:
+      return granted
+        ? 'company_knowledge_evidence_reader_assignment.granted'
+        : 'company_knowledge_evidence_reader_assignment.revoked';
     case COMPANY_IDEAS_READER_BUNDLE:
       return granted
         ? 'company_ideas_reader_assignment.granted'

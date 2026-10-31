@@ -1,0 +1,491 @@
+{
+  "source": "e706662adb82dca6b462b64472f1df872a274756",
+  "tree": "6fc6fa1ed02824ba6785387e246127d358cc1d35",
+  "predecessor": "0089_knowledge_cited_evidence",
+  "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+  "documentId": "f9437617-4016-40e8-9d94-283dbdfd0cb8",
+  "versionId": "b39921d1-2b36-4da5-a66a-62d36b90e8fb",
+  "sourceId": "55185cdd-9e33-4e80-8584-f1408a05fb5a",
+  "pdfSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+  "reads": {
+    "/access/current-actor": {
+      "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+      "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+      "workspaceId": "00000000-0000-4000-8000-000000007019",
+      "workspaceName": "Fictional Knowledge Workspace",
+      "displayName": "Knowledge Owner",
+      "email": "knowledge-owner@example.test",
+      "active": true,
+      "workspacePermissions": [
+        "member.invite",
+        "company.manage",
+        "company.assignment.manage",
+        "client.manage"
+      ],
+      "activeCompany": {
+        "id": "f526c182-e997-4d55-a33a-fd646190d1e8",
+        "displayName": "Synthetic Knowledge Company",
+        "clientPermissions": [
+          "client.read",
+          "client.create",
+          "client.update",
+          "client.duplicate.resolve"
+        ],
+        "clientPermissionAssignmentId": "c68c161c-7d36-4a5d-8612-a5a73990733c",
+        "clientPermissionSetVersion": "v2",
+        "documentPermissions": [
+          "document.read",
+          "document.register",
+          "document.reference.read",
+          "document.correct",
+          "document.version.manage",
+          "document.version.designate_official",
+          "document.content.read",
+          "document.content.upload"
+        ],
+        "documentPermissionSetVersion": "v3",
+        "documentPermissionAssignmentId": "dd64c4c6-1920-4766-8a7a-7c3bd974be0b",
+        "documentApproverAssignmentId": "657ebe8c-f13f-4057-badb-82ebc150dcec",
+        "documentApproverPermissionSetVersion": "v1",
+        "documentContentReaderAssignmentId": "832458a9-f1dd-4d68-8d8e-ee1f32b98109",
+        "documentContentReaderPermissionSetVersion": "v1",
+        "documentContentUploaderAssignmentId": "c2c72811-405b-4e48-816d-c1bd4c344d1c",
+        "documentContentUploaderPermissionSetVersion": "v1",
+        "knowledgeGrants": [
+          {
+            "bundle": "company_knowledge_source_administrator",
+            "assignmentId": "6761255b-51ad-4867-851a-b0982b502e1a",
+            "permissionSetVersion": "v1"
+          },
+          {
+            "bundle": "company_knowledge_evidence_reader",
+            "assignmentId": "c85e8510-cec1-44ea-9090-8f0697156a7d",
+            "permissionSetVersion": "v1"
+          }
+        ]
+      }
+    },
+    "/activity-log": {
+      "events": [
+        {
+          "id": "08534759-1507-48a8-8c17-2cbf85b287a8",
+          "action": "company_knowledge_evidence_reader_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.422Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "c85e8510-cec1-44ea-9090-8f0697156a7d",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Knowledge Evidence Reader"
+          }
+        },
+        {
+          "id": "b71e6200-5d4e-4e59-94d3-971c7cfaa258",
+          "action": "company_knowledge_source_administrator_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.404Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "6761255b-51ad-4867-851a-b0982b502e1a",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Knowledge Source Administrator"
+          }
+        },
+        {
+          "id": "3eb4d329-7116-4e55-8798-5880608d3c87",
+          "occurredAt": "2026-10-31T07:51:29.356Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "document",
+            "documentId": "f9437617-4016-40e8-9d94-283dbdfd0cb8",
+            "documentTitle": "Fictional governed source for cited evidence",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8"
+          },
+          "action": "document.version.designated_official",
+          "metadata": {
+            "versionNumber": 1,
+            "supersededVersionNumber": null
+          }
+        },
+        {
+          "id": "b984acb6-9439-45f7-9fd5-1da34ee97c16",
+          "occurredAt": "2026-10-31T07:51:29.305Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "document",
+            "documentId": "f9437617-4016-40e8-9d94-283dbdfd0cb8",
+            "documentTitle": "Fictional governed source for cited evidence",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8"
+          },
+          "action": "document.representation.added",
+          "metadata": {
+            "versionNumber": 1,
+            "form": "other",
+            "appendedAfterDesignation": false
+          }
+        },
+        {
+          "id": "e9507ed9-9c5b-4cdd-bf98-591bc2aac1b4",
+          "action": "document.registered",
+          "occurredAt": "2026-10-31T07:51:29.186Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "document",
+            "documentId": "f9437617-4016-40e8-9d94-283dbdfd0cb8",
+            "documentTitle": "Fictional governed source for cited evidence",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8"
+          },
+          "metadata": {}
+        },
+        {
+          "id": "d355d324-ae7e-4846-bc32-17f046056395",
+          "action": "client_company_relationship.established",
+          "occurredAt": "2026-10-31T07:51:29.150Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "client_company_relationship",
+            "relationshipId": "55807c9e-15fc-479a-971d-96c62e4ecabc",
+            "clientAccountId": "6a14381b-0363-4506-9a25-b2ff9d546c39",
+            "clientDisplayName": "Fictional Knowledge Client",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company"
+          },
+          "metadata": {}
+        },
+        {
+          "id": "1c77ab52-e587-4cd7-947d-298f4af75850",
+          "action": "client.created",
+          "occurredAt": "2026-10-31T07:51:29.150Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "client_account",
+            "clientAccountId": "6a14381b-0363-4506-9a25-b2ff9d546c39",
+            "displayName": "Fictional Knowledge Client"
+          },
+          "metadata": {}
+        },
+        {
+          "id": "753cc5f2-d172-4fc3-bf9e-fb67dc62f33d",
+          "action": "company_document_content_uploader_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.120Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "c2c72811-405b-4e48-816d-c1bd4c344d1c",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Document Content Uploader"
+          }
+        },
+        {
+          "id": "10302d06-0c91-449d-b5c5-f1da3ec3ce5a",
+          "action": "company_document_content_reader_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.100Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "832458a9-f1dd-4d68-8d8e-ee1f32b98109",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Document Content Reader"
+          }
+        },
+        {
+          "id": "6b1d0f3e-aa95-4900-85c5-ef0de71a7b1f",
+          "action": "company_document_approver_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.080Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "657ebe8c-f13f-4057-badb-82ebc150dcec",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Document Approver"
+          }
+        },
+        {
+          "id": "910871b2-6afa-4ee7-94bf-6fa4ed7ef901",
+          "action": "company_document_registrar_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.057Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "dd64c4c6-1920-4766-8a7a-7c3bd974be0b",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Document Registrar"
+          }
+        },
+        {
+          "id": "f69269f3-1d18-43c8-bca3-5cc11c68195f",
+          "action": "company_director_client_assignment.granted",
+          "occurredAt": "2026-10-31T07:51:29.023Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company_role_assignment",
+            "assignmentId": "c68c161c-7d36-4a5d-8612-a5a73990733c",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "companyDisplayName": "Synthetic Knowledge Company",
+            "workspaceMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "internalUserDisplayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "bundle": "Company Director Client Access"
+          }
+        },
+        {
+          "id": "3b7213c5-dbae-4836-b912-d7b07040e2b3",
+          "action": "company.registered",
+          "occurredAt": "2026-10-31T07:51:29.001Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "company",
+            "companyId": "f526c182-e997-4d55-a33a-fd646190d1e8",
+            "displayName": "Synthetic Knowledge Company"
+          },
+          "metadata": {}
+        },
+        {
+          "id": "8cfaf529-4262-4b31-8dbe-195a13d3c703",
+          "action": "internal_user.provisioned",
+          "occurredAt": "2026-10-31T07:51:28.925Z",
+          "actor": {
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "target": {
+            "type": "internal_user",
+            "internalUserId": "b0285dbb-0d95-4505-8b72-bb88e3a18d32",
+            "displayName": "Knowledge Owner"
+          },
+          "metadata": {
+            "identityProvider": "deterministic-test"
+          }
+        }
+      ]
+    },
+    "/documents/f9437617-4016-40e8-9d94-283dbdfd0cb8/versions": {
+      "workingRevision": 3,
+      "mutable": true,
+      "versions": [
+        {
+          "id": "b39921d1-2b36-4da5-a66a-62d36b90e8fb",
+          "number": 1,
+          "createdAt": "2026-10-31T07:51:29.186Z",
+          "createdBy": {
+            "displayName": "Knowledge Owner"
+          },
+          "representations": [
+            {
+              "id": "ded4199d-9e0a-4da1-a3f1-92cb7092edfe",
+              "kind": "external-reference",
+              "verification": "unverified",
+              "position": 1,
+              "form": "other",
+              "primary": true,
+              "appendedAfterDesignation": false,
+              "addedAt": "2026-10-31T07:51:29.186Z",
+              "addedBy": {
+                "displayName": "Knowledge Owner"
+              },
+              "access": "granted",
+              "url": "https://example.test/fictional/knowledge-original"
+            }
+          ],
+          "pdfContent": {
+            "representationId": "eed36354-1db8-4fdc-8cd3-66b112dab228",
+            "revision": 2,
+            "fileName": "fictional-knowledge-original.pdf",
+            "mediaType": "application/pdf",
+            "size": 1727,
+            "sha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+            "storedAt": "2026-10-31T07:51:29.305Z",
+            "storedBy": {
+              "displayName": "Knowledge Owner"
+            },
+            "scan": {
+              "outcome": "clean",
+              "engine": "ClamAV 1.4.3",
+              "scannedAt": "2026-10-31T07:51:29.301Z"
+            },
+            "state": "stored",
+            "access": "granted"
+          },
+          "status": "official",
+          "designatedAt": "2026-10-31T07:51:29.356Z",
+          "designatedBy": {
+            "displayName": "Knowledge Owner"
+          },
+          "frozen": {
+            "title": "Fictional governed source for cited evidence",
+            "purpose": "Qualify exact-source admission without real Client data"
+          }
+        }
+      ]
+    },
+    "/knowledge/sources/55185cdd-9e33-4e80-8584-f1408a05fb5a/administration": {
+      "sourceId": "55185cdd-9e33-4e80-8584-f1408a05fb5a",
+      "revision": 2,
+      "state": "admitted",
+      "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+      "projectionSha256": "1c862c0d3bbe9abae81a74c4434d67a666ef0858638bf7ae18968ae665b9e224",
+      "documentId": "f9437617-4016-40e8-9d94-283dbdfd0cb8",
+      "documentVersionId": "b39921d1-2b36-4da5-a66a-62d36b90e8fb",
+      "representationId": "eed36354-1db8-4fdc-8cd3-66b112dab228",
+      "versionStatus": "official",
+      "language": "en",
+      "ownerReference": "Fictional source owner",
+      "provenance": "Synthetic PDF created through public governed Document commands",
+      "rightsEvidenceReference": "SYNTHETIC authored fixture declaration; no real license",
+      "permittedPurpose": "cited-evidence",
+      "confidentiality": "company-confidential",
+      "effectiveFrom": "2026-01-01T00:00:00.000Z",
+      "effectiveUntil": "2027-01-01T00:00:00.000Z",
+      "passages": [
+        {
+          "locator": "p1",
+          "text": "There are four boxes in this fictional dossier."
+        }
+      ],
+      "history": [
+        {
+          "revision": 1,
+          "action": "drafted",
+          "actorMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+          "actorDisplayName": "Knowledge Owner",
+          "recordedAt": "2026-10-30T12:00:00.000Z"
+        },
+        {
+          "revision": 2,
+          "action": "admitted",
+          "actorMembershipId": "3cb686f4-0840-4478-8520-2fbe50798c26",
+          "actorDisplayName": "Knowledge Owner",
+          "recordedAt": "2026-10-30T12:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "commands": [
+    {
+      "path": "/knowledge/sources",
+      "key": "source-draft",
+      "body": {
+        "documentId": "f9437617-4016-40e8-9d94-283dbdfd0cb8",
+        "documentVersionId": "b39921d1-2b36-4da5-a66a-62d36b90e8fb",
+        "representationId": "eed36354-1db8-4fdc-8cd3-66b112dab228",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "language": "en",
+        "ownerReference": "Fictional source owner",
+        "provenance": "Synthetic PDF created through public governed Document commands",
+        "rightsEvidenceReference": "SYNTHETIC authored fixture declaration; no real license",
+        "permittedPurpose": "cited-evidence",
+        "effectiveFrom": "2026-01-01T00:00:00.000Z",
+        "effectiveUntil": "2027-01-01T00:00:00.000Z",
+        "passages": [
+          {
+            "locator": "p1",
+            "text": "There are four boxes in this fictional dossier."
+          }
+        ]
+      },
+      "status": 201,
+      "receipt": {
+        "sourceId": "55185cdd-9e33-4e80-8584-f1408a05fb5a",
+        "revision": 1,
+        "state": "draft",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "1c862c0d3bbe9abae81a74c4434d67a666ef0858638bf7ae18968ae665b9e224"
+      }
+    },
+    {
+      "path": "/knowledge/sources/55185cdd-9e33-4e80-8584-f1408a05fb5a/admission",
+      "key": "source-admit",
+      "body": {
+        "expectedRevision": 1,
+        "attestation": "exact-version-source-and-use-reviewed/v1",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "1c862c0d3bbe9abae81a74c4434d67a666ef0858638bf7ae18968ae665b9e224"
+      },
+      "status": 200,
+      "receipt": {
+        "sourceId": "55185cdd-9e33-4e80-8584-f1408a05fb5a",
+        "revision": 2,
+        "state": "admitted",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "1c862c0d3bbe9abae81a74c4434d67a666ef0858638bf7ae18968ae665b9e224"
+      }
+    }
+  ]
+}

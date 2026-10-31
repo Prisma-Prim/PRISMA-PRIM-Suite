@@ -2,6 +2,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -38,6 +39,12 @@ describe.skipIf(!url)(
       fixture = await createMissionDocumentFixture(url);
     });
     afterAll(async () => fixture?.close());
+    let preparedContext: Awaited<ReturnType<typeof prepare>>;
+    // Public dossier/grant setup belongs to the normal preparation lifecycle.
+    // Each behavioral test retains its unchanged default five-second budget.
+    beforeEach(async () => {
+      preparedContext = await prepare();
+    });
     afterEach(() => vi.restoreAllMocks());
     async function prepare() {
       const c = await prepareApplicability(fixture);
@@ -62,64 +69,75 @@ describe.skipIf(!url)(
       expect(response.status).toBe(201);
       return json(response);
     }
-    it('conserves the last same-actor restoration under a fresh key at current observations even after another activity advances the stream', async () => {
-      const c = await prepare();
-      const proposal = await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        ...demoProposal,
-        agreement: {
-          kind: 'NO_CONTRACTUAL_CHANGE_REPORTED',
-          basis: 'DEMO reported scope',
-        },
-      });
-      const approval = await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        action: 'DECIDE',
-        proposalId: proposal.factId,
-        outcome: 'APPROVE',
-        basis: 'DEMO exact scope',
-      });
-      const restore = {
+    describe('an existing attributed restoration', () => {
+      let initialState: Awaited<ReturnType<typeof prepareRestoredActivity>>;
+      async function prepareRestoredActivity() {
+        const c = preparedContext;
+        const proposal = await command(c.path, {
           ...(await observedApplicability(fixture, c.path, c.taskId)),
-          action: 'RESTORE',
-          approvalId: approval.factId,
-          basis: 'DEMO required again',
-        },
-        receipt = await command(c.path, restore, 'original-restoration-demo');
-      const otherTask = text(c.activities[0]?.taskId);
-      await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, otherTask)),
-        ...demoProposal,
-      });
-      const before = await state(c.clientId),
-        unchanged = await command(
-          c.path,
-          {
-            ...restore,
-            ...(await observedApplicability(fixture, c.path, c.taskId)),
+          ...demoProposal,
+          agreement: {
+            kind: 'NO_CONTRACTUAL_CHANGE_REPORTED',
+            basis: 'DEMO reported scope',
           },
-          'fresh-restoration-demo',
+        });
+        const approval = await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, c.taskId)),
+          action: 'DECIDE',
+          proposalId: proposal.factId,
+          outcome: 'APPROVE',
+          basis: 'DEMO exact scope',
+        });
+        const restore = {
+            ...(await observedApplicability(fixture, c.path, c.taskId)),
+            action: 'RESTORE',
+            approvalId: approval.factId,
+            basis: 'DEMO required again',
+          },
+          receipt = await command(c.path, restore, 'original-restoration-demo');
+        return { restore, receipt };
+      }
+      beforeEach(async () => {
+        initialState = await prepareRestoredActivity();
+      });
+      it('conserves the last same-actor restoration under a fresh key at current observations even after another activity advances the stream', async () => {
+        const c = preparedContext;
+        const { restore, receipt } = initialState;
+        const otherTask = text(c.activities[0]?.taskId);
+        await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, otherTask)),
+          ...demoProposal,
+        });
+        const before = await state(c.clientId),
+          unchanged = await command(
+            c.path,
+            {
+              ...restore,
+              ...(await observedApplicability(fixture, c.path, c.taskId)),
+            },
+            'fresh-restoration-demo',
+          );
+        expect(unchanged).toEqual({ ...receipt, action: 'unchanged' });
+        expect(unchanged.applicabilityRevision).toBe(3);
+        expect((await currentApplicability(fixture, c.path)).revision).toBe(4);
+        const after = await state(c.clientId);
+        expect(record(after[0]).facts).toBe(record(before[0]).facts);
+        expect(record(after[0]).events).toBe(record(before[0]).events);
+        expect(record(after[0]).client_version).toBe(
+          record(before[0]).client_version,
         );
-      expect(unchanged).toEqual({ ...receipt, action: 'unchanged' });
-      expect(unchanged.applicabilityRevision).toBe(3);
-      expect((await currentApplicability(fixture, c.path)).revision).toBe(4);
-      const after = await state(c.clientId);
-      expect(record(after[0]).facts).toBe(record(before[0]).facts);
-      expect(record(after[0]).events).toBe(record(before[0]).events);
-      expect(record(after[0]).client_version).toBe(
-        record(before[0]).client_version,
-      );
-      expect(record(after[0]).receipts).toBe(
-        Number(record(before[0]).receipts) + 1,
-      );
-      expect(
-        await command(c.path, restore, 'original-restoration-demo'),
-      ).toEqual(receipt);
+        expect(record(after[0]).receipts).toBe(
+          Number(record(before[0]).receipts) + 1,
+        );
+        expect(
+          await command(c.path, restore, 'original-restoration-demo'),
+        ).toEqual(receipt);
+      });
     });
     it.each(['todo', 'in_progress', 'blocked', 'done', 'cancelled'] as const)(
       'proposes and decides ordinary %s work without borrowing Result Reviewer or mutating its Task',
       async (status) => {
-        const c = await prepare();
+        const c = preparedContext;
         if (status !== 'todo') {
           const path =
             status === 'done'
@@ -175,72 +193,83 @@ describe.skipIf(!url)(
         expect(company.missionResultReviewPermissions).toBeUndefined();
       },
     );
-    it('keeps approved exclusion after ordinary Task cancellation/reopening/completion and permits restoration/reproposal/decision against fresh done observations', async () => {
-      const c = await prepare();
-      const proposal = await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        ...demoProposal,
-        agreement: {
-          kind: 'NO_CONTRACTUAL_CHANGE_REPORTED',
-          basis: 'DEMO reported basis',
-        },
-      });
-      const approval = await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        action: 'DECIDE',
-        proposalId: proposal.factId,
-        outcome: 'APPROVE',
-        basis: 'DEMO scope only',
-      });
-      for (const [action, body] of [
-        [
-          'cancel',
-          { expectedVersion: 1, reason: 'Ordinary cancellation DEMO' },
-        ],
-        ['reopen', { expectedVersion: 2 }],
-        ['complete', { expectedVersion: 3 }],
-      ] satisfies Array<[string, unknown]>) {
-        expect(
-          (
-            await fixture.call(`/tasks/${c.taskId}/${action}`, {
-              method: 'POST',
-              body,
-            })
-          ).status,
-        ).toBe(201);
-        const current = await currentApplicability(fixture, c.path),
-          row = objects(current.activities).find(
-            (row) => record(row.task).id === c.taskId,
-          );
-        expect(row?.applicability).toBe('EXCLUDED_BY_APPROVER');
-        expect(record(row?.activeApproval).id).toBe(approval.factId);
-        expect(current.revision).toBe(2);
-        expect(current).not.toHaveProperty('fulfilled');
-        expect(current).not.toHaveProperty('canComplete');
+    describe('an existing approved exclusion', () => {
+      let initialState: Awaited<ReturnType<typeof prepareApprovedActivity>>;
+      async function prepareApprovedActivity() {
+        const c = preparedContext;
+        const proposal = await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, c.taskId)),
+          ...demoProposal,
+          agreement: {
+            kind: 'NO_CONTRACTUAL_CHANGE_REPORTED',
+            basis: 'DEMO reported basis',
+          },
+        });
+        const approval = await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, c.taskId)),
+          action: 'DECIDE',
+          proposalId: proposal.factId,
+          outcome: 'APPROVE',
+          basis: 'DEMO scope only',
+        });
+        return { approval };
       }
-      await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        action: 'RESTORE',
-        approvalId: approval.factId,
-        basis: 'DEMO explicit restoration',
+      beforeEach(async () => {
+        initialState = await prepareApprovedActivity();
       });
-      const fresh = await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        ...demoProposal,
+      it('keeps approved exclusion after ordinary Task cancellation/reopening/completion and permits restoration/reproposal/decision against fresh done observations', async () => {
+        const c = preparedContext;
+        const { approval } = initialState;
+        for (const [action, body] of [
+          [
+            'cancel',
+            { expectedVersion: 1, reason: 'Ordinary cancellation DEMO' },
+          ],
+          ['reopen', { expectedVersion: 2 }],
+          ['complete', { expectedVersion: 3 }],
+        ] satisfies Array<[string, unknown]>) {
+          expect(
+            (
+              await fixture.call(`/tasks/${c.taskId}/${action}`, {
+                method: 'POST',
+                body,
+              })
+            ).status,
+          ).toBe(201);
+          const current = await currentApplicability(fixture, c.path),
+            row = objects(current.activities).find(
+              (row) => record(row.task).id === c.taskId,
+            );
+          expect(row?.applicability).toBe('EXCLUDED_BY_APPROVER');
+          expect(record(row?.activeApproval).id).toBe(approval.factId);
+          expect(current.revision).toBe(2);
+          expect(current).not.toHaveProperty('fulfilled');
+          expect(current).not.toHaveProperty('canComplete');
+        }
+        await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, c.taskId)),
+          action: 'RESTORE',
+          approvalId: approval.factId,
+          basis: 'DEMO explicit restoration',
+        });
+        const fresh = await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, c.taskId)),
+          ...demoProposal,
+        });
+        await command(c.path, {
+          ...(await observedApplicability(fixture, c.path, c.taskId)),
+          action: 'DECIDE',
+          proposalId: fresh.factId,
+          outcome: 'REJECT',
+          basis: 'DEMO exact done work still separately required',
+        });
+        expect(
+          record((await json(await fixture.call(`/tasks/${c.taskId}`))).task),
+        ).toMatchObject({ status: 'done', version: 4 });
       });
-      await command(c.path, {
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
-        action: 'DECIDE',
-        proposalId: fresh.factId,
-        outcome: 'REJECT',
-        basis: 'DEMO exact done work still separately required',
-      });
-      expect(
-        record((await json(await fixture.call(`/tasks/${c.taskId}`))).task),
-      ).toMatchObject({ status: 'done', version: 4 });
     });
     it('conflicts actor-key reuse across an independently readable Company without disclosing the original hidden target, while foreign Project reads remain404', async () => {
-      const c = await prepare(),
+      const c = preparedContext,
         body = {
           ...(await observedApplicability(fixture, c.path, c.taskId)),
           ...demoProposal,
@@ -325,7 +354,7 @@ describe.skipIf(!url)(
       }
     });
     it('keeps published configured legacy versions unsupported without substituting them for the preserved pilot', async () => {
-      const c = await prepare();
+      const c = preparedContext;
       await fixture.grant(
         '/company-project-template-configuration-assignments',
       );
@@ -382,7 +411,7 @@ describe.skipIf(!url)(
     it.each(['snapshot', 'mapping'] as const)(
       'seals native supported %s against corruption, refuses unmapped Tasks, and sanitizes a source-reader boundary failure',
       async (kind) => {
-        const c = await prepare(),
+        const c = preparedContext,
           body = {
             ...(await observedApplicability(fixture, c.path, c.taskId)),
             ...demoProposal,

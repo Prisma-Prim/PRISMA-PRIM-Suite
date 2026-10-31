@@ -437,6 +437,14 @@ export const COMPANY_ROLE_BUNDLES = {
       v1: ['project.mission_plan.read', 'project.mission_plan.instantiate'],
     },
   },
+  company_knowledge_source_administrator: {
+    label: 'Company Knowledge Source Administrator',
+    versions: { v1: ['knowledge.source.manage'] },
+  },
+  company_knowledge_evidence_reader: {
+    label: 'Company Knowledge Evidence Reader',
+    versions: { v1: ['knowledge.evidence.read'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -1122,3 +1130,11 @@ export const COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE =
   'company_project_next_action_coordinator' satisfies CompanyRoleBundle;
 export const COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_project_next_action_coordinator.label;
+export const COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE =
+  'company_knowledge_source_administrator' satisfies CompanyRoleBundle;
+export const COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE =
+  'company_knowledge_evidence_reader' satisfies CompanyRoleBundle;
+export const COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_knowledge_source_administrator.label;
+export const COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_knowledge_evidence_reader.label;

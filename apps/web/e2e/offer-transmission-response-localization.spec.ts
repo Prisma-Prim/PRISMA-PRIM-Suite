@@ -576,6 +576,20 @@ test('retires a real transmission authority after localized read refusal and sup
       .locator('.offer-version-history')
       .getByRole('button', { name: locale.openOne, exact: true }),
   ).toBeDisabled();
+  const recoveryOffer = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        '/api/offers/opportunities/opportunity-ACCEPTED' &&
+      response.status() === 200,
+  );
+  const recoveryHistory = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        '/api/offers/opportunities/opportunity-ACCEPTED/versions' &&
+      response.status() === 200,
+  );
   observed.releaseHistory();
   await expect(
     offer.getByRole('button', { name: locale.record, exact: true }),
@@ -586,6 +600,16 @@ test('retires a real transmission authority after localized read refusal and sup
   await expect(
     page.getByText('HIDDEN-RETIRED-AUTHORITY', { exact: true }),
   ).toHaveCount(0);
+  // Authority recovery refreshes the readable Offer and its Version page.
+  // Fence that work before attributing later requests to a locale-only action.
+  await recoveryOffer;
+  await recoveryHistory;
+  await expect(
+    offer
+      .locator('.offer-version-history')
+      .getByRole('button', { name: locale.openOne, exact: true }),
+  ).toBeEnabled();
+  await expect(offer.locator('.offer-transmission-evidence')).toHaveCount(0);
   const requests = observed.requests.length;
   const other = offerTransmissionLocales[0];
   if (!other) throw new Error('Missing Romanian fixture.');

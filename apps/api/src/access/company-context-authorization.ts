@@ -1,7 +1,10 @@
+import { captureKnowledgeGrant } from './knowledge-captured-grants.js';
 import {
   COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
+  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
 } from './company-permissions.js';
 import { captureMissionPlanGrant } from './mission-plan-captured-grants.js';
 import { receivedContractAssignment } from './received-contract-access.js';
@@ -1731,6 +1734,8 @@ export class CompanyContextAuthorization {
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+        COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+        COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
         COMPANY_IDEAS_READER_BUNDLE,
         COMPANY_IDEAS_RECORDER_BUNDLE,
         COMPANY_IDEAS_REVIEWER_BUNDLE,
@@ -1792,6 +1797,12 @@ export class CompanyContextAuthorization {
         company.contractSignatureDeclarerAssignmentId = row.assignmentId;
         company.contractSignatureDeclarerPermissionSetVersion = 'v1';
       }
+      const knowledgeGrant = captureKnowledgeGrant(row);
+      if (knowledgeGrant)
+        company.knowledgeGrants = [
+          ...(company.knowledgeGrants ?? []),
+          knowledgeGrant,
+        ];
       Object.assign(company, projectIdeasAssignment(row));
       const planGrant = captureMissionPlanGrant(row);
       if (planGrant)

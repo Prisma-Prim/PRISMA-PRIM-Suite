@@ -1,16 +1,14 @@
 {
-  "source": "454cf6b49c30490ad38b568abf0487366167df7b",
-  "tree": "8a275e2d740c66804ae5dc500855e43fe3d5a526",
-  "predecessor": "0089_mission_applicability",
-  "method": "Restored the native populated 0088 backup, applied the genuine 0089 migration, used its matching compiled 454cf6b4 application for public declaration and complete baseline, closed it, and took native pg_dump. No current ORM or 0090 schema was used.",
-  "backupSha256": "e7f8c0ffa2b2bdf79965056685c7b04d6efa9c2becef0042f064c0d98d2e85a6",
-  "contextSha256": "0fe89b55868fd30b5e97ec5f6da25bc6a6afbbfe7bb3a829cbbf09bc64409f33",
+  "source": "f9928112d28b819cde6149f4af8a643e088c2dbf",
+  "tree": "6d89aca1357c3ac9123ba3a86fbdfed4e26211a8",
+  "predecessor": "0090_mission_applicability",
+  "method": "Restored the genuine populated0088 fixture and applied the published parent f992 Knowledge0089/applicability0090 journal before constructing its matching compiled old application. Actual public commands populated single/group/nested receipts, union, applicability and governed Knowledge/PDF with both capturedv1 grants. Closed old app before native pg_dump; no NextAction0091/current-child ORM or disabled guards. All data and rights declarations are synthetic; scanner is an owned TCP fixture. This is provisional stacked-parent evidence, requiring refresh after actual parent delivery.",
+  "backupSha256": "422a68b48f17b1374ba37ba71eb1a8986c53ad216b3f214aa9f11aa05555567c",
+  "contextSha256": "50dc7ed8d0b2e3d61e52208e21acc848f78c8492fcd42e64ceca19b9c9c96cbf",
   "counts": {
     "projects": 5,
     "results": 1,
     "applicability": 1,
     "unions": 1
-  },
-  "generatedContextSha256": "00db810cfa39bbaf67b7ebbac9b8c8f4d51e29bd317403884133daae25733c0a",
-  "contextSerialization": "Repository formatting only; parsed values exactly match the compatible predecessor capture."
+  }
 }

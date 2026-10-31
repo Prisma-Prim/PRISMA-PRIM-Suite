@@ -137,6 +137,27 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For [standalone Internal Company Tasks (§36)](release-1-project-task-prd.md#36-bounded-standalone-internal-company-tasks-996),
+an **Approved bounded contract** after ordered independent Standards then Spec and
+[actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138), material creation, ordinary edit and any
+state move respectively record restricted `internal_task.created`,
+`internal_task.updated` and `internal_task.status.changed`. Each targets the exact
+Company-owned internal Task with server actor membership/time and exactly
+`{ version }` metadata. The Task owner retains private immutable before/after
+history; no title, description, reason, date, member label, key or fingerprint
+enters event metadata or diagnostics. No Project/Client target or fence is invented.
+
+Current, history, exact receipt, required event and successful response construction
+share one transaction with native coupled integrity. Reads, rejected/failed/stale
+commands, normalized no-op edits and exact replay add no success event. Native
+history requires current internal-Task read; old Task/Project/Client or Activity
+authority grants none. This separate restricted family has **no generic Activity/
+Home/search/filter/count/export projection**, including hidden target/existence or
+short-page side channels: exclude before selection, pagination and counting.
+Authorization §8 separately owns ordinary bundle-label administration events;
+neither they nor this documentation preparation confer private business access or
+runtime delivery. Existing Project Task events/projections remain unchanged.
+
 For the [Project next-action contract (§35)](release-1-project-task-prd.md#35-bounded-explicit-project-next-action-973),
 an **Approved bounded contract** under #973 after completed ordered independent
 Standards then Spec preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391),

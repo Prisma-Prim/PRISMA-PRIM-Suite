@@ -1,3 +1,4 @@
+import { openContractCommandReceipt } from './contract-command-receipt.js';
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { contractSource } from './contract-source.js';
 import {
@@ -7,14 +8,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import type { DatabaseContext } from '../database/database-context.js';
 import {
   contracts,
   contractVersions,
-  contractCommands,
   contractSignatures,
   contractQualityRuns,
 } from '../database/schema/index.js';
@@ -90,43 +90,25 @@ export async function recordContractSignature(
         versionId: input.versionId,
         payload: input.payload,
       });
-      await dependencies.databaseContext.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${key}`},0))`,
-      );
-      const [receipt] = await dependencies.databaseContext.connection
-        .select()
-        .from(contractCommands)
-        .where(
-          and(
-            eq(contractCommands.workspaceId, actor.workspaceId),
-            eq(contractCommands.companyId, companyId),
-            eq(
-              contractCommands.actorWorkspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(contractCommands.idempotencyKey, key),
+      const receipt = await openContractCommandReceipt({
+        database: dependencies.databaseContext,
+        actor,
+        companyId,
+        key,
+        opportunityId: input.opportunityId,
+        contractId: found.contract.id,
+        kind: 'RECORD_SIGNATURE',
+        fingerprint,
+      });
+      if (receipt.kind === 'recorded') {
+        return receipt.confirm(
+          await readContractSignature(
+            dependencies.databaseContext,
+            actor,
+            found.contract,
+            found.version,
           ),
         );
-      if (receipt) {
-        if (
-          receipt.kind !== 'RECORD_SIGNATURE' ||
-          receipt.fingerprint !== fingerprint ||
-          receipt.resultContractId !== found.contract.id ||
-          !receipt.resultSignatureId
-        )
-          throw conflict(
-            'IDEMPOTENCY_CONFLICT',
-            'Idempotency-Key was used for another Contract command.',
-          );
-        const recorded = await readContractSignature(
-          dependencies.databaseContext,
-          actor,
-          found.contract,
-          found.version,
-        );
-        if (!recorded || recorded.id !== receipt.resultSignatureId)
-          throw new Error('Missing recorded Contract signature.');
-        return recorded;
       }
       if (found.version.supersededByVersionId)
         throw conflict(
@@ -270,20 +252,10 @@ export async function recordContractSignature(
             eq(contracts.id, current.contract.id),
           ),
         );
-      await dependencies.databaseContext.connection
-        .insert(contractCommands)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey: key,
-          fingerprint,
-          opportunityId: input.opportunityId,
-          resultContractId: current.contract.id,
-          kind: 'RECORD_SIGNATURE',
-          resultSignatureId: signature.id,
-          createdAt: quality.evaluatedAt,
-        });
+      await receipt.append({
+        id: signature.id,
+        occurredAt: quality.evaluatedAt,
+      });
       await dependencies.accountability.recordContractSignature({
         actor,
         companyId,

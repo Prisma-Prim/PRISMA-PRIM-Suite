@@ -12,6 +12,7 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { operationalHomeCopy as copy } from './operational-home/operational-home.copy';
+import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 
 const companyA = { id: 'company-a', displayName: 'PRISMA-PRIM' };
 const companyB = { id: 'company-b', displayName: 'BIC' };
@@ -105,6 +106,8 @@ function installServer(
     showNoRuleAttentionTask: false,
     overdueTasks: initial.overdueTasks ?? [overdueTask],
     showTaskSummary: true,
+    deniedActors: new Set<string>(),
+    deniedActivity: new Set<string>(),
   };
   const requests: ServerRequest[] = [];
   const holding = new Set<string>();
@@ -113,10 +116,15 @@ function installServer(
   function answer({ route, companyId, search }: ServerRequest): Response {
     const company = companyId ?? companyA.id;
     if (route === 'GET /api/access/current-actor')
-      return Response.json(state.actor(company));
+      return companyId !== null && state.deniedActors.has(companyId)
+        ? new Response(null, { status: 403 })
+        : Response.json(state.actor(company));
     if (route === 'GET /api/companies')
       return Response.json([companyA, companyB]);
-    if (route === 'GET /api/activity-log') return Response.json({ events: [] });
+    if (route === 'GET /api/activity-log')
+      return companyId !== null && state.deniedActivity.has(companyId)
+        ? new Response(null, { status: 403 })
+        : Response.json({ events: [] });
     if (route === 'GET /api/operational-home') {
       const current = counts[company] ?? {};
       return Response.json({
@@ -262,6 +270,19 @@ function installServer(
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
     },
+    /** Release old and current reads together, including transports ignoring abort. */
+    async releaseAll(route: string, companyId: string) {
+      holding.delete(`${route}@${companyId}`);
+      const matches = held.filter(
+        (request) => request.route === route && request.companyId === companyId,
+      );
+      if (matches.length === 0) throw new Error(`Nothing is held for ${route}`);
+      for (const request of matches) held.splice(held.indexOf(request), 1);
+      await act(async () => {
+        for (const request of matches) request.answer(answer(request));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    },
   };
 }
 
@@ -340,6 +361,248 @@ describe('Operational home through App', () => {
     document.documentElement.lang = language;
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('collects independently authorized Company summaries without switching the working Company', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await screen.findByRole('button', {
+      name: cardName('active_clients', 3),
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'All Companies summaries' }),
+    );
+    const consolidated = await screen.findByRole('region', {
+      name: 'All Companies summaries',
+    });
+    await within(consolidated).findByRole('heading', {
+      name: companyB.displayName,
+    });
+    expect(within(consolidated).getByText('71')).toBeVisible();
+    expect(
+      screen.getByLabelText('Active Company', { exact: true }),
+    ).toHaveValue(companyA.id);
+    expect(window.location.hash).toBe('');
+    expect(server.count(homeRoute, companyB.id)).toBe(1);
+  });
+
+  it.each([
+    {
+      kind: 'active_clients',
+      count: 71,
+      hash: '#clients',
+      route: 'GET /api/clients',
+    },
+    {
+      kind: 'open_projects',
+      count: 72,
+      hash: '#projects',
+      route: 'GET /api/projects',
+    },
+    { kind: 'overdue_tasks', count: 0, hash: '#overview', route: overdueRoute },
+  ] satisfies Array<{
+    kind: keyof typeof copy.summaries;
+    count: number;
+    hash: string;
+    route: string;
+  }>)(
+    'opens the exact selected-Company $kind destination after the normal owner confirms it',
+    async ({ kind, count, hash, route }) => {
+      window.history.replaceState(null, '', '/?frame=classic');
+      const server = installServer();
+      render(<App identity={deterministicBrowserIdentity()} />);
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'All Companies summaries' }),
+      );
+      const row = await screen.findByRole('region', {
+        name: companyB.displayName,
+      });
+      fireEvent.click(
+        await within(row).findByRole('button', {
+          name: `${companyB.displayName}: ${cardName(kind, count)}`,
+        }),
+      );
+      expect(
+        screen.getByLabelText('Active Company', { exact: true }),
+      ).toHaveValue(companyA.id);
+      expect(window.location.hash).toBe('');
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await waitFor(() => expect(window.location.hash).toBe(hash));
+      expect(
+        screen.getByLabelText('Active Company', { exact: true }),
+      ).toHaveValue(companyB.id);
+      await waitFor(() =>
+        expect(server.count(route, companyB.id)).toBeGreaterThan(0),
+      );
+      if (kind === 'overdue_tasks') {
+        expect(
+          await screen.findByRole('region', {
+            name: copy.overdue.title({ company: companyB.displayName }),
+          }),
+        ).toBeVisible();
+        fireEvent.click(
+          screen.getByRole('button', { name: copy.overdue.closeName }),
+        );
+        const reads = server.count(homeRoute, companyB.id);
+        fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
+        await waitFor(() =>
+          expect(server.count(homeRoute, companyB.id)).toBe(reads + 1),
+        );
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 0),
+        });
+        expect(overduePanel(companyB)).toBeNull();
+      }
+    },
+  );
+
+  async function continueToHeldOverdue(
+    server: ReturnType<typeof installServer>,
+  ) {
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'All Companies summaries' }),
+    );
+    const row = await screen.findByRole('region', {
+      name: companyB.displayName,
+    });
+    fireEvent.click(
+      await within(row).findByRole('button', {
+        name: `${companyB.displayName}: ${cardName('overdue_tasks', 0)}`,
+      }),
+    );
+    server.hold(homeRoute, companyB.id);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(server.count(homeRoute, companyB.id)).toBe(2);
+      expect(server.count('GET /api/activity-log', companyB.id)).toBe(1);
+      expect(
+        screen.getByLabelText('Active Company', { exact: true }),
+      ).toHaveValue(companyB.id);
+      expect(window.location.hash).toBe('#overview');
+    });
+    expect(server.count(overdueRoute, companyB.id)).toBe(0);
+  }
+
+  it('permanently retires a held overdue continuation after another Company selection and return', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await continueToHeldOverdue(server);
+    await selectCompany(companyA.id);
+    await selectCompany(companyB.id);
+    await waitFor(() => expect(server.count(homeRoute, companyB.id)).toBe(3));
+    await server.releaseAll(homeRoute, companyB.id);
+    await screen.findByRole('button', { name: cardName('overdue_tasks', 0) });
+    expect(overduePanel(companyB)).toBeNull();
+    expect(server.count(overdueRoute, companyB.id)).toBe(0);
+  });
+
+  it('permanently retires a held overdue continuation when leaving Home and returning', async () => {
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await continueToHeldOverdue(server);
+    const navigation = screen.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Clients' }));
+    await waitFor(() => expect(window.location.hash).toBe('#clients'));
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Overview' }));
+    await waitFor(() => expect(server.count(homeRoute, companyB.id)).toBe(3));
+    await server.releaseAll(homeRoute, companyB.id);
+    await screen.findByRole('button', { name: cardName('overdue_tasks', 0) });
+    expect(overduePanel(companyB)).toBeNull();
+    expect(server.count(overdueRoute, companyB.id)).toBe(0);
+  });
+
+  it('preserves its own held selected-Company overdue continuation through a locale-only render', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer();
+    render(
+      <>
+        <InterfaceLocaleSelect />
+        <App identity={deterministicBrowserIdentity()} />
+      </>,
+    );
+    await continueToHeldOverdue(server);
+    changeValue(screen.getByLabelText('Interface language'), 'fr');
+    expect(server.count(homeRoute, companyB.id)).toBe(2);
+    await server.releaseAll(homeRoute, companyB.id);
+    expect(
+      await screen.findByRole('region', { name: 'Tâches en retard dans BIC' }),
+    ).toBeVisible();
+    expect(server.count(overdueRoute, companyB.id)).toBe(1);
+  });
+
+  it.each(['selection', 'activity'])(
+    'preserves current $s denial retirement instead of opening a staged destination',
+    async (deniedAt) => {
+      window.history.replaceState(null, '', '/?frame=classic');
+      const server = installServer();
+      render(<App identity={deterministicBrowserIdentity()} />);
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'All Companies summaries' }),
+      );
+      const row = await screen.findByRole('region', {
+        name: companyB.displayName,
+      });
+      fireEvent.click(
+        await within(row).findByRole('button', {
+          name: `${companyB.displayName}: ${cardName('active_clients', 71)}`,
+        }),
+      );
+      (deniedAt === 'selection'
+        ? server.state.deniedActors
+        : server.state.deniedActivity
+      ).add(companyB.id);
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText('Active Company', { exact: true }),
+        ).toHaveValue(''),
+      );
+      expect(window.location.hash).toBe('');
+      expect(
+        screen.queryByRole('region', { name: 'All Companies summaries' }),
+      ).toBeNull();
+    },
+  );
+
+  it('does not open a staged destination after closing while the actual selection is pending', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'All Companies summaries' }),
+    );
+    const row = await screen.findByRole('region', {
+      name: companyB.displayName,
+    });
+    fireEvent.click(
+      await within(row).findByRole('button', {
+        name: `${companyB.displayName}: ${cardName('active_clients', 71)}`,
+      }),
+    );
+    server.hold('GET /api/access/current-actor', companyB.id);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() =>
+      expect(server.count('GET /api/access/current-actor', companyB.id)).toBe(
+        2,
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close All Companies summaries' }),
+    );
+    await server.release('GET /api/access/current-actor', companyB.id);
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Active Company', { exact: true }),
+      ).toHaveValue(companyB.id),
+    );
+    expect(window.location.hash).toBe('');
+    expect(
+      screen.queryByRole('region', { name: 'All Companies summaries' }),
+    ).toBeNull();
   });
 
   it('opens the exact Task from the next overdue page through the real App Project intent', async () => {

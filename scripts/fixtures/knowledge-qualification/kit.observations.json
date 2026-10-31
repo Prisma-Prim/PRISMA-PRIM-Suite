@@ -1,0 +1,562 @@
+{
+  "schema": "prisma-prim-knowledge-observations/v1",
+  "dataKind": "synthetic",
+  "corpusId": "SYNTHETIC-CONTENT-989",
+  "corpusVersion": 1,
+  "expectationSetId": "SYNTHETIC-EXPECTATIONS-989",
+  "expectationSetVersion": 1,
+  "runId": "SYNTHETIC-AUTHORED-QUAL1",
+  "runVersion": 1,
+  "methodId": "literal-example",
+  "methodVersion": 1,
+  "evidenceKind": "authored_fixture",
+  "observations": [
+    {
+      "caseId": "K01",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2
+        }
+      ],
+      "outcome": "supported",
+      "citations": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2,
+          "locator": "p1",
+          "quote": "În atelierul fictiv Lumen sunt patru cutii de mostre."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K02",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RU-NOTE",
+          "version": 1
+        }
+      ],
+      "outcome": "supported",
+      "citations": [
+        {
+          "sourceId": "S-RU-NOTE",
+          "version": 1,
+          "locator": "p1",
+          "quote": "В учебной комнате «Сириус» находятся три зелёные этикетки."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K03",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1
+        }
+      ],
+      "outcome": "supported",
+      "citations": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional blue crate contains six sample cards."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K04",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "historical",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 1
+        }
+      ],
+      "outcome": "supported_history",
+      "citations": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 1,
+          "locator": "p1",
+          "quote": "În atelierul fictiv Lumen sunt două cutii de mostre."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K05",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-CONFLICT-A",
+          "version": 1
+        },
+        {
+          "sourceId": "S-CONFLICT-B",
+          "version": 1
+        }
+      ],
+      "outcome": "contradictory",
+      "citations": [
+        {
+          "sourceId": "S-CONFLICT-A",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional reserve shelf holds four sample folders."
+        },
+        {
+          "sourceId": "S-CONFLICT-B",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional reserve shelf holds seven sample folders."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K06",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-REQUEST",
+          "version": 1
+        }
+      ],
+      "outcome": "insufficient_evidence",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K07",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1
+        }
+      ],
+      "outcome": "insufficient_evidence",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K08",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [],
+      "outcome": "insufficient_authorized_evidence",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K09",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [],
+      "outcome": "insufficient_authorized_evidence",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K10",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [],
+      "outcome": "insufficient_authorized_evidence",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K11",
+      "caseVersion": 1,
+      "profileId": "P-NONE",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [],
+      "outcome": "access_denied",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K12",
+      "caseVersion": 1,
+      "profileId": "P-A-READ",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [],
+      "outcome": "access_denied",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K13",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-UNTRUSTED",
+          "version": 1
+        }
+      ],
+      "outcome": "supported_with_untrusted_instruction",
+      "citations": [
+        {
+          "sourceId": "S-UNTRUSTED",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional reading-room label is Cedar."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K14",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2
+        }
+      ],
+      "outcome": "analysis_proposal",
+      "citations": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2,
+          "locator": "p1",
+          "quote": "În atelierul fictiv Lumen sunt patru cutii de mostre."
+        }
+      ],
+      "initialFields": [
+        {
+          "fieldId": "box_count",
+          "state": "inferred",
+          "value": "4"
+        }
+      ],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K15",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1
+        }
+      ],
+      "outcome": "analysis_proposal",
+      "citations": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1,
+          "locator": "p2",
+          "quote": "The six sample cards are divided equally between two trays."
+        }
+      ],
+      "initialFields": [
+        {
+          "fieldId": "cards_per_tray",
+          "state": "inferred",
+          "value": "3"
+        }
+      ],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K16",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-REQUEST",
+          "version": 1
+        }
+      ],
+      "outcome": "analysis_proposal",
+      "citations": [],
+      "initialFields": [
+        {
+          "fieldId": "requested_deadline",
+          "state": "missing",
+          "value": null
+        }
+      ],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K17",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-CONFLICT-A",
+          "version": 1
+        },
+        {
+          "sourceId": "S-CONFLICT-B",
+          "version": 1
+        }
+      ],
+      "outcome": "analysis_proposal",
+      "citations": [
+        {
+          "sourceId": "S-CONFLICT-A",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional reserve shelf holds four sample folders."
+        },
+        {
+          "sourceId": "S-CONFLICT-B",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional reserve shelf holds seven sample folders."
+        }
+      ],
+      "initialFields": [
+        {
+          "fieldId": "folder_count",
+          "state": "contradictory",
+          "value": null,
+          "alternatives": ["4", "7"]
+        }
+      ],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K18",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2
+        }
+      ],
+      "outcome": "human_accepted",
+      "citations": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2,
+          "locator": "p1",
+          "quote": "În atelierul fictiv Lumen sunt patru cutii de mostre."
+        }
+      ],
+      "initialFields": [
+        {
+          "fieldId": "box_count",
+          "state": "inferred",
+          "value": "4"
+        }
+      ],
+      "finalFields": [
+        {
+          "fieldId": "box_count",
+          "state": "confirmed",
+          "value": "4"
+        }
+      ],
+      "humanEventRef": "H-SYN-ACCEPT-1"
+    },
+    {
+      "caseId": "K19",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2
+        }
+      ],
+      "outcome": "human_corrected",
+      "citations": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2,
+          "locator": "p1",
+          "quote": "În atelierul fictiv Lumen sunt patru cutii de mostre."
+        }
+      ],
+      "initialFields": [
+        {
+          "fieldId": "box_count",
+          "state": "inferred",
+          "value": "5"
+        }
+      ],
+      "finalFields": [
+        {
+          "fieldId": "box_count",
+          "state": "confirmed",
+          "value": "4"
+        }
+      ],
+      "humanEventRef": "H-SYN-CORRECT-1"
+    },
+    {
+      "caseId": "K20",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "analysis",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-RO-INVENTORY",
+          "version": 2
+        }
+      ],
+      "outcome": "human_rejected",
+      "citations": [],
+      "initialFields": [
+        {
+          "fieldId": "box_count",
+          "state": "inferred",
+          "value": "5"
+        }
+      ],
+      "finalFields": [],
+      "humanEventRef": "H-SYN-REJECT-1"
+    },
+    {
+      "caseId": "K21",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [],
+      "outcome": "insufficient_admitted_evidence",
+      "citations": [],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    },
+    {
+      "caseId": "K22",
+      "caseVersion": 1,
+      "profileId": "P-A",
+      "purpose": "cited-answer",
+      "mode": "current",
+      "status": "completed",
+      "retrievalRefs": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1
+        }
+      ],
+      "outcome": "supported",
+      "citations": [
+        {
+          "sourceId": "S-EN-NOTE",
+          "version": 1,
+          "locator": "p1",
+          "quote": "The fictional blue crate contains six sample cards."
+        }
+      ],
+      "initialFields": [],
+      "finalFields": [],
+      "humanEventRef": null
+    }
+  ]
+}

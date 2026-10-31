@@ -1,6 +1,6 @@
 {
-  "source": "454cf6b49c30490ad38b568abf0487366167df7b",
-  "predecessor": "0089_mission_applicability",
+  "source": "f9928112d28b819cde6149f4af8a643e088c2dbf",
+  "predecessor": "0090_mission_applicability",
   "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
   "membershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
   "clientId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -696,7 +696,7 @@
         "expectedResultRevision": 0,
         "expectedLifecycleRevision": 0,
         "expectedApplicabilityRevision": 0,
-        "reason": "Existing 0089 declaration DEMO",
+        "reason": "Existing parent declaration DEMO",
         "scopeBasis": "Preserved predecessor scope DEMO",
         "agreement": {
           "kind": "NO_CONTRACTUAL_CHANGE_REPORTED",
@@ -706,14 +706,14 @@
       "receipt": {
         "action": "recorded",
         "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
-        "factId": "0c001c50-ebae-4f93-8fd0-ab01ca64a358",
+        "factId": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
         "applicabilityRevision": 1
       },
       "status": 201,
       "replay": {
         "action": "recorded",
         "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
-        "factId": "0c001c50-ebae-4f93-8fd0-ab01ca64a358",
+        "factId": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
         "applicabilityRevision": 1
       }
     },
@@ -724,7 +724,7 @@
         "title": "Old grouped Task 0 DEMO"
       },
       "receipt": {
-        "id": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+        "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -734,8 +734,8 @@
         "dueDate": null,
         "priority": "normal",
         "version": 1,
-        "createdAt": "2026-10-30T13:33:42.975Z",
-        "updatedAt": "2026-10-30T13:33:42.975Z",
+        "createdAt": "2026-10-31T09:39:14.286Z",
+        "updatedAt": "2026-10-31T09:39:14.286Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -751,13 +751,13 @@
         "dueDate": null,
         "priority": "normal",
         "description": null,
-        "id": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+        "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
         "version": 1,
-        "createdAt": "2026-10-30T13:33:42.975Z",
-        "updatedAt": "2026-10-30T13:33:42.975Z",
+        "createdAt": "2026-10-31T09:39:14.286Z",
+        "updatedAt": "2026-10-31T09:39:14.286Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -774,7 +774,7 @@
         "title": "Old grouped Task 1 DEMO"
       },
       "receipt": {
-        "id": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+        "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -784,8 +784,8 @@
         "dueDate": null,
         "priority": "normal",
         "version": 1,
-        "createdAt": "2026-10-30T13:33:42.999Z",
-        "updatedAt": "2026-10-30T13:33:42.999Z",
+        "createdAt": "2026-10-31T09:39:14.325Z",
+        "updatedAt": "2026-10-31T09:39:14.325Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -801,13 +801,13 @@
         "dueDate": null,
         "priority": "normal",
         "description": null,
-        "id": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+        "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
         "version": 1,
-        "createdAt": "2026-10-30T13:33:42.999Z",
-        "updatedAt": "2026-10-30T13:33:42.999Z",
+        "createdAt": "2026-10-31T09:39:14.325Z",
+        "updatedAt": "2026-10-31T09:39:14.325Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -823,13 +823,13 @@
       "body": {
         "tasks": [
           {
-            "taskId": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+            "taskId": "97843805-e94a-4ad4-bc4e-166868a0d22c",
             "expectedVersion": 1,
             "assigneeMembershipId": null,
             "dueDate": "2026-11-02"
           },
           {
-            "taskId": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+            "taskId": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
             "expectedVersion": 1,
             "assigneeMembershipId": null,
             "dueDate": "2026-11-09"
@@ -841,7 +841,7 @@
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "tasks": [
           {
-            "id": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+            "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -851,8 +851,8 @@
             "dueDate": "2026-11-02",
             "priority": "normal",
             "version": 2,
-            "createdAt": "2026-10-30T13:33:42.975Z",
-            "updatedAt": "2026-10-30T13:33:43.030Z",
+            "createdAt": "2026-10-31T09:39:14.286Z",
+            "updatedAt": "2026-10-31T09:39:14.380Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -862,7 +862,7 @@
             "completion": null
           },
           {
-            "id": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+            "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -872,8 +872,8 @@
             "dueDate": "2026-11-09",
             "priority": "normal",
             "version": 2,
-            "createdAt": "2026-10-30T13:33:42.999Z",
-            "updatedAt": "2026-10-30T13:33:43.034Z",
+            "createdAt": "2026-10-31T09:39:14.325Z",
+            "updatedAt": "2026-10-31T09:39:14.369Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -895,13 +895,13 @@
             "dueDate": "2026-11-02",
             "priority": "normal",
             "description": null,
-            "id": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+            "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
             "version": 2,
-            "createdAt": "2026-10-30T13:33:42.975Z",
-            "updatedAt": "2026-10-30T13:33:43.030Z",
+            "createdAt": "2026-10-31T09:39:14.286Z",
+            "updatedAt": "2026-10-31T09:39:14.380Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -916,13 +916,13 @@
             "dueDate": "2026-11-09",
             "priority": "normal",
             "description": null,
-            "id": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+            "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
             "version": 2,
-            "createdAt": "2026-10-30T13:33:42.999Z",
-            "updatedAt": "2026-10-30T13:33:43.034Z",
+            "createdAt": "2026-10-31T09:39:14.325Z",
+            "updatedAt": "2026-10-31T09:39:14.369Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -932,6 +932,69 @@
             "completion": null
           }
         ]
+      }
+    },
+    {
+      "path": "/knowledge/sources",
+      "key": "old-knowledge-draft",
+      "body": {
+        "documentId": "b152a9e3-0169-418e-9979-1b1fcdacc782",
+        "documentVersionId": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
+        "representationId": "d243981a-e802-4e8d-aa28-875cd04871ab",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "language": "en",
+        "ownerReference": "Fictional source owner",
+        "provenance": "Synthetic PDF created through public governed Document commands",
+        "rightsEvidenceReference": "SYNTHETIC authored fixture declaration; no real license",
+        "permittedPurpose": "cited-evidence",
+        "effectiveFrom": "2026-01-01T00:00:00.000Z",
+        "effectiveUntil": "2027-01-01T00:00:00.000Z",
+        "passages": [
+          {
+            "locator": "p1",
+            "text": "There are four boxes in this fictional dossier."
+          }
+        ]
+      },
+      "receipt": {
+        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "revision": 1,
+        "state": "draft",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+      },
+      "status": 201,
+      "replay": {
+        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "revision": 1,
+        "state": "draft",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+      }
+    },
+    {
+      "path": "/knowledge/sources/f1008f61-d6a5-4515-9a03-3e43377a3b13/admission",
+      "key": "old-knowledge-admit",
+      "body": {
+        "expectedRevision": 1,
+        "attestation": "exact-version-source-and-use-reviewed/v1",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+      },
+      "receipt": {
+        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "revision": 2,
+        "state": "admitted",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+      },
+      "status": 200,
+      "replay": {
+        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "revision": 2,
+        "state": "admitted",
+        "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
       }
     }
   ],
@@ -968,7 +1031,8 @@
           "document.mission_deliverable.access",
           "document.content.read",
           "document.version.designate_official",
-          "document.project.manage"
+          "document.project.manage",
+          "document.content.upload"
         ],
         "documentPermissionSetVersion": "v3",
         "documentPermissionAssignmentId": "f13f4921-e399-43d2-8cf8-a53214cef3cd",
@@ -1021,10 +1085,24 @@
         "missionApplicabilityProposalPermissions": [
           "project.mission_applicability.propose"
         ],
-        "missionApplicabilityCoordinatorAssignmentId": "856e23c9-0e2d-40d3-81ec-9889a118ffe5",
+        "missionApplicabilityCoordinatorAssignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
         "missionApplicabilityCoordinatorPermissionSetVersion": "v1",
-        "clientPermissionAssignmentId": "c077ed8c-8242-40a9-95a4-f3442595cf6f",
-        "clientPermissionSetVersion": "v2"
+        "clientPermissionAssignmentId": "efde75a3-28db-49e6-ba9d-1faebded768f",
+        "clientPermissionSetVersion": "v2",
+        "documentContentUploaderAssignmentId": "1b883ab6-dcc2-4b6e-9fe8-e5c9cfc47d90",
+        "documentContentUploaderPermissionSetVersion": "v1",
+        "knowledgeGrants": [
+          {
+            "bundle": "company_knowledge_source_administrator",
+            "assignmentId": "3882e70e-7768-46c1-9ecc-dcaac58056d4",
+            "permissionSetVersion": "v1"
+          },
+          {
+            "bundle": "company_knowledge_evidence_reader",
+            "assignmentId": "0a501718-56a4-487b-b2f3-cf57a264b9a9",
+            "permissionSetVersion": "v1"
+          }
+        ]
       }
     },
     "/projects/533a9136-6b37-4459-b0cc-17f21857b116": {
@@ -2158,7 +2236,7 @@
             "state": "RESULT_NOT_RECORDED",
             "applicability": "REQUIRED",
             "pendingProposal": {
-              "id": "0c001c50-ebae-4f93-8fd0-ab01ca64a358",
+              "id": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
               "revision": 1,
               "kind": "PROPOSED",
               "predecessorId": null,
@@ -2178,7 +2256,7 @@
                 "expectedResultRevision": 0,
                 "expectedLifecycleRevision": 0,
                 "action": "PROPOSE",
-                "reason": "Existing 0089 declaration DEMO",
+                "reason": "Existing parent declaration DEMO",
                 "scopeBasis": "Preserved predecessor scope DEMO",
                 "agreement": {
                   "kind": "NO_CONTRACTUAL_CHANGE_REPORTED",
@@ -2200,13 +2278,13 @@
                 "displayName": "Mission Owner DEMO"
               },
               "capture": {
-                "assignmentId": "856e23c9-0e2d-40d3-81ec-9889a118ffe5",
+                "assignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
                 "permissionSetVersion": "v1"
               },
-              "occurredAt": "2026-10-30T13:33:42.944Z"
+              "occurredAt": "2026-10-31T09:39:14.238Z"
             },
             "lastProposal": {
-              "id": "0c001c50-ebae-4f93-8fd0-ab01ca64a358",
+              "id": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
               "revision": 1,
               "kind": "PROPOSED",
               "predecessorId": null,
@@ -2226,7 +2304,7 @@
                 "expectedResultRevision": 0,
                 "expectedLifecycleRevision": 0,
                 "action": "PROPOSE",
-                "reason": "Existing 0089 declaration DEMO",
+                "reason": "Existing parent declaration DEMO",
                 "scopeBasis": "Preserved predecessor scope DEMO",
                 "agreement": {
                   "kind": "NO_CONTRACTUAL_CHANGE_REPORTED",
@@ -2248,10 +2326,10 @@
                 "displayName": "Mission Owner DEMO"
               },
               "capture": {
-                "assignmentId": "856e23c9-0e2d-40d3-81ec-9889a118ffe5",
+                "assignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
                 "permissionSetVersion": "v1"
               },
-              "occurredAt": "2026-10-30T13:33:42.944Z"
+              "occurredAt": "2026-10-31T09:39:14.238Z"
             },
             "lastDecision": null,
             "lastRestoration": null,
@@ -2552,7 +2630,7 @@
         "kind": "available",
         "facts": [
           {
-            "id": "0c001c50-ebae-4f93-8fd0-ab01ca64a358",
+            "id": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
             "revision": 1,
             "kind": "PROPOSED",
             "predecessorId": null,
@@ -2572,7 +2650,7 @@
               "expectedResultRevision": 0,
               "expectedLifecycleRevision": 0,
               "action": "PROPOSE",
-              "reason": "Existing 0089 declaration DEMO",
+              "reason": "Existing parent declaration DEMO",
               "scopeBasis": "Preserved predecessor scope DEMO",
               "agreement": {
                 "kind": "NO_CONTRACTUAL_CHANGE_REPORTED",
@@ -2594,20 +2672,20 @@
               "displayName": "Mission Owner DEMO"
             },
             "capture": {
-              "assignmentId": "856e23c9-0e2d-40d3-81ec-9889a118ffe5",
+              "assignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
               "permissionSetVersion": "v1"
             },
-            "occurredAt": "2026-10-30T13:33:42.944Z"
+            "occurredAt": "2026-10-31T09:39:14.238Z"
           }
         ],
         "hasMore": false,
         "nextBeforeRevision": null
       }
     },
-    "/tasks/9dce704e-2565-4bfb-b5b5-23420858bf07": {
+    "/tasks/97843805-e94a-4ad4-bc4e-166868a0d22c": {
       "mutable": true,
       "task": {
-        "id": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+        "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -2617,8 +2695,8 @@
         "dueDate": "2026-11-02",
         "priority": "normal",
         "version": 2,
-        "createdAt": "2026-10-30T13:33:42.975Z",
-        "updatedAt": "2026-10-30T13:33:43.030Z",
+        "createdAt": "2026-10-31T09:39:14.286Z",
+        "updatedAt": "2026-10-31T09:39:14.380Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2628,7 +2706,7 @@
         "completion": null
       }
     },
-    "/tasks/9dce704e-2565-4bfb-b5b5-23420858bf07/history": {
+    "/tasks/97843805-e94a-4ad4-bc4e-166868a0d22c/history": {
       "events": [
         {
           "action": "task.created",
@@ -2642,8 +2720,8 @@
               "description": null
             }
           },
-          "id": "05093e32-a52e-4cd4-94e3-4a7d1b1ee68e",
-          "occurredAt": "2026-10-30T13:33:42.975Z",
+          "id": "00b0f279-d258-4c6d-b1b3-3a4846e7f961",
+          "occurredAt": "2026-10-31T09:39:14.286Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2651,7 +2729,7 @@
           },
           "target": {
             "type": "task",
-            "taskId": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+            "taskId": "97843805-e94a-4ad4-bc4e-166868a0d22c",
             "taskTitle": "Old grouped Task 0 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
@@ -2667,8 +2745,8 @@
               }
             }
           },
-          "id": "48b68f94-9d64-4836-9abd-302cae0d075b",
-          "occurredAt": "2026-10-30T13:33:43.030Z",
+          "id": "66f2d0b4-444f-4f4b-aa28-a74ffa06f602",
+          "occurredAt": "2026-10-31T09:39:14.380Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2676,17 +2754,17 @@
           },
           "target": {
             "type": "task",
-            "taskId": "9dce704e-2565-4bfb-b5b5-23420858bf07",
+            "taskId": "97843805-e94a-4ad4-bc4e-166868a0d22c",
             "taskTitle": "Old grouped Task 0 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
         }
       ]
     },
-    "/tasks/eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b": {
+    "/tasks/10559ebd-6aeb-4e6b-83ee-afc048b984c6": {
       "mutable": true,
       "task": {
-        "id": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+        "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -2696,8 +2774,8 @@
         "dueDate": "2026-11-09",
         "priority": "normal",
         "version": 2,
-        "createdAt": "2026-10-30T13:33:42.999Z",
-        "updatedAt": "2026-10-30T13:33:43.034Z",
+        "createdAt": "2026-10-31T09:39:14.325Z",
+        "updatedAt": "2026-10-31T09:39:14.369Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2707,7 +2785,7 @@
         "completion": null
       }
     },
-    "/tasks/eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b/history": {
+    "/tasks/10559ebd-6aeb-4e6b-83ee-afc048b984c6/history": {
       "events": [
         {
           "action": "task.created",
@@ -2721,8 +2799,8 @@
               "description": null
             }
           },
-          "id": "83da6564-52ac-46e3-9a01-4df6957163ed",
-          "occurredAt": "2026-10-30T13:33:42.999Z",
+          "id": "de6fbca6-e90e-4c34-9087-c02b72980412",
+          "occurredAt": "2026-10-31T09:39:14.325Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2730,7 +2808,7 @@
           },
           "target": {
             "type": "task",
-            "taskId": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+            "taskId": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
             "taskTitle": "Old grouped Task 1 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
@@ -2746,8 +2824,8 @@
               }
             }
           },
-          "id": "262ea725-b87a-4bf7-b817-39459e4bdde0",
-          "occurredAt": "2026-10-30T13:33:43.034Z",
+          "id": "bb0bbcaa-fd90-44a9-89ff-9b7c71a8bc0f",
+          "occurredAt": "2026-10-31T09:39:14.369Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2755,7 +2833,7 @@
           },
           "target": {
             "type": "task",
-            "taskId": "eea7c6d2-42d1-47c3-8f6a-2baba0fc2b8b",
+            "taskId": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
             "taskTitle": "Old grouped Task 1 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
@@ -2766,20 +2844,126 @@
       "events": [
         {
           "action": "client.union_confirmed",
-          "projectionReference": "cbf943b2-0e6f-4dd1-b09d-de4a324f92a9",
+          "projectionReference": "2515c9d0-9791-41a7-af9c-365fde29ecb3",
           "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
           "actor": {
             "kind": "authorized_resolver"
           },
           "target": {
             "type": "client_union_operation",
-            "projectionReference": "cbf943b2-0e6f-4dd1-b09d-de4a324f92a9",
+            "projectionReference": "2515c9d0-9791-41a7-af9c-365fde29ecb3",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
         }
       ],
-      "detailReferences": ["cbf943b2-0e6f-4dd1-b09d-de4a324f92a9"]
+      "detailReferences": ["2515c9d0-9791-41a7-af9c-365fde29ecb3"]
+    },
+    "/knowledge/sources/f1008f61-d6a5-4515-9a03-3e43377a3b13/administration": {
+      "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+      "revision": 2,
+      "state": "admitted",
+      "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+      "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a",
+      "documentId": "b152a9e3-0169-418e-9979-1b1fcdacc782",
+      "documentVersionId": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
+      "representationId": "d243981a-e802-4e8d-aa28-875cd04871ab",
+      "versionStatus": "official",
+      "language": "en",
+      "ownerReference": "Fictional source owner",
+      "provenance": "Synthetic PDF created through public governed Document commands",
+      "rightsEvidenceReference": "SYNTHETIC authored fixture declaration; no real license",
+      "permittedPurpose": "cited-evidence",
+      "confidentiality": "company-confidential",
+      "effectiveFrom": "2026-01-01T00:00:00.000Z",
+      "effectiveUntil": "2027-01-01T00:00:00.000Z",
+      "passages": [
+        {
+          "locator": "p1",
+          "text": "There are four boxes in this fictional dossier."
+        }
+      ],
+      "history": [
+        {
+          "revision": 1,
+          "action": "drafted",
+          "actorMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "actorDisplayName": "Mission Owner DEMO",
+          "recordedAt": "2026-10-31T09:39:15.039Z"
+        },
+        {
+          "revision": 2,
+          "action": "admitted",
+          "actorMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "actorDisplayName": "Mission Owner DEMO",
+          "recordedAt": "2026-10-31T09:39:15.089Z"
+        }
+      ]
+    },
+    "/documents/b152a9e3-0169-418e-9979-1b1fcdacc782/versions": {
+      "workingRevision": 3,
+      "mutable": true,
+      "versions": [
+        {
+          "id": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
+          "number": 1,
+          "createdAt": "2026-10-31T09:39:14.696Z",
+          "createdBy": {
+            "displayName": "Mission Owner DEMO"
+          },
+          "representations": [
+            {
+              "id": "4ef05674-e794-4dcb-80d4-1231ae058ea6",
+              "kind": "external-reference",
+              "verification": "unverified",
+              "position": 1,
+              "form": "other",
+              "primary": true,
+              "appendedAfterDesignation": false,
+              "addedAt": "2026-10-31T09:39:14.696Z",
+              "addedBy": {
+                "displayName": "Mission Owner DEMO"
+              },
+              "access": "granted",
+              "url": "https://example.test/fictional/knowledge-original"
+            }
+          ],
+          "pdfContent": {
+            "representationId": "d243981a-e802-4e8d-aa28-875cd04871ab",
+            "revision": 2,
+            "fileName": "fictional-knowledge-original.pdf",
+            "mediaType": "application/pdf",
+            "size": 1727,
+            "sha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
+            "storedAt": "2026-10-31T09:39:14.829Z",
+            "storedBy": {
+              "displayName": "Mission Owner DEMO"
+            },
+            "scan": {
+              "outcome": "clean",
+              "engine": "ClamAV 1.4.3",
+              "scannedAt": "2026-10-31T09:39:14.824Z"
+            },
+            "state": "stored",
+            "access": "granted"
+          },
+          "status": "official",
+          "designatedAt": "2026-10-31T09:39:14.893Z",
+          "designatedBy": {
+            "displayName": "Mission Owner DEMO"
+          },
+          "frozen": {
+            "title": "Fictional governed source for cited evidence",
+            "purpose": "Qualify exact-source admission without real Client data"
+          }
+        }
+      ]
     }
+  },
+  "knowledge": {
+    "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+    "documentId": "b152a9e3-0169-418e-9979-1b1fcdacc782",
+    "versionId": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
+    "pdfSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975"
   },
   "pdfSha256": "ed5bbbd62e0a5d77042803266e0c679ceafde1a37d5566ccefe41d803bb8568d"
 }

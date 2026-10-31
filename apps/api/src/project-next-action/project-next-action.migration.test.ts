@@ -36,12 +36,12 @@ function permissions(value: unknown) {
   };
 }
 it.skipIf(!process.env.TEST_DATABASE_URL)(
-  'upgrades genuine populated 454 / 0089 twice, conserves every full row, old nested receipt and PDF, then retains a new declaration through two application restarts',
+  'upgrades genuine populated published parent / 0090 twice, conserves every full row, old nested receipt and PDF, then retains a new declaration through two application restarts',
   async () => {
     const url = process.env.TEST_DATABASE_URL;
     if (!url) throw new Error('PostgreSQL required.');
     const directory = 'test-support/project-next-action-migration',
-      backup = await readFile(directory + '/predecessor-0089.sql.gz'),
+      backup = await readFile(directory + '/predecessor-0090.sql.gz'),
       contextBytes = await readFile(directory + '/context.json');
     const provenance = object(
         JSON.parse(await readFile(directory + '/provenance.json', 'utf8')),
@@ -53,11 +53,11 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
     expect(createHash('sha256').update(contextBytes).digest('hex')).toBe(
       provenance.contextSha256,
     );
-    expect(c.source).toBe('454cf6b49c30490ad38b568abf0487366167df7b');
-    expect(c.predecessor).toBe('0089_mission_applicability');
+    expect(c.source).toBe('f9928112d28b819cde6149f4af8a643e088c2dbf');
+    expect(c.predecessor).toBe('0090_mission_applicability');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: url,
-      namePrefix: 'pna_0089_upgrade',
+      namePrefix: 'pna_0090_upgrade',
     });
     let harness: PostgresRestTestHarness | undefined;
     try {
@@ -83,7 +83,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         ),
         entries = objects(journal.entries),
         index = entries.findIndex(
-          (entry) => entry.tag === '0090_project_next_action',
+          (entry) => entry.tag === '0091_project_next_action',
         );
       expect(entries[index - 1]?.tag).toBe(c.predecessor);
       const tables = (
@@ -109,11 +109,37 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(objects(before.task_result_declarations)).toHaveLength(1);
       expect(objects(before.mission_applicability_facts)).toHaveLength(1);
       expect(objects(before.client_union_operations)).toHaveLength(1);
+      for (const table of [
+        'knowledge_sources',
+        'knowledge_passages',
+        'knowledge_source_events',
+        'knowledge_source_commands',
+        'knowledge_interactions',
+      ])
+        expect(objects(before[table]).length, table).toBeGreaterThan(0);
+      expect(objects(before.document_pdfs)).toHaveLength(2);
+      expect(
+        (
+          await pool.query(
+            "SELECT bundle,permission_set_version FROM company_role_assignments WHERE bundle IN ('company_knowledge_source_administrator','company_knowledge_evidence_reader') ORDER BY bundle::text",
+          )
+        ).rows,
+      ).toEqual([
+        {
+          bundle: 'company_knowledge_evidence_reader',
+          permission_set_version: 'v1',
+        },
+        {
+          bundle: 'company_knowledge_source_administrator',
+          permission_set_version: 'v1',
+        },
+      ]);
       await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
       expect(await snapshot()).toEqual(before);
       await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
       expect(await snapshot()).toEqual(before);
       const environment = {
+        KNOWLEDGE_EVIDENCE_ENABLED: 'true',
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
@@ -145,6 +171,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       harness = await createPostgresRestTestHarness({
         databaseUrl: database.targetUrl,
         environment,
+        serverClock: { now: () => new Date('2026-10-31T12:00:00Z') },
       });
       for (const [path, value] of Object.entries(object(c.reads))) {
         const response = await call(path);
@@ -177,6 +204,23 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           .update(Buffer.from(await download.arrayBuffer()))
           .digest('hex'),
       ).toBe(c.pdfSha256);
+      async function conservedKnowledge() {
+        const knowledge = object(c.knowledge);
+        const adminPath = `/knowledge/sources/${string(knowledge.sourceId)}/administration`;
+        const administration = await call(adminPath);
+        expect(administration.status).toBe(200);
+        expect(await administration.json()).toEqual(object(c.reads)[adminPath]);
+        const pdf = await call(
+          `/documents/${string(knowledge.documentId)}/versions/${string(knowledge.versionId)}/content`,
+        );
+        expect(pdf.status).toBe(200);
+        expect(
+          createHash('sha256')
+            .update(Buffer.from(await pdf.arrayBuffer()))
+            .digest('hex'),
+        ).toBe(knowledge.pdfSha256);
+      }
+      await conservedKnowledge();
       for (const projectId of [
         c.projectId,
         c.manualId,
@@ -242,8 +286,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         harness = await createPostgresRestTestHarness({
           databaseUrl: database.targetUrl,
           environment,
+          serverClock: { now: () => new Date('2026-10-31T12:00:00Z') },
         });
         expect(await (await call(path)).json()).toEqual(firstRead);
+        await conservedKnowledge();
         expect(
           await (
             await call(path, {
