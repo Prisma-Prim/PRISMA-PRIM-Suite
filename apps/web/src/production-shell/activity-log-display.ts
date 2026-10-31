@@ -23,6 +23,7 @@ import { useProjectStageCopy } from '../project/project-stage.copy';
 import { useProjectTemplateCopy } from '../project/project-template.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useActivityLogCopy } from './activity-log.copy';
+import { useKnowledgeAssignmentActivityCopy } from './knowledge-assignment-activity.copy';
 import type {
   ActivityLogEvent,
   ProjectLifecycleChangedActivityLogEvent,
@@ -40,6 +41,7 @@ const stageOperationKeys = {
 
 export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
+  const knowledgeAssignments = useKnowledgeAssignmentActivityCopy();
   const ideas = useIdeasCopy();
   const missionPlan = useMissionPlanCopy();
   const model = useOfferModelCopy();
@@ -73,6 +75,14 @@ export function useActivityLogDisplay() {
   const reviewCopy = useMissionReviewCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
+    'company_knowledge_source_administrator_assignment.granted':
+      knowledgeAssignments('administratorGranted'),
+    'company_knowledge_source_administrator_assignment.revoked':
+      knowledgeAssignments('administratorRevoked'),
+    'company_knowledge_evidence_reader_assignment.granted':
+      knowledgeAssignments('readerGranted'),
+    'company_knowledge_evidence_reader_assignment.revoked':
+      knowledgeAssignments('readerRevoked'),
     ...taskResultActions,
     'company_mission_result_reviewer_assignment.granted': reviewCopy('granted'),
     'company_mission_result_reviewer_assignment.revoked': reviewCopy('revoked'),

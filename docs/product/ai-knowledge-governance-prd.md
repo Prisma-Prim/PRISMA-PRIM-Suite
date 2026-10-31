@@ -723,3 +723,190 @@ exclusive/private output recovery. Source kit literals and the existing §17 pil
 command stay unchanged. Actual source inventory/rights/admission, real approvers
 and grants, representative useful cases, registry/interactions and legal/security/
 provider review/configuration remain production AI dependencies under §§9/14–16.
+
+## 19. Read-only cited-evidence connection for Codex — bounded software contract
+
+**Status:** Selected bounded application contract; production promotion is separate.
+
+**Capability:** `knowledge.cited-evidence`, version `1`.
+
+**Owner:** Knowledge; NestJS retains authorization, source admission and exact references.
+
+The initial connection exposes PRISMA evidence through standard MCP to an
+operator-configured Codex client. ChatGPT/Codex performs inference; this server
+returns governed evidence, not a generated answer or a confirmed Analysis. It
+uses no model API key and never reads Codex credentials, ChatGPT cookies or
+subscription tokens. Sections 5–9/14–16 and their actual source, representative,
+legal/security and production-promotion requirements remain in force. Synthetic
+software tests satisfy none of those real-world inputs.
+
+### 19.1 Source admission and literal curated projections
+
+A Company Knowledge Source names an exact official or deliberately historical
+Document Version and one preserved PDF representation. Creation verifies native
+Document/content visibility, the actual preserved byte checksum and the Version
+binding. Unverified external references and draft Document Versions are not
+admissible. Official designation alone grants no knowledge eligibility.
+
+The closed draft input contains `documentId`, `documentVersionId`,
+`representationId`, `sourceSha256`, `language` (`ro`, `ru`, `en`),
+`ownerReference` (1–200 characters), `provenance` and `rightsEvidenceReference`
+(each 1–1000), `permittedPurpose: "cited-evidence"`, `effectiveFrom`,
+`effectiveUntil` and `passages`. Effective instants use exact UTC
+`YYYY-MM-DDTHH:mm:ss.sssZ`, with an end strictly after the start. Confidentiality
+comes from the governed Document and grants no additional access.
+
+There are 1–20 passages with distinct literal locators (1–120 characters,
+excluding `.` and `..`) and literal text (1–16384 characters); their serialized
+array is at most 48000 UTF-8 bytes. NUL, unsupported control characters and
+unpaired surrogates are rejected. No whitespace, case or Unicode normalization
+changes a passage. The projection checksum binds Version, representation,
+source checksum and ordered locator/text pairs. Individual passage hashes bind
+exact UTF-8 text. A projection is a human-curated transcription, not an OCR or
+semantic-correspondence result verified by the server.
+
+The lifecycle is `draft → admitted → revoked`, with `draft → revoked` also
+available. There is no un-revoke, in-place content correction or deletion.
+Changed source/projection content requires a new Source. Approval names the
+expected revision and both source/projection hashes with the exact attestation
+`exact-version-source-and-use-reviewed/v1`. The authenticated administrator
+thereby records a review declaration for that exact content and use. A nonempty
+rights reference or an attestation does not independently prove a license,
+legal review, expert approval or a real business-source admission.
+
+Commands require an Idempotency-Key and optimistic revision for transitions.
+The key is scoped to Workspace and actor membership; Company, target, operation
+and validated input are fingerprinted. An identical retry rechecks current
+source-administration and native Document access, then returns the original
+receipt. A changed/reused command conflicts. Receipts describe the original
+command revision, not a promise of current admission. Projection, source state,
+receipt and attributed history commit atomically. Database guards preserve
+immutable content and append-only contiguous transition history.
+
+### 19.2 Authority and private audit
+
+Two new Company bundles start **unassigned**, each with immutable captured `v1`:
+
+| Bundle                                 | Permission                | Boundary                                                |
+| -------------------------------------- | ------------------------- | ------------------------------------------------------- |
+| Company Knowledge Source Administrator | `knowledge.source.manage` | Draft, attest, revoke and inspect source administration |
+| Company Knowledge Evidence Reader      | `knowledge.evidence.read` | Read admitted cited evidence                            |
+
+Existing Workspace assignment management owns explicit grants/revokes. No old
+bundle version expands, existing role/title implies neither new permission, and
+neither bundle supplies native Document or content visibility. Every operation
+also requires the current Company and its existing Document/content authority.
+Captured assignment identity/version is checked against its live unrevoked row;
+a replaced assignment cannot revive an old capture with equal permission strings.
+
+Source administration can prepare an inventory before capability activation.
+Its inspection/history additionally requires current native Document visibility.
+The current Accountability owner appends restricted `knowledge_source_events`
+inside the command transaction, with exact source/revision, action, actor
+membership/Internal User/display snapshot, command fingerprint and server instant.
+This follows its existing restricted-event pattern: there is no new generic
+Activity/Home projection and no source text, rights evidence or token in event
+metadata. Capability use alone cannot inspect drafts, rights or administration.
+
+Successful evidence reads append minimal `knowledge_interactions` attribution:
+operation, capability version, authenticated membership, Company, instant and
+returned source/Version/projection references. They store no query, source body,
+credential, generated answer or business decision. This is read attribution,
+not an AI approval framework. Read operations otherwise conserve governed
+Document Versions, business commands and source transition history.
+
+### 19.3 Protected REST and current evidence
+
+The [OpenAPI contract](../../apps/api/openapi.yaml) owns exact route schemas.
+Source administration uses the ordinary PRISMA identity boundary:
+
+- `POST /api/knowledge/sources` creates a draft;
+- `POST /api/knowledge/sources/{sourceId}/admission` records the exact attestation;
+- `POST /api/knowledge/sources/{sourceId}/revocation` withdraws admission;
+- `GET /api/knowledge/sources/{sourceId}/administration` inspects private metadata,
+  immutable passage content and attributed history;
+- Company Knowledge assignments use `/api/knowledge/assignments/administrators`
+  or `/readers`, with the existing Workspace assignment authority.
+
+Evidence reads use a legitimate PRISMA Bearer token for the explicitly configured
+`KNOWLEDGE_TOKEN_AUDIENCE`, verified through the existing Clerk identity adapter
+with the existing authorized web party plus that resource audience. This does
+not create an OAuth authorization server or widen ordinary web authentication.
+The existing narrowly gated deterministic test/demo identity mode is reused only
+in its allowed environment; it is not a production authentication fallback.
+
+The server-side `KNOWLEDGE_EVIDENCE_ENABLED` switch defaults to disabled. An
+explicit validated deployment configuration, actual sources/rights, explicit
+assignments and required reviews precede real activation; tool arguments cannot
+set configuration. Enabled software is operable with legitimately configured
+credentials and admitted sources; it is not hardcoded to return no results.
+
+The read surface is:
+
+- `GET /api/knowledge/sources`: an authorized source page;
+- `GET /api/knowledge/search?query=...`: exact case-sensitive literal matching,
+  with no semantic model, embeddings, invented precedence or answer;
+- `GET /api/knowledge/sources/{sourceId}/passages/{locator}`: an exact passage.
+
+Current mode is default and returns only currently official Versions with
+currently effective, admitted `cited-evidence` sources. Explicit historical mode
+requires one exact `documentVersionId`; revoked/expired admission is never
+restored by historical intent. Each call re-establishes current actor, Company,
+Document/content access and admission before projection content is published.
+An unauthorized source contributes no title, identifier, count or zero.
+
+List/search pages contain at most 20 results. Query length is 1–200 characters,
+cursors at most 2048, source IDs are UUIDs and passage locators 1–120 characters.
+A non-null cursor resumes after the last authorized result; a final empty search
+page may terminate an exactly full previous page. No total or hidden-source count
+is emitted. Multiple conflicting sources stay separate and retain their exact
+references; no source gets inferred authority over another.
+
+Read authorization and source/Version locks follow existing transaction
+linearization. Revocation committed before the live pre-projection gate prevents
+publication; already-authorized bytes released before a later revocation cannot
+be recalled over a network. A client disconnect retires its own pending bridge
+work; one reply cannot be rebound to another request, actor or context.
+
+### 19.4 MCP operator connection and honest proof
+
+The maintained pinned TypeScript MCP SDK exposes exactly three tools:
+`list_knowledge_sources`, `search_knowledge`, `get_knowledge_passage`.
+Their closed input/output schemas enforce the same mode, exact history,
+pagination and literal-reference bounds. They are read-only/non-destructive;
+there is no write, approval, SQL, filesystem or arbitrary-fetch tool.
+
+Build the API normally, then configure Codex to launch
+`apps/api/dist/knowledge-mcp/stdio.main.js` with Node. The stdio bridge consumes
+only operator-provided environment variables:
+
+- `PRISMA_KNOWLEDGE_API_ORIGIN`: fixed PRISMA HTTPS origin; numeric-loopback HTTP
+  is permitted for isolated local development;
+- `PRISMA_KNOWLEDGE_WORKSPACE_ID`, `PRISMA_KNOWLEDGE_COMPANY_ID`: fixed selected
+  scope, revalidated by the server;
+- `PRISMA_KNOWLEDGE_BEARER_TOKEN`: legitimate PRISMA resource credential supplied
+  by the operator, never discovered from a client account.
+
+A Codex stdio configuration uses `command = "node"`, the absolute compiled entry
+as its `args`, and these variable **names** in `env_vars`. No credential value
+belongs in a committed example. HTTP redirects, model-provided origins/context,
+userinfo, query/fragment-bearing origins and arbitrary credential headers are
+rejected. Each upstream request has a 10-second deadline and a 2-MiB decoded
+response limit. Returned citation text hashes and exact requested identities
+are verified at the client boundary; extra upstream administration fields are
+not passed to the model. Stdio stdout contains only MCP; failures are sanitized.
+
+The initial deliverable is a Codex-compatible stdio connector, not a configured
+user account. ChatGPT remote connection needs a reachable HTTPS MCP endpoint and
+proper protected-resource/OAuth authorization-server configuration; this slice
+does not invent those settings or reuse a ChatGPT subscription as a model API.
+Codex's `auth = "chatgpt"` first-party mode is not authentication to PRISMA.
+
+Software proof uses public governed Document/PDF commands, explicit fictional
+new grants, actual Nest/PostgreSQL source transitions and an actual MCP SDK
+client through the HTTP bridge. Only the external identity boundary is replaced
+by declared fixtures in that native proof. Separate tests exercise the real Clerk
+SDK with synthetic signed keys and forwarded audience/party constraints. Neither
+is proof of a live Clerk tenant or a configured ChatGPT/Codex account. Independent
+ro/ru/en PDF text and curated literal citations prove mechanical multilingual
+preservation; there is no semantic-answer or representative-pilot score.
