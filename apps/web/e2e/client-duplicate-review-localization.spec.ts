@@ -95,11 +95,21 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
       (code) => localStorage.setItem('prisma-prim.interface-locale', code),
       locale.code,
     );
+    const initialListRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === 'GET' &&
+        url.pathname === '/api/client-duplicate-reviews' &&
+        url.searchParams.get('page_size') === '20' &&
+        !url.searchParams.has('cursor')
+      );
+    });
     await page.goto('/?frame=prisme#clients');
     const panel = page.locator('.client-duplicate-review');
     await expect(
       panel.getByText(locale.listLoading, { exact: true }),
     ).toBeVisible();
+    await initialListRequest;
     const beforeListSwitch = [...apiRequests];
     await chooseReviewLocale(page, nextLocale.code);
     await expect(
@@ -119,10 +129,17 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
     await expect(panel.getByText('TAX-236', { exact: true })).toHaveCount(0);
     const originalOpen = await open.elementHandle();
     await open.focus();
+    const initialDetailRequest = page.waitForRequest(
+      (request) =>
+        request.method() === 'GET' &&
+        new URL(request.url()).pathname ===
+          `/api/client-duplicate-reviews/${reviewReference}`,
+    );
     await page.keyboard.press('Enter');
     await expect(
       panel.getByText(nextLocale.detailLoading, { exact: true }),
     ).toBeVisible();
+    await initialDetailRequest;
     const beforeDetailSwitch = [...apiRequests];
     await chooseReviewLocale(page, locale.code);
     await expect(
@@ -184,10 +201,20 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
       name: locale.older,
       exact: true,
     });
+    const initialOlderRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === 'GET' &&
+        url.pathname === '/api/client-duplicate-reviews' &&
+        url.searchParams.get('page_size') === '20' &&
+        url.searchParams.get('cursor') === reviewCursor
+      );
+    });
     await older.click();
     await expect(
       panel.getByRole('button', { name: locale.olderLoading, exact: true }),
     ).toBeDisabled();
+    await initialOlderRequest;
     const beforeOlderSwitch = [...apiRequests];
     await chooseReviewLocale(page, nextLocale.code);
     await expect(
@@ -252,6 +279,12 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
       name: locale.attach,
       exact: true,
     });
+    const initialPutRequest = page.waitForRequest(
+      (request) =>
+        request.method() === 'PUT' &&
+        new URL(request.url()).pathname ===
+          `/api/clients/${state.comparison.candidate.id}/active-company-relationship`,
+    );
     await attach.click();
     await expect(
       panel.getByRole('button', { name: locale.pending, exact: true }),
@@ -259,6 +292,7 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
     await expect(
       panel.getByRole('button', { name: locale.open, exact: true }),
     ).toBeDisabled();
+    await initialPutRequest;
     const beforePutSwitch = [...apiRequests];
     await chooseReviewLocale(page, nextLocale.code);
     await expect(
