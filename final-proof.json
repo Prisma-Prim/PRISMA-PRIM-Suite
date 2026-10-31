@@ -1,0 +1,79 @@
+{
+  "issue": 987,
+  "pr": 988,
+  "source": "7d952406cfe101be6b4aa1db9a575b48749e5cef",
+  "base": "e1a8a8034d18a19dc4fca089de3cffb410d76063",
+  "tree": "6fc6fa1ed02824ba6785387e246127d358cc1d35",
+  "canonicalLocalGate": {
+    "attempt": 3,
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 2015,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "7d952406cfe101be6b4aa1db9a575b48749e5cef",
+    "base": "e1a8a8034d18a19dc4fca089de3cffb410d76063",
+    "blockingFindingsRemaining": 0,
+    "actualApprovalComment": 6499422361,
+    "order": [
+      "original independent Standards",
+      "original independent Spec",
+      "actual delegated technical approval",
+      "metadata-only approval normalization",
+      "mechanical current-main composition"
+    ],
+    "standards": {
+      "blocking": 0,
+      "followUps": 0
+    },
+    "spec": {
+      "blocking": 0,
+      "followUps": 0
+    },
+    "integrationInspection": "Canonical approved PDF blob equals96e2016e exactly. Index preserves current-main entries plus original discovery pointer; no semantic conflict. All10 commercial-pdf source blobs equal original reviewed source. Formatting/links/diff checks pass. Existing review disposition remains applicable; no duplicate review trigger.",
+    "documentationOnly": true,
+    "runtimeTestsExecutedForThisDocsDelivery": false
+  },
+  "independentGitHubCIExecuted": false,
+  "priorFailedCanonicalGates": [
+    {
+      "attempt": 1,
+      "status": "failed",
+      "scope": "docs_only",
+      "reason": "Canonical standard doctor pnpm exec readiness probe exceeded its unchanged10s budget. Remaining required families unexecuted; heavy families source-derived not_required.",
+      "targetedDiagnosis": "Normal frozen-lockfile installation completed for the current source. Default-store normalization alone still timed out. Controlled inherited-environment doctor with pnpm_config_verify_deps_before_run=false passed in634ms at exactpnpm11.20.0. This existing optional setting is explicitly inherited/recorded by verify-local; it prevents redundant implicit dependency verification before each exec after the explicit frozen install. Actual pnpm exec/version probe and every canonical test/type/lint command remain unchanged.",
+      "newCondition": "Explicit current frozen dependency setup plus the runner-supported configuration removes the observed implicit-startup delay. No source/assertion/timeout/workflow/protection change.",
+      "originalEvidence": "verification-1",
+      "next": "Fresh verification-2 with explicit recorded setting; preserve prior failure. No claim that default automatic verification completes within10s."
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "reason": "Doctor passed with recorded supported pnpm setting; literal format family failed because prettier executable was missing. Remaining required families unexecuted; no runtime pass claim.",
+      "fullRerunsPaused": true,
+      "targetedDiagnosis": "Observed package payloads present but node_modules/.bin and .modules.yaml missing. Normal/force installs incorrectly reported up-to-date for that partial state. Moved only this newly created worktree's ignored dependency directories to named temporary backups, then a clean normal frozen-lockfile install recreated module metadata and binaries in2.8s. No source/lockfile or test command change.",
+      "resumptionCondition": "Only after literal pnpm format:check and the standard doctor pass in repaired source with the existing recorded pnpm_config_verify_deps_before_run=false setting. Preserve both failed complete reports; future gate must be a fresh directory.",
+      "prerequisiteRestored": {
+        "cleanFrozenInstallExit": 0,
+        "literalFormatCheckExit": 0,
+        "standardDoctorExit": 0,
+        "moduleMetadataAndBinaryDirectoryPresent": true,
+        "sourceAndLockfileUnchanged": true
+      },
+      "fullRerunsResumedOnlyAfterTargetedRestoration": true
+    }
+  ],
+  "scope": "Documentation-only existing approved non-official illustrative Offer v1 PDF qualification, Commercial33.13 and its index pointer. Composed current main mechanically; approved contract/source semantics conserved. No renderer, route, permission, storage, numbering, transmission or runtime delivery. Separate fresh runtime readiness is still required. All10 commercial-pdf source blobs remain identical to reviewed source; finite historical measurements are not fresh packaging/App proof.",
+  "publication": "Unmodified canonical metadata manifest/report plus compact proof/index only. Bulk inputs contain exact public Git path/mode/SHA256 entries, individually checked against source Git objects and file bytes. Log hashes identify retained private logs; no raw logs, images, traces, dossier or model prose selected.",
+  "keepThrough": "2026-11-22T23:59:59Z"
+}
