@@ -112,6 +112,7 @@ export function declaredGross(net: string, tax: string) {
 
 type Content = Omit<
   OfferView['version'],
+  | 'createdAt'
   | 'provenance'
   | 'pricingSnapshotId'
   | 'pricingSnapshot'

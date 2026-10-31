@@ -356,6 +356,7 @@ export function pendingOffer({
     revision: 1,
     version: {
       id: versionId,
+      createdAt: '2026-09-27T09:00:00.000Z',
       qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
       qualityRuleSetVersion: bindingVersion,
       latestQualityRun: latestRun

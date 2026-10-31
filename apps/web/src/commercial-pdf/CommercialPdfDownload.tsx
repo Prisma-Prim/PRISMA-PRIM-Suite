@@ -20,8 +20,11 @@ type ScopeFields =
   | 'opportunityId'
   | 'language'
   | 'sourceRendererVersion';
+type WithoutScope<T> = T extends CommercialPdfTarget
+  ? Omit<T, ScopeFields>
+  : never;
 type Selection =
-  | (Omit<Extract<CommercialPdfTarget, { kind: 'offer' }>, ScopeFields> & {
+  | (WithoutScope<Extract<CommercialPdfTarget, { kind: 'offer' }>> & {
       requiresClientRead?: false;
     })
   | (Omit<Extract<CommercialPdfTarget, { kind: 'contract' }>, ScopeFields> & {
@@ -132,18 +135,24 @@ export function useCommercialPdfDownload(props: Props) {
         return;
       }
       const { requiresClientRead: selectedClientRead, ...source } = selection;
+      const identity = {
+        workspaceId: props.actor.workspaceId,
+        companyId: company.id,
+        opportunityId: props.opportunityId,
+        sourceRendererVersion: 1,
+      } satisfies Pick<
+        CommercialPdfTarget,
+        'workspaceId' | 'companyId' | 'opportunityId' | 'sourceRendererVersion'
+      >;
+      const target: CommercialPdfTarget =
+        source.provenance === 'ILLUSTRATIVE'
+          ? { ...source, ...identity, language: 'en' }
+          : { ...source, ...identity, language: 'ro' };
       const next: Displayed = {
         scope,
         requiresClientRead: selectedClientRead ?? false,
         inlineBlocked,
-        target: {
-          ...source,
-          workspaceId: props.actor.workspaceId,
-          companyId: company.id,
-          opportunityId: props.opportunityId,
-          language: 'ro',
-          sourceRendererVersion: 1,
-        },
+        target,
       };
       // Display refreshes cannot cancel or retarget a pending/failed exact command.
       setDisplayed((previous) =>

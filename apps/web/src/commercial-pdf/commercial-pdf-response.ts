@@ -6,7 +6,6 @@ type CommercialPdfIdentity = {
   reference: number;
   versionId: string;
   versionNumber: number;
-  language: 'ro';
   createdAt: string;
   sourceRendererVersion: 1;
   sourceHtmlSha256: string;
@@ -16,12 +15,20 @@ export type CommercialPdfTarget = CommercialPdfIdentity &
     | {
         kind: 'offer';
         provenance: 'COMPANY_MODEL_ESTIMATE';
+        language: 'ro';
         sourceRendererCode: 'OFFER_COMPANY_CONSULTING_RO';
       }
     | {
         kind: 'contract';
         provenance: 'COMPANY_MODEL_OFFER';
+        language: 'ro';
         sourceRendererCode: 'COMPANY_CONSULTING_CONTRACT_RO';
+      }
+    | {
+        kind: 'offer';
+        provenance: 'ILLUSTRATIVE';
+        language: 'en';
+        sourceRendererCode: 'OFFER_ILLUSTRATIVE';
       }
   );
 export async function readCommercialPdfResponse(
@@ -37,7 +44,16 @@ export async function readCommercialPdfResponse(
   const length = response.headers.get('content-length'),
     metadata = response.headers.get('x-commercial-pdf-source'),
     digest = response.headers.get('x-commercial-pdf-sha256');
-  const filename = `${target.kind}-${target.reference}-v${target.versionNumber}-non-official-ro.pdf`;
+  const filename = `${target.kind}-${target.reference}-v${target.versionNumber}-non-official-${target.language}.pdf`;
+  const renderers = {
+    ILLUSTRATIVE: 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF/1',
+    COMPANY_MODEL_ESTIMATE: 'COMMERCIAL_MODEL_PDF/1',
+    COMPANY_MODEL_OFFER: 'COMMERCIAL_MODEL_PDF/1',
+  } satisfies Record<
+    CommercialPdfTarget['provenance'],
+    'COMMERCIAL_MODEL_PDF/1' | 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF/1'
+  >;
+  const renderer = renderers[target.provenance];
   if (
     response.status !== 200 ||
     response.headers.get('content-type') !== 'application/pdf' ||
@@ -48,8 +64,7 @@ export async function readCommercialPdfResponse(
     metadata.length > 4096 ||
     !digest ||
     !/^[0-9a-f]{64}$/u.test(digest) ||
-    response.headers.get('x-commercial-pdf-renderer') !==
-      'COMMERCIAL_MODEL_PDF/1' ||
+    response.headers.get('x-commercial-pdf-renderer') !== renderer ||
     response.headers.get('content-disposition') !==
       `attachment; filename="${filename}"` ||
     !response.body
