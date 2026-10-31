@@ -8,7 +8,10 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { CommercialPdfRenderer } from './commercial-pdf-renderer.js';
+import {
+  CommercialPdfRenderer,
+  commercialPdfRendererCode,
+} from './commercial-pdf-renderer.js';
 import {
   pdfRefusal,
   type CommercialPdfSource,
@@ -77,11 +80,14 @@ export function commercialPdfAttachment(
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('X-Commercial-Pdf-Source', JSON.stringify(result.tuple));
   response.setHeader('X-Commercial-Pdf-Sha256', result.pdfSha256);
-  response.setHeader('X-Commercial-Pdf-Renderer', 'COMMERCIAL_MODEL_PDF/1');
+  response.setHeader(
+    'X-Commercial-Pdf-Renderer',
+    `${commercialPdfRendererCode(result.tuple)}/1`,
+  );
   return new StreamableFile(result.bytes, {
     type: 'application/pdf',
     length: result.bytes.length,
-    disposition: `attachment; filename="${result.tuple.kind}-${result.tuple.reference}-v${result.tuple.versionNumber}-non-official-ro.pdf"`,
+    disposition: `attachment; filename="${result.tuple.kind}-${result.tuple.reference}-v${result.tuple.versionNumber}-non-official-${result.tuple.language}.pdf"`,
   });
 }
 

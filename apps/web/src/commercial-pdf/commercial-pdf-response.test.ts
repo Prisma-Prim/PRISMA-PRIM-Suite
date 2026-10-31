@@ -6,10 +6,41 @@ import {
   pdfReply,
   pdfTarget,
   malformedPdfBytes,
+  illustrativePdfTarget,
 } from './commercial-pdf.test-fixture';
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => vi.unstubAllGlobals());
 describe('Exact commercial binary response boundary', () => {
+  it('accepts the distinct exact illustrative binding and refuses swapped model/illustrative renderers', async () => {
+    const target = illustrativePdfTarget;
+    const reply = await pdfReply(target);
+    const result = await readCommercialPdfResponse(reply, target);
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok')
+      expect(result.value.filename).toBe('offer-7-v3-non-official-en.pdf');
+    for (const source of [target, pdfTarget]) {
+      const original = await pdfReply(source);
+      const headers = new Headers(original.headers);
+      headers.set(
+        'x-commercial-pdf-renderer',
+        source.provenance === 'ILLUSTRATIVE'
+          ? 'COMMERCIAL_MODEL_PDF/1'
+          : 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF/1',
+      );
+      expect(
+        await readCommercialPdfResponse(
+          new Response(original.body, { headers }),
+          source,
+        ),
+      ).toEqual({ status: 'malformed' });
+    }
+    expect(
+      await readCommercialPdfResponse(
+        await pdfReply(target, malformedPdfBytes()),
+        target,
+      ),
+    ).toEqual({ status: 'malformed' });
+  });
   it('verifies exact identity, declared size, media, syntax and actual PDF digest before offering bytes', async () => {
     const result = await readCommercialPdfResponse(await pdfReply(), pdfTarget);
     expect(result.status).toBe('ok');

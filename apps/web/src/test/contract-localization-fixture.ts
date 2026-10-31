@@ -222,6 +222,7 @@ export const contractLocaleAcceptedOffer = {
   revision: 4,
   version: {
     id: 'accepted-offer-version-657',
+    createdAt: '2026-10-01T08:00:00.000Z',
     versionNumber: 1,
     predecessorVersionId: null,
     supersededByVersionId: null,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { resolve, join } from 'node:path';
 
@@ -14,6 +14,9 @@ const { CommercialPdfRenderer } = require(
 );
 const { renderModelOfferRepresentation } = require(
   join(compiled, 'offer/model-offer-representation.js'),
+);
+const { renderOfferRepresentation } = require(
+  join(compiled, 'offer/offer-representation.js'),
 );
 const at = '2026-10-28T09:00:00.000Z';
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -147,5 +150,113 @@ console.log(
     assets,
     licensed: true,
     renderer: 'COMMERCIAL_MODEL_PDF/1',
+  }),
+);
+const illustrative = renderOfferRepresentation({
+  templateCode: 'OFFER_ILLUSTRATIVE',
+  templateVersion: 1,
+  illustrativeReference: 8,
+  versionNumber: 1,
+  issuingCompanyLabel: 'Synthetic packaged Company',
+  recipient: {
+    legalName:
+      'Synthetic packaged recipient Șț Русский Français a\u0306 e\u0301 ☀️',
+    taxId: null,
+    legalAddress: null,
+  },
+  createdAt: at,
+  validUntil: '2026-11-28T09:00:00.000Z',
+  lines: [
+    {
+      serviceName: 'Packaged source <literal> & once',
+      quantity: '1.0000',
+      unit: 'day',
+      unitAmount: '125.00',
+      lineNet: '125.00',
+      taxLabel: 'Declared synthetic tax',
+      lineTax: '25.00',
+      adjustment: null,
+      adjustedLineNet: '125.00',
+      adjustedLineTax: '25.00',
+    },
+  ],
+  subtotal: '125.00',
+  taxTotal: '25.00',
+  total: '150.00',
+  currency: 'EUR',
+  scopeNote: 'Synthetic packaged scope',
+  commercialConditions: null,
+  pricingSnapshotId: id(16),
+  provenance: 'ILLUSTRATIVE',
+});
+const illustrativeSource = {
+  kind: 'offer',
+  workspaceId: id(10),
+  companyId: id(11),
+  opportunityId: id(12),
+  rootId: id(15),
+  reference: 8,
+  versionId: id(17),
+  versionNumber: 1,
+  provenance: 'ILLUSTRATIVE',
+  language: 'en',
+  createdAt: at,
+  sourceRendererCode: illustrative.templateCode,
+  sourceRendererVersion: illustrative.templateVersion,
+  sourceHtmlSha256: illustrative.sha256,
+  html: illustrative.html,
+};
+const illustrativeBytes = await new CommercialPdfRenderer().render(
+  illustrativeSource,
+);
+assert(
+  illustrativeBytes.length > 100_000 &&
+    illustrativeBytes.length < 16 * 1024 * 1024,
+);
+assert(
+  Buffer.from(illustrativeBytes).subarray(0, 5).equals(Buffer.from('%PDF-')),
+);
+console.log(
+  JSON.stringify({
+    check: 'illustrative-offer-v1-pdf-production-package',
+    outcome: 'PASS',
+    cwd: process.cwd(),
+    sourceHtmlSha256: illustrative.sha256,
+    pdfSha256: createHash('sha256').update(illustrativeBytes).digest('hex'),
+    bytes: illustrativeBytes.length,
+    assets,
+    licensed: true,
+    renderer: 'COMMERCIAL_ILLUSTRATIVE_OFFER_PDF/1',
+  }),
+);
+// These are disposable, node-owned compiled assets inside this production smoke
+// container. Restore every exact byte; no source font or persistent file is edited.
+for (const [name, missing] of [
+  ['DejaVuSans.ttf', true],
+  ['DejaVuSans-Bold.ttf', false],
+  ['font-license.txt', false],
+]) {
+  const path = join(compiled, 'commercial-pdf/assets', name);
+  const original = await readFile(path);
+  try {
+    if (missing) await rm(path);
+    else await writeFile(path, 'corrupt qualification asset');
+    await assert.rejects(
+      new CommercialPdfRenderer().render(illustrativeSource),
+      (error) =>
+        error?.response?.code === 'PDF_RENDER_UNAVAILABLE' &&
+        error.getStatus() === 503,
+    );
+  } finally {
+    await writeFile(path, original);
+  }
+}
+console.log(
+  JSON.stringify({
+    check: 'illustrative-offer-v1-pdf-asset-refusals',
+    outcome: 'PASS',
+    missingRegular: true,
+    corruptBold: true,
+    corruptLicense: true,
   }),
 );
