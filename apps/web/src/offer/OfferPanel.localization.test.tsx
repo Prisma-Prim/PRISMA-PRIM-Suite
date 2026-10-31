@@ -426,6 +426,7 @@ function historicalRejectedOffer(): OfferView {
     revision: 5,
     version: {
       id: 'version-two',
+      createdAt: '2026-09-28T09:00:00.000Z',
       versionNumber: 2,
       predecessorVersionId: 'version-one',
       supersededByVersionId: 'version-three',

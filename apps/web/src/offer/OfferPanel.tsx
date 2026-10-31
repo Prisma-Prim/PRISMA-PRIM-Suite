@@ -534,7 +534,23 @@ function OfferPanelOwner({
                 sourceRendererCode: 'OFFER_COMPANY_CONSULTING_RO',
                 sourceHtmlSha256: view.offer.version.representation.sha256,
               }
-            : null
+            : view.kind === 'offer' &&
+                isExecutableOffer(view.offer) &&
+                view.offer.version.provenance === 'ILLUSTRATIVE' &&
+                view.offer.version.representation.templateVersion === 1 &&
+                view.offer.version.createdAt !== null
+              ? {
+                  kind: 'offer',
+                  rootId: view.offer.id,
+                  reference: view.offer.illustrativeReference,
+                  versionId: view.offer.version.id,
+                  versionNumber: view.offer.version.versionNumber,
+                  provenance: 'ILLUSTRATIVE',
+                  createdAt: view.offer.version.createdAt,
+                  sourceRendererCode: 'OFFER_ILLUSTRATIVE',
+                  sourceHtmlSha256: view.offer.version.representation.sha256,
+                }
+              : null
         }
       />
       <h4 id="offer-title">

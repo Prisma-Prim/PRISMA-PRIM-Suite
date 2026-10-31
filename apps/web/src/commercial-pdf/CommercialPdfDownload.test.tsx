@@ -12,7 +12,12 @@ import {
   useCommercialPdfDownload,
   CommercialPdfSelection,
 } from './CommercialPdfDownload';
-import { pdfReply, pdfTarget } from './commercial-pdf.test-fixture';
+import {
+  pdfReply,
+  pdfTarget,
+  illustrativePdfTarget,
+} from './commercial-pdf.test-fixture';
+import type { CommercialPdfTarget } from './commercial-pdf-response';
 import { modelOfferActor } from '../offer/model-offer.fixture';
 import { deterministicBrowserIdentity } from '../access-composition';
 import {
@@ -42,9 +47,11 @@ function Languages() {
 function Host({
   actor = modelOfferActor,
   versionId = pdfTarget.versionId,
+  target = pdfTarget,
 }: {
   actor?: typeof modelOfferActor;
   versionId?: string;
+  target?: CommercialPdfTarget;
 }) {
   const pdf = useCommercialPdfDownload({
     actor,
@@ -62,9 +69,9 @@ function Host({
       <CommercialPdfSelection
         onSelection={pdf.callbacks.select}
         selection={
-          pdfTarget.kind === 'contract'
-            ? { ...pdfTarget, versionId, requiresClientRead: false }
-            : { ...pdfTarget, versionId }
+          target.kind === 'contract'
+            ? { ...target, versionId, requiresClientRead: false }
+            : { ...target, versionId }
         }
       />
       <fieldset disabled>
@@ -77,11 +84,15 @@ function Host({
     </>
   );
 }
-function panel(actor = modelOfferActor, versionId = pdfTarget.versionId) {
+function panel(
+  actor = modelOfferActor,
+  versionId = pdfTarget.versionId,
+  target = pdfTarget,
+) {
   return (
     <InterfaceLocaleProvider>
       <Languages />
-      <Host actor={actor} versionId={versionId} />
+      <Host actor={actor} versionId={versionId} target={target} />
     </InterfaceLocaleProvider>
   );
 }
@@ -95,37 +106,46 @@ afterEach(() => {
   localStorage.clear();
 });
 describe('Independent exact PDF read lifetime', () => {
-  it('preserves independent uncertain/draft state, prevents duplicates, keeps one target across all locales and permits explicit same-target retry', async () => {
-    let release: ((response: Response) => void) | undefined;
-    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          release = resolve;
-        }),
-    );
-    render(panel());
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Download non-official PDF' }),
-    );
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    expect(
-      screen.getByRole('button', { name: 'Download non-official PDF' }),
-    ).toBeDisabled();
-    for (const language of ['ro', 'ru', 'fr', 'en'])
-      fireEvent.click(screen.getByRole('button', { name: language }));
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByLabelText('Independent uncertain command draft'),
-    ).toHaveValue('literal draft retained');
-    await act(async () => {
-      release?.(new Response('{}', { status: 503 }));
-    });
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Retry non-official PDF' }),
-    );
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    expect(fetch.mock.calls[1][0]).toBe(fetch.mock.calls[0][0]);
-  });
+  it.each(['model', 'illustrative'])(
+    'preserves independent uncertain/draft state, prevents duplicates, keeps one %s target across all locales and permits explicit same-target retry',
+    async (kind) => {
+      let release: ((response: Response) => void) | undefined;
+      const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+      );
+      render(
+        panel(
+          modelOfferActor,
+          pdfTarget.versionId,
+          kind === 'illustrative' ? illustrativePdfTarget : pdfTarget,
+        ),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Download non-official PDF' }),
+      );
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+      expect(
+        screen.getByRole('button', { name: 'Download non-official PDF' }),
+      ).toBeDisabled();
+      for (const language of ['ro', 'ru', 'fr', 'en'])
+        fireEvent.click(screen.getByRole('button', { name: language }));
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByLabelText('Independent uncertain command draft'),
+      ).toHaveValue('literal draft retained');
+      await act(async () => {
+        release?.(new Response('{}', { status: 503 }));
+      });
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Retry non-official PDF' }),
+      );
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+      expect(fetch.mock.calls[1][0]).toBe(fetch.mock.calls[0][0]);
+    },
+  );
   it.each(['target', 'scope', 'read'])(
     'suppresses a held old binary response after %s retirement and cleans owned Blob URLs',
     async (change) => {

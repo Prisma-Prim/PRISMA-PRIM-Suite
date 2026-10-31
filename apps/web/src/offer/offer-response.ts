@@ -12,6 +12,8 @@ export type OfferView = {
   revision: number;
   version: {
     id: string;
+    /** Missing exact creation identity retains consultation without qualifying a PDF. */
+    createdAt: string | null;
     qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
     qualityRuleSetVersion: OfferQualityRunView['ruleSetVersion'];
     latestQualityRun: OfferQualityRunView | null;
@@ -215,6 +217,8 @@ function readIllustrativeOffer(value: unknown): OfferView {
   )
     invalid();
   const representation = readRepresentation(version.representation);
+  const createdAt = optionalText(version.createdAt ?? null);
+  if (createdAt !== null && !Number.isFinite(Date.parse(createdAt))) invalid();
   if (
     version.qualityRuleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
     version.qualityRuleSetVersion !== representation.templateVersion
@@ -312,6 +316,7 @@ function readIllustrativeOffer(value: unknown): OfferView {
     revision: root.revision,
     version: {
       id: version.id,
+      createdAt,
       qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
       qualityRuleSetVersion: binding.ruleSetVersion,
       latestQualityRun,

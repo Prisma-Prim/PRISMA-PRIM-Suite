@@ -283,6 +283,32 @@ export function OfferSummary({
           version.representation.templateVersion === 2 && (
             <p>{bindingCopy('adjustedSnapshot')}</p>
           )}
+        {version.provenance === 'ILLUSTRATIVE' &&
+          version.representation.templateVersion === 1 && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = URL.createObjectURL(
+                    new Blob([version.representation.html], {
+                      type: 'text/html;charset=utf-8',
+                    }),
+                  );
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = `offer-${offer.illustrativeReference}-v${version.versionNumber}-non-official-en.html`;
+                  try {
+                    anchor.click();
+                  } finally {
+                    URL.revokeObjectURL(url);
+                  }
+                }}
+              >
+                {copy.downloadHtml}
+              </button>
+              {pdfAction}
+            </>
+          )}
         <iframe
           title={
             version.provenance === 'COMPANY_MODEL_ESTIMATE'
