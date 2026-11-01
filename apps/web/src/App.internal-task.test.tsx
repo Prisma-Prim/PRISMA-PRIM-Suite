@@ -31,6 +31,36 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
 });
+it.each(['prisme', 'classic'])(
+  'offers the authorized Internal Tasks navigation link while already in %s',
+  async (frame) => {
+    window.history.replaceState(null, '', `/?frame=${frame}#projects`);
+    installInternalTaskApp();
+    render(
+      <StrictMode>
+        <App identity={deterministicBrowserIdentity()} />
+      </StrictMode>,
+    );
+    const navigation = await screen.findByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    if (frame === 'classic')
+      expect(screen.getByRole('button', { name: 'Try Prisme' })).toBeVisible();
+    const link = within(navigation).getByRole('link', {
+      name: 'Internal Tasks',
+    });
+    expect(link).toBeVisible();
+    expect(link).toHaveAttribute('href', '#internal-tasks');
+    fireEvent.click(link);
+    const panel = await screen.findByRole('region', { name: 'Internal Tasks' });
+    await within(panel).findByRole('button', {
+      name: 'Internal inventory DEMO',
+    });
+    expect(
+      within(panel).getByRole('textbox', { name: 'Task title' }),
+    ).toBeVisible();
+  },
+);
 it('keeps literal work and exact uncertain command through locale/frame changes, then retains confirmation through separate refresh failure', async () => {
   const writes: Array<{
     body: BodyInit | null | undefined;
@@ -268,29 +298,33 @@ it.each([404, 'unsupported', 'malformed'])(
   },
 );
 
-it.each([
-  ...[
-    undefined,
-    null,
-    5,
-    {},
-    [],
-    'internal_task.read',
-    ['internal_task.read'],
-    ['internal_task.read', 'future.permission'],
-  ].map((value) => ({ field: 'internalTaskPermissions', value })),
-  ...[undefined, null, 5, {}, [], '', '   ', 'not-a-uuid'].map((value) => ({
-    field: 'internalTaskManagerAssignmentId',
-    value,
-  })),
-  ...[undefined, null, 5, {}, [], 'v2'].map((value) => ({
-    field: 'internalTaskManagerPermissionSetVersion',
-    value,
-  })),
-])(
-  'keeps unrelated App owners usable while a malformed/future $field capture denies only Internal Tasks',
-  async ({ field, value }) => {
-    window.history.replaceState(null, '', '/#projects');
+it.each(
+  ['prisme', 'classic'].flatMap((frame) =>
+    [
+      ...[
+        undefined,
+        null,
+        5,
+        {},
+        [],
+        'internal_task.read',
+        ['internal_task.read'],
+        ['internal_task.read', 'future.permission'],
+      ].map((value) => ({ field: 'internalTaskPermissions', value })),
+      ...[undefined, null, 5, {}, [], '', '   ', 'not-a-uuid'].map((value) => ({
+        field: 'internalTaskManagerAssignmentId',
+        value,
+      })),
+      ...[undefined, null, 5, {}, [], 'v2'].map((value) => ({
+        field: 'internalTaskManagerPermissionSetVersion',
+        value,
+      })),
+    ].map((capture) => ({ ...capture, frame })),
+  ),
+)(
+  'keeps unrelated App owners usable in $frame while a malformed/future $field capture denies only Internal Tasks',
+  async ({ field, value, frame }) => {
+    window.history.replaceState(null, '', `/?frame=${frame}#projects`);
     const server = installInternalTaskApp(async () => undefined, {
       ...internalTaskActor,
       activeCompany: { ...internalTaskActor.activeCompany, [field]: value },

@@ -343,6 +343,7 @@ export function ApplicationShell({
                   isPrisme ||
                   section.id === 'clients' ||
                   section.id === 'projects' ||
+                  section.id === 'internal-tasks' ||
                   section.id === 'unassigned-tasks' ||
                   section.id === 'blocked-tasks' ||
                   section.id === 'team-tasks',

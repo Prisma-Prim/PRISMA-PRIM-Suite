@@ -107,6 +107,7 @@ for (const frame of ['prisme', 'classic'] as const)
       await expect(page.getByRole('banner')).toContainText(
         'Internal Company DEMO ' + suffix,
       );
+      if (frame === 'classic') await enterClassicCompatibility(page);
       if (
         narrow &&
         (await page
@@ -126,7 +127,6 @@ for (const frame of ['prisme', 'classic'] as const)
           .isVisible())
       )
         await activate(page.getByRole('button', { name: 'Close navigation' }));
-      if (frame === 'classic') await enterClassicCompatibility(page);
       await choose(page.locator('#interface-locale'), locale);
       const panel = page.getByRole('region', {
           name: copy('title'),
