@@ -1,13 +1,11 @@
-import { createHash } from 'node:crypto';
 import type { ActorContext } from '../access-types';
 export const source = {
   sourceId: '10000000-0000-4000-8000-000000001015',
   documentId: '20000000-0000-4000-8000-000000001015',
   documentVersionId: '30000000-0000-4000-8000-000000001015',
   representationId: '40000000-0000-4000-8000-000000001015',
-  sourceSha256: createHash('sha256')
-    .update('%PDF-test exact source')
-    .digest('hex'),
+  sourceSha256:
+    '0f1a28fd58a7366041814a2ceaf6deac31600cca74d89699b1e440a68ec6c6dd',
   projectionSha256: 'a'.repeat(64),
   title: 'Fictional evidence Ж',
   language: 'ro',
@@ -19,7 +17,8 @@ export function passage() {
     source: { ...source },
     locator: 'page 1 / Ж',
     text: literalText,
-    passageSha256: createHash('sha256').update(literalText).digest('hex'),
+    passageSha256:
+      '4f8ffb0ddd9ea8282e065dfad8385ef4310c025b8f2347e8f6a019330a2c172b',
     retrievedAt: '2026-11-01T12:00:00.000Z',
   };
 }
