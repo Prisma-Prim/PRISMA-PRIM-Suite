@@ -594,6 +594,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'internal-task-manager',
+    canonical: 'Company Internal Task Manager',
+    version: 'v1',
+    labels: {
+      ro: 'Gestionar sarcini interne al companiei',
+      ru: 'Управляющий внутренними задачами компании',
+      fr: 'Gestionnaire des tâches internes de la société',
+      en: 'Company Internal Task Manager',
+    },
+  },
+  {
     value: 'task-manager',
     canonical: 'Company Task Manager',
     version: 'v1',
