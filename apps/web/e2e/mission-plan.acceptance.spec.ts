@@ -224,6 +224,15 @@ test('configures a Company-only plan, creates exact native Tasks with a lost-con
   await taskButton.focus();
   await page.keyboard.press('Enter');
   const tasks = native.locator('.project-tasks');
+  await expect(
+    tasks.getByRole('button', { name: 'Save Task', exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.getByRole('button', { name: 'Save Task', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    tasks.getByRole('textbox', { name: 'Task title', exact: true }),
+  ).toHaveValue('Scope DEMO');
   await tasks
     .getByRole('textbox', { name: 'Task title', exact: true })
     .fill('Ordinary edited Task DEMO');
