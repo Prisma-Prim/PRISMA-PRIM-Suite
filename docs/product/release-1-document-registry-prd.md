@@ -11,6 +11,13 @@ following [root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/is
 It owns the bounded new source-preservation family; its status and fresh readiness
 gates apply independently of the approved received-Contract family in §24.
 
+The separate Approved [manual incoming Payment-observation contract](release-5-manual-payment-observation-prd.md)
+under [#1032](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032) owns its
+bounded confidential payment-evidence family and independent financial gates,
+following [root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032#issuecomment-6561911019).
+Native storage/Version owners remain unchanged; contract approval, source-first
+runtime fit and delivery remain separate.
+
 ## 1. Problem statement
 
 Operational evidence is currently easy to confuse with a storage-provider file. The product needs a stable, provider-independent Document identity so users can find the right evidence, understand which Version is official and preserve history even when a file moves, a link changes or a correction is required.
