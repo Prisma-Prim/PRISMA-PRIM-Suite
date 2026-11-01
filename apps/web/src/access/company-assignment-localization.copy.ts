@@ -54,12 +54,18 @@ const keys = [
   'empty',
   'retry',
   'error',
+  'opportunityFollowUpCoordinatorBundle',
+  'opportunityFollowUpCoordinatorPrerequisites',
 ] as const;
 
 // Display resources only. Canonical bundle identities remain owned by the
 // unchanged administration validator and the component's exhaustive mapping.
 export const companyAssignmentMessages = defineMessages(keys, {
   ro: {
+    opportunityFollowUpCoordinatorBundle:
+      'Coordonatorul datelor de urmărire a oportunităților companiei',
+    opportunityFollowUpCoordinatorPrerequisites:
+      'Permite citirea și gestionarea datei manuale de urmărire. Contextul companiei și citirea cererii și oportunității se acordă separat; modificările necesită și dreptul de actualizare a acțiunii următoare. Nu acordă acces la clienți sau administrarea accesului.',
     contractEarlyPreparationBundle:
       'Pregătire anticipată a contractelor companiei',
     contractEarlyPreparationPrerequisites:
@@ -136,6 +142,10 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'Starea accesului nu a putut fi încărcată sau modificată.',
   },
   ru: {
+    opportunityFollowUpCoordinatorBundle:
+      'Координатор дат сопровождения возможностей компании',
+    opportunityFollowUpCoordinatorPrerequisites:
+      'Разрешает чтение и изменение даты ручного сопровождения. Контекст компании и чтение обращения и возможности предоставляются отдельно; изменения также требуют права обновления следующего действия. Не предоставляет доступ к клиентам или управлению доступом.',
     contractEarlyPreparationBundle: 'Ранняя подготовка договоров компании',
     contractEarlyPreparationPrerequisites:
       'Разрешает черновики договора до принятия предложения. Контекст компании, подготовка договора и чтение клиента компании, предложения и возможности требуются отдельно. Не даёт права одобрения или подписи.',
@@ -207,6 +217,10 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'Не удалось загрузить или изменить состояние доступа.',
   },
   fr: {
+    opportunityFollowUpCoordinatorBundle:
+      'Coordinateur des dates de suivi des opportunités de la société',
+    opportunityFollowUpCoordinatorPrerequisites:
+      'Autorise la lecture et la gestion de la date de suivi manuel. Le contexte société et les lectures de la demande et de l’opportunité restent distincts ; les modifications exigent aussi le droit de modifier la prochaine action. N’accorde aucun accès aux clients ni à l’administration des accès.',
     contractEarlyPreparationBundle:
       'Préparation anticipée des contrats de la société',
     contractEarlyPreparationPrerequisites:
@@ -282,6 +296,10 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'L’état des accès n’a pas pu être chargé ou modifié.',
   },
   en: {
+    opportunityFollowUpCoordinatorBundle:
+      'Company Opportunity Follow-up Coordinator',
+    opportunityFollowUpCoordinatorPrerequisites:
+      'Allows reading and managing the manual follow-up date. Company context and Request/Opportunity read remain separate; changes also require next-action update authority. Grants no Client or assignment-administration access.',
     contractEarlyPreparationBundle: 'Company Contract Early Preparation',
     contractEarlyPreparationPrerequisites:
       'Allows Contract drafts before Offer acceptance. Company context, Contract preparation, Company Client read and Offer/Opportunity read remain separately required. Grants no approval or signature rights.',

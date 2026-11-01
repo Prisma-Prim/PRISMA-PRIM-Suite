@@ -4,6 +4,10 @@ import {
 } from './external-invoice-captured-grants.js';
 import { captureKnowledgeGrant } from './knowledge-captured-grants.js';
 import {
+  opportunityFollowUpCapturedAuthority,
+  opportunityFollowUpReadCapture,
+} from './opportunity-follow-up-captured-grants.js';
+import {
   COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
@@ -46,6 +50,8 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+  opportunityFollowUpPermissionsFor,
   COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
   internalTaskPermissionsFor,
   COMPANY_TASK_MANAGER_BUNDLE,
@@ -156,6 +162,129 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async requireOpportunityFollowUpAccess(
+    actor: ActorContext,
+    options: { manage: boolean; lock: boolean },
+  ): Promise<{
+    companyId: string;
+    assignmentId: string;
+    permissionSetVersion: 'v1';
+    readCapture: string;
+  }> {
+    const company = actor.activeCompany;
+    const capture =
+      company && opportunityFollowUpCapturedAuthority(company, options);
+    if (!actor.active || !company || !capture) throw new ForbiddenException();
+    // Match native Commercial Intake's assignment/member/user/Company → context
+    // lock order before consuming the independent coordinator assignment.
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.id, capture.nativeAssignmentId),
+        eq(companyRoleAssignments.bundle, COMPANY_COMMERCIAL_INTAKE_BUNDLE),
+        eq(
+          companyRoleAssignments.permissionSetVersion,
+          capture.nativePermissionSetVersion,
+        ),
+      ) ?? sql`false`,
+      options.lock,
+    );
+    const contextIdentities = await this.opportunityFollowUpContextIdentities(
+      actor,
+      company.id,
+      options.lock,
+    );
+    if (contextIdentities.length === 0) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.id, capture.assignmentId),
+        eq(
+          companyRoleAssignments.bundle,
+          COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+        ),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      options.lock,
+    );
+    const readCapture = opportunityFollowUpReadCapture({
+      workspaceId: actor.workspaceId,
+      workspaceMembershipId: actor.workspaceMembershipId,
+      companyId: company.id,
+      assignmentId: capture.assignmentId,
+      nativeAssignmentId: capture.nativeAssignmentId,
+      nativePermissionSetVersion: capture.nativePermissionSetVersion,
+      contextIdentities,
+    });
+    if (readCapture !== capture.readCapture) throw new ForbiddenException();
+    // The same Access-owned PostgreSQL participant also protects direct native
+    // command entry; TypeScript retains the complete consumed capture check.
+    if (options.manage) {
+      await this.databaseContext.connection.execute(
+        sql`SELECT access_require_opportunity_follow_up_command(${actor.workspaceId}::uuid,${company.id}::uuid,${actor.workspaceMembershipId}::uuid,${actor.internalUserId}::uuid,${capture.nativeAssignmentId}::uuid,${capture.assignmentId}::uuid)`,
+      );
+    }
+    return {
+      companyId: company.id,
+      assignmentId: capture.assignmentId,
+      permissionSetVersion: 'v1',
+      readCapture,
+    };
+  }
+
+  private async opportunityFollowUpContextIdentities(
+    actor: ActorContext,
+    companyId: string,
+    lock: boolean,
+  ): Promise<(string | null)[][]> {
+    if (actor.workspacePermissions.includes('company.manage')) {
+      const query = this.databaseContext.connection
+        .select({ id: workspacePermissionGrants.id })
+        .from(workspacePermissionGrants)
+        .where(
+          and(
+            eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+            eq(
+              workspacePermissionGrants.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(workspacePermissionGrants.permission, 'company.manage'),
+          ),
+        )
+        .orderBy(workspacePermissionGrants.id);
+      const grants = lock ? await query.for('share') : await query;
+      if (grants.length > 0)
+        return grants.map((grant) => ['company.manage', grant.id, null]);
+    }
+    const query = this.databaseContext.connection
+      .select({
+        id: companyRoleAssignments.id,
+        bundle: companyRoleAssignments.bundle,
+        version: companyRoleAssignments.permissionSetVersion,
+      })
+      .from(companyRoleAssignments)
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          inArray(
+            companyRoleAssignments.bundle,
+            COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
+          ),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      )
+      .orderBy(companyRoleAssignments.id);
+    const grants = lock ? await query.for('share') : await query;
+    return grants.map((grant) => [grant.bundle, grant.id, grant.version]);
+  }
 
   async requireTaskResultRecorder(actor: ActorContext): Promise<string> {
     const company = actor.activeCompany;
@@ -2010,6 +2139,7 @@ export class CompanyContextAuthorization {
       inArray(sql`${companyRoleAssignments.bundle}::text`, [
         ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+        COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
@@ -2091,6 +2221,16 @@ export class CompanyContextAuthorization {
         displayName: row.displayName,
         clientPermissions: [],
       };
+      if (
+        row.bundle === COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.opportunityFollowUpPermissions = [
+          ...opportunityFollowUpPermissionsFor(row.permissionSetVersion),
+        ];
+        company.opportunityFollowUpCoordinatorAssignmentId = row.assignmentId;
+        company.opportunityFollowUpCoordinatorPermissionSetVersion = 'v1';
+      }
       if (
         row.bundle === COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE &&
         row.permissionSetVersion === 'v1'
@@ -2549,11 +2689,45 @@ export class CompanyContextAuthorization {
     }
     // Organizer contributes only its mutation permission. Company context must
     // already follow from another assignment or Workspace Company management.
-    return [...companiesById.values()].filter(
+    const authorizedCompanies = [...companiesById.values()].filter(
       (company) =>
         actor.workspacePermissions.includes('company.manage') ||
         independentlyAuthorizedCompanies.has(company.id),
     );
+    for (const company of authorizedCompanies) {
+      if (
+        company.opportunityFollowUpCoordinatorAssignmentId &&
+        company.opportunityFollowUpCoordinatorPermissionSetVersion === 'v1' &&
+        company.commercialIntakePermissionAssignmentId &&
+        isCommercialIntakePermissionSetVersion(
+          company.commercialIntakePermissionSetVersion,
+        ) &&
+        COMMERCIAL_INTAKE_READ_PERMISSIONS.every((permission) =>
+          company.commercialIntakePermissions?.includes(permission),
+        )
+      ) {
+        const contextIdentities =
+          await this.opportunityFollowUpContextIdentities(
+            actor,
+            company.id,
+            false,
+          );
+        if (contextIdentities.length > 0)
+          company.opportunityFollowUpReadCapture =
+            opportunityFollowUpReadCapture({
+              workspaceId: actor.workspaceId,
+              workspaceMembershipId: actor.workspaceMembershipId,
+              companyId: company.id,
+              assignmentId: company.opportunityFollowUpCoordinatorAssignmentId,
+              nativeAssignmentId:
+                company.commercialIntakePermissionAssignmentId,
+              nativePermissionSetVersion:
+                company.commercialIntakePermissionSetVersion,
+              contextIdentities,
+            });
+      }
+    }
+    return authorizedCompanies;
   }
 }
 

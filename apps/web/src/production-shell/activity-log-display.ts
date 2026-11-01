@@ -1,3 +1,4 @@
+import { useFollowUpCopy } from '../opportunity-follow-up/follow-up.copy';
 import { useExternalInvoiceAssignmentCopy } from '../access/external-invoice-assignment.copy';
 import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
@@ -44,6 +45,7 @@ const stageOperationKeys = {
 >;
 
 export function useActivityLogDisplay() {
+  const followUp = useFollowUpCopy();
   const message = useActivityLogCopy();
   const internalTask = useInternalTaskCopy();
   const knowledgeAssignments = useKnowledgeAssignmentActivityCopy();
@@ -83,6 +85,10 @@ export function useActivityLogDisplay() {
   const nextActionCopy = useProjectNextActionCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
+    'company_opportunity_follow_up_coordinator_assignment.granted':
+      followUp('granted'),
+    'company_opportunity_follow_up_coordinator_assignment.revoked':
+      followUp('revoked'),
     'company_invoice_reader_assignment.granted':
       externalInvoiceAssignments('readerGranted'),
     'company_invoice_reader_assignment.revoked':

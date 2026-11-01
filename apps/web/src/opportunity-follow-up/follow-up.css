@@ -1,0 +1,110 @@
+.opportunity-follow-up {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--shell-line, #d7dfeb);
+  border-radius: 0.75rem;
+  background: var(--shell-surface, #fff);
+  overflow-wrap: anywhere;
+}
+.opportunity-follow-up h4,
+.opportunity-follow-up h5,
+.opportunity-follow-up p {
+  margin: 0;
+}
+.opportunity-follow-up h5 {
+  font-size: 1rem;
+}
+.opportunity-follow-up form,
+.opportunity-follow-up section,
+.opportunity-follow-up-fact {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+}
+.opportunity-follow-up input,
+.opportunity-follow-up textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 34rem;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, #d7dfeb);
+  border-radius: 0.4rem;
+  background: var(--shell-surface, #fff);
+  color: inherit;
+  font: inherit;
+}
+.opportunity-follow-up textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.opportunity-follow-up button {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--shell-line, #d7dfeb);
+  border-radius: 0.5rem;
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.opportunity-follow-up button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.opportunity-follow-up :focus-visible {
+  outline: 3px solid var(--shell-accent, #375eaa);
+  outline-offset: 3px;
+}
+.opportunity-follow-up-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.opportunity-follow-up-history,
+.opportunity-follow-up-results {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.opportunity-follow-up-history li,
+.opportunity-follow-up-results li {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--shell-line, #d7dfeb);
+}
+.opportunity-follow-up-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.prisme-shell .opportunity-follow-up {
+  border-color: #e6eaf1;
+  color: #15233b;
+  background: #fff;
+}
+.prisme-shell .opportunity-follow-up .commercial-intake-primary-action {
+  color: #fff;
+  background: #6d4aff;
+  border-color: #6d4aff;
+}
+.prisme-shell .opportunity-follow-up .commercial-intake-secondary-action {
+  color: #5940b7;
+  background: #fff;
+  border-color: #dcd4f5;
+}
+.prisme-shell .opportunity-follow-up :focus-visible {
+  outline-color: #7958db;
+}
+@media (max-width: 40rem) {
+  .opportunity-follow-up {
+    padding: 0.75rem;
+  }
+}

@@ -659,6 +659,13 @@
       "when": 1793508093231,
       "tag": "0093_external_invoice_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793527479069,
+      "tag": "0094_opportunity_follow_up",
+      "breakpoints": true
     }
   ]
 }

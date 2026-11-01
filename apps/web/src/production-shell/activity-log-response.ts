@@ -29,6 +29,10 @@ type ActivityAction = ActivityLogEvent['action'];
  * fails type checking here until its target is stated deliberately.
  */
 const targetTypes = {
+  'company_opportunity_follow_up_coordinator_assignment.granted':
+    'company_role_assignment',
+  'company_opportunity_follow_up_coordinator_assignment.revoked':
+    'company_role_assignment',
   'company_invoice_reader_assignment.granted': 'company_role_assignment',
   'company_invoice_reader_assignment.revoked': 'company_role_assignment',
   'company_invoice_recorder_assignment.granted': 'company_role_assignment',
