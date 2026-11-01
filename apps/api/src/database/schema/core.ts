@@ -41,6 +41,9 @@ export const workspacePermission = pgEnum('workspace_permission', [
 ]);
 
 export const companyRoleBundle = pgEnum('company_role_bundle', [
+  'company_invoice_reader',
+  'company_invoice_recorder',
+  'company_external_invoice_access',
   'company_internal_task_manager',
   'company_task_manager',
   'company_context_access',
@@ -741,6 +744,12 @@ export const clientAccountCorrectionCommands = pgTable(
 );
 
 export const activityLogAction = pgEnum('activity_log_action', [
+  'company_invoice_reader_assignment.granted',
+  'company_invoice_reader_assignment.revoked',
+  'company_invoice_recorder_assignment.granted',
+  'company_invoice_recorder_assignment.revoked',
+  'company_external_invoice_access_assignment.granted',
+  'company_external_invoice_access_assignment.revoked',
   'workspace_invitation.issued',
   'workspace_invitation.revoked',
   'workspace_invitation.accepted',
@@ -938,6 +947,9 @@ export const activityLogEvents = pgTable(
               | 'Company Profitability Director'
               | 'Company Knowledge Source Administrator'
               | 'Company Knowledge Evidence Reader'
+              | 'Company Invoice Reader'
+              | 'Company Invoice Recorder'
+              | 'Company External Invoice Access'
               | 'Company Operational Risk Reader'
               | 'Company Operational Risk Recorder'
               | 'Company Sales Stage Configuration'

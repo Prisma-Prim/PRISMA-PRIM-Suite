@@ -1,3 +1,7 @@
+import {
+  hasExternalInvoiceAccess,
+  externalInvoiceCaptureKey,
+} from './external-invoice-access';
 import type { ActorContext } from '../access-types';
 import type { DocumentFamily } from './document-response';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
@@ -17,6 +21,8 @@ export function documentFamilyCaptureKey(
         company?.missionDeliverableAccessAssignmentId,
         company?.missionDeliverableAccessPermissionSetVersion,
       ]);
+    case 'external-invoice':
+      return externalInvoiceCaptureKey(company);
     case 'received-contract':
       return JSON.stringify([
         hasReceivedContractAccess(company),
@@ -38,6 +44,8 @@ export function hasDocumentFamilyAccess(
       return true;
     case 'mission-deliverable':
       return hasMissionDeliverableAccess(company);
+    case 'external-invoice':
+      return hasExternalInvoiceAccess(company);
     case 'received-contract':
       return hasReceivedContractAccess(company);
     default: {

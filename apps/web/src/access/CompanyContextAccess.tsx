@@ -1,3 +1,4 @@
+import { useExternalInvoiceAssignmentCopy } from './external-invoice-assignment.copy';
 import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
 import { useProjectNextActionCopy } from '../project/project-next-action.copy';
@@ -48,6 +49,9 @@ import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'invoice-reader'
+  | 'invoice-recorder'
+  | 'external-invoice-access'
   | 'mission-plan-configuration'
   | 'mission-plan-user'
   | 'contract-model-editor'
@@ -99,6 +103,9 @@ type AssignmentBundle =
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'invoice-reader': '/company-invoice-reader-assignments',
+  'invoice-recorder': '/company-invoice-recorder-assignments',
+  'external-invoice-access': '/company-external-invoice-access-assignments',
   'mission-plan-configuration':
     '/company-mission-plan-configuration-assignments',
   'mission-plan-user': '/company-mission-plan-user-assignments',
@@ -189,6 +196,7 @@ export function CompanyContextAccess({
 }) {
   const copy = useCompanyAssignmentCopy();
   const internalTaskCopy = useInternalTaskCopy();
+  const externalInvoiceCopy = useExternalInvoiceAssignmentCopy();
   const ideasCopy = useIdeasCopy();
   const missionPlanCopy = useMissionPlanCopy();
   const modelCopy = useOfferModelCopy();
@@ -700,6 +708,18 @@ export function CompanyContextAccess({
                 value: 'project-stage-advancer',
                 label: projectStageCopy('bundle'),
               },
+              {
+                value: 'invoice-reader',
+                label: externalInvoiceCopy('readerBundle'),
+              },
+              {
+                value: 'invoice-recorder',
+                label: externalInvoiceCopy('recorderBundle'),
+              },
+              {
+                value: 'external-invoice-access',
+                label: externalInvoiceCopy('familyBundle'),
+              },
               { value: 'director-client', label: copy('directorClientBundle') },
               {
                 value: 'document-project-organizer',
@@ -767,6 +787,9 @@ export function CompanyContextAccess({
             onValueChange={(value) => {
               resetCommand();
               if (
+                value === 'invoice-reader' ||
+                value === 'invoice-recorder' ||
+                value === 'external-invoice-access' ||
                 value === 'ideas-reader' ||
                 value === 'ideas-recorder' ||
                 value === 'ideas-reviewer' ||
@@ -831,6 +854,11 @@ export function CompanyContextAccess({
           )}
           {bundle === 'operational-risk-recorder' && (
             <p>{riskCopy('recorderPrerequisites')}</p>
+          )}
+          {(bundle === 'invoice-reader' ||
+            bundle === 'invoice-recorder' ||
+            bundle === 'external-invoice-access') && (
+            <p>{externalInvoiceCopy('prerequisites')}</p>
           )}
           {bundle === 'internal-task-manager' && (
             <p>{internalTaskCopy('prerequisites')}</p>
@@ -1010,6 +1038,9 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'invoice-reader': 'Company Invoice Reader',
+    'invoice-recorder': 'Company Invoice Recorder',
+    'external-invoice-access': 'Company External Invoice Access',
     'mission-plan-configuration': 'Company Mission Plan Configuration',
     'mission-plan-user': 'Company Mission Plan User',
     'contract-model-editor': 'Company Contract Model Editor',

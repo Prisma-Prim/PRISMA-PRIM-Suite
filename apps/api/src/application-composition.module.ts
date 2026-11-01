@@ -1,3 +1,6 @@
+import { CompanyInvoiceReaderAssignmentController } from './access/company-invoice-reader-assignment.controller.js';
+import { CompanyInvoiceRecorderAssignmentController } from './access/company-invoice-recorder-assignment.controller.js';
+import { CompanyExternalInvoiceAccessAssignmentController } from './access/company-external-invoice-access-assignment.controller.js';
 import { InternalTaskModule } from './internal-task/internal-task.module.js';
 import { InternalTaskController } from './internal-task/internal-task.controller.js';
 import { CompanyInternalTaskManagerAssignmentController } from './access/company-internal-task-manager-assignment.controller.js';
@@ -190,6 +193,10 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    CompanyInvoiceReaderAssignmentController,
+    CompanyInvoiceRecorderAssignmentController,
+    CompanyExternalInvoiceAccessAssignmentController,
+
     KnowledgeWebController,
     KnowledgeController,
     KnowledgeReadController,

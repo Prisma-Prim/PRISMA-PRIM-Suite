@@ -80,6 +80,7 @@ const isActorContext = object({
       offerModelGrants: optional(isOpaque),
       contractModelGrants: optional(isOpaque),
       knowledgeGrants: optional(isOpaque),
+      externalInvoiceGrants: optional(isOpaque),
       internalTaskPermissions: optional(isOpaque),
       internalTaskManagerAssignmentId: optional(isOpaque),
       internalTaskManagerPermissionSetVersion: optional(isOpaque),

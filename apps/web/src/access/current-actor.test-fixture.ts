@@ -25,6 +25,13 @@ export const completeActor = {
       version: 'future',
       arbitrary: null,
     },
+    externalInvoiceGrants: [
+      {
+        bundle: 'company_invoice_reader',
+        assignmentId: 'financial-capture',
+        permissionSetVersion: 'v1',
+      },
+    ],
     knowledgeGrants: { version: 'future', arbitrary: null },
     internalTaskPermissions: { version: 'future', arbitrary: null },
     internalTaskManagerAssignmentId: 'sample-internal-task',

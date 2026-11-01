@@ -53,7 +53,15 @@ export class DocumentContentService {
     // Check current authority before allocating or consuming confidential bytes.
     await this.database.transaction(async () => {
       await this.authorization.requireDocumentContentUpload(actor);
-      await this.boundary.lockFamilyForCommand(actor, documentId);
+      const family = await this.boundary.lockFamilyForCommand(
+        actor,
+        documentId,
+      );
+      if (family === 'external-invoice')
+        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
     });
     if (input.request.headers['content-type'] !== 'application/pdf')
       throw invalidPdf();
@@ -83,7 +91,12 @@ export class DocumentContentService {
     return this.database.transaction(async () => {
       const companyId =
         await this.authorization.requireDocumentContentRead(actor);
-      await this.boundary.requireVisible(actor, documentId);
+      const visible = await this.boundary.requireVisible(actor, documentId);
+      if (visible.document.type === 'external-invoice')
+        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'content-read',
+          lockAssignment: false,
+        });
       const [version] = await this.database.connection
         .select({ id: documentVersions.id })
         .from(documentVersions)
@@ -150,7 +163,12 @@ export class DocumentContentService {
           actor,
         )
       : await this.authorization.requireDocumentContentRead(actor);
-    await this.boundary.requireVisible(actor, documentId);
+    const visible = await this.boundary.requireVisible(actor, documentId);
+    if (visible.document.type === 'external-invoice')
+      await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+        action: 'content-read',
+        lockAssignment: false,
+      });
     const stored = await this.storage.read({
       scope: { workspaceId: actor.workspaceId, companyId, documentId },
       versionId,

@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -68,6 +69,7 @@ export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
     }
   | { documentType: 'mission-deliverable'; representation: null }
   | { documentType: 'received-contract'; representation: null }
+  | { documentType: 'external-invoice'; representation: null }
 );
 
 type VersionCommandAction = typeof documentVersionCommands.$inferSelect.action;
@@ -107,6 +109,21 @@ export class DocumentVersionsService {
     private readonly pdfs: DocumentPdfStorage,
     private readonly scanner: DocumentMalwareScanner,
   ) {}
+
+  private async canReadPdf(actor: ActorContext, type: DocumentRow['type']) {
+    if (type !== 'external-invoice')
+      return this.authorization.hasDocumentContentRead(actor);
+    try {
+      await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+        action: 'content-read',
+        lockAssignment: false,
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenException) return false;
+      throw error;
+    }
+  }
 
   /** Exact scoped Version facts inside the caller's already-authorized Document read snapshot. */
   async readExactWithinTransaction(scope: DocumentScope, versionId: string) {
@@ -317,7 +334,7 @@ export class DocumentVersionsService {
             companyId: visible.companyId,
             documentId: visible.document.id,
           },
-          await this.authorization.hasDocumentContentRead(actor),
+          await this.canReadPdf(actor, visible.document.type),
         );
         const referenceReader = canReadReference(actor);
         const grouped = new Map<string, DocumentVersionView>();
@@ -477,6 +494,11 @@ export class DocumentVersionsService {
         documentId: input.documentId,
       };
       await this.requireVersionOf(scope, input.versionId);
+      if (visible.document.type === 'external-invoice')
+        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
       if (recorded) return recorded;
       await this.clients.lockActiveReferenceClient(
         actor,
@@ -667,6 +689,16 @@ export class DocumentVersionsService {
       };
       if (command.versionId !== null)
         await this.requireVersionOf(scope, command.versionId);
+      if (visible.document.type === 'external-invoice')
+        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action:
+            command.action === 'representation_added'
+              ? 'upload'
+              : command.action === 'designated_official'
+                ? 'designate'
+                : 'version',
+          lockAssignment: true,
+        });
       const fingerprint = versionCommandFingerprint(command, companyId);
       const replay = await this.replayCommand(actor, command, companyId);
       if (replay) return replay;

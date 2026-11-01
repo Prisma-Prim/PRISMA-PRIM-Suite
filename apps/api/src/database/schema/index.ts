@@ -45,3 +45,5 @@ export * from './project-next-action.js';
 export * from './knowledge.js';
 
 export * from './internal-task.js';
+
+export * from './external-invoice-documents.js';

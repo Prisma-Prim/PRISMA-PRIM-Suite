@@ -1,3 +1,5 @@
+import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
+import { ContractExternalInvoiceReferenceService } from '../contract/contract-external-invoice-reference.service.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
 import type { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import type { AccountabilityService } from '../accountability/accountability.service.js';
@@ -31,5 +33,28 @@ export function receivedContractRelationsForTest(input: {
       ),
       clients,
     ),
+  );
+}
+
+export function externalInvoiceRelationsForTest(
+  input: Parameters<typeof receivedContractRelationsForTest>[0],
+) {
+  const { context, authorization, clients, accountability } = input;
+  return new ExternalInvoiceRelationsService(
+    context,
+    new ContractExternalInvoiceReferenceService(
+      context,
+      authorization,
+      new CommercialIntakeService(
+        context,
+        authorization,
+        clients,
+        accountability,
+        new CommercialResponsibleAccessService(context),
+        new SalesStageService(context, authorization, accountability),
+      ),
+      clients,
+    ),
+    authorization,
   );
 }

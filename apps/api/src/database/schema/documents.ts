@@ -25,7 +25,12 @@ export const workingDocuments = pgTable(
     title: text('title').notNull(),
     purpose: text('purpose').notNull(),
     type: text('type', {
-      enum: ['questionnaire', 'mission-deliverable', 'received-contract'],
+      enum: [
+        'questionnaire',
+        'mission-deliverable',
+        'received-contract',
+        'external-invoice',
+      ],
     })
       .notNull()
       .default('questionnaire'),
@@ -83,7 +88,7 @@ export const workingDocuments = pgTable(
     }),
     check(
       'working_documents_state_check',
-      sql`${table.type} IN ('questionnaire', 'mission-deliverable', 'received-contract') AND ${table.confidentiality} = 'company-confidential' AND length(trim(${table.title})) BETWEEN 1 AND 200 AND length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
+      sql`${table.type} IN ('questionnaire', 'mission-deliverable', 'received-contract', 'external-invoice') AND ${table.confidentiality} = 'company-confidential' AND length(trim(${table.title})) BETWEEN 1 AND 200 AND length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
     ),
   ],
 );

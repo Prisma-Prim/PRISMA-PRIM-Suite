@@ -23,6 +23,7 @@ import type { DocumentOpenTarget } from './DocumentWorkspace';
 import { useDocumentsCopy } from './documents.copy';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
 import { useReceivedContractCopy } from './received-contract.copy';
+import { useExternalInvoiceCopy } from './external-invoice.copy';
 import {
   readClientDocumentItems,
   type ClientDocumentItem,
@@ -48,6 +49,7 @@ function captures(company: ActorContext['activeCompany']) {
       'mission-deliverable',
     ),
     'received-contract': documentFamilyCaptureKey(company, 'received-contract'),
+    'external-invoice': documentFamilyCaptureKey(company, 'external-invoice'),
   } satisfies Record<DocumentFamily, string>;
 }
 type View =
@@ -285,6 +287,7 @@ function DocumentEntry({
     documents = useDocumentsCopy();
   const mission = useMissionDeliverableCopy(),
     received = useReceivedContractCopy();
+  const invoice = useExternalInvoiceCopy();
   const lifetime = useRef<AbortController | undefined>(undefined);
   useLayoutEffect(() => {
     const controller = new AbortController();
@@ -298,6 +301,7 @@ function DocumentEntry({
     questionnaire: documents[item.version.status],
     'mission-deliverable': mission.t(item.version.status),
     'received-contract': received.t(item.version.status),
+    'external-invoice': invoice.t(item.version.status),
   } satisfies Record<DocumentFamily, string>;
   return (
     <li>

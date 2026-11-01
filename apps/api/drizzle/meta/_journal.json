@@ -652,6 +652,13 @@
       "when": 1793479399921,
       "tag": "0092_company_internal_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1793508093231,
+      "tag": "0093_external_invoice_sources",
+      "breakpoints": true
     }
   ]
 }

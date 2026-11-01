@@ -1,4 +1,7 @@
 import type {
+  COMPANY_INVOICE_READER_BUNDLE_LABEL,
+  COMPANY_INVOICE_RECORDER_BUNDLE_LABEL,
+  COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL,
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
@@ -262,6 +265,12 @@ export type CanonicalActivityEvent =
         | 'company_profitability_contributor_assignment.granted'
         | 'company_profitability_contributor_assignment.revoked'
         | 'company_profitability_director_assignment.granted'
+        | 'company_invoice_reader_assignment.granted'
+        | 'company_invoice_reader_assignment.revoked'
+        | 'company_invoice_recorder_assignment.granted'
+        | 'company_invoice_recorder_assignment.revoked'
+        | 'company_external_invoice_access_assignment.granted'
+        | 'company_external_invoice_access_assignment.revoked'
         | 'company_knowledge_source_administrator_assignment.granted'
         | 'company_knowledge_evidence_reader_assignment.granted'
         | 'company_knowledge_source_administrator_assignment.revoked'
@@ -331,6 +340,9 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_INVOICE_READER_BUNDLE_LABEL
+          | typeof COMPANY_INVOICE_RECORDER_BUNDLE_LABEL
+          | typeof COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL
           | typeof COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL
           | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
@@ -492,6 +504,12 @@ export interface OrdinaryActivityLogEvent {
     | 'company_profitability_contributor_assignment.granted'
     | 'company_profitability_contributor_assignment.revoked'
     | 'company_profitability_director_assignment.granted'
+    | 'company_invoice_reader_assignment.granted'
+    | 'company_invoice_reader_assignment.revoked'
+    | 'company_invoice_recorder_assignment.granted'
+    | 'company_invoice_recorder_assignment.revoked'
+    | 'company_external_invoice_access_assignment.granted'
+    | 'company_external_invoice_access_assignment.revoked'
     | 'company_knowledge_source_administrator_assignment.granted'
     | 'company_knowledge_evidence_reader_assignment.granted'
     | 'company_knowledge_source_administrator_assignment.revoked'
@@ -608,6 +626,9 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_INVOICE_READER_BUNDLE_LABEL
+          | typeof COMPANY_INVOICE_RECORDER_BUNDLE_LABEL
+          | typeof COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL
           | typeof COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL
           | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL

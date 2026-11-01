@@ -1,3 +1,4 @@
+import { useExternalInvoiceAssignmentCopy } from '../access/external-invoice-assignment.copy';
 import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
 import { useProjectNextActionCopy } from '../project/project-next-action.copy';
@@ -46,6 +47,7 @@ export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
   const internalTask = useInternalTaskCopy();
   const knowledgeAssignments = useKnowledgeAssignmentActivityCopy();
+  const externalInvoiceAssignments = useExternalInvoiceAssignmentCopy();
   const ideas = useIdeasCopy();
   const missionPlan = useMissionPlanCopy();
   const model = useOfferModelCopy();
@@ -81,6 +83,19 @@ export function useActivityLogDisplay() {
   const nextActionCopy = useProjectNextActionCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
+    'company_invoice_reader_assignment.granted':
+      externalInvoiceAssignments('readerGranted'),
+    'company_invoice_reader_assignment.revoked':
+      externalInvoiceAssignments('readerRevoked'),
+    'company_invoice_recorder_assignment.granted':
+      externalInvoiceAssignments('recorderGranted'),
+    'company_invoice_recorder_assignment.revoked':
+      externalInvoiceAssignments('recorderRevoked'),
+    'company_external_invoice_access_assignment.granted':
+      externalInvoiceAssignments('familyGranted'),
+    'company_external_invoice_access_assignment.revoked':
+      externalInvoiceAssignments('familyRevoked'),
+
     'company_knowledge_source_administrator_assignment.granted':
       knowledgeAssignments('administratorGranted'),
     'company_knowledge_source_administrator_assignment.revoked':

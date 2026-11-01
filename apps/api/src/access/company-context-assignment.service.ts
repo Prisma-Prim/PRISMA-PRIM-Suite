@@ -1,4 +1,7 @@
 import {
+  COMPANY_INVOICE_READER_BUNDLE,
+  COMPANY_INVOICE_RECORDER_BUNDLE,
+  COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
 } from './company-permissions.js';
@@ -306,7 +309,23 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   permissionSetVersion: 'v1',
 };
+const INVOICE_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_INVOICE_READER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const INVOICE_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_INVOICE_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const EXTERNAL_INVOICE_ACCESS_BUNDLE: BundleDefinition = {
+  value: COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_INVOICE_READER_BUNDLE,
+  COMPANY_INVOICE_RECORDER_BUNDLE,
+  COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
+
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
   COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
@@ -1901,6 +1920,84 @@ export class CompanyContextAssignmentService {
       key,
     );
   }
+  grantInvoiceReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      INVOICE_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeInvoiceReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      INVOICE_READER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantInvoiceRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      INVOICE_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeInvoiceRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      INVOICE_RECORDER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantExternalInvoiceAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      EXTERNAL_INVOICE_ACCESS_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeExternalInvoiceAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      EXTERNAL_INVOICE_ACCESS_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   private async mutate(
     actor: ActorContext,
     bundle: BundleDefinition,
@@ -2227,6 +2324,19 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_INVOICE_READER_BUNDLE:
+      return granted
+        ? 'company_invoice_reader_assignment.granted'
+        : 'company_invoice_reader_assignment.revoked';
+    case COMPANY_INVOICE_RECORDER_BUNDLE:
+      return granted
+        ? 'company_invoice_recorder_assignment.granted'
+        : 'company_invoice_recorder_assignment.revoked';
+    case COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE:
+      return granted
+        ? 'company_external_invoice_access_assignment.granted'
+        : 'company_external_invoice_access_assignment.revoked';
+
     case COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE:
       return granted
         ? 'company_knowledge_source_administrator_assignment.granted'

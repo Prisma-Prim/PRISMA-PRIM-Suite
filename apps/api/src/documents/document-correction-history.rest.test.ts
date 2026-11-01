@@ -1,4 +1,7 @@
-import { receivedContractRelationsForTest } from './document-read.test-support.js';
+import {
+  receivedContractRelationsForTest,
+  externalInvoiceRelationsForTest,
+} from './document-read.test-support.js';
 import { ConfigService } from '@nestjs/config';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
@@ -589,6 +592,12 @@ describe.skipIf(!databaseUrl)(
           new DocumentMalwareScanner(new ConfigService()),
         ),
         receivedContractRelationsForTest({
+          context,
+          authorization,
+          clients,
+          accountability,
+        }),
+        externalInvoiceRelationsForTest({
           context,
           authorization,
           clients,

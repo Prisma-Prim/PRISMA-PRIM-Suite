@@ -1,4 +1,8 @@
 import {
+  readExternalInvoiceRelation,
+  type ExternalInvoiceRelation,
+} from './external-invoice-response';
+import {
   readDocumentPdfContent,
   type DocumentPdfContent,
 } from './document-pdf-response';
@@ -22,7 +26,10 @@ interface WorkingDocumentBase {
   correction: 'allowed' | 'read-only';
 }
 export type DocumentFamily =
-  'questionnaire' | 'mission-deliverable' | 'received-contract';
+  | 'questionnaire'
+  | 'mission-deliverable'
+  | 'received-contract'
+  | 'external-invoice';
 type WorkingVersion = { id: string; status: 'draft' | 'official' };
 export type WorkingDocument = WorkingDocumentBase &
   (
@@ -38,6 +45,11 @@ export type WorkingDocument = WorkingDocumentBase &
         type: 'received-contract';
         version: WorkingVersion & { representation: null };
         receivedContractRelation: ReceivedContractRelation;
+      }
+    | {
+        type: 'external-invoice';
+        version: WorkingVersion & { representation: null };
+        externalInvoiceRelation: ExternalInvoiceRelation;
       }
   );
 /** One unverified external reference; its URL only under Representation read. */
@@ -108,7 +120,8 @@ export function readDocument(value: unknown): WorkingDocument {
   if (
     (row.type !== 'questionnaire' &&
       row.type !== 'mission-deliverable' &&
-      row.type !== 'received-contract') ||
+      row.type !== 'received-contract' &&
+      row.type !== 'external-invoice') ||
     row.confidentiality !== 'company-confidential' ||
     (version.status !== 'draft' && version.status !== 'official') ||
     (row.correction !== 'allowed' && row.correction !== 'read-only')
@@ -143,6 +156,15 @@ export function readDocument(value: unknown): WorkingDocument {
     };
   if (version.representation !== null)
     throw new Error('Invalid mission Document reference');
+  if (row.type === 'external-invoice')
+    return {
+      ...base,
+      type: row.type,
+      version: { ...working, representation: null },
+      externalInvoiceRelation: readExternalInvoiceRelation(
+        row.externalInvoiceRelation,
+      ),
+    };
   if (row.type === 'received-contract')
     return {
       ...base,
@@ -177,6 +199,8 @@ function projectAssociation(value: unknown): DocumentProjectAssociation {
 export function readDocumentDetail(value: unknown): WorkingDocumentDetail {
   const document = readDocument(value);
   const association = record(value).projectAssociation;
+  if (document.type === 'external-invoice' && association !== undefined)
+    throw new Error('External invoice Documents cannot belong to a Project');
   return association === undefined
     ? document
     : { ...document, projectAssociation: projectAssociation(association) };

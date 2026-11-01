@@ -1,3 +1,8 @@
+import {
+  hasExternalInvoiceAccess,
+  hasExternalInvoiceNativeRead,
+} from './external-invoice-access';
+import { useExternalInvoiceCopy } from './external-invoice.copy';
 import { hasReceivedContractAccess } from './received-contract-access';
 import { documentFamilyCaptureKey } from './document-family-access';
 import { useReceivedContractCopy } from './received-contract.copy';
@@ -134,10 +139,19 @@ export function DocumentVersions({
     (documentType === 'mission-deliverable' &&
       !hasMissionDeliverableAccess(company)) ||
     (documentType === 'received-contract' &&
-      !hasReceivedContractAccess(company))
+      !hasReceivedContractAccess(company)) ||
+    (documentType === 'external-invoice' &&
+      (!hasExternalInvoiceAccess(company) ||
+        !hasExternalInvoiceNativeRead(
+          company,
+          actor.workspacePermissions.includes('client.manage'),
+        )))
   )
     return null;
   const canReadReference = permissions.includes('document.reference.read');
+  const canMutateFamily =
+    documentType !== 'external-invoice' ||
+    hasExternalInvoiceAccess(company, true);
   return (
     <VersionsSection
       key={JSON.stringify([
@@ -174,13 +188,17 @@ export function DocumentVersions({
       documentType={documentType}
       workingRevision={workingRevision}
       canDesignate={
+        canMutateFamily &&
         canReadReference &&
         permissions.includes('document.version.designate_official')
       }
       canStartDraft={
-        canReadReference && permissions.includes('document.version.manage')
+        canMutateFamily &&
+        canReadReference &&
+        permissions.includes('document.version.manage')
       }
       canUploadContent={
+        canMutateFamily &&
         permissions.includes('document.content.read') &&
         permissions.includes('document.content.upload') &&
         permissions.includes('document.version.manage')
@@ -740,6 +758,7 @@ function Designation({
   const copy = useDocumentVersionsCopy();
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
+  const invoiceCopy = useExternalInvoiceCopy();
   switch (version.status) {
     case 'draft':
       return null;
@@ -766,11 +785,13 @@ function Designation({
             />
           ) : (
             <p className="working-document-version-notice">
-              {documentType === 'received-contract'
-                ? receivedCopy.t('warning')
-                : documentType === 'mission-deliverable'
-                  ? missionCopy.t('warning')
-                  : copy.frozenNotice}
+              {documentType === 'external-invoice'
+                ? invoiceCopy.t('warning')
+                : documentType === 'received-contract'
+                  ? receivedCopy.t('warning')
+                  : documentType === 'mission-deliverable'
+                    ? missionCopy.t('warning')
+                    : copy.frozenNotice}
             </p>
           )}
         </>

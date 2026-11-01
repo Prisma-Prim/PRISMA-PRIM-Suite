@@ -1,8 +1,15 @@
+import {
+  captureExternalInvoiceGrant,
+  externalInvoiceCapturedAuthority,
+} from './external-invoice-captured-grants.js';
 import { captureKnowledgeGrant } from './knowledge-captured-grants.js';
 import {
   COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
+  COMPANY_INVOICE_READER_BUNDLE,
+  COMPANY_INVOICE_RECORDER_BUNDLE,
+  COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
 } from './company-permissions.js';
@@ -681,6 +688,266 @@ export class CompanyContextAuthorization {
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);
     return company.id;
+  }
+
+  /** Contract owns source qualification; Access fences the exact native captures it consumes. */
+  async requireExternalInvoiceSourceAccess(
+    actor: ActorContext,
+    options: { lockAssignment: boolean },
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      !company.contractPermissions?.includes('commercial.contract.read') ||
+      !company.commercialIntakePermissions?.includes(
+        'commercial.request.read',
+      ) ||
+      !company.commercialIntakePermissions.includes(
+        'commercial.opportunity.read',
+      )
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(
+      actor,
+      company.id,
+      options.lockAssignment,
+    );
+    const alternatives = [
+      externalInvoiceNativeCapture({
+        bundle: COMPANY_CONTRACT_PREPARER_BUNDLE,
+        assignmentId: company.contractPermissionAssignmentId,
+        version: company.contractPermissionSetVersion,
+        versions: ['v1', 'v2'],
+      }),
+      externalInvoiceNativeCapture({
+        bundle: COMPANY_CONTRACT_APPROVER_BUNDLE,
+        assignmentId: company.contractApproverAssignmentId,
+        version: company.contractApproverPermissionSetVersion,
+        versions: ['v1', 'v2'],
+      }),
+    ].filter((condition): condition is SQL => condition !== undefined);
+    if (!alternatives.length) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      sql`(${sql.join(alternatives, sql` OR `)})`,
+      options.lockAssignment,
+    );
+    await this.requireExternalInvoiceCapture(actor, {
+      bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+      assignmentId: company.commercialIntakePermissionAssignmentId,
+      version: company.commercialIntakePermissionSetVersion,
+      versions: ['v1', 'v2', 'v3', 'v4'],
+      lock: options.lockAssignment,
+    });
+    await this.requireExternalInvoiceClientRead(actor, options.lockAssignment);
+    return company.id;
+  }
+
+  private async requireExternalInvoiceCapture(
+    actor: ActorContext,
+    input: {
+      bundle: typeof companyRoleAssignments.$inferSelect.bundle;
+      assignmentId: unknown;
+      version: unknown;
+      versions: readonly string[];
+      lock: boolean;
+    },
+  ): Promise<void> {
+    const company = actor.activeCompany;
+    const condition = externalInvoiceNativeCapture(input);
+    if (!company || !condition) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      condition,
+      input.lock,
+    );
+  }
+
+  private async requireExternalInvoiceClientRead(
+    actor: ActorContext,
+    lock: boolean,
+  ): Promise<void> {
+    const company = actor.activeCompany;
+    if (!company) throw new ForbiddenException();
+    if (actor.workspacePermissions.includes('client.manage')) {
+      const query = this.databaseContext.connection
+        .select({ id: workspacePermissionGrants.id })
+        .from(workspacePermissionGrants)
+        .where(
+          and(
+            eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+            eq(
+              workspacePermissionGrants.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(workspacePermissionGrants.permission, 'client.manage'),
+          ),
+        );
+      const rows = lock ? await query.for('share') : await query;
+      if (rows.length) return;
+    }
+    if (!company.clientPermissions.includes('client.read'))
+      throw new ForbiddenException();
+    await this.requireExternalInvoiceCapture(actor, {
+      bundle: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+      assignmentId: company.clientPermissionAssignmentId,
+      version: company.clientPermissionSetVersion,
+      versions: ['v1', 'v2'],
+      lock,
+    });
+  }
+
+  /** Exact native captures fence only the financial family; legacy families retain their delivered policy. */
+  async requireExternalInvoiceNativeAccess(
+    actor: ActorContext,
+    options: {
+      action:
+        | 'read'
+        | 'register'
+        | 'correct'
+        | 'version'
+        | 'designate'
+        | 'content-read'
+        | 'upload';
+      lockAssignment: boolean;
+    },
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      !company.documentPermissions?.includes('document.read')
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(
+      actor,
+      company.id,
+      options.lockAssignment,
+    );
+    const requireCapture = (input: {
+      bundle: typeof companyRoleAssignments.$inferSelect.bundle;
+      assignmentId: unknown;
+      version: unknown;
+      versions: readonly string[];
+    }) =>
+      this.requireExternalInvoiceCapture(actor, {
+        ...input,
+        lock: options.lockAssignment,
+      });
+    const versions =
+      options.action === 'version' || options.action === 'upload'
+        ? ['v3']
+        : options.action === 'correct'
+          ? ['v2', 'v3']
+          : ['v1', 'v2', 'v3'];
+    await requireCapture({
+      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+      assignmentId: company.documentPermissionAssignmentId,
+      version: company.documentPermissionSetVersion,
+      versions,
+    });
+    await this.requireExternalInvoiceClientRead(actor, options.lockAssignment);
+    if (
+      options.action === 'register' &&
+      !company.documentPermissions.includes('document.register')
+    )
+      throw new ForbiddenException();
+    if (
+      options.action === 'correct' &&
+      !company.documentPermissions.includes('document.correct')
+    )
+      throw new ForbiddenException();
+    if (
+      (options.action === 'version' || options.action === 'upload') &&
+      !company.documentPermissions.includes('document.version.manage')
+    )
+      throw new ForbiddenException();
+    if (options.action === 'designate') {
+      if (
+        !company.documentPermissions.includes(
+          'document.version.designate_official',
+        )
+      )
+        throw new ForbiddenException();
+      await requireCapture({
+        bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE,
+        assignmentId: company.documentApproverAssignmentId,
+        version: company.documentApproverPermissionSetVersion,
+        versions: ['v1'],
+      });
+    }
+    if (options.action === 'content-read' || options.action === 'upload') {
+      if (!company.documentPermissions.includes('document.content.read'))
+        throw new ForbiddenException();
+      await requireCapture({
+        bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+        assignmentId: company.documentContentReaderAssignmentId,
+        version: company.documentContentReaderPermissionSetVersion,
+        versions: ['v1'],
+      });
+    }
+    if (options.action === 'upload') {
+      if (!company.documentPermissions.includes('document.content.upload'))
+        throw new ForbiddenException();
+      await requireCapture({
+        bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
+        assignmentId: company.documentContentUploaderAssignmentId,
+        version: company.documentContentUploaderPermissionSetVersion,
+        versions: ['v1'],
+      });
+    }
+    return company.id;
+  }
+
+  /** Finance and family captures remain independent from every ordinary native Document grant. */
+  async hasExternalInvoiceAccess(
+    actor: ActorContext,
+    options: { manage: boolean; lockAssignment: boolean } = {
+      manage: false,
+      lockAssignment: false,
+    },
+  ): Promise<boolean> {
+    const company = actor.activeCompany;
+    if (!actor.active || !company) return false;
+    const captured = externalInvoiceCapturedAuthority(
+      company.externalInvoiceGrants,
+      options,
+    );
+    if (!captured) return false;
+    try {
+      await this.requireLiveCompanyContext(
+        actor,
+        company.id,
+        options.lockAssignment,
+      );
+      await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        and(
+          eq(companyRoleAssignments.id, captured.family.assignmentId),
+          eq(companyRoleAssignments.bundle, captured.family.bundle),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+        ) ?? sql`false`,
+        options.lockAssignment,
+      );
+      const alternatives = captured.finance.map(
+        (grant) =>
+          sql`(${companyRoleAssignments.id} = ${grant.assignmentId} AND ${companyRoleAssignments.bundle} = ${grant.bundle} AND ${companyRoleAssignments.permissionSetVersion} = 'v1')`,
+      );
+      await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        sql`(${sql.join(alternatives, sql` OR `)})`,
+        options.lockAssignment,
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenException) return false;
+      throw error;
+    }
   }
 
   async hasReceivedContractAccess(
@@ -1764,6 +2031,9 @@ export class CompanyContextAuthorization {
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+        COMPANY_INVOICE_READER_BUNDLE,
+        COMPANY_INVOICE_RECORDER_BUNDLE,
+        COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
         COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
         COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
         COMPANY_IDEAS_READER_BUNDLE,
@@ -1838,6 +2108,12 @@ export class CompanyContextAuthorization {
         company.internalTaskManagerAssignmentId = row.assignmentId;
         company.internalTaskManagerPermissionSetVersion = 'v1';
       }
+      const externalInvoiceGrant = captureExternalInvoiceGrant(row);
+      if (externalInvoiceGrant)
+        company.externalInvoiceGrants = [
+          ...(company.externalInvoiceGrants ?? []),
+          externalInvoiceGrant,
+        ];
       const knowledgeGrant = captureKnowledgeGrant(row);
       if (knowledgeGrant)
         company.knowledgeGrants = [
@@ -2390,4 +2666,27 @@ function commercialIntakeRequiredPermissions(
 
 function assertNeverMode(mode: never): never {
   throw new Error(`Unknown commercial intake access mode: ${String(mode)}`);
+}
+
+/** Complete runtime proof for one feature-consumed native assignment identity. */
+function externalInvoiceNativeCapture(input: {
+  bundle: typeof companyRoleAssignments.$inferSelect.bundle;
+  assignmentId: unknown;
+  version: unknown;
+  versions: readonly string[];
+}): SQL | undefined {
+  if (
+    typeof input.assignmentId !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+      input.assignmentId,
+    ) ||
+    typeof input.version !== 'string' ||
+    !input.versions.includes(input.version)
+  )
+    return undefined;
+  return and(
+    eq(companyRoleAssignments.id, input.assignmentId),
+    eq(companyRoleAssignments.bundle, input.bundle),
+    eq(companyRoleAssignments.permissionSetVersion, input.version),
+  );
 }

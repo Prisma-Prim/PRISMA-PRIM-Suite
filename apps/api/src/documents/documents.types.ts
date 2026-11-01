@@ -1,3 +1,4 @@
+import type { ExternalInvoiceRelationView } from './external-invoice.js';
 import type { ReceivedContractRelationView } from './received-contract.js';
 
 interface WorkingDocumentBase {
@@ -27,25 +28,31 @@ interface WorkingExternalReference {
   kind: 'external-reference';
   verification: 'unverified';
 }
-export type WorkingDocument = WorkingDocumentBase &
-  (
-    | {
-        type: 'questionnaire';
-        version: WorkingVersionIdentity & {
-          representation: WorkingExternalReference &
-            ({ access: 'granted'; url: string } | { access: 'denied' });
-        };
-      }
-    | {
-        type: 'mission-deliverable';
-        version: WorkingVersionIdentity & { representation: null };
-      }
-    | {
-        type: 'received-contract';
-        version: WorkingVersionIdentity & { representation: null };
-        receivedContractRelation: ReceivedContractRelationView;
-      }
-  );
+export type WorkingDocument =
+  | (Omit<WorkingDocumentBase, 'createdByMembershipId'> & {
+      type: 'external-invoice';
+      version: WorkingVersionIdentity & { representation: null };
+      externalInvoiceRelation: ExternalInvoiceRelationView;
+    })
+  | (WorkingDocumentBase &
+      (
+        | {
+            type: 'questionnaire';
+            version: WorkingVersionIdentity & {
+              representation: WorkingExternalReference &
+                ({ access: 'granted'; url: string } | { access: 'denied' });
+            };
+          }
+        | {
+            type: 'mission-deliverable';
+            version: WorkingVersionIdentity & { representation: null };
+          }
+        | {
+            type: 'received-contract';
+            version: WorkingVersionIdentity & { representation: null };
+            receivedContractRelation: ReceivedContractRelationView;
+          }
+      ));
 
 /** The optional preparatory Project a working Document is organized in. */
 export type DocumentProjectAssociation =

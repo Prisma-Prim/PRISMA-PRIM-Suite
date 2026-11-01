@@ -63,11 +63,8 @@ export class DocumentReadBoundary {
     );
     return { companyId, document, client };
   }
-  /** Fence a mission command before receipt inspection without changing legacy mismatch semantics. */
-  async lockFamilyForCommand(
-    actor: ActorContext,
-    documentId: string,
-  ): Promise<void> {
+  /** Fence the scoped family before receipt inspection, retaining native mismatch semantics. */
+  async lockFamilyForCommand(actor: ActorContext, documentId: string) {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor, true);
     const [document] = await this.database.connection
@@ -81,6 +78,7 @@ export class DocumentReadBoundary {
         ),
       );
     if (document) await this.requireFamily(actor, document.type, true);
+    return document?.type;
   }
 
   private async requireFamily(
@@ -89,6 +87,20 @@ export class DocumentReadBoundary {
     lockAssignment: boolean,
   ): Promise<void> {
     if (type === 'questionnaire') return;
+    if (type === 'external-invoice') {
+      if (
+        !(await this.authorization.hasExternalInvoiceAccess(actor, {
+          manage: lockAssignment,
+          lockAssignment,
+        }))
+      )
+        throw new NotFoundException();
+      await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+        action: 'read',
+        lockAssignment,
+      });
+      return;
+    }
     if (type === 'received-contract') {
       if (
         !(await this.authorization.hasReceivedContractAccess(actor, {
