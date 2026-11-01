@@ -3514,6 +3514,209 @@ paths:
         '409':
           description: Incomplete required Tasks, stale revision, unsupported transition, closed Project or changed key intent.
 
+  /api/knowledge/evidence/sources:
+    get:
+      operationId: listWebKnowledgeSources
+      tags:
+        - Knowledge
+      summary: List currently eligible exact sources without hidden counts
+      description:
+        Ordinary verified web Actor delegates to the existing Knowledge service. Live Reader v1,
+        native Document/content/Client/family, admission and capability checks and minimal successful-read
+        attribution are unchanged. Private/no-store responses; no hidden counts or administration data.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - current
+              - historical
+            default: current
+          description: Historical mode requires exact documentVersionId; current mode rejects it.
+        - in: query
+          name: documentVersionId
+          schema:
+            type: string
+            format: uuid
+          description: Required only for explicit historical mode.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeSourcePage'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+  /api/knowledge/evidence/search:
+    get:
+      operationId: searchWebKnowledgeEvidence
+      tags:
+        - Knowledge
+      summary: Match a literal query over independently authorized passages
+      description:
+        Ordinary verified web Actor delegates to the existing Knowledge service. Live Reader v1,
+        native Document/content/Client/family, admission and capability checks and minimal successful-read
+        attribution are unchanged. Private/no-store responses; no hidden counts or administration data.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - current
+              - historical
+            default: current
+          description: Historical mode requires exact documentVersionId; current mode rejects it.
+        - in: query
+          name: documentVersionId
+          schema:
+            type: string
+            format: uuid
+          description: Required only for explicit historical mode.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeSearchPage'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+  /api/knowledge/evidence/sources/{sourceId}/passages/{locator}:
+    get:
+      operationId: readWebKnowledgePassage
+      tags:
+        - Knowledge
+      summary: Read one exact authorized literal citation
+      description:
+        Ordinary verified web Actor delegates to the existing Knowledge service. Live Reader v1,
+        native Document/content/Client/family, admission and capability checks and minimal successful-read
+        attribution are unchanged. Private/no-store responses; no hidden counts or administration data.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: locator
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+            not:
+              enum:
+                - .
+                - ..
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - current
+              - historical
+            default: current
+          description: Historical mode requires exact documentVersionId; current mode rejects it.
+        - in: query
+          name: documentVersionId
+          schema:
+            type: string
+            format: uuid
+          description: Required only for explicit historical mode.
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgePassage'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
   /api/knowledge/sources:
     post:
       operationId: draftKnowledgeSource
@@ -4391,6 +4594,7 @@ components:
         - sourceId
         - documentId
         - documentVersionId
+        - representationId
         - sourceSha256
         - projectionSha256
         - title
@@ -4404,6 +4608,9 @@ components:
           type: string
           format: uuid
         documentVersionId:
+          type: string
+          format: uuid
+        representationId:
           type: string
           format: uuid
         sourceSha256:

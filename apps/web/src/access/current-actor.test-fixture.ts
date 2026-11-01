@@ -25,6 +25,7 @@ export const completeActor = {
       version: 'future',
       arbitrary: null,
     },
+    knowledgeGrants: { version: 'future', arbitrary: null },
     internalTaskPermissions: { version: 'future', arbitrary: null },
     internalTaskManagerAssignmentId: 'sample-internal-task',
     internalTaskManagerPermissionSetVersion: 'future',

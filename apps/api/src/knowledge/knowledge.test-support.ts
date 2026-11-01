@@ -23,6 +23,9 @@ interface KnowledgeDocumentFixtureOptions {
   /** Exact literal text drawn into the synthetic preserved PDF. */
   readonly passageText?: string;
   readonly language?: 'ro' | 'ru' | 'en';
+  readonly title?: string;
+  /** Admit the earlier of two independent uploads with identical bytes. */
+  readonly equalByteUploads?: true;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -71,6 +74,8 @@ export async function createKnowledgeDocumentFixture({
   grantHeaders = callerHeaders,
   passageText = KNOWLEDGE_DOCUMENT_LITERAL,
   language = 'en',
+  title = 'Fictional governed source for cited evidence',
+  equalByteUploads,
 }: KnowledgeDocumentFixtureOptions) {
   if (
     !passageText ||
@@ -133,7 +138,7 @@ export async function createKnowledgeDocumentFixture({
   });
   const document = await command('/documents', {
     clientId: text(client.id),
-    title: 'Fictional governed source for cited evidence',
+    title,
     purpose: 'Qualify exact-source admission without real Client data',
     url: 'https://example.test/fictional/knowledge-original',
   });
@@ -185,6 +190,24 @@ export async function createKnowledgeDocumentFixture({
     'Governed PDF upload',
   );
   const representationId = text(upload.representationId);
+  const latestUpload = equalByteUploads
+    ? await responseObject(
+        await fetch(
+          `${origin}/api/documents/${documentId}/versions/${documentVersionId}/content?expectedRevision=${revision(upload.workingRevision)}&fileName=fictional-identical-later.pdf`,
+          {
+            method: 'POST',
+            headers: headers(callerHeaders, true, 'application/pdf'),
+            body: new Uint8Array(bytes),
+          },
+        ),
+        201,
+        'Later equal-byte upload',
+      )
+    : upload;
+  const laterRepresentationId = text(latestUpload.representationId);
+  if (equalByteUploads && laterRepresentationId === representationId)
+    throw new Error('Uploads must have independent identities.');
+
   const designation = await responseObject(
     await fetch(
       `${origin}/api/documents/${documentId}/versions/${documentVersionId}/official-designation`,
@@ -192,7 +215,7 @@ export async function createKnowledgeDocumentFixture({
         method: 'POST',
         headers: headers(callerHeaders, true),
         body: JSON.stringify({
-          expectedRevision: revision(upload.workingRevision),
+          expectedRevision: revision(latestUpload.workingRevision),
         }),
       },
     ),
@@ -225,7 +248,7 @@ export async function createKnowledgeDocumentFixture({
   if (
     content.state !== 'stored' ||
     content.access !== 'granted' ||
-    content.representationId !== representationId ||
+    content.representationId !== laterRepresentationId ||
     content.sha256 !== sourceSha256
   )
     throw new Error(
@@ -233,6 +256,8 @@ export async function createKnowledgeDocumentFixture({
     );
 
   return {
+    bytes: Buffer.from(bytes),
+    laterRepresentationId,
     documentId,
     documentVersionId,
     representationId,

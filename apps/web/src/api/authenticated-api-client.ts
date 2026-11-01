@@ -34,6 +34,7 @@ export interface ApiRequest {
   body?: string | Blob;
   companyContextId?: string;
   signal?: AbortSignal;
+  cache?: 'no-store';
 }
 
 export interface AuthenticatedApiClient {
@@ -55,7 +56,10 @@ export interface AuthenticatedApiClient {
   ): Promise<ApiResult<Blob> | { status: 'tooLarge' }>;
   download(
     path: string,
-    request?: Pick<ApiRequest, 'headers' | 'companyContextId' | 'signal'>,
+    request?: Pick<
+      ApiRequest,
+      'headers' | 'companyContextId' | 'signal' | 'cache'
+    > & { maximumBytes?: number },
   ): Promise<ApiResult<Blob>>;
 }
 
@@ -82,6 +86,7 @@ export async function createAuthenticatedApiClient(
       headers,
       body: request.body,
       signal: request.signal,
+      cache: request.cache,
     });
   }
 
@@ -114,6 +119,8 @@ export async function createAuthenticatedApiClient(
     ): Promise<ApiResult<T>> {
       try {
         const response = await authenticatedFetch(path, request);
+        if (request.cache === 'no-store' && request.signal?.aborted)
+          return { status: 'error' };
         const rejection = accessFailure(response);
         if (rejection) return rejection;
         if (response.status === 409) {
@@ -213,6 +220,14 @@ export async function createAuthenticatedApiClient(
         const rejection = accessFailure(response);
         if (rejection) return rejection;
         if (!response.ok) return { status: 'error' };
+        if (request.maximumBytes !== undefined) {
+          const blob = await boundedDownload(
+            response,
+            request.maximumBytes,
+            request.signal,
+          );
+          return blob ? { status: 'ok', value: blob } : { status: 'error' };
+        }
         return { status: 'ok', value: await response.blob() };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
@@ -221,6 +236,44 @@ export async function createAuthenticatedApiClient(
       }
     },
   };
+}
+
+/** Optional native-content bound; existing download callers keep their contract. */
+async function boundedDownload(
+  response: Response,
+  maximum: number,
+  signal?: AbortSignal,
+): Promise<Blob | undefined> {
+  if (!Number.isSafeInteger(maximum) || maximum < 1 || !response.body)
+    return undefined;
+  if (signal?.aborted) {
+    await response.body.cancel();
+    return undefined;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (signal?.aborted) {
+        await reader.cancel();
+        return undefined;
+      }
+      if (next.done)
+        return new Blob(chunks, {
+          type: response.headers.get('content-type') ?? '',
+        });
+      size += next.value.byteLength;
+      if (size > maximum) {
+        await reader.cancel();
+        return undefined;
+      }
+      chunks.push(new Uint8Array(next.value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 function accessFailure(

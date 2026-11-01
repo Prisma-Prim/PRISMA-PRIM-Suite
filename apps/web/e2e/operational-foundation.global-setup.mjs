@@ -88,6 +88,7 @@ export default async function globalSetup() {
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
+        KNOWLEDGE_EVIDENCE_ENABLED: 'true',
         DOCUMENT_MALWARE_SCANNER_HOST: documentScanner.host,
         DOCUMENT_MALWARE_SCANNER_PORT: documentScanner.port,
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: administratorIdentity.provider,

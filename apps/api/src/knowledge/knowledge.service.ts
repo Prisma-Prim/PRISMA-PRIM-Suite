@@ -671,6 +671,7 @@ function summary(source: Source, version: Version): KnowledgeSourceSummary {
     sourceId: source.id,
     documentId: source.documentId,
     documentVersionId: source.documentVersionId,
+    representationId: source.representationId,
     sourceSha256: source.sourceSha256,
     projectionSha256: source.projectionSha256,
     title: version.frozenTitle,
