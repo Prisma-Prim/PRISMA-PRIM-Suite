@@ -1,3 +1,4 @@
+import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
 import { ProjectPdfBundleService } from './project-pdf-bundle.service.js';
 import { DocumentSigningReferenceService } from './document-signing-reference.service.js';
 import { DocumentContentService } from './document-content.service.js';
@@ -28,6 +29,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
   providers: [
     ProjectPdfBundleService,
     ReceivedContractRelationsService,
+    ExternalInvoiceRelationsService,
     DocumentsService,
     DocumentProjectsService,
     DocumentReadBoundary,

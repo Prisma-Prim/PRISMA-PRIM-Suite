@@ -3,6 +3,7 @@ import { ClientOperationalReferenceService } from '../client/client-operational-
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { zipSync, strToU8 } from 'fflate';
@@ -47,6 +48,8 @@ export class ProjectPdfBundleService {
             actor,
             item.documentId,
           );
+          if (document.type === 'external-invoice')
+            throw new NotFoundException();
           await this.associations.requireSelectedAssociationWithinReadTransaction(
             {
               document,

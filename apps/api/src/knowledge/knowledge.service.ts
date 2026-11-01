@@ -74,7 +74,7 @@ export class KnowledgeService {
     return this.database.transaction(async () => {
       const companyId = await this.authorization.require(actor, 'admin');
       const input = draftInput(body);
-      const visible = await this.boundary.requireVisible(
+      const visible = await this.requireEligibleDocument(
         actor,
         input.documentId,
         { lockFamily: true },
@@ -162,7 +162,7 @@ export class KnowledgeService {
       const replay = await this.replay(actor, companyId, key, fingerprint);
       if (replay) return replay;
       const source = await this.source(actor, id, true);
-      await this.boundary.requireVisible(actor, source.documentId, {
+      await this.requireEligibleDocument(actor, source.documentId, {
         lockFamily: true,
       });
       const version = await this.version(
@@ -479,7 +479,7 @@ export class KnowledgeService {
       ? await query.for('update')
       : await query.for('share');
     if (!source) throw new NotFoundException();
-    await this.boundary.requireVisible(actor, source.documentId);
+    await this.requireEligibleDocument(actor, source.documentId);
     return source;
   }
 
@@ -490,7 +490,7 @@ export class KnowledgeService {
   ): Promise<Version> {
     const companyId = actor.activeCompany?.id;
     if (!companyId) throw new ForbiddenException();
-    await this.boundary.requireVisible(actor, documentId);
+    await this.requireEligibleDocument(actor, documentId);
     const [version] = await this.database.connection
       .select()
       .from(documentVersions)
@@ -511,7 +511,7 @@ export class KnowledgeService {
     actor: ActorContext,
     source: Source,
   ): Promise<Passage[]> {
-    await this.boundary.requireVisible(actor, source.documentId);
+    await this.requireEligibleDocument(actor, source.documentId);
     const original = await this.content.downloadWithinReadTransaction(actor, {
       documentId: source.documentId,
       versionId: source.documentVersionId,
@@ -555,6 +555,28 @@ export class KnowledgeService {
       passageSha256: passage.sha256,
       retrievedAt: this.now().toISOString(),
     };
+  }
+
+  private async requireEligibleDocument(
+    actor: ActorContext,
+    documentId: string,
+    options: { lockFamily: boolean } = { lockFamily: false },
+  ) {
+    const visible = await this.boundary.requireVisible(
+      actor,
+      documentId,
+      options,
+    );
+    // Financial source authority never includes permission to disclose it to
+    // Knowledge. Keep this owned policy explicit, including at read boundaries
+    // if a prohibited source were supplied by invalid persisted state.
+    if (
+      visible.document.type !== 'questionnaire' &&
+      visible.document.type !== 'mission-deliverable' &&
+      visible.document.type !== 'received-contract'
+    )
+      throw new NotFoundException();
+    return visible;
   }
 
   private async replay(

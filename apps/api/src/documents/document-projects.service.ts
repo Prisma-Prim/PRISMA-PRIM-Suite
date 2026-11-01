@@ -110,6 +110,7 @@ export class DocumentProjectsService {
   }): Promise<void> {
     const { document, project, expectedRevision } = input;
     if (
+      document.type === 'external-invoice' ||
       document.companyId !== project.companyId ||
       document.clientId !== project.clientAccountId
     )
@@ -192,6 +193,7 @@ export class DocumentProjectsService {
           'Idempotency-Key was already used for another association command.',
         );
       const document = await this.documents.read(actor, documentId);
+      if (document.type === 'external-invoice') throw new NotFoundException();
       const project = await this.projects.read(actor, command.projectId);
       if (
         document.clientId !== project.clientAccountId ||

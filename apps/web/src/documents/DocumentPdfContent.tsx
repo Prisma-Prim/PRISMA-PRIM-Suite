@@ -195,7 +195,11 @@ export function DocumentPdfContent({
       if (controller.signal.aborted) return;
       const result = await api.download(
         `${path}/${encodeURIComponent(pdf.representationId)}`,
-        { companyContextId: companyId, signal: controller.signal },
+        {
+          companyContextId: companyId,
+          signal: controller.signal,
+          maximumBytes: 5242880,
+        },
       );
       if (!mounted.current || controller.signal.aborted) return;
       if (result.status === 'unauthorized') {
@@ -217,10 +221,9 @@ export function DocumentPdfContent({
         setDownload('error');
         return;
       }
-      const digest = await crypto.subtle.digest(
-        'SHA-256',
-        await result.value.arrayBuffer(),
-      );
+      const bytes = await result.value.arrayBuffer();
+      if (!mounted.current || controller.signal.aborted) return;
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
       const sha256 = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0'),
       ).join('');
@@ -231,6 +234,7 @@ export function DocumentPdfContent({
       }
       const url = URL.createObjectURL(result.value);
       try {
+        if (!mounted.current || controller.signal.aborted) return;
         const anchor = document.createElement('a');
         anchor.href = url;
         anchor.download = pdf.fileName;

@@ -214,3 +214,22 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.working-document-party {
+  min-width: 0;
+  grid-column: 1 / -1;
+}
+.working-document-party dd {
+  margin-inline-start: 0;
+}
+
+.prisme-shell .working-document-registration--external-invoice {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.working-document-registration--external-invoice > .working-document-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}

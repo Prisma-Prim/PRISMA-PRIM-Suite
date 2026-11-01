@@ -1,3 +1,4 @@
+import type { ExternalInvoiceCapturedGrant } from './external-invoice-captured-grants.js';
 import type { KnowledgeCapturedGrant } from './knowledge-captured-grants.js';
 import type { MissionPlanActorProjection } from './mission-plan-captured-grants.js';
 import type {
@@ -55,6 +56,7 @@ export interface ActiveCompanyContext
     ContractModelActorProjection,
     MissionPlanActorProjection {
   knowledgeGrants?: KnowledgeCapturedGrant[];
+  externalInvoiceGrants?: ExternalInvoiceCapturedGrant[];
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];

@@ -1,3 +1,14 @@
+import { SectionVisibility } from '../production-shell/section-visibility';
+import { ExternalInvoiceRegistration } from './ExternalInvoiceRegistration';
+import { ExternalInvoiceRelation } from './ExternalInvoiceRelation';
+import {
+  hasExternalInvoiceAccess,
+  externalInvoiceCaptureKey,
+  canSelectExternalInvoiceSource,
+  externalInvoiceSourceAuthority,
+  hasExternalInvoiceNativeRead,
+} from './external-invoice-access';
+import { useExternalInvoiceCopy } from './external-invoice.copy';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import {
   hasReceivedContractAccess,
@@ -134,6 +145,8 @@ function DocumentSession({
   const copy = useDocumentsCopy();
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
+  const invoiceCopy = useExternalInvoiceCopy();
+  const sectionVisible = useContext(SectionVisibility);
   const [receivedBusy, setReceivedBusy] = useState(false);
   const [versionWorkProtected, setVersionWorkProtected] = useState(false);
   const detailHeading = useRef<HTMLHeadingElement>(null);
@@ -235,6 +248,7 @@ function DocumentSession({
   const identityRevision = useRef(clientIdentityRevision);
   identityRevision.current = clientIdentityRevision;
   const pending = useRef<AbortController | undefined>(undefined);
+  const financialRead = useRef<AbortController | undefined>(undefined);
   /** The ordinary detail read in flight, if any; never a mutation. */
   const detailRead = useRef<AbortController | undefined>(undefined);
   const listRequest = useRef<AbortController | undefined>(undefined);
@@ -273,6 +287,53 @@ function DocumentSession({
     true;
   const canUseMission = hasMissionDeliverableAccess(actor.activeCompany);
   const canUseReceived = hasReceivedContractAccess(actor.activeCompany);
+  const canUseInvoice =
+    actor.active &&
+    identity.loaded &&
+    identity.signedIn &&
+    hasExternalInvoiceAccess(actor.activeCompany) &&
+    hasExternalInvoiceNativeRead(
+      actor.activeCompany,
+      actor.workspacePermissions.includes('client.manage'),
+    );
+  const canManageInvoice = hasExternalInvoiceAccess(actor.activeCompany, true);
+  const invoiceAuthority = JSON.stringify([
+    canUseInvoice,
+    externalInvoiceCaptureKey(actor.activeCompany),
+    actor.activeCompany?.clientPermissionAssignmentId,
+    actor.activeCompany?.clientPermissionSetVersion,
+    actor.workspacePermissions.includes('client.manage'),
+    actor.internalUserId,
+  ]);
+  const [invoiceOwner, setInvoiceOwner] = useState({
+    identity,
+    authority: invoiceAuthority,
+    visible: sectionVisible,
+    clientRevision: clientIdentityRevision,
+    generation: 0,
+  });
+  // A monotonically new financial owner prevents A → B → A from reviving old work.
+  // Native sibling-family drafts keep their existing owners.
+  if (
+    invoiceOwner.identity !== identity ||
+    invoiceOwner.authority !== invoiceAuthority ||
+    invoiceOwner.visible !== sectionVisible ||
+    invoiceOwner.clientRevision !== clientIdentityRevision
+  ) {
+    setInvoiceOwner({
+      identity,
+      authority: invoiceAuthority,
+      visible: sectionVisible,
+      clientRevision: clientIdentityRevision,
+      generation: invoiceOwner.generation + 1,
+    });
+  }
+  const invoiceCapture = JSON.stringify([
+    invoiceAuthority,
+    invoiceOwner.generation,
+  ]);
+  // Financial navigation lifetimes do not refresh an unrelated native registry.
+  const invoiceListCapture = canUseInvoice ? invoiceCapture : undefined;
   const missionCapture = documentFamilyCaptureKey(
     actor.activeCompany,
     'mission-deliverable',
@@ -285,6 +346,7 @@ function DocumentSession({
     questionnaire: 'questionnaire',
     'mission-deliverable': missionCapture,
     'received-contract': receivedCapture,
+    'external-invoice': invoiceCapture,
   };
   const currentFamilyCaptures = useRef(familyCaptures);
   currentFamilyCaptures.current = familyCaptures;
@@ -294,8 +356,13 @@ function DocumentSession({
     previousFamilyCaptures.current = familyCaptures;
     const retired = (type: DocumentFamily) =>
       previous[type] !== familyCaptures[type];
-    if (!retired('mission-deliverable') && !retired('received-contract'))
+    if (
+      !retired('mission-deliverable') &&
+      !retired('received-contract') &&
+      !retired('external-invoice')
+    )
       return;
+    if (retired('external-invoice')) financialRead.current?.abort();
     // Retire cached rows/read replies before paint, without unmounting an unrelated PDF owner.
     for (const [id, entry] of confirmedRegistrations.current)
       if (retired(entry.document.type))
@@ -335,16 +402,25 @@ function DocumentSession({
       retry.current = undefined;
       setFamily('questionnaire');
     }
-  }, [missionCapture, receivedCapture, detail, family]);
+  }, [missionCapture, receivedCapture, invoiceCapture, detail, family]);
   const canSelectReceived =
     canUseReceived && canReadReceivedContractRelation(actor.activeCompany);
+  const canSelectInvoice =
+    canUseInvoice &&
+    sectionVisible &&
+    canSelectExternalInvoiceSource(
+      actor.activeCompany,
+      actor.workspacePermissions.includes('client.manage'),
+    );
   // The relation has its own keyed reader. Metadata/list owners retain no protected source fields.
   function metadataOnly(
     document: WorkingDocumentDetail,
   ): WorkingDocumentDetail {
-    return document.type === 'received-contract'
-      ? { ...document, receivedContractRelation: { access: 'denied' } }
-      : document;
+    return document.type === 'external-invoice'
+      ? { ...document, externalInvoiceRelation: { access: 'denied' } }
+      : document.type === 'received-contract'
+        ? { ...document, receivedContractRelation: { access: 'denied' } }
+        : document;
   }
   function readVisibleDocuments(value: unknown): WorkingDocument[] {
     return readDocuments(value)
@@ -352,7 +428,9 @@ function DocumentSession({
         (document) =>
           familyCaptures[document.type] ===
             currentFamilyCaptures.current[document.type] &&
-          hasDocumentFamilyAccess(actor.activeCompany, document.type),
+          hasDocumentFamilyAccess(actor.activeCompany, document.type) &&
+          (document.type !== 'external-invoice' ||
+            (canUseInvoice && sectionVisible)),
       )
       .map(metadataOnly);
   }
@@ -366,7 +444,9 @@ function DocumentSession({
       (expectedId !== undefined && document.id !== expectedId) ||
       familyCaptures[document.type] !==
         currentFamilyCaptures.current[document.type] ||
-      !hasDocumentFamilyAccess(actor.activeCompany, document.type)
+      !hasDocumentFamilyAccess(actor.activeCompany, document.type) ||
+      (document.type === 'external-invoice' &&
+        (!canUseInvoice || !sectionVisible))
     )
       throw new Error('Unavailable Document family');
     return metadataOnly(document);
@@ -599,6 +679,7 @@ function DocumentSession({
     clientIdentityRevision,
     missionCapture,
     receivedCapture,
+    invoiceListCapture,
   ]);
   // The opened Document owes the same derived refresh. An open correction
   // draft and its retryable command keep the exact Document they started from,
@@ -747,6 +828,16 @@ function DocumentSession({
     const request = new AbortController();
     pending.current = request;
     detailRead.current = request;
+    const financial =
+      state.status === 'ready' &&
+      state.documents.some(
+        (document) =>
+          document.id === id && document.type === 'external-invoice',
+      );
+    if (financial) financialRead.current = request;
+    const financialCurrent = () =>
+      !financial ||
+      currentFamilyCaptures.current['external-invoice'] === invoiceCapture;
     const retireSource = () => {
       request.abort();
       if (detailRead.current === request) {
@@ -760,12 +851,12 @@ function DocumentSession({
     setMutation('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted) return;
+      if (request.signal.aborted || !financialCurrent()) return;
       const result = await api.request<unknown>(
         `/documents/${encodeURIComponent(id)}`,
         { companyContextId: companyId, signal: request.signal },
       );
-      if (request.signal.aborted) return;
+      if (request.signal.aborted || !financialCurrent()) return;
       if (result.status === 'unauthorized') {
         await identity.rejectSession();
         return;
@@ -853,6 +944,7 @@ function DocumentSession({
     if (
       !detail ||
       !canCorrect ||
+      (detail.type === 'external-invoice' && !canManageInvoice) ||
       detail.correction !== 'allowed' ||
       (detail.type === 'questionnaire' &&
         detail.version.representation.access !== 'granted')
@@ -872,7 +964,13 @@ function DocumentSession({
   }
   async function submitCorrection(event: FormEvent, retryStored = false) {
     event.preventDefault();
-    if (!companyId || !detail || correction === 'pending') return;
+    if (
+      !companyId ||
+      !detail ||
+      correction === 'pending' ||
+      (detail.type === 'external-invoice' && !canManageInvoice)
+    )
+      return;
     const previous = correctionRetry.current;
     const command = retryStored
       ? previous?.documentId === detail.id && correction === 'uncertain'
@@ -1137,8 +1235,11 @@ function DocumentSession({
     filter.kind === 'text' ? documentFilterText(filter.query.trim()) : '';
   const visibleDocuments =
     state.status === 'ready'
-      ? state.documents.filter((document) =>
-          hasDocumentFamilyAccess(actor.activeCompany, document.type),
+      ? state.documents.filter(
+          (document) =>
+            hasDocumentFamilyAccess(actor.activeCompany, document.type) &&
+            (document.type !== 'external-invoice' ||
+              (canUseInvoice && sectionVisible)),
         )
       : [];
   const filteredDocuments =
@@ -1175,15 +1276,18 @@ function DocumentSession({
         </>
       )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
-        {detail?.type === 'received-contract' ||
-        (!detail && family === 'received-contract')
-          ? receivedCopy.t('warning')
-          : detail?.type === 'mission-deliverable' ||
-              (!detail && family === 'mission-deliverable')
-            ? missionCopy.t('warning')
-            : detail?.version.status === 'official'
-              ? copy.officialWarning
-              : copy.warning}
+        {detail?.type === 'external-invoice' ||
+        (!detail && family === 'external-invoice')
+          ? invoiceCopy.t('warning')
+          : detail?.type === 'received-contract' ||
+              (!detail && family === 'received-contract')
+            ? receivedCopy.t('warning')
+            : detail?.type === 'mission-deliverable' ||
+                (!detail && family === 'mission-deliverable')
+              ? missionCopy.t('warning')
+              : detail?.version.status === 'official'
+                ? copy.officialWarning
+                : copy.warning}
       </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -1286,11 +1390,13 @@ function DocumentSession({
                     {detail.title}
                   </h3>
                   <p>
-                    {detail.type === 'received-contract'
-                      ? receivedCopy.t(detail.version.status)
-                      : detail.type === 'mission-deliverable'
-                        ? missionCopy.t(detail.version.status)
-                        : workingVersionLabel(detail.version.status, copy)}
+                    {detail.type === 'external-invoice'
+                      ? invoiceCopy.t(detail.version.status)
+                      : detail.type === 'received-contract'
+                        ? receivedCopy.t(detail.version.status)
+                        : detail.type === 'mission-deliverable'
+                          ? missionCopy.t(detail.version.status)
+                          : workingVersionLabel(detail.version.status, copy)}
                   </p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
@@ -1315,12 +1421,25 @@ function DocumentSession({
                   onWorkspaceAccessRejected={onWorkspaceAccessRejected}
                 />
               )}
-              {canReadProjects && detail.projectAssociation && (
-                <ProjectAssociation
-                  association={detail.projectAssociation}
-                  onOpenProject={onOpenProject}
+              {detail.type === 'external-invoice' && (
+                <ExternalInvoiceRelation
+                  key={`relation:${invoiceCapture}`}
+                  actor={actor}
+                  identity={identity}
+                  documentId={detail.id}
+                  onActorRevalidated={onActorRevalidated}
+                  onCompanyContextRejected={onCompanyContextRejected}
+                  onWorkspaceAccessRejected={onWorkspaceAccessRejected}
                 />
               )}
+              {detail.type !== 'external-invoice' &&
+                canReadProjects &&
+                detail.projectAssociation && (
+                  <ProjectAssociation
+                    association={detail.projectAssociation}
+                    onOpenProject={onOpenProject}
+                  />
+                )}
               {!editing &&
               detail.version.representation?.access === 'granted' ? (
                 <a
@@ -1335,6 +1454,7 @@ function DocumentSession({
               ) : null}
               {!editing &&
                 canCorrect &&
+                (detail.type !== 'external-invoice' || canManageInvoice) &&
                 correction !== 'conflict' &&
                 detail.correction === 'allowed' &&
                 (detail.type !== 'questionnaire' ||
@@ -1398,6 +1518,11 @@ function DocumentSession({
                 </p>
               )}
               <DocumentVersions
+                key={
+                  detail.type === 'external-invoice'
+                    ? `versions:${invoiceCapture}`
+                    : undefined
+                }
                 actor={actor}
                 identity={identity}
                 documentId={detail.id}
@@ -1413,6 +1538,11 @@ function DocumentSession({
                 onWorkspaceAccessRejected={onWorkspaceAccessRejected}
               />
               <DocumentCorrectionHistory
+                key={
+                  detail.type === 'external-invoice'
+                    ? `corrections:${invoiceCapture}`
+                    : undefined
+                }
                 actor={actor}
                 identity={identity}
                 documentId={detail.id}
@@ -1451,7 +1581,7 @@ function DocumentSession({
               )}
               {canRegister && (
                 <>
-                  {(canUseMission || canUseReceived) && (
+                  {(canUseMission || canUseReceived || canUseInvoice) && (
                     <>
                       <label htmlFor="document-family">
                         {missionCopy.t('family')}
@@ -1473,6 +1603,16 @@ function DocumentSession({
                                 },
                               ]
                             : []),
+                          ...(canUseInvoice &&
+                          canManageInvoice &&
+                          sectionVisible
+                            ? [
+                                {
+                                  value: 'external-invoice',
+                                  label: invoiceCopy.t('family'),
+                                },
+                              ]
+                            : []),
                           ...(canUseReceived
                             ? [
                                 {
@@ -1487,14 +1627,65 @@ function DocumentSession({
                             !receivedBusy &&
                             (value === 'questionnaire' ||
                               value === 'mission-deliverable' ||
-                              value === 'received-contract')
+                              value === 'received-contract' ||
+                              value === 'external-invoice')
                           )
                             setFamily(value);
                         }}
                       />
                     </>
                   )}
-                  {family === 'received-contract' ? (
+                  {family === 'external-invoice' ? (
+                    canSelectInvoice && companyId ? (
+                      <ExternalInvoiceRegistration
+                        key={JSON.stringify([
+                          invoiceCapture,
+                          externalInvoiceSourceAuthority(
+                            actor.activeCompany,
+                            actor.workspacePermissions.includes(
+                              'client.manage',
+                            ),
+                          ),
+                        ])}
+                        identity={identity}
+                        companyId={companyId}
+                        onBusyChange={setReceivedBusy}
+                        onAccessRejected={async (signal) => {
+                          await handleAuthenticatedAccessRejection({
+                            result: { status: 'forbidden' },
+                            identity,
+                            companyContextId: companyId,
+                            signal,
+                            onActorRevalidated:
+                              onActorRevalidated ?? (() => undefined),
+                            onCompanyContextRejected:
+                              onCompanyContextRejected ?? (() => undefined),
+                            onWorkspaceAccessRejected:
+                              onWorkspaceAccessRejected ?? (() => undefined),
+                          });
+                        }}
+                        onStarted={() => {
+                          receivedRegistrationOrigin.current = {
+                            filter: activeFilter.current,
+                            identityRevision: identityRevision.current,
+                          };
+                        }}
+                        onRegistered={(saved) => {
+                          const origin = receivedRegistrationOrigin.current;
+                          if (!origin)
+                            throw new Error(
+                              'Missing external invoice registration origin',
+                            );
+                          publishRegistration({ saved, origin });
+                          void Promise.resolve()
+                            .then(onActivityRecorded)
+                            .catch(() => undefined);
+                        }}
+                      />
+                    ) : (
+                      <p>{invoiceCopy.t('sourceDenied')}</p>
+                    )
+                  ) : family === 'received-contract' ? (
                     canSelectReceived && companyId ? (
                       <ReceivedContractRegistration
                         key={JSON.stringify([

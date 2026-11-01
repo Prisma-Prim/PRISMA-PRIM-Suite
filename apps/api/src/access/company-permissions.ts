@@ -449,6 +449,18 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Knowledge Evidence Reader',
     versions: { v1: ['knowledge.evidence.read'] },
   },
+  company_invoice_reader: {
+    label: 'Company Invoice Reader',
+    versions: { v1: ['finance.read'] },
+  },
+  company_invoice_recorder: {
+    label: 'Company Invoice Recorder',
+    versions: { v1: ['finance.read', 'finance.manage'] },
+  },
+  company_external_invoice_access: {
+    label: 'Company External Invoice Access',
+    versions: { v1: ['document.external_invoice.access'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -1157,3 +1169,17 @@ export const COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_knowledge_source_administrator.label;
 export const COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_knowledge_evidence_reader.label;
+
+export const COMPANY_INVOICE_READER_BUNDLE =
+  'company_invoice_reader' satisfies CompanyRoleBundle;
+export const COMPANY_INVOICE_RECORDER_BUNDLE =
+  'company_invoice_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE =
+  'company_external_invoice_access' satisfies CompanyRoleBundle;
+
+export const COMPANY_INVOICE_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_invoice_reader.label;
+export const COMPANY_INVOICE_RECORDER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_invoice_recorder.label;
+export const COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_external_invoice_access.label;

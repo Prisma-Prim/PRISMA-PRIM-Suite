@@ -43,6 +43,8 @@ import type {
   WorkingDocument,
   WorkingDocumentDetail,
 } from './documents.types.js';
+import { readExternalInvoiceRegistration } from './external-invoice.js';
+import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
 import { readReceivedContractRegistration } from './received-contract.js';
 import { ReceivedContractRelationsService } from './received-contract-relations.service.js';
 
@@ -60,6 +62,7 @@ export class DocumentsService {
     private readonly boundary: DocumentReadBoundary,
     private readonly versions: DocumentVersionsService,
     private readonly receivedContracts: ReceivedContractRelationsService,
+    private readonly externalInvoices: ExternalInvoiceRelationsService,
   ) {}
   async register(
     actor: ActorContext,
@@ -91,6 +94,8 @@ export class DocumentsService {
         }))
       )
         throw new ForbiddenException();
+      if (command.type === 'external-invoice')
+        await this.externalInvoices.requireRegistrationAuthority(actor);
       if (command.type === 'received-contract') {
         if (
           !(await this.authorization.hasReceivedContractAccess(actor, {
@@ -126,15 +131,21 @@ export class DocumentsService {
         return this.readDetail(actor, existing.id);
       }
       const binding =
-        command.type === 'received-contract'
+        command.type === 'external-invoice'
           ? {
-              kind: 'contract-version' as const,
+              kind: 'external-invoice' as const,
               command,
-              reference: await this.receivedContracts.qualify(actor, command),
+              reference: await this.externalInvoices.qualify(actor, command),
             }
-          : { kind: 'client' as const, clientId: command.clientId };
+          : command.type === 'received-contract'
+            ? {
+                kind: 'contract-version' as const,
+                command,
+                reference: await this.receivedContracts.qualify(actor, command),
+              }
+            : { kind: 'client' as const, clientId: command.clientId };
       const clientId =
-        binding.kind === 'contract-version'
+        binding.kind !== 'client'
           ? binding.reference.originalClientAccountId
           : binding.clientId;
       if (command.type === 'mission-deliverable')
@@ -170,6 +181,13 @@ export class DocumentsService {
         })
         .returning();
       if (!version) throw new Error('Version was not created.');
+      if (binding.kind === 'external-invoice')
+        await this.externalInvoices.attach({
+          actor,
+          document,
+          command: binding.command,
+          reference: binding.reference,
+        });
       if (binding.kind === 'contract-version')
         await this.receivedContracts.attach({
           actor,
@@ -208,11 +226,36 @@ export class DocumentsService {
     );
   }
 
+  async externalInvoiceSources(actor: ActorContext, query: unknown) {
+    requireDocumentPermission(actor, 'document.register');
+    requireDocumentPermission(actor, 'document.read');
+    return this.database.transaction(
+      async () => {
+        if (
+          !(await this.authorization.hasExternalInvoiceAccess(actor, {
+            manage: true,
+            lockAssignment: false,
+          }))
+        )
+          throw new ForbiddenException();
+        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'register',
+          lockAssignment: false,
+        });
+        return this.externalInvoices.selectableVersions(actor, query);
+      },
+      { isolationLevel: 'repeatable read' },
+    );
+  }
   async list(actor: ActorContext): Promise<WorkingDocument[]> {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const familyAllowed =
       await this.authorization.hasMissionDeliverableAccess(actor);
+    const externalAllowed = await this.authorization.hasExternalInvoiceAccess(
+      actor,
+      { manage: false, lockAssignment: false },
+    );
     const receivedAllowed =
       await this.authorization.hasReceivedContractAccess(actor);
     const rows = await this.database.connection
@@ -250,6 +293,7 @@ export class DocumentsService {
           eq(workingDocuments.companyId, companyId),
           inArray(workingDocuments.type, [
             'questionnaire',
+            ...(externalAllowed ? ['external-invoice' as const] : []),
             ...(familyAllowed ? ['mission-deliverable' as const] : []),
             ...(receivedAllowed ? ['received-contract' as const] : []),
           ]),
@@ -293,6 +337,7 @@ export class DocumentsService {
       idValue,
       undefined,
     );
+    if (document.type === 'external-invoice') return document;
     const projectAssociation = await this.projectAssociation(actor, projectId);
     return projectAssociation ? { ...document, projectAssociation } : document;
   }
@@ -370,7 +415,7 @@ export class DocumentsService {
     const clientDossierId = (
       resolvedDossierIds ?? (await this.clientDossierIds(actor, [row.clientId]))
     ).get(row.clientId);
-    const base: Omit<WorkingDocument, 'type' | 'version'> = {
+    const base = {
       id: row.id,
       workspaceId: row.workspaceId,
       companyId,
@@ -379,55 +424,67 @@ export class DocumentsService {
       clientDisplayName: client.displayName,
       title: row.title,
       purpose: row.purpose,
-      confidentiality: 'company-confidential',
+      confidentiality: 'company-confidential' as const,
       createdAt: row.createdAt.toISOString(),
-      createdByMembershipId: row.createdByMembershipId,
       workingRevision: row.workingRevision,
       // Only a draft is corrected, and only while the original Client is active.
       correction:
         client.status === 'active' && working.status === 'draft'
-          ? 'allowed'
-          : 'read-only',
+          ? ('allowed' as const)
+          : ('read-only' as const),
     };
     const identity = { id: working.id, status: working.status };
     const document: WorkingDocument =
-      working.documentType === 'received-contract'
+      working.documentType === 'external-invoice'
         ? {
             ...base,
-            type: 'received-contract',
+            type: 'external-invoice',
             version: { ...identity, representation: null },
-            receivedContractRelation: await this.receivedContracts.read(
+            externalInvoiceRelation: await this.externalInvoices.read(
               actor,
               row,
             ),
           }
-        : working.documentType === 'mission-deliverable'
+        : working.documentType === 'received-contract'
           ? {
               ...base,
-              type: 'mission-deliverable',
+              type: 'received-contract',
+              createdByMembershipId: row.createdByMembershipId,
               version: { ...identity, representation: null },
+              receivedContractRelation: await this.receivedContracts.read(
+                actor,
+                row,
+              ),
             }
-          : {
-              ...base,
-              type: 'questionnaire',
-              version: {
-                ...identity,
-                representation: canReadReference(actor)
-                  ? {
-                      id: working.representation.id,
-                      kind: 'external-reference',
-                      verification: 'unverified',
-                      access: 'granted',
-                      url: working.representation.url,
-                    }
-                  : {
-                      id: working.representation.id,
-                      kind: 'external-reference',
-                      verification: 'unverified',
-                      access: 'denied',
-                    },
-              },
-            };
+          : working.documentType === 'mission-deliverable'
+            ? {
+                ...base,
+                type: 'mission-deliverable',
+                createdByMembershipId: row.createdByMembershipId,
+                version: { ...identity, representation: null },
+              }
+            : {
+                ...base,
+                type: 'questionnaire',
+                createdByMembershipId: row.createdByMembershipId,
+                version: {
+                  ...identity,
+                  representation: canReadReference(actor)
+                    ? {
+                        id: working.representation.id,
+                        kind: 'external-reference',
+                        verification: 'unverified',
+                        access: 'granted',
+                        url: working.representation.url,
+                      }
+                    : {
+                        id: working.representation.id,
+                        kind: 'external-reference',
+                        verification: 'unverified',
+                        access: 'denied',
+                      },
+                },
+              };
     return { document, projectId: row.projectId };
   }
   /**
@@ -571,6 +628,11 @@ export class DocumentsService {
           lockFamily: true,
         })
       ).document;
+      if (visible.type === 'external-invoice')
+        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'correct',
+          lockAssignment: true,
+        });
       if (visible.type !== 'questionnaire' && command.url !== undefined)
         throw new BadRequestException(
           'This Document family does not accept external references.',
@@ -726,6 +788,8 @@ function registration(value: unknown) {
   const row: Record<string, unknown> = Object.fromEntries(
     Object.entries(value),
   );
+  if (row.type === 'external-invoice')
+    return readExternalInvoiceRegistration(row);
   if (row.type === 'received-contract')
     return readReceivedContractRegistration(row);
   const clientId = requireUuid(row.clientId);

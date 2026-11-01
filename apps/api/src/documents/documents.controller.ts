@@ -36,6 +36,12 @@ export class DocumentsController {
   ) {
     return this.documents.receivedContractSources(actor(request), query);
   }
+  @Get('external-invoice-sources') externalInvoiceSources(
+    @Req() request: ActorContextRequest,
+    @Query() query: unknown,
+  ) {
+    return this.documents.externalInvoiceSources(actor(request), query);
+  }
   @Get(':id') read(
     @Req() request: ActorContextRequest,
     @Param('id') id: string,

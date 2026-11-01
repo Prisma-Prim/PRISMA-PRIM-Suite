@@ -473,6 +473,39 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'invoice-reader',
+    canonical: 'Company Invoice Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Cititor de facturi al companiei',
+      ru: 'Чтение счетов Компании',
+      fr: 'Lecteur des factures de la société',
+      en: 'Company Invoice Reader',
+    },
+  },
+  {
+    value: 'invoice-recorder',
+    canonical: 'Company Invoice Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Responsabil cu înregistrarea facturilor companiei',
+      ru: 'Регистрация счетов Компании',
+      fr: 'Responsable de la saisie des factures de la société',
+      en: 'Company Invoice Recorder',
+    },
+  },
+  {
+    value: 'external-invoice-access',
+    canonical: 'Company External Invoice Access',
+    version: 'v1',
+    labels: {
+      ro: 'Acces la facturile externe ale companiei',
+      ru: 'Доступ к внешним счетам Компании',
+      fr: 'Accès aux factures externes de la société',
+      en: 'Company External Invoice Access',
+    },
+  },
+  {
     value: 'director-client',
     canonical: 'Company Director Client Access',
     version: 'v2',

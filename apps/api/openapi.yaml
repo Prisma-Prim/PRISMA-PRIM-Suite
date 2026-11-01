@@ -3,6 +3,396 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/company-invoice-reader-assignments:
+    post:
+      operationId: grantCompanyInvoiceReaderAssignment
+      summary: Explicitly grant captured Company Invoice Reader v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly finance.read. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        content and Contract rights remain independent. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_invoice_reader_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/CompanyInvoiceReaderAssignment' }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-invoice-reader-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyInvoiceReaderAssignment
+      summary: Revoke the captured Company Invoice Reader assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_invoice_reader_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/CompanyInvoiceReaderAssignment' }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-invoice-recorder-assignments:
+    post:
+      operationId: grantCompanyInvoiceRecorderAssignment
+      summary: Explicitly grant captured Company Invoice Recorder v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly finance.read and finance.manage. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        content and Contract rights remain independent. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_invoice_recorder_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyInvoiceRecorderAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-invoice-recorder-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyInvoiceRecorderAssignment
+      summary: Revoke the captured Company Invoice Recorder assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_invoice_recorder_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyInvoiceRecorderAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-external-invoice-access-assignments:
+    post:
+      operationId: grantCompanyExternalInvoiceAccessAssignment
+      summary: Explicitly grant captured Company External Invoice Access v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly document.external_invoice.access. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        content and Contract rights remain independent. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_external_invoice_access_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyExternalInvoiceAccessAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-external-invoice-access-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyExternalInvoiceAccessAssignment
+      summary: Revoke the captured Company External Invoice Access assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_external_invoice_access_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyExternalInvoiceAccessAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/documents:
+    post:
+      operationId: registerWorkingDocument
+      summary: Register a native Document with an empty first draft
+      description: >-
+        Uses the existing actor-owned Idempotency-Key registration namespace. Native Document
+        registration/read and Client read are independent prerequisites. External invoices
+        additionally require exact live Invoice Recorder v1 and External Invoice Access v1
+        captures. The Contract owner qualifies the exact ordinary COMPANY_MODEL_OFFER tuple,
+        approved/executed Version and conserved human reported-signing declaration, with
+        original Client active/new-use scope. It derives Company, original Client and the
+        recorded PRIMARY or exact ADDITIONAL receiving party; browser copies are forbidden.
+        Registration creates no PDF, Project, Invoice Record or payment. Relation, party,
+        source, receivedOn and attribution are immutable across formal Versions. Exact replay
+        conserves identity and returns current native detail, not an initial frozen draft DTO.
+        Failed qualification, event or response construction commits no partial effect.
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: '#/components/schemas/RegisterWorkingDocumentInput' }
+      responses:
+        '201':
+          description: Current native Document detail, including exact registration replay.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkingDocumentDetail' }
+        '400':
+          description: Malformed family grammar, Unicode, source tuple or calendar date.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Required live captured financial, family or native authority is missing.
+        '404':
+          description: The exact source or original Client is unavailable in this scope.
+        '409':
+          description: The key was used for a different registration intent.
+    get:
+      operationId: listWorkingDocuments
+      summary: Read the active Company's authorized native Document inventory
+      description: >-
+        Native Document and Client read are required. Financial Documents additionally require
+        exact current Invoice Reader-or-Recorder v1 plus External Invoice Access v1 captures,
+        applied before rows are returned. Missing financial authority reveals no title, row,
+        count or continuation. Contract/Opportunity read loss withholds the relation, party,
+        source/date/attribution projection while independently readable native metadata survives.
+        Content Reader is independently required for protected upload metadata and bytes.
+        Financial Documents remain excluded from Project/Task/reference/bundle/shared evidence,
+        generic Activity/Home/search and Knowledge, including for an all-grants actor.
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Only currently readable native Documents; no Project association in inventory rows.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkingDocument' }
+        '401':
+          description: No verified identity.
+        '403':
+          description: Native active Company, Document or Client read is unavailable.
+  /api/documents/external-invoice-sources:
+    get:
+      operationId: listExternalInvoiceDocumentSources
+      summary: Discover exact declared Contract Versions and their frozen receiving party
+      description: >-
+        Requires Invoice Recorder v1, External Invoice Access v1, exact native Document registrar,
+        Contract and Opportunity read captures, and original Client read/new-use eligibility.
+        Only ordinary COMPANY_MODEL_OFFER Contracts with exact APPROVED/EXECUTED Version and
+        genuine conserved reported-signing declaration qualify. Execution is a human unverified
+        declaration, never fiscal/signature/mandate validation. No current-head, OPEN Opportunity,
+        current Offer/model or pricing condition is added. The optional opaque cursor must identify
+        a currently qualifying visible Version. Unknown or repeated query keys fail closed.
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: cursor
+          required: false
+          description: Use only the preceding page's opaque nextCursor.
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{48}$' }
+      responses:
+        '200':
+          description: At most 20 exact Version choices with human labels and one-row lookahead; no total.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExternalInvoiceSourcePage' }
+        '400':
+          description: Invalid or stale source cursor, repeated or unknown query key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Required current financial, family or native discovery authority is unavailable.
+  /api/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/RequiredCompanyContextId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: readWorkingDocument
+      summary: Reopen one exact native Document under current independent authority
+      description: >-
+        Uses the same native/family/financial boundary as inventory. Missing financial or family
+        authority returns safe not-found. A permitted financial metadata reader receives the
+        externalInvoiceRelation denied variant without protected relation/party/source/attribution
+        identifiers when exact Contract/Opportunity read is unavailable. Native metadata survives
+        that relation denial. Financial detail never carries a Project association.
+      tags: [Document]
+      responses:
+        '200':
+          description: Current native detail and separately authorized relation projection.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkingDocumentDetail' }
+        '400':
+          description: Invalid Document identifier.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Native Company, Document or Client read is unavailable.
+        '404':
+          description: No readable Document in this scope; no hidden metadata.
+    patch:
+      operationId: correctWorkingDocument
+      summary: Correct allowed draft metadata while conserving native history
+      description: >-
+        Uses the existing native revision/key protocol. Financial correction additionally requires
+        exact Invoice Recorder, family and native correction captures plus exact source new-use
+        authority. Only title and purpose may change for this family; URL, relation, party,
+        received date, source and attribution cannot change. Official Versions remain frozen.
+        The same conserved command outcome is returned on exact replay; no-op and refusal do
+        not create a new material correction or success event.
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorrectWorkingDocumentInput' }
+      responses:
+        '200':
+          description: Conserved native correction or unchanged receipt.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/WorkingDocumentCorrectionReceipt',
+                }
+        '400':
+          description: Invalid grammar or unsupported family field.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Required current mutation authority is unavailable.
+        '404':
+          description: The exact Document or source is unavailable in this scope.
+        '409':
+          description: Stale revision, conflicting key or immutable Version.
   /api/company-internal-tasks:
     post:
       operationId: createInternalCompanyTask
@@ -1874,7 +2264,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       operationId: preserveDocumentQuestionnairePdf
-      summary: Preserve a clean PDF in a mutable questionnaire draft
+      summary: Preserve a clean PDF in a mutable native Document draft
       description: >-
         Requires live Company context, Client read, Document metadata read,
         Registrar v3 Version management and separate Content Reader and Content
@@ -1882,6 +2272,11 @@ paths:
         all authority, original Client state, exact revision and draft status.
         Every upload appends immutable bytes and provenance; a draft replacement
         preserves every prior upload. Official content cannot be replaced.
+        The external-invoice family additionally requires exact current Invoice Recorder,
+        External Invoice Access and native registrar/content captures plus original exact
+        Contract/Opportunity/Client new-use authority, revalidated after scanning. Finance
+        reads require Reader-or-Recorder and family captures separately from Content Reader.
+        The unchanged 5 MiB adapter conserves original bytes and distinct equal-byte identities.
         An exact successful replay returns its original receipt without a new
         scan, revision, Activity event or change to the current PDF.
       tags: [Documents]
@@ -1927,7 +2322,10 @@ paths:
         Requires separate live Content Reader v1 authority in addition to Company,
         Client and Document metadata read. Returns byte-exact application/pdf with
         attachment filename, private no-store and nosniff. Metadata alone grants
-        no content access. No public or signed storage URL is returned.
+        no content access. No public or signed storage URL is returned. External invoices
+        additionally require current exact financial read, family and native content captures;
+        loss of finance/family hides the Document and content loss withholds protected upload
+        metadata. Exact old Document/Version/Representation download never substitutes latest.
       tags: [Documents]
       parameters:
         - $ref: '#/components/parameters/RequiredCompanyContextId'
@@ -1952,7 +2350,9 @@ paths:
       description: >-
         Uses the same live content-read boundary as download. Returns at most20
         uploads ordered by decreasing Document revision. A continuation cursor
-        preserves access to every older upload without a total-history cap.
+        preserves access to every older upload without a total-history cap. Financial uploads
+        require the same independent financial/family/native content-read captures as download;
+        absent content authority discloses no filename, length, hash or Representation history.
       tags: [Documents]
       parameters:
         - $ref: '#/components/parameters/RequiredCompanyContextId'
@@ -2026,7 +2426,10 @@ paths:
         most 50 Versions are returned, highest number first. Each Version
         holds ordered typed unverified external references; each URL is returned
         only to a current Representation reader. Actor labels are existing
-        display labels, never emails. Reading writes nothing.
+        display labels, never emails. Reading writes nothing. Financial metadata/history also
+        requires exact Reader-or-Recorder and External Invoice Access captures. Its Versions
+        permit no external references; designation requires a clean stored PDF. Successors start
+        empty, and all Versions retain one immutable source/party relation.
       tags:
         - Document
       parameters:
@@ -2122,7 +2525,9 @@ paths:
         `document.version.designated_official` event. A designated Version
         is never changed again, except the single official to superseded
         transition. An exact replay revalidates current authority and
-        visibility and returns the stored receipt.
+        visibility and returns the stored receipt. Financial designation additionally requires
+        exact Invoice Recorder, family and native Approver captures and exact source new-use
+        authority. It freezes content, not legal invoice validity or fiscal issuance.
       tags:
         - Document
       parameters:
@@ -6432,6 +6837,12 @@ components:
             - company_context_assignment.revoked
             - company_director_client_assignment.granted
             - company_director_client_assignment.revoked
+            - company_invoice_reader_assignment.granted
+            - company_invoice_reader_assignment.revoked
+            - company_invoice_recorder_assignment.granted
+            - company_invoice_recorder_assignment.revoked
+            - company_external_invoice_access_assignment.granted
+            - company_external_invoice_access_assignment.revoked
             - company_internal_task_manager_assignment.granted
             - company_internal_task_manager_assignment.revoked
             - company_task_result_recorder_assignment.granted
@@ -6554,6 +6965,9 @@ components:
         bundle:
           type: string
           enum:
+            - Company Invoice Reader
+            - Company Invoice Recorder
+            - Company External Invoice Access
             - Company Context Access
             - Company Director Client Access
             - Company Project Approver
@@ -6893,6 +7307,20 @@ components:
     CompanyAccessAdministrationAssignment:
       type: object
       additionalProperties: false
+      allOf:
+        - if:
+            required: [bundle]
+            properties:
+              bundle:
+                enum:
+                  [
+                    Company Invoice Reader,
+                    Company Invoice Recorder,
+                    Company External Invoice Access,
+                  ]
+          then:
+            properties:
+              permissionSetVersion: { const: v1 }
       required:
         - id
         - workspaceMembershipId
@@ -6913,6 +7341,9 @@ components:
         bundle:
           type: string
           enum:
+            - Company Invoice Reader
+            - Company Invoice Recorder
+            - Company External Invoice Access
             - Company Context Access
             - Company Director Client Access
             - Company Project Approver
@@ -8272,6 +8703,443 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClientContact'
+    CompanyInvoiceReaderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Invoice Reader }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    CompanyInvoiceRecorderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Invoice Recorder }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    CompanyExternalInvoiceAccessAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company External Invoice Access }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    ExternalInvoiceCapturedGrant:
+      type: object
+      additionalProperties: false
+      required: [bundle, assignmentId, permissionSetVersion]
+      properties:
+        bundle:
+          type: string
+          enum:
+            [
+              company_invoice_reader,
+              company_invoice_recorder,
+              company_external_invoice_access,
+            ]
+        assignmentId: { type: string, format: uuid }
+        permissionSetVersion: { type: string, const: v1 }
+    RegisterWorkingDocumentInput:
+      oneOf:
+        - $ref: '#/components/schemas/RegisterQuestionnaireDocumentInput'
+        - $ref: '#/components/schemas/RegisterMissionDocumentInput'
+        - $ref: '#/components/schemas/RegisterReceivedContractDocumentInput'
+        - $ref: '#/components/schemas/RegisterExternalInvoiceDocumentInput'
+    RegisterQuestionnaireDocumentInput:
+      type: object
+      description: Existing questionnaire registration grammar; omitted type means questionnaire.
+      required: [clientId, title, purpose, url]
+      properties:
+        type: { type: string, const: questionnaire }
+        clientId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+        url: { type: string, format: uri, pattern: '^https://' }
+    RegisterMissionDocumentInput:
+      type: object
+      additionalProperties: false
+      required: [type, clientId, title, purpose]
+      properties:
+        type: { type: string, const: mission-deliverable }
+        clientId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+    RegisterReceivedContractDocumentInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          type,
+          opportunityId,
+          contractId,
+          contractVersionId,
+          title,
+          purpose,
+          sourceDescription,
+        ]
+      properties:
+        type: { type: string, const: received-contract }
+        opportunityId: { type: string, format: uuid }
+        contractId: { type: string, format: uuid }
+        contractVersionId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+        sourceDescription: { type: string, minLength: 1, maxLength: 2000 }
+        receivedOn: { type: [string, 'null'], format: date }
+    RegisterExternalInvoiceDocumentInput:
+      type: object
+      additionalProperties: false
+      description: >-
+        Exactly these required fields. Text is trimmed nonempty valid Unicode without NUL,
+        bounded in UTF-16 code units; inner whitespace is conserved. The exact Contract owner
+        derives Company, original Client and party. No browser party, amount, URL, Client,
+        Company or Project field is accepted. receivedOn is explicitly null when unrecorded;
+        there is no time, filename or server fallback. It is a real calendar date in years0001–9999.
+      required:
+        [
+          type,
+          opportunityId,
+          contractId,
+          contractVersionId,
+          title,
+          purpose,
+          sourceDescription,
+          receivedOn,
+        ]
+      properties:
+        type: { type: string, const: external-invoice }
+        opportunityId: { type: string, format: uuid }
+        contractId: { type: string, format: uuid }
+        contractVersionId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+        sourceDescription: { type: string, minLength: 1, maxLength: 2000 }
+        receivedOn:
+          type: [string, 'null']
+          format: date
+          pattern: '^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    ExternalInvoiceRecordedRecipient:
+      description: Immutable native Contract Version copy; no current Client correction is recopied.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, legalName, taxId, legalAddress]
+          properties:
+            kind: { type: string, const: PRIMARY }
+            legalName: { type: string }
+            taxId: { type: [string, 'null'] }
+            legalAddress: { type: [string, 'null'] }
+        - type: object
+          additionalProperties: false
+          required:
+            [kind, additionalLegalEntityId, legalName, taxId, legalAddress]
+          properties:
+            kind: { type: string, const: ADDITIONAL }
+            additionalLegalEntityId: { type: string, format: uuid }
+            legalName: { type: string }
+            taxId: { type: [string, 'null'] }
+            legalAddress: { type: [string, 'null'] }
+    ExternalInvoiceSourcePage:
+      type: object
+      additionalProperties: false
+      required: [sources, nextCursor]
+      properties:
+        sources:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/ExternalInvoiceSource' }
+        nextCursor:
+          type: [string, 'null']
+          pattern: '^[A-Za-z0-9_-]{48}$'
+    ExternalInvoiceSource:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          opportunityId,
+          contractId,
+          contractVersionId,
+          contractVersionNumber,
+          illustrativeReference,
+          clientId,
+          clientDisplayName,
+          opportunityTitle,
+          recordedRecipient,
+        ]
+      properties:
+        opportunityId: { type: string, format: uuid }
+        contractId: { type: string, format: uuid }
+        contractVersionId: { type: string, format: uuid }
+        contractVersionNumber: { type: integer, minimum: 1 }
+        illustrativeReference: { type: integer, minimum: 1 }
+        clientId: { type: string, format: uuid }
+        clientDisplayName: { type: string }
+        opportunityTitle: { type: string }
+        recordedRecipient:
+          { $ref: '#/components/schemas/ExternalInvoiceRecordedRecipient' }
+    ExternalInvoiceRelation:
+      description: >-
+        Current two-end disclosure. Denial contains only access; no relation identifiers,
+        Contract reference, party, source/date or registration attribution survives.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [access]
+          properties:
+            access: { type: string, const: denied }
+        - type: object
+          additionalProperties: false
+          required:
+            [
+              access,
+              opportunityId,
+              contractId,
+              contractVersionId,
+              contractVersionNumber,
+              illustrativeReference,
+              recordedRecipient,
+              sourceDescription,
+              receivedOn,
+              registeredAt,
+              registeredBy,
+            ]
+          properties:
+            access: { type: string, const: granted }
+            opportunityId: { type: string, format: uuid }
+            contractId: { type: string, format: uuid }
+            contractVersionId: { type: string, format: uuid }
+            contractVersionNumber: { type: integer, minimum: 1 }
+            illustrativeReference: { type: integer, minimum: 1 }
+            recordedRecipient:
+              { $ref: '#/components/schemas/ExternalInvoiceRecordedRecipient' }
+            sourceDescription: { type: string }
+            receivedOn: { type: [string, 'null'], format: date }
+            registeredAt: { type: string, format: date-time }
+            registeredBy:
+              type: object
+              additionalProperties: false
+              required: [workspaceMembershipId, internalUserId]
+              properties:
+                workspaceMembershipId: { type: string, format: uuid }
+                internalUserId: { type: string, format: uuid }
+    ReceivedContractDocumentRelation:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [access]
+          properties:
+            access: { type: string, const: denied }
+        - type: object
+          additionalProperties: false
+          required:
+            [
+              access,
+              opportunityId,
+              contractId,
+              contractVersionId,
+              contractVersionNumber,
+              illustrativeReference,
+              sourceDescription,
+              receivedOn,
+              registeredAt,
+              registeredBy,
+            ]
+          properties:
+            access: { type: string, const: granted }
+            opportunityId: { type: string, format: uuid }
+            contractId: { type: string, format: uuid }
+            contractVersionId: { type: string, format: uuid }
+            contractVersionNumber: { type: integer, minimum: 1 }
+            illustrativeReference: { type: integer, minimum: 1 }
+            sourceDescription: { type: string }
+            receivedOn: { type: [string, 'null'], format: date }
+            registeredAt: { type: string, format: date-time }
+            registeredBy:
+              type: object
+              additionalProperties: false
+              required: [workspaceMembershipId, internalUserId]
+              properties:
+                workspaceMembershipId: { type: string, format: uuid }
+                internalUserId: { type: string, format: uuid }
+    WorkingDocumentFields:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          companyId,
+          clientId,
+          clientDisplayName,
+          title,
+          purpose,
+          confidentiality,
+          createdAt,
+          workingRevision,
+          correction,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        clientDossierId: { type: string, format: uuid }
+        clientDisplayName: { type: string }
+        title: { type: string }
+        purpose: { type: string }
+        confidentiality: { type: string, const: company-confidential }
+        createdAt: { type: string, format: date-time }
+        workingRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+        correction: { type: string, enum: [allowed, read-only] }
+    WorkingDocumentFamily:
+      oneOf:
+        - type: object
+          required: [type, version, createdByMembershipId]
+          properties:
+            createdByMembershipId: { type: string, format: uuid }
+            type: { type: string, const: questionnaire }
+            version:
+              type: object
+              additionalProperties: false
+              required: [id, status, representation]
+              properties:
+                id: { type: string, format: uuid }
+                status: { type: string, enum: [draft, official] }
+                representation:
+                  oneOf:
+                    - type: object
+                      additionalProperties: false
+                      required: [id, kind, verification, access]
+                      properties:
+                        id: { type: string, format: uuid }
+                        kind: { type: string, const: external-reference }
+                        verification: { type: string, const: unverified }
+                        access: { type: string, const: denied }
+                    - type: object
+                      additionalProperties: false
+                      required: [id, kind, verification, access, url]
+                      properties:
+                        id: { type: string, format: uuid }
+                        kind: { type: string, const: external-reference }
+                        verification: { type: string, const: unverified }
+                        access: { type: string, const: granted }
+                        url: { type: string, format: uri }
+        - type: object
+          required: [type, version, createdByMembershipId]
+          properties:
+            createdByMembershipId: { type: string, format: uuid }
+            type: { type: string, const: mission-deliverable }
+            version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
+        - type: object
+          required:
+            [type, version, receivedContractRelation, createdByMembershipId]
+          properties:
+            createdByMembershipId: { type: string, format: uuid }
+            type: { type: string, const: received-contract }
+            version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
+            receivedContractRelation:
+              { $ref: '#/components/schemas/ReceivedContractDocumentRelation' }
+        - type: object
+          required: [type, version, externalInvoiceRelation]
+          not: { required: [projectAssociation] }
+          properties:
+            type: { type: string, const: external-invoice }
+            version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
+            externalInvoiceRelation:
+              { $ref: '#/components/schemas/ExternalInvoiceRelation' }
+    WorkingPdfDocumentVersion:
+      type: object
+      additionalProperties: false
+      required: [id, status, representation]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, official] }
+        representation: { type: 'null' }
+    WorkingDocument:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: '#/components/schemas/WorkingDocumentFields'
+        - $ref: '#/components/schemas/WorkingDocumentFamily'
+    WorkingDocumentDetail:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: '#/components/schemas/WorkingDocumentFields'
+        - $ref: '#/components/schemas/WorkingDocumentFamily'
+        - type: object
+          properties:
+            projectAssociation:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [state]
+                  properties:
+                    state: { type: string, const: unlinked }
+                - type: object
+                  additionalProperties: false
+                  required: [state, project]
+                  properties:
+                    state: { type: string, const: linked }
+                    project:
+                      type: object
+                      additionalProperties: false
+                      required: [id, title]
+                      properties:
+                        id: { type: string, format: uuid }
+                        title: { type: string }
+    CorrectWorkingDocumentInput:
+      type: object
+      additionalProperties: false
+      minProperties: 2
+      description: Financial Documents accept only expectedRevision and at least one of title/purpose; url remains exclusive to supported reference families.
+      required: [expectedRevision]
+      properties:
+        expectedRevision: { type: integer, minimum: 1, maximum: 2147483646 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+        url: { type: string, format: uri, pattern: '^https://' }
+    WorkingDocumentCorrectionReceipt:
+      type: object
+      additionalProperties: false
+      required: [documentId, revision, outcome]
+      properties:
+        documentId: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1, maximum: 2147483647 }
+        outcome: { type: string, enum: [corrected, unchanged] }
     WorkingDocumentCorrectionHistoryPage:
       type: object
       additionalProperties: false
@@ -9078,6 +9946,12 @@ components:
         - displayName
         - clientPermissions
       properties:
+        externalInvoiceGrants:
+          description: Exact optional captured v1 identities; no permission, native grant or Company context is inferred from their presence alone. Duplicate or malformed required captures fail closed.
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/ExternalInvoiceCapturedGrant' }
         id:
           type: string
           format: uuid
