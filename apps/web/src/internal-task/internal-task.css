@@ -1,0 +1,132 @@
+.internal-tasks {
+  min-width: 0;
+  color: var(--text-primary, #172536);
+}
+.internal-tasks h2:focus,
+.internal-tasks h3:focus {
+  outline: 2px solid #7355da;
+  outline-offset: 5px;
+}
+.internal-task-panel,
+.internal-task-editor {
+  margin-block: 1.25rem;
+  padding: 1.2rem;
+  border: 1px solid var(--border-color, #d9e0e9);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  min-width: 0;
+}
+.internal-tasks fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.65rem;
+  border: 0;
+  padding: 0;
+  margin-block: 0.8rem;
+  min-width: 0;
+}
+.internal-tasks label {
+  font-weight: 600;
+}
+.internal-tasks input,
+.internal-tasks textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  border: 1px solid #b7c2d1;
+  border-radius: 7px;
+  padding: 0.7rem;
+  background: #fff;
+  color: inherit;
+}
+.internal-tasks textarea {
+  resize: vertical;
+}
+.internal-tasks button {
+  min-height: 42px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #b7c2d1;
+  border-radius: 7px;
+  background: #f8f7ff;
+  color: #423188;
+  font: inherit;
+}
+.internal-tasks button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.internal-tasks :focus-visible {
+  outline: 2px solid #7355da;
+  outline-offset: 3px;
+}
+.internal-task-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+.internal-task-list li {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.internal-task-list button {
+  text-align: start;
+  font-weight: 600;
+}
+.internal-task-list span {
+  font-size: 0.9rem;
+}
+.internal-task-values {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+  gap: 0.4rem 1rem;
+}
+.internal-task-values dt {
+  font-weight: 600;
+}
+.internal-task-values dd {
+  margin: 0;
+  min-width: 0;
+}
+.internal-tasks pre {
+  font: inherit;
+  white-space: pre-wrap;
+  margin: 0;
+}
+.internal-tasks p,
+.internal-tasks dd,
+.internal-tasks summary,
+.internal-tasks pre,
+.internal-tasks h3 {
+  overflow-wrap: anywhere;
+}
+.internal-task-history {
+  padding-inline-start: 1.2rem;
+}
+.internal-task-history li {
+  padding-block: 0.7rem;
+  border-top: 1px solid #d9e0e9;
+}
+.internal-task-history summary {
+  cursor: pointer;
+  padding-block: 0.6rem;
+}
+@media (max-width: 600px) {
+  .internal-task-panel,
+  .internal-task-editor {
+    padding: 0.8rem;
+  }
+  .internal-task-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+  .internal-task-values dd {
+    margin-block-end: 0.6rem;
+  }
+}

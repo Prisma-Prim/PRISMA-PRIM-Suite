@@ -3,6 +3,255 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/company-internal-tasks:
+    post:
+      operationId: createInternalCompanyTask
+      summary: Create ordinary Company-only work without a Project or Client
+      description: >-
+        Requires independent live captured Company Internal Task Manager v1 and Company context.
+        No Project/Client permission, record or fence is consumed. Actor/Workspace keys span this
+        entire new family, including Company/target changes, and preserve normalized omitted fields.
+        An exact authorized retry returns the original immutable receipt before fresh guards.
+      tags: [Internal Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InternalTaskCreateInput' }
+      responses:
+        '201':
+          description: Exact creation snapshot and immutable history, including committed replay.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InternalTaskReceipt' }
+        '400':
+          {
+            description: Invalid closed grammar,
+            Unicode scalar text,
+            calendar date or assignee.,
+          }
+        '401': { description: Missing verified identity. }
+        '403':
+          {
+            description: Live identity,
+            scope or exact captured authority is unavailable.,
+          }
+        '409':
+          {
+            description: The actor/Workspace key belongs to a different normalized intent.,
+          }
+        '503': { $ref: '#/components/responses/InternalTaskUnavailable' }
+    get:
+      operationId: listInternalCompanyTasks
+      summary: Discover a complete bounded Company-only Task page
+      description: >-
+        Fixed25 plus lookahead, immutable createdAt DESC/id DESC, no total. Resolve an actual
+        same-Company cursor within the same read snapshot before the selected status filter.
+        Unknown or repeated query parameters are rejected. Closed records remain discoverable.
+      tags: [Internal Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: status
+          schema:
+            {
+              type: string,
+              enum: [open, all, todo, in_progress, blocked, done, cancelled],
+              default: open,
+            }
+        - in: query
+          name: beforeTaskId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: One current authorized Company page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InternalTaskPage' }
+        '400': { description: Invalid, unknown or repeated query parameter. }
+        '401': { description: Missing verified identity. }
+        '403': { description: Live scoped captured read is unavailable. }
+        '404':
+          {
+            description: Uniform missing or foreign cursor,
+            without private metadata.,
+          }
+        '503': { $ref: '#/components/responses/InternalTaskUnavailable' }
+  /api/company-internal-tasks/eligible-assignees:
+    get:
+      operationId: listInternalCompanyTaskAssignees
+      summary: Select narrow eligible Company-only members without a directory
+      description: >-
+        Access filters active same-Workspace membership/User, effective Company context and
+        captured internal_task.read before UUID-ascending25 plus lookahead. No Project/Client
+        permission is required. A cursor must currently be eligible. Selection is rechecked
+        transactionally only for an actually changed assignee; historical labels are retained.
+      tags: [Internal Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: afterMembershipId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Membership identifiers and captured display labels only; no total.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InternalTaskAssignees' }
+        '400': { description: Invalid, unknown or repeated query parameter. }
+        '401': { description: Missing verified identity. }
+        '403': { description: Live scoped captured read is unavailable. }
+        '404':
+          {
+            description: Uniform currently ineligible,
+            missing or foreign cursor.,
+          }
+        '503': { $ref: '#/components/responses/InternalTaskUnavailable' }
+  /api/company-internal-tasks/{taskId}:
+    get:
+      operationId: readInternalCompanyTask
+      summary: Reopen exact current work and immutable history
+      description: >-
+        Current snapshot and descending consecutive history25 plus lookahead share one read-only
+        repeatable-read snapshot. Closed records remain readable. An exhausted valid cursor
+        returns empty history while retaining truthful current content.
+      tags: [Internal Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/TaskId'
+        - in: query
+          name: beforeVersion
+          schema: { type: string, pattern: '^[1-9][0-9]*$' }
+          description: Canonical ASCII positive signed32 integer, selecting strictly earlier facts.
+      responses:
+        '200':
+          description: Exact current snapshot and bounded private history page.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InternalTaskDetail' }
+        '400': { description: Malformed path, query or version. }
+        '401': { description: Missing verified identity. }
+        '403': { description: Live scoped captured read is unavailable. }
+        '404': { description: Uniform missing or foreign Task. }
+        '503': { $ref: '#/components/responses/InternalTaskUnavailable' }
+  /api/company-internal-tasks/{taskId}/changes:
+    post:
+      operationId: changeInternalCompanyTask
+      summary: Correct open ordinary fields or explicitly declare a permitted state
+      description: >-
+        Open states todo/in_progress/blocked may move to a different open state, done or cancelled;
+        either closed state may only reopen to todo. Closed edits, including no-ops, conflict.
+        No-op open edits check observed version and save only their unchanged receipt.
+        Material current/history/receipt/private event/response commit atomically under Access
+        locks. Exact authorized confirmation precedes fresh state/version/assignee/exhaustion.
+        Signed32 exhaustion rejects material changes while valid no-op/replay remain available.
+        Private events contain version only and have no generic Activity/Home/search/export projection.
+      tags: [Internal Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/InternalTaskEditInput'
+                - $ref: '#/components/schemas/InternalTaskMoveInput'
+      responses:
+        '200':
+          description: Exact material/no-op receipt, or the original saved confirmation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InternalTaskReceipt' }
+        '400':
+          {
+            description: Invalid closed grammar,
+            path,
+            scalar text,
+            date,
+            reason or changed assignee.,
+          }
+        '401': { description: Missing verified identity. }
+        '403': { description: Live scoped captured read/manage is unavailable. }
+        '404': { description: Uniform missing or foreign Task. }
+        '409':
+          {
+            description: Stale version,
+            invalid state,
+            different key intent or material exhaustion.,
+          }
+        '503': { $ref: '#/components/responses/InternalTaskUnavailable' }
+  /api/company-internal-task-manager-assignments:
+    post:
+      operationId: grantCompanyInternalTaskManager
+      summary: Explicitly capture independent Company Internal Task Manager v1
+      description: >-
+        Existing company.assignment.manage, active Company and active same-Workspace membership
+        are required. Captures exactly internal_task.read/internal_task.manage, no context or
+        unrelated capability. No bootstrap, migration, existing bundle or repeated grant expands.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: Exact captured assignment, with one safe bundle-label event per actual change.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyInternalTaskManagerAssignment',
+                }
+        '400': { description: Invalid Company/member/key or closed body. }
+        '401': { description: Missing verified identity. }
+        '403':
+          {
+            description: Assignment administration or target eligibility is unavailable.,
+          }
+        '409': { description: Key reuse with different assignment intent. }
+  /api/company-internal-task-manager-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyInternalTaskManager
+      summary: Revoke only the independent Company Internal Task Manager assignment
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Preserved revoked capture; one safe bundle-label event per actual change.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyInternalTaskManagerAssignment',
+                }
+        '400': { description: Invalid Company/member/key. }
+        '401': { description: Missing verified identity. }
+        '403':
+          {
+            description: Assignment administration or scoped target is unavailable.,
+          }
+        '409': { description: Key reuse with different assignment intent. }
   /api/contracts/opportunities/{opportunityId}/projects/create-from-mission-plan:
     post:
       operationId: createContractMissionFromPlan
@@ -3832,6 +4081,20 @@ components:
         type: string
         format: uuid
   responses:
+    InternalTaskUnavailable:
+      description: Explicit unsupported or unavailable protected format/storage; an uncertain write must be confirmed with the identical command.
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [code]
+            properties:
+              code:
+                {
+                  type: string,
+                  enum: [INTERNAL_TASK_UNSUPPORTED, INTERNAL_TASK_UNAVAILABLE],
+                }
     TaskProjectConflict:
       description: The Project is closed, or the Task command conflicts.
       content:
@@ -3841,6 +4104,283 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    InternalTaskTitle:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: Unicode scalar/NUL validation precedes exterior ECMAScript trim; count Unicode code points. Interior text is literal.
+    InternalTaskDescription:
+      type: [string, 'null']
+      maxLength: 2000
+      description: Valid scalar text, exterior trim, empty to null. Interior CR/LF/CRLF, spacing and Unicode sequences remain literal.
+    InternalTaskReason:
+      type: string
+      minLength: 1
+      maxLength: 500
+      description: Valid scalar/NUL-free text after exterior ECMAScript trim, with literal interior text.
+    InternalTaskDate:
+      type: [string, 'null']
+      format: date
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      description: Real calendar date, years0001–9999, no timezone conversion or ordering against today.
+    InternalTaskPriority:
+      type: string
+      enum: [normal, important, critical]
+    InternalTaskVersion:
+      type: integer
+      minimum: 1
+      maximum: 2147483647
+    InternalTaskMember:
+      type: object
+      additionalProperties: false
+      required: [membershipId, displayLabel]
+      properties:
+        membershipId: { type: string, format: uuid }
+        displayLabel: { type: string, minLength: 1 }
+    InternalTaskDeclaration:
+      type: object
+      additionalProperties: false
+      required: [actorMembershipId, recordedAt]
+      properties:
+        actorMembershipId: { type: string, format: uuid }
+        recordedAt:
+          {
+            type: string,
+            format: date-time,
+            description: Server UTC ISO with milliseconds.,
+          }
+    InternalTaskSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          format,
+          id,
+          workspaceId,
+          companyId,
+          version,
+          title,
+          description,
+          assignee,
+          dueDate,
+          priority,
+          status,
+          createdByMembershipId,
+          createdAt,
+          updatedAt,
+          completion,
+          reason,
+        ]
+      properties:
+        format: { type: string, const: company-internal-task-v1 }
+        id: { type: string, format: uuid }
+        workspaceId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        version: { $ref: '#/components/schemas/InternalTaskVersion' }
+        title: { $ref: '#/components/schemas/InternalTaskTitle' }
+        description: { $ref: '#/components/schemas/InternalTaskDescription' }
+        assignee:
+          oneOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/InternalTaskMember' }
+        dueDate: { $ref: '#/components/schemas/InternalTaskDate' }
+        priority: { $ref: '#/components/schemas/InternalTaskPriority' }
+        status:
+          { type: string, enum: [todo, in_progress, blocked, done, cancelled] }
+        createdByMembershipId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        completion:
+          oneOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/InternalTaskDeclaration' }
+        reason:
+          oneOf:
+            - { type: 'null' }
+            - type: object
+              additionalProperties: false
+              required: [kind, text, actorMembershipId, recordedAt]
+              properties:
+                kind: { type: string, enum: [blockage, cancellation] }
+                text: { $ref: '#/components/schemas/InternalTaskReason' }
+                actorMembershipId: { type: string, format: uuid }
+                recordedAt: { type: string, format: date-time }
+      allOf:
+        - if: { properties: { status: { const: done } } }
+          then:
+            {
+              properties:
+                {
+                  completion:
+                    { $ref: '#/components/schemas/InternalTaskDeclaration' },
+                },
+            }
+          else: { properties: { completion: { type: 'null' } } }
+        - if: { properties: { status: { enum: [blocked, cancelled] } } }
+          then: { properties: { reason: { type: object } } }
+          else: { properties: { reason: { type: 'null' } } }
+        - if: { properties: { status: { const: blocked } } }
+          then:
+            {
+              properties:
+                { reason: { properties: { kind: { const: blockage } } } },
+            }
+        - if: { properties: { status: { const: cancelled } } }
+          then:
+            {
+              properties:
+                { reason: { properties: { kind: { const: cancellation } } } },
+            }
+    InternalTaskHistory:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          format,
+          workspaceId,
+          companyId,
+          taskId,
+          version,
+          kind,
+          actorMembershipId,
+          recordedAt,
+          before,
+          after,
+        ]
+      properties:
+        format: { type: string, const: company-internal-task-history-v1 }
+        workspaceId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        taskId: { type: string, format: uuid }
+        version: { $ref: '#/components/schemas/InternalTaskVersion' }
+        kind: { type: string, enum: [CREATE, EDIT, MOVE] }
+        actorMembershipId: { type: string, format: uuid }
+        recordedAt: { type: string, format: date-time }
+        before:
+          oneOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/InternalTaskSnapshot' }
+        after: { $ref: '#/components/schemas/InternalTaskSnapshot' }
+      description: Creation alone has null before/version1. Consecutive exact snapshots retain actor/time and immutable ownership; edits preserve state declarations and moves preserve ordinary fields.
+    InternalTaskReceipt:
+      type: object
+      additionalProperties: false
+      required: [format, task, changed, history]
+      properties:
+        format: { type: string, const: company-internal-task-command-v1 }
+        task: { $ref: '#/components/schemas/InternalTaskSnapshot' }
+        changed: { type: boolean }
+        history:
+          oneOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/InternalTaskHistory' }
+      description: Exactly one matching history after for material change; unchanged no-op has false/null. Saved confirmation never borrows current facts.
+    InternalTaskCreateInput:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { $ref: '#/components/schemas/InternalTaskTitle' }
+        description: { $ref: '#/components/schemas/InternalTaskDescription' }
+        assigneeMembershipId: { type: [string, 'null'], format: uuid }
+        dueDate: { $ref: '#/components/schemas/InternalTaskDate' }
+        priority: { $ref: '#/components/schemas/InternalTaskPriority' }
+      description: Omitted nullable fields default null and priority defaults normal. Ownership, creator, state, time and version are server-established.
+    InternalTaskEditInput:
+      type: object
+      additionalProperties: false
+      required: [kind, expectedVersion]
+      minProperties: 3
+      properties:
+        kind: { type: string, const: EDIT }
+        expectedVersion: { $ref: '#/components/schemas/InternalTaskVersion' }
+        title: { $ref: '#/components/schemas/InternalTaskTitle' }
+        description: { $ref: '#/components/schemas/InternalTaskDescription' }
+        assigneeMembershipId: { type: [string, 'null'], format: uuid }
+        dueDate: { $ref: '#/components/schemas/InternalTaskDate' }
+        priority: { $ref: '#/components/schemas/InternalTaskPriority' }
+      description: At least one ordinary field. Omission preserves; null clears nullable fields only. Normalized omitted-versus-present command identity is retained.
+    InternalTaskMoveInput:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, expectedVersion, status]
+          properties:
+            kind: { type: string, const: MOVE }
+            expectedVersion:
+              { $ref: '#/components/schemas/InternalTaskVersion' }
+            status: { type: string, enum: [todo, in_progress, done] }
+        - type: object
+          additionalProperties: false
+          required: [kind, expectedVersion, status, reason]
+          properties:
+            kind: { type: string, const: MOVE }
+            expectedVersion:
+              { $ref: '#/components/schemas/InternalTaskVersion' }
+            status: { type: string, enum: [blocked, cancelled] }
+            reason: { $ref: '#/components/schemas/InternalTaskReason' }
+    InternalTaskPage:
+      type: object
+      additionalProperties: false
+      required: [format, tasks, nextBeforeTaskId]
+      properties:
+        format: { type: string, const: company-internal-task-page-v1 }
+        tasks:
+          {
+            type: array,
+            maxItems: 25,
+            items: { $ref: '#/components/schemas/InternalTaskSnapshot' },
+          }
+        nextBeforeTaskId: { type: [string, 'null'], format: uuid }
+    InternalTaskDetail:
+      type: object
+      additionalProperties: false
+      required: [format, task, history, nextBeforeVersion]
+      properties:
+        format: { type: string, const: company-internal-task-detail-v1 }
+        task: { $ref: '#/components/schemas/InternalTaskSnapshot' }
+        history:
+          {
+            type: array,
+            maxItems: 25,
+            items: { $ref: '#/components/schemas/InternalTaskHistory' },
+          }
+        nextBeforeVersion:
+          oneOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/InternalTaskVersion' }
+    InternalTaskAssignees:
+      type: object
+      additionalProperties: false
+      required: [format, members, nextAfterMembershipId]
+      properties:
+        format: { type: string, const: company-internal-task-assignees-v1 }
+        members:
+          {
+            type: array,
+            maxItems: 25,
+            items: { $ref: '#/components/schemas/InternalTaskMember' },
+          }
+        nextAfterMembershipId: { type: [string, 'null'], format: uuid }
+    CompanyInternalTaskManagerAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Internal Task Manager }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
     KnowledgeHash:
       type: string
       pattern: ^[a-f0-9]{64}$
@@ -5685,6 +6225,8 @@ components:
             - company_context_assignment.revoked
             - company_director_client_assignment.granted
             - company_director_client_assignment.revoked
+            - company_internal_task_manager_assignment.granted
+            - company_internal_task_manager_assignment.revoked
             - company_task_result_recorder_assignment.granted
             - company_task_result_recorder_assignment.revoked
             - company_project_approver_assignment.granted
@@ -5811,6 +6353,7 @@ components:
             - Company Project Template User
             - Company Project Stage Advancer
             - Company Project Template Configuration
+            - Company Internal Task Manager
             - Company Task Result Recorder
     ClientCorrectedMetadata:
       type: object
@@ -6169,6 +6712,7 @@ components:
             - Company Project Template User
             - Company Project Stage Advancer
             - Company Project Template Configuration
+            - Company Internal Task Manager
             - Company Task Result Recorder
         permissionSetVersion:
           type:
@@ -8423,6 +8967,13 @@ components:
               - project.read
               - project.create
               - project.update
+        internalTaskPermissions:
+          type: array
+          uniqueItems: true
+          items:
+            { type: string, enum: [internal_task.read, internal_task.manage] }
+        internalTaskManagerAssignmentId: { type: string, format: uuid }
+        internalTaskManagerPermissionSetVersion: { type: string, const: v1 }
         taskPermissions:
           type: array
           uniqueItems: true

@@ -1,3 +1,4 @@
+import { internalCompanyTaskEvents } from '../database/schema/internal-task.js';
 import { projectNextActionEvents } from '../database/schema/project-next-action.js';
 import { missionApplicabilityEvents } from '../database/schema/mission-applicability.js';
 import type { missionApplicabilityFacts } from '../database/schema/mission-applicability.js';
@@ -700,6 +701,34 @@ export class AccountabilityService {
       occurredAt: input.occurredAt,
       metadata: { revision: input.revision },
     });
+  }
+  /** Restricted Company-only events have no generic Activity/Home target or selector. */
+  async recordInternalTaskEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    taskId: string;
+    version: number;
+    kind: 'CREATE' | 'EDIT' | 'MOVE';
+    recordedAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(internalCompanyTaskEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        taskId: input.taskId,
+        version: input.version,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorInternalUserId: input.actor.internalUserId,
+        recordedAt: input.recordedAt,
+        action:
+          input.kind === 'CREATE'
+            ? 'internal_task.created'
+            : input.kind === 'EDIT'
+              ? 'internal_task.updated'
+              : 'internal_task.status.changed',
+        metadata: { version: input.version },
+      });
   }
   /** Project-owned internal event, deliberately absent from generic Activity selectors. */
   async recordProjectNextActionEvent(input: {
@@ -3472,6 +3501,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_mission_plan_configuration_assignment.revoked':
     case 'company_mission_plan_user_assignment.granted':
     case 'company_mission_plan_user_assignment.revoked':
+    case 'company_internal_task_manager_assignment.granted':
+    case 'company_internal_task_manager_assignment.revoked':
     case 'company_task_manager_assignment.granted':
     case 'company_task_manager_assignment.revoked':
     case 'company_document_project_organizer_assignment.granted':

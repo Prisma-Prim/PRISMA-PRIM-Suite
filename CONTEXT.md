@@ -164,6 +164,13 @@ A Company-owned operational record for a Client Account. Project–Contract link
 pre-contract behavior are owned by the Project and Task PRD, not by this glossary.
 _Avoid_: Client Request, Contract, workflow stage
 
+**Task**:
+Ordinary work owned by one Workspace and Company. A Project Task belongs to its
+original Project and Client; an Internal Company Task belongs directly to its
+Company without either relationship. Lifecycle and completion meaning are owned
+by the Project and Task PRD.
+_Avoid_: Project, accepted result, mission fulfillment
+
 **Start Declaration**:
 The approver's item-by-item statement, recorded when a Project is activated, of which start-dossier items are present or missing; it is declared, not verified.
 _Avoid_: Start checklist, kickoff checklist, verified dossier
