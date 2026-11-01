@@ -1,42 +1,22 @@
-import { verifyToken } from '@clerk/backend';
 import { UnauthorizedException } from '@nestjs/common';
-import { generateKeyPairSync, sign } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  ClerkIdentityAdapter,
+  clerkGateway,
+} from '../identity/clerk-identity.adapter.js';
+import {
+  createSignedKnowledgeIdentityFixture,
+  resourceAudience as audience,
+  resourceWebOrigin as webOrigin,
+} from './knowledge-resource-identity.test-support.js';
 import {
   KnowledgeIdentityVerifier,
   knowledgeClerkGateway,
   type KnowledgeClerkClient,
 } from './knowledge-identity.js';
 
-const audience = 'https://prisma.example.test/api/knowledge';
-const webOrigin = 'https://prisma.example.test';
-const issuerKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
-const foreignKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
-const publicKey = issuerKeys.publicKey
-  .export({ type: 'spki', format: 'pem' })
-  .toString();
-
-function jwt(overrides: Record<string, unknown> = {}, foreign = false): string {
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(
-    JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: 'fixture-key' }),
-  ).toString('base64url');
-  const body = Buffer.from(
-    JSON.stringify({
-      sub: 'user_fixture',
-      sid: 'sess_fixture',
-      iss: 'https://fixture.clerk.accounts.dev',
-      aud: audience,
-      azp: webOrigin,
-      iat: now,
-      nbf: now - 1,
-      exp: now + 300,
-      ...overrides,
-    }),
-  ).toString('base64url');
-  const unsigned = `${header}.${body}`;
-  return `${unsigned}.${sign('RSA-SHA256', Buffer.from(unsigned), foreign ? foreignKeys.privateKey : issuerKeys.privateKey).toString('base64url')}`;
-}
+const fixture = createSignedKnowledgeIdentityFixture();
+const jwt = fixture.token;
 function request(authorization?: string) {
   const headers = authorization === undefined ? {} : { authorization };
   return {
@@ -53,31 +33,8 @@ function request(authorization?: string) {
   };
 }
 
-/** The existing Clerk SDK verifies actual signed fixtures; no custom JWT validator. */
 function fixtureGateway() {
-  const authenticateRequest: KnowledgeClerkClient['authenticateRequest'] =
-    async (request, options) => {
-      const token =
-        request.headers.get('authorization')?.slice('Bearer '.length) ?? '';
-      const checked = await verifyToken(token, {
-        jwtKey: publicKey,
-        audience: options.audience,
-        authorizedParties: options.authorizedParties,
-        clockSkewInMs: 0,
-      });
-      return { isAuthenticated: true, toAuth: () => ({ userId: checked.sub }) };
-    };
-  const client: KnowledgeClerkClient = {
-    authenticateRequest,
-    users: {
-      getUser: async () => ({
-        firstName: 'Synthetic',
-        lastName: 'Reader',
-        primaryEmailAddress: { emailAddress: 'reader@example.test' },
-      }),
-    },
-  };
-  return knowledgeClerkGateway(client, { audience, webOrigin });
+  return knowledgeClerkGateway(fixture.client, { audience, webOrigin });
 }
 
 afterEach(() => {
@@ -125,9 +82,93 @@ describe('Knowledge resource identity', () => {
     });
   });
 
+  it('keeps an ordinary signed no-audience identity out of the resource boundary', async () => {
+    vi.stubEnv('KNOWLEDGE_TOKEN_AUDIENCE', audience);
+    const ordinaryRequest = request(`Bearer ${jwt({ aud: undefined })}`);
+    await expect(
+      new ClerkIdentityAdapter(clerkGateway(fixture.client, webOrigin)).verify(
+        ordinaryRequest,
+      ),
+    ).resolves.toMatchObject({ subject: 'user_fixture' });
+    await expect(
+      new KnowledgeIdentityVerifier(fixtureGateway()).verify(ordinaryRequest),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it.each([
+    ['null', null],
+    ['an empty string', ''],
+    ['an empty array', []],
+    ['empty array entries', ['']],
+    ['an empty entry alongside the exact resource', [audience, '']],
+    ['a number', 42],
+    ['a boolean', false],
+    ['an object', { resource: audience }],
+    ['mixed array entries', [audience, 42]],
+    ['nested arrays', [[audience]]],
+    ['a partial match', audience + '/other'],
+  ])('rejects a signed audience represented as %s', async (_name, aud) => {
+    vi.stubEnv('KNOWLEDGE_TOKEN_AUDIENCE', audience);
+    await expect(
+      new KnowledgeIdentityVerifier(fixtureGateway()).verify(
+        request(`Bearer ${jwt({ aud })}`),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it.each([
+    { aud: [audience] },
+    { aud: ['https://other.example.test', audience] },
+  ])(
+    'accepts an exact resource audience within a supported array: %j',
+    async ({ aud }) => {
+      vi.stubEnv('KNOWLEDGE_TOKEN_AUDIENCE', audience);
+      await expect(
+        new KnowledgeIdentityVerifier(fixtureGateway()).verify(
+          request(`Bearer ${jwt({ aud })}`),
+        ),
+      ).resolves.toMatchObject({ subject: 'user_fixture' });
+    },
+  );
+
+  it.each([
+    { sessionClaims: undefined },
+    { sessionClaims: null },
+    { sessionClaims: 'unknown' },
+    { sessionClaims: [] },
+    { sessionClaims: {} },
+  ])(
+    'fails closed if an authenticated SDK interop result loses its verified claims: %j',
+    async ({ sessionClaims }) => {
+      vi.stubEnv('KNOWLEDGE_TOKEN_AUDIENCE', audience);
+      const client: KnowledgeClerkClient = {
+        ...fixture.client,
+        async authenticateRequest(webRequest, options) {
+          const state = await fixture.client.authenticateRequest(
+            webRequest,
+            options,
+          );
+          return {
+            isAuthenticated: state.isAuthenticated,
+            toAuth: () => {
+              const auth = state.toAuth();
+              return auth ? { userId: auth.userId, sessionClaims } : null;
+            },
+          };
+        },
+      };
+      await expect(
+        new KnowledgeIdentityVerifier(
+          knowledgeClerkGateway(client, { audience, webOrigin }),
+        ).verify(request(`Bearer ${jwt()}`)),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    },
+  );
+
   it.each([
     ['another audience', { aud: 'https://other.example.test' }, false],
     ['an unapproved party', { azp: 'https://other.example.test' }, false],
+    ['an absent party', { azp: undefined }, false],
     ['expired', { exp: 1 }, false],
     ['a future validity', { nbf: Math.floor(Date.now() / 1000) + 3600 }, false],
     [
