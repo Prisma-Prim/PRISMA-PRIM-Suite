@@ -1,4 +1,8 @@
 export const companyContextAccessCopy = {
+  opportunityFollowUpCoordinatorBundle:
+    'Company Opportunity Follow-up Coordinator',
+  opportunityFollowUpCoordinatorPrerequisites:
+    'Allows reading and managing the manual follow-up date. Company context and Request/Opportunity read remain separate; changes also require next-action update authority. Grants no Client or assignment-administration access.',
   eyebrow: 'Access',
   title: 'Company access',
   description:

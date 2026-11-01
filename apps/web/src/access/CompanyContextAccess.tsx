@@ -49,6 +49,7 @@ import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'opportunity-follow-up-coordinator'
   | 'invoice-reader'
   | 'invoice-recorder'
   | 'external-invoice-access'
@@ -103,6 +104,8 @@ type AssignmentBundle =
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'opportunity-follow-up-coordinator':
+    '/company-opportunity-follow-up-coordinator-assignments',
   'invoice-reader': '/company-invoice-reader-assignments',
   'invoice-recorder': '/company-invoice-recorder-assignments',
   'external-invoice-access': '/company-external-invoice-access-assignments',
@@ -783,10 +786,15 @@ export function CompanyContextAccess({
                 value: 'task-result-recorder',
                 label: taskResultCopy.t('bundle'),
               },
+              {
+                value: 'opportunity-follow-up-coordinator',
+                label: copy('opportunityFollowUpCoordinatorBundle'),
+              },
             ]}
             onValueChange={(value) => {
               resetCommand();
               if (
+                value === 'opportunity-follow-up-coordinator' ||
                 value === 'invoice-reader' ||
                 value === 'invoice-recorder' ||
                 value === 'external-invoice-access' ||
@@ -942,6 +950,9 @@ export function CompanyContextAccess({
           {bundle === 'opportunity-manager' && (
             <p>{copy('opportunityManagerPrerequisites')}</p>
           )}
+          {bundle === 'opportunity-follow-up-coordinator' && (
+            <p>{copy('opportunityFollowUpCoordinatorPrerequisites')}</p>
+          )}
           {bundle === 'project-stage-advancer' && (
             <p>{projectStageCopy('prerequisites')}</p>
           )}
@@ -1038,6 +1049,8 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'opportunity-follow-up-coordinator':
+      'Company Opportunity Follow-up Coordinator',
     'invoice-reader': 'Company Invoice Reader',
     'invoice-recorder': 'Company Invoice Recorder',
     'external-invoice-access': 'Company External Invoice Access',

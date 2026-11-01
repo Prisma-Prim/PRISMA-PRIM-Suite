@@ -703,6 +703,17 @@ export const assignmentBundleCases = [
       en: 'Company Task Result Recorder',
     },
   },
+  {
+    value: 'opportunity-follow-up-coordinator',
+    canonical: 'Company Opportunity Follow-up Coordinator',
+    version: 'v1',
+    labels: {
+      ro: 'Coordonatorul datelor de urmărire a oportunităților companiei',
+      ru: 'Координатор дат сопровождения возможностей компании',
+      fr: 'Coordinateur des dates de suivi des opportunités de la société',
+      en: 'Company Opportunity Follow-up Coordinator',
+    },
+  },
 ] as const;
 
 export type AssignmentBundleFixture = (typeof assignmentBundleCases)[number];

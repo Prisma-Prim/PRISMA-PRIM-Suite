@@ -45,6 +45,8 @@ export type CompanyContextState =
 export interface OrdinaryActivityLogEvent {
   id: string;
   action:
+    | 'company_opportunity_follow_up_coordinator_assignment.granted'
+    | 'company_opportunity_follow_up_coordinator_assignment.revoked'
     | 'company_invoice_reader_assignment.granted'
     | 'company_invoice_reader_assignment.revoked'
     | 'company_invoice_recorder_assignment.granted'

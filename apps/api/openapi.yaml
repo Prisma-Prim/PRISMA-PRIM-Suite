@@ -3,6 +3,225 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/commercial-intake/opportunities/{opportunityId}/follow-up:
+    parameters:
+      - in: path
+        name: opportunityId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: readOpportunityFollowUp
+      summary: Read the independent manual follow-up fact and first history page
+      description: >-
+        Requires independent live Company context, native Request/Opportunity read and
+        captured Coordinator v1 read. Client read is optional and never gates this target.
+        No query fields are admitted. UNRECORDED revision zero differs from an explicit
+        recorded null. The opaque native outcome epoch determines current confirmation.
+        History includes at most 25 newest entries and no total. All Date responses are
+        private, no-store and remain excluded from generic activity, Home and search.
+      tags: [Commercial]
+      responses:
+        '200':
+          description: Current native context, independent head and bounded history.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/OpportunityFollowUpCurrent' }
+        '400': { description: Unknown or repeated query field. }
+        '401': { description: No verified identity. }
+        '403': { description: Independent live authority is unavailable. }
+        '404': { description: Unknown, foreign or unreadable target. }
+    post:
+      operationId: recordOpportunityFollowUp
+      summary: Explicitly declare, correct, clear or reconfirm one manual follow-up date
+      description: >-
+        Requires live read/manage Coordinator v1 plus native next-action.update captured
+        v2 or later. Scope, target and authority are checked before historical replay.
+        The same key and exact closed intent return the original immutable receipt before
+        current versions or outcome checks; changed intent conflicts. A new key requires
+        current own revision, native version and OPEN status before evaluating no-op.
+        First null is material; the same value in the same epoch is receipt-only unchanged.
+        Any later material correction, clearing or epoch reconfirmation requires a reason.
+        No native Opportunity version, text or outcome changes. Head, complete history,
+        private event, receipt and response construction commit or roll back together.
+      tags: [Commercial]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpportunityFollowUpInput' }
+      responses:
+        '200':
+          description: Closed immutable original receipt, including receipt-only unchanged.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/OpportunityFollowUpReceipt' }
+        '400':
+          {
+            description: Invalid closed body,
+            literal date,
+            UTF-16 reason or key.,
+          }
+        '401': { description: No verified identity. }
+        '403': { description: Independent live write authority is unavailable. }
+        '404': { description: Unknown, foreign or unreadable target. }
+        '409':
+          {
+            description: IDEMPOTENCY_CONFLICT,
+            STALE_FOLLOW_UP,
+            STALE_VERSION or OPPORTUNITY_NOT_OPEN.,
+          }
+  /api/commercial-intake/opportunities/{opportunityId}/follow-up/history:
+    get:
+      operationId: readOpportunityFollowUpHistory
+      summary: Continue one exact follow-up history head
+      description: >-
+        Requires the same independent live read authority. The opaque continuation binds
+        actor, Workspace, Company, consumed captures, Opportunity and head revision.
+        A changed head returns FOLLOW_UP_HISTORY_CHANGED with no partial page; restart
+        deliberately. No reasons appear in discovery or generic projections.
+      tags: [Commercial]
+      parameters:
+        - in: path
+          name: opportunityId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: cursor
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 2048 }
+      responses:
+        '200':
+          description: At most 25 newest remaining immutable entries, without total.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/OpportunityFollowUpHistoryPage' }
+        '400':
+          {
+            description: Missing,
+            foreign,
+            malformed,
+            repeated or unknown continuation.,
+          }
+        '401': { description: No verified identity. }
+        '403': { description: Independent live read authority is unavailable. }
+        '404': { description: Unknown, foreign or unreadable target. }
+        '409': { description: FOLLOW_UP_HISTORY_CHANGED; no rows returned. }
+  /api/commercial-intake/opportunity-follow-ups:
+    get:
+      operationId: discoverOpportunityFollowUps
+      summary: Discover explicitly dated and confirmed OPEN Opportunities through a literal date
+      description: >-
+        Requires independent live read authority. Explicit through has no clock default.
+        Current OPEN status, recorded non-null date at or before through and exact current
+        native epoch are filtered before selecting at most 25 public rows plus one eligible
+        lookahead. Order is literal date then UUID. Continuations bind through, actor, scope
+        and exact consumed captures. Optional Client fields require existing native Client
+        visibility; absent Client rights preserve the base row. No totals or reasons.
+      tags: [Commercial]
+      parameters:
+        - in: query
+          name: through
+          required: true
+          schema: { $ref: '#/components/schemas/OpportunityFollowUpDate' }
+        - in: query
+          name: cursor
+          schema: { type: string, minLength: 1, maxLength: 2048 }
+      responses:
+        '200':
+          description: A bounded current eligible page, possibly empty.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/OpportunityFollowUpDiscoveryPage',
+                }
+        '400':
+          {
+            description: Invalid scalar through or continuation,
+            repeated or unknown query.,
+          }
+        '401': { description: No verified identity. }
+        '403': { description: Independent live read authority is unavailable. }
+  /api/company-opportunity-follow-up-coordinator-assignments:
+    post:
+      operationId: grantCompanyOpportunityFollowUpCoordinatorAssignment
+      summary: Explicitly grant captured Company Opportunity Follow-up Coordinator v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly commercial.opportunity.follow_up.read/manage. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context and Request/Opportunity rights remain independent. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_opportunity_follow_up_coordinator_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyOpportunityFollowUpCoordinatorAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-opportunity-follow-up-coordinator-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyOpportunityFollowUpCoordinatorAssignment
+      summary: Revoke the captured Company Opportunity Follow-up Coordinator assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_opportunity_follow_up_coordinator_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyOpportunityFollowUpCoordinatorAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
   /api/company-invoice-reader-assignments:
     post:
       operationId: grantCompanyInvoiceReaderAssignment
@@ -4712,6 +4931,183 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    CompanyOpportunityFollowUpCoordinatorAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle:
+          { type: string, const: Company Opportunity Follow-up Coordinator }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    OpportunityFollowUpDate:
+      type: string
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      description: A real proleptic Gregorian calendar day in years 0001 through 9999, preserved literally without a timezone or clock default.
+    OpportunityFollowUpInput:
+      type: object
+      additionalProperties: false
+      required:
+        [expectedRevision, observedOpportunityVersion, followUpOn, reason]
+      properties:
+        expectedRevision:
+          { type: integer, minimum: 0, maximum: 9007199254740991 }
+        observedOpportunityVersion:
+          { type: integer, minimum: 1, maximum: 9007199254740991 }
+        followUpOn:
+          oneOf:
+            - $ref: '#/components/schemas/OpportunityFollowUpDate'
+            - { type: 'null' }
+        reason:
+          type: [string, 'null']
+          description: Null or valid nonblank Unicode text, at most 500 UTF-16 code units, no NUL or unpaired surrogate; stored exactly without trimming or normalization.
+    OpportunityFollowUpActor:
+      type: object
+      additionalProperties: false
+      required: [workspaceMembershipId, displayLabel]
+      properties:
+        workspaceMembershipId: { type: string, format: uuid }
+        displayLabel: { type: string, minLength: 1 }
+    OpportunityFollowUpRecorded:
+      type: object
+      additionalProperties: false
+      required:
+        [state, revision, followUpOn, confirmedEpoch, recordedBy, recordedAt]
+      properties:
+        state: { type: string, const: RECORDED }
+        revision: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        followUpOn:
+          oneOf:
+            - $ref: '#/components/schemas/OpportunityFollowUpDate'
+            - { type: 'null' }
+        confirmedEpoch:
+          { type: string, pattern: '^(initial|transition):[0-9a-f-]{36}$' }
+        recordedBy: { $ref: '#/components/schemas/OpportunityFollowUpActor' }
+        recordedAt: { type: string, format: date-time }
+    OpportunityFollowUpHead:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [state, revision]
+          properties:
+            state: { type: string, const: UNRECORDED }
+            revision: { type: integer, const: 0 }
+        - $ref: '#/components/schemas/OpportunityFollowUpRecorded'
+    OpportunityFollowUpReceipt:
+      type: object
+      additionalProperties: false
+      required: [format, opportunityId, outcome, fact]
+      properties:
+        format: { type: string, const: opportunity-follow-up.v1 }
+        opportunityId: { type: string, format: uuid }
+        outcome: { type: string, enum: [updated, unchanged] }
+        fact: { $ref: '#/components/schemas/OpportunityFollowUpRecorded' }
+    OpportunityFollowUpHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          format,
+          opportunityId,
+          revision,
+          before,
+          after,
+          reason,
+          commandId,
+          actor,
+          occurredAt,
+        ]
+      properties:
+        format: { type: string, const: opportunity-follow-up.v1 }
+        opportunityId: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        before: { $ref: '#/components/schemas/OpportunityFollowUpHead' }
+        after: { $ref: '#/components/schemas/OpportunityFollowUpRecorded' }
+        reason: { type: [string, 'null'] }
+        commandId: { type: string, format: uuid }
+        actor: { $ref: '#/components/schemas/OpportunityFollowUpActor' }
+        occurredAt: { type: string, format: date-time }
+    OpportunityFollowUpHistoryPage:
+      type: object
+      additionalProperties: false
+      required: [format, opportunityId, headRevision, entries, nextCursor]
+      properties:
+        format: { type: string, const: opportunity-follow-up.v1 }
+        opportunityId: { type: string, format: uuid }
+        headRevision: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        entries:
+          type: array
+          maxItems: 25
+          items:
+            { $ref: '#/components/schemas/OpportunityFollowUpHistoryEntry' }
+        nextCursor: { type: [string, 'null'] }
+    OpportunityFollowUpCurrent:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          format,
+          opportunityId,
+          requestId,
+          status,
+          opportunityVersion,
+          outcomeEpoch,
+          head,
+          history,
+        ]
+      properties:
+        format: { type: string, const: opportunity-follow-up.v1 }
+        opportunityId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        status:
+          {
+            type: string,
+            enum: [OPEN, ON_HOLD, WON, LOST, DISQUALIFIED, ARCHIVED],
+          }
+        opportunityVersion:
+          { type: integer, minimum: 1, maximum: 9007199254740991 }
+        outcomeEpoch:
+          { type: string, pattern: '^(initial|transition):[0-9a-f-]{36}$' }
+        head: { $ref: '#/components/schemas/OpportunityFollowUpHead' }
+        history: { $ref: '#/components/schemas/OpportunityFollowUpHistoryPage' }
+    OpportunityFollowUpDiscoveryItem:
+      type: object
+      additionalProperties: false
+      required:
+        [opportunityId, requestId, title, followUpOn, recordedBy, recordedAt]
+      properties:
+        opportunityId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        title: { type: string }
+        followUpOn: { $ref: '#/components/schemas/OpportunityFollowUpDate' }
+        recordedBy: { $ref: '#/components/schemas/OpportunityFollowUpActor' }
+        recordedAt: { type: string, format: date-time }
+        clientDisplayName: { type: string }
+        clientDossierId: { type: string, format: uuid }
+    OpportunityFollowUpDiscoveryPage:
+      type: object
+      additionalProperties: false
+      required: [format, through, items, nextCursor]
+      properties:
+        format: { type: string, const: opportunity-follow-up.v1 }
+        through: { $ref: '#/components/schemas/OpportunityFollowUpDate' }
+        items:
+          type: array
+          maxItems: 25
+          items:
+            { $ref: '#/components/schemas/OpportunityFollowUpDiscoveryItem' }
+        nextCursor: { type: [string, 'null'] }
     InternalTaskTitle:
       type: string
       minLength: 1
@@ -6837,6 +7233,8 @@ components:
             - company_context_assignment.revoked
             - company_director_client_assignment.granted
             - company_director_client_assignment.revoked
+            - company_opportunity_follow_up_coordinator_assignment.granted
+            - company_opportunity_follow_up_coordinator_assignment.revoked
             - company_invoice_reader_assignment.granted
             - company_invoice_reader_assignment.revoked
             - company_invoice_recorder_assignment.granted
@@ -6965,6 +7363,7 @@ components:
         bundle:
           type: string
           enum:
+            - Company Opportunity Follow-up Coordinator
             - Company Invoice Reader
             - Company Invoice Recorder
             - Company External Invoice Access
@@ -7314,6 +7713,7 @@ components:
               bundle:
                 enum:
                   [
+                    Company Opportunity Follow-up Coordinator,
                     Company Invoice Reader,
                     Company Invoice Recorder,
                     Company External Invoice Access,
@@ -7341,6 +7741,7 @@ components:
         bundle:
           type: string
           enum:
+            - Company Opportunity Follow-up Coordinator
             - Company Invoice Reader
             - Company Invoice Recorder
             - Company External Invoice Access
@@ -9946,6 +10347,26 @@ components:
         - displayName
         - clientPermissions
       properties:
+        opportunityFollowUpPermissions:
+          type: array
+          uniqueItems: true
+          items:
+            {
+              type: string,
+              enum:
+                [
+                  commercial.opportunity.follow_up.read,
+                  commercial.opportunity.follow_up.manage,
+                ],
+            }
+        opportunityFollowUpCoordinatorAssignmentId:
+          { type: string, format: uuid }
+        opportunityFollowUpCoordinatorPermissionSetVersion:
+          { type: string, const: v1 }
+        opportunityFollowUpReadCapture:
+          type: string
+          pattern: '^opportunity-follow-up-read\.v1\.[0-9a-f]{64}$'
+          description: Opaque consumed live read authority identity. Context and native captured rights remain independent; replacement invalidates older owners.
         externalInvoiceGrants:
           description: Exact optional captured v1 identities; no permission, native grant or Company context is inferred from their presence alone. Duplicate or malformed required captures fail closed.
           type: array

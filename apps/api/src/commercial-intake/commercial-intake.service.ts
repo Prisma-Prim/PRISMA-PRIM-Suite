@@ -417,6 +417,90 @@ export class CommercialIntakeService {
     return this.requireReadableOfferOpportunity(actor, opportunityId, true);
   }
 
+  /** Only live native target readability precedes a past date receipt. */
+  async requireFollowUpTarget(actor: ActorContext, opportunityId: string) {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+    );
+    if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
+    const opportunity = await this.requireVisibleOpportunity(
+      actor,
+      companyId,
+      opportunityId,
+      false,
+    );
+    return {
+      id: opportunity.id,
+      requestId: opportunity.clientRequestId,
+      companyId,
+    };
+  }
+
+  /** Native participant for the independent date owner: no Client new use. */
+  async requireFollowUpOpportunity(
+    actor: ActorContext,
+    opportunityId: string,
+    lock: boolean,
+  ) {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+      lock,
+    );
+    if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
+    const opportunity = lock
+      ? await this.lockRequestThenOpportunity(actor, companyId, opportunityId)
+      : await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+    const result = await this.databaseContext.connection.execute<{
+      epoch: string;
+    }>(
+      sql`SELECT commercial_follow_up_epoch(${actor.workspaceId}::uuid,${companyId}::uuid,${opportunity.id}::uuid) AS epoch`,
+    );
+    const epoch = result.rows[0]?.epoch;
+    if (typeof epoch !== 'string')
+      throw new Error('Native Opportunity outcome evidence is unavailable.');
+    return {
+      id: opportunity.id,
+      requestId: opportunity.clientRequestId,
+      companyId,
+      status: opportunity.status,
+      version: opportunity.version,
+      outcomeEpoch: epoch,
+    };
+  }
+
+  /** Public optional Client projections for a bounded already authorized discovery. */
+  async followUpClientProjections(
+    actor: ActorContext,
+    targets: readonly { opportunityId: string; requestId: string }[],
+  ) {
+    if (targets.length > 25) throw new BadRequestException();
+    const result = new Map<string, CommercialIntakeListClientProjection>();
+    for (const target of targets) {
+      const detail = await this.read(actor, target.requestId);
+      if (detail.initialOpportunity.id !== target.opportunityId)
+        throw new NotFoundException();
+      result.set(
+        target.opportunityId,
+        detail.clientReference
+          ? {
+              clientDisplayName: detail.clientReference.displayName,
+              ...(detail.clientReference.currentClientId
+                ? { clientDossierId: detail.clientReference.currentClientId }
+                : {}),
+            }
+          : {},
+      );
+    }
+    return result;
+  }
+
   async updateNextAction(
     actor: ActorContext,
     opportunityId: string,

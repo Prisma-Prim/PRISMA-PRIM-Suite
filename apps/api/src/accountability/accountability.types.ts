@@ -265,6 +265,8 @@ export type CanonicalActivityEvent =
         | 'company_profitability_contributor_assignment.granted'
         | 'company_profitability_contributor_assignment.revoked'
         | 'company_profitability_director_assignment.granted'
+        | 'company_opportunity_follow_up_coordinator_assignment.granted'
+        | 'company_opportunity_follow_up_coordinator_assignment.revoked'
         | 'company_invoice_reader_assignment.granted'
         | 'company_invoice_reader_assignment.revoked'
         | 'company_invoice_recorder_assignment.granted'
@@ -299,6 +301,7 @@ export type CanonicalActivityEvent =
       };
       metadata: {
         bundle:
+          | 'Company Opportunity Follow-up Coordinator'
           | typeof COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
@@ -504,6 +507,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_profitability_contributor_assignment.granted'
     | 'company_profitability_contributor_assignment.revoked'
     | 'company_profitability_director_assignment.granted'
+    | 'company_opportunity_follow_up_coordinator_assignment.granted'
+    | 'company_opportunity_follow_up_coordinator_assignment.revoked'
     | 'company_invoice_reader_assignment.granted'
     | 'company_invoice_reader_assignment.revoked'
     | 'company_invoice_recorder_assignment.granted'
@@ -585,6 +590,7 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | 'Company Opportunity Follow-up Coordinator'
           | typeof COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL

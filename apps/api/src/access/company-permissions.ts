@@ -461,6 +461,15 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company External Invoice Access',
     versions: { v1: ['document.external_invoice.access'] },
   },
+  company_opportunity_follow_up_coordinator: {
+    label: 'Company Opportunity Follow-up Coordinator',
+    versions: {
+      v1: [
+        'commercial.opportunity.follow_up.read',
+        'commercial.opportunity.follow_up.manage',
+      ],
+    },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -864,6 +873,19 @@ export const COMPANY_CONTEXT_USE_BUNDLES = [
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
 ] as const;
+
+export const COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE =
+  'company_opportunity_follow_up_coordinator' satisfies CompanyRoleBundle;
+export type OpportunityFollowUpPermission =
+  CompanyRolePermission<'company_opportunity_follow_up_coordinator'>;
+export function opportunityFollowUpPermissionsFor(
+  version: unknown,
+): readonly OpportunityFollowUpPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+    version,
+  );
+}
 
 export const COMPANY_DIRECTOR_CLIENT_V1_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_director_client_access.versions.v1;

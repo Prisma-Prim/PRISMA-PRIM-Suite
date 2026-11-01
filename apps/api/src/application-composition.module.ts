@@ -1,3 +1,9 @@
+import { OpportunityFollowUpModule } from './opportunity-follow-up/opportunity-follow-up.module.js';
+import {
+  OpportunityFollowUpController,
+  OpportunityFollowUpDiscoveryController,
+} from './opportunity-follow-up/opportunity-follow-up.controller.js';
+import { CompanyOpportunityFollowUpCoordinatorAssignmentController } from './access/company-opportunity-follow-up-coordinator-assignment.controller.js';
 import { CompanyInvoiceReaderAssignmentController } from './access/company-invoice-reader-assignment.controller.js';
 import { CompanyInvoiceRecorderAssignmentController } from './access/company-invoice-recorder-assignment.controller.js';
 import { CompanyExternalInvoiceAccessAssignmentController } from './access/company-external-invoice-access-assignment.controller.js';
@@ -172,6 +178,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProjectTemplateModule,
     MissionResultReviewModule,
     InternalTaskModule,
+    OpportunityFollowUpModule,
     ProjectNextActionModule,
     MissionApplicabilityModule,
     TaskModule,
@@ -215,6 +222,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalRiskController,
     ProjectTemplateController,
     MissionResultReviewController,
+    OpportunityFollowUpController,
+    OpportunityFollowUpDiscoveryController,
+    CompanyOpportunityFollowUpCoordinatorAssignmentController,
     ProjectNextActionController,
     MissionApplicabilityController,
     CompanyProjectTemplateUserAssignmentController,

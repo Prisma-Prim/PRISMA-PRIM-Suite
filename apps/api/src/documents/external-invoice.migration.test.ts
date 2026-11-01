@@ -160,13 +160,24 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           original,
         );
         const migratedJournal = await migrationRows();
-        expect(migratedJournal).toHaveLength(94);
+        expect(migratedJournal).toHaveLength(entries.length);
         expect(migratedJournal.slice(0, 93)).toEqual(originalJournal);
-        expect(migratedJournal.at(-1)?.hash).toBe(
+        expect(migratedJournal[migrationIndex]?.hash).toBe(
           fixtureHash(
             await readFile('drizzle/0093_external_invoice_sources.sql'),
           ),
         );
+        // Later additive migrations may accompany this compatibility replay.
+        // Preserve the exact 0093 boundary and verify every later committed SQL hash.
+        for (let index = migrationIndex + 1; index < entries.length; index++) {
+          const entry = entries[index];
+          if (!entry)
+            throw new Error('The committed migration entry is required.');
+          const tag = fixtureString(entry.tag);
+          expect(migratedJournal[index]?.hash).toBe(
+            fixtureHash(await readFile('drizzle/' + tag + '.sql')),
+          );
+        }
       }
       const unassigned = async () => {
         expect(

@@ -35,6 +35,7 @@ import type {
 import type { IdeasActorProjection } from './ideas-captured-grants.js';
 import type { ContractModelActorProjection } from './contract-model-captured-grants.js';
 import type { OfferModelActorProjection } from './offer-model-captured-grants.js';
+import type { OpportunityFollowUpActorProjection } from './opportunity-follow-up-captured-grants.js';
 
 export interface ExternalPrincipal {
   provider: string;
@@ -54,6 +55,7 @@ export interface ActiveCompanyContext
     IdeasActorProjection,
     OfferModelActorProjection,
     ContractModelActorProjection,
+    OpportunityFollowUpActorProjection,
     MissionPlanActorProjection {
   knowledgeGrants?: KnowledgeCapturedGrant[];
   externalInvoiceGrants?: ExternalInvoiceCapturedGrant[];

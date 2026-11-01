@@ -2,6 +2,7 @@ import {
   COMPANY_INVOICE_READER_BUNDLE,
   COMPANY_INVOICE_RECORDER_BUNDLE,
   COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
+  COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
 } from './company-permissions.js';
@@ -321,7 +322,12 @@ const EXTERNAL_INVOICE_ACCESS_BUNDLE: BundleDefinition = {
   value: COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
   permissionSetVersion: 'v1',
 };
+const OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
   COMPANY_INVOICE_READER_BUNDLE,
   COMPANY_INVOICE_RECORDER_BUNDLE,
   COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
@@ -1998,6 +2004,34 @@ export class CompanyContextAssignmentService {
       command.idempotencyKey,
     );
   }
+  grantOpportunityFollowUpCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  revokeOpportunityFollowUpCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
   private async mutate(
     actor: ActorContext,
     bundle: BundleDefinition,
@@ -2324,6 +2358,10 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE:
+      return granted
+        ? 'company_opportunity_follow_up_coordinator_assignment.granted'
+        : 'company_opportunity_follow_up_coordinator_assignment.revoked';
     case COMPANY_INVOICE_READER_BUNDLE:
       return granted
         ? 'company_invoice_reader_assignment.granted'

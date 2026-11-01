@@ -1,3 +1,7 @@
+import { OpportunityFollowUpPanel } from '../opportunity-follow-up/OpportunityFollowUpPanel';
+import { OpportunityFollowUpDiscovery } from '../opportunity-follow-up/OpportunityFollowUpDiscovery';
+import { opportunityFollowUpAuthority } from '../access/opportunity-follow-up-authority';
+import { useFollowUpCopy } from '../opportunity-follow-up/follow-up.copy';
 import { useCommercialPdfDownload } from '../commercial-pdf/CommercialPdfDownload';
 import { ContractPanel } from '../contract/ContractPanel';
 import {
@@ -343,6 +347,7 @@ export function CommercialIntakeWorkspace({
   requestedRequest?: RequestedRequest;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const followUpCopy = useFollowUpCopy();
   const copy = useCommercialRequestCopy();
   const outcomeCopy = useOpportunityOutcomeCopy();
   const stageCopy = useSalesStageCopy();
@@ -412,6 +417,10 @@ export function CommercialIntakeWorkspace({
   // The Company's Sales Stage settings view replaces the capture form and the
   // list while it is open.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [followUpProtection, setFollowUpProtection] = useState({
+    generation: 0,
+    active: false,
+  });
   const listRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
@@ -449,13 +458,39 @@ export function CommercialIntakeWorkspace({
     outcomeEdit.kind !== 'idle' && outcomeEdit.kind !== 'conflict';
   const stageEditOpen =
     stageEdit.kind !== 'idle' && stageEdit.kind !== 'conflict';
+  const followUpAuthority = opportunityFollowUpAuthority(actor);
+  const followUpSignature = JSON.stringify([
+    followUpAuthority?.key,
+    selected?.request.id,
+    selected ? followUpOutcomeObservation(selected.request) : null,
+  ]);
+  const followUpGeneration = useRef({
+    signature: followUpSignature,
+    identity,
+    generation: 0,
+  });
+  if (
+    followUpGeneration.current.signature !== followUpSignature ||
+    followUpGeneration.current.identity !== identity
+  )
+    followUpGeneration.current = {
+      signature: followUpSignature,
+      identity,
+      generation: followUpGeneration.current.generation + 1,
+    };
+  const followUpOwner = followUpGeneration.current.generation;
+  const followUpProtected =
+    Boolean(followUpAuthority) &&
+    followUpProtection.generation === followUpOwner &&
+    followUpProtection.active;
   // At most one Opportunity editor is open; any one is protected work.
   const opportunityEditInProgress = useRef(false);
   opportunityEditInProgress.current =
     nextActionEditOpen ||
     responsibleEditOpen ||
     outcomeEditOpen ||
-    stageEditOpen;
+    stageEditOpen ||
+    followUpProtected;
   const associationInProgress = useRef(false);
   associationInProgress.current = associationProtection !== 'idle';
   const protectedWork =
@@ -469,9 +504,11 @@ export function CommercialIntakeWorkspace({
             ? 'outcome-edit'
             : stageEditOpen || inFlight === 'stage'
               ? 'stage-edit'
-              : inFlight === 'capture' || captureUncertain
-                ? 'capture'
-                : undefined;
+              : followUpProtected
+                ? 'follow-up-edit'
+                : inFlight === 'capture' || captureUncertain
+                  ? 'capture'
+                  : undefined;
   const listDenied = useRef(false);
   listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
@@ -2085,6 +2122,21 @@ export function CommercialIntakeWorkspace({
           {copy.companyPrefix} {companyName}
         </p>
       </header>
+      {!clientRestriction ? (
+        <OpportunityFollowUpDiscovery
+          actor={actor}
+          identity={identity}
+          clientProjectionAuthority={projectionAuthority}
+          disabled={pending || Boolean(protectedWork)}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          onOpenRequest={(id) => {
+            setRequestedVersion(undefined);
+            void selectRequest(id);
+          }}
+        />
+      ) : null}
       <div className="commercial-intake-view">
         <label htmlFor="commercial-intake-view">{copy.viewLabel}</label>
         <Select
@@ -2127,7 +2179,9 @@ export function CommercialIntakeWorkspace({
                   ? outcomeCopy.requestedAfterOutcomeEdit
                   : protectedWork === 'stage-edit'
                     ? stageCopy('requestedAfterStageEdit')
-                    : copy.requestedAfterNextActionEdit}
+                    : protectedWork === 'follow-up-edit'
+                      ? followUpCopy('requestedAfterFollowUpEdit')
+                      : copy.requestedAfterNextActionEdit}
         </p>
       ) : null}
       {selected && visibleRequest ? (
@@ -2150,7 +2204,7 @@ export function CommercialIntakeWorkspace({
           }
           clientAuthority={clientReadAuthority}
           onBack={closeDetail}
-          pending={pending}
+          pending={pending || followUpProtected}
           onOpenClientDossier={
             dossierTarget && onOpenClientDossier
               ? () => onOpenClientDossier(dossierTarget)
@@ -2162,6 +2216,7 @@ export function CommercialIntakeWorkspace({
                   edit: responsibleEdit,
                   current: selected.request.initialOpportunity.responsibleActor,
                   blocked:
+                    followUpProtected ||
                     nextActionEdit.kind !== 'idle' ||
                     outcomeEdit.kind !== 'idle' ||
                     stageEdit.kind !== 'idle',
@@ -2190,6 +2245,7 @@ export function CommercialIntakeWorkspace({
               ? {
                   edit: nextActionEdit,
                   blocked:
+                    followUpProtected ||
                     responsibleEdit.kind !== 'idle' ||
                     outcomeEdit.kind !== 'idle' ||
                     stageEdit.kind !== 'idle',
@@ -2222,6 +2278,7 @@ export function CommercialIntakeWorkspace({
                   edit: outcomeEdit,
                   current: selected.request.initialOpportunity.status,
                   blocked:
+                    followUpProtected ||
                     nextActionEdit.kind !== 'idle' ||
                     responsibleEdit.kind !== 'idle' ||
                     stageEdit.kind !== 'idle',
@@ -2255,6 +2312,7 @@ export function CommercialIntakeWorkspace({
               ? {
                   edit: stageEdit,
                   blocked:
+                    followUpProtected ||
                     nextActionEdit.kind !== 'idle' ||
                     responsibleEdit.kind !== 'idle' ||
                     outcomeEdit.kind !== 'idle',
@@ -2279,6 +2337,34 @@ export function CommercialIntakeWorkspace({
               : undefined
           }
           loadOlderStageHistory={loadOlderStageHistory}
+          followUp={
+            <OpportunityFollowUpPanel
+              actor={actor}
+              identity={identity}
+              requestId={visibleRequest.id}
+              opportunityId={visibleRequest.initialOpportunity.id}
+              nativeVersion={visibleRequest.initialOpportunity.version}
+              nativeStatus={visibleRequest.initialOpportunity.status}
+              nativeOutcomeObservation={followUpOutcomeObservation(
+                visibleRequest,
+              )}
+              editorAvailable={
+                !pending &&
+                !nextActionEditOpen &&
+                !responsibleEditOpen &&
+                !outcomeEditOpen &&
+                !stageEditOpen
+              }
+              onProtectedChange={(active) => {
+                if (followUpGeneration.current.generation !== followUpOwner)
+                  return;
+                setFollowUpProtection({ generation: followUpOwner, active });
+              }}
+              onCompanyContextRejected={onCompanyContextRejected}
+              onActorRevalidated={onActorRevalidated}
+              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            />
+          }
           clientAssociation={
             companyId &&
             canAssociateClient &&
@@ -2291,6 +2377,7 @@ export function CommercialIntakeWorkspace({
                 expectedVersion={selected.request.version}
                 clientIdentityRevision={clientIdentityRevision}
                 blocked={
+                  followUpProtected ||
                   nextActionEditOpen ||
                   responsibleEditOpen ||
                   outcomeEditOpen ||
@@ -2854,6 +2941,7 @@ function RequestDetail({
   stage,
   loadOlderStageHistory,
   clientAssociation,
+  followUp,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -2879,6 +2967,7 @@ function RequestDetail({
   stage: StageEditor | undefined;
   loadOlderStageHistory: OlderStageHistory;
   clientAssociation: ReactNode;
+  followUp: ReactNode;
   clientAuthority: string;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
@@ -3047,6 +3136,7 @@ function RequestDetail({
         {nextAction ? (
           <NextActionEditForm editor={nextAction} pending={pending} />
         ) : null}
+        {followUp}
       </section>
       <ProfitabilityEstimatePanel
         actor={actor}
@@ -3514,4 +3604,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function localDateTimeToIso(value: string): string | undefined {
   const instant = new Date(value);
   return Number.isNaN(instant.getTime()) ? undefined : instant.toISOString();
+}
+
+function followUpOutcomeObservation(request: ClientRequest): string {
+  const opportunity = request.initialOpportunity;
+  return JSON.stringify([
+    opportunity.status,
+    opportunity.statusEnteredAt,
+    opportunity.outcomeHistory.entries[0]?.version ?? null,
+  ]);
 }
