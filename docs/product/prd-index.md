@@ -59,6 +59,16 @@ storage. Related Contract details and content retain independent read authority.
 Runtime follows the merged contract; signing/case acceptance remains D10 and
 neither upload nor designation completes the end-to-end dossier.
 
+The Approved [exact received Addendum source contract](received-addendum-source-prd.md)
+under [#1031](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031), parent
+Document Registry #60 and consuming Commercial #290, owns one bounded separate
+source-preservation family. Ordered independent Standards then Spec preparation,
+the native designation prerequisite correction and
+[actual root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031#issuecomment-6561554661)
+are complete; canonical merge and all fresh runtime
+gates precede implementation. It generates/executes no Addendum and leaves the
+wider Addendum/SARCINA requirement open.
+
 The [reported signing/case-acceptance contract](release-3-commercial-31-reported-signing-case-acceptance.md)
 under #874 owns D10's exact human statement, independent captured authority,
 unverified/unknown facts, immutable evidence and existing Project continuation.

@@ -5,6 +5,12 @@
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
+The separate [exact received Addendum source contract](received-addendum-source-prd.md)
+under [#1031](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031) is Approved
+following [root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031#issuecomment-6561554661).
+It owns the bounded new source-preservation family; its status and fresh readiness
+gates apply independently of the approved received-Contract family in §24.
+
 ## 1. Problem statement
 
 Operational evidence is currently easy to confuse with a storage-provider file. The product needs a stable, provider-independent Document identity so users can find the right evidence, understand which Version is official and preserve history even when a file moves, a link changes or a correction is required.

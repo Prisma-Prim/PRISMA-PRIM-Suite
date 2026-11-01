@@ -238,6 +238,15 @@ R3D supports accepted-Offer, governed direct, import and renewal origins. A prov
 
 [Section 19](release-3-commercial-19-contracts.md#19-r3d-provisional-contract-execution-contract-403) owns the provisional R3D execution contract, including the Precontract, the Addendum and the first Contract–Project link rule.
 
+The Approved [received Addendum source contract](received-addendum-source-prd.md)
+under [#1031](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031), following
+[root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031#issuecomment-6561554661), defines
+preservation of a received PDF against an exact executed Company-model parent. It
+creates no Addendum Contract or generated/executed instrument; §19.10's legacy
+Addendum and §§29–33's Company-model exclusions remain unchanged. The wider
+Company-model Addendum/SARCINA gap stays open.
+Canonical merge and all fresh runtime gates still precede implementation.
+
 Exact Tariffs, formulas, taxes, currencies, discount thresholds, numbering policies, approval thresholds, templates, clauses, signature practices and Contract–Project cardinalities remain configuration or evidence dependencies for the affected slice. Their absence does not block unrelated R3A work or the underlying version/provenance architecture.
 
 ## 10. Documents, integrations and AI
