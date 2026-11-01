@@ -24,7 +24,12 @@ export interface KnowledgeClerkClient {
   authenticateRequest(
     request: Request,
     options: { authorizedParties: string[]; audience: string },
-  ): ReturnType<ClerkOwnerClient['authenticateRequest']>;
+  ): Promise<{
+    isAuthenticated: boolean;
+    // Clerk exposes the cryptographically verified payload here. Keep its
+    // resource-specific representation unknown until this boundary checks it.
+    toAuth(): { userId: string | null; sessionClaims?: unknown } | null;
+  }>;
   users: ClerkOwnerClient['users'];
 }
 export const KNOWLEDGE_IDENTITY_GATEWAY = Symbol('KNOWLEDGE_IDENTITY_GATEWAY');
@@ -36,14 +41,39 @@ export function knowledgeClerkGateway(
 ): ClerkGateway {
   return clerkGateway(
     {
-      authenticateRequest: (request, options) =>
-        client.authenticateRequest(request, {
+      authenticateRequest: async (request, options) => {
+        const state = await client.authenticateRequest(request, {
           ...options,
           audience: configuration.audience,
-        }),
+        });
+        // Clerk skips its audience comparison for absent/empty aud claims.
+        // Require the configured resource audience after SDK authentication.
+        if (
+          state.isAuthenticated &&
+          !hasResourceAudience(
+            state.toAuth()?.sessionClaims,
+            configuration.audience,
+          )
+        )
+          throw new UnauthorizedException();
+        return state;
+      },
       users: client.users,
     },
     configuration.webOrigin,
+  );
+}
+
+function hasResourceAudience(claims: unknown, expected: string): boolean {
+  if (!claims || typeof claims !== 'object' || !('aud' in claims)) return false;
+  const audience = claims.aud;
+  return (
+    audience === expected ||
+    (Array.isArray(audience) &&
+      audience.every(
+        (item: unknown) => typeof item === 'string' && item.length > 0,
+      ) &&
+      audience.includes(expected))
   );
 }
 
