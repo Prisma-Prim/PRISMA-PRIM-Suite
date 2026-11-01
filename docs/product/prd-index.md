@@ -290,6 +290,15 @@ The [bounded exact-Offer message preparation contract](release-2-commercial-offe
 
 The [bounded manual external Invoice Record contract](release-5-external-invoice-record-prd.md) is Approved after ordered Standards then Spec preparation and [actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1009#issuecomment-6549665126). It selects complete confidential source preservation before dependent manual Record entry/correction; canonical merge, actual-head readiness and central-interface ownership precede runtime work. The broader Release 5 remains unready; this contract supplies no fiscal issuance, payment/balance/overdue claim, real assignment or activation.
 
+The Approved [manual incoming Payment-observation contract](release-5-manual-payment-observation-prd.md)
+under [#1032](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032) owns
+separate confidential payment evidence and the manual observation/correction/
+confirmation/withdrawal/reversal/replacement outcome. Ordered Standards then Spec
+preparation and [actual root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032#issuecomment-6561911019)
+are complete; canonical merge, source-first delivery and fresh readiness precede
+any Payment runtime. It adds no Invoice v1 authority, allocation, balance, bank
+integration or real activation.
+
 The [complete My attention drill-down](release-1-operational-dashboard-acceptance-prd.md#20-approved-complete-my-attention-drill-down--2026-10-21)
 extends only the existing own-Task attention preview with complete bounded pages,
 under delegated agent product review. Its §20 owns the set, unchanged rights,

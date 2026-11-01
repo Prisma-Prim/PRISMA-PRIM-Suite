@@ -10,6 +10,13 @@
 
 **Disposition:** [Root's actual delegated product selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1009#issuecomment-6549665126), after ordered independent Standards PASS then Spec PASS, accepts this bounded software contract. It supplies no personal Dan/Iurie review, broader release readiness, real role/source approval or activation.
 
+The separate Approved [manual incoming Payment-observation contract](release-5-manual-payment-observation-prd.md)
+under [#1032](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032) owns its
+bounded payment-evidence family and observation/confirmation/reversal journey,
+following [root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032#issuecomment-6561911019).
+It grants no Invoice v1 expansion or allocation/balance meaning. Canonical merge
+and its own fresh runtime gates remain required.
+
 ## 1. Authority and selected boundary
 
 [Product Vision §9.4](product-vision-prd.md#94-finance) and [financial architecture §12 / DEC-061–075](consolidated-product-decision-record.md#12-financial-architecture) own the distinction between operational tracking, external fiscal issuance, schedules, Payments and allocations. The [Authorization](tenant-company-client-authorization-prd.md), [Governed Documents](governed-documents-prd.md), [Document Registry](release-1-document-registry-prd.md), [Activity](activity-log-accountability-prd.md) and [UX](ux-localization-configuration-prd.md) owners, [CONTEXT](../../CONTEXT.md), [ADR 0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) and [ADR 0008](../adr/0008-bounded-document-content-storage.md) retain their authority. This first-finance capability specializes their consequences; it does not approve the whole financial release.
