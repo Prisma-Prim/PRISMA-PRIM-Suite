@@ -39,6 +39,8 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
+  internalTaskPermissionsFor,
   COMPANY_TASK_MANAGER_BUNDLE,
   taskPermissionsFor,
   taskResultPermissionsFor,
@@ -203,6 +205,34 @@ export class CompanyContextAuthorization {
       companyId: company.id,
       assignmentId: company.missionApplicabilityApproverAssignmentId,
       permissionSetVersion: 'v1' as const,
+    };
+  }
+
+  async requireInternalTaskAccess(actor: ActorContext, lock: boolean) {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      company.internalTaskManagerPermissionSetVersion !== 'v1' ||
+      !company.internalTaskManagerAssignmentId ||
+      !company.internalTaskPermissions?.includes('internal_task.read') ||
+      !company.internalTaskPermissions.includes('internal_task.manage')
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.id, company.internalTaskManagerAssignmentId),
+        eq(companyRoleAssignments.bundle, COMPANY_INTERNAL_TASK_MANAGER_BUNDLE),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      lock,
+    );
+    return {
+      companyId: company.id,
+      assignmentId: company.internalTaskManagerAssignmentId,
     };
   }
 
@@ -1743,6 +1773,7 @@ export class CompanyContextAuthorization {
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
         COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
+        COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
@@ -1796,6 +1827,16 @@ export class CompanyContextAuthorization {
       ) {
         company.contractSignatureDeclarerAssignmentId = row.assignmentId;
         company.contractSignatureDeclarerPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_INTERNAL_TASK_MANAGER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.internalTaskPermissions = [
+          ...internalTaskPermissionsFor(row.permissionSetVersion),
+        ];
+        company.internalTaskManagerAssignmentId = row.assignmentId;
+        company.internalTaskManagerPermissionSetVersion = 'v1';
       }
       const knowledgeGrant = captureKnowledgeGrant(row);
       if (knowledgeGrant)

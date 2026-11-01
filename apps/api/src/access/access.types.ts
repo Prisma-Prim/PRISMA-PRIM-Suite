@@ -92,6 +92,11 @@ export interface ActiveCompanyContext
   missionResultReviewPermissions?: MissionResultReviewPermission[];
   missionResultReviewerAssignmentId?: string;
   missionResultReviewerPermissionSetVersion?: 'v1';
+  internalTaskPermissions?: Array<
+    'internal_task.read' | 'internal_task.manage'
+  >;
+  internalTaskManagerAssignmentId?: string;
+  internalTaskManagerPermissionSetVersion?: 'v1';
   taskPermissions?: Array<'task.read' | 'task.manage'>;
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';

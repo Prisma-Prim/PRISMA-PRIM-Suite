@@ -388,7 +388,10 @@ it.each([200, 403])(
 
 it.each(
   (['draft', 'pending', 'uncertain', 'confirmed'] as const).flatMap((phase) =>
-    (['risk', 'next-action'] as const).map((grant) => ({ phase, grant })),
+    (['risk', 'next-action', 'internal-task'] as const).map((grant) => ({
+      phase,
+      grant,
+    })),
   ),
 )(
   'preserves independent native Task/result/Project $phase work through unrelated $grant grant publication and sibling Project navigation',
@@ -469,7 +472,9 @@ it.each(
       bundle:
         grant === 'risk'
           ? 'Company Operational Risk Reader'
-          : 'Company Project Next Action Coordinator',
+          : grant === 'internal-task'
+            ? 'Company Internal Task Manager'
+            : 'Company Project Next Action Coordinator',
       permissionSetVersion: 'v1',
       active: true,
     };
@@ -492,7 +497,9 @@ it.each(
           path ===
             (grant === 'risk'
               ? '/api/company-operational-risk-reader-assignments'
-              : '/api/company-project-next-action-coordinator-assignments') &&
+              : grant === 'internal-task'
+                ? '/api/company-internal-task-manager-assignments'
+                : '/api/company-project-next-action-coordinator-assignments') &&
           init?.method === 'POST'
         ) {
           granted = true;
@@ -507,14 +514,23 @@ it.each(
                     operationalRiskReaderAssignmentId: publishedAssignment.id,
                     operationalRiskReaderPermissionSetVersion: 'v1',
                   }
-                : {
-                    projectNextActionPermissions: [
-                      'project.next_action.update',
-                    ],
-                    projectNextActionCoordinatorAssignmentId:
-                      publishedAssignment.id,
-                    projectNextActionCoordinatorPermissionSetVersion: 'v1',
-                  }),
+                : grant === 'internal-task'
+                  ? {
+                      internalTaskPermissions: [
+                        'internal_task.read',
+                        'internal_task.manage',
+                      ],
+                      internalTaskManagerAssignmentId: publishedAssignment.id,
+                      internalTaskManagerPermissionSetVersion: 'v1',
+                    }
+                  : {
+                      projectNextActionPermissions: [
+                        'project.next_action.update',
+                      ],
+                      projectNextActionCoordinatorAssignmentId:
+                        publishedAssignment.id,
+                      projectNextActionCoordinatorPermissionSetVersion: 'v1',
+                    }),
             },
           };
           return Response.json(publishedAssignment, { status: 201 });
@@ -643,7 +659,9 @@ it.each(
         within(access).getByRole('combobox', { name: 'Access bundle' }),
         grant === 'risk'
           ? 'operational-risk-reader'
-          : 'project-next-action-coordinator',
+          : grant === 'internal-task'
+            ? 'internal-task-manager'
+            : 'project-next-action-coordinator',
       );
       fireEvent.click(
         within(access).getByRole('button', { name: 'Grant access' }),

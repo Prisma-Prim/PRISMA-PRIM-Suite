@@ -38,6 +38,10 @@ export const COMPANY_ROLE_BUNDLES = {
       ],
     },
   },
+  company_internal_task_manager: {
+    label: 'Company Internal Task Manager',
+    versions: { v1: ['internal_task.read', 'internal_task.manage'] },
+  },
   company_task_manager: {
     label: 'Company Task Manager',
     versions: { v1: ['task.read', 'task.manage'] },
@@ -940,6 +944,21 @@ export function missionResultReviewPermissionsFor(
 ): readonly MissionResultReviewPermission[] {
   return companyRolePermissionsFor(
     COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+    version,
+  );
+}
+
+export const COMPANY_INTERNAL_TASK_MANAGER_BUNDLE =
+  'company_internal_task_manager' satisfies CompanyRoleBundle;
+export const COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_internal_task_manager.label;
+export type InternalTaskPermission =
+  CompanyRolePermission<'company_internal_task_manager'>;
+export function internalTaskPermissionsFor(
+  version: unknown,
+): readonly InternalTaskPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
     version,
   );
 }

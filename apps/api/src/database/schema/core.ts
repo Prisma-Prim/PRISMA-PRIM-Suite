@@ -41,6 +41,7 @@ export const workspacePermission = pgEnum('workspace_permission', [
 ]);
 
 export const companyRoleBundle = pgEnum('company_role_bundle', [
+  'company_internal_task_manager',
   'company_task_manager',
   'company_context_access',
   'company_director_client_access',
@@ -752,6 +753,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_context_assignment.revoked',
   'company_director_client_assignment.granted',
   'company_director_client_assignment.revoked',
+  'company_internal_task_manager_assignment.granted',
+  'company_internal_task_manager_assignment.revoked',
   'company_task_manager_assignment.granted',
   'company_task_manager_assignment.revoked',
   'company_document_project_organizer_assignment.granted',
@@ -891,6 +894,7 @@ export const activityLogEvents = pgTable(
         | { identityProvider: string }
         | {
             bundle:
+              | 'Company Internal Task Manager'
               | 'Company Task Manager'
               | 'Company Context Access'
               | 'Company Director Client Access'

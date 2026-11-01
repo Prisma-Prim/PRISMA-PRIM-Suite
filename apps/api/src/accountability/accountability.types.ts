@@ -20,6 +20,7 @@ import type {
   ClientLegalEntityValues,
 } from '../client/client-legal-entity.types.js';
 import type {
+  COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
@@ -184,6 +185,8 @@ export type CanonicalActivityEvent =
         | 'company_mission_plan_configuration_assignment.revoked'
         | 'company_mission_plan_user_assignment.granted'
         | 'company_mission_plan_user_assignment.revoked'
+        | 'company_internal_task_manager_assignment.granted'
+        | 'company_internal_task_manager_assignment.revoked'
         | 'company_task_manager_assignment.granted'
         | 'company_task_manager_assignment.revoked'
         | 'company_document_project_organizer_assignment.granted'
@@ -287,6 +290,7 @@ export type CanonicalActivityEvent =
       };
       metadata: {
         bundle:
+          | typeof COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
@@ -411,6 +415,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_mission_plan_configuration_assignment.revoked'
     | 'company_mission_plan_user_assignment.granted'
     | 'company_mission_plan_user_assignment.revoked'
+    | 'company_internal_task_manager_assignment.granted'
+    | 'company_internal_task_manager_assignment.revoked'
     | 'company_task_manager_assignment.granted'
     | 'company_task_manager_assignment.revoked'
     | 'company_document_project_organizer_assignment.granted'
@@ -561,6 +567,7 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | typeof COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL

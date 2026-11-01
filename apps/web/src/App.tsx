@@ -1,3 +1,9 @@
+import {
+  InternalTaskWorkspace,
+  canReadInternalTasks,
+  internalTaskAuthority,
+} from './internal-task/InternalTaskWorkspace';
+import { useInternalTaskCopy } from './internal-task/internal-task.copy';
 import { TeamTasks } from './project/TeamTasks';
 import { useTeamTasksCopy } from './project/team-tasks.copy';
 import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
@@ -78,6 +84,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
   const ideasCopy = useIdeasCopy();
+  const internalTaskCopy = useInternalTaskCopy();
   const prismeCopy = usePrismeCopy();
   const unassignedCopy = useUnassignedTasksCopy();
   const blockedCopy = useBlockedTasksCopy();
@@ -582,6 +589,23 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   );
 
   const sections: ApplicationSection[] = [];
+  if (canReadInternalTasks(access.actor))
+    sections.push({
+      id: 'internal-tasks',
+      label: internalTaskCopy('title'),
+      description: internalTaskCopy('help'),
+      content: (
+        <InternalTaskWorkspace
+          key={`internal-tasks:${access.sessionGeneration}:${companySelectionGeneration}:${internalTaskAuthority(access.actor)}`}
+          actor={access.actor}
+          identity={identity}
+          companyGeneration={companySelectionGeneration}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
   if (ideasAuthority(access.actor).read)
     sections.push({
       id: 'ideas',

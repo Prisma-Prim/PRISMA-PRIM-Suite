@@ -237,6 +237,18 @@ export const activityEventsByAction = {
     action: 'company_operational_risk_recorder_assignment.revoked',
     target: targets.company_role_assignment,
   },
+  'company_internal_task_manager_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_internal_task_manager_assignment.granted',
+    action: 'company_internal_task_manager_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_internal_task_manager_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_internal_task_manager_assignment.revoked',
+    action: 'company_internal_task_manager_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_task_manager_assignment.granted': {
     ...ordinary,
     id: 'event-company_task_manager_assignment.granted',

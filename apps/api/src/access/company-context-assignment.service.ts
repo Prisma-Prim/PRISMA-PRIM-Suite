@@ -42,6 +42,7 @@ import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
   COMPANY_ROLE_BUNDLES,
+  COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
   COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
@@ -127,6 +128,10 @@ const MISSION_PLAN_BUNDLES = {
   },
   user: { value: COMPANY_MISSION_PLAN_USER_BUNDLE, permissionSetVersion: 'v1' },
 } as const satisfies Record<string, BundleDefinition>;
+const INTERNAL_TASK_MANAGER_BUNDLE: BundleDefinition = {
+  value: COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_MANAGER_BUNDLE,
   permissionSetVersion: 'v1',
@@ -316,6 +321,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+  COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
@@ -1840,6 +1846,33 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  grantInternalTaskManager(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      INTERNAL_TASK_MANAGER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeInternalTaskManager(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      INTERNAL_TASK_MANAGER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
   grantTaskManager(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -2214,6 +2247,10 @@ function assignmentAction(
       return granted
         ? 'company_ideas_reviewer_assignment.granted'
         : 'company_ideas_reviewer_assignment.revoked';
+    case COMPANY_INTERNAL_TASK_MANAGER_BUNDLE:
+      return granted
+        ? 'company_internal_task_manager_assignment.granted'
+        : 'company_internal_task_manager_assignment.revoked';
     case COMPANY_TASK_MANAGER_BUNDLE:
       return granted
         ? 'company_task_manager_assignment.granted'
