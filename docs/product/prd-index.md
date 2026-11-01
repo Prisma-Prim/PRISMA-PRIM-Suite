@@ -222,7 +222,7 @@ implementation child. No runtime or actual grant is claimed.
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md): core sections 1–15 and an index of one file per capability (sections 16–33) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md): core sections 1–15 and an index of one file per capability (sections 16–34) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
 | [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md)                                                              | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration                                     |
 | [Confirmed-Cost Profitability Estimate](release-3-confirmed-cost-profitability-estimate-prd.md)                                          | Approved — bounded first journey; delivery tracked in #498    | Commercial Workflow; Illustrative Deterministic Pricing; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
 
@@ -238,6 +238,8 @@ under [#987](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/987) is App
 ordered Standards then Spec preparation and [actual delegated technical approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/987#issuecomment-6499422361).
 Canonical merge and all twelve fresh-child gates still precede a separate runtime;
 this contract approval does not make that runtime ready or delivered.
+
+[Commercial §34](release-3-commercial-34-opportunity-follow-up-date.md) owns the independent optional manual Opportunity follow-up date journey under [#1021](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1021). Its own status and twelve-gate runtime assessment apply; it changes neither §16's text-only command nor Task-owned commitments/reminders, and authorizes no real role assignment or operational activation.
 
 The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the governed illustrative fixed net discount created atomically with a new Snapshot (delivered by #458 / #470). It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
 

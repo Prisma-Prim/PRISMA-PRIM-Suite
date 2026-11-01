@@ -59,3 +59,5 @@ The highest stable seam is the public REST interface against PostgreSQL, followe
 This section excludes Opportunity title, scope, Client-association and status editing, reassignment, sales stages, deletion, bulk edits, scheduling, reminders and any external effect. Reassignment is owned by section 21.
 
 Unresolved and deliberately not presented as business fact: whether a commercial next action should remain free text or later become a structured, dated commitment owned by the Task capability; whether a future business rule should restrict updates to the responsible actor or a commercial manager; and whether the Opportunity should later expose its own next-action history outside the Activity Log. Iurie's validation under section 15 may correct any of these.
+
+[Section 34](release-3-commercial-34-opportunity-follow-up-date.md) separately owns an independent optional manual Opportunity follow-up marker. It does not change this section's text-only command or resolve Task-owned structured commitments, reminders or the other open business questions above; its own status and readiness apply.
