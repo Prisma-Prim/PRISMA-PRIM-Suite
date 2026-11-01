@@ -79,6 +79,7 @@ const isActorContext = object({
       missionPlanGrants: optional(isOpaque),
       offerModelGrants: optional(isOpaque),
       contractModelGrants: optional(isOpaque),
+      knowledgeGrants: optional(isOpaque),
       internalTaskPermissions: optional(isOpaque),
       internalTaskManagerAssignmentId: optional(isOpaque),
       internalTaskManagerPermissionSetVersion: optional(isOpaque),

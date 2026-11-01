@@ -10,6 +10,7 @@ import {
   KnowledgeIdentityVerifier,
 } from './knowledge/knowledge-identity.js';
 import { KnowledgeModule } from './knowledge/knowledge.module.js';
+import { KnowledgeWebController } from './knowledge/knowledge-web.controller.js';
 import {
   KnowledgeController,
   KnowledgeReadController,
@@ -189,6 +190,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    KnowledgeWebController,
     KnowledgeController,
     KnowledgeReadController,
     KnowledgeAssignmentController,

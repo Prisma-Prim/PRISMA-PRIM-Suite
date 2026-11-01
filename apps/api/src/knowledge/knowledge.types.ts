@@ -2,6 +2,7 @@ export interface KnowledgeSourceSummary {
   sourceId: string;
   documentId: string;
   documentVersionId: string;
+  representationId: string;
   sourceSha256: string;
   projectionSha256: string;
   title: string;

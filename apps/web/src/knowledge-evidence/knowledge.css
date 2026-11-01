@@ -1,0 +1,73 @@
+.knowledge-evidence {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.knowledge-evidence form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.knowledge-evidence label {
+  display: grid;
+  gap: 0.4rem;
+  flex: 1 1 16rem;
+}
+.knowledge-evidence textarea {
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem;
+  border: 1px solid var(--shell-line, #cbd5e1);
+  border-radius: 0.5rem;
+}
+.knowledge-evidence button {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--shell-line, #cbd5e1);
+  border-radius: 0.5rem;
+  background: white;
+  color: var(--shell-ink, #15233b);
+  cursor: pointer;
+  margin: 0.25rem;
+}
+.knowledge-evidence button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.knowledge-evidence :focus-visible {
+  outline: 3px solid var(--shell-focus, #1c5fbe);
+  outline-offset: 3px;
+}
+.knowledge-evidence pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.knowledge-evidence ul {
+  padding: 0;
+  list-style: none;
+}
+.knowledge-evidence li,
+.knowledge-evidence article {
+  padding: 1rem;
+  margin-block: 0.8rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.75rem;
+  background: white;
+}
+.knowledge-evidence dd {
+  margin: 0 0 0.7rem;
+}
+.knowledge-evidence .knowledge-locator {
+  white-space: pre-wrap;
+}
+.knowledge-evidence dt {
+  color: #475569;
+}
+.prisme-shell .knowledge-evidence form button[type='submit'],
+.prisme-shell .knowledge-evidence form button:not([type]) {
+  background: var(--shell-blue);
+  color: white;
+  border-color: var(--shell-blue);
+}

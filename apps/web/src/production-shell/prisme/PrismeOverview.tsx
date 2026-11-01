@@ -38,6 +38,7 @@ export function SectionIcon({
   const icons = {
     overview: LayoutGrid,
     'internal-tasks': ClipboardList,
+    'knowledge-evidence': ClipboardList,
     ideas: Lightbulb,
     'operational-risks': ShieldAlert,
     projects: FolderKanban,

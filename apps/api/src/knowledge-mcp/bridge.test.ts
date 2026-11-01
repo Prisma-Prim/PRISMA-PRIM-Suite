@@ -88,7 +88,11 @@ describe('real MCP client to fixed-origin knowledge REST bridge', () => {
       (response) =>
         json(response, {
           items: [
-            { ...source, rightsEvidence: 'hidden administrative declaration' },
+            {
+              ...source,
+              representationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7',
+              rightsEvidence: 'hidden administrative declaration',
+            },
           ],
           nextCursor: null,
           internalToken: 'must never reach the client',

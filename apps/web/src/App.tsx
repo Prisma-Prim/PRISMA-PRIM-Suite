@@ -4,6 +4,11 @@ import {
   internalTaskAuthority,
 } from './internal-task/InternalTaskWorkspace';
 import { useInternalTaskCopy } from './internal-task/internal-task.copy';
+import {
+  KnowledgeEvidenceWorkspace,
+  knowledgeAuthority,
+} from './knowledge-evidence/KnowledgeEvidenceWorkspace';
+import { useKnowledgeCopy } from './knowledge-evidence/knowledge.copy';
 import { TeamTasks } from './project/TeamTasks';
 import { useTeamTasksCopy } from './project/team-tasks.copy';
 import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
@@ -85,6 +90,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const contractModelCopy = useContractModelCopy();
   const ideasCopy = useIdeasCopy();
   const internalTaskCopy = useInternalTaskCopy();
+  const knowledgeCopy = useKnowledgeCopy();
   const prismeCopy = usePrismeCopy();
   const unassignedCopy = useUnassignedTasksCopy();
   const blockedCopy = useBlockedTasksCopy();
@@ -589,6 +595,23 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   );
 
   const sections: ApplicationSection[] = [];
+  if (knowledgeAuthority(access.actor))
+    sections.push({
+      id: 'knowledge-evidence',
+      label: knowledgeCopy('title'),
+      description: knowledgeCopy('help'),
+      mountWhenSelected: true,
+      content: (
+        <KnowledgeEvidenceWorkspace
+          actor={access.actor}
+          identity={identity}
+          authorityGeneration={`${access.sessionGeneration}:${companySelectionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}`}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
   if (canReadInternalTasks(access.actor))
     sections.push({
       id: 'internal-tasks',

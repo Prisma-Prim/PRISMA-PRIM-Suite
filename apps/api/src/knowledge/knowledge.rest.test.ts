@@ -393,6 +393,7 @@ withPostgres('Governed Knowledge source public REST', () => {
         source.documentVersionId,
       );
       expect(JSON.stringify(payload)).not.toContain('rightsEvidenceReference');
+      expect(object(payload.source)).not.toHaveProperty('representationId');
       const search = await client.callTool({
         name: 'search_knowledge',
         arguments: {
