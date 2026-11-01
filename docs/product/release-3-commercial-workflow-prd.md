@@ -33,6 +33,8 @@ Sections 1–15 are below. Each later section is its own file, with its original
 - [Section 33. Exact non-official PDF download (#955)](release-3-commercial-33-non-official-pdf-download.md)
 - [Section 34. Manual Opportunity follow-up date (#1021)](release-3-commercial-34-opportunity-follow-up-date.md)
 
+The separate [bounded exact-Offer message preparation contract (#1025)](release-2-commercial-offer-message-preparation-prd.md) owns provider-free manual preparation, review/copy and a separate native PDF offering. It preserves Offer/PDF/transmission authority and allocates no runtime from this reading route.
+
 ## 1. Authority and purpose
 
 This PRD is the canonical observable-behaviour authority for the reusable commercial journey:

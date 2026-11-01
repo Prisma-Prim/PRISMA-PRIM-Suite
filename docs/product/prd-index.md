@@ -276,6 +276,8 @@ Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
 
+The [bounded exact-Offer message preparation contract](release-2-commercial-offer-message-preparation-prd.md) under #1025 selects one provider-free R2C subset: manual ephemeral fields, explicit review/copy and a separate exact non-official PDF action. Its owning status and actual disposition govern approval; runtime remains unready until canonical merge, fresh source/capture fit and explicit shared-resource allocation. It supplies no sending, mailbox integration, real role or whole-release approval.
+
 The [bounded manual external Invoice Record contract](release-5-external-invoice-record-prd.md) is Approved after ordered Standards then Spec preparation and [actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1009#issuecomment-6549665126). It selects complete confidential source preservation before dependent manual Record entry/correction; canonical merge, actual-head readiness and central-interface ownership precede runtime work. The broader Release 5 remains unready; this contract supplies no fiscal issuance, payment/balance/overdue claim, real assignment or activation.
 
 The [complete My attention drill-down](release-1-operational-dashboard-acceptance-prd.md#20-approved-complete-my-attention-drill-down--2026-10-21)
