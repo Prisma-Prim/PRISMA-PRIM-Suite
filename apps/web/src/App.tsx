@@ -1,3 +1,9 @@
+import { InvoiceRecordsWorkspace } from './invoice-record/InvoiceRecordsWorkspace';
+import { useInvoiceRecordCopy } from './invoice-record/invoice-record-copy';
+import {
+  invoiceRecordAuthority,
+  invoiceRecordProjectionAuthority,
+} from './access/invoice-record-authority';
 import {
   InternalTaskWorkspace,
   canReadInternalTasks,
@@ -86,6 +92,7 @@ type HomeScopeLifetime = {
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
+  const invoiceCopy = useInvoiceRecordCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
   const ideasCopy = useIdeasCopy();
@@ -595,6 +602,40 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   );
 
   const sections: ApplicationSection[] = [];
+  if (invoiceRecordAuthority(access.actor))
+    sections.push({
+      id: 'invoice-records',
+      label: invoiceCopy.title,
+      description: invoiceCopy.description,
+      retainAfterSelection: true,
+      content: (
+        <InvoiceRecordsWorkspace
+          actor={access.actor}
+          identity={identity}
+          projectionAuthority={JSON.stringify([
+            clientAuthorityGeneration,
+            clientIdentityGeneration,
+            invoiceRecordProjectionAuthority(access.actor),
+          ])}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onOpenClient={canReadCompanyClients ? openClientDossier : undefined}
+          onOpenContract={
+            openRequest
+              ? (target) =>
+                  openRequest(target.clientRequestId, {
+                    type: 'contract_version',
+                    contractId: target.contractId,
+                    contractVersionId: target.contractVersionId,
+                    kind: 'CONTRACT',
+                  })
+              : undefined
+          }
+        />
+      ),
+    });
+
   if (knowledgeAuthority(access.actor))
     sections.push({
       id: 'knowledge-evidence',

@@ -1,3 +1,4 @@
+import { committedMigrationTables } from '../database/committed-migration-test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -179,6 +180,13 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           );
         }
       }
+      expect(
+        (
+          await database.targetPool.query<{ tablename: string }>(
+            "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
+          )
+        ).rows.map((row) => row.tablename),
+      ).toEqual(await committedMigrationTables(entries));
       const unassigned = async () => {
         expect(
           (

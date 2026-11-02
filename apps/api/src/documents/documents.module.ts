@@ -1,3 +1,4 @@
+import { DocumentInvoiceRecordSource } from './document-invoice-record-source.js';
 import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
 import { ProjectPdfBundleService } from './project-pdf-bundle.service.js';
 import { DocumentSigningReferenceService } from './document-signing-reference.service.js';
@@ -27,6 +28,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     AccountabilityModule,
   ],
   providers: [
+    DocumentInvoiceRecordSource,
     ProjectPdfBundleService,
     ReceivedContractRelationsService,
     ExternalInvoiceRelationsService,
@@ -41,6 +43,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentMalwareScanner,
   ],
   exports: [
+    DocumentInvoiceRecordSource,
     DocumentReadBoundary,
     ProjectPdfBundleService,
     DocumentsService,
