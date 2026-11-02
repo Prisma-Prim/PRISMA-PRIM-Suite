@@ -70,6 +70,79 @@ afterEach(() => {
   localStorage.clear();
 });
 
+it('renders large multiline native copies and captured Actor labels with copied-only authority', async () => {
+  const copiedContext = {
+    ...copiedOnly.record.copiedContext,
+    companyLabel: 'Native Company\n' + 'C'.repeat(1001),
+    receivingParty: {
+      ...copiedOnly.record.copiedContext.receivingParty,
+      legalName: 'Legal\n' + 'N'.repeat(194),
+      taxIdentifier: 'TAX\t' + 'T'.repeat(496),
+      address: 'Address\n' + 'A'.repeat(1992),
+    },
+  };
+  const capturedActor = {
+    ...copiedOnly.actor,
+    displayName: 'Native\nActor\t' + 'A'.repeat(1001),
+  };
+  const requests: string[] = [];
+  vi.stubGlobal('fetch', async (url: string) => {
+    requests.push(url);
+    if (url.endsWith('/invoice-records'))
+      return Response.json({
+        ...inventory,
+        items: [{ ...inventory.items[0], copiedContext }],
+      });
+    if (url.endsWith(`/invoice-records/${ids.record}`))
+      return Response.json({
+        ...copiedOnly,
+        actor: capturedActor,
+        record: { ...copiedOnly.record, copiedContext },
+        history: {
+          ...copiedOnly.history,
+          items: copiedOnly.history.items.map((item) => ({
+            ...item,
+            actor: capturedActor,
+          })),
+        },
+      });
+    throw new Error(`Unexpected live read: ${url}`);
+  });
+  render(view({ currentActor: financeOnly }));
+  fireEvent.click(await screen.findByRole('button', { name: /SYN-INV-001/ }));
+  await screen.findByRole('button', { name: 'Withdraw PRISMA entry' });
+  for (const literal of [
+    copiedContext.companyLabel,
+    copiedContext.receivingParty.taxIdentifier,
+    copiedContext.receivingParty.address,
+  ]) {
+    expect(
+      screen.getAllByText(
+        (_content, element) =>
+          element?.tagName === 'DD' && element.textContent === literal,
+      ).length,
+    ).toBeGreaterThan(0);
+  }
+  expect(
+    screen.getAllByText(
+      (_content, element) =>
+        element?.tagName === 'DD' &&
+        element.textContent ===
+          copiedContext.receivingParty.legalName + ' · Additional legal entity',
+    ).length,
+  ).toBeGreaterThan(0);
+  expect(
+    screen.getAllByText(
+      (_content, element) =>
+        element?.tagName === 'P' &&
+        element.textContent?.startsWith(
+          `Recorded by: ${capturedActor.displayName} · `,
+        ) === true,
+    ).length,
+  ).toBeGreaterThan(0);
+  expect(requests.every((url) => url.includes('/invoice-records'))).toBe(true);
+});
+
 it('reads literal copied declarations and withdraws without any native family, Contract, Client or content grant', async () => {
   const posts: RequestInit[] = [];
   const reason = ' Wrong PRISMA entry Ș Я é <script> ';

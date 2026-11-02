@@ -29,6 +29,10 @@ BEGIN
  EXCEPTION WHEN OTHERS THEN RETURN false;
 END $$;
 --> statement-breakpoint
+CREATE FUNCTION invoice_native_text(j jsonb) RETURNS boolean LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+ SELECT coalesce(jsonb_typeof(j)='string' AND length(btrim(j#>>'{}',chr(9)||chr(10)||chr(11)||chr(12)||chr(13)||chr(32)||chr(160)||chr(5760)||chr(8192)||chr(8193)||chr(8194)||chr(8195)||chr(8196)||chr(8197)||chr(8198)||chr(8199)||chr(8200)||chr(8201)||chr(8202)||chr(8232)||chr(8233)||chr(8239)||chr(8287)||chr(12288)||chr(65279)))>0,false);
+$$;
+--> statement-breakpoint
 CREATE FUNCTION invoice_number(j jsonb) RETURNS boolean LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN
  RETURN coalesce(jsonb_typeof(j)='number' AND (j#>>'{}') ~ '^[1-9][0-9]*$' AND (j#>>'{}')::numeric BETWEEN 1 AND 2147483647,false);
  EXCEPTION WHEN OTHERS THEN RETURN false; END $$;
@@ -54,7 +58,7 @@ CREATE FUNCTION invoice_receipt_valid(j jsonb) RETURNS boolean LANGUAGE sql IMMU
 $$;
 --> statement-breakpoint
 CREATE FUNCTION invoice_revision_valid(j jsonb) RETURNS boolean LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
- SELECT coalesce(invoice_keys(j,ARRAY['format','recordId','revision','action','commandId','actor','recordedAt','before','after','reason']) AND j->>'format'='EXTERNAL_INVOICE_REVISION/1' AND invoice_uuid(j->'recordId') AND invoice_number(j->'revision') AND j->>'action' IN ('CREATE','CORRECT','WITHDRAW_ENTRY') AND invoice_uuid(j->'commandId') AND invoice_keys(j->'actor',ARRAY['membershipId','displayName']) AND invoice_uuid(j->'actor'->'membershipId') AND invoice_text(j->'actor'->'displayName',1000) AND invoice_time(j->'recordedAt') AND invoice_fact_valid(j->'after') AND
+ SELECT coalesce(invoice_keys(j,ARRAY['format','recordId','revision','action','commandId','actor','recordedAt','before','after','reason']) AND j->>'format'='EXTERNAL_INVOICE_REVISION/1' AND invoice_uuid(j->'recordId') AND invoice_number(j->'revision') AND j->>'action' IN ('CREATE','CORRECT','WITHDRAW_ENTRY') AND invoice_uuid(j->'commandId') AND invoice_keys(j->'actor',ARRAY['membershipId','displayName']) AND invoice_uuid(j->'actor'->'membershipId') AND invoice_native_text(j->'actor'->'displayName') AND invoice_time(j->'recordedAt') AND invoice_fact_valid(j->'after') AND
  CASE j->>'action' WHEN 'CREATE' THEN j->>'revision'='1' AND j->'before'='null'::jsonb AND j->'reason'='null'::jsonb AND j->'after'->>'entryState'='RECORDED'
  WHEN 'CORRECT' THEN (j->>'revision')::numeric>1 AND invoice_fact_valid(j->'before') AND j->'before'->>'entryState'='RECORDED' AND j->'after'->>'entryState'='RECORDED' AND j->'before'->'values' IS DISTINCT FROM j->'after'->'values' AND invoice_text(j->'reason',2000)
  ELSE (j->>'revision')::numeric>1 AND invoice_fact_valid(j->'before') AND j->'before'->>'entryState'='RECORDED' AND j->'after'->>'entryState'='WITHDRAWN' AND j->'before'->'values'=j->'after'->'values' AND invoice_text(j->'reason',2000) END,false);
@@ -75,7 +79,7 @@ CREATE TABLE "invoice_record_commands" (
 	"revision" integer DEFAULT 0 NOT NULL,
 	"response" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "invoice_command_actor_label_check" CHECK (invoice_text(to_jsonb("invoice_record_commands"."actor_display_name"),1000)),
+	CONSTRAINT "invoice_command_actor_label_check" CHECK (invoice_native_text(to_jsonb("invoice_record_commands"."actor_display_name"))),
 	CONSTRAINT "invoice_command_receipt_check" CHECK (invoice_receipt_valid("invoice_record_commands"."response") AND "invoice_record_commands"."revision" BETWEEN 1 AND 2147483647 AND length("invoice_record_commands"."idempotency_key") BETWEEN 1 AND 200)
 );
 --> statement-breakpoint

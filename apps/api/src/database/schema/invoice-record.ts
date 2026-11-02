@@ -136,7 +136,7 @@ export const invoiceRecordCommands = pgTable(
     }),
     check(
       'invoice_command_actor_label_check',
-      sql`invoice_text(to_jsonb(${t.actorDisplayName}),1000)`,
+      sql`invoice_native_text(to_jsonb(${t.actorDisplayName}))`,
     ),
     check(
       'invoice_command_receipt_check',

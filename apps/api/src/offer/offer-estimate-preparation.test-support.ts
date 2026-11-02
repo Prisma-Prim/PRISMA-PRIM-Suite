@@ -180,12 +180,20 @@ export async function openEstimateOfferFixture(
   }
 
   async function prepare(
-    input: { clientTaxId?: string; clientAddress?: string } = {},
+    input: {
+      companyDisplayName?: string;
+      clientDisplayName?: string;
+      clientTaxId?: string;
+      clientAddress?: string;
+    } = {},
   ) {
     const company = responseRecord(
       await command({
         path: '/companies',
-        body: { displayName: 'Synthetic internal Offer Company' },
+        body: {
+          displayName:
+            input.companyDisplayName ?? 'Synthetic internal Offer Company',
+        },
       }),
     );
     const companyId = responseString(company, 'id');
@@ -284,7 +292,8 @@ export async function openEstimateOfferFixture(
         companyId,
         headers: ESTIMATE_OFFER_PREPARER,
         body: {
-          displayName: 'Synthetic internal Offer Client',
+          displayName:
+            input.clientDisplayName ?? 'Synthetic internal Offer Client',
           taxId: input.clientTaxId ?? 'SYNTHETIC-842',
           address: input.clientAddress ?? '842 Example Street',
         },

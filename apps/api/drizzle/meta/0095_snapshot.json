@@ -31454,7 +31454,7 @@
       "checkConstraints": {
         "invoice_command_actor_label_check": {
           "name": "invoice_command_actor_label_check",
-          "value": "invoice_text(to_jsonb(\"invoice_record_commands\".\"actor_display_name\"),1000)"
+          "value": "invoice_native_text(to_jsonb(\"invoice_record_commands\".\"actor_display_name\"))"
         },
         "invoice_command_receipt_check": {
           "name": "invoice_command_receipt_check",

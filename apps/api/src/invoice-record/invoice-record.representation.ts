@@ -29,6 +29,18 @@ function action(value: unknown): InvoiceAction {
     throw new Error('Invalid invoice action.');
   return value;
 }
+/** Preserve native historical text; manual declarations have separate grammar. */
+function copiedText(value: unknown, maximum?: number): string {
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.includes('\0') ||
+    /[\uD800-\uDFFF]/u.test(value) ||
+    (maximum !== undefined && value.length > maximum)
+  )
+    throw new Error('Invalid conserved invoice text.');
+  return value;
+}
 export function invoiceFact(value: unknown): InvoiceFact {
   const v = invoiceObject(value, ['entryState', 'values']);
   if (v.entryState !== 'RECORDED' && v.entryState !== 'WITHDRAWN')
@@ -79,7 +91,7 @@ export function invoiceHistoryRevision(value: unknown): InvoiceRevision {
     commandId: requireUuid(v.commandId),
     actor: {
       membershipId: requireUuid(a.membershipId),
-      displayName: invoiceText(a.displayName, 1000),
+      displayName: copiedText(a.displayName),
     },
     recordedAt: time(v.recordedAt),
     before: v.before === null ? null : invoiceFact(v.before),
@@ -155,15 +167,15 @@ export function invoiceSnapshot(value: unknown): InvoiceSourceSnapshot {
     byteLength: v.byteLength,
     sha256: v.sha256,
     copiedContext: {
-      companyLabel: invoiceText(c.companyLabel, 1000),
+      companyLabel: copiedText(c.companyLabel),
       contractReference: invoiceText(c.contractReference, 200),
       contractVersionNumber: invoiceRevision(c.contractVersionNumber),
       receivingParty: {
         kind: p.kind,
-        legalName: invoiceText(p.legalName, 200),
+        legalName: copiedText(p.legalName, 200),
         taxIdentifier:
-          p.taxIdentifier === null ? null : invoiceText(p.taxIdentifier, 200),
-        address: p.address === null ? null : invoiceText(p.address, 2000),
+          p.taxIdentifier === null ? null : copiedText(p.taxIdentifier, 500),
+        address: p.address === null ? null : copiedText(p.address, 2000),
       },
     },
   };

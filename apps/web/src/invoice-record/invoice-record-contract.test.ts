@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest';
-import { readCurrent, readInventory } from './invoice-record-contract';
+import {
+  readCurrent,
+  readInventory,
+  readSources,
+  type CopiedContext,
+} from './invoice-record-contract';
 import { isInvoiceRevision, readReceipt } from './invoice-record-history';
 import {
   capture,
@@ -9,10 +14,75 @@ import {
   initialFact,
   inventory,
   receipt,
+  source,
   values,
 } from './invoice-record.fixture';
 import { isInvoiceValues } from './invoice-record-values';
 import { invoiceRecordMessages } from './invoice-record-copy';
+
+it('decodes literal native copied text and captured Actor labels without applying manual-entry bounds', () => {
+  const kinds: CopiedContext['receivingParty']['kind'][] = [
+    'PRIMARY',
+    'ADDITIONAL',
+  ];
+  for (const kind of kinds) {
+    const copiedContext: CopiedContext = {
+      companyLabel: '  Native Company\n' + 'C'.repeat(1001) + '  ',
+      contractReference: 'Native Contract №17',
+      contractVersionNumber: 1,
+      receivingParty: {
+        kind,
+        legalName: 'Legal\n' + 'N'.repeat(194),
+        taxIdentifier: 'TAX\t' + 'T'.repeat(496),
+        address: 'Address\n' + 'A'.repeat(1992),
+      },
+    };
+    const historicalActor = {
+      ...current.actor,
+      displayName: 'Native\nActor\t' + 'A'.repeat(1001),
+    };
+    const decoded = readCurrent(
+      {
+        ...current,
+        actor: historicalActor,
+        record: { ...current.record, copiedContext },
+        history: {
+          ...current.history,
+          items: current.history.items.map((item) => ({
+            ...item,
+            actor: historicalActor,
+          })),
+        },
+      },
+      ids.company,
+      ids.record,
+      capture,
+    );
+    expect(decoded?.record.copiedContext).toEqual(copiedContext);
+    expect(decoded?.actor).toEqual(historicalActor);
+    expect(decoded?.history.items[0]?.actor).toEqual(historicalActor);
+    expect(
+      readInventory(
+        { ...inventory, items: [{ ...inventory.items[0], copiedContext }] },
+        ids.company,
+        capture,
+      )?.items[0]?.copiedContext,
+    ).toEqual(copiedContext);
+    expect(
+      readSources(
+        {
+          format: 'EXTERNAL_INVOICE_SOURCE_PAGE/1',
+          companyId: ids.company,
+          readCapture: capture,
+          items: [{ ...source, copiedContext }],
+          nextCursor: null,
+        },
+        ids.company,
+        capture,
+      )?.items[0]?.copiedContext,
+    ).toEqual(copiedContext);
+  }
+});
 
 it('rejects unknown persisted receipt/history information and contradictory before/after transitions', () => {
   expect(readReceipt(receipt('CREATE'))?.revision).toBe(1);
