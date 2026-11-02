@@ -1,7 +1,7 @@
 # PRD — Bounded manual incoming Payment observations
 
-**Status:** Approved — bounded software contract after ordered independent Standards then Spec preparation and [actual root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032#issuecomment-6561911019), 2026-11-01. No runtime readiness or delivery is claimed.\
-**Version:** 1.0\
+**Status:** Approved — bounded software contract, including the payer identity clarification under [#1035](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1035), after ordered independent Standards then Spec preparation and [actual root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1035#issuecomment-6563542183), 2026-11-01. No runtime readiness or delivery is claimed.\
+**Version:** 1.1\
 **Owner:** Dan Popescu\
 **Capability owner:** Finance, consuming native Access, Client, Document and Accountability owners.\
 **Parent:** [Product Vision #51](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51)
@@ -33,13 +33,16 @@ rules. This owner specializes only this capability's consequences and exceptions
 The [external Invoice Record contract](release-5-external-invoice-record-prd.md)
 retains its own source, grammar, history and captured v1 meanings; none expands.
 
-| Classification                          | Meaning here                                                                                                                                                                                                                       |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reused approved direction               | Separate observed Payment and independent confirmation; one responsible Company; exact currency/precision; immutable confirmed history; traceable reversal/adjustment; manual before automation.                                   |
-| Bounded software selections under #1032 | Incoming known-Client payer, distinct evidence family, five unassigned captures, copied-read policy, closed grammar, DRAFT/CONFIRMED/REVERSED/WITHDRAWN, non-autoconfirmation, explicit replacement and private bounded discovery. |
-| Operational facts not supplied          | Real people and grants, sufficient confirmation/reversal evidence, actual separation-of-duty practice, methods/currencies used, source handling/redaction/retention and bank/accountant/legal meaning.                             |
+| Classification                              | Meaning here                                                                                                                                                                                                                       |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reused approved direction                   | Separate observed Payment and independent confirmation; one responsible Company; exact currency/precision; immutable confirmed history; traceable reversal/adjustment; manual before automation.                                   |
+| Bounded software selections under #1032     | Incoming known-Client payer, distinct evidence family, five unassigned captures, copied-read policy, closed grammar, DRAFT/CONFIRMED/REVERSED/WITHDRAWN, non-autoconfirmation, explicit replacement and private bounded discovery. |
+| Approved identity clarification under #1035 | Fresh complete Source/Payment payer copies require Company identity-read; frozen Source payer projection is independently gated, while copied Payment reads remain autonomous.                                                     |
+| Operational facts not supplied              | Real people and grants, sufficient confirmation/reversal evidence, actual separation-of-duty practice, methods/currencies used, source handling/redaction/retention and bank/accountant/legal meaning.                             |
 
-The recorded root disposition approves this bounded software contract. It is not
+The recorded [#1032 disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1032#issuecomment-6561911019)
+approves the 1.0 base; the [#1035 disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1035#issuecomment-6563542183)
+approves the identity clarification in 1.1. This is not
 personal Dan/Iurie/accountant approval, an actual assignment, real tenant policy or
 operational activation. It cannot establish that a transfer settled, that a PDF
 is authentic, that its payer had a mandate, or that two observations represent
@@ -139,8 +142,16 @@ Client/entity/context and unsupported families. The server derives Workspace,
 Company, exact original Client/party, immutable legal name/tax identifier/address
 copy including nulls, Company label, registering membership/Internal User and
 server instant. Client input is selection, never authority or a supplied party
-snapshot. Preserve native supported Client-read alternatives, including
-Workspace `client.manage` where that owner permits it. No party inference,
+snapshot. Under [Shared Client §§7–8](release-1-shared-client-prd.md#7-minimal-data)
+and [§20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393),
+fresh discovery/selection and complete copying of either PRIMARY or ADDITIONAL
+identity require current supported captured Company `client.read` in the receiving
+Company, plus exact original/entity/new-use eligibility. PRIMARY also copies
+tax/address; minimal `id`/displayName, a known UUID, partial values or invented
+nulls cannot substitute. Workspace `client.manage` retains only its native minimal
+directory/reference alternatives, including existing operations without a new
+payer copy where their owner permits them. Selecting an existing payer adds no
+`client.update`, Offer or signing authority. No party inference,
 Company default, filename date or tax/mandate validation is added.
 
 Registration creates one Document and Version 1 empty draft, its immutable
@@ -224,28 +235,43 @@ Document/content/mutation, approval or administration permission.
 Every row also needs verified identity and current active Internal User,
 Workspace/membership/Company with exact supported captures and same-scope target:
 
-| Operation                                                             | Payment prerequisite                                             | Independent source/native requirements                                                                                                                                                                            |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Copied Payment inventory/detail/history                               | Reader, Recorder, Confirmer or Reverser carrying `payment.read`. | No live Client, Document, family or content prerequisite.                                                                                                                                                         |
-| Evidence metadata/Versions/native history/live Document link          | Any supported `payment.read` capture.                            | Evidence Access plus native Document metadata/Version and original-Client/Company read.                                                                                                                           |
-| Evidence bytes/protected Representation/name/size/hash/upload history | Any supported `payment.read` capture.                            | Preceding metadata boundary plus native Content Reader for the exact tuple.                                                                                                                                       |
-| Register evidence                                                     | Recorder.                                                        | Evidence Access, native Document registration/read and exact original Client/party read/new-use eligibility.                                                                                                      |
-| Upload evidence                                                       | Recorder.                                                        | Evidence Access, metadata/Client read, Content Reader + Uploader, native Version management and applicable Client/new-use/revision; post-scan revalidation.                                                       |
-| Designate evidence official                                           | Recorder.                                                        | Evidence Access, native Approver `document.version.designate_official`, metadata/Representation read, clean stored draft and applicable original-Client/new-use/revision. No Content Reader or Uploader is added. |
-| Empty evidence successor                                              | Recorder.                                                        | Evidence Access, native Version management, metadata/Representation read, revision and applicable original-Client/new-use eligibility; no content copied.                                                         |
-| Correct evidence title/purpose                                        | Recorder.                                                        | Evidence Access, native `document.correct`, Document/Client read, draft/revision and applicable original-Client/new-use eligibility.                                                                              |
-| CREATE / CORRECT_DRAFT                                                | Recorder.                                                        | Evidence Access, exact eligible source/Version/content and original-Client read; fresh use also qualifies current active original Client–Company eligibility.                                                     |
-| CONFIRM                                                               | Confirmer.                                                       | Evidence Access, exact eligible source/Version/content and original-Client read, applicable fresh new-use eligibility and §8 independent-author rule. **Recorder / `payment.record` is not required.**            |
-| WITHDRAW_DRAFT                                                        | Recorder.                                                        | No live evidence-family, Document, content or Client prerequisite.                                                                                                                                                |
-| REVERSE                                                               | Reverser.                                                        | No live evidence-family, Document, content or Client prerequisite; no Recorder or source-write grant.                                                                                                             |
-| Administer the five captures                                          | Existing current assignment administrator.                       | No source/Payment content is revealed by administration.                                                                                                                                                          |
+| Operation                                                             | Payment prerequisite                                             | Independent source/native requirements                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Copied Payment inventory/detail/history                               | Reader, Recorder, Confirmer or Reverser carrying `payment.read`. | No live Client, Document, family or content prerequisite.                                                                                                                                                                                              |
+| Evidence metadata/Versions/native history/live Document link          | Any supported `payment.read` capture.                            | Evidence Access plus native Document metadata/Version and original-Client/Company read.                                                                                                                                                                |
+| Frozen structured Source payer projection                             | Any supported `payment.read` capture.                            | Evidence metadata boundary plus current supported captured Company `client.read`; no fresh active-Client/entity lookup.                                                                                                                                |
+| Evidence bytes/protected Representation/name/size/hash/upload history | Any supported `payment.read` capture.                            | Evidence metadata boundary plus native Content Reader for the exact tuple.                                                                                                                                                                             |
+| Register evidence                                                     | Recorder.                                                        | Evidence Access, native Document registration/read and ordinary original-reference visibility; a genuinely new source additionally requires §4 Company identity-read and exact original/party/new-use eligibility.                                     |
+| Upload evidence                                                       | Recorder.                                                        | Evidence Access, metadata/Client read, Content Reader + Uploader, native Version management and applicable Client/new-use/revision; post-scan revalidation.                                                                                            |
+| Designate evidence official                                           | Recorder.                                                        | Evidence Access, native Approver `document.version.designate_official`, metadata/Representation read, clean stored draft and applicable original-Client/new-use/revision. No Content Reader or Uploader is added.                                      |
+| Empty evidence successor                                              | Recorder.                                                        | Evidence Access, native Version management, metadata/Representation read, revision and applicable original-Client/new-use eligibility; no content copied.                                                                                              |
+| Correct evidence title/purpose                                        | Recorder.                                                        | Evidence Access, native `document.correct`, Document/Client read, draft/revision and applicable original-Client/new-use eligibility.                                                                                                                   |
+| CREATE, including linked replacement                                  | Recorder.                                                        | Evidence Access, exact eligible source/Version/content and original-Client read; a genuinely new root additionally requires Company identity-read for its new payer copy and current active original Client–Company eligibility.                       |
+| CORRECT_DRAFT                                                         | Recorder.                                                        | Evidence Access, exact eligible source/Version/content and original-Client read, with applicable fresh new-use eligibility; no payer recopy or added Company identity-read.                                                                            |
+| CONFIRM                                                               | Confirmer.                                                       | Evidence Access, exact eligible source/Version/content and original-Client read, applicable fresh new-use eligibility and §8 independent-author rule. No payer recopy or added Company identity-read. **Recorder / `payment.record` is not required.** |
+| WITHDRAW_DRAFT                                                        | Recorder.                                                        | No live evidence-family, Document, content or Client prerequisite.                                                                                                                                                                                     |
+| REVERSE                                                               | Reverser.                                                        | No live evidence-family, Document, content or Client prerequisite; no Recorder or source-write grant.                                                                                                                                                  |
+| Administer the five captures                                          | Existing current assignment administrator.                       | No source/Payment content is revealed by administration.                                                                                                                                                                                               |
 
 The native owner remains authoritative for each operation's supported Client-read,
 Representation, revision and historical/new-use rules. Do not apply a blanket new-use
-condition to evidence/copied reads, withdrawal or reversal. Source Recorder rights
+condition to evidence/copied reads, withdrawal or reversal. Distinguish eligible
+source qualification from the separately authorized Source payer projection:
+projection unavailability alone denies neither CORRECT_DRAFT nor CONFIRM when
+their own required source/content/Client gates still pass. Source Recorder rights
 must never leak into CONFIRM or read authorization. Designation without Content
 Reader remains possible for an otherwise authorized Approver; protected PDF details
 and bytes remain independently withheld.
+
+**Selected Source-payer policy:** reveal the frozen structured payer only under
+its matrix row, including in registration/replay detail. Otherwise return a closed
+unavailable projection with no payer kind, entity ID, legal name, tax identifier,
+address or guessed cause. Preserve every stored value and actual null exactly;
+unavailable is not null, deletion or corruption. No current corrected identity or
+canonical-Client retarget is substituted. Losing only this projection leaves
+otherwise permitted ordinary Source metadata, Versions/history, PDF and native
+commands without new copying under their independent gates. Live Client/dossier
+links retain their own current native resource visibility.
 
 **Selected copied-read policy:** a Payment read opt-in explicitly
 discloses recorded receiving-Company/payer copies, literal values, reasons, review
@@ -347,14 +373,25 @@ Successful receipt has exactly `{format: PAYMENT_COMMAND/1, commandId, paymentId
 revision, action, recordedAt}`, with server UTC instant and native UUIDs. The
 receipt contains no copied financial/source/credential payload. Identical replay
 returns the same closed receipt, no event or revision; changed Company/target/
-input/action under the same key conflicts. Evidence commands retain the native
+input/action under the same key conflicts. A genuinely new CREATE, including a
+replacement, requires Company identity-read before transferring the conserved
+Source payer into the autonomous Payment copy. Copy that frozen Source snapshot,
+never live corrected identity. Exact committed Payment replay creates no new copy
+and adds no fresh-copy requirement after its existing current action/source
+authority; CORRECT_DRAFT and CONFIRM also preserve the root payer unchanged.
+Evidence commands retain the native
 Document namespace/protocol, current rights before replay, no repeated scan and
 no restoration of an old upload over a newer one. Evidence registration checks
 current Recorder/Evidence Access/native registration and original-Client read
 before resolving its key. Resolve a conserved Document through its current native
-visibility before fresh Client/party/new-use eligibility; historical identity is
-never rebound to a canonical Client. Other evidence commands likewise resolve
-exact authorized replay before fresh revision/Version/new-use refusal.
+visibility before fresh Company identity-read/copy and Client/party/new-use
+qualification. Registration success and replay return the currently authorized
+`WorkingDocumentDetail` rebuilt through native `readDetail`, not an ID-only
+immutable receipt or an old unfiltered detail. After Company identity-read loss,
+otherwise authorized replay may return the source with its payer projection
+unavailable; it never recopies a changed Client or binds a union successor. Other
+evidence commands retain their own current authority before exact replay, then
+fresh revision/Version/new-use checks; they make no new payer copy.
 
 Each immutable Payment revision has exactly `{format: PAYMENT_REVISION/1,
 paymentId, revision, action, commandId, actor, recordedAt, before, after, reason}`.
@@ -399,7 +436,8 @@ Current/detail and first immutable history page share one repeatable snapshot.
 History is revision-descending, at most 25 per page, with a head-bound continuation
 and explicit 409 reload when the head changes. All revisions remain reachable.
 The exact eligible evidence selector is bounded to 25 plus eligible lookahead,
-under its complete stronger source predicate before bounds; its continuation
+under its complete stronger source predicate, including Company identity-read
+for the new Payment payer copy, before bounds; its continuation
 cannot leak draft, foreign or hidden sources. Existing native Client/party
 selection remains with its authorized owner, with labeled deliberate selection.
 No first-N Company truncation, hidden count or broad generic search is introduced.
@@ -453,7 +491,12 @@ an untracked allocation; no paid badge or bank-certification wording is introduc
 | Identity/scope/relevant capture replacement                | Permanently retire consumed old work and refuse every older continuation.                                                    |
 
 Separate copied Payment read, stronger source/mutation, evidence editor, native
-projection and download operation owners. Source/Client/family/content loss retires
+projection and download operation owners. Fresh registration/new-Payment copying
+consumes Company identity-read; relevant loss/replacement retires those attempts
+and the structured Source-payer projection independently. An API replay outcome
+does not revive a retired UI owner. Older full-Actor/detail responses cannot
+restore a withheld payer copy; independently permitted metadata/content/Version
+work retains its own lifetime. Source/Client/family/content loss retires
 only the work consuming that authority; it does not erase copied facts or disable
 independently permitted withdrawal/reversal. Recorder replacement retires its
 CREATE/correction/evidence attempts, not a valid Confirmer/Reverser read/command.
@@ -500,6 +543,17 @@ and older upload/history after two real App restarts. Source registration create
 no Payment. Native designation by an otherwise authorized Approver without Content
 Reader succeeds while protected upload metadata/history/bytes remain hidden.
 
+For both PRIMARY and ADDITIONAL, an actor holding only Workspace `client.manage`
+for Client access may use native minimal directory/reference paths but cannot discover/select the full identity or
+register a fresh complete payer copy; Company identity-read permits it with all
+other gates. Denial leaves no source, key, fence or success event, including with
+a known entity UUID. Revoke only Company identity-read after registration: exact
+replay rebuilds readable current detail with the payer unavailable, while otherwise
+permitted metadata, Version/designation and PDF operations remain usable. Restore
+read authority and reopen the original frozen values, including actual nulls,
+after Client/entity correction. Use a native PRIMARY-only pair for union; do not
+fabricate an ADDITIONAL union unsupported by the Client owner.
+
 After source-family/route/grant wiring is runnable, the first meaningful source
 RED proves an existing ordinary Document grant cannot disclose the new private
 family or consume it through an indirect owner while an independently authorized
@@ -520,7 +574,16 @@ Independently revoke/replace Client, family, Document and content authority.
 Copied Payment Reader still reopens facts/history; native projections disappear.
 A separately captured Reverser still reverses with a reason, preserving the
 confirmation and amount. Create one explicit replacement DRAFT against qualified
-corrected context; both roots/lineage/history remain. Separately withdraw a
+corrected context; both roots/lineage/history remain. Without Company identity-read,
+new CREATE/replacement and its selector refuse the fresh payer-copy boundary even
+when ordinary source access passes; no root/key/event/fence is committed. Restore
+that authority and copy the conserved Source payer, not later live corrections.
+Then revoke only identity-read: exact committed CREATE replay retains its minimal
+receipt under current required action/source authority; existing CORRECT_DRAFT
+and non-Recorder CONFIRM still use their own native gates without payer recopy.
+The unavailable Source-payer projection never substitutes for a failed required
+source/content/Client gate or disables an otherwise permitted existing command.
+Separately withdraw a
 mistaken DRAFT without claiming a refund. Demonstrate one PDF and repeated external
 reference supporting separate observations without an external uniqueness claim.
 
@@ -592,20 +655,20 @@ UI after DTO freeze or separately named new native proof files. No simultaneous
 shared writer, mutable clone/index/ref/graph, PG/browser/build/heavy owner or
 competing final main window. This is a future allocation plan, not a runtime lease.
 
-| Standard gate                      | Contract coverage                                                                        | Closure still required                                                                                              |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| 1. Unambiguous outcome             | Approved §§1–3 and12 define complete source then observation journey.                    | Recheck outcome and public seams on the fresh runtime source.                                                       |
-| 2. Workspace/Company/legal entity  | §§3–4 exact receiving Company/original Client/payer.                                     | Fit the actual native Client/reference seam and representative synthetic contexts.                                  |
-| 3. Actors/permissions/approvals    | §6 five captured opt-ins and exact matrix; §8 nonself rule.                              | Fit current captures/permission prerequisites; no real assignments inferred.                                        |
-| 4. Lifecycle/correction/deletion   | §§5/7–9 exact source, four Payment states and immutable correction/confirmation/lineage. | Confirm native rules, full boundary plan and one-session fit for each frontier.                                     |
-| 5. Source/provider                 | §§4–6 native bounded private PDF/scan and independent source truth.                      | Current source/adapter/provider fit; real operational source sufficiency stays unqualified.                         |
-| 6. Representative examples         | §12 fictional notice, payer choices and distinct synthetic authors.                      | Bind to runnable native public fixtures; no actual receipt or first-tenant-example claim.                           |
-| 7. Failure/empty/permission states | §§6–11 independent denial/unavailability/conflict/uncertainty/recovery.                  | Complete the then-current public/App lifetime proof plan.                                                           |
-| 8. Security/Activity/observability | §§6/9–12 scoped copies/native rights, private events and coupled integrity.              | Fit actual consumers/lock/seams against the approved privacy boundary.                                              |
-| 9. Dependencies/migration          | Genuine immediate predecessor and source-first boundary above.                           | Canonical merge, selected Record/R2C sequencing, current journal/source/fixture and exclusive shared/heavy handoff. |
-| 10. Public acceptance              | §12 full native/App/restart/upgrade/provider/visual plan.                                | Bind actual public seams/fixtures before launch; execute proof during runtime delivery.                             |
-| 11. One fresh session              | Two complete sequential frontiers, optional disjoint helpers.                            | Fresh complexity/ownership assessment for the selected first vertical; no blocked follow-on launch.                 |
-| 12. Every blocker closed           | Product contract approved; runtime blockers remain unclosed.                             | Canonical merge, complete current-source readiness and one fresh issue/claim/resource handoff.                      |
+| Standard gate                      | Contract coverage                                                                        | Closure still required                                                                                                                           |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Unambiguous outcome             | §§1–3 and12 define complete source then observation journey.                             | Recheck outcome and public seams on the fresh runtime source.                                                                                    |
+| 2. Workspace/Company/legal entity  | §§3–4 exact receiving Company/original Client/payer.                                     | Fit the actual native Client/reference seam and representative synthetic contexts.                                                               |
+| 3. Actors/permissions/approvals    | §6 five captured opt-ins and exact matrix; §8 nonself rule.                              | Fit current captures and separate identity-copy/Source-projection/native gates; no real assignments inferred.                                    |
+| 4. Lifecycle/correction/deletion   | §§5/7–9 exact source, four Payment states and immutable correction/confirmation/lineage. | Confirm native rules, full boundary plan and one-session fit for each frontier.                                                                  |
+| 5. Source/provider                 | §§4–6 native bounded private PDF/scan and independent source truth.                      | Current source/adapter/provider fit; real operational source sufficiency stays unqualified.                                                      |
+| 6. Representative examples         | §12 fictional notice, payer choices and distinct synthetic authors.                      | Bind both payer branches and manager-only/Company-reader/replay controls to native fixtures; no real-operation claim.                            |
+| 7. Failure/empty/permission states | §§6–11 independent denial/unavailability/conflict/uncertainty/recovery.                  | Complete the then-current public/App lifetime proof plan.                                                                                        |
+| 8. Security/Activity/observability | §§6/9–12 scoped copies/native rights, private events and coupled integrity.              | Fit actual consumers/lock/seams against the approved privacy boundary.                                                                           |
+| 9. Dependencies/migration          | Genuine immediate predecessor and source-first boundary above.                           | Canonical clarification merge, selected Record/R2C sequencing, actual source/DTO/capture/journal/fixture fit and exclusive shared/heavy handoff. |
+| 10. Public acceptance              | §12 full native/App/restart/upgrade/provider/visual plan.                                | Bind actual public seams/fixtures before launch; execute proof during runtime delivery.                                                          |
+| 11. One fresh session              | Two complete sequential frontiers, optional disjoint helpers.                            | Fresh complexity/ownership assessment for the selected first vertical; no blocked follow-on launch.                                              |
+| 12. Every blocker closed           | Software contract 1.1 approved; runtime blockers remain open.                            | Canonical merge, complete current-source readiness and one fresh issue/claim/resource handoff.                                                   |
 
 Current runtime status is **NOT READY**. Product approval alone creates no runtime
 child and waives none of these gates. Executed new-family tests/browser evidence
