@@ -13,6 +13,7 @@ import { selectOption } from './select-option';
 import { invoiceRecordMessages } from '../src/invoice-record/invoice-record-copy';
 import { sourceKey } from '../src/invoice-record/invoice-record-contract';
 import { exerciseInvoiceRecordHistoryOwnership } from './invoice-record-history.acceptance.fixture';
+import { exerciseInvoiceDownloadMode } from './invoice-record-download.acceptance.fixture';
 const en = invoiceRecordMessages.en;
 async function activate(control: Locator) {
   await expect(control).toBeEnabled();
@@ -274,6 +275,15 @@ for (const frame of ['prisme', 'classic'] as const) {
         .update(await readFile(path))
         .digest('hex'),
     ).toBe(createHash('sha256').update(ready.pdfA).digest('hex'));
+    for (const mode of ['CORRECT', 'WITHDRAW_ENTRY'] as const)
+      await exerciseInvoiceDownloadMode({
+        page,
+        info,
+        mode,
+        recordId,
+        sourceBytes: ready.pdfA,
+        sourceHeaders,
+      });
     await activate(
       workspace.getByRole('button', { name: en.correct, exact: true }),
     );
@@ -491,15 +501,24 @@ for (const frame of ['prisme', 'classic'] as const) {
     await activate(
       workspace.getByRole('button', { name: 'SYN-INV-001', exact: false }),
     );
-    await activate(
-      workspace.getByRole('button', { name: en.replace, exact: true }),
-    );
-    await expect(form).toContainText(en.replacementMeaning);
     const correctedSource = {
       documentId: correctedDocumentId,
       documentVersionId: correctedVersionId,
       representationId: correctedRepresentationId,
     };
+    await exerciseInvoiceDownloadMode({
+      page,
+      info,
+      mode: 'REPLACE',
+      recordId,
+      sourceBytes: ready.pdfA,
+      sourceHeaders,
+      replacementSource: correctedSource,
+    });
+    await activate(
+      workspace.getByRole('button', { name: en.replace, exact: true }),
+    );
+    await expect(form).toContainText(en.replacementMeaning);
     await selectOption(form.getByLabel(en.chooseSource), {
       value: sourceKey(correctedSource),
     });

@@ -46,6 +46,7 @@ export function InvoiceRecordRelations(
               <>
                 <p>{source.content.fileName}</p>
                 <InvoiceRecordDownload
+                  key={props.editing ? 'editing' : 'reading'}
                   {...props}
                   authority={props.downloadAuthority}
                   source={source}
