@@ -47,6 +47,46 @@ export function externalInvoiceCapturedAuthority(
       finance: ExternalInvoiceCapturedGrant[];
     }
   | undefined {
+  const grants = invoiceCapturedGrants(value);
+  if (!grants) return undefined;
+  const family = grants.find(
+    (grant) => grant.bundle === COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
+  );
+  const finance = grants.filter(
+    (grant) =>
+      grant.bundle === COMPANY_INVOICE_RECORDER_BUNDLE ||
+      (!options.manage && grant.bundle === COMPANY_INVOICE_READER_BUNDLE),
+  );
+  return family && finance.length ? { family, finance } : undefined;
+}
+
+/** The financial copy has its own lifetime: no source-family prerequisite. */
+export function invoiceFinanceCapturedGrant(
+  value: unknown,
+  manage: boolean,
+): ExternalInvoiceCapturedGrant | undefined {
+  if (!Array.isArray(value)) return undefined;
+  // Family facts are not consumed by a copied financial operation.
+  const financial = value.filter(
+    (item: unknown) =>
+      !(
+        item &&
+        typeof item === 'object' &&
+        'bundle' in item &&
+        item.bundle === COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE
+      ),
+  );
+  const grants = invoiceCapturedGrants(financial);
+  return (
+    grants?.find((grant) => grant.bundle === COMPANY_INVOICE_RECORDER_BUNDLE) ??
+    (manage
+      ? undefined
+      : grants?.find((grant) => grant.bundle === COMPANY_INVOICE_READER_BUNDLE))
+  );
+}
+function invoiceCapturedGrants(
+  value: unknown,
+): ExternalInvoiceCapturedGrant[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const grants: ExternalInvoiceCapturedGrant[] = [];
   const bundles = new Set<string>();
@@ -80,13 +120,5 @@ export function externalInvoiceCapturedAuthority(
     identities.add(grant.assignmentId.toLowerCase());
     grants.push(grant);
   }
-  const family = grants.find(
-    (grant) => grant.bundle === COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
-  );
-  const finance = grants.filter(
-    (grant) =>
-      grant.bundle === COMPANY_INVOICE_RECORDER_BUNDLE ||
-      (!options.manage && grant.bundle === COMPANY_INVOICE_READER_BUNDLE),
-  );
-  return family && finance.length ? { family, finance } : undefined;
+  return grants;
 }

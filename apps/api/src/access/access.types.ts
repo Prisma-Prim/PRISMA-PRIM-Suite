@@ -59,6 +59,7 @@ export interface ActiveCompanyContext
     MissionPlanActorProjection {
   knowledgeGrants?: KnowledgeCapturedGrant[];
   externalInvoiceGrants?: ExternalInvoiceCapturedGrant[];
+  invoiceRecordReadCapture?: string;
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];

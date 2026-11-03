@@ -1,3 +1,4 @@
+import { committedMigrationTables } from '../database/committed-migration-test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -193,11 +194,21 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           original,
         );
         const migratedJournal = await migrationRows();
-        expect(migratedJournal).toHaveLength(95);
+        expect(migratedJournal).toHaveLength(entries.length);
         expect(migratedJournal.slice(0, 94)).toEqual(originalJournal);
-        expect(migratedJournal.at(-1)?.hash).toBe(
+        expect(migratedJournal[migrationIndex]?.hash).toBe(
           fixtureHash(await readFile('drizzle/0094_opportunity_follow_up.sql')),
         );
+        for (let index = migrationIndex + 1; index < entries.length; index++) {
+          const entry = entries[index];
+          if (!entry)
+            throw new Error('Committed suffix migration is required.');
+          expect(migratedJournal[index]?.hash).toBe(
+            fixtureHash(
+              await readFile('drizzle/' + fixtureString(entry.tag) + '.sql'),
+            ),
+          );
+        }
       }
       const upgradedJournal = await migrationRows();
       const newTables = [
@@ -213,7 +224,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
             "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
           )
         ).rows.map(({ tablename }) => tablename),
-      ).toEqual([...tables, ...newTables].sort());
+      ).toEqual(await committedMigrationTables(entries));
       const unassigned = async () => {
         expect(
           (

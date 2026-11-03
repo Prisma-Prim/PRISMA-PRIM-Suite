@@ -3,6 +3,399 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/invoice-records:
+    {
+      'get':
+        {
+          'operationId': 'listInvoiceRecords',
+          'tags': ['Finance'],
+          'summary': 'Read copied financial declarations in creation instant/UUID descending order',
+          'description': 'Captured Reader/Recorder v1 and independent live Company context only; no Document/Contract/Client prerequisite.25 rows plus eligible lookahead, both entry states; no totals, balance or number search. No generic Activity/Home/search/export disclosure.',
+          'parameters':
+            [
+              {
+                'name': 'cursor',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'maxLength': 4096 },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Private, no-store exact native result.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/InvoiceRecordInventory',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed closed input or cursor.' },
+              '401': { 'description': 'No verified identity.' },
+              '403':
+                {
+                  'description': 'Current required captured authority unavailable.',
+                },
+              '404':
+                {
+                  'description': 'Unknown, foreign or unreadable scoped resource.',
+                },
+              '409':
+                {
+                  'description': 'Conflicting intent, stale revision/history, duplicate active Document, wrong source state or replacement lineage.',
+                },
+              '503':
+                {
+                  'description': 'Unavailable; preserve an uncertain command for an unchanged retry.',
+                },
+            },
+        },
+      'post':
+        {
+          'operationId': 'createInvoiceRecord',
+          'tags': ['Finance'],
+          'summary': 'Explicitly transcribe one exact externally issued financial source',
+          'description': 'Recorder plus exact family/native Document/content/Contract/Opportunity/original Client authority. Current relevant authority before committed-key resolution; exact replay before fresh new-use checks. One active entry per Document across uploads and Versions. Any source reuse names the latest withdrawn source predecessor; at most one direct replacement. Every effect and successful response construction commits atomically.',
+          'parameters': [{ '$ref': '#/components/parameters/IdempotencyKey' }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/InvoiceRecordCreateInput',
+                        },
+                    },
+                },
+            },
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Private, no-store exact native result.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/InvoiceRecordReceipt',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed closed input or cursor.' },
+              '401': { 'description': 'No verified identity.' },
+              '403':
+                {
+                  'description': 'Current required captured authority unavailable.',
+                },
+              '404':
+                {
+                  'description': 'Unknown, foreign or unreadable scoped resource.',
+                },
+              '409':
+                {
+                  'description': 'Conflicting intent, stale revision/history, duplicate active Document, wrong source state or replacement lineage.',
+                },
+              '503':
+                {
+                  'description': 'Unavailable; preserve an uncertain command for an unchanged retry.',
+                },
+            },
+        },
+    }
+  /api/invoice-records/sources:
+    {
+      'get':
+        {
+          'operationId': 'selectInvoiceRecordSources',
+          'tags': ['Finance'],
+          'summary': 'Select exact preserved official or superseded external-invoice PDF uploads',
+          'description': 'Document-owned native selector with independent exact source/content/Contract/Client new-use gates. This does not replace the existing Contract-Version source-registration selector. Never selects latest implicitly or identifies equal bytes as one upload.',
+          'parameters':
+            [
+              {
+                'name': 'cursor',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'maxLength': 4096 },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Private, no-store exact native result.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/InvoiceRecordSourcePage',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed closed input or cursor.' },
+              '401': { 'description': 'No verified identity.' },
+              '403':
+                {
+                  'description': 'Current required captured authority unavailable.',
+                },
+              '404':
+                {
+                  'description': 'Unknown, foreign or unreadable scoped resource.',
+                },
+              '409':
+                {
+                  'description': 'Conflicting intent, stale revision/history, duplicate active Document, wrong source state or replacement lineage.',
+                },
+              '503':
+                {
+                  'description': 'Unavailable; preserve an uncertain command for an unchanged retry.',
+                },
+            },
+        },
+    }
+  /api/invoice-records/{recordId}:
+    {
+      'parameters':
+        [
+          {
+            'name': 'recordId',
+            'in': 'path',
+            'required': true,
+            'schema': { 'type': 'string', 'format': 'uuid' },
+          },
+        ],
+      'get':
+        {
+          'operationId': 'readInvoiceRecord',
+          'tags': ['Finance'],
+          'summary': 'Read copied current fact and first history page under one repeatable snapshot',
+          'description': 'Financial Reader/Recorder only. Copied values, original party and history remain independently readable when source or related rights disappear. Live source metadata/content and related Contract/Client projections apply independent native gates. Changed history head refuses continuation409.',
+          'parameters': [],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Private, no-store exact native result.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/InvoiceRecordCurrent',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed closed input or cursor.' },
+              '401': { 'description': 'No verified identity.' },
+              '403':
+                {
+                  'description': 'Current required captured authority unavailable.',
+                },
+              '404':
+                {
+                  'description': 'Unknown, foreign or unreadable scoped resource.',
+                },
+              '409':
+                {
+                  'description': 'Conflicting intent, stale revision/history, duplicate active Document, wrong source state or replacement lineage.',
+                },
+              '503':
+                {
+                  'description': 'Unavailable; preserve an uncertain command for an unchanged retry.',
+                },
+            },
+        },
+    }
+  /api/invoice-records/{recordId}/history:
+    {
+      'parameters':
+        [
+          {
+            'name': 'recordId',
+            'in': 'path',
+            'required': true,
+            'schema': { 'type': 'string', 'format': 'uuid' },
+          },
+        ],
+      'get':
+        {
+          'operationId': 'readInvoiceRecordHistory',
+          'tags': ['Finance'],
+          'summary': 'Read immutable newest-first25 revisions with head-bound continuation',
+          'description': 'Financial Reader/Recorder only. Copied values, original party and history remain independently readable when source or related rights disappear. Live source metadata/content and related Contract/Client projections apply independent native gates. Changed history head refuses continuation409.',
+          'parameters':
+            [
+              {
+                'name': 'cursor',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'maxLength': 4096 },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Private, no-store exact native result.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/InvoiceRecordHistory',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed closed input or cursor.' },
+              '401': { 'description': 'No verified identity.' },
+              '403':
+                {
+                  'description': 'Current required captured authority unavailable.',
+                },
+              '404':
+                {
+                  'description': 'Unknown, foreign or unreadable scoped resource.',
+                },
+              '409':
+                {
+                  'description': 'Conflicting intent, stale revision/history, duplicate active Document, wrong source state or replacement lineage.',
+                },
+              '503':
+                {
+                  'description': 'Unavailable; preserve an uncertain command for an unchanged retry.',
+                },
+            },
+        },
+    }
+  /api/invoice-records/{recordId}/commands:
+    {
+      'parameters':
+        [
+          {
+            'name': 'recordId',
+            'in': 'path',
+            'required': true,
+            'schema': { 'type': 'string', 'format': 'uuid' },
+          },
+        ],
+      'post':
+        {
+          'operationId': 'commandInvoiceRecord',
+          'tags': ['Finance'],
+          'summary': 'Reasoned transcription correction or terminal PRISMA entry withdrawal',
+          'description': 'CORRECT requires current independent exact source/content and native Contract/Client authority; source/context never changes and no-op refuses without reservation. WITHDRAW_ENTRY requires Recorder only and preserves declared values; it does not cancel or credit the external invoice. One actor/Workspace key namespace across all actions and Companies; exact intent replay returns the original immutable receipt.',
+          'parameters': [{ '$ref': '#/components/parameters/IdempotencyKey' }],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/InvoiceRecordCommandInput',
+                        },
+                    },
+                },
+            },
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Private, no-store exact native result.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/InvoiceRecordReceipt',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed closed input or cursor.' },
+              '401': { 'description': 'No verified identity.' },
+              '403':
+                {
+                  'description': 'Current required captured authority unavailable.',
+                },
+              '404':
+                {
+                  'description': 'Unknown, foreign or unreadable scoped resource.',
+                },
+              '409':
+                {
+                  'description': 'Conflicting intent, stale revision/history, duplicate active Document, wrong source state or replacement lineage.',
+                },
+              '503':
+                {
+                  'description': 'Unavailable; preserve an uncertain command for an unchanged retry.',
+                },
+            },
+        },
+    }
+  /api/invoice-records/{recordId}/source:
+    {
+      'parameters':
+        [
+          {
+            'name': 'recordId',
+            'in': 'path',
+            'required': true,
+            'schema': { 'type': 'string', 'format': 'uuid' },
+          },
+        ],
+      'get':
+        {
+          'operationId': 'downloadInvoiceRecordExactSource',
+          'tags': ['Finance'],
+          'summary': 'Download the exact preserved PDF under current native content authority',
+          'description': 'Financial capture grants no bytes or protected upload metadata. Requires independent family/Document/Client/content Reader authority and verifies the original immutable upload length/hash. No rescanning, latest retargeting or checksum-equivalent substitution.',
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Exact preserved PDF; private, no-store and nosniff.',
+                  'content':
+                    {
+                      'application/pdf':
+                        {
+                          'schema':
+                            {
+                              'type': 'string',
+                              'contentMediaType': 'application/pdf',
+                            },
+                        },
+                    },
+                },
+              '403': { 'description': 'Required live authority unavailable.' },
+              '404':
+                { 'description': 'Unknown/foreign/unreadable exact source.' },
+              '503': { 'description': 'Exact source bytes unavailable.' },
+            },
+        },
+    }
   /api/commercial-intake/opportunities/{opportunityId}/follow-up:
     parameters:
       - in: path
@@ -10367,6 +10760,10 @@ components:
           type: string
           pattern: '^opportunity-follow-up-read\.v1\.[0-9a-f]{64}$'
           description: Opaque consumed live read authority identity. Context and native captured rights remain independent; replacement invalidates older owners.
+        invoiceRecordReadCapture:
+          type: string
+          pattern: '^invoice-record-read\.v1\.[0-9a-f]{64}$'
+          description: Opaque financial-only live capture; does not imply Document/Contract/Client rights.
         externalInvoiceGrants:
           description: Exact optional captured v1 identities; no permission, native grant or Company context is inferred from their presence alone. Duplicate or malformed required captures fail closed.
           type: array
@@ -11307,3 +11704,610 @@ components:
               { type: string, const: CONSULTING_PREPARATION_ILLUSTRATIVE }
             version: { type: integer, minimum: 2, maximum: 2147483647 }
             sourceVersion: { type: integer, minimum: 1, maximum: 2147483646 }
+    InvoiceRecordValues:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'externalSystem',
+            'externalNumber',
+            'issuedOn',
+            'dueOn',
+            'currency',
+            'grossMinor',
+            'netMinor',
+            'taxMinor',
+          ],
+        'properties':
+          {
+            'externalSystem':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 120 },
+            'externalNumber':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'issuedOn':
+              {
+                'type': 'string',
+                'format': 'date',
+                'pattern': '^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$',
+              },
+            'dueOn': { 'type': ['string', 'null'], 'format': 'date' },
+            'currency':
+              { 'type': 'string', 'enum': ['MDL', 'EUR', 'RON', 'USD'] },
+            'grossMinor': { 'type': 'string', 'pattern': '^[1-9][0-9]{0,13}$' },
+            'netMinor':
+              {
+                'type': ['string', 'null'],
+                'pattern': '^(0|[1-9][0-9]{0,13})$',
+              },
+            'taxMinor':
+              {
+                'type': ['string', 'null'],
+                'pattern': '^(0|[1-9][0-9]{0,13})$',
+              },
+          },
+        'description': 'Literal unverified manual declarations. No trimming, case conversion, floating point, inferred tax, amount arithmetic, due-date or fiscal validation. Dates use years0001–9999; future and due-before-issue dates are allowed. Text rejects controls and invalid Unicode; limits use UTF-16 units. Null is unknown and differs from known zero.',
+      }
+    InvoiceRecordSourceTuple:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['documentId', 'documentVersionId', 'representationId'],
+        'properties':
+          {
+            'documentId': { 'type': 'string', 'format': 'uuid' },
+            'documentVersionId': { 'type': 'string', 'format': 'uuid' },
+            'representationId': { 'type': 'string', 'format': 'uuid' },
+          },
+      }
+    InvoiceRecordCreateInput:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'source',
+            'values',
+            'acknowledgeExternalDeclaration',
+            'replacesWithdrawnRecordId',
+          ],
+        'properties':
+          {
+            'source':
+              { '$ref': '#/components/schemas/InvoiceRecordSourceTuple' },
+            'values': { '$ref': '#/components/schemas/InvoiceRecordValues' },
+            'acknowledgeExternalDeclaration': { 'const': true },
+            'replacesWithdrawnRecordId':
+              { 'type': ['string', 'null'], 'format': 'uuid' },
+          },
+      }
+    InvoiceRecordCorrectInput:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['action', 'expectedRevision', 'values', 'reason'],
+        'properties':
+          {
+            'action': { 'const': 'CORRECT' },
+            'expectedRevision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'values': { '$ref': '#/components/schemas/InvoiceRecordValues' },
+            'reason': { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+          },
+      }
+    InvoiceRecordWithdrawInput:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['action', 'expectedRevision', 'reason'],
+        'properties':
+          {
+            'action': { 'const': 'WITHDRAW_ENTRY' },
+            'expectedRevision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'reason': { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+          },
+      }
+    InvoiceRecordCommandInput:
+      {
+        'oneOf':
+          [
+            { '$ref': '#/components/schemas/InvoiceRecordCorrectInput' },
+            { '$ref': '#/components/schemas/InvoiceRecordWithdrawInput' },
+          ],
+      }
+    InvoiceRecordReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'format',
+            'commandId',
+            'recordId',
+            'revision',
+            'action',
+            'recordedAt',
+          ],
+        'properties':
+          {
+            'format': { 'const': 'EXTERNAL_INVOICE_COMMAND/1' },
+            'commandId': { 'type': 'string', 'format': 'uuid' },
+            'recordId': { 'type': 'string', 'format': 'uuid' },
+            'revision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'action': { 'enum': ['CREATE', 'CORRECT', 'WITHDRAW_ENTRY'] },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+          },
+      }
+    InvoiceRecordFact:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['entryState', 'values'],
+        'properties':
+          {
+            'entryState': { 'enum': ['RECORDED', 'WITHDRAWN'] },
+            'values': { '$ref': '#/components/schemas/InvoiceRecordValues' },
+          },
+      }
+    InvoiceRecordActor:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['membershipId', 'displayName'],
+        'properties':
+          {
+            'membershipId': { 'type': 'string', 'format': 'uuid' },
+            'displayName': { 'type': 'string' },
+          },
+      }
+    InvoiceRecordRevision:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'format',
+            'recordId',
+            'revision',
+            'action',
+            'commandId',
+            'actor',
+            'recordedAt',
+            'before',
+            'after',
+            'reason',
+          ],
+        'properties':
+          {
+            'format': { 'const': 'EXTERNAL_INVOICE_REVISION/1' },
+            'recordId': { 'type': 'string', 'format': 'uuid' },
+            'revision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'action': { 'enum': ['CREATE', 'CORRECT', 'WITHDRAW_ENTRY'] },
+            'commandId': { 'type': 'string', 'format': 'uuid' },
+            'actor': { '$ref': '#/components/schemas/InvoiceRecordActor' },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+            'before':
+              {
+                'oneOf':
+                  [
+                    { 'type': 'null' },
+                    { '$ref': '#/components/schemas/InvoiceRecordFact' },
+                  ],
+              },
+            'after': { '$ref': '#/components/schemas/InvoiceRecordFact' },
+            'reason': { 'type': ['string', 'null'] },
+          },
+        'description': 'Exact immutable native before→after revision. CREATE is revision1 with null before/reason. CORRECT is material RECORDED→RECORDED; WITHDRAW_ENTRY preserves values and is terminal. Later actions require a literal nonblank reason of at most2000 UTF-16 units.',
+      }
+    InvoiceRecordCopiedContext:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'companyLabel',
+            'contractReference',
+            'contractVersionNumber',
+            'receivingParty',
+          ],
+        'properties':
+          {
+            'companyLabel': { 'type': 'string' },
+            'contractReference': { 'type': 'string' },
+            'contractVersionNumber':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'receivingParty':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required': ['kind', 'legalName', 'taxIdentifier', 'address'],
+                'properties':
+                  {
+                    'kind': { 'enum': ['PRIMARY', 'ADDITIONAL'] },
+                    'legalName': { 'type': 'string' },
+                    'taxIdentifier': { 'type': ['string', 'null'] },
+                    'address': { 'type': ['string', 'null'] },
+                  },
+              },
+          },
+      }
+    InvoiceRecordSummary:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'id',
+            'revision',
+            'entryState',
+            'values',
+            'copiedContext',
+            'createdAt',
+            'replacesWithdrawnRecordId',
+            'replacementRecordId',
+          ],
+        'properties':
+          {
+            'id': { 'type': 'string', 'format': 'uuid' },
+            'revision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'entryState': { 'enum': ['RECORDED', 'WITHDRAWN'] },
+            'values': { '$ref': '#/components/schemas/InvoiceRecordValues' },
+            'copiedContext':
+              { '$ref': '#/components/schemas/InvoiceRecordCopiedContext' },
+            'createdAt': { 'type': 'string', 'format': 'date-time' },
+            'replacesWithdrawnRecordId':
+              { 'type': ['string', 'null'], 'format': 'uuid' },
+            'replacementRecordId':
+              { 'type': ['string', 'null'], 'format': 'uuid' },
+          },
+      }
+    InvoiceRecordLiveSource:
+      {
+        'oneOf':
+          [
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'required': ['kind'],
+              'properties': { 'kind': { 'const': 'UNAVAILABLE' } },
+            },
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'required':
+                [
+                  'kind',
+                  'documentId',
+                  'documentVersionId',
+                  'title',
+                  'versionNumber',
+                  'versionState',
+                  'content',
+                ],
+              'properties':
+                {
+                  'kind': { 'const': 'AVAILABLE' },
+                  'documentId': { 'type': 'string', 'format': 'uuid' },
+                  'documentVersionId': { 'type': 'string', 'format': 'uuid' },
+                  'title': { 'type': 'string' },
+                  'versionNumber':
+                    { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+                  'versionState': { 'enum': ['official', 'superseded'] },
+                  'content':
+                    {
+                      'oneOf':
+                        [
+                          {
+                            'type': 'object',
+                            'additionalProperties': false,
+                            'required': ['kind'],
+                            'properties':
+                              { 'kind': { 'const': 'UNAVAILABLE' } },
+                          },
+                          {
+                            'type': 'object',
+                            'additionalProperties': false,
+                            'required':
+                              [
+                                'kind',
+                                'representationId',
+                                'fileName',
+                                'byteLength',
+                                'sha256',
+                              ],
+                            'properties':
+                              {
+                                'kind': { 'const': 'AVAILABLE' },
+                                'representationId':
+                                  { 'type': 'string', 'format': 'uuid' },
+                                'fileName': { 'type': 'string' },
+                                'byteLength':
+                                  {
+                                    'type': 'integer',
+                                    'minimum': 1,
+                                    'maximum': 5242880,
+                                  },
+                                'sha256':
+                                  {
+                                    'type': 'string',
+                                    'pattern': '^[a-f0-9]{64}$',
+                                  },
+                              },
+                          },
+                        ],
+                    },
+                },
+            },
+          ],
+      }
+    InvoiceRecordRelated:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['contract', 'client'],
+        'properties':
+          {
+            'contract':
+              {
+                'oneOf':
+                  [
+                    {
+                      'type': 'object',
+                      'additionalProperties': false,
+                      'required': ['kind'],
+                      'properties': { 'kind': { 'const': 'UNAVAILABLE' } },
+                    },
+                    {
+                      'type': 'object',
+                      'additionalProperties': false,
+                      'required':
+                        [
+                          'kind',
+                          'opportunityId',
+                          'contractId',
+                          'contractVersionId',
+                        ],
+                      'properties':
+                        {
+                          'kind': { 'const': 'AVAILABLE' },
+                          'opportunityId':
+                            { 'type': 'string', 'format': 'uuid' },
+                          'contractId': { 'type': 'string', 'format': 'uuid' },
+                          'contractVersionId':
+                            { 'type': 'string', 'format': 'uuid' },
+                        },
+                    },
+                  ],
+              },
+            'client':
+              {
+                'oneOf':
+                  [
+                    {
+                      'type': 'object',
+                      'additionalProperties': false,
+                      'required': ['kind'],
+                      'properties': { 'kind': { 'const': 'UNAVAILABLE' } },
+                    },
+                    {
+                      'type': 'object',
+                      'additionalProperties': false,
+                      'required': ['kind', 'clientId', 'displayName'],
+                      'properties':
+                        {
+                          'kind': { 'const': 'AVAILABLE' },
+                          'clientId': { 'type': 'string', 'format': 'uuid' },
+                          'displayName': { 'type': 'string' },
+                        },
+                    },
+                  ],
+              },
+          },
+      }
+    InvoiceRecordInventory:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['format', 'companyId', 'readCapture', 'items', 'nextCursor'],
+        'properties':
+          {
+            'format': { 'const': 'EXTERNAL_INVOICE_INVENTORY/1' },
+            'companyId': { 'type': 'string', 'format': 'uuid' },
+            'readCapture':
+              {
+                'type': 'string',
+                'pattern': "^invoice-record-read\\.v1\\.[a-f0-9]{64}$",
+              },
+            'items':
+              {
+                'type': 'array',
+                'maxItems': 25,
+                'items':
+                  { '$ref': '#/components/schemas/InvoiceRecordSummary' },
+              },
+            'nextCursor':
+              {
+                'type': ['string', 'null'],
+                'maxLength': 4096,
+                'description': 'Opaque requesting actor, Company and live financial capture bound continuation. No totals.',
+              },
+          },
+      }
+    InvoiceRecordCurrent:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'format',
+            'companyId',
+            'readCapture',
+            'record',
+            'actor',
+            'recordedAt',
+            'capabilities',
+            'liveSource',
+            'related',
+            'history',
+          ],
+        'properties':
+          {
+            'format': { 'const': 'EXTERNAL_INVOICE_RECORD/1' },
+            'companyId': { 'type': 'string', 'format': 'uuid' },
+            'readCapture':
+              {
+                'type': 'string',
+                'pattern': "^invoice-record-read\\.v1\\.[a-f0-9]{64}$",
+              },
+            'record': { '$ref': '#/components/schemas/InvoiceRecordSummary' },
+            'actor': { '$ref': '#/components/schemas/InvoiceRecordActor' },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+            'capabilities':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required': ['canCorrect', 'canWithdraw'],
+                'properties':
+                  {
+                    'canCorrect': { 'type': 'boolean' },
+                    'canWithdraw': { 'type': 'boolean' },
+                  },
+              },
+            'liveSource':
+              { '$ref': '#/components/schemas/InvoiceRecordLiveSource' },
+            'related': { '$ref': '#/components/schemas/InvoiceRecordRelated' },
+            'history':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required': ['items', 'nextCursor'],
+                'properties':
+                  {
+                    'items':
+                      {
+                        'type': 'array',
+                        'maxItems': 25,
+                        'items':
+                          {
+                            '$ref': '#/components/schemas/InvoiceRecordRevision',
+                          },
+                      },
+                    'nextCursor':
+                      {
+                        'type': ['string', 'null'],
+                        'maxLength': 4096,
+                        'description': 'Opaque requesting actor, Company and live financial capture bound continuation. No totals.',
+                      },
+                  },
+              },
+          },
+      }
+    InvoiceRecordHistory:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'format',
+            'companyId',
+            'readCapture',
+            'recordId',
+            'headRevision',
+            'items',
+            'nextCursor',
+          ],
+        'properties':
+          {
+            'format': { 'const': 'EXTERNAL_INVOICE_HISTORY/1' },
+            'companyId': { 'type': 'string', 'format': 'uuid' },
+            'readCapture':
+              {
+                'type': 'string',
+                'pattern': "^invoice-record-read\\.v1\\.[a-f0-9]{64}$",
+              },
+            'recordId': { 'type': 'string', 'format': 'uuid' },
+            'headRevision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'items':
+              {
+                'type': 'array',
+                'maxItems': 25,
+                'items':
+                  { '$ref': '#/components/schemas/InvoiceRecordRevision' },
+              },
+            'nextCursor':
+              {
+                'type': ['string', 'null'],
+                'maxLength': 4096,
+                'description': 'Opaque requesting actor, Company and live financial capture bound continuation. No totals.',
+              },
+          },
+      }
+    InvoiceRecordSelectableSource:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'source',
+            'documentTitle',
+            'versionNumber',
+            'versionState',
+            'fileName',
+            'byteLength',
+            'sha256',
+            'copiedContext',
+          ],
+        'properties':
+          {
+            'source':
+              { '$ref': '#/components/schemas/InvoiceRecordSourceTuple' },
+            'documentTitle': { 'type': 'string' },
+            'versionNumber':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'versionState': { 'enum': ['official', 'superseded'] },
+            'fileName': { 'type': 'string' },
+            'byteLength':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 5242880 },
+            'sha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'copiedContext':
+              { '$ref': '#/components/schemas/InvoiceRecordCopiedContext' },
+          },
+      }
+    InvoiceRecordSourcePage:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['format', 'companyId', 'readCapture', 'items', 'nextCursor'],
+        'properties':
+          {
+            'format': { 'const': 'EXTERNAL_INVOICE_SOURCE_PAGE/1' },
+            'companyId': { 'type': 'string', 'format': 'uuid' },
+            'readCapture':
+              {
+                'type': 'string',
+                'pattern': "^invoice-record-read\\.v1\\.[a-f0-9]{64}$",
+              },
+            'items':
+              {
+                'type': 'array',
+                'maxItems': 25,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/InvoiceRecordSelectableSource',
+                  },
+              },
+            'nextCursor':
+              {
+                'type': ['string', 'null'],
+                'maxLength': 4096,
+                'description': 'Opaque requesting actor, Company and live financial capture bound continuation. No totals.',
+              },
+          },
+      }

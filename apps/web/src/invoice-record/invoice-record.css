@@ -1,0 +1,199 @@
+.invoice-record-workspace {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.invoice-record-workspace header p {
+  overflow-wrap: anywhere;
+}
+.invoice-record-workspace h3,
+.invoice-record-source p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.invoice-record-notice {
+  padding: 1rem;
+  border: 1px solid #e6e1f4;
+  border-radius: 0.75rem;
+  background: #faf8ff;
+  color: #3c315e;
+}
+.invoice-record-panel,
+.invoice-record-detail {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.875rem;
+  background: #fff;
+}
+.invoice-record-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.75rem;
+}
+.invoice-record-workspace label {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.invoice-record-workspace input:not([type='checkbox']),
+.invoice-record-workspace textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cbd3df;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+.invoice-record-workspace textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.invoice-record-wide {
+  grid-column: 1/-1;
+}
+.invoice-record-acknowledgement {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.75rem !important;
+  margin: 1rem 0;
+}
+.invoice-record-acknowledgement input {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+}
+.invoice-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.invoice-record-workspace
+  button:not(:where(.invoice-record-row, .shared-select__trigger)) {
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--shell-line, #d7dfeb);
+  border-radius: 0.5rem;
+  background: var(--shell-surface, #fff);
+  color: var(--shell-ink, #18243a);
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.invoice-record-workspace button[type='submit'] {
+  border-color: var(--shell-blue, #375eaa);
+  background: var(--shell-blue, #375eaa);
+  color: #fff;
+}
+.invoice-record-workspace button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.invoice-record-facts {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 0.6rem 1rem;
+  margin: 1.25rem 0;
+}
+.invoice-record-facts dt {
+  color: #596579;
+}
+.invoice-record-facts dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.invoice-record-source {
+  padding: 1rem 0;
+  border-block: 1px solid #e6eaf1;
+}
+.invoice-record-inventory,
+.invoice-record-history {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+}
+.invoice-record-inventory li {
+  border-bottom: 1px solid #e6eaf1;
+}
+.invoice-record-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+  width: 100%;
+  padding: 1rem;
+  text-align: start;
+  color: inherit;
+  background: #fff;
+  border: 0;
+  border-radius: 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+.invoice-record-row span,
+.invoice-record-row strong {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.invoice-record-row:hover {
+  background: #f7f9fc;
+}
+.invoice-record-workspace button:focus-visible,
+.invoice-record-workspace input:focus-visible,
+.invoice-record-workspace textarea:focus-visible {
+  outline: 3px solid #9076ed;
+  outline-offset: 3px;
+}
+.invoice-record-history > li {
+  border-top: 1px solid #e6eaf1;
+  padding-block: 1rem;
+}
+.invoice-record-revision-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.invoice-record-revision-values > section {
+  min-width: 0;
+  padding: 0.75rem;
+  background: #f7f9fc;
+  border-radius: 0.5rem;
+}
+.invoice-record-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .invoice-record-fields,
+  .invoice-record-row,
+  .invoice-record-revision-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .invoice-record-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+  .invoice-record-facts dd {
+    margin-bottom: 0.6rem;
+  }
+  .invoice-record-panel,
+  .invoice-record-detail {
+    padding: 0.875rem;
+  }
+  .invoice-record-actions {
+    align-items: stretch;
+  }
+  .invoice-record-actions button {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}

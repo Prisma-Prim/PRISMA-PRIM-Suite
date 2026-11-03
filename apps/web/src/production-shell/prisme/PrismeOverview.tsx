@@ -39,6 +39,7 @@ export function SectionIcon({
     overview: LayoutGrid,
     'internal-tasks': ClipboardList,
     'knowledge-evidence': ClipboardList,
+    'invoice-records': ClipboardList,
     ideas: Lightbulb,
     'operational-risks': ShieldAlert,
     projects: FolderKanban,
