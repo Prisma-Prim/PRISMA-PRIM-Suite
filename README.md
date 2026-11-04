@@ -213,7 +213,7 @@ pnpm verify
 pnpm test
 ```
 
-`pnpm verify` runs formatting, lint, type-check, unit/script suites and the production build for development. Publication and merge require the [complete local integration evidence gate](docs/agents/issue-execution.md#complete-local-integration-evidence), including PostgreSQL, Playwright and Railway packaging for changes outside the canonical documentation-only allowlist. The complete GitHub workflow remains available through explicit manual dispatch for requested independent verification.
+`pnpm verify` is an optional broader development check covering formatting, lint, type-check, unit/script suites and the production build. Merge requires the [GitHub integration gate](docs/agents/issue-execution.md#github-integration-evidence), including PostgreSQL, Playwright and Railway packaging when selected by its existing source-derived scope rules. The complete workflow uses its existing manual dispatch. Targeted local checks support development; the complete local verifier is optional diagnosis or reproduction, not a second mandatory run.
 
 For Codex Cloud setup, maintenance, isolated database variables, and cache-reset instructions, see [AI agent environment contract](docs/agents/environment.md).
 
@@ -225,7 +225,7 @@ For Codex Cloud setup, maintenance, isolated database variables, and cache-reset
 4. Each GitHub ticket is a narrow, end-to-end tracer bullet with explicit blockers.
 5. Every AI coding harness reads `AGENTS.md` and `docs/agents/issue-execution.md` before editing.
 6. Implementation follows red-green-refactor at the highest stable test seam.
-7. The final integration passes the complete local evidence gate, Standards/Spec self-review, and at most [one review round](docs/agents/issue-execution.md#review-round).
+7. The final integration passes the GitHub integration gate, Standards/Spec self-review, and at most [one review round](docs/agents/issue-execution.md#review-round).
 8. Avoidable environment friction is noted in the pull request; recurring friction becomes an `agent-friction` issue that the repository owner prioritizes.
 9. Generated SQL migrations are inspected and committed; schema push is not used in production.
 

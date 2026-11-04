@@ -12,10 +12,10 @@ Closes #
 
 ## Verification
 
-<!-- Exact commands and results. Include validated local manifest/report and actual evidence asset URLs, source/base/integration tree and exact commands. Name every failed/unexecuted check and why. Manual GitHub verification is independent proof only when actually executed. -->
+<!-- Link the actual successful GitHub run and evidence artifacts, source/base/integration tree, required scope and executed checks. Include targeted local commands/results. Name every failed/unexecuted check and why; report scoped exclusions honestly. A complete local manifest/report is optional diagnostic evidence, not a second merge gate. -->
 
 - `node scripts/agent-doctor.mjs` (profile):
-- `pnpm verify`:
+- Targeted local checks (include `pnpm verify` only when needed):
 - PostgreSQL or browser seams:
 
 ## Review round
