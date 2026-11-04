@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { createProcessGroupController } from './process-group.mjs';
 import {
@@ -49,6 +57,126 @@ async function fixture(t) {
   return { root, output, source, options, git };
 }
 
+async function vitestFixture(t, familyId, behavior) {
+  const f = await fixture(t);
+  const requireApi = createRequire(
+    new URL('../apps/api/package.json', import.meta.url),
+  );
+  const vitestRoot = dirname(requireApi.resolve('vitest/package.json'));
+  const events = join(f.output, 'fixture-events.jsonl');
+  const results = join(f.output, 'vitest-results.json');
+  await writeFile(join(f.root, '.gitignore'), 'node_modules/\n.vite/\n');
+  await mkdir(join(f.root, 'node_modules'));
+  await symlink(vitestRoot, join(f.root, 'node_modules/vitest'), 'dir');
+  await writeFile(
+    join(f.root, 'vitest.config.mjs'),
+    'export default { test: { include: ["fixture.test.mjs"] } };\n',
+  );
+  await writeFile(
+    join(f.root, 'fixture.test.mjs'),
+    `
+import { appendFileSync } from 'node:fs';
+import { beforeEach, expect, test } from 'vitest';
+const event = value => appendFileSync(${JSON.stringify(events)}, JSON.stringify(value) + '\\n');
+let cases = 0;
+beforeEach(() => event('beforeEach:' + ++cases));
+test('first case', async () => {
+  event('first:body');
+  ${behavior === 'timeout' ? 'await new Promise(() => {});' : behavior === 'assertion' ? 'expect(1).toBe(2);' : 'expect(1).toBe(1);'}
+}${behavior === 'timeout' ? ', 50' : ''});
+test('next case', () => { event('next:body'); expect(true).toBe(true); });
+`,
+  );
+  f.git('add', '.');
+  f.git('commit', '-m', 'real Vitest fixture');
+  f.options.source = f.git('rev-parse', 'HEAD');
+  const policy = verificationFamilies
+    .find((family) => family.id === familyId)
+    .args.slice(3);
+  f.options.families = [
+    {
+      id: familyId,
+      command: process.execPath,
+      args: [
+        join(vitestRoot, 'vitest.mjs'),
+        'run',
+        '--config',
+        'vitest.config.mjs',
+        ...(familyId === 'api-serial'
+          ? ['--no-file-parallelism', '--maxWorkers=1']
+          : []),
+        ...policy,
+        '--reporter=json',
+        '--outputFile',
+        results,
+      ],
+      timeoutMilliseconds: 30_000,
+    },
+    { id: 'later', command: process.execPath, args: ['-e', 'process.exit(0)'] },
+  ];
+  return { ...f, events, results };
+}
+
+for (const familyId of ['api-parallel', 'api-serial']) {
+  for (const behavior of ['timeout', 'assertion', 'clean']) {
+    test(
+      `the canonical ${familyId} policy ${behavior === 'clean' ? 'completes a clean real Vitest run' : `quarantines a real Vitest ${behavior} failure before the next hook or body`}`,
+      { timeout: 45_000 },
+      async (t) => {
+        const f = await vitestFixture(t, familyId, behavior);
+        const report = await runLocalVerification(f.options);
+        const results = JSON.parse(
+          await readFile(f.results, 'utf8').catch(async (error) => {
+            throw new Error(
+              await readFile(join(f.output, `logs/${familyId}.log`), 'utf8'),
+              { cause: error },
+            );
+          }),
+        );
+        const clean = behavior === 'clean';
+        assert.equal(report.status, clean ? 'passed' : 'failed');
+        assert.equal(report.families[0].exitCode, clean ? 0 : 1);
+        assert.deepEqual(
+          report.families[0].executionOutcome,
+          clean
+            ? { kind: 'completed' }
+            : { kind: 'command_failed', cause: 'undetermined' },
+        );
+        assert.equal(
+          report.families[1].status,
+          clean ? 'passed' : 'unexecuted',
+        );
+        assert.deepEqual(
+          (await readFile(f.events, 'utf8'))
+            .trim()
+            .split('\n')
+            .map((line) => JSON.parse(line)),
+          clean
+            ? ['beforeEach:1', 'first:body', 'beforeEach:2', 'next:body']
+            : ['beforeEach:1', 'first:body'],
+        );
+        assert.equal(results.numFailedTests, clean ? 0 : 1);
+        assert.equal(results.numPassedTests, clean ? 2 : 0);
+        assert.equal(results.numTotalTests, 2);
+        assert.deepEqual(
+          results.testResults[0].assertionResults.map(
+            (result) => result.status,
+          ),
+          clean ? ['passed', 'passed'] : ['failed', 'pending'],
+        );
+        assert.equal(
+          results.testResults[0].assertionResults[0].failureMessages.length,
+          clean ? 0 : 1,
+        );
+        await assert.rejects(
+          validateLocalEvidence({ root: f.root, output: f.output }),
+          /complete|contract-test/,
+        );
+      },
+    );
+  }
+}
+
 test('a real failing child and unexecuted required families cannot make complete evidence', async (t) => {
   const { options, output } = await fixture(t);
   options.families.push({
@@ -59,6 +187,15 @@ test('a real failing child and unexecuted required families cannot make complete
   const report = await runLocalVerification(options);
   assert.equal(report.status, 'failed');
   assert.equal(report.families[0].exitCode, 7);
+  assert.deepEqual(report.families[0].executionOutcome, {
+    kind: 'command_failed',
+    cause: 'undetermined',
+  });
+  assert.equal(report.families[1].executionOutcome, null);
+  assert.match(
+    await readFile(join(output, 'report.md'), 'utf8'),
+    /command_failed \(cause undetermined\)/,
+  );
   assert.equal(report.families[1].status, 'unexecuted');
   assert.equal(
     JSON.parse(await readFile(join(output, 'manifest.json'), 'utf8')).status,
@@ -68,6 +205,29 @@ test('a real failing child and unexecuted required families cannot make complete
     validateLocalEvidence({ root: options.root, output }),
     /complete|contract-test/,
   );
+});
+
+test('a launch failure retains its structured cause and leaves later families unexecuted', async (t) => {
+  const { options, output } = await fixture(t);
+  options.families[0].command = join(output, 'missing-executable');
+  options.families.push({
+    id: 'later',
+    command: process.execPath,
+    args: ['-e', 'process.exit(0)'],
+  });
+  const report = await runLocalVerification(options);
+  assert.equal(report.status, 'failed');
+  assert.equal(report.families[0].status, 'failed');
+  assert.equal(report.families[0].exitCode, null);
+  assert.deepEqual(report.families[0].executionOutcome, {
+    kind: 'launch_failure',
+    code: 'ENOENT',
+  });
+  assert.match(
+    await readFile(join(output, 'report.md'), 'utf8'),
+    /launch_failure \(execution incomplete\)/,
+  );
+  assert.equal(report.families[1].status, 'unexecuted');
 });
 
 test('a successful minimal orchestration is explicitly synthetic and cannot qualify for merge', async (t) => {
@@ -92,6 +252,11 @@ test('a successful minimal orchestration is explicitly synthetic and cannot qual
     report.families.every(
       (family) =>
         family.exitCode === 0 && family.startedAt && family.finishedAt,
+    ),
+  );
+  assert.ok(
+    report.families.every(
+      (family) => family.executionOutcome?.kind === 'completed',
     ),
   );
   assert.equal(
@@ -208,6 +373,9 @@ test(
     const report = await run;
     assert.equal(report.status, 'failed');
     assert.equal(report.families[0].status, 'interrupted');
+    assert.deepEqual(report.families[0].executionOutcome, {
+      kind: 'external_interruption',
+    });
     assert.equal(
       await createProcessGroupController().isLive(processGroup),
       false,
@@ -281,6 +449,7 @@ test('the public complete plan fixes local execution policy without replacing sc
     'test:parallel',
     '--maxWorkers=1',
     '--testTimeout=15000',
+    '--bail=1',
   ]);
   assert.deepEqual(args['web-unit'], [
     '--filter',
@@ -299,6 +468,7 @@ test('the public complete plan fixes local execution policy without replacing sc
     '@prisma-prim/api',
     'test:postgres:serial',
     '--testTimeout=15000',
+    '--bail=1',
   ]);
   assert.deepEqual(args.acceptance, [
     'scripts/verify-local-browser.mjs',
@@ -335,6 +505,13 @@ test('a finite process deadline terminates a real child and cannot produce succe
   const report = await runLocalVerification(options);
   assert.equal(report.status, 'failed');
   assert.equal(report.families[0].status, 'timed_out');
+  assert.deepEqual(report.families[0].executionOutcome, {
+    kind: 'process_timeout',
+  });
+  assert.match(
+    await readFile(join(options.output, 'report.md'), 'utf8'),
+    /process_timeout \(execution incomplete\)/,
+  );
   assert.ok(['SIGTERM', 'SIGKILL'].includes(report.families[0].signal));
   assert.equal(report.families[0].timeoutMilliseconds, 50);
 });

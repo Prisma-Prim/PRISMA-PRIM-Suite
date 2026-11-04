@@ -280,6 +280,32 @@ test('CLI refuses arbitrary not_required reasons and demotion of a required chea
   }
 });
 
+test('CLI rejects missing or altered structured execution outcomes instead of qualifying incomplete runs', async (t) => {
+  const { command, report, output } = await fixture(t);
+  assertPassed(command());
+  const original = await report();
+  for (const outcome of [
+    undefined,
+    null,
+    { kind: 'process_timeout' },
+    { kind: 'command_failed', cause: 'undetermined' },
+    { kind: 'completed', cause: 'undetermined' },
+  ]) {
+    const altered = structuredClone(original);
+    altered.families[0].executionOutcome = outcome;
+    await writeFile(join(output, 'manifest.json'), JSON.stringify(altered));
+    const rejected = command('validate');
+    assert.equal(rejected.status, 1);
+    assert.match(rejected.stderr, /altered required verification families/);
+  }
+  const altered = structuredClone(original);
+  altered.families[6].executionOutcome = { kind: 'completed' };
+  await writeFile(join(output, 'manifest.json'), JSON.stringify(altered));
+  const rejected = command('validate');
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /altered required verification families/);
+});
+
 test('CLI records finite aggregate process ceilings and refuses altered deadline metadata', async (t) => {
   const { command, report, output } = await fixture(t);
   assertPassed(command());
