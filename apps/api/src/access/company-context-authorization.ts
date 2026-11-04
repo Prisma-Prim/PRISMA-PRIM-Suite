@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import {
   captureExternalInvoiceGrant,
+  invoiceFinanceCapturedGrant,
   externalInvoiceCapturedAuthority,
 } from './external-invoice-captured-grants.js';
 import { captureKnowledgeGrant } from './knowledge-captured-grants.js';
@@ -162,6 +164,50 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  /** Copied records and withdrawal deliberately consume only financial authority. */
+  async requireInvoiceRecordAccess(
+    actor: ActorContext,
+    options: { manage: boolean; lock: boolean },
+  ) {
+    const company = actor.activeCompany;
+    const grant =
+      company &&
+      invoiceFinanceCapturedGrant(
+        company.externalInvoiceGrants,
+        options.manage,
+      );
+    if (!actor.active || !company || !grant) throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, options.lock);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.id, grant.assignmentId),
+        eq(companyRoleAssignments.bundle, grant.bundle),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      options.lock,
+    );
+    const contexts = await this.opportunityFollowUpContextIdentities(
+      actor,
+      company.id,
+      options.lock,
+    );
+    const readCapture = invoiceRecordReadCapture(
+      actor,
+      company.id,
+      grant.assignmentId,
+      contexts,
+    );
+    if (company.invoiceRecordReadCapture !== readCapture)
+      throw new ForbiddenException();
+    return {
+      companyId: company.id,
+      assignmentId: grant.assignmentId,
+      readCapture,
+    };
+  }
 
   async requireOpportunityFollowUpAccess(
     actor: ActorContext,
@@ -2695,6 +2741,25 @@ export class CompanyContextAuthorization {
         independentlyAuthorizedCompanies.has(company.id),
     );
     for (const company of authorizedCompanies) {
+      const invoiceGrant = invoiceFinanceCapturedGrant(
+        company.externalInvoiceGrants,
+        false,
+      );
+      if (invoiceGrant) {
+        const contexts = await this.opportunityFollowUpContextIdentities(
+          actor,
+          company.id,
+          false,
+        );
+        if (contexts.length > 0)
+          company.invoiceRecordReadCapture = invoiceRecordReadCapture(
+            actor,
+            company.id,
+            invoiceGrant.assignmentId,
+            contexts,
+          );
+      }
+
       if (
         company.opportunityFollowUpCoordinatorAssignmentId &&
         company.opportunityFollowUpCoordinatorPermissionSetVersion === 'v1' &&
@@ -2862,5 +2927,35 @@ function externalInvoiceNativeCapture(input: {
     eq(companyRoleAssignments.id, input.assignmentId),
     eq(companyRoleAssignments.bundle, input.bundle),
     eq(companyRoleAssignments.permissionSetVersion, input.version),
+  );
+}
+
+function invoiceRecordReadCapture(
+  actor: ActorContext,
+  companyId: string,
+  assignmentId: string,
+  contexts: readonly (readonly (string | null)[])[],
+) {
+  // Consume one independent Company-context authority. Optional native Client
+  // or Document grants do not retire financial work while that context stays live.
+  const context =
+    contexts.find((identity) => identity[0] === 'company.manage') ??
+    contexts.find((identity) => identity[0] === 'company_context_access') ??
+    contexts.find((identity) => identity[0] === 'company_project_access') ??
+    contexts[0];
+  return (
+    'invoice-record-read.v1.' +
+    createHash('sha256')
+      .update(
+        JSON.stringify([
+          actor.workspaceId,
+          actor.workspaceMembershipId,
+          companyId,
+          assignmentId,
+          'v1',
+          context ?? null,
+        ]),
+      )
+      .digest('hex')
   );
 }

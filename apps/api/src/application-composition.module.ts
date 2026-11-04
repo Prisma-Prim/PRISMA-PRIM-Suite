@@ -1,3 +1,5 @@
+import { InvoiceRecordModule } from './invoice-record/invoice-record.module.js';
+import { InvoiceRecordController } from './invoice-record/invoice-record.controller.js';
 import { OpportunityFollowUpModule } from './opportunity-follow-up/opportunity-follow-up.module.js';
 import {
   OpportunityFollowUpController,
@@ -169,6 +171,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    InvoiceRecordModule,
     KnowledgeModule,
     MissionPlanModule,
     ContractModelModule,
@@ -200,6 +203,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    InvoiceRecordController,
     CompanyInvoiceReaderAssignmentController,
     CompanyInvoiceRecorderAssignmentController,
     CompanyExternalInvoiceAccessAssignmentController,

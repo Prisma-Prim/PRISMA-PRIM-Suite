@@ -8,6 +8,7 @@ import { missionPlanAuthority } from '../mission-plan/mission-plan-authority';
 import { offerModelAuthority } from '../offer-model/offer-model-authority';
 import { browserIdentity } from '../production-shell/production-shell-context.test-fixtures';
 import { readCurrentActor } from './current-actor';
+import { invoiceRecordAuthority } from './invoice-record-authority';
 import { completeActor } from './current-actor.test-fixture';
 import {
   clearWorkspaceSelection,
@@ -145,6 +146,7 @@ describe('current Actor representation', () => {
         'contractModelGrants',
         'knowledgeGrants',
         'externalInvoiceGrants',
+        'invoiceRecordReadCapture',
         'opportunityFollowUpPermissions',
         'opportunityFollowUpCoordinatorAssignmentId',
         'opportunityFollowUpCoordinatorPermissionSetVersion',
@@ -175,6 +177,47 @@ describe('current Actor representation', () => {
       }
     },
   );
+
+  it('preserves opaque Invoice captures while the feature refuses unknown authority', async () => {
+    const activeCompany = {
+      ...completeActor.activeCompany,
+      id: '00000000-0000-4000-8000-000000001030',
+      externalInvoiceGrants: [
+        {
+          bundle: 'company_invoice_reader',
+          assignmentId: '00000000-0000-4000-8000-000000001031',
+          permissionSetVersion: 'v1',
+        },
+      ],
+    };
+    const known = await read({
+      ...completeActor,
+      activeCompany: {
+        ...activeCompany,
+        invoiceRecordReadCapture: 'invoice-record-read.v1.' + 'a'.repeat(64),
+      },
+    });
+    if (known.status !== 'ok') throw new Error('Expected a readable Actor');
+    expect(invoiceRecordAuthority(known.value)).toMatchObject({
+      companyId: activeCompany.id,
+      manage: false,
+    });
+    for (const invoiceRecordReadCapture of [
+      null,
+      5,
+      'invoice-record-read.future',
+      { version: 'future', arbitrary: null },
+    ]) {
+      const actor = {
+        ...completeActor,
+        activeCompany: { ...activeCompany, invoiceRecordReadCapture },
+      };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok') throw new Error('Expected a readable Actor');
+      expect(invoiceRecordAuthority(result.value)).toBeUndefined();
+    }
+  });
 
   it.each([
     ['projectPermissionSetVersion', 'v2'],

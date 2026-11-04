@@ -32,6 +32,7 @@ export const completeActor = {
         permissionSetVersion: 'v1',
       },
     ],
+    invoiceRecordReadCapture: { version: 'future', arbitrary: null },
     knowledgeGrants: { version: 'future', arbitrary: null },
     opportunityFollowUpPermissions: { version: 'future', arbitrary: null },
     opportunityFollowUpCoordinatorAssignmentId: 'sample-follow-up',
