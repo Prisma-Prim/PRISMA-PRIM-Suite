@@ -38,6 +38,9 @@ jobs:
           postgres: "false"
           chromium: "true"
 
+      - name: Preserve the installed Chromium path across managed PostgreSQL isolation
+        run: echo "PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright" >> "$GITHUB_ENV"
+
       - name: Install the required frozen Railway dependencies
         run: pnpm --dir .railway install --frozen-lockfile
 
