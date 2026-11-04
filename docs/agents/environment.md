@@ -95,7 +95,7 @@ image/token endpoints for these checks while retaining the existing image versio
 ECR Public remains an external dependency with its own availability and rate
 limits; acquiring an image does not prove that packaging or the complete verification gate executed.
 
-`pnpm verify` remains a broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration; publication and merge require the [complete local integration evidence gate](issue-execution.md#complete-local-integration-evidence), including safe PostgreSQL, Chromium and real packaging when the canonical change classifier requires those families. The complete GitHub workflow is available through explicit manual dispatch when independent verification is requested; never report an unexecuted workflow as passed.
+`pnpm verify` remains an optional broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration; the [GitHub integration gate](issue-execution.md#github-integration-evidence) is the sole complete merge gate, with its existing scope optimization and full PostgreSQL, browser and packaging coverage when required. The complete local verifier remains optional diagnosis or reproduction. Use the existing manual workflow dispatch and report only checks that actually executed.
 
 Narrow seams for targeted runs:
 
@@ -288,9 +288,9 @@ Some hosted command boundaries virtualize spawned process identifiers and do not
 
 ### Browser tests
 
-The standard Codex Cloud environment does not install Chromium. Its `pnpm verify` development result therefore does not establish the complete gate. Use a harness with Chromium and the required database/packaging prerequisites for complete local verification.
+The standard Codex Cloud environment does not install Chromium. Its `pnpm verify` development result therefore does not establish the GitHub integration result. A targeted local browser check or optional complete local reproduction needs a harness with Chromium and the relevant database/packaging prerequisites.
 
-Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, or use another harness where Chromium is already available. Local browser runs must preserve the synthetic evidence as required by the execution guide. Explicitly requested manual GitHub runs provide separate runner evidence; ordinary PR publication does not start them. Keep browser setup out of the standard environment.
+Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, or use another harness where Chromium is already available. Apply the shared decision procedure in `AGENTS.md` before a major environment or delivery-cost change. Local browser runs must preserve the synthetic evidence as required by the execution guide. The GitHub integration gate provides runner evidence through manual dispatch; ordinary PR publication does not start it. Keep browser setup out of the standard environment.
 
 ### Network and credentials
 
