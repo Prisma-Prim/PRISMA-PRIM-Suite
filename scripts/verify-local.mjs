@@ -69,6 +69,7 @@ export const verificationFamilies = Object.freeze(
       'test:parallel',
       '--maxWorkers=1',
       '--testTimeout=15000',
+      '--bail=1',
     ),
     pnpm(
       'api-serial',
@@ -76,6 +77,7 @@ export const verificationFamilies = Object.freeze(
       '@prisma-prim/api',
       'test:postgres:serial',
       '--testTimeout=15000',
+      '--bail=1',
     ),
     pnpm(
       'web-unit',
@@ -207,6 +209,7 @@ function pendingFamilies(plan, scope) {
     required: family.required !== false,
     status: family.required === false ? 'not_required' : 'unexecuted',
     reason: family.required === false ? scope.reason : null,
+    executionOutcome: null,
     exitCode: null,
     signal: null,
     startedAt: null,
@@ -311,7 +314,12 @@ async function execute(
     throw new Error('Process safety cap must be a finite positive integer.');
   await writeFile(log, '');
   if (signal?.aborted)
-    return { exitCode: null, signal: null, status: 'interrupted' };
+    return {
+      exitCode: null,
+      signal: null,
+      status: 'interrupted',
+      executionOutcome: { kind: 'external_interruption' },
+    };
   const groups = createProcessGroupController();
   const child = spawn(command, args, {
     cwd: root,
@@ -326,14 +334,25 @@ async function execute(
     );
   }
   const closed = new Promise((resolveChild) => {
-    child.once('error', () =>
-      resolveChild({ exitCode: null, signal: null, status: 'failed' }),
+    child.once('error', (error) =>
+      resolveChild({
+        exitCode: null,
+        signal: null,
+        status: 'failed',
+        executionOutcome: { kind: 'launch_failure', code: error.code ?? null },
+      }),
     );
     child.once('close', (exitCode, childSignal) =>
       resolveChild({
         exitCode,
         signal: childSignal,
         status: exitCode === 0 && childSignal === null ? 'passed' : 'failed',
+        executionOutcome:
+          childSignal !== null
+            ? { kind: 'child_signal' }
+            : exitCode === 0
+              ? { kind: 'completed' }
+              : { kind: 'command_failed', cause: 'undetermined' },
       }),
     );
   });
@@ -347,6 +366,7 @@ async function execute(
     timeoutMilliseconds,
   );
   signal?.addEventListener('abort', interrupt, { once: true });
+  if (signal?.aborted) interrupt();
   try {
     const result = await Promise.race([closed, interrupted]);
     const wasInterrupted = typeof result === 'string';
@@ -356,7 +376,18 @@ async function execute(
         closed,
         args[0] === 'scripts/verify-local-browser.mjs' ? 10_000 : 1_000,
       );
-    return wasInterrupted ? { ...(await closed), status: result } : result;
+    return wasInterrupted
+      ? {
+          ...(await closed),
+          status: result,
+          executionOutcome: {
+            kind:
+              result === 'timed_out'
+                ? 'process_timeout'
+                : 'external_interruption',
+          },
+        }
+      : result;
   } finally {
     clearTimeout(timeout);
     signal?.removeEventListener('abort', interrupt);
@@ -462,8 +493,16 @@ async function inventory(directory, prefix = '') {
   return files.sort();
 }
 
+function executionLabel(outcome) {
+  if (!outcome) return '—';
+  if (outcome.kind === 'completed') return 'completed';
+  if (outcome.kind === 'command_failed')
+    return 'command_failed (cause undetermined)';
+  return `${outcome.kind} (execution incomplete)`;
+}
+
 function render(report) {
-  return `Local verification: **${report.status}** (${report.mode}).\nScope: ${report.scope?.kind ?? 'unproven'} — ${report.scope?.reason ?? 'classification unavailable'}\n\nSelf-reported local execution; no GitHub runner attestation.\n\nSource: \`${report.provenance?.sourceHead ?? 'unavailable'}\`\nBase: \`${report.provenance?.baseHead ?? 'unavailable'}\`\nTested integration tree: \`${report.provenance?.integrationTree ?? 'unavailable'}\`\nUTC: ${report.startedAt} — ${report.finishedAt}\n\n| Family | Result | Exit | Process cap (min) | Exact argv |\n| --- | --- | --- | --- | --- |\n${report.families.map((family) => `| ${family.id} | ${family.status} | ${family.exitCode ?? '—'} | ${(family.timeoutMilliseconds ?? defaultProcessTimeout) / 60_000} | \`${JSON.stringify([family.command, ...family.args])}\` |`).join('\n')}\n\nBrowser/acceptance use fresh local prebuilds before Playwright. Browser build argv: [pnpm, build, --mode, local-demo] in apps/web; acceptance first adds [pnpm, --filter, @prisma-prim/api, build] at the root. Preview argv: [pnpm, preview, --host, 127.0.0.1, --port, 4173] in apps/web. Exact build/test/preview argv, public environment, guarded input/output inventories and startup180s (guard+preview only) are recorded under local-browser/<family>/manifest.json. Child logs require operator selection before publication. The independent evidence probe remains mandatory after acceptance failure, without making the failed family pass.\n\nThese are process safety caps, separate from test defaults. API parallel/browser: 270 min = 2 x 3 x 45 min; acceptance: 180 min = 2 x 2 x 45 min; other families: 45 min. These conservative aggregate ceilings are not runtime benchmarks or business-test deadlines. The fixed local API parallel/serial argv uses --testTimeout=15000; canonical API configuration and manual Actions retain the implicit 5000 ms default. A local pass does not establish completion within 5000 ms. Explicit test timeouts, hook and internal-command deadlines, all assertions, and browser/acceptance scenario budgets remain unchanged.\n\nConfiguration, exact argv, input hashes and artifact inventory: manifest.json.\nArtifact publication: **not published by this command**. Attach the validated manifest and reviewed synthetic evidence archive to the PR's evidence release, then record actual asset URLs and digests in the PR.\n${report.refusal ? `\nRefusal: ${report.refusal}\n` : ''}`;
+  return `Local verification: **${report.status}** (${report.mode}).\nScope: ${report.scope?.kind ?? 'unproven'} — ${report.scope?.reason ?? 'classification unavailable'}\n\nSelf-reported local execution; no GitHub runner attestation.\n\nSource: \`${report.provenance?.sourceHead ?? 'unavailable'}\`\nBase: \`${report.provenance?.baseHead ?? 'unavailable'}\`\nTested integration tree: \`${report.provenance?.integrationTree ?? 'unavailable'}\`\nUTC: ${report.startedAt} — ${report.finishedAt}\n\n| Family | Result | Execution outcome | Exit | Process cap (min) | Exact argv |\n| --- | --- | --- | --- | --- | --- |\n${report.families.map((family) => `| ${family.id} | ${family.status} | ${executionLabel(family.executionOutcome)} | ${family.exitCode ?? '—'} | ${(family.timeoutMilliseconds ?? defaultProcessTimeout) / 60_000} | \`${JSON.stringify([family.command, ...family.args])}\` |`).join('\n')}\n\nBrowser/acceptance use fresh local prebuilds before Playwright. Browser build argv: [pnpm, build, --mode, local-demo] in apps/web; acceptance first adds [pnpm, --filter, @prisma-prim/api, build] at the root. Preview argv: [pnpm, preview, --host, 127.0.0.1, --port, 4173] in apps/web. Exact build/test/preview argv, public environment, guarded input/output inventories and startup180s (guard+preview only) are recorded under local-browser/<family>/manifest.json. Child logs require operator selection before publication. The independent evidence probe remains mandatory after acceptance failure, without making the failed family pass.\n\nExecution outcomes are process-level evidence: process_timeout, external_interruption, launch_failure and child_signal mean execution incomplete, never an assertion diagnosis or a pass. command_failed records a nonzero exit with cause undetermined; it may include assertions, Vitest test/hook timeouts or other runner errors. No cause is inferred from elapsed time or log text. Later required families remain unexecuted (apart from the independent acceptance diagnostic probe).\n\nThese are process safety caps, separate from test defaults. API parallel/browser: 270 min = 2 x 3 x 45 min; acceptance: 180 min = 2 x 2 x 45 min; other families: 45 min. These conservative aggregate ceilings are not runtime benchmarks or business-test deadlines. The fixed local API parallel/serial argv uses --testTimeout=15000; canonical API configuration and manual Actions retain the implicit 5000 ms default. A local pass does not establish completion within 5000 ms. Both local API families also use public --bail=1: after the first registered failure, later cases do not run their beforeEach or body and are never counted as passed. Fail-fast cannot abort an already-running async body or its afterEach/afterAll cleanup, and does not diagnose or fix the latency investigated in #616. Explicit test timeouts, hook and internal-command deadlines, all assertions, and browser/acceptance scenario budgets remain unchanged.\n\nConfiguration, exact argv, input hashes and artifact inventory: manifest.json.\nArtifact publication: **not published by this command**. Attach the validated manifest and reviewed synthetic evidence archive to the PR's evidence release, then record actual asset URLs and digests in the PR.\n${report.refusal ? `\nRefusal: ${report.refusal}\n` : ''}`;
 }
 
 export async function runLocalVerification({
@@ -779,6 +818,8 @@ export async function validateLocalEvidence({
       if (family.required)
         return (
           family.status !== 'passed' ||
+          JSON.stringify(family.executionOutcome) !==
+            JSON.stringify({ kind: 'completed' }) ||
           family.exitCode !== 0 ||
           family.signal !== null ||
           !family.startedAt ||
@@ -787,6 +828,7 @@ export async function validateLocalEvidence({
         );
       return (
         family.status !== 'not_required' ||
+        family.executionOutcome !== null ||
         family.reason !== scope.reason ||
         family.exitCode !== null ||
         family.signal !== null ||
