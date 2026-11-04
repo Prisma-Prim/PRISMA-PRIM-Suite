@@ -440,12 +440,12 @@ describe('Client dossier and Project navigation through App', () => {
       const missions = await within(dossier).findByRole('region', {
         name: 'Client missions',
       });
+      // The region also renders while loading, when Refresh is disabled.
+      const previewTasks = await within(missions).findByRole('button', {
+        name: `View Tasks: ${historicalProject.title}`,
+      });
       if (owner === 'Task preview') {
-        fireEvent.click(
-          await within(missions).findByRole('button', {
-            name: `View Tasks: ${historicalProject.title}`,
-          }),
-        );
+        fireEvent.click(previewTasks);
         await within(missions).findByText(
           'No manual Tasks for this Project yet.',
         );
