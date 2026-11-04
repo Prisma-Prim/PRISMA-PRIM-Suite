@@ -1,4 +1,4 @@
-name: CI
+name: Temporary canonical qualification PR1038
 
 on:
   workflow_dispatch:
@@ -8,410 +8,218 @@ permissions:
   actions: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: canonical-pr-1038-05fde93
+  cancel-in-progress: false
 
 jobs:
-  checks:
+  canonical:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 360
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-        with:
-          postgres: 'false'
-          chromium: 'false'
-
-      - name: Verify supported agent environment
-        run: pnpm agent:doctor
-
-      - name: Check formatting
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type-check
-        run: pnpm typecheck
-
-      - name: Test scripts
-        run: pnpm test:scripts
-
-      - name: Test documentation contracts
-        run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration
-
-  scope:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    outputs:
-      docs_only: ${{ steps.classify.outputs.docs_only }}
-      reuse_all: ${{ steps.proof.outputs.reuse_all }}
-      reuse_api: ${{ steps.proof.outputs.reuse_api }}
-      proof_run: ${{ steps.proof.outputs.proof_run }}
-    steps:
-      - name: Check out repository
+      - name: Check out the unchanged reviewed source
         uses: actions/checkout@v4
         with:
+          ref: 05fde93f9ca4dcc7cd5c8850c2891ff4d28f0e88
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Bind the exact source and current base
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = 05fde93f9ca4dcc7cd5c8850c2891ff4d28f0e88
+          test "$(git rev-parse origin/main)" = 0780b032cc8ccee768e2481587ea3a38558215bc
+          test "$(git rev-parse 'HEAD^{tree}')" = 307aff9b6253f1e67da36ad8710b0d2c0e81f389
+          test -z "$(git status --porcelain)"
+
+      - name: Prepare the normal pinned toolchain and Chromium
+        uses: ./.github/actions/setup-verification
         with:
-          node-version-file: .node-version
+          postgres: "false"
+          chromium: "true"
 
-      - name: Classify changed files
-        id: classify
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_REF: ${{ github.ref }}
-          PUSH_FORCED: ${{ github.event.forced }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/ci-change-scope.mjs
+      - name: Preserve the installed Chromium path across managed PostgreSQL isolation
+        run: echo "PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright" >> "$GITHUB_ENV"
 
-      - name: Find verified reusable CI proof
-        id: proof
-        if: ${{ steps.classify.outputs.docs_only != 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci-proof-reuse.mjs
+      - name: Install the required frozen Railway dependencies
+        run: pnpm --dir .railway install --frozen-lockfile
 
-  postgres_image:
-    needs: scope
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    outputs:
-      cache_key: ${{ steps.postgres_image.outputs.key }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      # A run pulls the pinned image at most once; main's cache, readable by
-      # every pull request, makes later runs pull nothing.
-      - name: Resolve PostgreSQL archive key
-        id: postgres_image
-        run: echo "key=$(bash scripts/ci-start-postgres.sh cache-key)" >> "$GITHUB_OUTPUT"
-
-      - name: Look up cached PostgreSQL image
-        id: lookup
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: ${{ steps.postgres_image.outputs.key }}
-          lookup-only: true
-
-      # Migrate main's archive from the old whole-script key (#798).
-      # The exact image/platform guard prevents reuse after a pin change.
-      - name: Restore compatible legacy PostgreSQL archive
-        id: legacy
-        if: ${{ steps.lookup.outputs.cache-hit != 'true' && steps.postgres_image.outputs.key == 'postgres-image-Linux-X64-b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24' }}
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: postgres-image-0ca492758d0f2da5e6d4b627ed0caef2927a438da76d7fdcd5968d9254fefb47
-
-      - name: Acquire PostgreSQL image
-        if: ${{ steps.lookup.outputs.cache-hit != 'true' && steps.legacy.outputs.cache-hit != 'true' }}
+      - name: Acquire the normal pinned PostgreSQL image
+        shell: bash
         env:
           POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
-        run: bash scripts/ci-start-postgres.sh acquire
-
-      - name: Save PostgreSQL image
-        if: ${{ steps.lookup.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: ${{ steps.postgres_image.outputs.key }}
-
-  api:
-    needs: [checks, scope, postgres_image]
-    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_api != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    strategy:
-      matrix:
-        part: ['1/3', '2/3', '3/3', serial]
-    env:
-      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
-      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
-      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-        with:
-          chromium: 'false'
-
-      - name: Verify supported agent environment
-        run: pnpm agent:doctor:postgres
-
-      - name: Test API
-        env:
-          API_TEST_PART: ${{ matrix.part }}
         run: |
-          if [ "$API_TEST_PART" = serial ]; then
-            pnpm --filter @prisma-prim/api test:postgres:serial
-          else
-            pnpm --filter @prisma-prim/api test:parallel --shard="$API_TEST_PART"
-          fi
+          set -euo pipefail
+          bash scripts/ci-start-postgres.sh acquire
+          test "$(docker image inspect prisma-prim-ci/postgres:17-pinned --format '{{.Id}}')" = sha256:79bd7c99e923138f136f8009d6bffa66e21e9d4fda5c0c561b00fc9c90cfe537
+          docker tag prisma-prim-ci/postgres:17-pinned postgres:17-alpine
 
-  web_unit:
-    needs: [checks, scope]
-    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-        with:
-          postgres: 'false'
-          chromium: 'false'
-
-      - name: Verify supported agent environment
-        run: pnpm agent:doctor
-
-      - name: Test Web unit
-        run: pnpm --filter @prisma-prim/web exec vitest run
-
-  browser:
-    needs: [checks, scope]
-    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    strategy:
-      matrix:
-        shard: [1, 2, 3]
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-        with:
-          postgres: 'false'
-
-      - name: Verify supported agent environment
-        run: pnpm agent:doctor:web
-
-      - name: Test browser
-        run: pnpm --filter @prisma-prim/web test:browser --shard=${{ matrix.shard }}/3
-
-      - name: Namespace browser run metadata
-        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
-        # Every shard writes Playwright's browser/.last-run.json; keep one visible
-        # per shard so the merged evidence does not keep only the last writer.
-        run: |
-          if [ -f apps/web/test-results/browser/.last-run.json ]; then
-            mv apps/web/test-results/browser/.last-run.json \
-              "apps/web/test-results/browser/last-run-shard-${{ matrix.shard }}.json"
-          fi
-
-      - name: Upload browser evidence
-        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-evidence-part-browser-${{ matrix.shard }}-${{ github.run_id }}
-          overwrite: true
-          path: apps/web/test-results/
-          if-no-files-found: warn
-          retention-days: 14
-
-  acceptance:
-    needs: [checks, scope, postgres_image]
-    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    strategy:
-      # Shard 1 owns the deliberate evidence probe; a failing shard 2 must
-      # not cancel it, so acceptance shards always run to completion.
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
-    env:
-      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
-      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
-      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-
-      - name: Verify supported agent environment
-        run: pnpm agent:doctor:web-postgres
-
-      - name: Test acceptance
-        id: repository_tests
-        run: pnpm --filter @prisma-prim/web test:browser:acceptance --shard=${{ matrix.shard }}/2
-
-      - name: Verify acceptance failure evidence
-        # One probe per run: two shards would write the same probe paths and
-        # the merged evidence would keep only the last writer.
-        if: ${{ matrix.shard == 1 && !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
-        run: node scripts/verify-acceptance-evidence.mjs
-
-      - name: Namespace acceptance run metadata
-        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
-        # Every shard writes Playwright's acceptance/.last-run.json; keep one visible
-        # per shard so the merged evidence does not keep only the last writer.
-        run: |
-          if [ -f apps/web/test-results/acceptance/.last-run.json ]; then
-            mv apps/web/test-results/acceptance/.last-run.json \
-              "apps/web/test-results/acceptance/last-run-shard-${{ matrix.shard }}.json"
-          fi
-
-      - name: Upload acceptance evidence
-        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-evidence-part-acceptance-${{ matrix.shard }}-${{ github.run_id }}
-          overwrite: true
-          path: apps/web/test-results/
-          if-no-files-found: warn
-          retention-days: 14
-
-  build:
-    needs: [checks, scope]
-    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-        with:
-          postgres: 'false'
-          chromium: 'false'
-
-      - name: Build
-        run: pnpm build
-
-  packaging:
-    needs: [checks, scope, postgres_image]
-    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-
-      - name: Validate Railway configuration without credentials
-        run: |
-          pnpm --dir .railway install --frozen-lockfile
-          pnpm --dir .railway typecheck
-          pnpm --dir .railway test
-
-      - name: Restore PostgreSQL image
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: ${{ needs.postgres_image.outputs.cache_key }}
-
-      # Reverify older main archives against the current FROM pins before reuse;
-      # a verifier-only key change need not reacquire unchanged official images.
-      - name: Restore pinned packaging base images
-        id: packaging_images
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/packaging-images
-          key: packaging-images-linux-amd64-${{ hashFiles('deploy/railway/api.Dockerfile', 'deploy/railway/web.Dockerfile', 'scripts/ci-packaging-images.mjs') }}
-          restore-keys: packaging-images-linux-amd64-
-
-      - name: Verify restored packaging base images
-        id: verified_packaging_cache
-        if: ${{ steps.packaging_images.outputs.cache-matched-key != '' }}
-        env:
-          PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
-        run: |
-          if node scripts/ci-packaging-images.mjs load; then
-            echo "verified=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "verified=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Acquire pinned packaging base images
-        if: ${{ steps.verified_packaging_cache.outputs.verified != 'true' }}
+      - name: Prepare verified official packaging images without global overrides
         env:
           PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
         run: node scripts/ci-packaging-images.mjs acquire
 
-      - name: Save pinned packaging base images
-        if: ${{ steps.packaging_images.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/packaging-images
-          key: packaging-images-linux-amd64-${{ hashFiles('deploy/railway/api.Dockerfile', 'deploy/railway/web.Dockerfile', 'scripts/ci-packaging-images.mjs') }}
+      - name: Record the hosted execution context
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          context = {
+            'source': '05fde93f9ca4dcc7cd5c8850c2891ff4d28f0e88',
+            'base': '0780b032cc8ccee768e2481587ea3a38558215bc',
+            'tree': '307aff9b6253f1e67da36ad8710b0d2c0e81f389',
+            'executionWorkflowCommit': os.environ['GITHUB_SHA'],
+            'executionRun': os.environ['GITHUB_RUN_ID'],
+            'dockerStorageDriver': subprocess.check_output(['docker', 'info', '--format', '{{.Driver}}'], text=True).strip(),
+            'postgresProvisioning': 'Unchanged scripts/managed-postgres.mjs from the reviewed source; ordinary disposable named volume, no storage override.',
+            'publicationBoundary': 'Fresh GitHub-hosted execution outputs from public source and synthetic fixtures only. No prior Codex workspace, local diagnostics, personal files or credentials are copied into this job.'
+          }
+          Path(os.environ['RUNNER_TEMP'], 'qualification-context.json').write_text(json.dumps(context, indent=2) + '\n')
+          PY
 
-      - name: Prove production image packaging
-        env:
-          PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
-          POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
-        run: bash scripts/railway-packaging-smoke.sh
+      - name: Execute the unchanged complete canonical gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/managed-postgres.mjs -- node scripts/verify-local.mjs run --source 05fde93f9ca4dcc7cd5c8850c2891ff4d28f0e88 --base origin/main --output "$RUNNER_TEMP/canonical-local-evidence"
 
-  quality:
-    needs:
-      [
-        checks,
-        scope,
-        postgres_image,
-        api,
-        web_unit,
-        browser,
-        acceptance,
-        build,
-        packaging,
-      ]
-    if: ${{ always() }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Refresh the base and validate all original evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = 0780b032cc8ccee768e2481587ea3a38558215bc
+          node scripts/verify-local.mjs validate --output "$RUNNER_TEMP/canonical-local-evidence"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
+      - name: Select exact original Invoice screenshots after canonical validation
+        id: selected_invoice
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path, PurePosixPath
 
-      - name: Require every verification result
-        env:
-          CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        run: node scripts/verify-ci-results.mjs
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
 
-      - name: Download complete browser evidence
-        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
-        uses: actions/download-artifact@v4
-        with:
-          pattern: browser-evidence-part-*-${{ github.run_id }}
-          path: browser-evidence/
-          merge-multiple: true
+          def sha(data):
+              return hashlib.sha256(data).hexdigest()
 
-      - name: Upload complete browser evidence
-        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
+          temporary = Path(os.environ['RUNNER_TEMP'])
+          original = temporary / 'canonical-local-evidence'
+          selected = temporary / 'selected-invoice-evidence'
+          require(original.resolve(strict=True) == original and original.is_dir(), 'Original evidence root must be real.')
+          require(not selected.exists() and not selected.is_symlink(), 'Selected output must be fresh.')
+
+          def read_original(relative):
+              path = PurePosixPath(relative)
+              require(path.parts and not path.is_absolute() and '..' not in path.parts and
+                      path.as_posix() == relative, 'Unsafe evidence path.')
+              current = original
+              for part in path.parts:
+                  current = current / part
+                  require(not current.is_symlink(), 'Evidence symlinks are refused.')
+              require(current.is_file() and current.resolve().is_relative_to(original), 'Original evidence file missing.')
+              return current.read_bytes()
+
+          files = {name: read_original(name) for name in ('manifest.json', 'report.md')}
+          context_path = temporary / 'qualification-context.json'
+          require(context_path.is_file() and not context_path.is_symlink(), 'Execution context missing.')
+          files['qualification-context.json'] = context_path.read_bytes()
+          manifest = json.loads(files['manifest.json'])
+          context = json.loads(files['qualification-context.json'])
+          expected = {'source': '05fde93f9ca4dcc7cd5c8850c2891ff4d28f0e88', 'base': '0780b032cc8ccee768e2481587ea3a38558215bc', 'tree': '307aff9b6253f1e67da36ad8710b0d2c0e81f389'}
+          require(manifest.get('schema') == 'prisma-prim-local-verification/v1' and
+                  manifest.get('mode') == 'complete' and manifest.get('status') == 'passed' and
+                  manifest.get('scope', {}).get('kind') == 'complete' and not manifest.get('refusal'),
+                  'Original complete canonical evidence must have passed.')
+          provenance = manifest.get('provenance', {})
+          require([provenance.get(k) for k in ('sourceHead', 'baseHead', 'integrationTree')] == list(expected.values()),
+                  'Original source/base/tree binding differs.')
+          require(all(context.get(k) == v for k, v in expected.items()) and
+                  context.get('executionWorkflowCommit') == os.environ['GITHUB_SHA'] and
+                  context.get('executionRun') == os.environ['GITHUB_RUN_ID'], 'Hosted execution binding differs.')
+          ids = 'doctor format lint types scripts documentation api-parallel api-serial web-unit browser acceptance acceptance-evidence build railway-types railway-tests packaging'.split()
+          families = manifest.get('families', [])
+          require([f.get('id') for f in families] == ids and all(
+              f.get('required') is True and f.get('status') == 'passed' and
+              f.get('executionOutcome') == {'kind': 'completed'} and
+              type(f.get('exitCode')) is int and f['exitCode'] == 0 and
+              f.get('signal') is None and f.get('reason') is None and
+              f.get('startedAt') and f.get('finishedAt') for f in families), 'All 16 canonical families must be complete.')
+          artifacts = manifest.get('artifacts', [])
+          inventory = {a['path']: a['sha256'] for a in artifacts}
+          require(len(inventory) == len(artifacts), 'Duplicate canonical artifact paths.')
+          images = []
+          for frame in ('prisme', 'classic'):
+              for viewport in ('desktop', 'narrow'):
+                  basename = f'invoice-record-record-{frame}-{viewport}-en-record.png'
+                  paths = [relative for relative in inventory
+                           if relative.startswith('browser-evidence/acceptance/') and PurePosixPath(relative).name == basename]
+                  require(len(paths) == 1, 'Expected exactly one original Invoice screenshot: ' + basename)
+                  relative = paths[0]
+                  data = read_original(relative)
+                  require(data[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10]) and sha(data) == inventory[relative],
+                          'Original PNG magic/hash differs.')
+                  files[relative] = data
+                  images.append({'frame': frame, 'viewport': viewport, 'state': 'en-record',
+                                 'original_relative_path': relative, 'published_path': relative,
+                                 'bytes': len(data), 'sha256': sha(data)})
+          index = {
+              'schema': 'prisma-prim-selected-hosted-invoice-evidence/v1', **expected,
+              'executionWorkflowCommit': context['executionWorkflowCommit'], 'executionRun': context['executionRun'],
+              'canonical_manifest_sha256': sha(files['manifest.json']),
+              'canonical_report_sha256': sha(files['report.md']),
+              'qualification_context_sha256': sha(files['qualification-context.json']),
+              'selected_images': images,
+              'copied_files': [{'path': name, 'bytes': len(data), 'sha256': sha(data)} for name, data in sorted(files.items())],
+              'canonical_artifact_count': len(artifacts), 'omitted_artifact_count': len(artifacts) - len(images),
+              'omission_rule': 'All original inventory artifacts except the four listed PNGs are omitted from this selected packet. They remain in the original hosted evidence directory for the separate full artifact upload. No logs, traces or nested runtime inventories are copied here.',
+              'scope': 'Selected original screenshots from this fresh hosted run only; NOT a standalone canonical-validation bundle. Original complete gate and canonical validate are separate preceding steps. Metadata and PNG bytes are unchanged. Root must inspect the downloaded images before claiming visual evidence. No prior CaaS evidence is read or copied.'
+          }
+          files['publication-index.json'] = (json.dumps(index, indent=2) + '\n').encode()
+          size = sum(map(len, files.values()))
+          require(len(images) == 4 and size < 100 * 1024 * 1024, 'Selected packet must contain four images and remain below 100 MiB.')
+          selected.mkdir()
+          for relative, data in files.items():
+              destination = selected / relative
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_bytes(data)
+          print(json.dumps({'selected_image_count': len(images), 'packet_bytes': size,
+                            'original_image_paths': [image['original_relative_path'] for image in images]}, indent=2))
+          PY
+
+      - name: Preserve the small selected original Invoice evidence
+        if: ${{ always() && steps.selected_invoice.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: browser-evidence-pr-${{ github.event.pull_request.number || github.run_id }}
-          overwrite: true
-          path: browser-evidence/
+          name: selected-invoice-pr-1038-05fde93
+          path: ${{ runner.temp }}/selected-invoice-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Preserve complete fresh hosted-runner evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-hosted-pr-1038-05fde93
+          path: ${{ runner.temp }}/canonical-local-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Preserve the compact report and execution binding
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-hosted-pr-1038-05fde93-compact
+          path: |
+            ${{ runner.temp }}/canonical-local-evidence/manifest.json
+            ${{ runner.temp }}/canonical-local-evidence/report.md
+            ${{ runner.temp }}/qualification-context.json
           if-no-files-found: warn
           retention-days: 14
