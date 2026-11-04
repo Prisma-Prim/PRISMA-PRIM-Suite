@@ -57,7 +57,20 @@ jobs:
       - name: Prepare verified official packaging images without global overrides
         env:
           PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
-        run: node scripts/ci-packaging-images.mjs acquire
+        shell: bash
+        run: |
+          set -euo pipefail
+          for image_attempt in 1 2 3; do
+            if node scripts/ci-packaging-images.mjs acquire; then
+              exit 0
+            fi
+            if [ "$image_attempt" -lt 3 ]; then
+              echo "Verified image acquisition failed; waiting 15 seconds before the next bounded provisioning attempt."
+              sleep 15
+            fi
+          done
+          echo "Verified image provisioning failed; canonical tests will not start."
+          exit 1
 
       - name: Record the hosted execution context
         shell: bash
