@@ -1,3 +1,7 @@
+import {
+  OfferMessagePreparation,
+  type OfferMessageTarget,
+} from '../offer-message/offer-message-preparation';
 import { OpportunityFollowUpPanel } from '../opportunity-follow-up/OpportunityFollowUpPanel';
 import { OpportunityFollowUpDiscovery } from '../opportunity-follow-up/OpportunityFollowUpDiscovery';
 import { opportunityFollowUpAuthority } from '../access/opportunity-follow-up-authority';
@@ -2997,6 +3001,42 @@ function RequestDetail({
           version: requestedVersion.version,
         }
       : undefined;
+  // RequestDetail survives request changes. A monotonic navigation identity
+  // prevents an old A draft from reviving after A → B → A.
+  const messageNavigation = JSON.stringify([
+    request.id,
+    request.initialOpportunity.id,
+    requestedOffer?.requestId,
+    requestedOffer?.offerVersionId,
+  ]);
+  const messageOwner = useRef({
+    navigation: messageNavigation,
+    generation: 0,
+    open: 0,
+  });
+  if (messageOwner.current.navigation !== messageNavigation) {
+    messageOwner.current = {
+      ...messageOwner.current,
+      navigation: messageNavigation,
+      generation: messageOwner.current.generation + 1,
+    };
+  }
+  const [messageTarget, setMessageTarget] = useState<{
+    source: OfferMessageTarget;
+    generation: number;
+    navigationGeneration: number;
+  } | null>(null);
+  const prepareMessage = (source: OfferMessageTarget) => {
+    messageOwner.current.open += 1;
+    setMessageTarget({
+      source,
+      generation: messageOwner.current.open,
+      navigationGeneration: messageOwner.current.generation,
+    });
+  };
+  const retireMessage = () => {
+    setMessageTarget(null);
+  };
   const pdfProps = {
     actor,
     identity,
@@ -3155,10 +3195,25 @@ function RequestDetail({
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
+      <OfferMessagePreparation
+        actor={actor}
+        identity={identity}
+        target={
+          messageTarget?.navigationGeneration ===
+          messageOwner.current.generation
+            ? messageTarget
+            : null
+        }
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
       {offerPdf.controls}
       <OfferPanel
         key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
         pdf={offerPdf.callbacks}
+        onPrepareMessage={prepareMessage}
+        onMessageNavigate={retireMessage}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}

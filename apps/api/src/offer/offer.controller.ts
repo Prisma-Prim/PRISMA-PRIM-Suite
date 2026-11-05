@@ -30,6 +30,24 @@ export class OfferController {
     private readonly estimateOffers: EstimateOfferPreparationService,
   ) {}
 
+  @Get('versions/:versionId/message-preparation')
+  readMessagePreparation(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: ServerResponse,
+  ) {
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    return this.offers.readMessagePreparation({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      query,
+    });
+  }
+
   @Get('versions/:versionId/pdf')
   async downloadPdf(
     @Req() request: ActorContextRequest,

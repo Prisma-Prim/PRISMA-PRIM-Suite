@@ -33,6 +33,7 @@ export const completeActor = {
       },
     ],
     invoiceRecordReadCapture: { version: 'future', arbitrary: null },
+    offerMessageReadCapture: { version: 'future', arbitrary: null },
     knowledgeGrants: { version: 'future', arbitrary: null },
     opportunityFollowUpPermissions: { version: 'future', arbitrary: null },
     opportunityFollowUpCoordinatorAssignmentId: 'sample-follow-up',

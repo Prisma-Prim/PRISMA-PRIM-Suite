@@ -6,6 +6,7 @@ import {
 import { contractModelAuthority } from '../contract-model/contract-model-authority';
 import { missionPlanAuthority } from '../mission-plan/mission-plan-authority';
 import { offerModelAuthority } from '../offer-model/offer-model-authority';
+import { offerMessageReadCapture } from '../offer-message/offer-message-contract';
 import { browserIdentity } from '../production-shell/production-shell-context.test-fixtures';
 import { readCurrentActor } from './current-actor';
 import { invoiceRecordAuthority } from './invoice-record-authority';
@@ -38,6 +39,34 @@ afterEach(() => {
 });
 
 describe('current Actor representation', () => {
+  it.each([
+    { capture: undefined, expected: null },
+    { capture: null, expected: null },
+    { capture: 5, expected: null },
+    { capture: 'offer-message-read.future', expected: null },
+    {
+      capture: 'offer-message-read.v1.' + 'a'.repeat(64),
+      expected: 'offer-message-read.v1.' + 'a'.repeat(64),
+    },
+    { capture: { future: 'opaque representation' }, expected: null },
+  ])(
+    'preserves an additive Offer message capture without interpreting authority: %j',
+    async ({ capture, expected }) => {
+      const actor = {
+        ...completeActor,
+        activeCompany: {
+          ...completeActor.activeCompany,
+          offerMessageReadCapture: capture,
+        },
+      };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok')
+        throw new Error('Expected an additive readable Actor.');
+      expect(offerMessageReadCapture(result.value)).toBe(expected);
+    },
+  );
+
   it('reads the complete current representation without changing any values', async () => {
     const result = await read(completeActor);
     expect(result).toEqual({ status: 'ok', value: completeActor });
@@ -147,6 +176,7 @@ describe('current Actor representation', () => {
         'knowledgeGrants',
         'externalInvoiceGrants',
         'invoiceRecordReadCapture',
+        'offerMessageReadCapture',
         'opportunityFollowUpPermissions',
         'opportunityFollowUpCoordinatorAssignmentId',
         'opportunityFollowUpCoordinatorPermissionSetVersion',

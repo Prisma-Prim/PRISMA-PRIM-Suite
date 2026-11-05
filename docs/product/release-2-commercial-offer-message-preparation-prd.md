@@ -1,6 +1,6 @@
 # PRD — Bounded exact-Offer message preparation
 
-**Status:** Approved — bounded provisional software contract; runtime NOT READY\
+**Status:** Approved — bounded provisional software contract; [runtime readiness and delivery: #1043](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1043)\
 **Version:** 0.1\
 **Owner:** Dan Popescu\
 **Documentation tracker:** [#1025](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1025), under [Product Vision #51](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51); [Commercial #290](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/290) consumes this contract.
@@ -45,7 +45,7 @@ Keep the complete Offer root, Workspace, Company, Opportunity, Version, provenan
 
 Display only data already allowed by that owning read: exact reference/Version, copied party/source meaning and current working actor. Existing live Client projection remains permission filtered. Manual recipient entry neither identifies a stored Contact nor verifies ownership, affiliation or legal authority. Native Contact lookup/import is excluded. Responsibility, Director title and old successful reads grant nothing.
 
-Access must supply a narrow way to bind the new owner's consumed context/intake/Offer capture identities/versions, without depending on Date or Finance grants and without querying Access tables inside the message module. A read-only protected preparation observation, if needed, returns only authorized source identity/capture information, never body/recipient persistence. Its exact DTO/routes are technical assignment choices. Current source lacks a general R2C context-capture projection, so this fit must be closed before delegation. Do not silently broaden/refactor existing PDF authorization or claim its current effective-permission-only scope proves the new owner's lifetime.
+Access must supply a narrow way to bind the new owner's consumed context/intake/Offer capture identities/versions, without depending on Date or Finance grants and without querying Access tables inside the message module. A read-only protected preparation observation, if needed, returns only authorized source identity/capture information, never body/recipient persistence. Its exact DTO/routes are technical assignment choices. At #1025 preparation, source lacked a general R2C context-capture projection; [qualified implementation #1043](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1043) selects the narrow consumed-capture fit and owns its runtime delivery status. Do not silently broaden/refactor existing PDF authorization or claim its current effective-permission-only scope proves the new owner's lifetime.
 
 ## 4. Manual field grammar
 
@@ -97,7 +97,7 @@ Synthetic example: select Romanian Company-model Offer7/v2 for its copied fictio
 
 ## 8. Public proof and first runtime frontier
 
-One future complete vertical, after canonical approval/merge and fresh all-twelve readiness assessment, owns native selection/composer/read-observation/lifetime/copy/download integration and its tests. No schema-only, form-only or clipboard-only issue. The highest stable seam is the actual App's selected authorized Offer over native HTTP/PostgreSQL, with existing exact-source/PDF positive controls. The first natural behavioral RED must concern missing retained/reviewed/copied preparation behavior at a runnable App seam; missing import/route/grant/setup is not a success claim and no artificial no-op is needed. No RED is executed here.
+[Qualified implementation #1043](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1043), following canonical approval/merge and a fresh all-twelve readiness assessment, owns the complete native selection/composer/read-observation/lifetime/copy/download vertical and its tests. No schema-only, form-only or clipboard-only issue. The highest stable seam is the actual App's selected authorized Offer over native HTTP/PostgreSQL, with existing exact-source/PDF positive controls. The first natural behavioral RED must concern missing retained/reviewed/copied preparation behavior at a runnable App seam; missing import/route/grant/setup is not a success claim and no artificial no-op is needed. This PRD preparation executed no runtime RED; implementation evidence belongs to #1043.
 
 Required proofs:
 
@@ -114,7 +114,7 @@ This read-only extension changes no persisted business format, original Offer/PD
 
 Excluded: real sending or recorded transmission/acceptance; Contract/Precontract/Addendum preparation; Contact lookup/link/import; sender identities/credentials/SMTP/OAuth/providers; attachments beyond one intended exact native non-official PDF; private financial sources; arbitrary uploaded files; template/AI generation; official numbering; persisted Draft/history/events; bulk messages, scheduling/polling/reminders; real assignments, legal authority, operational activation and complete R2C/Google/SARCINA credit.
 
-Runtime remains **NOT READY** until canonical disposition/merge and a fresh assessment closes every [ticketing gate](specification-and-ticketing-standard.md#8-ready-for-agent-gates):
+The following historical launch criteria governed the first runtime child. The qualified [implementation #1043](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1043) records the fresh actual-head assessment of every [ticketing gate](specification-and-ticketing-standard.md#8-ready-for-agent-gates) and owns current runtime readiness/delivery status; qualification alone does not claim a merge or operational activation:
 
 | Gate                 | Required closure for the first runtime child                                                                                                                                        |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -131,4 +131,4 @@ Runtime remains **NOT READY** until canonical disposition/merge and a fresh asse
 | 11. Session fit      | One fresh complete vertical owner, one selected Offer entry and narrow collaborators; no horizontal form-only or clipboard-only ticket.                                             |
 | 12. Closed blockers  | Canonical merge, fresh duplicate/claim/frontier checks and every dependency/shared/heavy gate actually closed.                                                                      |
 
-At #1025 preparation, Date #1024 owns its runtime/shared resources; the later Invoice Record frontier requires its own readiness and handoff. This document allocates neither runtime writer nor shared resource. Only after actual delivered-head fit and explicit file/heavy handoff may root create the first qualified implementation child; no speculative backlog follows this normalization. The live tracker owns delivery/readiness. Actual send/approval policy, sender/mailbox ownership, Contact/provider inventory, approved templates/legal wording and Gmail/OAuth/security/activation remain dependencies for excluded future work; do not re-ask known interview facts or silently supply the missing ones.
+At #1025 preparation, Date #1024 owned runtime/shared resources and the later Invoice Record frontier still required readiness and handoff. Those historical sequencing conditions were reassessed for [qualified implementation #1043](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1043), which records the actual delivered-head fit and explicit file/heavy handoff. This PRD creates no speculative backlog; the live implementation tracker owns current delivery/readiness. Actual send/approval policy, sender/mailbox ownership, Contact/provider inventory, approved templates/legal wording and Gmail/OAuth/security/activation remain dependencies for excluded future work; do not re-ask known interview facts or silently supply the missing ones.

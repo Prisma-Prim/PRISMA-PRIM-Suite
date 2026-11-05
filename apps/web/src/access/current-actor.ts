@@ -82,6 +82,7 @@ const isActorContext = object({
       knowledgeGrants: optional(isOpaque),
       externalInvoiceGrants: optional(isOpaque),
       invoiceRecordReadCapture: optional(isOpaque),
+      offerMessageReadCapture: optional(isOpaque),
       opportunityFollowUpPermissions: optional(isOpaque),
       opportunityFollowUpCoordinatorAssignmentId: optional(isOpaque),
       opportunityFollowUpCoordinatorPermissionSetVersion: optional(isOpaque),
