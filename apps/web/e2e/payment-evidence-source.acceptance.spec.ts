@@ -1011,3 +1011,225 @@ test('opens native Client Document commands after selecting Source without repla
   expect(detailReads.get(first.id)).toBe(2);
   expect(detailReads.get(second.id)).toBe(1);
 });
+
+test('recovers definite evidence conflicts through native reload and a new deliberate command', async ({
+  page,
+}, info) => {
+  test.setTimeout(180_000);
+  const narrow = info.project.name.endsWith('narrow');
+  const suffix = `conflict-${narrow ? 'Narrow' : 'Desktop'}`;
+  await page.route('**/api/**', (route) =>
+    route.fallback({
+      headers: { ...route.request().headers(), ...paymentIdentities.owner },
+    }),
+  );
+  const ready = await preparePaymentEvidenceCase(page, suffix);
+  const artifacts = paymentEvidenceArtifacts(info);
+  await administerPaymentRoles(page, ready);
+  const source = await openPaymentEvidence(page, ready, narrow);
+  const title = `Fictional conflict recovery ${suffix}`;
+  const form = await fillRegistration(source, ready, 'PRIMARY', title, '');
+  const registered = page.waitForResponse(nativeResponse('POST', '/documents'));
+  await form
+    .getByRole('button', { name: 'Preserve evidence source', exact: true })
+    .click();
+  const registration = await registered;
+  expect(registration.status()).toBe(201);
+  const saved = paymentObject(await registration.json());
+  const documentId = paymentText(saved.id);
+  const versionId = paymentText(paymentObject(saved.version).id);
+  const detailPath = `/documents/${documentId}`;
+  const contentPath = `${detailPath}/versions/${versionId}/content`;
+  await expect(
+    source.getByRole('heading', { name: title, exact: true }),
+  ).toBeVisible();
+  await expect(
+    source.getByLabel('Choose the PDF file', { exact: true }),
+  ).toBeEnabled();
+  const writes: {
+    path: string;
+    key: string;
+    body: string | null;
+    url: string;
+  }[] = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (
+      (request.method() === 'PATCH' && path === '/api' + detailPath) ||
+      (request.method() === 'POST' && path === '/api' + contentPath)
+    )
+      writes.push({
+        path,
+        key: paymentText(request.headers()['idempotency-key']),
+        body: request.postData(),
+        url: request.url(),
+      });
+  });
+  async function concurrentCorrection(nextTitle: string) {
+    const current = await ready.read(detailPath, ready.companyId);
+    const expectedRevision = paymentInteger(current.workingRevision);
+    const response = await page.request.patch(paymentApiOrigin + detailPath, {
+      headers: {
+        ...paymentIdentities.owner,
+        'x-company-context-id': ready.companyId,
+        'idempotency-key': randomUUID(),
+      },
+      data: {
+        expectedRevision,
+        title: nextTitle,
+        purpose: paymentText(current.purpose),
+      },
+    });
+    expect(response.status()).toBe(200);
+    const receipt = paymentObject(await response.json());
+    expect(receipt).toMatchObject({
+      documentId,
+      outcome: 'corrected',
+      revision: expectedRevision + 1,
+    });
+    return expectedRevision + 1;
+  }
+  async function viewport(name: string, anchor: Locator) {
+    await anchor.scrollIntoViewIfNeeded();
+    await artifacts.screenshot(page, `${suffix}-${name}-viewport`, {
+      fullPage: false,
+    });
+  }
+  const edit = source.getByRole('button', {
+    name: 'Correct draft metadata',
+    exact: true,
+  });
+  await edit.click();
+  const correction = source.locator('form').filter({
+    has: page.getByRole('button', {
+      name: 'Save metadata correction',
+      exact: true,
+    }),
+  });
+  await correction.getByLabel('Title', { exact: true }).fill(`${title} stale`);
+  const concurrentTitle = `${title} concurrently corrected`;
+  const currentRevision = await concurrentCorrection(concurrentTitle);
+  const refusedCorrection = page.waitForResponse(
+    nativeResponse('PATCH', detailPath),
+  );
+  await correction
+    .getByRole('button', { name: 'Save metadata correction', exact: true })
+    .click();
+  expect((await refusedCorrection).status()).toBe(409);
+  await expect(
+    source.getByText('The Document changed. Reload it before continuing.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(edit).toBeDisabled();
+  expect(writes).toHaveLength(1);
+  const staleCorrection = writes[0];
+  if (!staleCorrection?.body)
+    throw new Error('Missing native refused correction');
+  expect(paymentObject(JSON.parse(staleCorrection.body)).expectedRevision).toBe(
+    currentRevision - 1,
+  );
+  await viewport('metadata-conflict', edit);
+  await source
+    .getByRole('button', { name: 'Reload evidence', exact: true })
+    .click();
+  await expect(
+    source.getByRole('heading', { name: concurrentTitle, exact: true }),
+  ).toBeVisible();
+  await expect(edit).toBeEnabled();
+  expect(writes).toHaveLength(1);
+  await viewport('metadata-reloaded', edit);
+  await edit.click();
+  await expect(correction.getByLabel('Title', { exact: true })).toHaveValue(
+    concurrentTitle,
+  );
+  const recoveredTitle = `${title} deliberately recovered`;
+  await correction.getByLabel('Title', { exact: true }).fill(recoveredTitle);
+  const corrected = page.waitForResponse(nativeResponse('PATCH', detailPath));
+  await correction
+    .getByRole('button', { name: 'Save metadata correction', exact: true })
+    .click();
+  expect((await corrected).status()).toBe(200);
+  await expect(
+    source.getByRole('heading', { name: recoveredTitle, exact: true }),
+  ).toBeVisible();
+  expect(writes).toHaveLength(2);
+  const recoveredCorrection = writes[1];
+  if (!recoveredCorrection?.body)
+    throw new Error('Missing native recovered correction');
+  expect(recoveredCorrection.key).not.toBe(staleCorrection.key);
+  expect(
+    paymentObject(JSON.parse(recoveredCorrection.body)).expectedRevision,
+  ).toBe(currentRevision);
+
+  const upload = source.locator('.payment-evidence-pdf-upload');
+  const file = upload.getByLabel('Choose the PDF file', { exact: true });
+  await expect(file).toBeEnabled();
+  await file.setInputFiles({
+    name: 'stale-conflict.pdf',
+    mimeType: 'application/pdf',
+    buffer: ready.pdfA,
+  });
+  const uploadTitle = `${title} concurrent upload revision`;
+  const uploadRevision = await concurrentCorrection(uploadTitle);
+  const refusedUpload = page.waitForResponse(
+    nativeResponse('POST', contentPath),
+  );
+  await upload
+    .getByRole('button', { name: 'Preserve PDF', exact: true })
+    .click();
+  expect((await refusedUpload).status()).toBe(409);
+  await expect(
+    source.getByText('This Document changed. Reload it before trying again.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(file).toBeDisabled();
+  expect(writes).toHaveLength(3);
+  const staleUpload = writes[2];
+  if (!staleUpload) throw new Error('Missing native refused upload');
+  expect(new URL(staleUpload.url).searchParams.get('expectedRevision')).toBe(
+    String(uploadRevision - 1),
+  );
+  await viewport('upload-conflict', file);
+  await source
+    .getByRole('button', { name: 'Reload evidence', exact: true })
+    .click();
+  await expect(
+    source.getByRole('heading', { name: uploadTitle, exact: true }),
+  ).toBeVisible();
+  await expect(file).toBeEnabled();
+  await expect(file).toHaveValue('');
+  await expect(
+    upload.getByRole('button', { name: 'Preserve PDF', exact: true }),
+  ).toBeDisabled();
+  expect(writes).toHaveLength(3);
+  await viewport('upload-reloaded', file);
+  const preserved = await uploadPdf(
+    page,
+    source,
+    documentId,
+    versionId,
+    'recovered-conflict.pdf',
+    ready.pdfB,
+  );
+  expect(preserved.key).not.toBe(staleUpload.key);
+  expect(new URL(preserved.url).searchParams.get('expectedRevision')).toBe(
+    String(uploadRevision),
+  );
+  expect(preserved.receipt.workingRevision).toBe(uploadRevision + 1);
+  expect(writes).toHaveLength(4);
+  await exactPaymentDownload(
+    page,
+    source.getByRole('button', { name: 'Download Version 1 PDF', exact: true }),
+    ready.pdfB,
+  );
+  const current = await ready.read(detailPath, ready.companyId);
+  expect(current.paymentEvidenceSource).toEqual(saved.paymentEvidenceSource);
+  await viewport(
+    'recovered-pdf',
+    source
+      .locator('.payment-evidence-pdf-read')
+      .getByText('recovered-conflict.pdf', { exact: true }),
+  );
+});

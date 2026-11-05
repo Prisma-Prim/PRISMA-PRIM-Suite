@@ -54,7 +54,13 @@ it('preserves the same immutable File/path/key for an uncertain upload independe
   });
   fireEvent.click(screen.getByRole('button', { name: 'Preserve PDF' }));
   await screen.findByRole('button', { name: 'Retry the same PDF' });
-  view.rerender(<PaymentEvidencePdfUpload {...props} canUpload={false} />);
+  view.rerender(
+    <PaymentEvidencePdfUpload
+      {...props}
+      canUpload={false}
+      recoveryGeneration={2}
+    />,
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Retry the same PDF' }));
   await waitFor(() => expect(props.onConfirmed).toHaveBeenCalledTimes(1));
   expect(writes).toHaveLength(2);
@@ -64,4 +70,13 @@ it('preserves the same immutable File/path/key for an uncertain upload independe
     screen.queryByRole('button', { name: 'Retry the same PDF' }),
   ).not.toBeInTheDocument();
   expect(screen.getByText('The PDF was preserved.')).toBeInTheDocument();
+  view.rerender(
+    <PaymentEvidencePdfUpload
+      {...props}
+      canUpload={false}
+      recoveryGeneration={3}
+    />,
+  );
+  expect(screen.getByText('The PDF was preserved.')).toBeInTheDocument();
+  expect(writes).toHaveLength(2);
 });

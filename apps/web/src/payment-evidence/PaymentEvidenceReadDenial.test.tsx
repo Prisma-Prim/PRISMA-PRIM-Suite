@@ -31,7 +31,8 @@ const versionsPath = documentPath + '/versions';
 const actorPath = '/api/access/current-actor';
 const at = '2026-01-15T09:00:00.000Z';
 const originalFileName = 'original-frozen.pdf';
-type Action = 'upload' | 'designation' | 'correction' | 'registration';
+type Action =
+  'upload' | 'designation' | 'successor' | 'correction' | 'registration';
 type Ancestor = 'detail' | 'versions' | 'inventory';
 type Call = {
   path: string;
@@ -65,14 +66,14 @@ const recorderB = replaceGrant(
 );
 
 /** Only native HTTP is faked. Detail, Versions, PDF and every command owner are real. */
-function boundary(registration = false) {
+function boundary(registration = false, initialOfficial = false) {
   const calls: Call[] = [];
   const heldReads: HeldRead[] = [];
   const writes: ((response: Response) => void)[] = [];
   const recoveries: ((response: Response) => void)[] = [];
   let heldPath: string | undefined;
   let revision = registration ? 1 : 2;
-  let official = false;
+  let official = initialOfficial;
   let corrected = false;
   let uploaded = false;
   function document() {
@@ -174,6 +175,9 @@ function boundary(registration = false) {
     calls,
     mutations: () =>
       calls.filter((call) => call.method === 'POST' || call.method === 'PATCH'),
+    observeRevision(value: number) {
+      revision = value;
+    },
     hold(ancestor: Ancestor) {
       heldPath =
         ancestor === 'detail'
@@ -194,6 +198,21 @@ function boundary(registration = false) {
           read.resolve(new Response(null, { status }));
       });
     },
+    async reload(status: 200 | 500) {
+      heldPath = undefined;
+      const pending = heldReads.splice(0);
+      expect(pending.length).toBeGreaterThan(0);
+      await act(async () => {
+        for (const read of pending)
+          read.resolve(
+            status === 200
+              ? Response.json(
+                  read.call.path === versionsPath ? versions() : document(),
+                )
+              : new Response(null, { status }),
+          );
+      });
+    },
     async actorRequested() {
       await waitFor(() => expect(recoveries.length).toBeGreaterThan(0));
     },
@@ -208,6 +227,11 @@ function boundary(registration = false) {
       const resolve = writes.shift();
       if (!resolve) throw new Error('Expected an actual dispatched command');
       await act(async () => resolve(new Response(null, { status: 502 })));
+    },
+    async conflict() {
+      const resolve = writes.shift();
+      if (!resolve) throw new Error('Expected an actual dispatched command');
+      await act(async () => resolve(new Response(null, { status: 409 })));
     },
     async confirm(action: Action) {
       const resolve = writes.shift();
@@ -340,6 +364,7 @@ async function positiveDocument(freshCommands = true) {
 const retryNames = {
   upload: 'Retry the same PDF',
   designation: 'Retry the same Version change',
+  successor: 'Retry the same Version change',
   correction: 'Retry identical correction',
   registration: 'Retry identical evidence registration',
 };
@@ -375,6 +400,8 @@ async function dispatch(action: Action) {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Preserve PDF' }));
     return file;
+  } else if (action === 'successor') {
+    fireEvent.click(screen.getByRole('button', { name: 'Start new draft' }));
   } else if (action === 'designation') {
     fireEvent.click(
       screen.getByRole('button', {
@@ -555,5 +582,111 @@ it.each([
       ).toBeDisabled();
     }
     expect(api.mutations()).toHaveLength(1);
+  },
+);
+
+const freshCommandNames = {
+  correction: 'Correct draft metadata',
+  upload: 'Preserve PDF',
+  designation: 'Designate as official',
+  successor: 'Start new draft',
+};
+function expectDefiniteConflict(action: keyof typeof freshCommandNames) {
+  const button = screen.queryByRole('button', {
+    name: freshCommandNames[action],
+  });
+  if (button) expect(button).toBeDisabled();
+  expect(
+    screen.getByText(
+      action === 'correction'
+        ? 'The Document changed. Reload it before continuing.'
+        : action === 'upload'
+          ? 'This Document changed. Reload it before trying again.'
+          : 'This Document changed. Reload the Document and its Versions before trying again.',
+    ),
+  ).toBeVisible();
+}
+function reloadEvidence() {
+  const button = screen.getAllByRole('button', { name: 'Reload evidence' })[0];
+  if (!button) throw new Error('Expected the native explicit evidence reload');
+  fireEvent.click(button);
+}
+it.each([
+  { action: 'correction', revision: 2 },
+  { action: 'upload', revision: 3 },
+  { action: 'designation', revision: 2 },
+  { action: 'successor', revision: 3 },
+] as const)(
+  'recovers a definite $action conflict only after explicit successful native reload, with revision $revision',
+  async ({ action, revision }) => {
+    const api = boundary(false, action === 'successor');
+    const view = show();
+    await positiveDocument(action !== 'successor');
+    if (action === 'successor')
+      expect(
+        screen.getByRole('button', { name: 'Start new draft' }),
+      ).toBeEnabled();
+    await dispatch(action);
+    await waitFor(() => expect(api.mutations()).toHaveLength(1));
+    const original = api.mutations()[0];
+    await api.conflict();
+    expectDefiniteConflict(action);
+
+    // A passive current read/revision update is not deliberate conflict recovery.
+    api.observeRevision(revision);
+    view.actor(readerB);
+    await positiveDocument(false);
+    expectDefiniteConflict(action);
+    expect(api.mutations()).toHaveLength(1);
+
+    api.hold('detail');
+    reloadEvidence();
+    await api.requestedRead();
+    expectDefiniteConflict(action);
+    await api.reload(500);
+    expectDefiniteConflict(action);
+    expect(api.mutations()).toHaveLength(1);
+
+    // Detail success is sufficient for correction. Version owners need their own read.
+    api.hold('versions');
+    reloadEvidence();
+    await api.requestedRead();
+    if (action !== 'correction') expectDefiniteConflict(action);
+    await api.reload(500);
+    if (action !== 'correction') expectDefiniteConflict(action);
+    api.hold('versions');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry loading Versions' }),
+    );
+    await api.requestedRead();
+    if (action !== 'correction') expectDefiniteConflict(action);
+    await api.reload(200);
+    await waitFor(() =>
+      expect(
+        action === 'upload'
+          ? screen.getByLabelText('Choose the PDF file')
+          : screen.getByRole('button', { name: freshCommandNames[action] }),
+      ).toBeEnabled(),
+    );
+    expect(api.mutations()).toHaveLength(1);
+    if (action === 'upload')
+      expect(
+        screen.getByRole('button', { name: 'Preserve PDF' }),
+      ).toBeDisabled();
+
+    await dispatch(action);
+    await waitFor(() => expect(api.mutations()).toHaveLength(2));
+    const next = api.mutations()[1];
+    expect(next?.key).not.toBe(original?.key);
+    if (action === 'upload')
+      expect(next?.url).toContain(`expectedRevision=${revision}`);
+    else {
+      if (typeof next?.body !== 'string')
+        throw new Error('Expected native JSON intent');
+      expect(JSON.parse(next.body)).toMatchObject({
+        expectedRevision: revision,
+      });
+    }
+    await api.conflict();
   },
 );

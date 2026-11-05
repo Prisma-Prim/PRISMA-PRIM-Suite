@@ -34,6 +34,7 @@ export interface PaymentEvidenceVersionsProps extends PaymentEvidenceAccessCallb
   workingRevision: number;
   operationKeys: PaymentEvidenceOperationKeys;
   metadataReadable?: boolean;
+  recoveryGeneration?: number;
   onRefresh: () => Promise<void> | void;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
 }
@@ -74,6 +75,7 @@ function SourceVersions({
   workingRevision,
   operationKeys,
   metadataReadable = true,
+  recoveryGeneration = 0,
   onRefresh,
   onProtectedWorkChange,
   companyId,
@@ -86,6 +88,8 @@ function SourceVersions({
     [retry, setRetry] = useState(0),
     [confirmedRevision, setConfirmedRevision] = useState(0),
     [confirmed, setConfirmed] = useState(false);
+  const [successfulRecoveryGeneration, setSuccessfulRecoveryGeneration] =
+    useState(0);
   const [selection, setSelection] = useState<{
     version: Pick<DocumentVersion, 'id' | 'number'> | undefined;
     generation: number;
@@ -183,6 +187,9 @@ function SourceVersions({
           owner: live,
           page: metadata,
         });
+        setSuccessfulRecoveryGeneration((current) =>
+          Math.max(current, recoveryGeneration),
+        );
         setSelection((currentSelection) =>
           currentSelection.version === undefined
             ? {
@@ -210,6 +217,7 @@ function SourceVersions({
     metadataReadable,
     rejected,
     requestedRevision,
+    recoveryGeneration,
     retry,
   ]);
   const readable =
@@ -307,6 +315,7 @@ function SourceVersions({
             companyId={companyId}
             documentId={documentId}
             authorityKey={operationKeys.successorKey}
+            recoveryGeneration={successfulRecoveryGeneration}
             action="drafted"
             expectedRevision={page?.workingRevision ?? workingRevision}
             sourceVersion={official}
@@ -326,6 +335,7 @@ function SourceVersions({
             companyId={companyId}
             documentId={documentId}
             authorityKey={operationKeys.designateKey}
+            recoveryGeneration={successfulRecoveryGeneration}
             action="designated_official"
             expectedRevision={page?.workingRevision ?? workingRevision}
             sourceVersion={official}
@@ -353,6 +363,7 @@ function SourceVersions({
           readable={readable}
           contentReadKey={operationKeys.contentReadKey}
           uploadKey={operationKeys.uploadKey}
+          recoveryGeneration={successfulRecoveryGeneration}
           canUpload={Boolean(canWrite && selected?.status === 'draft')}
           uploadDisabled={busy.successor || busy.designation}
           onConfirmed={refresh}

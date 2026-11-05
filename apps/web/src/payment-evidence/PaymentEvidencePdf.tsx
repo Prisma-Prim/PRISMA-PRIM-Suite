@@ -28,6 +28,7 @@ interface Props {
   contentReadKey: string | null;
   readable?: boolean;
   uploadKey: string | null;
+  recoveryGeneration?: number;
   canUpload: boolean;
   uploadDisabled: boolean;
   onConfirmed: (receipt: DocumentVersionReceipt) => Promise<void> | void;

@@ -120,6 +120,7 @@ export function DocumentVersions({
   onRefresh,
   onProtectedWorkChange,
   paymentEvidenceReadable = true,
+  paymentEvidenceRecoveryGeneration = 0,
   onCompanyContextRejected = () => undefined,
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
@@ -131,6 +132,8 @@ export function DocumentVersions({
   operationKeys?: PaymentEvidenceOperationKeys;
   /** Source read projection availability never owns an existing write envelope. */
   paymentEvidenceReadable?: boolean;
+  /** A successful deliberate Source reload, never a command lifetime/key. */
+  paymentEvidenceRecoveryGeneration?: number;
   /** The open Document's revision; a newer one reloads the Versions. */
   workingRevision: number;
   /** Re-reads the open Document and its list after a confirmed or stale command. */
@@ -149,6 +152,7 @@ export function DocumentVersions({
         workingRevision={workingRevision}
         operationKeys={operationKeys}
         metadataReadable={paymentEvidenceReadable}
+        recoveryGeneration={paymentEvidenceRecoveryGeneration}
         onRefresh={onRefresh}
         onProtectedWorkChange={onProtectedWorkChange}
         onCompanyContextRejected={onCompanyContextRejected}

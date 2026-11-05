@@ -18,15 +18,10 @@ type Command = {
 type Upload =
   | {
       status:
-        | 'idle'
-        | 'invalid'
-        | 'unsafe'
-        | 'unavailable'
-        | 'denied'
-        | 'conflict'
-        | 'confirmed';
+        'idle' | 'invalid' | 'unsafe' | 'unavailable' | 'denied' | 'confirmed';
     }
-  | { status: 'pending' | 'uncertain'; command: Command };
+  | { status: 'pending' | 'uncertain'; command: Command }
+  | { status: 'conflict'; recoveryGeneration: number };
 /** A sealed immutable File and native command key belong only to upload authority. */
 export function PaymentEvidencePdfUpload({
   identity,
@@ -37,6 +32,7 @@ export function PaymentEvidencePdfUpload({
   workingRevision,
   uploadKey,
   canUpload,
+  recoveryGeneration = 0,
   onConfirmed,
   onProtectedWorkChange,
   onRejected,
@@ -49,6 +45,7 @@ export function PaymentEvidencePdfUpload({
   workingRevision: number;
   uploadKey: string;
   canUpload: boolean;
+  recoveryGeneration?: number;
   onConfirmed: (receipt: DocumentVersionReceipt) => Promise<void> | void;
   onProtectedWorkChange: (protectedWork: boolean) => void;
   onRejected: PaymentEvidenceRejection;
@@ -63,13 +60,23 @@ export function PaymentEvidencePdfUpload({
     ),
     pending = useRef<AbortController | undefined>(undefined),
     input = useRef<HTMLInputElement>(null);
-  const callbacks = useRef({ onConfirmed, onRejected });
-  callbacks.current = { onConfirmed, onRejected };
+  const callbacks = useRef({ onConfirmed, onRejected, recoveryGeneration });
+  callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
   const [confirmedRevision, setConfirmedRevision] = useState(0);
   const canStart = canUpload && workingRevision >= confirmedRevision;
   const busy = upload.status === 'pending' || upload.status === 'uncertain';
   useDocumentNavigationProtection(busy, onProtectedWorkChange);
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => {
+    if (
+      upload.status === 'conflict' &&
+      recoveryGeneration > upload.recoveryGeneration
+    ) {
+      setUpload({ status: 'idle' });
+      setFile(undefined);
+      if (input.current) input.current.value = '';
+    }
+  }, [recoveryGeneration, upload]);
   async function submit(command: Command) {
     const request = new AbortController(),
       live = life(),
@@ -105,7 +112,10 @@ export function PaymentEvidencePdfUpload({
       }
       if (result.status === 'conflict') {
         settled = true;
-        setUpload({ status: 'conflict' });
+        setUpload({
+          status: 'conflict',
+          recoveryGeneration: callbacks.current.recoveryGeneration,
+        });
         return;
       }
       if (result.status === 'validation') {

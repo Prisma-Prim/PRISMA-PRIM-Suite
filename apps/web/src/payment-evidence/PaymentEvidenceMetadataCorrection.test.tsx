@@ -55,6 +55,7 @@ it('replays the exact correction intent after a newer observed Document revision
     <PaymentEvidenceMetadataCorrection
       {...props}
       document={{ ...document, workingRevision: 3 }}
+      recoveryGeneration={2}
     />,
   );
   fireEvent.click(
@@ -68,6 +69,13 @@ it('replays the exact correction intent after a newer observed Document revision
     title: 'Corrected literal notice',
     purpose: 'Preserve original source',
   });
+  view.rerender(
+    <PaymentEvidenceMetadataCorrection {...props} recoveryGeneration={3} />,
+  );
+  expect(
+    screen.getByText('Metadata correction confirmed.'),
+  ).toBeInTheDocument();
+  expect(writes).toHaveLength(2);
 });
 it('keeps a correction confirmed if its refresh callback fails', async () => {
   vi.stubGlobal(

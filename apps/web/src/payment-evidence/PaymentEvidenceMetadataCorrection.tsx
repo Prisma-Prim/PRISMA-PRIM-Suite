@@ -24,13 +24,15 @@ type CorrectionAttempt =
       body: string;
       key: string;
     }
-  | { status: 'conflict' | 'denied' | 'confirmed' };
+  | { status: 'conflict'; recoveryGeneration: number }
+  | { status: 'denied' | 'confirmed' };
 export function PaymentEvidenceMetadataCorrection({
   identity,
   companyId,
   documentId,
   document: loaded,
   correctKey,
+  recoveryGeneration = 0,
   onProtectedWorkChange,
   onConfirmed,
   onRejected,
@@ -40,6 +42,7 @@ export function PaymentEvidenceMetadataCorrection({
   documentId: string;
   document: PaymentEvidenceDocument | undefined;
   correctKey: string | null;
+  recoveryGeneration?: number;
   onProtectedWorkChange: (protectedWork: boolean) => void;
   onConfirmed: () => void;
   onRejected: Rejected;
@@ -51,11 +54,19 @@ export function PaymentEvidenceMetadataCorrection({
   });
   const pending = useRef<AbortController | undefined>(undefined);
   const life = useAuthorityLifetime(correctKey ?? 'unavailable', identity);
-  const callbacks = useRef({ onConfirmed, onRejected });
-  callbacks.current = { onConfirmed, onRejected };
+  const callbacks = useRef({ onConfirmed, onRejected, recoveryGeneration });
+  callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
   const busy = attempt.status === 'pending' || attempt.status === 'uncertain';
   useDocumentNavigationProtection(busy, onProtectedWorkChange);
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => {
+    if (
+      attempt.status === 'conflict' &&
+      loaded &&
+      recoveryGeneration > attempt.recoveryGeneration
+    )
+      setAttempt({ status: 'closed' });
+  }, [attempt, loaded, recoveryGeneration]);
   if (!correctKey) return null;
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,7 +123,10 @@ export function PaymentEvidenceMetadataCorrection({
         return;
       }
       if (result.status === 'conflict') {
-        setAttempt({ status: 'conflict' });
+        setAttempt({
+          status: 'conflict',
+          recoveryGeneration: callbacks.current.recoveryGeneration,
+        });
         return;
       }
       if (result.status === 'validation') {

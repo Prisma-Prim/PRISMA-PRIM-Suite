@@ -57,6 +57,8 @@ export function PaymentEvidenceDetail({
     [reload, setReload] = useState(0),
     [confirmed, setConfirmed] = useState(registrationConfirmed);
   const [versionRevision, setVersionRevision] = useState<number>();
+  const [deliberateReload, setDeliberateReload] = useState(0),
+    [recoveryGeneration, setRecoveryGeneration] = useState(0);
   const [correctionBusy, setCorrectionBusy] = useState(false),
     [versionBusy, setVersionBusy] = useState(false);
   const lifetime = useAuthorityLifetime(
@@ -107,6 +109,7 @@ export function PaymentEvidenceDetail({
         if (loaded.id !== documentId || loaded.companyId !== companyId)
           throw new Error('Wrong evidence');
         const metadata = paymentEvidenceMetadata(loaded);
+        setRecoveryGeneration((current) => Math.max(current, deliberateReload));
         setVersionRevision(metadata.workingRevision);
         setDetail({
           status: 'ready',
@@ -131,6 +134,7 @@ export function PaymentEvidenceDetail({
     return () => request.abort();
   }, [
     companyId,
+    deliberateReload,
     documentId,
     identity,
     lifetime,
@@ -147,15 +151,17 @@ export function PaymentEvidenceDetail({
     setReload((value) => value + 1);
     callbacks.current.onActivityRecorded?.();
   }
+  function reloadEvidence() {
+    setDetail({ status: 'loading' });
+    setDeliberateReload((value) => value + 1);
+    setReload((value) => value + 1);
+  }
   return (
     <article className="payment-evidence-detail working-document-detail">
       <button
         type="button"
         disabled={correctionBusy || versionBusy}
-        onClick={() => {
-          setDetail({ status: 'loading' });
-          setReload((value) => value + 1);
-        }}
+        onClick={reloadEvidence}
       >
         {copy('refresh')}
       </button>
@@ -165,7 +171,7 @@ export function PaymentEvidenceDetail({
       {detail.status === 'error' && (
         <div role="alert">
           <p>{confirmed ? copy('confirmedRefreshFailed') : copy('error')}</p>
-          <button type="button" onClick={() => setReload((value) => value + 1)}>
+          <button type="button" onClick={reloadEvidence}>
             {copy('refresh')}
           </button>
         </div>
@@ -235,6 +241,7 @@ export function PaymentEvidenceDetail({
           documentId={documentId}
           document={readable ? loaded : undefined}
           correctKey={operationKeys.correctKey}
+          recoveryGeneration={recoveryGeneration}
           onProtectedWorkChange={setCorrectionBusy}
           onConfirmed={refresh}
           onRejected={onRejected}
@@ -261,6 +268,7 @@ export function PaymentEvidenceDetail({
             workingRevision={versionRevision}
             operationKeys={operationKeys}
             paymentEvidenceReadable={readable}
+            paymentEvidenceRecoveryGeneration={recoveryGeneration}
             {...accessCallbacks}
             onRefresh={refresh}
             onProtectedWorkChange={setVersionBusy}

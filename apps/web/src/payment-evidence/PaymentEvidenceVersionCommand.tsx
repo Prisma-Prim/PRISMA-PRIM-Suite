@@ -35,7 +35,7 @@ type State =
   | { status: 'confirming'; command: Command }
   | { status: 'pending' | 'uncertain'; command: Command }
   | { status: 'confirmed'; receipt: DocumentVersionReceipt }
-  | { status: 'conflict'; expectedRevision: number }
+  | { status: 'conflict'; recoveryGeneration: number }
   | { status: 'denied' | 'capacity' };
 /** One native action's envelope never depends on a sibling read or content capture. */
 export function PaymentEvidenceVersionCommand({
@@ -48,6 +48,7 @@ export function PaymentEvidenceVersionCommand({
   sourceVersion,
   target,
   canStart,
+  recoveryGeneration = 0,
   onConfirmed,
   onProtectedWorkChange,
   onRejected,
@@ -61,6 +62,7 @@ export function PaymentEvidenceVersionCommand({
   sourceVersion: DocumentVersion | undefined;
   target: DocumentVersion | undefined;
   canStart: boolean;
+  recoveryGeneration?: number;
   onConfirmed: (receipt: DocumentVersionReceipt) => Promise<void> | void;
   onProtectedWorkChange: (protectedWork: boolean) => void;
   onRejected: PaymentEvidenceRejection;
@@ -73,8 +75,8 @@ export function PaymentEvidenceVersionCommand({
     ),
     pending = useRef<AbortController | undefined>(undefined),
     confirmButton = useRef<HTMLButtonElement>(null);
-  const callbacks = useRef({ onConfirmed, onRejected });
-  callbacks.current = { onConfirmed, onRejected };
+  const callbacks = useRef({ onConfirmed, onRejected, recoveryGeneration });
+  callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
   useDocumentNavigationProtection(
     state.status === 'confirming' ||
       state.status === 'pending' ||
@@ -99,10 +101,10 @@ export function PaymentEvidenceVersionCommand({
   useEffect(() => {
     if (
       state.status === 'conflict' &&
-      expectedRevision !== state.expectedRevision
+      recoveryGeneration > state.recoveryGeneration
     )
       setState({ status: 'idle' });
-  }, [expectedRevision, state]);
+  }, [recoveryGeneration, state]);
   function prepare() {
     if (!canStart || expectedRevision >= 2147483647) return;
     const base = {
@@ -178,7 +180,7 @@ export function PaymentEvidenceVersionCommand({
             ? { status: 'capacity' }
             : {
                 status: 'conflict',
-                expectedRevision: command.expectedRevision,
+                recoveryGeneration: callbacks.current.recoveryGeneration,
               },
         );
         return;

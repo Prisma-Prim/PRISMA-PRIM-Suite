@@ -66,6 +66,7 @@ it('designates preserved content without protected content metadata and retries 
       {...props}
       canStart={false}
       target={undefined}
+      recoveryGeneration={2}
     />,
   );
   fireEvent.click(
@@ -75,6 +76,15 @@ it('designates preserved content without protected content metadata and retries 
   expect(writes).toHaveLength(2);
   expect(writes[1]).toEqual(writes[0]);
   expect(props.onConfirmed).toHaveBeenCalledWith(receipt);
+  view.rerender(
+    <PaymentEvidenceVersionCommand
+      {...props}
+      canStart={false}
+      recoveryGeneration={3}
+    />,
+  );
+  expect(screen.getByText('Version 1 is now official.')).toBeInTheDocument();
+  expect(writes).toHaveLength(2);
 });
 it('does not dispatch after an equal-permission designation capture replacement during token acquisition', async () => {
   let release: ((token: string) => void) | undefined;
