@@ -1,0 +1,82 @@
+.payment-evidence-source {
+  min-width: 0;
+}
+.payment-evidence-source > header {
+  margin-bottom: 1.25rem;
+}
+.payment-evidence-source fieldset {
+  border: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+.payment-evidence-source .working-document-form {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 42rem;
+}
+.payment-evidence-source .working-document-form fieldset {
+  display: grid;
+  gap: 0.55rem;
+}
+.payment-evidence-source input,
+.payment-evidence-source textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.payment-evidence-source textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+.payment-evidence-source dd {
+  margin-inline-start: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.payment-evidence-source dt {
+  margin-top: 0.65rem;
+  font-weight: 600;
+}
+.payment-evidence-source .working-document-literal {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.payment-evidence-inventory {
+  border-bottom: 1px solid var(--border-color, #d9dfe7);
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+}
+.payment-evidence-inventory ul {
+  list-style: none;
+  padding: 0;
+}
+.payment-evidence-inventory li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding-block: 0.65rem;
+}
+.payment-evidence-inventory li span {
+  overflow-wrap: anywhere;
+}
+.payment-evidence-detail > section,
+.payment-evidence-party {
+  margin-block: 1rem;
+}
+.prisme-shell .payment-evidence-registration {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.prisme-shell .payment-evidence-inventory li {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 600px) {
+  .payment-evidence-inventory li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .payment-evidence-source button {
+    max-width: 100%;
+    white-space: normal;
+  }
+}

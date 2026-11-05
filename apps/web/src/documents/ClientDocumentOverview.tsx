@@ -50,7 +50,7 @@ function captures(company: ActorContext['activeCompany']) {
     ),
     'received-contract': documentFamilyCaptureKey(company, 'received-contract'),
     'external-invoice': documentFamilyCaptureKey(company, 'external-invoice'),
-  } satisfies Record<DocumentFamily, string>;
+  } satisfies Record<Exclude<DocumentFamily, 'payment-evidence'>, string>;
 }
 type View =
   | { kind: 'loading' | 'error' | 'denied' }
@@ -302,7 +302,7 @@ function DocumentEntry({
     'mission-deliverable': mission.t(item.version.status),
     'received-contract': received.t(item.version.status),
     'external-invoice': invoice.t(item.version.status),
-  } satisfies Record<DocumentFamily, string>;
+  } satisfies Record<Exclude<DocumentFamily, 'payment-evidence'>, string>;
   return (
     <li>
       <h5>{item.title}</h5>

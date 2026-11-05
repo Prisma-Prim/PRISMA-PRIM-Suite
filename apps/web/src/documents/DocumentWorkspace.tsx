@@ -1,3 +1,4 @@
+import { usePaymentEvidenceCopy } from '../payment-evidence/payment-evidence.copy';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { ExternalInvoiceRegistration } from './ExternalInvoiceRegistration';
 import { ExternalInvoiceRelation } from './ExternalInvoiceRelation';
@@ -42,8 +43,8 @@ import {
   readDocuments,
   type DocumentProjectAssociation,
   type DocumentFamily,
-  type WorkingDocument,
-  type WorkingDocumentDetail,
+  type WorkingDocument as AnyWorkingDocument,
+  type WorkingDocumentDetail as AnyWorkingDocumentDetail,
 } from './document-response';
 import { useDocumentsCopy } from './documents.copy';
 import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
@@ -52,6 +53,14 @@ import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
+type WorkingDocument = Exclude<
+  AnyWorkingDocument,
+  { type: 'payment-evidence' }
+>;
+type WorkingDocumentDetail = Exclude<
+  AnyWorkingDocumentDetail,
+  { type: 'payment-evidence' }
+>;
 type Load =
   | { status: 'loading' | 'error' | 'denied' }
   | {
@@ -121,6 +130,8 @@ function DocumentSession({
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
+  onSelectPaymentEvidence,
+  onProtectedWorkChange,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -141,8 +152,11 @@ function DocumentSession({
   onCompanyContextRejected?: (companyId: string) => Promise<void> | void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
+  onSelectPaymentEvidence?: (documentId?: string) => void;
+  onProtectedWorkChange?: (protectedWork: boolean) => void;
 }) {
   const copy = useDocumentsCopy();
+  const paymentCopy = usePaymentEvidenceCopy();
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
   const invoiceCopy = useExternalInvoiceCopy();
@@ -282,6 +296,12 @@ function DocumentSession({
   /** The detail and list re-read after a Version command; never a mutation. */
   const versionRefresh = useRef<AbortController | undefined>(undefined);
   const companyId = actor.activeCompany?.id;
+  const hostProtected =
+    protectedWorkActive || registrationInFlight !== undefined;
+  useEffect(() => {
+    onProtectedWorkChange?.(hostProtected);
+    return () => onProtectedWorkChange?.(false);
+  }, [hostProtected, onProtectedWorkChange]);
   const canRead =
     actor.activeCompany?.documentPermissions?.includes('document.read') ===
     true;
@@ -347,6 +367,7 @@ function DocumentSession({
     'mission-deliverable': missionCapture,
     'received-contract': receivedCapture,
     'external-invoice': invoiceCapture,
+    'payment-evidence': 'payment-evidence-owned-separately',
   };
   const currentFamilyCaptures = useRef(familyCaptures);
   currentFamilyCaptures.current = familyCaptures;
@@ -424,6 +445,7 @@ function DocumentSession({
   }
   function readVisibleDocuments(value: unknown): WorkingDocument[] {
     return readDocuments(value)
+      .filter((document) => document.type !== 'payment-evidence')
       .filter(
         (document) =>
           familyCaptures[document.type] ===
@@ -440,6 +462,7 @@ function DocumentSession({
   ): WorkingDocumentDetail {
     const document = readDocumentDetail(value);
     if (
+      document.type === 'payment-evidence' ||
       document.companyId !== companyId ||
       (expectedId !== undefined && document.id !== expectedId) ||
       familyCaptures[document.type] !==
@@ -807,20 +830,35 @@ function DocumentSession({
     if (companyId && canRead) void open(heldRequest.documentId, heldRequest);
   }, [heldRequest, registrationInFlight, protectedWorkActive]);
   useEffect(() => {
+    if (focusRequest === undefined || focusedRequest.current === focusRequest)
+      return;
+    if (
+      requestedDocument?.requestId !== focusRequest ||
+      requestedDocument.sourceSignal?.aborted
+    ) {
+      focusedRequest.current = focusRequest;
+      return;
+    }
+    // A fresh native mount can receive detail before its inventory. Its title
+    // is rendered only once that inventory is ready; retain this focus debt.
     if (
       !detail ||
-      focusRequest === undefined ||
-      focusedRequest.current === focusRequest
+      state.status !== 'ready' ||
+      detail.id !== requestedDocument.documentId
     )
       return;
     const frame = window.requestAnimationFrame(() => {
-      if (!detailHeading.current?.isConnected) return;
+      if (
+        !detailHeading.current?.isConnected ||
+        requestedDocument.sourceSignal?.aborted
+      )
+        return;
       focusedRequest.current = focusRequest;
       detailHeading.current.scrollIntoView?.({ block: 'start' });
       detailHeading.current.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [detail, focusRequest]);
+  }, [detail, focusRequest, state.status, requestedDocument]);
   async function open(id: string, intent?: RequestedDocument) {
     const source = intent?.sourceSignal;
     if (source?.aborted) return;
@@ -1275,6 +1313,15 @@ function DocumentSession({
           <p>{actor.activeCompany?.displayName}</p>
         </>
       )}
+      {onSelectPaymentEvidence && (
+        <button
+          type="button"
+          disabled={hostProtected}
+          onClick={() => onSelectPaymentEvidence()}
+        >
+          {paymentCopy('title')}
+        </button>
+      )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
         {detail?.type === 'external-invoice' ||
         (!detail && family === 'external-invoice')
@@ -1676,6 +1723,8 @@ function DocumentSession({
                             throw new Error(
                               'Missing external invoice registration origin',
                             );
+                          if (saved.type === 'payment-evidence')
+                            throw new Error('Unexpected Document family');
                           publishRegistration({ saved, origin });
                           void Promise.resolve()
                             .then(onActivityRecorded)
@@ -1721,6 +1770,8 @@ function DocumentSession({
                             throw new Error(
                               'Missing received registration origin',
                             );
+                          if (saved.type === 'payment-evidence')
+                            throw new Error('Unexpected Document family');
                           publishRegistration({ saved, origin });
                           void Promise.resolve()
                             .then(onActivityRecorded)

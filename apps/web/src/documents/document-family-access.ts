@@ -13,6 +13,8 @@ export function documentFamilyCaptureKey(
   family: DocumentFamily,
 ): string {
   switch (family) {
+    case 'payment-evidence':
+      return 'payment-evidence-explicit-operation-owner';
     case 'questionnaire':
       return 'questionnaire';
     case 'mission-deliverable':
@@ -40,6 +42,9 @@ export function hasDocumentFamilyAccess(
   family: DocumentFamily,
 ): boolean {
   switch (family) {
+    case 'payment-evidence':
+      // This family consumes the full Actor and separate operation keys at its source owner.
+      return false;
     case 'questionnaire':
       return true;
     case 'mission-deliverable':

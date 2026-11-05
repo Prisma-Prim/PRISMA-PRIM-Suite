@@ -13,6 +13,9 @@ export const completeActor = {
   activeCompany: {
     id: 'sample',
     displayName: 'sample',
+    paymentGrants: { version: 'future', arbitrary: null },
+    paymentEvidenceContextCapture: { version: 'future', arbitrary: null },
+    paymentEvidenceReferenceReadCapture: { version: 'future', arbitrary: null },
     missionPlanGrants: {
       version: 'future',
       arbitrary: null,

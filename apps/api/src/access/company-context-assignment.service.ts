@@ -1,4 +1,9 @@
 import {
+  COMPANY_PAYMENT_READER_BUNDLE,
+  COMPANY_PAYMENT_RECORDER_BUNDLE,
+  COMPANY_PAYMENT_CONFIRMER_BUNDLE,
+  COMPANY_PAYMENT_REVERSER_BUNDLE,
+  COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
   COMPANY_INVOICE_READER_BUNDLE,
   COMPANY_INVOICE_RECORDER_BUNDLE,
   COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
@@ -310,6 +315,26 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   permissionSetVersion: 'v1',
 };
+const PAYMENT_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_PAYMENT_READER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const PAYMENT_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_PAYMENT_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const PAYMENT_CONFIRMER_BUNDLE: BundleDefinition = {
+  value: COMPANY_PAYMENT_CONFIRMER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const PAYMENT_REVERSER_BUNDLE: BundleDefinition = {
+  value: COMPANY_PAYMENT_REVERSER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const PAYMENT_EVIDENCE_ACCESS_BUNDLE: BundleDefinition = {
+  value: COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
+  permissionSetVersion: 'v1',
+};
 const INVOICE_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_INVOICE_READER_BUNDLE,
   permissionSetVersion: 'v1',
@@ -327,6 +352,12 @@ const OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_PAYMENT_READER_BUNDLE,
+  COMPANY_PAYMENT_RECORDER_BUNDLE,
+  COMPANY_PAYMENT_CONFIRMER_BUNDLE,
+  COMPANY_PAYMENT_REVERSER_BUNDLE,
+  COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
+
   COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
   COMPANY_INVOICE_READER_BUNDLE,
   COMPANY_INVOICE_RECORDER_BUNDLE,
@@ -1926,6 +1957,136 @@ export class CompanyContextAssignmentService {
       key,
     );
   }
+  grantPaymentReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokePaymentReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_READER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantPaymentRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokePaymentRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_RECORDER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantPaymentConfirmer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_CONFIRMER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokePaymentConfirmer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_CONFIRMER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantPaymentReverser(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_REVERSER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokePaymentReverser(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_REVERSER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantPaymentEvidenceAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_EVIDENCE_ACCESS_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokePaymentEvidenceAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PAYMENT_EVIDENCE_ACCESS_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   grantInvoiceReader(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -2358,6 +2519,27 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_PAYMENT_READER_BUNDLE:
+      return granted
+        ? 'company_payment_reader_assignment.granted'
+        : 'company_payment_reader_assignment.revoked';
+    case COMPANY_PAYMENT_RECORDER_BUNDLE:
+      return granted
+        ? 'company_payment_recorder_assignment.granted'
+        : 'company_payment_recorder_assignment.revoked';
+    case COMPANY_PAYMENT_CONFIRMER_BUNDLE:
+      return granted
+        ? 'company_payment_confirmer_assignment.granted'
+        : 'company_payment_confirmer_assignment.revoked';
+    case COMPANY_PAYMENT_REVERSER_BUNDLE:
+      return granted
+        ? 'company_payment_reverser_assignment.granted'
+        : 'company_payment_reverser_assignment.revoked';
+    case COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE:
+      return granted
+        ? 'company_payment_evidence_access_assignment.granted'
+        : 'company_payment_evidence_access_assignment.revoked';
+
     case COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE:
       return granted
         ? 'company_opportunity_follow_up_coordinator_assignment.granted'

@@ -62,6 +62,11 @@ export class DocumentContentService {
           action: 'upload',
           lockAssignment: true,
         });
+      if (family === 'payment-evidence')
+        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
     });
     if (input.request.headers['content-type'] !== 'application/pdf')
       throw invalidPdf();
@@ -94,6 +99,11 @@ export class DocumentContentService {
       const visible = await this.boundary.requireVisible(actor, documentId);
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'content-read',
+          lockAssignment: false,
+        });
+      if (visible.document.type === 'payment-evidence')
+        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
           action: 'content-read',
           lockAssignment: false,
         });
@@ -166,6 +176,11 @@ export class DocumentContentService {
     const visible = await this.boundary.requireVisible(actor, documentId);
     if (visible.document.type === 'external-invoice')
       await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+        action: 'content-read',
+        lockAssignment: false,
+      });
+    if (visible.document.type === 'payment-evidence')
+      await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
         action: 'content-read',
         lockAssignment: false,
       });

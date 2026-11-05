@@ -1,3 +1,4 @@
+import type { PaymentEvidenceSourceView } from './payment-evidence.js';
 import type { ExternalInvoiceRelationView } from './external-invoice.js';
 import type { ReceivedContractRelationView } from './received-contract.js';
 
@@ -44,6 +45,11 @@ export type WorkingDocument =
             };
           }
         | {
+            type: 'payment-evidence';
+            version: WorkingVersionIdentity & { representation: null };
+            paymentEvidenceSource: PaymentEvidenceSourceView;
+          }
+        | {
             type: 'mission-deliverable';
             version: WorkingVersionIdentity & { representation: null };
           }
@@ -60,10 +66,18 @@ export type DocumentProjectAssociation =
   | { state: 'unlinked' };
 
 /** A single-Document response; lists never carry the association. */
-export type WorkingDocumentDetail = WorkingDocument & {
-  /** Present only for a current Project reader; absence never means unlinked. */
-  projectAssociation?: DocumentProjectAssociation;
-};
+export type WorkingDocumentDetail =
+  | (Extract<
+      WorkingDocument,
+      { type: 'external-invoice' | 'payment-evidence' }
+    > & { projectAssociation?: never })
+  | (Exclude<
+      WorkingDocument,
+      { type: 'external-invoice' | 'payment-evidence' }
+    > & {
+      /** Present only for a current Project reader; absence never means unlinked. */
+      projectAssociation?: DocumentProjectAssociation;
+    });
 
 interface DocumentFieldChange {
   before: string;

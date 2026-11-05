@@ -51,3 +51,5 @@ export * from './external-invoice-documents.js';
 export * from './opportunity-follow-up.js';
 
 export * from './invoice-record.js';
+
+export * from './payment-evidence-documents.js';

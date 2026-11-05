@@ -383,6 +383,62 @@ export class ClientOperationalReferenceService {
    * Resolves and locks one legal recipient through Client's identity and
    * relationship ownership. Offer receives only the fixed copy and fence data.
    */
+  async lockPaymentEvidencePayerWithinTransaction(input: {
+    actor: ActorContext;
+    originalClientAccountId: string;
+    payer: ClientLegalRecipientSelection;
+  }) {
+    const { actor, originalClientAccountId, payer } = input;
+    if (!actor.activeCompany?.clientPermissions.includes('client.read'))
+      throw new ForbiddenException();
+    await this.lockCompanyClientReadAuthority(
+      actor,
+      actor.activeCompany.id,
+      true,
+      true,
+    );
+    const client = await this.lockActiveReferenceClient(
+      actor,
+      originalClientAccountId,
+    );
+    const common = {
+      originalClientAccountId,
+      originalClientVersion: client.version,
+    };
+    if (payer.kind === 'PRIMARY')
+      return {
+        ...common,
+        party: {
+          kind: 'PRIMARY' as const,
+          legalName: client.displayName,
+          taxId: client.taxId,
+          legalAddress: client.address,
+        },
+      };
+    const [entity] = await this.databaseContext.connection
+      .select()
+      .from(clientLegalEntities)
+      .where(
+        and(
+          eq(clientLegalEntities.workspaceId, actor.workspaceId),
+          eq(clientLegalEntities.clientAccountId, originalClientAccountId),
+          eq(clientLegalEntities.id, payer.legalEntityId),
+        ),
+      )
+      .for('share');
+    if (!entity) throw new NotFoundException();
+    return {
+      ...common,
+      party: {
+        kind: 'ADDITIONAL' as const,
+        legalEntityId: entity.id,
+        legalName: entity.legalName,
+        taxId: entity.taxId,
+        legalAddress: entity.legalAddress,
+      },
+    };
+  }
+
   async lockOfferRecipient(
     actor: ActorContext,
     originalClientAccountId: string,

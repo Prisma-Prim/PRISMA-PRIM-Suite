@@ -70,6 +70,7 @@ export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
   | { documentType: 'mission-deliverable'; representation: null }
   | { documentType: 'received-contract'; representation: null }
   | { documentType: 'external-invoice'; representation: null }
+  | { documentType: 'payment-evidence'; representation: null }
 );
 
 type VersionCommandAction = typeof documentVersionCommands.$inferSelect.action;
@@ -111,6 +112,18 @@ export class DocumentVersionsService {
   ) {}
 
   private async canReadPdf(actor: ActorContext, type: DocumentRow['type']) {
+    if (type === 'payment-evidence') {
+      try {
+        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
+          action: 'content-read',
+          lockAssignment: false,
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof ForbiddenException) return false;
+        throw error;
+      }
+    }
     if (type !== 'external-invoice')
       return this.authorization.hasDocumentContentRead(actor);
     try {
@@ -499,6 +512,11 @@ export class DocumentVersionsService {
           action: 'upload',
           lockAssignment: true,
         });
+      if (visible.document.type === 'payment-evidence')
+        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
       if (recorded) return recorded;
       await this.clients.lockActiveReferenceClient(
         actor,
@@ -691,6 +709,16 @@ export class DocumentVersionsService {
         await this.requireVersionOf(scope, command.versionId);
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action:
+            command.action === 'representation_added'
+              ? 'upload'
+              : command.action === 'designated_official'
+                ? 'designate'
+                : 'version',
+          lockAssignment: true,
+        });
+      if (visible.document.type === 'payment-evidence')
+        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
           action:
             command.action === 'representation_added'
               ? 'upload'

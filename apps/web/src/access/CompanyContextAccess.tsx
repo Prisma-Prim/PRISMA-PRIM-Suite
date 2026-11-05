@@ -1,3 +1,4 @@
+import { usePaymentAssignmentCopy } from './payment-assignment.copy';
 import { useExternalInvoiceAssignmentCopy } from './external-invoice-assignment.copy';
 import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
@@ -50,6 +51,11 @@ import './access-administration.css';
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
   | 'opportunity-follow-up-coordinator'
+  | 'payment-reader'
+  | 'payment-recorder'
+  | 'payment-confirmer'
+  | 'payment-reverser'
+  | 'payment-evidence-access'
   | 'invoice-reader'
   | 'invoice-recorder'
   | 'external-invoice-access'
@@ -106,6 +112,11 @@ type AssignmentBundle =
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'opportunity-follow-up-coordinator':
     '/company-opportunity-follow-up-coordinator-assignments',
+  'payment-reader': '/company-payment-reader-assignments',
+  'payment-recorder': '/company-payment-recorder-assignments',
+  'payment-confirmer': '/company-payment-confirmer-assignments',
+  'payment-reverser': '/company-payment-reverser-assignments',
+  'payment-evidence-access': '/company-payment-evidence-access-assignments',
   'invoice-reader': '/company-invoice-reader-assignments',
   'invoice-recorder': '/company-invoice-recorder-assignments',
   'external-invoice-access': '/company-external-invoice-access-assignments',
@@ -200,6 +211,7 @@ export function CompanyContextAccess({
   const copy = useCompanyAssignmentCopy();
   const internalTaskCopy = useInternalTaskCopy();
   const externalInvoiceCopy = useExternalInvoiceAssignmentCopy();
+  const paymentCopy = usePaymentAssignmentCopy();
   const ideasCopy = useIdeasCopy();
   const missionPlanCopy = useMissionPlanCopy();
   const modelCopy = useOfferModelCopy();
@@ -711,6 +723,23 @@ export function CompanyContextAccess({
                 value: 'project-stage-advancer',
                 label: projectStageCopy('bundle'),
               },
+              { value: 'payment-reader', label: paymentCopy('readerBundle') },
+              {
+                value: 'payment-recorder',
+                label: paymentCopy('recorderBundle'),
+              },
+              {
+                value: 'payment-confirmer',
+                label: paymentCopy('confirmerBundle'),
+              },
+              {
+                value: 'payment-reverser',
+                label: paymentCopy('reverserBundle'),
+              },
+              {
+                value: 'payment-evidence-access',
+                label: paymentCopy('familyBundle'),
+              },
               {
                 value: 'invoice-reader',
                 label: externalInvoiceCopy('readerBundle'),
@@ -795,6 +824,11 @@ export function CompanyContextAccess({
               resetCommand();
               if (
                 value === 'opportunity-follow-up-coordinator' ||
+                value === 'payment-reader' ||
+                value === 'payment-recorder' ||
+                value === 'payment-confirmer' ||
+                value === 'payment-reverser' ||
+                value === 'payment-evidence-access' ||
                 value === 'invoice-reader' ||
                 value === 'invoice-recorder' ||
                 value === 'external-invoice-access' ||
@@ -862,6 +896,13 @@ export function CompanyContextAccess({
           )}
           {bundle === 'operational-risk-recorder' && (
             <p>{riskCopy('recorderPrerequisites')}</p>
+          )}
+          {(bundle === 'payment-reader' ||
+            bundle === 'payment-recorder' ||
+            bundle === 'payment-confirmer' ||
+            bundle === 'payment-reverser' ||
+            bundle === 'payment-evidence-access') && (
+            <p>{paymentCopy('prerequisites')}</p>
           )}
           {(bundle === 'invoice-reader' ||
             bundle === 'invoice-recorder' ||
@@ -1051,6 +1092,11 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
     'opportunity-follow-up-coordinator':
       'Company Opportunity Follow-up Coordinator',
+    'payment-reader': 'Company Payment Reader',
+    'payment-recorder': 'Company Payment Recorder',
+    'payment-confirmer': 'Company Payment Confirmer',
+    'payment-reverser': 'Company Payment Reverser',
+    'payment-evidence-access': 'Company Payment Evidence Access',
     'invoice-reader': 'Company Invoice Reader',
     'invoice-recorder': 'Company Invoice Recorder',
     'external-invoice-access': 'Company External Invoice Access',

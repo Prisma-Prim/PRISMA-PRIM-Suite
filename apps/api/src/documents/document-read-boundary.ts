@@ -87,6 +87,20 @@ export class DocumentReadBoundary {
     lockAssignment: boolean,
   ): Promise<void> {
     if (type === 'questionnaire') return;
+    if (type === 'payment-evidence') {
+      if (
+        !(await this.authorization.hasPaymentEvidenceAccess(actor, {
+          manage: lockAssignment,
+          lockAssignment,
+        }))
+      )
+        throw new NotFoundException();
+      await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
+        action: 'read',
+        lockAssignment,
+      });
+      return;
+    }
     if (type === 'external-invoice') {
       if (
         !(await this.authorization.hasExternalInvoiceAccess(actor, {

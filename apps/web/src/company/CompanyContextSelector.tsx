@@ -7,10 +7,12 @@ export function CompanyContextSelector({
   actor,
   state,
   onSelect,
+  disabled = false,
 }: {
   actor: ActorContext;
   state: CompanyContextState;
   onSelect: (companyId: string) => Promise<void>;
+  disabled?: boolean;
 }) {
   const copy = useCompanyContextCopy();
   return (
@@ -56,7 +58,7 @@ export function CompanyContextSelector({
             id="active-company-context"
             title={actor.activeCompany?.displayName ?? copy.chooseCompany}
             value={actor.activeCompany?.id ?? ''}
-            disabled={state.selection.status === 'pending'}
+            disabled={disabled || state.selection.status === 'pending'}
             placeholder={copy.chooseCompany}
             options={state.companies.map((company) => ({
               value: company.id,

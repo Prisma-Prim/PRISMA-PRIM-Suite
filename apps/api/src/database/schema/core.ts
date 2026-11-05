@@ -42,6 +42,11 @@ export const workspacePermission = pgEnum('workspace_permission', [
 
 export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_opportunity_follow_up_coordinator',
+  'company_payment_reader',
+  'company_payment_recorder',
+  'company_payment_confirmer',
+  'company_payment_reverser',
+  'company_payment_evidence_access',
   'company_invoice_reader',
   'company_invoice_recorder',
   'company_external_invoice_access',
@@ -747,6 +752,16 @@ export const clientAccountCorrectionCommands = pgTable(
 export const activityLogAction = pgEnum('activity_log_action', [
   'company_opportunity_follow_up_coordinator_assignment.granted',
   'company_opportunity_follow_up_coordinator_assignment.revoked',
+  'company_payment_reader_assignment.granted',
+  'company_payment_reader_assignment.revoked',
+  'company_payment_recorder_assignment.granted',
+  'company_payment_recorder_assignment.revoked',
+  'company_payment_confirmer_assignment.granted',
+  'company_payment_confirmer_assignment.revoked',
+  'company_payment_reverser_assignment.granted',
+  'company_payment_reverser_assignment.revoked',
+  'company_payment_evidence_access_assignment.granted',
+  'company_payment_evidence_access_assignment.revoked',
   'company_invoice_reader_assignment.granted',
   'company_invoice_reader_assignment.revoked',
   'company_invoice_recorder_assignment.granted',
@@ -950,6 +965,11 @@ export const activityLogEvents = pgTable(
               | 'Company Profitability Director'
               | 'Company Knowledge Source Administrator'
               | 'Company Knowledge Evidence Reader'
+              | 'Company Payment Reader'
+              | 'Company Payment Recorder'
+              | 'Company Payment Confirmer'
+              | 'Company Payment Reverser'
+              | 'Company Payment Evidence Access'
               | 'Company Invoice Reader'
               | 'Company Invoice Recorder'
               | 'Company External Invoice Access'

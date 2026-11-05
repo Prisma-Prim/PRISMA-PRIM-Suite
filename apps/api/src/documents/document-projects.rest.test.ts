@@ -1,3 +1,4 @@
+import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import {
   receivedContractRelationsForTest,
   externalInvoiceRelationsForTest,
@@ -985,6 +986,7 @@ describe.skipIf(!databaseUrl)(
           clients,
           accountability,
         }),
+        new PaymentEvidenceSourcesService(context, authorization, clients),
       );
       return {
         documents,

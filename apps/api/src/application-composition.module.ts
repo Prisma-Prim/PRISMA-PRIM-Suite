@@ -1,3 +1,8 @@
+import { CompanyPaymentReaderAssignmentController } from './access/company-payment-reader-assignment.controller.js';
+import { CompanyPaymentRecorderAssignmentController } from './access/company-payment-recorder-assignment.controller.js';
+import { CompanyPaymentConfirmerAssignmentController } from './access/company-payment-confirmer-assignment.controller.js';
+import { CompanyPaymentReverserAssignmentController } from './access/company-payment-reverser-assignment.controller.js';
+import { CompanyPaymentEvidenceAccessAssignmentController } from './access/company-payment-evidence-access-assignment.controller.js';
 import { InvoiceRecordModule } from './invoice-record/invoice-record.module.js';
 import { InvoiceRecordController } from './invoice-record/invoice-record.controller.js';
 import { OpportunityFollowUpModule } from './opportunity-follow-up/opportunity-follow-up.module.js';
@@ -204,6 +209,11 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
   ],
   controllers: [
     InvoiceRecordController,
+    CompanyPaymentReaderAssignmentController,
+    CompanyPaymentRecorderAssignmentController,
+    CompanyPaymentConfirmerAssignmentController,
+    CompanyPaymentReverserAssignmentController,
+    CompanyPaymentEvidenceAccessAssignmentController,
     CompanyInvoiceReaderAssignmentController,
     CompanyInvoiceRecorderAssignmentController,
     CompanyExternalInvoiceAccessAssignmentController,

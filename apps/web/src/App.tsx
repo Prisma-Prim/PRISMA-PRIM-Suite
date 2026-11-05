@@ -1,3 +1,4 @@
+import { DocumentsSection } from './documents/DocumentsSection';
 import { InvoiceRecordsWorkspace } from './invoice-record/InvoiceRecordsWorkspace';
 import { useInvoiceRecordCopy } from './invoice-record/invoice-record-copy';
 import {
@@ -55,7 +56,6 @@ import {
 } from './production-shell/ApplicationShell';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  DocumentWorkspace,
   type DocumentOpenTarget,
   type RequestedDocument,
 } from './documents/DocumentWorkspace';
@@ -109,6 +109,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     navigationContext: string;
     clientDossierId: string;
     displayName: string;
+    requestId: number;
   }>();
   const [requestClientFilter, setRequestClientFilter] = useState<{
     navigationContext: string;
@@ -165,6 +166,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   }, [retireMultiCompanyNavigation]);
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
+  const sourceNavigationProtected = useRef(false);
+  const sourceScope = useRef('inactive');
+  const sourceIdentity = useRef({ identity, generation: 0 });
+  if (sourceIdentity.current.identity !== identity)
+    sourceIdentity.current = {
+      identity,
+      generation: sourceIdentity.current.generation + 1,
+    };
+  const [sourceProtection, setSourceProtection] = useState<{
+    scope: string;
+    active: boolean;
+  }>();
   const sectionNavigation = useRef({
     requestId: 0,
     context: 'inactive',
@@ -188,6 +201,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         | 'overview',
       sourceSignal?: AbortSignal,
     ) => {
+      if (sourceNavigationProtected.current && section !== 'documents') return;
       retireMultiCompanyNavigation();
       const requestId = ++sectionNavigation.current.requestId;
       const nextUrl = new URL(window.location.href);
@@ -227,8 +241,35 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     includeCompany,
     refreshActivityLog,
   } = useProductionShellContext(identity);
+  const protectedSourceScope =
+    access.status === 'active'
+      ? JSON.stringify([
+          access.sessionGeneration,
+          companySelectionGeneration,
+          access.actor.workspaceId,
+          access.actor.workspaceMembershipId,
+          access.actor.activeCompany?.id,
+          sourceIdentity.current.generation,
+        ])
+      : 'inactive';
+  sourceScope.current = protectedSourceScope;
+  const sourceProtected =
+    sourceProtection?.scope === protectedSourceScope && sourceProtection.active;
+  sourceNavigationProtected.current = sourceProtected;
+  const reportProtectedSource = useCallback(
+    (active: boolean) =>
+      setSourceProtection((current) => {
+        if (sourceScope.current !== protectedSourceScope) return current;
+        return current?.scope === protectedSourceScope &&
+          current.active === active
+          ? current
+          : { scope: protectedSourceScope, active };
+      }),
+    [protectedSourceScope],
+  );
   const selectCompany = useCallback(
     async (companyId: string) => {
+      if (sourceNavigationProtected.current) return;
       retireMultiCompanyNavigation();
       await selectOrdinaryCompany(companyId);
     },
@@ -815,8 +856,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       id: 'documents',
       ...prismeCopy.sections.documents,
       content: (
-        <DocumentWorkspace
-          key={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+        <DocumentsSection
+          key={`documents:${access.sessionGeneration}:${access.actor.activeCompany.id}`}
+          legacyKey={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
           actor={access.actor}
           identity={identity}
           onActivityRecorded={refreshActivityLog}
@@ -828,6 +870,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
           requestedDocument={currentRequestedDocument}
+          onProtectedSourceWorkChange={reportProtectedSource}
           onOpenProject={
             openProject && ((projectId) => openProject({ projectId }))
           }
@@ -907,10 +950,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenDocuments={
             canReadDocuments && activeCompanyId
               ? (client) => {
+                  documentRequests.current += 1;
                   setDocumentClientFilter({
                     navigationContext,
                     clientDossierId: client.id,
                     displayName: client.displayName,
+                    requestId: documentRequests.current,
                   });
                   navigateToSection('documents');
                 }
@@ -1150,11 +1195,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       }}
       sections={sections}
       onNavigate={retireMultiCompanyNavigation}
+      navigationProtected={sourceProtected}
       companyContext={
         <CompanyContextSelector
           actor={access.actor}
           state={access.companyContext}
           onSelect={selectCompany}
+          disabled={sourceProtected}
         />
       }
       userArea={

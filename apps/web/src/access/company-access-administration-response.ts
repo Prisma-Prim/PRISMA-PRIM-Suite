@@ -2,6 +2,11 @@
 // An unlisted label or version fails closed; the screen never infers one.
 const CAPTURED_VERSIONS = {
   'Company Opportunity Follow-up Coordinator': ['v1'],
+  'Company Payment Reader': ['v1'],
+  'Company Payment Recorder': ['v1'],
+  'Company Payment Confirmer': ['v1'],
+  'Company Payment Reverser': ['v1'],
+  'Company Payment Evidence Access': ['v1'],
   'Company Invoice Reader': ['v1'],
   'Company Invoice Recorder': ['v1'],
   'Company External Invoice Access': ['v1'],
