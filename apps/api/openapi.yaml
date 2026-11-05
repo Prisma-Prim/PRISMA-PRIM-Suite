@@ -4092,6 +4092,74 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ProjectLifecycleConflict'
                   - $ref: '#/components/schemas/GenericConflict'
+  /api/offers/opportunities/{opportunityId}/versions/{versionId}/message-preparation:
+    get:
+      operationId: readOfferMessagePreparation
+      summary: Revalidate one exact Offer source for transient manual message preparation
+      description: >-
+        Requires the active Company context and the existing supported captured
+        Opportunity and Offer read assignments. Access binds the exact consumed
+        context, Intake and Offer assignment identities in one consistent native
+        source observation. This read-derived convenience grants no sending,
+        approval, Contact, model, economic or new Client permission. Only the
+        Company-model Romanian rehearsal and unadjusted illustrative Template-v1
+        English Offer PDF tuples are supported, including a readable historical
+        Version; the current head is never substituted. The sole query is the
+        lowercase SHA-256 of the selected frozen HTML. There is no request body
+        or message content. The private no-store response includes no HTML and
+        creates no Draft, receipt, event, revision, transmission or PDF. Clipboard
+        use and native exact PDF download remain separate deliberate actions.
+      tags:
+        - Offer
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: opportunityId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: versionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: sourceHtmlSha256
+          required: true
+          description: The exact selected source digest; repeated or unknown query keys are refused.
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{64}$'
+      responses:
+        '200':
+          description: The currently authorized exact source and consumed read capture.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: 'private, no-store'
+            X-Content-Type-Options:
+              schema:
+                type: string
+                const: nosniff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferMessagePreparation'
+        '400':
+          description: PDF_REQUEST_INVALID for malformed identifiers or missing, repeated, malformed or unknown query fields.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The live Company context or a required consumed native read assignment is unavailable or changed.
+        '404':
+          description: The exact Opportunity or Offer Version is unknown or not visible under its native read boundary.
+        '409':
+          description: PDF_SOURCE_MISMATCH; deliberately reload the exact selected source without substituting the current head.
+        '422':
+          description: PDF_SOURCE_UNSUPPORTED; existing native Offer consultation remains independent.
   /api/offers/opportunities/{opportunityId}:
     get:
       operationId: readOpportunityOffer
@@ -6783,6 +6851,116 @@ components:
             - not:
                 required:
                   - reason
+    OfferMessagePreparation:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - readCapture
+        - source
+        - party
+        - actor
+      properties:
+        format:
+          type: string
+          const: offer-message-preparation.v1
+        readCapture:
+          type: string
+          pattern: '^offer-message-read\.v1\.[0-9a-f]{64}$'
+          description: Opaque observation identity, never bearer authority; compare with the live consumed owner before any explicit copy.
+        source:
+          $ref: '#/components/schemas/OfferMessagePreparationSource'
+        party:
+          $ref: '#/components/schemas/OfferRecipientCopy'
+        actor:
+          type: object
+          additionalProperties: false
+          required:
+            - workspaceMembershipId
+            - displayName
+          properties:
+            workspaceMembershipId:
+              type: string
+              format: uuid
+            displayName:
+              type: string
+              minLength: 1
+    OfferMessagePreparationSource:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - workspaceId
+        - companyId
+        - opportunityId
+        - rootId
+        - reference
+        - versionId
+        - versionNumber
+        - createdAt
+        - sourceRendererVersion
+        - sourceHtmlSha256
+        - provenance
+        - language
+        - sourceRendererCode
+      properties:
+        kind:
+          type: string
+          const: offer
+        workspaceId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        opportunityId:
+          type: string
+          format: uuid
+        rootId:
+          type: string
+          format: uuid
+        reference:
+          type: integer
+          minimum: 1
+        versionId:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        sourceRendererVersion:
+          type: integer
+          const: 1
+        sourceHtmlSha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        provenance:
+          type: string
+          enum: [COMPANY_MODEL_ESTIMATE, ILLUSTRATIVE]
+        language:
+          type: string
+          enum: [ro, en]
+        sourceRendererCode:
+          type: string
+          enum: [OFFER_COMPANY_CONSULTING_RO, OFFER_ILLUSTRATIVE]
+      oneOf:
+        - properties:
+            provenance:
+              const: COMPANY_MODEL_ESTIMATE
+            language:
+              const: ro
+            sourceRendererCode:
+              const: OFFER_COMPANY_CONSULTING_RO
+        - properties:
+            provenance:
+              const: ILLUSTRATIVE
+            language:
+              const: en
+            sourceRendererCode:
+              const: OFFER_ILLUSTRATIVE
     OfferRecipientCopy:
       oneOf:
         - $ref: '#/components/schemas/OfferPrimaryRecipientCopy'
@@ -10760,6 +10938,10 @@ components:
           type: string
           pattern: '^opportunity-follow-up-read\.v1\.[0-9a-f]{64}$'
           description: Opaque consumed live read authority identity. Context and native captured rights remain independent; replacement invalidates older owners.
+        offerMessageReadCapture:
+          type: string
+          pattern: '^offer-message-read\.v1\.[0-9a-f]{64}$'
+          description: Optional opaque consumed Company-context, Intake and Offer read observation. It grants no new permission and only its feature consumer interprets the supported format.
         invoiceRecordReadCapture:
           type: string
           pattern: '^invoice-record-read\.v1\.[0-9a-f]{64}$'

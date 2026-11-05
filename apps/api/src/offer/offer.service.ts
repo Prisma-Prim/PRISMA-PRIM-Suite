@@ -1,3 +1,8 @@
+import {
+  readPdfQuery,
+  requirePdfIds,
+} from '../commercial-pdf/commercial-pdf-read.js';
+import { offerPdfSource } from './offer-pdf-source.js';
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ConflictException,
@@ -1151,57 +1156,132 @@ export class OfferService {
         ['commercial.offer.read'],
         true,
       );
-      const opportunity = await this.intake.requireReadableOfferOpportunity(
+      return this.readInTransaction(
         actor,
+        companyId,
         opportunityId,
-        false,
-      );
-      const offer = await this.findOffer(
-        actor.workspaceId,
-        companyId,
-        opportunity.id,
-      );
-      if (!offer) return null;
-      const stored = await this.requireOfferById(
-        actor,
-        companyId,
-        offer.id,
         offerVersionId,
       );
-      if (stored.version.provenance === 'COMPANY_MODEL_ESTIMATE') {
-        const prepared = await this.modelViews.readPrepared({
-          actor,
-          ...stored,
-          revision: stored.offer.revision,
-        });
-        const clientReference = await this.intake.readPricingClientProjection(
-          actor,
-          stored.offer.originalClientAccountId,
-        );
-        return {
-          ...prepared,
-          ...(clientReference ? { clientReference } : {}),
-          version: {
-            ...prepared.version,
-            supersededByVersionId: stored.version.supersededByVersionId,
-            supersededAt: stored.version.supersededAt?.toISOString() ?? null,
-            ...(await this.workflowFacts(actor, stored.offer, stored.version)),
-          },
-        };
-      }
-      if (stored.version.provenance === INTERNAL_ESTIMATE_OFFER_PROVENANCE)
-        return this.estimateViews.read({
-          actor,
-          offer: stored.offer,
-          version: stored.version,
-        });
-      const snapshot = await this.pricing.resolveOfferVersionSnapshot({
+    });
+  }
+
+  /** Native read participant: the caller owns the consistent transaction and locks. */
+  private async readInTransaction(
+    actor: ActorContext,
+    companyId: string,
+    opportunityId: string,
+    offerVersionId?: string,
+  ): Promise<OfferReadRecord | null> {
+    const opportunity = await this.intake.requireReadableOfferOpportunity(
+      actor,
+      opportunityId,
+      false,
+    );
+    const offer = await this.findOffer(
+      actor.workspaceId,
+      companyId,
+      opportunity.id,
+    );
+    if (!offer) return null;
+    const stored = await this.requireOfferById(
+      actor,
+      companyId,
+      offer.id,
+      offerVersionId,
+    );
+    if (stored.version.provenance === 'COMPANY_MODEL_ESTIMATE') {
+      const prepared = await this.modelViews.readPrepared({
         actor,
-        companyId,
-        opportunityId: opportunity.id,
-        offerVersionId: stored.version.id,
+        ...stored,
+        revision: stored.offer.revision,
       });
-      return this.offerView(actor, stored.offer, stored.version, snapshot);
+      const clientReference = await this.intake.readPricingClientProjection(
+        actor,
+        stored.offer.originalClientAccountId,
+      );
+      return {
+        ...prepared,
+        ...(clientReference ? { clientReference } : {}),
+        version: {
+          ...prepared.version,
+          supersededByVersionId: stored.version.supersededByVersionId,
+          supersededAt: stored.version.supersededAt?.toISOString() ?? null,
+          ...(await this.workflowFacts(actor, stored.offer, stored.version)),
+        },
+      };
+    }
+    if (stored.version.provenance === INTERNAL_ESTIMATE_OFFER_PROVENANCE)
+      return this.estimateViews.read({
+        actor,
+        offer: stored.offer,
+        version: stored.version,
+      });
+    const snapshot = await this.pricing.resolveOfferVersionSnapshot({
+      actor,
+      companyId,
+      opportunityId: opportunity.id,
+      offerVersionId: stored.version.id,
+    });
+    return this.offerView(actor, stored.offer, stored.version, snapshot);
+  }
+
+  async readMessagePreparation(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    versionId: string;
+    query: unknown;
+  }) {
+    requirePdfIds(input.opportunityId, input.versionId);
+    const expected = readPdfQuery(input.query);
+    return this.readConsistently(async () => {
+      const companyId = await this.authorization.requireOfferAccess(
+        input.actor,
+        ['commercial.offer.read'],
+        true,
+      );
+      // Consume and lock Access-owned identities before observing the source.
+      const observation =
+        await this.authorization.requireOfferMessageReadObservation(
+          input.actor,
+          { lock: true },
+        );
+      const readSource = async () => {
+        const offer = await this.readInTransaction(
+          input.actor,
+          companyId,
+          input.opportunityId,
+          input.versionId,
+        );
+        if (!offer) throw new NotFoundException();
+        const { html, ...source } = offerPdfSource(input.actor, offer);
+        void html;
+        if (source.sourceHtmlSha256 !== expected)
+          throw new ConflictException({ code: 'PDF_SOURCE_MISMATCH' });
+        return { source, party: offer.version.recipient };
+      };
+      const selected = await readSource();
+      // Final native source and capture fence shares the same locked snapshot.
+      await this.authorization.requireOfferAccess(
+        input.actor,
+        ['commercial.offer.read'],
+        true,
+      );
+      const current =
+        await this.authorization.requireOfferMessageReadObservation(
+          input.actor,
+          { lock: true },
+        );
+      if (
+        JSON.stringify(current) !== JSON.stringify(observation) ||
+        JSON.stringify(await readSource()) !== JSON.stringify(selected)
+      )
+        throw new ConflictException({ code: 'PDF_SOURCE_MISMATCH' });
+      return {
+        format: 'offer-message-preparation.v1',
+        readCapture: observation.readCapture,
+        ...selected,
+        actor: observation.actor,
+      };
     });
   }
 

@@ -60,6 +60,7 @@ export interface ActiveCompanyContext
   knowledgeGrants?: KnowledgeCapturedGrant[];
   externalInvoiceGrants?: ExternalInvoiceCapturedGrant[];
   invoiceRecordReadCapture?: string;
+  offerMessageReadCapture?: string;
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];

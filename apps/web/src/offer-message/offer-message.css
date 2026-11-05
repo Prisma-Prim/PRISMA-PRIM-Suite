@@ -1,0 +1,66 @@
+.offer-message-preparation {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+  overflow-wrap: anywhere;
+}
+.offer-message-heading,
+.offer-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.offer-message-heading {
+  justify-content: space-between;
+}
+.offer-message-heading h4,
+.offer-message-preparation p {
+  margin: 0;
+}
+.offer-message-source,
+.offer-message-field {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.offer-message-source code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.offer-message-field label {
+  font-weight: 600;
+}
+.offer-message-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.65rem;
+  font: inherit;
+  color: inherit;
+  background: var(--shell-surface);
+  border: 1px solid var(--shell-line);
+  border-radius: 0.35rem;
+  resize: vertical;
+}
+.offer-message-field button {
+  justify-self: start;
+}
+.offer-message-preparation button {
+  max-width: 100%;
+  min-height: 2.75rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.offer-message-preparation :is(button, textarea):focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 3px;
+}
+.offer-message-retired {
+  overflow-wrap: anywhere;
+}

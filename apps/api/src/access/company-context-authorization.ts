@@ -1,3 +1,4 @@
+import { readOfferMessageReadCapture } from './offer-message-read-capture.js';
 import { createHash } from 'node:crypto';
 import {
   captureExternalInvoiceGrant,
@@ -164,6 +165,27 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async requireOfferMessageReadObservation(
+    actor: ActorContext,
+    options: { lock: boolean },
+  ) {
+    const company = actor.activeCompany;
+    if (!company || !company.offerMessageReadCapture)
+      throw new ForbiddenException();
+    const observation = await readOfferMessageReadCapture({
+      database: this.databaseContext,
+      actor,
+      companyId: company.id,
+      lock: options.lock,
+    });
+    if (
+      !observation ||
+      observation.readCapture !== company.offerMessageReadCapture
+    )
+      throw new ForbiddenException();
+    return observation;
+  }
 
   /** Copied records and withdrawal deliberately consume only financial authority. */
   async requireInvoiceRecordAccess(
@@ -2741,6 +2763,21 @@ export class CompanyContextAuthorization {
         independentlyAuthorizedCompanies.has(company.id),
     );
     for (const company of authorizedCompanies) {
+      if (
+        company.offerPermissions?.includes('commercial.offer.read') &&
+        COMMERCIAL_INTAKE_READ_PERMISSIONS.every((permission) =>
+          company.commercialIntakePermissions?.includes(permission),
+        )
+      ) {
+        const observation = await readOfferMessageReadCapture({
+          database: this.databaseContext,
+          actor,
+          companyId: company.id,
+          lock: false,
+        });
+        if (observation)
+          company.offerMessageReadCapture = observation.readCapture;
+      }
       const invoiceGrant = invoiceFinanceCapturedGrant(
         company.externalInvoiceGrants,
         false,

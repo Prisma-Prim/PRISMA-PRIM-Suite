@@ -1,4 +1,9 @@
 import {
+  supportedOfferMessageTarget,
+  useOfferMessageCopy,
+  type OfferMessageTarget,
+} from '../offer-message/offer-message-preparation';
+import {
   CommercialPdfSelection,
   type CommercialPdfCallbacks,
 } from '../commercial-pdf/CommercialPdfDownload';
@@ -127,6 +132,8 @@ function OfferPanelOwner({
   opportunityId,
   requestedVersionId,
   pdf,
+  onPrepareMessage,
+  onMessageNavigate,
   expectedOfferId,
   onProtectedWorkChange,
   currentClientId,
@@ -144,6 +151,8 @@ function OfferPanelOwner({
    */
   requestedVersionId?: string;
   pdf?: CommercialPdfCallbacks;
+  onPrepareMessage?: (source: OfferMessageTarget) => void;
+  onMessageNavigate?: () => void;
   /** Optional identity guard for an exact record selected by discovery. */
   expectedOfferId?: string;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
@@ -154,6 +163,7 @@ function OfferPanelOwner({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useOfferPreparationCopy();
+  const messageCopy = useOfferMessageCopy();
   const estimateCopy = useEstimateOfferCopy();
   const modelCopy = useModelOfferCopy();
   const offerVersionCopy = useOfferVersionCopy();
@@ -516,6 +526,10 @@ function OfferPanelOwner({
     }
   }
 
+  const messageTarget =
+    view.kind === 'offer' && !estimateOpen
+      ? supportedOfferMessageTarget({ actor, opportunityId, offer: view.offer })
+      : null;
   return (
     <section className="offer-panel" aria-labelledby="offer-title">
       <CommercialPdfSelection
@@ -757,6 +771,15 @@ function OfferPanelOwner({
           aria-labelledby="offer-title"
         >
           <OfferSummary offer={view.offer} pdfAction={pdf?.action} />
+          {onPrepareMessage && messageTarget && (
+            <button
+              type="button"
+              disabled={pending || workflowCommand !== null}
+              onClick={() => onPrepareMessage(messageTarget)}
+            >
+              {messageCopy('prepare')}
+            </button>
+          )}
           {!isIllustrativeOffer(view.offer) && (
             <OfferEstimateSource
               actor={actor}
@@ -778,7 +801,10 @@ function OfferPanelOwner({
                 opportunityId={opportunityId}
                 offer={view.offer}
                 reject={reject}
-                onNavigate={pdf?.navigate}
+                onNavigate={() => {
+                  pdf?.navigate();
+                  onMessageNavigate?.();
+                }}
                 onSelect={(offer) => {
                   if (
                     estimateOpenRef.current ||
