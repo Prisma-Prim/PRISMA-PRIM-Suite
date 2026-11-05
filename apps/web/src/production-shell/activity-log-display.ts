@@ -1,3 +1,4 @@
+import { usePaymentAssignmentCopy } from '../access/payment-assignment.copy';
 import { useFollowUpCopy } from '../opportunity-follow-up/follow-up.copy';
 import { useExternalInvoiceAssignmentCopy } from '../access/external-invoice-assignment.copy';
 import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
@@ -50,6 +51,7 @@ export function useActivityLogDisplay() {
   const internalTask = useInternalTaskCopy();
   const knowledgeAssignments = useKnowledgeAssignmentActivityCopy();
   const externalInvoiceAssignments = useExternalInvoiceAssignmentCopy();
+  const paymentAssignments = usePaymentAssignmentCopy();
   const ideas = useIdeasCopy();
   const missionPlan = useMissionPlanCopy();
   const model = useOfferModelCopy();
@@ -89,6 +91,26 @@ export function useActivityLogDisplay() {
       followUp('granted'),
     'company_opportunity_follow_up_coordinator_assignment.revoked':
       followUp('revoked'),
+    'company_payment_reader_assignment.granted':
+      paymentAssignments('readerGranted'),
+    'company_payment_reader_assignment.revoked':
+      paymentAssignments('readerRevoked'),
+    'company_payment_recorder_assignment.granted':
+      paymentAssignments('recorderGranted'),
+    'company_payment_recorder_assignment.revoked':
+      paymentAssignments('recorderRevoked'),
+    'company_payment_confirmer_assignment.granted':
+      paymentAssignments('confirmerGranted'),
+    'company_payment_confirmer_assignment.revoked':
+      paymentAssignments('confirmerRevoked'),
+    'company_payment_reverser_assignment.granted':
+      paymentAssignments('reverserGranted'),
+    'company_payment_reverser_assignment.revoked':
+      paymentAssignments('reverserRevoked'),
+    'company_payment_evidence_access_assignment.granted':
+      paymentAssignments('familyGranted'),
+    'company_payment_evidence_access_assignment.revoked':
+      paymentAssignments('familyRevoked'),
     'company_invoice_reader_assignment.granted':
       externalInvoiceAssignments('readerGranted'),
     'company_invoice_reader_assignment.revoked':

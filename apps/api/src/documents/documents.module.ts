@@ -1,3 +1,4 @@
+import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import { DocumentInvoiceRecordSource } from './document-invoice-record-source.js';
 import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
 import { ProjectPdfBundleService } from './project-pdf-bundle.service.js';
@@ -28,6 +29,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     AccountabilityModule,
   ],
   providers: [
+    PaymentEvidenceSourcesService,
     DocumentInvoiceRecordSource,
     ProjectPdfBundleService,
     ReceivedContractRelationsService,

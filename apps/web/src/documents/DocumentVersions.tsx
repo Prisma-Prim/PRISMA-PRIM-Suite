@@ -1,3 +1,5 @@
+import { PaymentEvidenceVersions } from '../payment-evidence/PaymentEvidenceVersions';
+import type { PaymentEvidenceOperationKeys } from '../payment-evidence/payment-evidence-authority';
 import {
   hasExternalInvoiceAccess,
   hasExternalInvoiceNativeRead,
@@ -113,9 +115,12 @@ export function DocumentVersions({
   identity,
   documentId,
   documentType = 'questionnaire',
+  operationKeys,
   workingRevision,
   onRefresh,
   onProtectedWorkChange,
+  paymentEvidenceReadable = true,
+  paymentEvidenceRecoveryGeneration = 0,
   onCompanyContextRejected = () => undefined,
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
@@ -124,6 +129,11 @@ export function DocumentVersions({
   identity: BrowserIdentity;
   documentId: string;
   documentType?: DocumentFamily;
+  operationKeys?: PaymentEvidenceOperationKeys;
+  /** Source read projection availability never owns an existing write envelope. */
+  paymentEvidenceReadable?: boolean;
+  /** A successful deliberate Source reload, never a command lifetime/key. */
+  paymentEvidenceRecoveryGeneration?: number;
   /** The open Document's revision; a newer one reloads the Versions. */
   workingRevision: number;
   /** Re-reads the open Document and its list after a confirmed or stale command. */
@@ -131,6 +141,26 @@ export function DocumentVersions({
   /** Navigation observes protection, never the command, payload or retry key. */
   onProtectedWorkChange?: (protectedWork: boolean) => void;
 } & Partial<AccessRejection>) {
+  if (documentType === 'payment-evidence') {
+    if (!operationKeys) return null;
+    return (
+      <PaymentEvidenceVersions
+        actor={actor}
+        identity={identity}
+        documentId={documentId}
+        documentType={documentType}
+        workingRevision={workingRevision}
+        operationKeys={operationKeys}
+        metadataReadable={paymentEvidenceReadable}
+        recoveryGeneration={paymentEvidenceRecoveryGeneration}
+        onRefresh={onRefresh}
+        onProtectedWorkChange={onProtectedWorkChange}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
+    );
+  }
   const company = actor.activeCompany;
   const permissions = company?.documentPermissions ?? [];
   if (

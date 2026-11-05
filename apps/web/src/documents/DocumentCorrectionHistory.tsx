@@ -1,3 +1,7 @@
+import {
+  paymentEvidenceAuthority,
+  type PaymentEvidenceOperationKeys,
+} from '../payment-evidence/payment-evidence-authority';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -37,18 +41,26 @@ export function DocumentCorrectionHistory({
   documentId,
   documentType = 'questionnaire',
   workingRevision,
+  operationKeys,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   documentId: string;
   documentType?: DocumentFamily;
+  operationKeys?: PaymentEvidenceOperationKeys;
   /** The open Document's revision; a newer one reloads an open first page. */
   workingRevision: number;
 }) {
   const company = actor.activeCompany;
+  const paymentRead =
+    documentType === 'payment-evidence'
+      ? paymentEvidenceAuthority(actor)?.readKey
+      : undefined;
   if (
     !company?.documentPermissions?.includes('document.read') ||
-    !hasDocumentFamilyAccess(company, documentType)
+    (documentType === 'payment-evidence'
+      ? !operationKeys || operationKeys.readKey !== paymentRead
+      : !hasDocumentFamilyAccess(company, documentType))
   )
     return null;
   const canReadReference = company.documentPermissions.includes(
@@ -61,7 +73,9 @@ export function DocumentCorrectionHistory({
         actor.workspaceMembershipId,
         company.id,
         documentId,
-        documentFamilyCaptureKey(company, documentType),
+        documentType === 'payment-evidence'
+          ? operationKeys?.readKey
+          : documentFamilyCaptureKey(company, documentType),
         canReadReference,
       ])}
       identity={identity}

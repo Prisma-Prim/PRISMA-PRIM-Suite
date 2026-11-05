@@ -1,3 +1,4 @@
+import type { PaymentCapturedGrant } from './payment-captured-grants.js';
 import type { ExternalInvoiceCapturedGrant } from './external-invoice-captured-grants.js';
 import type { KnowledgeCapturedGrant } from './knowledge-captured-grants.js';
 import type { MissionPlanActorProjection } from './mission-plan-captured-grants.js';
@@ -59,6 +60,9 @@ export interface ActiveCompanyContext
     MissionPlanActorProjection {
   knowledgeGrants?: KnowledgeCapturedGrant[];
   externalInvoiceGrants?: ExternalInvoiceCapturedGrant[];
+  paymentGrants?: PaymentCapturedGrant[];
+  paymentEvidenceContextCapture?: string;
+  paymentEvidenceReferenceReadCapture?: string;
   invoiceRecordReadCapture?: string;
   offerMessageReadCapture?: string;
   id: string;

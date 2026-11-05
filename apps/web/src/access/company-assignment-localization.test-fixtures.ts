@@ -473,6 +473,61 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'payment-reader',
+    canonical: 'Company Payment Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Cititor de plăți al companiei',
+      ru: 'Чтение платежей Компании',
+      fr: 'Lecteur des paiements de la société',
+      en: 'Company Payment Reader',
+    },
+  },
+  {
+    value: 'payment-recorder',
+    canonical: 'Company Payment Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Responsabil cu înregistrarea plăților companiei',
+      ru: 'Регистрация платежей Компании',
+      fr: 'Responsable de la saisie des paiements de la société',
+      en: 'Company Payment Recorder',
+    },
+  },
+  {
+    value: 'payment-confirmer',
+    canonical: 'Company Payment Confirmer',
+    version: 'v1',
+    labels: {
+      ro: 'Responsabil cu confirmarea plăților companiei',
+      ru: 'Подтверждение платежей Компании',
+      fr: 'Responsable de la confirmation des paiements de la société',
+      en: 'Company Payment Confirmer',
+    },
+  },
+  {
+    value: 'payment-reverser',
+    canonical: 'Company Payment Reverser',
+    version: 'v1',
+    labels: {
+      ro: 'Responsabil cu inversarea plăților companiei',
+      ru: 'Сторнирование платежей Компании',
+      fr: 'Responsable de l’inversion des paiements de la société',
+      en: 'Company Payment Reverser',
+    },
+  },
+  {
+    value: 'payment-evidence-access',
+    canonical: 'Company Payment Evidence Access',
+    version: 'v1',
+    labels: {
+      ro: 'Acces la dovezile de plată ale companiei',
+      ru: 'Доступ к платёжным доказательствам Компании',
+      fr: 'Accès aux preuves de paiement de la société',
+      en: 'Company Payment Evidence Access',
+    },
+  },
+  {
     value: 'invoice-reader',
     canonical: 'Company Invoice Reader',
     version: 'v1',

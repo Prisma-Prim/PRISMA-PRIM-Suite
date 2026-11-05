@@ -7,6 +7,8 @@ import { contractModelAuthority } from '../contract-model/contract-model-authori
 import { missionPlanAuthority } from '../mission-plan/mission-plan-authority';
 import { offerModelAuthority } from '../offer-model/offer-model-authority';
 import { offerMessageReadCapture } from '../offer-message/offer-message-contract';
+import { paymentEvidenceAuthority } from '../payment-evidence/payment-evidence-authority';
+import { paymentEvidenceActor } from '../payment-evidence/payment-evidence.test-fixture';
 import { browserIdentity } from '../production-shell/production-shell-context.test-fixtures';
 import { readCurrentActor } from './current-actor';
 import { invoiceRecordAuthority } from './invoice-record-authority';
@@ -177,6 +179,9 @@ describe('current Actor representation', () => {
         'externalInvoiceGrants',
         'invoiceRecordReadCapture',
         'offerMessageReadCapture',
+        'paymentGrants',
+        'paymentEvidenceContextCapture',
+        'paymentEvidenceReferenceReadCapture',
         'opportunityFollowUpPermissions',
         'opportunityFollowUpCoordinatorAssignmentId',
         'opportunityFollowUpCoordinatorPermissionSetVersion',
@@ -204,6 +209,36 @@ describe('current Actor representation', () => {
             activeCompany: { ...completeActor.activeCompany, [name]: value },
           }),
         ).toEqual({ status: 'error' });
+      }
+    },
+  );
+
+  it.each([
+    'paymentGrants',
+    'paymentEvidenceContextCapture',
+    'paymentEvidenceReferenceReadCapture',
+  ])(
+    'preserves opaque Payment %s while Source refuses unsupported consumed authority',
+    async (field) => {
+      const current = paymentEvidenceActor();
+      expect(paymentEvidenceAuthority(current)).toBeDefined();
+      for (const value of [
+        undefined,
+        null,
+        5,
+        'payment-evidence.future',
+        { version: 'future', arbitrary: null },
+      ]) {
+        const actor = {
+          ...current,
+          activeCompany: { ...current.activeCompany, [field]: value },
+        };
+        const result = await read(actor);
+        expect(result).toEqual({ status: 'ok', value: actor });
+        if (result.status !== 'ok')
+          throw new Error('Expected a readable Actor');
+        expect(result.value).toBe(actor);
+        expect(paymentEvidenceAuthority(result.value)).toBeUndefined();
       }
     },
   );

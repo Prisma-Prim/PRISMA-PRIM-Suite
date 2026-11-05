@@ -1,4 +1,8 @@
 import {
+  readPaymentEvidenceDocument,
+  type PaymentEvidenceDocument,
+} from '../payment-evidence/payment-evidence-response';
+import {
   readExternalInvoiceRelation,
   type ExternalInvoiceRelation,
 } from './external-invoice-response';
@@ -29,29 +33,32 @@ export type DocumentFamily =
   | 'questionnaire'
   | 'mission-deliverable'
   | 'received-contract'
-  | 'external-invoice';
+  | 'external-invoice'
+  | 'payment-evidence';
 type WorkingVersion = { id: string; status: 'draft' | 'official' };
-export type WorkingDocument = WorkingDocumentBase &
-  (
-    | {
-        type: 'questionnaire';
-        version: WorkingVersion & { representation: DocumentReference };
-      }
-    | {
-        type: 'mission-deliverable';
-        version: WorkingVersion & { representation: null };
-      }
-    | {
-        type: 'received-contract';
-        version: WorkingVersion & { representation: null };
-        receivedContractRelation: ReceivedContractRelation;
-      }
-    | {
-        type: 'external-invoice';
-        version: WorkingVersion & { representation: null };
-        externalInvoiceRelation: ExternalInvoiceRelation;
-      }
-  );
+export type WorkingDocument =
+  | PaymentEvidenceDocument
+  | (WorkingDocumentBase &
+      (
+        | {
+            type: 'questionnaire';
+            version: WorkingVersion & { representation: DocumentReference };
+          }
+        | {
+            type: 'mission-deliverable';
+            version: WorkingVersion & { representation: null };
+          }
+        | {
+            type: 'received-contract';
+            version: WorkingVersion & { representation: null };
+            receivedContractRelation: ReceivedContractRelation;
+          }
+        | {
+            type: 'external-invoice';
+            version: WorkingVersion & { representation: null };
+            externalInvoiceRelation: ExternalInvoiceRelation;
+          }
+      ));
 /** One unverified external reference; its URL only under Representation read. */
 export type DocumentReference = {
   id: string;
@@ -63,10 +70,18 @@ export type DocumentProjectAssociation =
   | { state: 'linked'; project: { id: string; title: string } }
   | { state: 'unlinked' };
 /** A single-Document response; lists never carry the association. */
-export type WorkingDocumentDetail = WorkingDocument & {
-  /** Present only for a current Project reader; absence never means unlinked. */
-  projectAssociation?: DocumentProjectAssociation;
-};
+export type WorkingDocumentDetail =
+  | (Extract<
+      WorkingDocument,
+      { type: 'external-invoice' | 'payment-evidence' }
+    > & { projectAssociation?: never })
+  | (Exclude<
+      WorkingDocument,
+      { type: 'external-invoice' | 'payment-evidence' }
+    > & {
+      /** Present only for a current Project reader; absence never means unlinked. */
+      projectAssociation?: DocumentProjectAssociation;
+    });
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid response');
@@ -116,6 +131,8 @@ function readReference(value: unknown): DocumentReference {
 }
 export function readDocument(value: unknown): WorkingDocument {
   const row = record(value);
+  if (row.type === 'payment-evidence')
+    return readPaymentEvidenceDocument(value);
   const version = record(row.version);
   if (
     (row.type !== 'questionnaire' &&
@@ -199,8 +216,14 @@ function projectAssociation(value: unknown): DocumentProjectAssociation {
 export function readDocumentDetail(value: unknown): WorkingDocumentDetail {
   const document = readDocument(value);
   const association = record(value).projectAssociation;
-  if (document.type === 'external-invoice' && association !== undefined)
-    throw new Error('External invoice Documents cannot belong to a Project');
+  if (
+    document.type === 'external-invoice' ||
+    document.type === 'payment-evidence'
+  ) {
+    if (association !== undefined)
+      throw new Error('Financial source Documents cannot belong to a Project');
+    return document;
+  }
   return association === undefined
     ? document
     : { ...document, projectAssociation: projectAssociation(association) };

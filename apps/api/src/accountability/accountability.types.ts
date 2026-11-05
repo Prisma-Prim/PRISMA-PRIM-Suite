@@ -1,3 +1,10 @@
+import {
+  COMPANY_PAYMENT_READER_BUNDLE_LABEL,
+  COMPANY_PAYMENT_RECORDER_BUNDLE_LABEL,
+  COMPANY_PAYMENT_CONFIRMER_BUNDLE_LABEL,
+  COMPANY_PAYMENT_REVERSER_BUNDLE_LABEL,
+  COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE_LABEL,
+} from '../access/company-permissions.js';
 import type {
   COMPANY_INVOICE_READER_BUNDLE_LABEL,
   COMPANY_INVOICE_RECORDER_BUNDLE_LABEL,
@@ -267,6 +274,16 @@ export type CanonicalActivityEvent =
         | 'company_profitability_director_assignment.granted'
         | 'company_opportunity_follow_up_coordinator_assignment.granted'
         | 'company_opportunity_follow_up_coordinator_assignment.revoked'
+        | 'company_payment_reader_assignment.granted'
+        | 'company_payment_reader_assignment.revoked'
+        | 'company_payment_recorder_assignment.granted'
+        | 'company_payment_recorder_assignment.revoked'
+        | 'company_payment_confirmer_assignment.granted'
+        | 'company_payment_confirmer_assignment.revoked'
+        | 'company_payment_reverser_assignment.granted'
+        | 'company_payment_reverser_assignment.revoked'
+        | 'company_payment_evidence_access_assignment.granted'
+        | 'company_payment_evidence_access_assignment.revoked'
         | 'company_invoice_reader_assignment.granted'
         | 'company_invoice_reader_assignment.revoked'
         | 'company_invoice_recorder_assignment.granted'
@@ -343,6 +360,11 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_READER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_RECORDER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_CONFIRMER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_REVERSER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_INVOICE_READER_BUNDLE_LABEL
           | typeof COMPANY_INVOICE_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL
@@ -509,6 +531,16 @@ export interface OrdinaryActivityLogEvent {
     | 'company_profitability_director_assignment.granted'
     | 'company_opportunity_follow_up_coordinator_assignment.granted'
     | 'company_opportunity_follow_up_coordinator_assignment.revoked'
+    | 'company_payment_reader_assignment.granted'
+    | 'company_payment_reader_assignment.revoked'
+    | 'company_payment_recorder_assignment.granted'
+    | 'company_payment_recorder_assignment.revoked'
+    | 'company_payment_confirmer_assignment.granted'
+    | 'company_payment_confirmer_assignment.revoked'
+    | 'company_payment_reverser_assignment.granted'
+    | 'company_payment_reverser_assignment.revoked'
+    | 'company_payment_evidence_access_assignment.granted'
+    | 'company_payment_evidence_access_assignment.revoked'
     | 'company_invoice_reader_assignment.granted'
     | 'company_invoice_reader_assignment.revoked'
     | 'company_invoice_recorder_assignment.granted'
@@ -632,6 +664,11 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_READER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_RECORDER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_CONFIRMER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_REVERSER_BUNDLE_LABEL
+          | typeof COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_INVOICE_READER_BUNDLE_LABEL
           | typeof COMPANY_INVOICE_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL

@@ -2,7 +2,9 @@ import { readDocuments } from './document-response';
 
 /** Only existing, validated metadata is retained by the Client composition. */
 export function readClientDocumentItems(value: unknown, companyId: string) {
-  const documents = readDocuments(value);
+  const documents = readDocuments(value).filter(
+    (row) => row.type !== 'payment-evidence',
+  );
   if (
     documents.some(
       (row) =>

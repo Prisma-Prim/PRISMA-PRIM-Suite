@@ -1,3 +1,10 @@
+import {
+  PAYMENT_BUNDLES,
+  capturePaymentGrant,
+  paymentCapturedGrant,
+  paymentReadGrant,
+} from './payment-captured-grants.js';
+import { readPaymentEvidenceCaptures } from './payment-evidence-captures.js';
 import { readOfferMessageReadCapture } from './offer-message-read-capture.js';
 import { createHash } from 'node:crypto';
 import {
@@ -165,6 +172,96 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async requirePaymentEvidenceReferenceRead(
+    actor: ActorContext,
+    lock: boolean,
+  ): Promise<void> {
+    const company = actor.activeCompany;
+    if (!company) throw new ForbiddenException();
+    const observed = await readPaymentEvidenceCaptures({
+      database: this.databaseContext,
+      actor,
+      companyId: company.id,
+      lock,
+    });
+    if (
+      !observed.contextCapture ||
+      !observed.referenceReadCapture ||
+      company.paymentEvidenceContextCapture !== observed.contextCapture ||
+      company.paymentEvidenceReferenceReadCapture !==
+        observed.referenceReadCapture
+    )
+      throw new ForbiddenException();
+  }
+  async hasPaymentEvidenceAccess(
+    actor: ActorContext,
+    options: { manage: boolean; lockAssignment: boolean } = {
+      manage: false,
+      lockAssignment: false,
+    },
+  ): Promise<boolean> {
+    const company = actor.activeCompany;
+    const family = paymentCapturedGrant(
+      company?.paymentGrants,
+      'company_payment_evidence_access',
+    );
+    const selected = options.manage
+      ? paymentCapturedGrant(company?.paymentGrants, 'company_payment_recorder')
+      : paymentReadGrant(company?.paymentGrants);
+    if (!actor.active || !company || !family || !selected) return false;
+    try {
+      await this.requirePaymentEvidenceReferenceRead(
+        actor,
+        options.lockAssignment,
+      );
+      await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        and(
+          eq(companyRoleAssignments.id, family.assignmentId),
+          eq(companyRoleAssignments.bundle, family.bundle),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+        ) ?? sql`false`,
+        options.lockAssignment,
+      );
+      if (selected)
+        await this.requireLiveCapturedAssignment(
+          actor,
+          company.id,
+          and(
+            eq(companyRoleAssignments.id, selected.assignmentId),
+            eq(companyRoleAssignments.bundle, selected.bundle),
+            eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          ) ?? sql`false`,
+          options.lockAssignment,
+        );
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenException) return false;
+      throw error;
+    }
+  }
+  async mayReadPaymentEvidencePayer(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<boolean> {
+    const company = actor.activeCompany;
+    if (!company?.clientPermissions.includes('client.read')) return false;
+    try {
+      await this.requireExternalInvoiceCapture(actor, {
+        bundle: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+        assignmentId: company.clientPermissionAssignmentId,
+        version: company.clientPermissionSetVersion,
+        versions: ['v1', 'v2'],
+        lock,
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenException) return false;
+      throw error;
+    }
+  }
 
   async requireOfferMessageReadObservation(
     actor: ActorContext,
@@ -998,6 +1095,105 @@ export class CompanyContextAuthorization {
   }
 
   /** Exact native captures fence only the financial family; legacy families retain their delivered policy. */
+  async requirePaymentEvidenceNativeAccess(
+    actor: ActorContext,
+    options: {
+      action:
+        | 'read'
+        | 'register'
+        | 'correct'
+        | 'version'
+        | 'designate'
+        | 'content-read'
+        | 'upload';
+      lockAssignment: boolean;
+    },
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      !company.documentPermissions?.includes('document.read')
+    )
+      throw new ForbiddenException();
+    await this.requirePaymentEvidenceReferenceRead(
+      actor,
+      options.lockAssignment,
+    );
+    const requireCapture = (input: {
+      bundle: typeof companyRoleAssignments.$inferSelect.bundle;
+      assignmentId: unknown;
+      version: unknown;
+      versions: readonly string[];
+    }) =>
+      this.requireExternalInvoiceCapture(actor, {
+        ...input,
+        lock: options.lockAssignment,
+      });
+    const versions =
+      options.action === 'version' || options.action === 'upload'
+        ? ['v3']
+        : options.action === 'correct'
+          ? ['v2', 'v3']
+          : ['v1', 'v2', 'v3'];
+    await requireCapture({
+      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+      assignmentId: company.documentPermissionAssignmentId,
+      version: company.documentPermissionSetVersion,
+      versions,
+    });
+    if (
+      options.action === 'register' &&
+      !company.documentPermissions.includes('document.register')
+    )
+      throw new ForbiddenException();
+    if (
+      options.action === 'correct' &&
+      !company.documentPermissions.includes('document.correct')
+    )
+      throw new ForbiddenException();
+    if (
+      (options.action === 'version' || options.action === 'upload') &&
+      !company.documentPermissions.includes('document.version.manage')
+    )
+      throw new ForbiddenException();
+    if (options.action === 'designate') {
+      if (
+        !company.documentPermissions.includes(
+          'document.version.designate_official',
+        )
+      )
+        throw new ForbiddenException();
+      await requireCapture({
+        bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE,
+        assignmentId: company.documentApproverAssignmentId,
+        version: company.documentApproverPermissionSetVersion,
+        versions: ['v1'],
+      });
+    }
+    if (options.action === 'content-read' || options.action === 'upload') {
+      if (!company.documentPermissions.includes('document.content.read'))
+        throw new ForbiddenException();
+      await requireCapture({
+        bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+        assignmentId: company.documentContentReaderAssignmentId,
+        version: company.documentContentReaderPermissionSetVersion,
+        versions: ['v1'],
+      });
+    }
+    if (options.action === 'upload') {
+      if (!company.documentPermissions.includes('document.content.upload'))
+        throw new ForbiddenException();
+      await requireCapture({
+        bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
+        assignmentId: company.documentContentUploaderAssignmentId,
+        version: company.documentContentUploaderPermissionSetVersion,
+        versions: ['v1'],
+      });
+    }
+    return company.id;
+  }
+
   async requireExternalInvoiceNativeAccess(
     actor: ActorContext,
     options: {
@@ -2229,6 +2425,7 @@ export class CompanyContextAuthorization {
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+        ...PAYMENT_BUNDLES,
         COMPANY_INVOICE_READER_BUNDLE,
         COMPANY_INVOICE_RECORDER_BUNDLE,
         COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
@@ -2316,6 +2513,12 @@ export class CompanyContextAuthorization {
         company.internalTaskManagerAssignmentId = row.assignmentId;
         company.internalTaskManagerPermissionSetVersion = 'v1';
       }
+      const paymentGrant = capturePaymentGrant(row);
+      if (paymentGrant)
+        company.paymentGrants = [
+          ...(company.paymentGrants ?? []),
+          paymentGrant,
+        ];
       const externalInvoiceGrant = captureExternalInvoiceGrant(row);
       if (externalInvoiceGrant)
         company.externalInvoiceGrants = [
@@ -2777,6 +2980,17 @@ export class CompanyContextAuthorization {
         });
         if (observation)
           company.offerMessageReadCapture = observation.readCapture;
+      }
+      if (company.paymentGrants?.length) {
+        const observations = await readPaymentEvidenceCaptures({
+          database: this.databaseContext,
+          actor,
+          companyId: company.id,
+          lock: false,
+        });
+        company.paymentEvidenceContextCapture = observations.contextCapture;
+        company.paymentEvidenceReferenceReadCapture =
+          observations.referenceReadCapture;
       }
       const invoiceGrant = invoiceFinanceCapturedGrant(
         company.externalInvoiceGrants,

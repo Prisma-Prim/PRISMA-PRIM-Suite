@@ -449,6 +449,26 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Knowledge Evidence Reader',
     versions: { v1: ['knowledge.evidence.read'] },
   },
+  company_payment_reader: {
+    label: 'Company Payment Reader',
+    versions: { v1: ['payment.read'] },
+  },
+  company_payment_recorder: {
+    label: 'Company Payment Recorder',
+    versions: { v1: ['payment.read', 'payment.record'] },
+  },
+  company_payment_confirmer: {
+    label: 'Company Payment Confirmer',
+    versions: { v1: ['payment.read', 'payment.confirm'] },
+  },
+  company_payment_reverser: {
+    label: 'Company Payment Reverser',
+    versions: { v1: ['payment.read', 'payment.reverse'] },
+  },
+  company_payment_evidence_access: {
+    label: 'Company Payment Evidence Access',
+    versions: { v1: ['document.payment_evidence.access'] },
+  },
   company_invoice_reader: {
     label: 'Company Invoice Reader',
     versions: { v1: ['finance.read'] },
@@ -1205,3 +1225,24 @@ export const COMPANY_INVOICE_RECORDER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_invoice_recorder.label;
 export const COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_external_invoice_access.label;
+
+export const COMPANY_PAYMENT_READER_BUNDLE =
+  'company_payment_reader' satisfies CompanyRoleBundle;
+export const COMPANY_PAYMENT_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_payment_reader.label;
+export const COMPANY_PAYMENT_RECORDER_BUNDLE =
+  'company_payment_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_PAYMENT_RECORDER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_payment_recorder.label;
+export const COMPANY_PAYMENT_CONFIRMER_BUNDLE =
+  'company_payment_confirmer' satisfies CompanyRoleBundle;
+export const COMPANY_PAYMENT_CONFIRMER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_payment_confirmer.label;
+export const COMPANY_PAYMENT_REVERSER_BUNDLE =
+  'company_payment_reverser' satisfies CompanyRoleBundle;
+export const COMPANY_PAYMENT_REVERSER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_payment_reverser.label;
+export const COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE =
+  'company_payment_evidence_access' satisfies CompanyRoleBundle;
+export const COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_payment_evidence_access.label;

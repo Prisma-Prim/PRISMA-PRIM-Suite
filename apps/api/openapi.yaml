@@ -839,13 +839,389 @@ paths:
           description: Assignment authority or same-Workspace scope is unavailable.
         '409':
           description: The key belongs to a different command intent.
+  /api/company-payment-reader-assignments:
+    post:
+      operationId: grantCompanyPaymentReaderAssignment
+      summary: Explicitly grant captured Company Payment Reader v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly payment.read. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        and content rights remain independent. These assignments expose the Payment Evidence source read boundary; this source slice adds no monetary confirmation or reversal endpoint. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_payment_reader_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/CompanyPaymentReaderAssignment' }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-reader-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyPaymentReaderAssignment
+      summary: Revoke the captured Company Payment Reader assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_payment_reader_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/CompanyPaymentReaderAssignment' }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-recorder-assignments:
+    post:
+      operationId: grantCompanyPaymentRecorderAssignment
+      summary: Explicitly grant captured Company Payment Recorder v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly payment.read and payment.record. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        and content rights remain independent. These assignments expose the Payment Evidence source read boundary; this source slice adds no monetary confirmation or reversal endpoint. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_payment_recorder_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentRecorderAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-recorder-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyPaymentRecorderAssignment
+      summary: Revoke the captured Company Payment Recorder assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_payment_recorder_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentRecorderAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-confirmer-assignments:
+    post:
+      operationId: grantCompanyPaymentConfirmerAssignment
+      summary: Explicitly grant captured Company Payment Confirmer v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly payment.read and payment.confirm. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        and content rights remain independent. These assignments expose the Payment Evidence source read boundary; this source slice adds no monetary confirmation or reversal endpoint. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_payment_confirmer_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentConfirmerAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-confirmer-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyPaymentConfirmerAssignment
+      summary: Revoke the captured Company Payment Confirmer assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_payment_confirmer_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentConfirmerAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-reverser-assignments:
+    post:
+      operationId: grantCompanyPaymentReverserAssignment
+      summary: Explicitly grant captured Company Payment Reverser v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly payment.read and payment.reverse. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        and content rights remain independent. These assignments expose the Payment Evidence source read boundary; this source slice adds no monetary confirmation or reversal endpoint. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_payment_reverser_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentReverserAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-reverser-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyPaymentReverserAssignment
+      summary: Revoke the captured Company Payment Reverser assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_payment_reverser_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentReverserAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-evidence-access-assignments:
+    post:
+      operationId: grantCompanyPaymentEvidenceAccessAssignment
+      summary: Explicitly grant captured Company Payment Evidence Access v1
+      description: >-
+        Requires company.assignment.manage and active same-Workspace membership and Company.
+        Captured v1 contains exactly document.payment_evidence.access. No existing grant, Owner title,
+        bootstrap or migration supplies it; native Company context, Client, Document,
+        and content rights remain independent. These assignments expose the Payment Evidence source read boundary; this source slice adds no monetary confirmation or reversal endpoint. Exact replay and repeat grants
+        preserve the original captured identity and version. One actual transition records
+        company_payment_evidence_access_assignment.granted with bundle-label-only metadata.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/GrantCompanyContextAssignmentInput',
+              }
+      responses:
+        '201':
+          description: The explicit current captured v1 assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentEvidenceAccessAssignment',
+                }
+        '400':
+          description: Invalid closed target body or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or an active same-Workspace target is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
+  /api/company-payment-evidence-access-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyPaymentEvidenceAccessAssignment
+      summary: Revoke the captured Company Payment Evidence Access assignment
+      description: >-
+        Requires company.assignment.manage. One actual transition records
+        company_payment_evidence_access_assignment.revoked with bundle-label-only metadata.
+        A replay or already-revoked result records no additional event. A later
+        explicit grant gets a new identity; the old capture cannot borrow it.
+      tags: [Access]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The conserved revoked assignment.
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: '#/components/schemas/CompanyPaymentEvidenceAccessAssignment',
+                }
+        '400':
+          description: Invalid target or idempotency key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Assignment authority or same-Workspace scope is unavailable.
+        '409':
+          description: The key belongs to a different command intent.
   /api/documents:
     post:
       operationId: registerWorkingDocument
       summary: Register a native Document with an empty first draft
       description: >-
         Uses the existing actor-owned Idempotency-Key registration namespace. Native Document
-        registration/read and Client read are independent prerequisites. External invoices
+        registration/read and native Client reference read are independent prerequisites. External invoices
         additionally require exact live Invoice Recorder v1 and External Invoice Access v1
         captures. The Contract owner qualifies the exact ordinary COMPANY_MODEL_OFFER tuple,
         approved/executed Version and conserved human reported-signing declaration, with
@@ -855,6 +1231,13 @@ paths:
         source, receivedOn and attribution are immutable across formal Versions. Exact replay
         conserves identity and returns current native detail, not an initial frozen draft DTO.
         Failed qualification, event or response construction commits no partial effect.
+        Payment Evidence additionally requires supported Payment Recorder v1, Evidence Access
+        and native registration/reference authority. Fresh PRIMARY and ADDITIONAL payer copying
+        both require Company client.read; Workspace client.manage supplies only minimal references.
+        No Contract, Invoice, Project or monetary fact is required or created. Current authority
+        is checked before replay; conserved current detail is rebuilt before fresh-copy/new-use
+        qualification. An authorized replay after identity-read loss returns payer unavailable
+        without recopying or following a Client union successor.
       tags: [Document]
       parameters:
         - $ref: '#/components/parameters/RequiredCompanyContextId'
@@ -885,12 +1268,17 @@ paths:
       operationId: listWorkingDocuments
       summary: Read the active Company's authorized native Document inventory
       description: >-
-        Native Document and Client read are required. Financial Documents additionally require
+        Native Document and Client reference read are required. External-invoice Documents additionally require
         exact current Invoice Reader-or-Recorder v1 plus External Invoice Access v1 captures,
         applied before rows are returned. Missing financial authority reveals no title, row,
         count or continuation. Contract/Opportunity read loss withholds the relation, party,
         source/date/attribution projection while independently readable native metadata survives.
         Content Reader is independently required for protected upload metadata and bytes.
+        Payment Evidence separately requires one supported Payment Reader, Confirmer, Reverser
+        or Recorder v1 capture, Evidence Access and native metadata/reference authority. Frozen
+        payer projection independently requires Company client.read, without a fresh Client or
+        entity lookup; otherwise it is exactly unavailable. Native metadata, Versions and content
+        gates remain independent. Payment Evidence is excluded from Invoice Record discovery/use.
         Financial Documents remain excluded from Project/Task/reference/bundle/shared evidence,
         generic Activity/Home/search and Knowledge, including for an all-grants actor.
       tags: [Document]
@@ -2886,8 +3274,11 @@ paths:
         preserves every prior upload. Official content cannot be replaced.
         The external-invoice family additionally requires exact current Invoice Recorder,
         External Invoice Access and native registrar/content captures plus original exact
-        Contract/Opportunity/Client new-use authority, revalidated after scanning. Finance
-        reads require Reader-or-Recorder and family captures separately from Content Reader.
+        Contract/Opportunity/Client new-use authority, revalidated after scanning. External-invoice
+        reads require their Reader-or-Recorder and family captures separately from Content Reader.
+        Payment Evidence requires its independent Recorder/Evidence/native/reference and
+        Content Reader/Uploader captures, including original-Client/new-use/revision checks
+        after scanning. No fresh payer copy is made by a content upload.
         The unchanged 5 MiB adapter conserves original bytes and distinct equal-byte identities.
         An exact successful replay returns its original receipt without a new
         scan, revision, Activity event or change to the current PDF.
@@ -2937,7 +3328,9 @@ paths:
         no content access. No public or signed storage URL is returned. External invoices
         additionally require current exact financial read, family and native content captures;
         loss of finance/family hides the Document and content loss withholds protected upload
-        metadata. Exact old Document/Version/Representation download never substitutes latest.
+        metadata. Payment Evidence requires supported Payment read, Evidence Access and native
+        metadata/reference/content rights; Company identity-read only controls its separate
+        structured payer projection. Exact old Document/Version/Representation download never substitutes latest.
       tags: [Documents]
       parameters:
         - $ref: '#/components/parameters/RequiredCompanyContextId'
@@ -9747,12 +10140,126 @@ components:
             ]
         assignmentId: { type: string, format: uuid }
         permissionSetVersion: { type: string, const: v1 }
+    CompanyPaymentReaderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Payment Reader }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    CompanyPaymentRecorderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Payment Recorder }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    CompanyPaymentConfirmerAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Payment Confirmer }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    CompanyPaymentReverserAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Payment Reverser }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    CompanyPaymentEvidenceAccessAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          workspaceMembershipId,
+          companyId,
+          bundle,
+          permissionSetVersion,
+          active,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceMembershipId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        bundle: { type: string, const: Company Payment Evidence Access }
+        permissionSetVersion: { type: string, const: v1 }
+        active: { type: boolean }
+    PaymentCapturedGrant:
+      type: object
+      additionalProperties: false
+      required: [bundle, assignmentId, permissionSetVersion]
+      description: One exact supported consumed role identity. Other unsupported alternatives supply no authority and do not retire independently supported reading.
+      properties:
+        bundle:
+          type: string
+          enum:
+            [
+              company_payment_reader,
+              company_payment_recorder,
+              company_payment_confirmer,
+              company_payment_reverser,
+              company_payment_evidence_access,
+            ]
+        assignmentId: { type: string, format: uuid }
+        permissionSetVersion: { type: string, const: v1 }
     RegisterWorkingDocumentInput:
       oneOf:
         - $ref: '#/components/schemas/RegisterQuestionnaireDocumentInput'
         - $ref: '#/components/schemas/RegisterMissionDocumentInput'
         - $ref: '#/components/schemas/RegisterReceivedContractDocumentInput'
         - $ref: '#/components/schemas/RegisterExternalInvoiceDocumentInput'
+        - $ref: '#/components/schemas/RegisterPaymentEvidenceDocumentInput'
     RegisterQuestionnaireDocumentInput:
       type: object
       description: Existing questionnaire registration grammar; omitted type means questionnaire.
@@ -9826,6 +10333,105 @@ components:
           type: [string, 'null']
           format: date
           pattern: '^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    RegisterPaymentEvidenceDocumentInput:
+      type: object
+      additionalProperties: false
+      description: >-
+        Exactly these fields; native trimmed nonempty metadata and sourceDescription are
+        bounded in UTF-16 code units, preserving inner whitespace and rejecting invalid Unicode/NUL.
+        The server derives Company/original Client/complete payer copy and registration attribution.
+        Both fresh payer branches require exact Company client.read. No caller copy, amount,
+        external reference, URL, Project, Contract or supplied ownership/state is accepted.
+        receivedOn must be explicitly null when unrecorded, or a real Gregorian date in years0001–9999.
+      required:
+        [type, clientId, payer, title, purpose, sourceDescription, receivedOn]
+      properties:
+        type: { type: string, const: payment-evidence }
+        clientId: { type: string, format: uuid }
+        payer:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [kind]
+              properties:
+                kind: { type: string, const: PRIMARY }
+            - type: object
+              additionalProperties: false
+              required: [kind, legalEntityId]
+              properties:
+                kind: { type: string, const: ADDITIONAL }
+                legalEntityId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+        sourceDescription: { type: string, minLength: 1, maxLength: 2000 }
+        receivedOn:
+          type: [string, 'null']
+          format: date
+          pattern: '^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    PaymentEvidenceRecordedParty:
+      description: Immutable complete original payer copy; no current Client/entity value or union successor is substituted.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, legalName, taxId, legalAddress]
+          properties:
+            kind: { type: string, const: PRIMARY }
+            legalName: { type: string }
+            taxId: { type: [string, 'null'] }
+            legalAddress: { type: [string, 'null'] }
+        - type: object
+          additionalProperties: false
+          required: [kind, legalEntityId, legalName, taxId, legalAddress]
+          properties:
+            kind: { type: string, const: ADDITIONAL }
+            legalEntityId: { type: string, format: uuid }
+            legalName: { type: string }
+            taxId: { type: [string, 'null'] }
+            legalAddress: { type: [string, 'null'] }
+    PaymentEvidenceSource:
+      type: object
+      additionalProperties: false
+      description: Immutable source context with independently gated structured payer. This preserves evidence, not a Payment or verified banking/fiscal fact.
+      required:
+        [
+          format,
+          receivingCompanyLabel,
+          sourceDescription,
+          receivedOn,
+          registeredAt,
+          registeredBy,
+          payer,
+        ]
+      properties:
+        format: { type: string, const: PAYMENT_EVIDENCE_SOURCE/1 }
+        receivingCompanyLabel: { type: string }
+        sourceDescription: { type: string, minLength: 1, maxLength: 2000 }
+        receivedOn:
+          type: [string, 'null']
+          format: date
+          pattern: '^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        registeredAt: { type: string, format: date-time }
+        registeredBy:
+          type: object
+          additionalProperties: false
+          required: [workspaceMembershipId, internalUserId]
+          properties:
+            workspaceMembershipId: { type: string, format: uuid }
+            internalUserId: { type: string, format: uuid }
+        payer:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [kind]
+              properties:
+                kind: { type: string, const: UNAVAILABLE }
+            - type: object
+              additionalProperties: false
+              required: [kind, party]
+              properties:
+                kind: { type: string, const: AVAILABLE }
+                party:
+                  { $ref: '#/components/schemas/PaymentEvidenceRecordedParty' }
     ExternalInvoiceRecordedRecipient:
       description: Immutable native Contract Version copy; no current Client correction is recopied.
       oneOf:
@@ -10054,6 +10660,16 @@ components:
             version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
             externalInvoiceRelation:
               { $ref: '#/components/schemas/ExternalInvoiceRelation' }
+        - type: object
+          required:
+            [type, version, paymentEvidenceSource, createdByMembershipId]
+          not: { required: [projectAssociation] }
+          properties:
+            createdByMembershipId: { type: string, format: uuid }
+            type: { type: string, const: payment-evidence }
+            version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
+            paymentEvidenceSource:
+              { $ref: '#/components/schemas/PaymentEvidenceSource' }
     WorkingPdfDocumentVersion:
       type: object
       additionalProperties: false
@@ -10435,9 +11051,11 @@ components:
         Ordered current unverified external references. A draft has at most
         five and an official Version at most ten. The first item is primary.
         The external content is never stored, fetched or verified and may
-        change at its source.
+        change at its source. Native reference-free PDF families, including Payment
+        Evidence, return an empty array; they accept no reference append or URL. Native
+        reference-family commands retain their existing draft/official limits.
       type: array
-      minItems: 1
+      minItems: 0
       maxItems: 10
       items:
         oneOf:
@@ -10942,6 +11560,20 @@ components:
           type: string
           pattern: '^offer-message-read\.v1\.[0-9a-f]{64}$'
           description: Optional opaque consumed Company-context, Intake and Offer read observation. It grants no new permission and only its feature consumer interprets the supported format.
+        paymentGrants:
+          description: Exact supported v1 role identities; no native Company context, Client identity, Document/content grant or monetary workflow is implied. Read selection is independent of Recorder mutation and payer projection authority.
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/PaymentCapturedGrant' }
+        paymentEvidenceContextCapture:
+          type: string
+          pattern: '^payment-evidence-context\.v1\.[0-9a-f]{64}$'
+          description: Optional opaque selected native Company-context identity/version observation; no permission is granted by the digest.
+        paymentEvidenceReferenceReadCapture:
+          type: string
+          pattern: '^payment-evidence-reference-read\.v1\.[0-9a-f]{64}$'
+          description: Optional opaque selected native original-Client reference-read authority identity/version observation; complete payer copying still requires separate Company client.read.
         invoiceRecordReadCapture:
           type: string
           pattern: '^invoice-record-read\.v1\.[0-9a-f]{64}$'

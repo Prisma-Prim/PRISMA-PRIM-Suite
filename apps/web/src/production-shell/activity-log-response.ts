@@ -33,6 +33,18 @@ const targetTypes = {
     'company_role_assignment',
   'company_opportunity_follow_up_coordinator_assignment.revoked':
     'company_role_assignment',
+  'company_payment_reader_assignment.granted': 'company_role_assignment',
+  'company_payment_reader_assignment.revoked': 'company_role_assignment',
+  'company_payment_recorder_assignment.granted': 'company_role_assignment',
+  'company_payment_recorder_assignment.revoked': 'company_role_assignment',
+  'company_payment_confirmer_assignment.granted': 'company_role_assignment',
+  'company_payment_confirmer_assignment.revoked': 'company_role_assignment',
+  'company_payment_reverser_assignment.granted': 'company_role_assignment',
+  'company_payment_reverser_assignment.revoked': 'company_role_assignment',
+  'company_payment_evidence_access_assignment.granted':
+    'company_role_assignment',
+  'company_payment_evidence_access_assignment.revoked':
+    'company_role_assignment',
   'company_invoice_reader_assignment.granted': 'company_role_assignment',
   'company_invoice_reader_assignment.revoked': 'company_role_assignment',
   'company_invoice_recorder_assignment.granted': 'company_role_assignment',

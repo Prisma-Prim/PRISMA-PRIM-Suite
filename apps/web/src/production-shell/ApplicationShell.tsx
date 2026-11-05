@@ -92,6 +92,8 @@ interface ApplicationShellProps {
   children: ReactNode;
   /** Retires a pending continuation when the user deliberately leaves its view. */
   onNavigate?: () => void;
+  /** A held Source write may keep its section while presentation stays changeable. */
+  navigationProtected?: boolean;
 }
 
 export function ApplicationContentSurface({
@@ -110,9 +112,12 @@ export function ApplicationShell({
   overviewSummary,
   children,
   onNavigate,
+  navigationProtected = false,
 }: ApplicationShellProps) {
   const copy = usePrismeCopy();
   const [location, setLocation] = useState(() => window.location.href);
+  const navigation = useRef({ protected: navigationProtected, href: location });
+  navigation.current.protected = navigationProtected;
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -130,7 +135,14 @@ export function ApplicationShell({
 
   useEffect(() => {
     const onLocationChange = () => {
-      setLocation(window.location.href);
+      const next = new URL(window.location.href);
+      const accepted = new URL(navigation.current.href);
+      if (navigation.current.protected && next.hash !== accepted.hash) {
+        next.hash = accepted.hash;
+        window.history.replaceState(window.history.state, '', next);
+      }
+      navigation.current.href = next.href;
+      setLocation(next.href);
       setIsNavigationOpen(false);
     };
     window.addEventListener('hashchange', onLocationChange);
@@ -178,6 +190,7 @@ export function ApplicationShell({
     onNavigate?.();
     const nextUrl = getPresentationUrl(new URL(window.location.href), 'prisme');
     window.history.replaceState(window.history.state, '', nextUrl);
+    navigation.current.href = nextUrl.href;
     setLocation(nextUrl.href);
     setIsNavigationOpen(false);
   }
@@ -198,6 +211,14 @@ export function ApplicationShell({
       (event.currentTarget.target && event.currentTarget.target !== '_self')
     )
       return;
+    if (
+      navigation.current.protected &&
+      new URL(event.currentTarget.href).hash !==
+        new URL(navigation.current.href).hash
+    ) {
+      event.preventDefault();
+      return;
+    }
     onNavigate?.();
     if (!isPrisme) {
       closeNavigation();
@@ -210,6 +231,7 @@ export function ApplicationShell({
       const preservedState: unknown = window.history.state;
       window.history.pushState(preservedState, '', nextUrl);
     }
+    navigation.current.href = window.location.href;
     setLocation(window.location.href);
     closeNavigation();
   }

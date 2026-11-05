@@ -1,3 +1,5 @@
+import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
+import { readPaymentEvidenceRegistration } from './payment-evidence.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { createHash } from 'node:crypto';
 import {
@@ -63,6 +65,7 @@ export class DocumentsService {
     private readonly versions: DocumentVersionsService,
     private readonly receivedContracts: ReceivedContractRelationsService,
     private readonly externalInvoices: ExternalInvoiceRelationsService,
+    private readonly paymentEvidence: PaymentEvidenceSourcesService,
   ) {}
   async register(
     actor: ActorContext,
@@ -94,6 +97,8 @@ export class DocumentsService {
         }))
       )
         throw new ForbiddenException();
+      if (command.type === 'payment-evidence')
+        await this.paymentEvidence.requireRegistrationAuthority(actor);
       if (command.type === 'external-invoice')
         await this.externalInvoices.requireRegistrationAuthority(actor);
       if (command.type === 'received-contract') {
@@ -131,19 +136,28 @@ export class DocumentsService {
         return this.readDetail(actor, existing.id);
       }
       const binding =
-        command.type === 'external-invoice'
+        command.type === 'payment-evidence'
           ? {
-              kind: 'external-invoice' as const,
+              kind: 'payment-evidence' as const,
               command,
-              reference: await this.externalInvoices.qualify(actor, command),
+              reference: await this.paymentEvidence.qualify(actor, command),
             }
-          : command.type === 'received-contract'
+          : command.type === 'external-invoice'
             ? {
-                kind: 'contract-version' as const,
+                kind: 'external-invoice' as const,
                 command,
-                reference: await this.receivedContracts.qualify(actor, command),
+                reference: await this.externalInvoices.qualify(actor, command),
               }
-            : { kind: 'client' as const, clientId: command.clientId };
+            : command.type === 'received-contract'
+              ? {
+                  kind: 'contract-version' as const,
+                  command,
+                  reference: await this.receivedContracts.qualify(
+                    actor,
+                    command,
+                  ),
+                }
+              : { kind: 'client' as const, clientId: command.clientId };
       const clientId =
         binding.kind !== 'client'
           ? binding.reference.originalClientAccountId
@@ -181,6 +195,13 @@ export class DocumentsService {
         })
         .returning();
       if (!version) throw new Error('Version was not created.');
+      if (binding.kind === 'payment-evidence')
+        await this.paymentEvidence.attach({
+          actor,
+          document,
+          command: binding.command,
+          reference: binding.reference,
+        });
       if (binding.kind === 'external-invoice')
         await this.externalInvoices.attach({
           actor,
@@ -256,12 +277,15 @@ export class DocumentsService {
       actor,
       { manage: false, lockAssignment: false },
     );
+    const paymentAllowed =
+      await this.authorization.hasPaymentEvidenceAccess(actor);
     const receivedAllowed =
       await this.authorization.hasReceivedContractAccess(actor);
     const rows = await this.database.connection
       .select({
         id: workingDocuments.id,
         clientId: workingDocuments.clientId,
+        type: workingDocuments.type,
       })
       .from(workingDocuments)
       .innerJoin(
@@ -293,6 +317,7 @@ export class DocumentsService {
           eq(workingDocuments.companyId, companyId),
           inArray(workingDocuments.type, [
             'questionnaire',
+            ...(paymentAllowed ? ['payment-evidence' as const] : []),
             ...(externalAllowed ? ['external-invoice' as const] : []),
             ...(familyAllowed ? ['mission-deliverable' as const] : []),
             ...(receivedAllowed ? ['received-contract' as const] : []),
@@ -302,7 +327,9 @@ export class DocumentsService {
       .orderBy(desc(workingDocuments.createdAt), desc(workingDocuments.id));
     const dossierIds = await this.clientDossierIds(
       actor,
-      rows.map((row) => row.clientId),
+      rows
+        .filter((row) => row.type !== 'payment-evidence')
+        .map((row) => row.clientId),
     );
     return Promise.all(
       rows.map(
@@ -337,7 +364,11 @@ export class DocumentsService {
       idValue,
       undefined,
     );
-    if (document.type === 'external-invoice') return document;
+    if (
+      document.type === 'external-invoice' ||
+      document.type === 'payment-evidence'
+    )
+      return document;
     const projectAssociation = await this.projectAssociation(actor, projectId);
     return projectAssociation ? { ...document, projectAssociation } : document;
   }
@@ -412,9 +443,13 @@ export class DocumentsService {
       },
       row.type,
     );
-    const clientDossierId = (
-      resolvedDossierIds ?? (await this.clientDossierIds(actor, [row.clientId]))
-    ).get(row.clientId);
+    const clientDossierId =
+      row.type === 'payment-evidence'
+        ? undefined
+        : (
+            resolvedDossierIds ??
+            (await this.clientDossierIds(actor, [row.clientId]))
+          ).get(row.clientId);
     const base = {
       id: row.id,
       workspaceId: row.workspaceId,
@@ -435,56 +470,64 @@ export class DocumentsService {
     };
     const identity = { id: working.id, status: working.status };
     const document: WorkingDocument =
-      working.documentType === 'external-invoice'
+      working.documentType === 'payment-evidence'
         ? {
             ...base,
-            type: 'external-invoice',
+            type: 'payment-evidence',
+            createdByMembershipId: row.createdByMembershipId,
             version: { ...identity, representation: null },
-            externalInvoiceRelation: await this.externalInvoices.read(
-              actor,
-              row,
-            ),
+            paymentEvidenceSource: await this.paymentEvidence.read(actor, row),
           }
-        : working.documentType === 'received-contract'
+        : working.documentType === 'external-invoice'
           ? {
               ...base,
-              type: 'received-contract',
-              createdByMembershipId: row.createdByMembershipId,
+              type: 'external-invoice',
               version: { ...identity, representation: null },
-              receivedContractRelation: await this.receivedContracts.read(
+              externalInvoiceRelation: await this.externalInvoices.read(
                 actor,
                 row,
               ),
             }
-          : working.documentType === 'mission-deliverable'
+          : working.documentType === 'received-contract'
             ? {
                 ...base,
-                type: 'mission-deliverable',
+                type: 'received-contract',
                 createdByMembershipId: row.createdByMembershipId,
                 version: { ...identity, representation: null },
+                receivedContractRelation: await this.receivedContracts.read(
+                  actor,
+                  row,
+                ),
               }
-            : {
-                ...base,
-                type: 'questionnaire',
-                createdByMembershipId: row.createdByMembershipId,
-                version: {
-                  ...identity,
-                  representation: canReadReference(actor)
-                    ? {
-                        id: working.representation.id,
-                        kind: 'external-reference',
-                        verification: 'unverified',
-                        access: 'granted',
-                        url: working.representation.url,
-                      }
-                    : {
-                        id: working.representation.id,
-                        kind: 'external-reference',
-                        verification: 'unverified',
-                        access: 'denied',
-                      },
-                },
-              };
+            : working.documentType === 'mission-deliverable'
+              ? {
+                  ...base,
+                  type: 'mission-deliverable',
+                  createdByMembershipId: row.createdByMembershipId,
+                  version: { ...identity, representation: null },
+                }
+              : {
+                  ...base,
+                  type: 'questionnaire',
+                  createdByMembershipId: row.createdByMembershipId,
+                  version: {
+                    ...identity,
+                    representation: canReadReference(actor)
+                      ? {
+                          id: working.representation.id,
+                          kind: 'external-reference',
+                          verification: 'unverified',
+                          access: 'granted',
+                          url: working.representation.url,
+                        }
+                      : {
+                          id: working.representation.id,
+                          kind: 'external-reference',
+                          verification: 'unverified',
+                          access: 'denied',
+                        },
+                  },
+                };
     return { document, projectId: row.projectId };
   }
   /**
@@ -630,6 +673,11 @@ export class DocumentsService {
       ).document;
       if (visible.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'correct',
+          lockAssignment: true,
+        });
+      if (visible.type === 'payment-evidence')
+        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
           action: 'correct',
           lockAssignment: true,
         });
@@ -788,6 +836,8 @@ function registration(value: unknown) {
   const row: Record<string, unknown> = Object.fromEntries(
     Object.entries(value),
   );
+  if (row.type === 'payment-evidence')
+    return readPaymentEvidenceRegistration(row);
   if (row.type === 'external-invoice')
     return readExternalInvoiceRegistration(row);
   if (row.type === 'received-contract')
