@@ -602,8 +602,10 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
          FROM companies LIMIT 1`,
     );
     await expectRefusedWithoutWrites('company-name-held');
+    // Retain the Company and its immutable reader keys; release only the name.
     await pool.query(
-      `DELETE FROM companies WHERE registration_idempotency_key = 'hand-made-company'`,
+      `UPDATE companies SET display_name = 'Hand-made Company'
+        WHERE registration_idempotency_key = 'hand-made-company'`,
     );
 
     // A database behind the application's latest migration.
