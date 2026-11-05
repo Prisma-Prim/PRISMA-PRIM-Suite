@@ -7,6 +7,7 @@ import { contractModelAuthority } from '../contract-model/contract-model-authori
 import { missionPlanAuthority } from '../mission-plan/mission-plan-authority';
 import { offerModelAuthority } from '../offer-model/offer-model-authority';
 import { offerMessageReadCapture } from '../offer-message/offer-message-contract';
+import { paymentAuthority } from '../payment-observation/payment-authority';
 import { paymentEvidenceAuthority } from '../payment-evidence/payment-evidence-authority';
 import { paymentEvidenceActor } from '../payment-evidence/payment-evidence.test-fixture';
 import { browserIdentity } from '../production-shell/production-shell-context.test-fixtures';
@@ -41,6 +42,70 @@ afterEach(() => {
 });
 
 describe('current Actor representation', () => {
+  it.each([
+    undefined,
+    null,
+    5,
+    { future: 'opaque' },
+    'payment-observation-read.future',
+    'payment-observation-read.v1.' + 'a'.repeat(64),
+  ])(
+    'preserves the opaque Payment read capture and delegates exact support to its own consumer: %j',
+    async (capture) => {
+      const native = paymentEvidenceActor(),
+        actor = {
+          ...native,
+          activeCompany: {
+            ...native.activeCompany,
+            paymentObservationReadCapture: capture,
+          },
+        };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok')
+        throw new Error('An additive readable Actor is required.');
+      expect(paymentEvidenceAuthority(result.value)).toBeDefined();
+      expect(paymentAuthority(result.value) !== undefined).toBe(
+        typeof capture === 'string' &&
+          capture.startsWith('payment-observation-read.v1.'),
+      );
+    },
+  );
+
+  it.each([
+    undefined,
+    null,
+    5,
+    { future: 'opaque' },
+    'payment-observation-context.future',
+    'payment-observation-context.v1.' + 'a'.repeat(64),
+  ])(
+    'preserves an opaque Payment Company context and enables writers only for the supported context: %j',
+    async (capture) => {
+      const native = paymentEvidenceActor();
+      const actor = {
+        ...native,
+        activeCompany: {
+          ...native.activeCompany,
+          paymentObservationReadCapture:
+            'payment-observation-read.v1.' + 'a'.repeat(64),
+          paymentObservationContextCapture: capture,
+        },
+      };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok')
+        throw new Error('An additive readable Actor is required.');
+      const authority = paymentAuthority(result.value);
+      expect(authority).toBeDefined();
+      expect(Boolean(authority?.recordKey)).toBe(
+        typeof capture === 'string' &&
+          capture.startsWith('payment-observation-context.v1.'),
+      );
+      expect(paymentEvidenceAuthority(result.value)).toBeDefined();
+    },
+  );
+
   it.each([
     { capture: undefined, expected: null },
     { capture: null, expected: null },
@@ -179,6 +244,8 @@ describe('current Actor representation', () => {
         'externalInvoiceGrants',
         'invoiceRecordReadCapture',
         'offerMessageReadCapture',
+        'paymentObservationReadCapture',
+        'paymentObservationContextCapture',
         'paymentGrants',
         'paymentEvidenceContextCapture',
         'paymentEvidenceReferenceReadCapture',

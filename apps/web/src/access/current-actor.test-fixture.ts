@@ -13,6 +13,8 @@ export const completeActor = {
   activeCompany: {
     id: 'sample',
     displayName: 'sample',
+    paymentObservationReadCapture: { version: 'future', arbitrary: null },
+    paymentObservationContextCapture: { version: 'future', arbitrary: null },
     paymentGrants: { version: 'future', arbitrary: null },
     paymentEvidenceContextCapture: { version: 'future', arbitrary: null },
     paymentEvidenceReferenceReadCapture: { version: 'future', arbitrary: null },

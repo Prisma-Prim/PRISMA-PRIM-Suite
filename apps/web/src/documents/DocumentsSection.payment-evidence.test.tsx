@@ -113,7 +113,7 @@ type HttpCall = {
 };
 
 /** Fakes only the HTTP boundary; all host, selection and editor owners are real. */
-function apiBoundary() {
+function apiBoundary(sourceVersions?: unknown) {
   const calls: HttpCall[] = [];
   const writes: ((response: Response) => void)[] = [];
   const heldDetails = new Map<string, ((response: Response) => void)[]>();
@@ -156,6 +156,8 @@ function apiBoundary() {
         return Response.json([...nativeDocuments, registration]);
       if (path === `/api/documents/${ids.document}`)
         return Response.json(registration);
+      if (path === `/api/documents/${ids.document}/versions` && sourceVersions)
+        return Response.json(sourceVersions);
       if (path === `/api/documents/${ids.document}/versions`)
         return Response.json({
           workingRevision: 1,
@@ -545,3 +547,70 @@ it('routes a fresh Client working-Documents filter to native inventory while pay
     }),
   ).toBeVisible();
 });
+
+it.each([true, false])(
+  'opens a minimal Payment native target through the Source owner and keeps its exact superseded Version (present=%s)',
+  async (present) => {
+    const successor = '20000000-0000-4000-8000-000000000020';
+    const version = (
+      id: string,
+      number: number,
+      status: 'official' | 'superseded',
+    ) => ({
+      id,
+      number,
+      status,
+      createdAt,
+      createdBy: { displayName: actor.displayName },
+      representations: [],
+      pdfContent: { state: 'stored', access: 'denied' },
+      designatedAt: createdAt,
+      designatedBy: { displayName: actor.displayName },
+      frozen: { title: registration.title, purpose: registration.purpose },
+      ...(status === 'superseded'
+        ? { supersededAt: createdAt, supersededByVersionNumber: 2 }
+        : {}),
+    });
+    const api = apiBoundary({
+      workingRevision: 6,
+      mutable: true,
+      versions: [
+        version(successor, 2, 'official'),
+        ...(present ? [version(ids.version, 1, 'superseded')] : []),
+      ],
+    });
+    const view = show();
+    await screen.findByRole('button', { name: first.title });
+    view.update({
+      requestedPaymentEvidence: {
+        ...intent(ids.document, 1),
+        paymentEvidenceVersionId: ids.version,
+      },
+    });
+    await screen.findByRole('heading', { name: registration.title });
+    if (present) {
+      await screen.findByRole('heading', { name: 'Version 1 · Superseded' });
+      expect(screen.getByRole('button', { name: 'Version 1' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getByRole('button', { name: 'Version 2' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+    } else {
+      await screen.findByText(
+        'The Versions could not be loaded. The Document remains available.',
+      );
+      expect(
+        screen.queryByRole('heading', { name: 'Version 2 · Official' }),
+      ).not.toBeInTheDocument();
+    }
+    // Metadata and payer projections have their existing independent Source owners.
+    expect(api.detailReads(ids.document)).toHaveLength(2);
+    expect(
+      api.calls.filter((call) => call.path.includes('/content')),
+    ).toHaveLength(0);
+    expect(api.registrations()).toHaveLength(0);
+  },
+);

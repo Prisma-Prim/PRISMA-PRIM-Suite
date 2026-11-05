@@ -61,6 +61,8 @@ export interface ActiveCompanyContext
   knowledgeGrants?: KnowledgeCapturedGrant[];
   externalInvoiceGrants?: ExternalInvoiceCapturedGrant[];
   paymentGrants?: PaymentCapturedGrant[];
+  paymentObservationReadCapture?: string;
+  paymentObservationContextCapture?: string;
   paymentEvidenceContextCapture?: string;
   paymentEvidenceReferenceReadCapture?: string;
   invoiceRecordReadCapture?: string;

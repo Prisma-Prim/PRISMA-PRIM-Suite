@@ -269,6 +269,7 @@ function AvailablePaymentEvidencePanel({
           actor={actor}
           identity={identity}
           documentId={selection.documentId}
+          requestedVersionId={selection.requestedVersionId}
           selectionGeneration={selection.generation}
           operationKeys={authority}
           onProtectedWorkChange={setProtectedWork}

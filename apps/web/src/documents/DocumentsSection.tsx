@@ -25,6 +25,9 @@ type Props = Omit<
   'onSelectPaymentEvidence' | 'onProtectedWorkChange' | 'clientFilter'
 > & {
   legacyKey: string;
+  requestedPaymentEvidence?: RequestedDocument & {
+    paymentEvidenceVersionId?: string;
+  };
   clientFilter?: NativeClientFilter;
   onProtectedSourceWorkChange?: (protectedWork: boolean) => void;
 };
@@ -154,6 +157,21 @@ export function DocumentsSection({
         current.kind === 'native-opening' ? { kind: 'native' } : current,
       );
   }, [pane.kind]);
+  useEffect(() => {
+    const requested = props.requestedPaymentEvidence;
+    if (
+      !requested ||
+      requested.sourceSignal?.aborted ||
+      requested.requestId <= observedNativeRequest.current
+    )
+      return;
+    observedNativeRequest.current = requested.requestId;
+    selectSource({
+      kind: 'document',
+      documentId: requested.documentId,
+      requestedVersionId: requested.paymentEvidenceVersionId,
+    });
+  }, [props.requestedPaymentEvidence, selectSource]);
   const canReadSource = paymentEvidenceAuthority(props.actor) !== undefined;
   if (pane.kind !== 'payment-evidence')
     return (

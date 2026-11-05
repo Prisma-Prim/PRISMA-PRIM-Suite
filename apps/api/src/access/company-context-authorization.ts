@@ -173,6 +173,101 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
 
+  /** Payment copied reads and source-free actions deliberately consume no Client/Document authority. */
+  async requirePaymentObservationAccess(
+    actor: ActorContext,
+    options: {
+      action: 'read' | 'record' | 'confirm' | 'reverse';
+      lock: boolean;
+    },
+  ) {
+    const company = actor.activeCompany;
+    const grant =
+      options.action === 'read'
+        ? paymentReadGrant(company?.paymentGrants)
+        : paymentCapturedGrant(
+            company?.paymentGrants,
+            options.action === 'record'
+              ? 'company_payment_recorder'
+              : options.action === 'confirm'
+                ? 'company_payment_confirmer'
+                : 'company_payment_reverser',
+          );
+    if (!actor.active || !company || !grant) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.id, grant.assignmentId),
+        eq(companyRoleAssignments.bundle, grant.bundle),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      options.lock,
+    );
+    const contexts = await this.opportunityFollowUpContextIdentities(
+      actor,
+      company.id,
+      false,
+    );
+    const context = paymentObservationContext(contexts);
+    if (!context || typeof context[1] !== 'string')
+      throw new ForbiddenException();
+    if (options.lock) {
+      const contextId = context[1];
+      if (context[0] === 'company.manage') {
+        const rows = await this.databaseContext.connection
+          .select({ id: workspacePermissionGrants.id })
+          .from(workspacePermissionGrants)
+          .where(
+            and(
+              eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+              eq(
+                workspacePermissionGrants.workspaceMembershipId,
+                actor.workspaceMembershipId,
+              ),
+              eq(workspacePermissionGrants.id, contextId),
+              eq(workspacePermissionGrants.permission, 'company.manage'),
+            ),
+          )
+          .for('share');
+        if (!rows.length) throw new ForbiddenException();
+      } else {
+        await this.requireLiveCapturedAssignment(
+          actor,
+          company.id,
+          and(
+            eq(companyRoleAssignments.id, contextId),
+            isNull(companyRoleAssignments.revokedAt),
+          ) ?? sql`false`,
+          true,
+        );
+      }
+    }
+    if (
+      company.paymentObservationContextCapture !==
+      paymentObservationContextCapture(actor, company.id, contexts)
+    )
+      throw new ForbiddenException();
+    const read = paymentReadGrant(company.paymentGrants);
+    if (!read) throw new ForbiddenException();
+    const readCapture = paymentObservationReadCapture(
+      actor,
+      company.id,
+      read.assignmentId,
+      contexts,
+    );
+    if (
+      options.action === 'read' &&
+      company.paymentObservationReadCapture !== readCapture
+    )
+      throw new ForbiddenException();
+    return {
+      companyId: company.id,
+      assignmentId: grant.assignmentId,
+      readCapture,
+    };
+  }
+
   async requirePaymentEvidenceReferenceRead(
     actor: ActorContext,
     lock: boolean,
@@ -196,7 +291,11 @@ export class CompanyContextAuthorization {
   }
   async hasPaymentEvidenceAccess(
     actor: ActorContext,
-    options: { manage: boolean; lockAssignment: boolean } = {
+    options: {
+      manage: boolean;
+      lockAssignment: boolean;
+      paymentObservationAction?: 'record' | 'confirm';
+    } = {
       manage: false,
       lockAssignment: false,
     },
@@ -206,9 +305,19 @@ export class CompanyContextAuthorization {
       company?.paymentGrants,
       'company_payment_evidence_access',
     );
-    const selected = options.manage
-      ? paymentCapturedGrant(company?.paymentGrants, 'company_payment_recorder')
-      : paymentReadGrant(company?.paymentGrants);
+    const selected = options.paymentObservationAction
+      ? paymentCapturedGrant(
+          company?.paymentGrants,
+          options.paymentObservationAction === 'confirm'
+            ? 'company_payment_confirmer'
+            : 'company_payment_recorder',
+        )
+      : options.manage
+        ? paymentCapturedGrant(
+            company?.paymentGrants,
+            'company_payment_recorder',
+          )
+        : paymentReadGrant(company?.paymentGrants);
     if (!actor.active || !company || !family || !selected) return false;
     try {
       await this.requirePaymentEvidenceReferenceRead(
@@ -2992,6 +3101,24 @@ export class CompanyContextAuthorization {
         company.paymentEvidenceReferenceReadCapture =
           observations.referenceReadCapture;
       }
+      const paymentRead = paymentReadGrant(company.paymentGrants);
+      if (paymentRead) {
+        const contexts = await this.opportunityFollowUpContextIdentities(
+          actor,
+          company.id,
+          false,
+        );
+        if (paymentObservationContext(contexts)) {
+          company.paymentObservationContextCapture =
+            paymentObservationContextCapture(actor, company.id, contexts);
+          company.paymentObservationReadCapture = paymentObservationReadCapture(
+            actor,
+            company.id,
+            paymentRead.assignmentId,
+            contexts,
+          );
+        }
+      }
       const invoiceGrant = invoiceFinanceCapturedGrant(
         company.externalInvoiceGrants,
         false,
@@ -3204,6 +3331,72 @@ function invoiceRecordReadCapture(
           companyId,
           assignmentId,
           'v1',
+          context ?? null,
+        ]),
+      )
+      .digest('hex')
+  );
+}
+
+function paymentObservationContext(
+  contexts: readonly (readonly (string | null)[])[],
+) {
+  const supported = contexts.filter(
+    ([bundle, id, version]) =>
+      typeof id === 'string' &&
+      (((bundle === 'company.manage' || bundle === 'company_context_access') &&
+        version === null) ||
+        ((bundle === 'company_project_access' ||
+          bundle === 'company_director_client_access') &&
+          (version === 'v1' || version === 'v2')) ||
+        (bundle === 'company_document_registrar' &&
+          (version === 'v1' || version === 'v2' || version === 'v3'))),
+  );
+  return (
+    supported.find((identity) => identity[0] === 'company.manage') ??
+    supported.find((identity) => identity[0] === 'company_context_access') ??
+    supported.find((identity) => identity[0] === 'company_project_access') ??
+    supported[0]
+  );
+}
+function paymentObservationContextCapture(
+  actor: ActorContext,
+  companyId: string,
+  contexts: readonly (readonly (string | null)[])[],
+) {
+  return (
+    'payment-observation-context.v1.' +
+    createHash('sha256')
+      .update(
+        JSON.stringify([
+          actor.internalUserId,
+          actor.workspaceId,
+          actor.workspaceMembershipId,
+          companyId,
+          paymentObservationContext(contexts) ?? null,
+        ]),
+      )
+      .digest('hex')
+  );
+}
+function paymentObservationReadCapture(
+  actor: ActorContext,
+  companyId: string,
+  assignmentId: string,
+  contexts: readonly (readonly (string | null)[])[],
+) {
+  // Copied reads and source-free owners consume one independent Company context.
+  const context = paymentObservationContext(contexts);
+  return (
+    'payment-observation-read.v1.' +
+    createHash('sha256')
+      .update(
+        JSON.stringify([
+          actor.internalUserId,
+          actor.workspaceId,
+          actor.workspaceMembershipId,
+          companyId,
+          assignmentId,
           context ?? null,
         ]),
       )

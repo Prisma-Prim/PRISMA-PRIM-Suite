@@ -1,3 +1,7 @@
+import { useInterfaceLocale } from './localization/interface-locale';
+import { PaymentWorkspace } from './payment-observation/PaymentWorkspace';
+import { paymentAuthority } from './payment-observation/payment-authority';
+import { paymentCopy } from './payment-observation/ui';
 import { DocumentsSection } from './documents/DocumentsSection';
 import { InvoiceRecordsWorkspace } from './invoice-record/InvoiceRecordsWorkspace';
 import { useInvoiceRecordCopy } from './invoice-record/invoice-record-copy';
@@ -92,6 +96,7 @@ type HomeScopeLifetime = {
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
+  const { locale } = useInterfaceLocale();
   const invoiceCopy = useInvoiceRecordCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
@@ -131,7 +136,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     requestId: number;
   }>();
   const [requestedDocument, setRequestedDocument] = useState<
-    RequestedDocument & { documentsContext: string }
+    RequestedDocument & {
+      documentsContext: string;
+      paymentEvidenceVersionId?: string;
+    }
   >();
   const multiCompanyNavigation = useRef(0);
   const overdueLifetime = useRef<HomeScopeLifetime>({
@@ -167,6 +175,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
   const sourceNavigationProtected = useRef(false);
+  const protectedSection = useRef<'documents' | 'payments'>('documents');
+  const [paymentProtection, setPaymentProtection] = useState<{
+    scope: string;
+    active: boolean;
+  }>();
   const sourceScope = useRef('inactive');
   const sourceIdentity = useRef({ identity, generation: 0 });
   if (sourceIdentity.current.identity !== identity)
@@ -192,6 +205,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const navigateToSection = useCallback(
     (
       section:
+        | 'payments'
         | 'clients'
         | 'projects'
         | 'documents'
@@ -201,7 +215,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         | 'overview',
       sourceSignal?: AbortSignal,
     ) => {
-      if (sourceNavigationProtected.current && section !== 'documents') return;
+      if (
+        sourceNavigationProtected.current &&
+        section !== protectedSection.current
+      )
+        return;
       retireMultiCompanyNavigation();
       const requestId = ++sectionNavigation.current.requestId;
       const nextUrl = new URL(window.location.href);
@@ -255,7 +273,23 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   sourceScope.current = protectedSourceScope;
   const sourceProtected =
     sourceProtection?.scope === protectedSourceScope && sourceProtection.active;
-  sourceNavigationProtected.current = sourceProtected;
+  const paymentProtected =
+    paymentProtection?.scope === protectedSourceScope &&
+    paymentProtection.active;
+  const navigationProtected = sourceProtected || paymentProtected;
+  sourceNavigationProtected.current = navigationProtected;
+  protectedSection.current = paymentProtected ? 'payments' : 'documents';
+  const reportProtectedPayment = useCallback(
+    (active: boolean) =>
+      setPaymentProtection((current) => {
+        if (sourceScope.current !== protectedSourceScope) return current;
+        return current?.scope === protectedSourceScope &&
+          current.active === active
+          ? current
+          : { scope: protectedSourceScope, active };
+      }),
+    [protectedSourceScope],
+  );
   const reportProtectedSource = useCallback(
     (active: boolean) =>
       setSourceProtection((current) => {
@@ -504,10 +538,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // read decides what is shown.
   const openDocument =
     access.actor.activeCompany && canAccessClients
-      ? (target: DocumentOpenTarget) => {
+      ? (target: DocumentOpenTarget, paymentEvidenceVersionId?: string) => {
           documentRequests.current += 1;
           setRequestedDocument({
             documentsContext,
+            paymentEvidenceVersionId,
             ...(typeof target === 'string' ? { documentId: target } : target),
             requestId: documentRequests.current,
           });
@@ -643,6 +678,36 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   );
 
   const sections: ApplicationSection[] = [];
+  const paymentText = paymentCopy[locale];
+  if (paymentAuthority(access.actor))
+    sections.push({
+      id: 'payments',
+      label: paymentText.title,
+      description: paymentText.manualNotice,
+      retainAfterSelection: true,
+      content: (
+        <PaymentWorkspace
+          actor={access.actor}
+          identity={identity}
+          projectionAuthority={JSON.stringify([
+            clientAuthorityGeneration,
+            clientIdentityGeneration,
+            access.actor.activeCompany?.clientPermissionAssignmentId,
+            access.actor.activeCompany?.clientPermissionSetVersion,
+          ])}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onProtectedWorkChange={reportProtectedPayment}
+          onOpenClient={canReadCompanyClients ? openClientDossier : undefined}
+          onOpenDocument={
+            openDocument
+              ? (target, versionId) => openDocument(target, versionId)
+              : undefined
+          }
+        />
+      ),
+    });
   if (invoiceRecordAuthority(access.actor))
     sections.push({
       id: 'invoice-records',
@@ -869,7 +934,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
-          requestedDocument={currentRequestedDocument}
+          requestedDocument={
+            currentRequestedDocument?.paymentEvidenceVersionId
+              ? undefined
+              : currentRequestedDocument
+          }
+          requestedPaymentEvidence={
+            currentRequestedDocument?.paymentEvidenceVersionId
+              ? currentRequestedDocument
+              : undefined
+          }
           onProtectedSourceWorkChange={reportProtectedSource}
           onOpenProject={
             openProject && ((projectId) => openProject({ projectId }))
@@ -1195,13 +1269,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       }}
       sections={sections}
       onNavigate={retireMultiCompanyNavigation}
-      navigationProtected={sourceProtected}
+      navigationProtected={navigationProtected}
       companyContext={
         <CompanyContextSelector
           actor={access.actor}
           state={access.companyContext}
           onSelect={selectCompany}
-          disabled={sourceProtected}
+          disabled={navigationProtected}
         />
       }
       userArea={
