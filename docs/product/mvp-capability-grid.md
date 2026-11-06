@@ -33,18 +33,21 @@ Rows follow the per-merge evidence in the 2026-09-26 coordination map, the Codex
 - DO-5 lists the issues behind the Offer, Contract, Precontract and Addendum representations that tracker #290 names as its recognized evidence.
 - EN-4 (Company isolation) is cross-cutting and was proven slice by slice; its row shares #67 with EN-2, and the script cannot test the isolation itself.
 
+## Rows verified against the code on 2026-11-06
+
+- **UI-2 (Real screens)**: `ApplicationRoot.tsx` keeps `/ui-baseline` as a separate lazy route, and no production file imports its synthetic data. `App.tsx` mounts the API-backed sections (clients, projects, documents, requests with offers and contracts, pricing, catalogue, tasks, access, activity). `operational-foundation.acceptance.spec.ts` (#281) and `commercial-journey.acceptance.spec.ts` exercise them through the real API and PostgreSQL at desktop and narrow widths. The row lists the closed Prisme `[UX]` screen issues.
+- **CF-2 (Identified provisional templates)**: illustrative Offer, Contract with Clauses, Addendum and Precontract template versions are bound by migrations 0044, 0053, 0060 and 0062 and labelled "(unapproved)" in their outputs. The row lists the issues that delivered them.
+- **UI-4 (Translation and business vocabulary)**: all 101 `.copy.ts` catalogs have their keys in ro, ru, fr and en. The completion criterion is the unchecked whole-production four-locale acceptance item on #56 (audit A02 on #51), so the row waits for #56. Known remaining work: the shared required-key check registers 60 of the 101 catalogs; two English-only strings remain in `client/ClientUnionPanel.tsx`; Iurie has not yet confirmed the Romanian and Russian business terms.
+
 ## Rows left unmapped
 
-These stay pending in the report. The owner decides; the issues named here are candidates found in the sources, not a mapping.
+These stay pending in the report. Each needs a production or client action, not more code.
 
-| Row  | Why it is unmapped                                                                                                                                                        |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| UI-2 | The sources cite an unlisted series of Prisme `[UX]` issues (#231–#271) plus the acceptance proof #281; they do not say which issues complete "real screens"              |
-| UI-4 | Localization children (for example #447, #622, #703) are partial; tracker #290 says they do not credit UI-4 alone, and no completion criterion is recorded                |
-| TE-3 | Needs the actual business trial with Iurie; no issue exists                                                                                                               |
-| CF-2 | Credited by an audit recognition of delivered Template and Clause identities, with documentation PR #569 that closes no issue; no source attributes it to specific issues |
-| MP-1 | Configured deployment; #523 prepares credential-free Railway packaging and, per #290, authorizes no live deployment                                                       |
-| MP-2 | Tested restoration; #736 is a synthetic isolated restore that #51 records as no production credit                                                                         |
-| MP-3 | Supervision and an exercised incident procedure; #738 detects local web and API liveness and, per #51, infers no production incident policy                               |
+| Row  | Verified state on 2026-11-06                                                                                                       |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| TE-3 | No recorded business trial with Iurie; the pilot-evaluation runs are synthetic. Needs a hosted application (MP-1) and Iurie's time |
+| MP-1 | No live deployment: Railway configuration is prepared (#523, `railway-activation.md`), GitHub records no deployment                |
+| MP-2 | Restoration is proven only on a synthetic database (#736); no production backup exists before MP-1                                 |
+| MP-3 | `scripts/monitor-liveness.mjs` (#738) checks local liveness only; no alert channel, incident owner or exercised procedure          |
 
 Dated coverage statements, with their evidence, stay on #290 and #51. A difference between the count printed here and a figure recorded there comes from rows listed above or from issues reopened since.

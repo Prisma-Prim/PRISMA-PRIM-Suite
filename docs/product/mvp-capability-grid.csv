@@ -31,9 +31,9 @@ HI-2,Action history,operational base,Controlled access to history,257;313;349,cl
 HI-3,Action history,operational base,History consultation,257;358,closed-completed
 HI-4,Action history,operational base,Coverage of the commercial steps (Offers and Contracts),592;593,closed-completed
 UI-1,Interface and languages,operational base,Navigation,226;275;279;297;345,closed-completed
-UI-2,Interface and languages,operational base,Real screens,,unmapped
+UI-2,Interface and languages,operational base,Real screens,225;231;233;236;241;248;254;257;258;262;265;267;269;272;276;281,closed-completed
 UI-3,Interface and languages,operational base,Mobile layout,281,closed-completed
-UI-4,Interface and languages,operational base,Translation and business vocabulary,,unmapped
+UI-4,Interface and languages,operational base,Translation and business vocabulary,56,closed-completed
 TB-1,Dashboard,operational base,Next actions,416,closed-completed
 TB-2,Dashboard,operational base,Real indicators,398,closed-completed
 TB-3,Dashboard,operational base,Open records from indicators,398,closed-completed
@@ -65,7 +65,7 @@ TE-1,End-to-end tests,finalization,Proven operational journey,281,closed-complet
 TE-2,End-to-end tests,finalization,Complete commercial journey,597,closed-completed
 TE-3,End-to-end tests,finalization,Actual business trial,,unmapped
 CF-1,MVP configuration,finalization,Versioned provisional tariffs and examples,615,closed-completed
-CF-2,MVP configuration,finalization,Identified provisional templates,,unmapped
+CF-2,MVP configuration,finalization,Identified provisional templates,501;526;544;557,closed-completed
 CF-3,MVP configuration,finalization,Demonstration roles,620,closed-completed
 MP-1,Production release,finalization,Configured deployment,,unmapped
 MP-2,Production release,finalization,Restored backup,,unmapped
