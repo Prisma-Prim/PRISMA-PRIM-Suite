@@ -3,7 +3,7 @@
 **Product:** PRISMA-PRIM Suite  
 **Status:** Reconciliation complete — decisions `DEC-001` through `DEC-213` approved  
 **Record version:** 1.4  
-**Last updated:** 2026-09-20  
+**Last updated:** 2026-11-06  
 **Source discussion language:** French  
 **Repository language:** English
 
@@ -3669,3 +3669,17 @@ external integration is inferred. This is a reversible navigation/read choice,
 not newly collected Iurie evidence or a new numbered DEC. Same-issue canonical
 normalization/local work is allowed after ordered agent review; publication
 priority, full local verification and delivery-credit boundaries remain intact.
+
+### 34.10 BIC pilot direction and source qualification — 2026-11-06
+
+Dan conveyed Iurie's changed pilot choice and first working-version priorities on 6 November 2026, recorded in [#1052](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1052). The [Product Vision §11.1](product-vision-prd.md#111-first-working-version-priorities--2026-11-06) solely owns that priority statement. Replacing the surveillance pilot with the larger certification case gives the next assessment a more complete representative journey; it does not approve the whole assurance platform or create a new numbered decision.
+
+At that direction, Iurie described Audit material for private delivery, followed by the required procedures/forms/models. Previously supplied generic ISO22000/food-safety commercial examples do not establish that they form the selected private Audit dossier or qualify its operational Templates.
+
+Audit archives and a separate Certificate PDF have now been received privately, with passive intake inventory complete. Content/source qualification is in progress and form/model approval remains unverified. Receipt and inventory alone establish neither qualified source Versions nor operational approval.
+
+The repository is public. The user permits originals without prior anonymization; originals, extracts and minimized/anonymized working copies remain private outside Git. Public tests use fictional fixtures only. Real dossier identifiers/names, contacts, signatures, source bytes, copied procedure/model wording, exports and source metadata must not appear in public code, documentation, issues, tests or CI artifacts. Agents prepare and verify the private working copies and verify the repository/source inventory themselves, without requesting the replaced pilot again or asking Iurie to search the repository.
+
+Implementation ordering must follow inspection of the actual dossier, procedures, forms and current code. Detailed Audit/Certification contracts and all twelve [implementation-readiness gates](specification-and-ticketing-standard.md#8-ready-for-agent-gates) remain required. DEC-099 and DEC-139 retain their inventory gates, alongside existing source/rights, role, Scheme, separation, certification, model, restore and activation controls. Final professional judgments remain human under the existing policy. This record supplies no duration formula or new professional, accreditation or operational approval rule.
+
+The existing [Invoice Record](release-5-external-invoice-record-prd.md) and [Payment observation](release-5-manual-payment-observation-prd.md) owners retain their separate bounded contracts; service-level allocations or balances require a separately assessed contract. Private source-only PDF/Notebook candidates and their reviews remain unqualified preparation. Actual pilot intake determines the next frontier without making PDF-first implementation mandatory or granting a source-only exception to DEC-099/DEC-139.

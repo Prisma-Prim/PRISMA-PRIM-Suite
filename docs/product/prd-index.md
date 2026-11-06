@@ -22,6 +22,8 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Pinned question-to-answer provenance and historical coverage states                                             |
 | [First-tenant Substitution Register](first-tenant-substitution-register.md)              | Provisional MVP stand-ins, the real configuration or document that replaces each, and Iurie's recorded decision |
 
+For the dated first working-version priorities, see [Product Vision §11.1](product-vision-prd.md#111-first-working-version-priorities--2026-11-06).
+
 ## 3. Evidence and non-canonical reconciliation
 
 | Artifact                                                                                                                              | Purpose                                                                                                  |
