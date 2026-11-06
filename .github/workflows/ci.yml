@@ -41,6 +41,9 @@ jobs:
       - name: Type-check
         run: pnpm typecheck
 
+      - name: Check Drizzle migrations match the schema
+        run: pnpm db:check-drift
+
       - name: Test scripts
         run: pnpm test:scripts
 
