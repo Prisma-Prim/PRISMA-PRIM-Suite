@@ -134,6 +134,74 @@ test('a PR reuses API for identical non-web inputs but still runs frontend suite
   );
 });
 
+const executedJob = (name, id) => ({
+  id,
+  name,
+  conclusion: 'success',
+  runner_name: 'hosted',
+  steps: [{ conclusion: 'success' }],
+});
+const skippedJob = (name, id) => ({
+  id,
+  name,
+  conclusion: 'skipped',
+  runner_name: null,
+  steps: [],
+});
+function withGuardJobs(guards) {
+  const f = fixture();
+  const jobs = [...f.jobs, ...guards];
+  f.data['actions/runs/12/jobs?filter=latest&per_page=100'] = {
+    total_count: jobs.length,
+    jobs,
+  };
+  return f;
+}
+
+test('a proof run stays valid whether flaky_guard was skipped or ran its parallel jobs', async () => {
+  for (const guards of [
+    [skippedJob('flaky_guard', 101)],
+    [skippedJob('flaky_guard (${{ matrix.label }})', 101)],
+    [
+      executedJob('flaky_guard (api 1/2)', 101),
+      executedJob('flaky_guard (api 2/2)', 102),
+      executedJob('flaky_guard (browser)', 103),
+    ],
+  ]) {
+    const f = withGuardJobs(guards);
+    assert.deepEqual(
+      await chooseReuse({
+        ...options,
+        event: 'pull_request',
+        current: { ...current, tree: 'e'.repeat(40) },
+        api: f.api,
+      }),
+      { all: false, api: true, source: 12, testedSha: sha },
+      guards.map((job) => job.name).join(),
+    );
+  }
+});
+
+test('a flaky_guard that neither succeeded nor was skipped, or a lookalike job, is no proof', async () => {
+  for (const guards of [
+    [{ ...executedJob('flaky_guard (web)', 101), conclusion: 'failure' }],
+    [{ ...executedJob('flaky_guard (web)', 101), conclusion: 'cancelled' }],
+    [executedJob('flaky_guard_extra', 101)],
+  ]) {
+    const f = withGuardJobs(guards);
+    assert.deepEqual(
+      await chooseReuse({
+        ...options,
+        event: 'pull_request',
+        current: { ...current, tree: 'e'.repeat(40) },
+        api: f.api,
+      }),
+      { all: false, api: false, source: null, testedSha: null },
+      guards[0].name,
+    );
+  }
+});
+
 const noReuse = { all: false, api: false, source: null, testedSha: null };
 for (const [label, alter] of [
   [

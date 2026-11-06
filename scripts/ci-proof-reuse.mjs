@@ -88,10 +88,24 @@ function eligibleRun(run, { repository, runId, now }) {
 
 async function readProof(api, run, context, allowApiReuse = false) {
   if (!eligibleRun(run, context)) return undefined;
-  const { jobs, total_count: count } = await api(
+  const listing = await api(
     `actions/runs/${run.id}/jobs?filter=latest&per_page=100`,
   );
-  if (!Array.isArray(jobs)) return undefined;
+  if (!Array.isArray(listing.jobs)) return undefined;
+  // The pull-request-only flaky guard is skipped or fans out per family, so
+  // its jobs vary between runs. It adds no proof: the run's success already
+  // required it, so it only has to be skipped or successful.
+  const guardJobs = listing.jobs.filter((job) =>
+    /^flaky_guard(?: \(|$)/u.test(job?.name),
+  );
+  if (
+    guardJobs.some(
+      (job) => job.conclusion !== 'success' && job.conclusion !== 'skipped',
+    )
+  )
+    return undefined;
+  const jobs = listing.jobs.filter((job) => !guardJobs.includes(job));
+  const count = listing.total_count - guardJobs.length;
   const executed = (job) =>
     job?.conclusion === 'success' && job.runner_name && job.steps?.length > 0;
   const apiNames = fullJobs.filter((name) => name.startsWith('api ('));

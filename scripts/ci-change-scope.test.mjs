@@ -141,6 +141,7 @@ const heavy = [
   'acceptance',
   'build',
   'packaging',
+  'flaky_guard',
 ];
 function results(scope, heavyResult) {
   return {
@@ -156,16 +157,16 @@ test('the gate accepts skipped heavy jobs only after a successful docs-only scop
   assert.deepEqual(unsuccessfulJobs(results(fullRun, success)), []);
   assert.deepEqual(unsuccessfulJobs(results(docsOnly, skipped)), []);
   assert.deepEqual(unsuccessfulJobs(results(docsOnly, success)), []);
-  assert.equal(unsuccessfulJobs(results(fullRun, skipped)).length, 7);
+  assert.equal(unsuccessfulJobs(results(fullRun, skipped)).length, 8);
   assert.equal(
     unsuccessfulJobs(results({ result: 'success' }, skipped)).length,
-    7,
+    8,
   );
   const failedScope = unsuccessfulJobs(
     results({ result: 'failure', outputs: { docs_only: 'true' } }, skipped),
   );
   assert.ok(failedScope.includes('scope: failure'));
-  assert.equal(failedScope.length, 8);
+  assert.equal(failedScope.length, 9);
   const docsFailure = results(docsOnly, skipped);
   docsFailure.api = { result: 'failure' };
   assert.deepEqual(unsuccessfulJobs(docsFailure), ['api: failure']);

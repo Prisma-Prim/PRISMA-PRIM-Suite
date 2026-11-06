@@ -202,6 +202,7 @@ test('independent test families and packaging share only the fast prerequisite a
     'acceptance',
     'build',
     'packaging',
+    'flaky_guard',
     'quality',
   ]);
   assert.doesNotMatch(jobs.checks, /\bneeds:|\bif:/);
@@ -245,7 +246,7 @@ test('independent test families and packaging share only the fast prerequisite a
   }
   assert.match(
     jobs.quality.replaceAll(/\s+/g, ' '),
-    / needs: \[ checks, scope, postgres_image, api, web_unit, browser, acceptance, build, packaging, \] /,
+    / needs: \[ checks, scope, postgres_image, api, web_unit, browser, acceptance, build, packaging, flaky_guard, \] /,
   );
   assert.match(jobs.quality, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
   const gate = stepBody(jobs.quality, 'Require every verification result');
@@ -288,13 +289,17 @@ test('a controlled failing dependency prevents the workflow aggregate command fr
   assert.equal(dependency.status, 1);
   const results = {
     checks: { result: 'success' },
-    scope: { result: 'success', outputs: { docs_only: 'false' } },
+    scope: {
+      result: 'success',
+      outputs: { docs_only: 'false', repeat_tests: 'false' },
+    },
     api: { result: dependency.status === 0 ? 'success' : 'failure' },
     web_unit: { result: 'success' },
     browser: { result: 'success' },
     acceptance: { result: 'success' },
     build: { result: 'success' },
     packaging: { result: 'success' },
+    flaky_guard: { result: 'skipped' },
   };
   const aggregate = spawnSync(
     process.execPath,
@@ -570,6 +575,72 @@ test('the scope job supplies exact PR or main-push revisions and safety metadata
   );
   assert.match(classify, /run: node scripts\/ci-change-scope\.mjs\n/);
   assert.doesNotMatch(classify, /\bif:/);
+});
+
+test('the scope job selects the changed test files of a pull request once, for the flaky guard', async () => {
+  const { scope } = jobsIn(await readWorkflow());
+  assert.match(
+    scope,
+    /^ {6}repeat_tests: \$\{\{ steps\.repeat\.outputs\.repeat_tests \}\}$/m,
+  );
+  assert.match(
+    scope,
+    /^ {6}repeat_matrix: \$\{\{ steps\.repeat\.outputs\.repeat_matrix \}\}$/m,
+  );
+  const select = stepBody(scope, 'Select changed test files to repeat');
+  assert.match(select, /id: repeat\n/);
+  assert.match(select, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(
+    select,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(
+    select,
+    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  );
+  assert.match(select, /run: node scripts\/ci-changed-tests\.mjs\n/);
+  assert.doesNotMatch(select, /\bif:|continue-on-error/);
+});
+
+test('flaky_guard repeats only the changed tests of a pull request, per family, and blocks the aggregate', async () => {
+  const { flaky_guard: guard, quality } = jobsIn(await readWorkflow());
+  assert.match(guard, /^ {4}needs: \[checks, scope, postgres_image\]$/m);
+  assert.match(
+    guard,
+    /^ {4}if: \$\{\{ needs\.scope\.outputs\.repeat_tests == 'true' \}\}$/m,
+  );
+  assert.match(guard, /^ {4}name: flaky_guard \(\$\{\{ matrix\.label \}\}\)$/m);
+  assert.match(guard, /^ {4}timeout-minutes: 30$/m);
+  assert.match(
+    guard,
+    /^ {4}strategy:\n {6}fail-fast: false\n {6}matrix: \$\{\{ fromJSON\(needs\.scope\.outputs\.repeat_matrix\) \}\}\n/m,
+  );
+  for (const variable of ['DATABASE_URL', 'TEST_DATABASE_URL'])
+    assert.match(guard, new RegExp(`^ {6}${variable}: postgresql://`, 'm'));
+  assert.match(guard, /^ {6}POSTGRES_ADMIN_URL: postgresql:\/\//m);
+
+  const setup = stepBody(guard, 'Set up repository verification');
+  assert.match(setup, /uses: .\/.github\/actions\/setup-verification/);
+  assert.match(setup, /postgres: \$\{\{ matrix\.postgres \}\}/);
+  assert.match(setup, /chromium: \$\{\{ matrix\.chromium \}\}/);
+  const doctor = stepBody(guard, 'Verify supported agent environment');
+  assert.match(doctor, /DOCTOR_SCRIPT: \$\{\{ matrix\.doctor \}\}/);
+  assert.match(doctor, /run: pnpm "\$DOCTOR_SCRIPT"\n/);
+  const repeat = stepBody(guard, 'Repeat changed tests');
+  assert.match(repeat, /REPEAT_FAMILY: \$\{\{ matrix\.family \}\}/);
+  assert.match(repeat, /REPEAT_FILES: \$\{\{ toJSON\(matrix\.files\) \}\}/);
+  assert.match(repeat, /run: node scripts\/ci-repeat-tests\.mjs\n/);
+  assert.doesNotMatch(repeat, /\bif:|continue-on-error/);
+  // Changed file names reach commands only through the environment.
+  for (const line of guard.split('\n'))
+    if (/^\s*(?:- )?run:/.test(line))
+      assert.doesNotMatch(line, /\$\{\{/, 'no expression inside a command');
+
+  // The aggregate requires it; a missing or skipped guard is judged there.
+  assert.match(
+    quality.replaceAll(/\s+/g, ' '),
+    /needs: \[ [^\]]*packaging, flaky_guard, \] /,
+  );
 });
 
 test('packaging accepts a restored cache only after current pinned-image verification', async () => {
