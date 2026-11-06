@@ -505,6 +505,27 @@ section8 owns the two separate assignment-administration events and their safe
 bundle-label metadata. The #821 delegated product disposition approves this
 bounded contract; #823 tracks runtime delivery under this existing visibility.
 
+For the [Manual Working Evidence Case](manual-working-evidence-case-prd.md), a
+committed RECORD records one `working_evidence_case.recorded` and a committed
+CORRECT one `working_evidence_case.corrected`. The restricted target is the exact
+Case revision in its Workspace/Company with server actor membership/time. Typed
+metadata is exactly `{caseId, revisionNumber}`; no statement, context, process,
+reason, source tuple/title/filename/hash, command key or support count enters
+Activity or diagnostics. The complete Case revision/bindings/output, head,
+conserved intent/receipt, original Client operational-use fence and event commit
+atomically through Accountability's public recording boundary, including valid
+response construction. Denied, invalid, stale, failed and exact-replayed commands
+and every read/download create no event or fence advance.
+
+This is internal restricted recording only: generic Activity/Home/search/count/
+filter/export/target-link projections return none, including to administrators
+and Activity readers. Protected business history stays Case-owned under its
+current Case/native prerequisites. Native source preparation records its ordinary Document event actions with
+unchanged minimal metadata, internally only for this family. It gains no generic
+Activity projection, Case success or professional approval. Authorization §8 owns the
+three separate captured assignment event families and existing safe administration
+visibility. Neither Case nor source access grants Activity read.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.

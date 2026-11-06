@@ -765,6 +765,84 @@ administration visibility, bundle-label-only metadata and one event per actual
 state change. The #821 delegated product disposition approves this bounded
 contract; runtime delivery is tracked in #823.
 
+### Manual Working Evidence Case and received-source captures (#1054)
+
+The [Manual Working Evidence Case contract](manual-working-evidence-case-prd.md)
+uses three new opt-in captured Company bundles, initially unassigned:
+
+| Bundle / code                                                                     | Exact v1 permissions                                         |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Company Working Evidence Case Reader / `company_working_evidence_case_reader`     | `working_evidence_case.read`                                 |
+| Company Working Evidence Case Recorder / `company_working_evidence_case_recorder` | `working_evidence_case.read`, `working_evidence_case.record` |
+| Company Received Audit Source Access / `company_received_audit_source_access`     | `document.received_audit_source.access`                      |
+
+Existing Company assignment administration explicitly grants/revokes captured v1
+through current `company.assignment.manage` for an active same-Workspace membership
+and Company. The routes are `/company-working-evidence-case-reader-assignments`,
+`/company-working-evidence-case-recorder-assignments` and
+`/company-received-audit-source-access-assignments`. No old bundle/version,
+repeated grant, bootstrap, migration, ownership/title or creator identity confers
+these rights. Null/unknown captures deny. This is software authority only, with no
+real assignment, professional mandate or two-person separation rule. Neither Case
+bundle grants Company context, native Project/Client/Document, upload, designation,
+Activity, formal Audit/Report/Decision, integration or administration authority.
+The source gate grants no ordinary native or Case permission.
+
+| Operation                                      | Complete required software/native boundary                                                                                                                                                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Case list/detail/current/history               | Reader v1 or Recorder v1 plus current Company context, captured Company Project Access v1/v2 and native original-Client read                                                                                                        |
+| RECORD/CORRECT and their committed replay      | Recorder v1 plus preceding reads and independent metadata/reference/source-family/Content Reader authority for every submitted exact support; new use additionally requires native open Project/active original Client/relationship |
+| Case source selector                           | Case read plus native Project/original-Client read, Registrar v1/v2/v3 metadata/reference read, source gate v1 and Content Reader v1                                                                                                |
+| Frozen statement/annex/open exact Case support | Case read plus native Project/original-Client read and Registrar v1/v2/v3 metadata/reference read, source gate v1 and Content Reader v1 for every support required by the Case artifact contract                                    |
+| Native received-source registration            | Registrar v1/v2/v3 register/read, source gate v1, current context and native Client read/active original Client/relationship; no Case permission or Project prerequisite                                                            |
+| Native source title/purpose correction         | Registrar v2/v3 correction plus native metadata/reference read and source gate; active original context/current draft                                                                                                               |
+| Native source upload                           | Registrar v3 Version management, native metadata/reference read, source gate v1, Content Reader v1 and Uploader v1; active original context/current draft; all rechecked after scanning                                             |
+| Native exact-source metadata/Version history   | Native context/original-Client and Registrar read plus source gate; protected content metadata/upload history/download additionally requires Content Reader v1                                                                      |
+| Native source designation                      | Native context/original-Client, metadata/reference/source gate and Approver v1; clean stored PDF; no new Content Reader prerequisite                                                                                                |
+| Native source successor                        | Native context/original-Client, metadata/reference/source gate and Registrar v3 Version management; no new Content Reader or Case permission                                                                                        |
+
+Native original-Client read preserves its supported Workspace `client.manage`
+alternative or explicitly captured Company `client.read` (Director Client Access
+v1/v2), evaluated by the Client owner. No extra Company Client capture may be
+invented when the native Workspace alternative is valid. All existing native
+bundles remain unchanged: Project Access v1 also grants `project.create`, v2 adds
+its native responsibility update; Registrar v1 includes `document.register` with
+read/reference read, v2 adds correction, v3 adds Version management. Those
+incidental native rights remain independently usable under their owners; they
+never confer Case recording. No pure native read-only bundle is claimed. Merely
+reading Case proof requires no Uploader, Approver, Organizer, Task or Project
+mutation permission. Metadata readers with the native Registrar/source gate retain
+their independently governed registration right.
+
+Access supplies explicit live caller-transaction/read-snapshot participants and
+serializes required captures, membership/Internal User/Company against revocation
+or suspension. Current authority precedes exact committed replay; replay precedes
+fresh new-use, lifecycle, eligibility and physical-byte checks. Equal-permission
+capture replacement does not preserve stale work. Source loss withholds protected
+Case source tuples/counts/artifacts while leaving independently authorized Case
+text and native metadata/history with their owners.
+
+Current Actor projects `workingEvidenceCasePermissions`, Reader/Recorder assignment
+IDs and permission-set versions, and Received Audit Source Access assignment
+ID/version for consumed-state retirement. Recognize exact captured v1 only; the
+projection is not server authority. Case read/record permission is the additive
+union of its supported captures, never a role-name check. For a Case read, consume
+Reader v1 when present, otherwise Recorder v1; writes consume Recorder v1. Keep
+that selected identity until retirement rather than switching an in-flight owner
+to an alternative grant. Native Client reads consume the Client owner's selected
+Workspace grant first when valid, otherwise its supported Company capture. The Case PRD owns exact
+retirement/recovery behavior, including A→B→A; unrelated/native draft owners stay
+independent.
+
+Actual grant/revoke transitions are
+`company_working_evidence_case_reader_assignment.granted` / `.revoked`,
+`company_working_evidence_case_recorder_assignment.granted` / `.revoked`, and
+`company_received_audit_source_access_assignment.granted` / `.revoked`.
+Use this section's existing Company-assignment target, administrator membership,
+server time and bundle-label-only metadata. Exactly one event follows an actual
+change; none follows denial, failure, no-op or replay. Existing administration
+visibility reveals no Case/source content or counts and grants no business read.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.

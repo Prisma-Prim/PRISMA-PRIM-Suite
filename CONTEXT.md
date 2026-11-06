@@ -185,6 +185,16 @@ _Avoid_: Waiver, override
 A managed business artifact whose original file, ownership, status, and version history are preserved.
 _Avoid_: File when lifecycle and governance are meant
 
+**Working Evidence Case**:
+A Company-owned, Project-related record of literal human context and an unclassified
+working statement with exact preserved source references and immutable revisions.
+Behavior: [Manual Working Evidence Case PRD](docs/product/manual-working-evidence-case-prd.md).
+_Avoid_: Audit, formal Audit Finding, approved Report, Certification Case
+
+**Working Statement**:
+The attributed unclassified observation in one Working Evidence Case revision.
+_Avoid_: final Finding classification, professional conclusion, Certification Decision
+
 **Approved Document**:
 A specific Document Version authorized for operational use and eligible for knowledge indexing.
 _Avoid_: Uploaded document, trusted by default
