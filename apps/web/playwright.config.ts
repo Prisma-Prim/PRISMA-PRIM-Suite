@@ -1,15 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
+import { ciReporter } from './playwright.reporters';
 
 export default defineConfig({
   testDir: './e2e',
   outputDir: './test-results/browser',
   fullyParallel: true,
+  reporter: ciReporter(),
   use: {
     baseURL: 'http://127.0.0.1:4173',
     // Functional journeys do not need continuous decorative rendering.
     // The dedicated motion suite explicitly exercises active animation.
     contextOptions: { reducedMotion: 'reduce' },
-    trace: 'on-first-retry',
+    // There are no retries, so keep the evidence of the first (only) failure.
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     storageState: {
       cookies: [],
       origins: [

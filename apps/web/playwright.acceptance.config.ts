@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { ciReporter } from './playwright.reporters';
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,6 +9,7 @@ export default defineConfig({
   globalSetup: './e2e/operational-foundation.global-setup.mjs',
   fullyParallel: false,
   workers: 1,
+  reporter: ciReporter(),
   use: {
     baseURL: 'http://127.0.0.1:4173',
     contextOptions: { reducedMotion: 'reduce' },
