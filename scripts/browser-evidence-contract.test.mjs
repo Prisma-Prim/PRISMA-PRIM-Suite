@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 const mockedConfigUrl = new URL(
   '../apps/web/playwright.config.ts',
@@ -133,6 +134,77 @@ test('CI merges disjoint evidence under the established PR artifact name', async
     quality,
     /path: browser-evidence\/\n {10}if-no-files-found: warn\n {10}retention-days: 14/u,
   );
+});
+
+const e2eDirectoryUrl = new URL('../apps/web/e2e/', import.meta.url);
+
+/** Rebuilds the regular expression a Playwright config declares as a literal. */
+function declaredPattern(literal) {
+  const closing = literal.lastIndexOf('/');
+  return new RegExp(literal.slice(1, closing), literal.slice(closing + 1));
+}
+
+test('every acceptance spec is selected by file-name convention, not by a list', async () => {
+  const acceptanceConfig = (
+    await readFile(acceptanceConfigUrl, 'utf8')
+  ).replaceAll('\r\n', '\n');
+  const selection = /^ {2}testMatch:\s*(\/.+\/u),$/mu.exec(acceptanceConfig);
+  assert.ok(
+    selection,
+    'the acceptance suite must declare one top-level regular-expression testMatch',
+  );
+  assert.doesNotMatch(
+    selection[1],
+    /\|/u,
+    'a hand-maintained list of spec names silently drops every spec nobody registered',
+  );
+  const selects = declaredPattern(selection[1]);
+
+  const mockedConfig = (await readFile(mockedConfigUrl, 'utf8')).replaceAll(
+    '\r\n',
+    '\n',
+  );
+  const ignores = [
+    ...mockedConfig.matchAll(/^ {6}testIgnore: (\/.+\/u),$/gmu),
+  ].map((match) => declaredPattern(match[1]));
+  assert.equal(
+    ignores.length,
+    2,
+    'the desktop and narrow mocked projects must both ignore acceptance specs',
+  );
+
+  const convention = /\.acceptance\.spec\.ts$/u;
+  const inE2e = (name) => fileURLToPath(new URL(name, e2eDirectoryUrl));
+  const files = (await readdir(e2eDirectoryUrl, { recursive: true })).map(
+    inE2e,
+  );
+  assert.ok(
+    files.some((file) => convention.test(file)),
+    'the e2e directory must contain acceptance specs',
+  );
+  const candidates = [
+    ...files,
+    // A spec added tomorrow must be picked up without editing the config.
+    inE2e('brand-new-feature.acceptance.spec.ts'),
+    inE2e('nested/brand-new-feature.acceptance.spec.ts'),
+    // Neighbours that must stay out of the real PostgreSQL suite.
+    inE2e('brand-new-feature.acceptance.fixture.ts'),
+    inE2e('brand-new-feature.spec.ts'),
+    inE2e('brand-new-feature-acceptance.spec.ts'),
+    inE2e('brand-new-feature.acceptance.spec.ts.snap'),
+  ];
+  for (const file of candidates) {
+    assert.equal(
+      selects.test(file),
+      convention.test(file),
+      `${file}: acceptance selection must equal the *.acceptance.spec.ts convention`,
+    );
+    if (convention.test(file))
+      assert.ok(
+        ignores.every((ignore) => ignore.test(file)),
+        `${file}: an acceptance spec must be ignored by the mocked browser projects so it runs in exactly one suite`,
+      );
+  }
 });
 
 test('acceptance failures retain first-attempt evidence without a retry', async () => {

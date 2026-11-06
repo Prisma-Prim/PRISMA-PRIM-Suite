@@ -1,13 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
+import { ciReporter } from './playwright.reporters';
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch:
-    /(?:payment-observation|payment-evidence-source|offer-message-preparation|invoice-record|opportunity-follow-up|external-invoice-source|knowledge-evidence|internal-company-tasks|project-next-action|mission-applicability|commercial-pdf|task-instructions|mission-current-work|project-pdf-bundle|task-planning|contract-mission-plan|mission-plan|contract-decision-queue|offer-decision-queue|client-documents|client-mission|client-commercial|profitability-queue|reported-signing|received-contract|received-addendum|model-contract|client-document-navigation|client-registration-refresh|contract-model|offer-model-generation|offer-model|offer-estimate|commercial-journey|document-content|mission-deliverable|task-results|contract|contract-activity|commercial-intake|company-unassigned-tasks|company-blocked-tasks|company-team-tasks|offer-activity|my-open-projects|operational-foundation|operational-risk|personal-upcoming|company-overdue|personal-attention|multi-company-home|project-template|pricing-configuration|service-catalogue|ideas)\.acceptance\.spec\.ts/u,
+  // Every `<name>.acceptance.spec.ts` is an acceptance spec; there is no list to
+  // maintain. The mocked browser projects ignore the same suffix.
+  testMatch: /\.acceptance\.spec\.ts$/u,
   outputDir: './test-results/acceptance',
   globalSetup: './e2e/operational-foundation.global-setup.mjs',
   fullyParallel: false,
   workers: 1,
+  reporter: ciReporter(),
   use: {
     baseURL: 'http://127.0.0.1:4173',
     contextOptions: { reducedMotion: 'reduce' },

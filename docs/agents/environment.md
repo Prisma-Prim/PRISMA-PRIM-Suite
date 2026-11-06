@@ -112,6 +112,8 @@ pnpm test:preflight:playwright     # one production-shell journey on desktop and
 
 Configure the repository environment in [Codex settings](https://chatgpt.com/codex/settings/environments).
 
+OpenAI runs two kinds of Cloud environment. A task started by an `@codex` comment on GitHub starts a [legacy cloud chat](https://learn.chatgpt.com/docs/third-party/github), which uses a legacy environment's setup and maintenance scripts. A task started from the ChatGPT Codex composer uses a [current environment](https://learn.chatgpt.com/docs/environments/cloud-environments): its Install script runs the setup command below and its Start skill runs the start command. Both use the same repository scripts.
+
 ### Package version
 
 Keep the `universal` image. The repository pins Node 24 through `.node-version` and `package.json`, and the setup doctor rejects runtime drift. If the package-version selector exposes Node 24, selecting it is valid but not required; do not choose a different major or add an inline runtime bootstrap.
@@ -123,18 +125,28 @@ No profile requires Codex environment variables. Do not configure `DATABASE_URL`
 ### Setup script
 
 ```bash
-bash scripts/codex-cloud-setup.sh
+bash scripts/codex-cloud-setup.sh --profile web-postgres
 ```
 
-Setup activates the exact repository pnpm version, installs the frozen dependency graph with the local package cache preferred, and runs the base doctor. It installs neither PostgreSQL nor Chromium and reports each phase duration.
+Setup activates the exact repository pnpm version, installs the frozen dependency graph with the local package cache preferred, installs Playwright Chromium with the CI command, installs and provisions PostgreSQL 17 as described in the PostgreSQL profile below, runs the `web-postgres` doctor, then stops PostgreSQL. It reports each phase duration. Without `--profile`, setup prepares only the base profile and installs neither PostgreSQL nor Chromium.
 
 ### Maintenance script
 
 ```bash
-bash scripts/codex-cloud-maintenance.sh
+bash scripts/codex-cloud-maintenance.sh --profile web-postgres
 ```
 
-Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, and reruns the base doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
+Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, reruns the Chromium install (a no-op when the browser is present), restarts PostgreSQL without installing packages, reruns the doctor and stops PostgreSQL again. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
+
+### Start command
+
+```bash
+bash scripts/codex-cloud-start.sh
+```
+
+No PostgreSQL server outlives setup or maintenance: #216 measured `Startup script timed out after 3600 seconds` only when one did. The start command starts PostgreSQL without network access, exports `DATABASE_URL` and `TEST_DATABASE_URL` for agent shells, and runs `node scripts/agent-doctor.mjs --profile web-postgres --readiness-profile cloud` through the pinned pnpm. A current environment runs it as its Start skill. A legacy environment has no start step, so the task runs it as its first command.
+
+This lifecycle has not yet passed in an actual Codex Cloud task; the owner's acceptance task in #1067 is that proof. If setup still ends with the 3600-second timeout, configure the base lifecycle scripts again and record the result in #216.
 
 ### pnpm launcher
 
@@ -246,7 +258,7 @@ integration gate remain unchanged.
 
 ### PostgreSQL profile
 
-Do not select this profile in Codex Cloud. Provisioning succeeds there — the setup script installs PostgreSQL 17 and the `postgres` doctor passes entirely in about a minute — but the platform then holds the task until `Startup script timed out after 3600 seconds`, with container caching enabled and with it disabled. Issue #216 records the measurements and the hypotheses already eliminated; reopen that investigation before selecting the profile again. Codex Cloud environments run the base lifecycle scripts, and the PostgreSQL-backed suites are proven by the local Docker loop and by GitHub Actions.
+Do not select the `postgres` profile in Codex Cloud. Provisioning succeeds there — the setup script installs PostgreSQL 17 and the `postgres` doctor passes entirely in about a minute — but the profile leaves the server running, and the platform then held the task until `Startup script timed out after 3600 seconds`, with container caching enabled and with it disabled. Issue #216 records the measurements and the hypotheses already eliminated. In Codex Cloud, use the `web-postgres` lifecycle above, which stops the server before setup ends. The PostgreSQL-backed suites are also proven by the local Docker loop and by GitHub Actions.
 
 The profile is supported in a harness that can install and start a service itself, such as Codex CLI or Claude Code on Linux:
 
@@ -288,15 +300,16 @@ Some hosted command boundaries virtualize spawned process identifiers and do not
 
 ### Browser tests
 
-The standard Codex Cloud environment does not install Chromium. Its `pnpm verify` development result therefore does not establish the CI result. A targeted local browser check or a [local reproduction](local-integration-verifier.md) needs a harness with Chromium and the relevant database/packaging prerequisites.
+The `web-postgres` Cloud setup installs Playwright Chromium with the CI command, which reuses the image's system libraries and installs none. The doctor proves only that the browser executable is present; an actual launch can still fail on a missing system library. A Cloud `pnpm verify` result therefore does not establish the GitHub integration result. A targeted local browser check or a [local reproduction](local-integration-verifier.md) needs a harness with a launchable Chromium and the relevant database/packaging prerequisites.
 
-Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, or use another harness where Chromium is already available. Apply the [shared decision procedure](issue-execution.md#shared-decisions-for-major-trade-offs) before a major environment or delivery-cost change. GitHub CI runs the browser suites on every pull request update. Keep browser setup out of the standard environment.
+Install Chromium during setup, not during the agent phase. Local browser runs must preserve the synthetic evidence as required by the execution guide. GitHub CI runs the browser suites on every pull request update and in the merge queue.
 
 ### Network and credentials
 
-- Keep agent-phase Internet access off.
+- Legacy environment: setup and maintenance run with their own Internet access before the agent settings apply. For package downloads during the task, turn agent Internet access on with the **Common dependencies** preset, no additional domain, and HTTP methods limited to `GET`, `HEAD` and `OPTIONS`.
+- Current environment: turn off **Enable all public internet access**, turn on **Package managers**, and add `apt.postgresql.org`, `www.postgresql.org`, `cdn.playwright.dev`, `playwright.download.prss.microsoft.com` and `api.github.com` under **Additional allowed domains**.
 - Do not add a GitHub PAT or another long-lived credential.
-- Setup uses its temporary network access only for package and operating-system installation.
+- GitHub Actions log and artifact storage hosts (#601, #618, #775), the Clerk development host (#652) and `uploads.github.com` (#750) each need a separate owner decision.
 
 This follows the [official OpenAI Cloud environment contract](https://learn.chatgpt.com/docs/environments/cloud-environment): package versions can be pinned in settings, environment variables persist for the whole task, setup and maintenance are distinct cache lifecycle steps, and changing environment configuration normally invalidates the cache.
 
@@ -309,7 +322,7 @@ Use **Reset cache** only when:
 - repository changes add a new system-level prerequisite for the selected profile;
 - setup, maintenance, or environment values changed but automatic invalidation did not occur.
 
-After changing the standard environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs` to pass before implementation. Keep the base profile on both Codex Cloud lifecycle scripts, and use `--profile postgres`, `--profile web`, or `--profile web-postgres` only in a harness that provides the corresponding service.
+After changing the environment, launch a fresh task and require `bash scripts/codex-cloud-start.sh` to pass before implementation.
 
 ## Local and other harnesses
 
