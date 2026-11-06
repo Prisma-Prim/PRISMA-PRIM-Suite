@@ -15,6 +15,8 @@ const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company',
   displayName: 'Company',
   clientPermissions: ['client.read'],
+  clientPermissionAssignmentId: '10000000-0000-4000-8000-000000000007',
+  clientPermissionSetVersion: 'v1',
   documentPermissions: [
     'document.read',
     'document.register',
@@ -347,5 +349,42 @@ it('keeps independent Addendum PDF bytes and key while Contract/Intake captures 
   await waitFor(() => expect(writes).toHaveLength(2));
   expect(writes[1]?.body).toBe(writes[0]?.body);
   expect(writes[1]?.key).toBe(writes[0]?.key);
+  await screen.findByText('kept-original.pdf', { exact: true });
+});
+
+it('keeps an uncertain Addendum upload when only its unconsumed Approver assignment is replaced', async () => {
+  const writes = http('received-addendum');
+  const identity = deterministicBrowserIdentity();
+  const current = (approverAssignmentId: string): ActorContext => ({
+    ...actor,
+    activeCompany: {
+      ...company,
+      documentPermissions: [
+        ...(company.documentPermissions ?? []),
+        'document.version.designate_official',
+      ],
+      documentApproverAssignmentId: approverAssignmentId,
+      documentApproverPermissionSetVersion: 'v1',
+    },
+  });
+  const view = render(
+    <DocumentWorkspace actor={current('approver-one')} identity={identity} />,
+  );
+  await uncertainUpload();
+  view.rerender(
+    <DocumentWorkspace actor={current('approver-one')} identity={identity} />,
+  );
+  expect(
+    screen.getByRole('button', { name: 'Retry the same PDF' }),
+  ).toBeEnabled();
+  expect(writes).toHaveLength(1);
+  view.rerender(
+    <DocumentWorkspace actor={current('approver-two')} identity={identity} />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Retry the same PDF' }));
+  await waitFor(() => expect(writes).toHaveLength(2));
+  expect(writes[1]?.body).toBe(writes[0]?.body);
+  expect(writes[1]?.key).toBe(writes[0]?.key);
+  expect(writes[1]?.path).toBe(writes[0]?.path);
   await screen.findByText('kept-original.pdf', { exact: true });
 });

@@ -123,3 +123,117 @@ export function receivedAddendumSourceAuthority(actor: ActorContext): string {
     company?.commercialIntakePermissionSetVersion,
   ]);
 }
+
+/** Native operation captures never consume the declared parent's authority. */
+export function receivedAddendumNativeAuthority(actor: ActorContext) {
+  const company = actor.activeCompany;
+  const permissions = company?.documentPermissions ?? [];
+  if (
+    !actor.active ||
+    !actor.internalUserId ||
+    !actor.workspaceId ||
+    !actor.workspaceMembershipId ||
+    !company?.id ||
+    !hasReceivedAddendumAccess(company) ||
+    !permissions.includes('document.read') ||
+    !nativeCapture(
+      company.documentPermissionAssignmentId,
+      company.documentPermissionSetVersion,
+      ['v1', 'v2', 'v3'],
+    ) ||
+    !(
+      actor.workspacePermissions.includes('client.manage') ||
+      (company.clientPermissions?.includes('client.read') &&
+        nativeCapture(
+          company.clientPermissionAssignmentId,
+          company.clientPermissionSetVersion,
+          ['v1', 'v2'],
+        ))
+    )
+  )
+    return undefined;
+  // The strict opaque Client capture already conserves the selected native
+  // Workspace/Company read alternative and its exact assignment/version.
+  const metadata = JSON.stringify([
+    actor.internalUserId,
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    company.id,
+    company.receivedAddendumAccessAssignmentId,
+    company.receivedAddendumAccessPermissionSetVersion,
+    company.receivedAddendumClientReadCapture,
+    company.documentPermissionAssignmentId,
+    company.documentPermissionSetVersion,
+    actor.workspacePermissions.includes('client.manage')
+      ? ['workspace', 'client.manage']
+      : [
+          'company',
+          company.clientPermissionAssignmentId,
+          company.clientPermissionSetVersion,
+        ],
+  ]);
+  const reference = permissions.includes('document.reference.read');
+  const content =
+    reference &&
+    permissions.includes('document.content.read') &&
+    nativeCapture(
+      company.documentContentReaderAssignmentId,
+      company.documentContentReaderPermissionSetVersion,
+      ['v1'],
+    )
+      ? JSON.stringify([
+          metadata,
+          'content',
+          company.documentContentReaderAssignmentId,
+          company.documentContentReaderPermissionSetVersion,
+        ])
+      : null;
+  const manage =
+    company.documentPermissionSetVersion === 'v3' &&
+    permissions.includes('document.version.manage');
+  const upload =
+    content &&
+    manage &&
+    permissions.includes('document.content.upload') &&
+    nativeCapture(
+      company.documentContentUploaderAssignmentId,
+      company.documentContentUploaderPermissionSetVersion,
+      ['v1'],
+    )
+      ? JSON.stringify([
+          content,
+          'upload',
+          company.documentContentUploaderAssignmentId,
+          company.documentContentUploaderPermissionSetVersion,
+        ])
+      : null;
+  const designation =
+    reference &&
+    permissions.includes('document.version.designate_official') &&
+    nativeCapture(
+      company.documentApproverAssignmentId,
+      company.documentApproverPermissionSetVersion,
+      ['v1'],
+    )
+      ? JSON.stringify([
+          metadata,
+          'designation',
+          company.documentApproverAssignmentId,
+          company.documentApproverPermissionSetVersion,
+        ])
+      : null;
+  return {
+    metadata,
+    versions: JSON.stringify([metadata, content]),
+    content,
+    upload,
+    designation,
+    successor:
+      reference && manage ? JSON.stringify([metadata, 'successor']) : null,
+    recovery: JSON.stringify(actor),
+  };
+}
+
+export type ReceivedAddendumNativeAuthority = NonNullable<
+  ReturnType<typeof receivedAddendumNativeAuthority>
+>;
