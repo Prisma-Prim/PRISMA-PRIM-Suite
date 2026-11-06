@@ -9,8 +9,13 @@ const scriptPath = fileURLToPath(
 );
 const script = await readFile(scriptPath, 'utf8');
 
-test('accepts only the --start and --install modes', () => {
-  for (const args of [['--reset'], ['--start', '--install'], ['start']]) {
+test('accepts only the --start, --install and --stop modes', () => {
+  for (const args of [
+    ['--reset'],
+    ['--start', '--install'],
+    ['start'],
+    ['stop'],
+  ]) {
     const result = spawnSync('bash', [scriptPath, ...args], {
       encoding: 'utf8',
     });

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Provision or restart the isolated PostgreSQL 17 used by the Codex Cloud
-# `postgres` environment. Installs the PGDG apt package once (--install) and
-# starts the Debian cluster on every cached resume (--start). Idempotent.
+# Provision, restart or stop the isolated PostgreSQL 17 used by the Codex Cloud
+# `postgres` and `web-postgres` environments. Installs the PGDG apt package once
+# (--install), starts the Debian cluster on every cached resume (--start) and
+# stops it before a lifecycle script exits (--stop). Idempotent.
 set -euo pipefail
 
 readonly postgres_major='17'
@@ -16,7 +17,7 @@ readonly runtime_directory="${HOME}/.config/prisma-prim"
 readonly runtime_file="${runtime_directory}/postgres-runtime.sh"
 
 usage() {
-  echo 'Usage: bash scripts/codex-cloud-postgres.sh [--start|--install]' >&2
+  echo 'Usage: bash scripts/codex-cloud-postgres.sh [--start|--install|--stop]' >&2
   exit 2
 }
 
@@ -27,7 +28,7 @@ fail() {
 
 (($# <= 1)) || usage
 mode="${1:---start}"
-[[ "${mode}" == '--start' || "${mode}" == '--install' ]] || usage
+[[ "${mode}" == '--start' || "${mode}" == '--install' || "${mode}" == '--stop' ]] || usage
 
 as_root() {
   if [[ "${EUID}" -eq 0 ]]; then
@@ -140,6 +141,19 @@ start_cluster() {
   fail "PostgreSQL ${postgres_major} did not accept connections on ${listen_address}:${port}."
 }
 
+stop_cluster() {
+  local clusters major name cluster_port cluster_status remainder
+  clusters="$(as_root pg_lsclusters --no-header)"
+  while read -r major name cluster_port cluster_status remainder; do
+    if [[ "${major}" == "${postgres_major}" && "${name}" == "${cluster_name}" && "${cluster_status}" == online* ]]; then
+      as_root pg_ctlcluster "${postgres_major}" "${cluster_name}" stop
+      echo "Stopped PostgreSQL ${postgres_major}/${cluster_name}; bash scripts/codex-cloud-start.sh starts it for a task."
+      return 0
+    fi
+  done <<<"${clusters}"
+  echo "PostgreSQL ${postgres_major}/${cluster_name} is not running."
+}
+
 ensure_application_identities() {
   local role_exists role_compliant database database_exists database_owner
   role_exists="$(as_postgres_sql -tA -c "SELECT 1 FROM pg_roles WHERE rolname = '${database_user}'")"
@@ -201,6 +215,13 @@ persist_application_targets() {
 }
 
 main() {
+  if [[ "${mode}" == '--stop' ]]; then
+    if cluster_installed; then
+      stop_cluster
+    fi
+    return 0
+  fi
+
   if ! cluster_installed; then
     [[ "${mode}" == '--install' ]] ||
       fail "PostgreSQL ${postgres_major} is not installed; rerun with --install."

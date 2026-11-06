@@ -2,10 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const setupScript = await readFile(
-  new URL('./codex-cloud-setup.sh', import.meta.url),
-  'utf8',
-);
+import { runCloudScript } from './codex-cloud-test-support.mjs';
+
 const maintenanceScript = await readFile(
   new URL('./codex-cloud-maintenance.sh', import.meta.url),
   'utf8',
@@ -18,40 +16,104 @@ const gitignore = await readFile(
   'utf8',
 );
 
-test('keeps browser and PostgreSQL execution out of the standard Codex profile', () => {
-  assert.doesNotMatch(maintenanceScript, /playwright install|chromium/i);
-  assert.match(maintenanceScript, /profile="base"/);
-  assert.equal(
-    maintenanceScript.includes('if [[ "${profile}" == "postgres" ]]; then'),
-    true,
+const doctorCall = (profile, ...extra) =>
+  ['pnpm exec node scripts/agent-doctor.mjs --profile', profile, ...extra].join(
+    ' ',
   );
-  assert.equal(
-    maintenanceScript.includes('agent-doctor.mjs --profile "${profile}"'),
-    true,
+
+test('keeps browser and PostgreSQL execution out of the standard Codex profile', async () => {
+  const result = await runCloudScript('codex-cloud-setup.sh');
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.calls, [
+    'pnpm --version',
+    'pnpm install --frozen-lockfile --prefer-offline',
+    doctorCall('base'),
+    'doctor-target []',
+  ]);
+});
+
+test('sets up web-postgres and leaves no PostgreSQL server running', async () => {
+  const result = await runCloudScript('codex-cloud-setup.sh', [
+    '--profile',
+    'web-postgres',
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.calls, [
+    'pnpm --version',
+    'pnpm install --frozen-lockfile --prefer-offline',
+    'pnpm --filter @prisma-prim/web exec playwright install chromium',
+    'postgres --install',
+    doctorCall('web-postgres', '--readiness-profile cloud'),
+    'doctor-target [stub_test]',
+    'postgres --stop',
+  ]);
+});
+
+test('stops PostgreSQL when the web-postgres doctor fails', async () => {
+  const result = await runCloudScript(
+    'codex-cloud-setup.sh',
+    ['--profile', 'web-postgres'],
+    { doctorStatus: 1 },
   );
+  assert.equal(result.status, 1);
+  assert.equal(result.calls.at(-1), 'postgres --stop');
+  assert.equal(
+    result.calls.filter((call) => call === 'postgres --stop').length,
+    1,
+  );
+});
+
+test('restores web-postgres on maintenance without installing system packages', async () => {
+  const result = await runCloudScript('codex-cloud-maintenance.sh', [
+    '--profile',
+    'web-postgres',
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.calls.slice(2), [
+    'pnpm --filter @prisma-prim/web exec playwright install chromium',
+    'postgres --start',
+    doctorCall('web-postgres', '--readiness-profile cloud'),
+    'doctor-target [stub_test]',
+    'postgres --stop',
+  ]);
+});
+
+test('keeps the postgres profile server running for local harnesses', async () => {
+  const result = await runCloudScript('codex-cloud-setup.sh', [
+    '--profile',
+    'postgres',
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.calls.slice(2), [
+    'postgres --install',
+    doctorCall('postgres'),
+    'doctor-target [stub_test]',
+  ]);
 });
 
 test('sources the installer-provided database targets before the postgres doctor', () => {
   const sourceLine = maintenanceScript.indexOf(
     'source "${HOME}/.config/prisma-prim/postgres-runtime.sh"',
   );
-  const doctor = maintenanceScript.indexOf('agent-doctor.mjs --profile');
+  const doctor = maintenanceScript.indexOf(
+    'agent-doctor.mjs "${doctor_arguments[@]}"',
+  );
   assert.notEqual(sourceLine, -1);
   assert.ok(sourceLine < doctor, 'targets must be exported before the doctor');
   assert.doesNotMatch(maintenanceScript, /DATABASE_URL=/);
 });
 
-test('installs PostgreSQL only for the explicit setup profile', () => {
-  assert.equal(
-    setupScript.includes('if [[ "${profile}" == "postgres" ]]; then'),
-    true,
+test('rejects unknown setup profiles before preparing anything', async () => {
+  const result = await runCloudScript('codex-cloud-setup.sh', [
+    '--profile',
+    'web',
+  ]);
+  assert.equal(result.status, 2);
+  assert.match(
+    result.stderr,
+    /Usage: bash scripts\/codex-cloud-setup\.sh \[--profile base\|postgres\|web-postgres\]/,
   );
-  assert.equal(
-    setupScript.includes(
-      'maintenance_arguments+=(--profile postgres --install-system-dependencies)',
-    ),
-    true,
-  );
+  assert.deepEqual(result.calls, []);
 });
 
 test('activates and persists the repository Node runtime before pnpm', () => {
