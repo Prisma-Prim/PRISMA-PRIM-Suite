@@ -315,6 +315,7 @@ test('CI fails formatting first, then lint, types and the complete script suite'
     ['Check formatting', 'run: pnpm format:check'],
     ['Lint', 'run: pnpm lint'],
     ['Type-check', 'run: pnpm typecheck'],
+    ['Check Drizzle migrations match the schema', 'run: pnpm db:check-drift'],
     ['Test scripts', 'run: pnpm test:scripts'],
     [
       'Test documentation contracts',
