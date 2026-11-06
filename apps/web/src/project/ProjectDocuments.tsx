@@ -431,7 +431,12 @@ function readListing(value: unknown): Listing {
         row.revision < 0
       )
         throw new Error('Invalid association revision');
-      return { document: readDocument(row.document), revision: row.revision };
+      const document = readDocument(row.document);
+      if (document.type === 'received-audit-source')
+        throw new Error(
+          'Received sources cannot belong to an ordinary Project Document list',
+        );
+      return { document, revision: row.revision };
     }),
   };
 }

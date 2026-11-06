@@ -87,6 +87,7 @@ export default async function globalSetup() {
       serverClock,
       environment: {
         NODE_ENV: 'test',
+        WEB_ORIGIN: 'http://127.0.0.1:4173',
         ACCESS_IDENTITY_MODE: 'test',
         KNOWLEDGE_EVIDENCE_ENABLED: 'true',
         DOCUMENT_MALWARE_SCANNER_HOST: documentScanner.host,

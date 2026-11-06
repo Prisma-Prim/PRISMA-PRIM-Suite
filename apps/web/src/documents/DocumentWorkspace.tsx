@@ -1,3 +1,5 @@
+import { hasReceivedAuditSourceAccess } from './received-audit-source-access';
+import { useReceivedAuditSourceCopy } from './received-audit-source.copy';
 import {
   hasReceivedAddendumAccess,
   canReadReceivedAddendumRelation,
@@ -19,6 +21,7 @@ import {
 } from './external-invoice-access';
 import { useExternalInvoiceCopy } from './external-invoice.copy';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import {
   hasReceivedContractAccess,
   canReadReceivedContractRelation,
@@ -166,6 +169,12 @@ function DocumentSession({
   onProtectedReceivedAddendumWorkChange?: (protectedWork: boolean) => void;
 }) {
   const copy = useDocumentsCopy();
+  const auditSourceCopy = useReceivedAuditSourceCopy();
+  const captureActorRecovery = useAuthorityLifetime(
+    JSON.stringify(actor),
+    identity,
+  );
+  const canUseAuditSource = hasReceivedAuditSourceAccess(actor.activeCompany);
   const paymentCopy = usePaymentEvidenceCopy();
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
@@ -386,7 +395,30 @@ function DocumentSession({
     actor.activeCompany,
     'received-addendum',
   );
+  const auditSourceSignature = documentFamilyCaptureKey(
+    actor.activeCompany,
+    'received-audit-source',
+  );
+  const auditSourceOwner = useRef({
+    signature: auditSourceSignature,
+    identity,
+    generation: 0,
+  });
+  if (
+    auditSourceOwner.current.signature !== auditSourceSignature ||
+    auditSourceOwner.current.identity !== identity
+  )
+    auditSourceOwner.current = {
+      signature: auditSourceSignature,
+      identity,
+      generation: auditSourceOwner.current.generation + 1,
+    };
+  const auditSourceCapture = JSON.stringify([
+    auditSourceSignature,
+    auditSourceOwner.current.generation,
+  ]);
   const familyCaptures = {
+    'received-audit-source': auditSourceCapture,
     'received-addendum': addendumCapture,
     questionnaire: 'questionnaire',
     'mission-deliverable': missionCapture,
@@ -403,6 +435,7 @@ function DocumentSession({
     const retired = (type: DocumentFamily) =>
       previous[type] !== familyCaptures[type];
     if (
+      !retired('received-audit-source') &&
       !retired('mission-deliverable') &&
       !retired('received-contract') &&
       !retired('received-addendum') &&
@@ -450,6 +483,7 @@ function DocumentSession({
       setFamily('questionnaire');
     }
   }, [
+    auditSourceCapture,
     missionCapture,
     receivedCapture,
     addendumCapture,
@@ -1071,6 +1105,7 @@ function DocumentSession({
     const request = new AbortController();
     pending.current = request;
     setCorrection('pending');
+    const recoveryIsCurrent = captureActorRecovery();
     let confirmedOutcome: 'corrected' | 'unchanged' | undefined;
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -1090,6 +1125,22 @@ function DocumentSession({
       );
       if (request.signal.aborted) return;
       if (result.status === 'unauthorized') {
+        if (detail.type === 'received-audit-source') {
+          setCorrection('denied');
+          correctionRetry.current = undefined;
+          void handleAuthenticatedAccessRejection({
+            result,
+            identity,
+            companyContextId: companyId,
+            signal: request.signal,
+            isCurrent: () => !request.signal.aborted && recoveryIsCurrent(),
+            onActorRevalidated: onActorRevalidated ?? (() => undefined),
+            onCompanyContextRejected:
+              onCompanyContextRejected ?? (() => undefined),
+            onWorkspaceAccessRejected,
+          }).catch(() => undefined);
+          return;
+        }
         await identity.rejectSession();
         return;
       }
@@ -1228,6 +1279,7 @@ function DocumentSession({
     const startedUnderRevision = identityRevision.current;
     const submittedFrom = activeFilter.current;
     setMutation('pending');
+    const recoveryIsCurrent = captureActorRecovery();
     setRegistrationInFlight(request);
     /** Releases a requested Document in the same update as this outcome. */
     const settleRegistration = () =>
@@ -1249,6 +1301,21 @@ function DocumentSession({
       });
       if (request.signal.aborted) return;
       if (result.status === 'unauthorized') {
+        if (family === 'received-audit-source') {
+          setMutation('error');
+          void handleAuthenticatedAccessRejection({
+            result,
+            identity,
+            companyContextId: companyId,
+            signal: request.signal,
+            isCurrent: () => !request.signal.aborted && recoveryIsCurrent(),
+            onActorRevalidated: onActorRevalidated ?? (() => undefined),
+            onCompanyContextRejected:
+              onCompanyContextRejected ?? (() => undefined),
+            onWorkspaceAccessRejected,
+          }).catch(() => undefined);
+          return;
+        }
         await identity.rejectSession();
         return;
       }
@@ -1361,21 +1428,24 @@ function DocumentSession({
         </button>
       )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
-        {detail?.type === 'received-addendum' ||
-        (!detail && family === 'received-addendum')
-          ? addendumCopy.t('warning')
-          : detail?.type === 'external-invoice' ||
-              (!detail && family === 'external-invoice')
-            ? invoiceCopy.t('warning')
-            : detail?.type === 'received-contract' ||
-                (!detail && family === 'received-contract')
-              ? receivedCopy.t('warning')
-              : detail?.type === 'mission-deliverable' ||
-                  (!detail && family === 'mission-deliverable')
-                ? missionCopy.t('warning')
-                : detail?.version.status === 'official'
-                  ? copy.officialWarning
-                  : copy.warning}
+        {detail?.type === 'received-audit-source' ||
+        (!detail && family === 'received-audit-source')
+          ? auditSourceCopy('warning')
+          : detail?.type === 'received-addendum' ||
+              (!detail && family === 'received-addendum')
+            ? addendumCopy.t('warning')
+            : detail?.type === 'external-invoice' ||
+                (!detail && family === 'external-invoice')
+              ? invoiceCopy.t('warning')
+              : detail?.type === 'received-contract' ||
+                  (!detail && family === 'received-contract')
+                ? receivedCopy.t('warning')
+                : detail?.type === 'mission-deliverable' ||
+                    (!detail && family === 'mission-deliverable')
+                  ? missionCopy.t('warning')
+                  : detail?.version.status === 'official'
+                    ? copy.officialWarning
+                    : copy.warning}
       </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -1478,15 +1548,20 @@ function DocumentSession({
                     {detail.title}
                   </h3>
                   <p>
-                    {detail.type === 'received-addendum'
-                      ? addendumCopy.t(detail.version.status)
-                      : detail.type === 'external-invoice'
-                        ? invoiceCopy.t(detail.version.status)
-                        : detail.type === 'received-contract'
-                          ? receivedCopy.t(detail.version.status)
-                          : detail.type === 'mission-deliverable'
-                            ? missionCopy.t(detail.version.status)
-                            : workingVersionLabel(detail.version.status, copy)}
+                    {detail.type === 'received-audit-source'
+                      ? auditSourceCopy(detail.version.status)
+                      : detail.type === 'received-addendum'
+                        ? addendumCopy.t(detail.version.status)
+                        : detail.type === 'external-invoice'
+                          ? invoiceCopy.t(detail.version.status)
+                          : detail.type === 'received-contract'
+                            ? receivedCopy.t(detail.version.status)
+                            : detail.type === 'mission-deliverable'
+                              ? missionCopy.t(detail.version.status)
+                              : workingVersionLabel(
+                                  detail.version.status,
+                                  copy,
+                                )}
                   </p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
@@ -1536,6 +1611,7 @@ function DocumentSession({
               )}
               {detail.type !== 'external-invoice' &&
                 detail.type !== 'received-addendum' &&
+                detail.type !== 'received-audit-source' &&
                 canReadProjects &&
                 detail.projectAssociation && (
                   <ProjectAssociation
@@ -1686,7 +1762,8 @@ function DocumentSession({
               )}
               {canRegister && (
                 <>
-                  {(canUseMission ||
+                  {(canUseAuditSource ||
+                    canUseMission ||
                     canUseReceived ||
                     canUseAddendum ||
                     canUseInvoice) && (
@@ -1703,6 +1780,14 @@ function DocumentSession({
                             value: 'questionnaire',
                             label: missionCopy.t('questionnaire'),
                           },
+                          ...(canUseAuditSource
+                            ? [
+                                {
+                                  value: 'received-audit-source',
+                                  label: auditSourceCopy('family'),
+                                },
+                              ]
+                            : []),
                           ...(canUseMission
                             ? [
                                 {
@@ -1742,6 +1827,7 @@ function DocumentSession({
                           if (
                             !receivedBusy &&
                             (value === 'questionnaire' ||
+                              value === 'received-audit-source' ||
                               value === 'mission-deliverable' ||
                               value === 'received-contract' ||
                               value === 'received-addendum' ||

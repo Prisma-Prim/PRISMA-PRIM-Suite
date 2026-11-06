@@ -494,6 +494,20 @@ export const COMPANY_ROLE_BUNDLES = {
       ],
     },
   },
+  company_working_evidence_case_reader: {
+    label: 'Company Working Evidence Case Reader',
+    versions: { v1: ['working_evidence_case.read'] },
+  },
+  company_working_evidence_case_recorder: {
+    label: 'Company Working Evidence Case Recorder',
+    versions: {
+      v1: ['working_evidence_case.read', 'working_evidence_case.record'],
+    },
+  },
+  company_received_audit_source_access: {
+    label: 'Company Received Audit Source Access',
+    versions: { v1: ['document.received_audit_source.access'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -889,6 +903,7 @@ export type DocumentPermission =
   | CompanyRolePermission<'company_mission_deliverable_access'>
   | CompanyRolePermission<'company_received_contract_access'>
   | CompanyRolePermission<'company_received_addendum_access'>
+  | CompanyRolePermission<'company_received_audit_source_access'>
   | CompanyRolePermission<'company_document_content_uploader'>
   | CompanyRolePermission<'company_document_project_organizer'>;
 export type DocumentPermissionSetVersion =
@@ -1264,3 +1279,37 @@ export const COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE =
   'company_payment_evidence_access' satisfies CompanyRoleBundle;
 export const COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_payment_evidence_access.label;
+
+export const COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE =
+  'company_working_evidence_case_reader' satisfies CompanyRoleBundle;
+export const COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE =
+  'company_working_evidence_case_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE =
+  'company_received_audit_source_access' satisfies CompanyRoleBundle;
+export type WorkingEvidenceCasePermission =
+  | CompanyRolePermission<'company_working_evidence_case_reader'>
+  | CompanyRolePermission<'company_working_evidence_case_recorder'>;
+export function workingEvidenceCaseReaderPermissionsFor(
+  version: unknown,
+): readonly WorkingEvidenceCasePermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+    version,
+  );
+}
+export function workingEvidenceCaseRecorderPermissionsFor(
+  version: unknown,
+): readonly WorkingEvidenceCasePermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+    version,
+  );
+}
+export function receivedAuditSourcePermissionsFor(
+  version: unknown,
+): readonly DocumentPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+    version,
+  );
+}

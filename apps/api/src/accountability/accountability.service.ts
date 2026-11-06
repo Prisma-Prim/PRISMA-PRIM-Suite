@@ -1,3 +1,4 @@
+import { workingEvidenceEvents } from '../database/schema/index.js';
 import { internalCompanyTaskEvents } from '../database/schema/internal-task.js';
 import { projectNextActionEvents } from '../database/schema/project-next-action.js';
 import { missionApplicabilityEvents } from '../database/schema/mission-applicability.js';
@@ -184,6 +185,30 @@ async function projectedPage<
 
 @Injectable()
 export class AccountabilityService {
+  /** Restricted Case event: it is not a generic Activity/Home projection. */
+  async recordWorkingEvidenceCaseEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    caseId: string;
+    revisionId: string;
+    revisionNumber: number;
+    recordedAt: Date;
+    action:
+      'working_evidence_case.recorded' | 'working_evidence_case.corrected';
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(workingEvidenceEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      caseId: input.caseId,
+      revisionId: input.revisionId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorMembershipId: input.actor.workspaceMembershipId,
+      recordedAt: input.recordedAt,
+      action: input.action,
+      metadata: { caseId: input.caseId, revisionNumber: input.revisionNumber },
+    });
+  }
+
   async recordOfferVersionCreated(input: {
     actor: ActorContext;
     companyId: string;
@@ -3517,6 +3542,12 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_contract_signature_declarer_assignment.revoked':
     case 'company_received_contract_access_assignment.granted':
     case 'company_received_addendum_access_assignment.granted':
+    case 'company_working_evidence_case_reader_assignment.granted':
+    case 'company_working_evidence_case_reader_assignment.revoked':
+    case 'company_working_evidence_case_recorder_assignment.granted':
+    case 'company_working_evidence_case_recorder_assignment.revoked':
+    case 'company_received_audit_source_access_assignment.granted':
+    case 'company_received_audit_source_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_mission_result_reviewer_assignment.granted':
     case 'company_project_next_action_coordinator_assignment.granted':

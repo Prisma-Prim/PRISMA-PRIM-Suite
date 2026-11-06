@@ -77,7 +77,26 @@ function ProductionApplicationRoot({
   ) {
     if (Object.values(localDemoValues).some((value) => !value?.trim()))
       throw new Error('Local demonstration identity is incomplete.');
-    const localIdentity = deterministicBrowserIdentity(localDemoValues);
+    const deterministicIdentity = deterministicBrowserIdentity(localDemoValues);
+    // The registered real-App harness may hold token acquisition in this
+    // explicitly synthetic build. The production provider and default demo
+    // identity are unchanged; the API still establishes every authority.
+    const tokenGate: unknown = Reflect.get(
+      window,
+      '__prismaLocalDemoTokenGate',
+    );
+    const localIdentity: BrowserIdentity =
+      typeof tokenGate === 'function'
+        ? {
+            ...deterministicIdentity,
+            requestHeaders: undefined,
+            getToken: async () => {
+              const pending: unknown = Reflect.apply(tokenGate, undefined, []);
+              await pending;
+              return null;
+            },
+          }
+        : deterministicIdentity;
     return pathname === '/accept-invitation' ? (
       <WorkspaceInvitationEntry identity={localIdentity} />
     ) : (

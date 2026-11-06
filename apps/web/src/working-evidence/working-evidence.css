@@ -1,0 +1,79 @@
+.working-evidence {
+  margin-block: 1.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.working-evidence button {
+  margin: 0.25rem;
+}
+.working-evidence-revision,
+.working-evidence-editor {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+.working-evidence dd {
+  margin-inline-start: 0;
+  white-space: pre-wrap;
+  margin-block-end: 0.75rem;
+}
+.working-evidence-editor fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+.working-evidence-editor fieldset fieldset {
+  border: 1px solid #e6eaf1;
+  padding: 0.75rem;
+  margin-block: 0.75rem;
+}
+.working-evidence-editor label {
+  display: grid;
+  gap: 0.35rem;
+  margin-block: 0.75rem;
+}
+.working-evidence-editor input,
+.working-evidence-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.working-evidence-editor textarea {
+  min-height: 5rem;
+}
+.working-evidence-artifacts li {
+  margin-block: 0.75rem;
+}
+.prisme-shell .working-evidence button {
+  border: 1px solid #d9d4f2;
+  background: #fff;
+  color: #5743af;
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.8rem;
+}
+.prisme-shell .working-evidence button[type='submit'] {
+  color: #fff;
+  background: #6750c5;
+}
+.working-evidence button:focus-visible {
+  outline: 3px solid #8270cf;
+  outline-offset: 2px;
+}
+@media (max-width: 480px) {
+  .working-evidence-revision,
+  .working-evidence-editor {
+    padding: 0.65rem;
+  }
+  .working-evidence ul {
+    padding-inline-start: 1.1rem;
+  }
+}
+
+.working-evidence iframe {
+  width: 100%;
+  height: 32rem;
+  border: 1px solid #e6eaf1;
+  background: white;
+}

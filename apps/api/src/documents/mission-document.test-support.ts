@@ -216,6 +216,9 @@ export async function createMissionDocumentFixture(
     close,
     measureApplicationQueries: <T>(work: () => Promise<T>) =>
       harness.measureApplicationQueries(work),
+    get origin() {
+      return harness.origin;
+    },
     get pool() {
       return harness.pool;
     },

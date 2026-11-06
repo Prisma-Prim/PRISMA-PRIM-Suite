@@ -523,3 +523,11 @@
   width: min(100%, 24rem);
   min-width: 0;
 }
+
+.project-detail-tabs {
+  flex-wrap: wrap;
+}
+.project-detail-tabs > button {
+  min-width: 0;
+  white-space: normal;
+}

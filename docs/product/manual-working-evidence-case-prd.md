@@ -1,6 +1,7 @@
 # PRD — Manual Working Evidence Case
 
-**Status:** Approved — bounded software contract; runtime implementation pending  
+**Status:** Approved — bounded software contract; runtime implementation and verification tracked in [#1056](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1056)
+
 **Version:** 1.0  
 **Owner:** Dan Popescu  
 **Direction and tracker:** [#1054](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1054), following [Product Vision §11.1](product-vision-prd.md#111-first-working-version-priorities--2026-11-06)

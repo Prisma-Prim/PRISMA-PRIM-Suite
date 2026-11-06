@@ -68,6 +68,7 @@ export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
       representation: { id: string; url: string };
     }
   | { documentType: 'mission-deliverable'; representation: null }
+  | { documentType: 'received-audit-source'; representation: null }
   | { documentType: 'received-contract'; representation: null }
   | { documentType: 'received-addendum'; representation: null }
   | { documentType: 'external-invoice'; representation: null }
@@ -113,6 +114,18 @@ export class DocumentVersionsService {
   ) {}
 
   private async canReadPdf(actor: ActorContext, type: DocumentRow['type']) {
+    if (type === 'received-audit-source') {
+      try {
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action: 'content-read',
+          lockAssignment: false,
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof ForbiddenException) return false;
+        throw error;
+      }
+    }
     if (type === 'received-addendum') {
       try {
         await this.authorization.requireReceivedAddendumNativeAccess(actor, {
@@ -521,6 +534,11 @@ export class DocumentVersionsService {
         documentId: input.documentId,
       };
       await this.requireVersionOf(scope, input.versionId);
+      if (visible.document.type === 'received-audit-source')
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
           action: 'upload',
@@ -726,6 +744,16 @@ export class DocumentVersionsService {
       };
       if (command.versionId !== null)
         await this.requireVersionOf(scope, command.versionId);
+      if (visible.document.type === 'received-audit-source')
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action:
+            command.action === 'representation_added'
+              ? 'upload'
+              : command.action === 'designated_official'
+                ? 'designate'
+                : 'version',
+          lockAssignment: true,
+        });
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
           action:

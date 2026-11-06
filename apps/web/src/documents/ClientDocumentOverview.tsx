@@ -1,3 +1,4 @@
+import { useReceivedAuditSourceCopy } from './received-audit-source.copy';
 import { useReceivedAddendumCopy } from './received-addendum.copy';
 import {
   useCallback,
@@ -44,6 +45,10 @@ type Props = {
 };
 function captures(company: ActorContext['activeCompany']) {
   return {
+    'received-audit-source': documentFamilyCaptureKey(
+      company,
+      'received-audit-source',
+    ),
     questionnaire: documentFamilyCaptureKey(company, 'questionnaire'),
     'mission-deliverable': documentFamilyCaptureKey(
       company,
@@ -291,6 +296,7 @@ function DocumentEntry({
     received = useReceivedContractCopy();
   const invoice = useExternalInvoiceCopy();
   const addendum = useReceivedAddendumCopy();
+  const auditSource = useReceivedAuditSourceCopy();
   const lifetime = useRef<AbortController | undefined>(undefined);
   useLayoutEffect(() => {
     const controller = new AbortController();
@@ -301,6 +307,7 @@ function DocumentEntry({
     };
   }, []);
   const status = {
+    'received-audit-source': auditSource(item.version.status),
     questionnaire: documents[item.version.status],
     'mission-deliverable': mission.t(item.version.status),
     'received-contract': received.t(item.version.status),

@@ -1,3 +1,4 @@
+import { readWorkingEvidenceCaptures } from './working-evidence-captures.js';
 import {
   receivedAddendumAssignment,
   receivedAddendumClientReadCapture,
@@ -64,6 +65,12 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+  COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+  COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+  workingEvidenceCaseReaderPermissionsFor,
+  workingEvidenceCaseRecorderPermissionsFor,
+  receivedAuditSourcePermissionsFor,
   COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
   opportunityFollowUpPermissionsFor,
   COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
@@ -1380,6 +1387,175 @@ export class CompanyContextAuthorization {
     return this.requireDocumentFamilyNativeAccess(actor, options, true);
   }
 
+  /** Current Case authority only: no lifecycle, source eligibility or byte read. Caller owns the transaction. */
+  async requireWorkingEvidenceCaseAccess(
+    actor: ActorContext,
+    options: {
+      record: boolean;
+      lockAssignment: boolean;
+      readCapture?: string;
+    },
+  ): Promise<{ companyId: string; readCapture: string }> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      !company.workingEvidenceCasePermissions?.includes(
+        'working_evidence_case.read',
+      ) ||
+      (options.record &&
+        !company.workingEvidenceCasePermissions.includes(
+          'working_evidence_case.record',
+        ))
+    )
+      throw new ForbiddenException();
+    const captures = [
+      {
+        bundle: COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+        assignmentId: company.workingEvidenceCaseReaderAssignmentId,
+        version: company.workingEvidenceCaseReaderPermissionSetVersion,
+      },
+      {
+        bundle: COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+        assignmentId: company.workingEvidenceCaseRecorderAssignmentId,
+        version: company.workingEvidenceCaseRecorderPermissionSetVersion,
+      },
+    ] satisfies Array<{
+      bundle:
+        | typeof COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE
+        | typeof COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE;
+      assignmentId: string | undefined;
+      version: 'v1' | undefined;
+    }>;
+    const candidates = captures.filter(
+      (candidate) =>
+        (!options.record ||
+          candidate.bundle === COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE) &&
+        nativeDocumentCapturedGrant({ ...candidate, versions: ['v1'] }) !==
+          undefined,
+    );
+    const readCaptureFor = (candidate: (typeof candidates)[number]) =>
+      createHash('sha256')
+        .update(
+          JSON.stringify([
+            actor.internalUserId,
+            actor.workspaceId,
+            actor.workspaceMembershipId,
+            company.id,
+            candidate.bundle,
+            candidate.assignmentId,
+            candidate.version,
+            company.projectPermissionAssignmentId,
+            company.projectPermissionSetVersion,
+            company.workingEvidenceContextCapture,
+            company.workingEvidenceClientReadCapture,
+          ]),
+        )
+        .digest('hex');
+    const selected =
+      !options.record && options.readCapture !== undefined
+        ? candidates.find(
+            (candidate) => readCaptureFor(candidate) === options.readCapture,
+          )
+        : candidates[0];
+    if (!selected) throw new ForbiddenException();
+    await this.requireWorkingEvidenceNativeCaptures(
+      actor,
+      options.lockAssignment,
+    );
+    await this.requireCapturedCompanyGrant(actor, {
+      ...selected,
+      versions: ['v1'],
+      lock: options.lockAssignment,
+    });
+    await this.requireCapturedProjectRead(actor, options.lockAssignment);
+    return { companyId: company.id, readCapture: readCaptureFor(selected) };
+  }
+
+  /** Exact native family captures; no Case, Project or formal Audit authority is implied. */
+  async requireReceivedAuditSourceNativeAccess(
+    actor: ActorContext,
+    options: {
+      action:
+        | 'read'
+        | 'reference'
+        | 'register'
+        | 'correct'
+        | 'version'
+        | 'designate'
+        | 'content-read'
+        | 'upload';
+      lockAssignment: boolean;
+    },
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !company?.documentPermissions?.includes(
+        'document.received_audit_source.access',
+      )
+    )
+      throw new ForbiddenException();
+    await this.requireWorkingEvidenceNativeCaptures(
+      actor,
+      options.lockAssignment,
+    );
+    await this.requireCapturedCompanyGrant(actor, {
+      bundle: COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+      assignmentId: company.receivedAuditSourceAccessAssignmentId,
+      version: company.receivedAuditSourceAccessPermissionSetVersion,
+      versions: ['v1'],
+      lock: options.lockAssignment,
+    });
+    return this.requireDocumentFamilyNativeAccess(
+      actor,
+      {
+        ...options,
+        action: options.action === 'reference' ? 'read' : options.action,
+      },
+      true,
+    );
+  }
+
+  async hasReceivedAuditSourceAccess(
+    actor: ActorContext,
+    options: { lockAssignment: boolean } = { lockAssignment: false },
+  ): Promise<boolean> {
+    try {
+      await this.requireReceivedAuditSourceNativeAccess(actor, {
+        ...options,
+        action: 'read',
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenException) return false;
+      throw error;
+    }
+  }
+
+  private async requireWorkingEvidenceNativeCaptures(
+    actor: ActorContext,
+    lock: boolean,
+  ): Promise<void> {
+    const company = actor.activeCompany;
+    if (!company) throw new ForbiddenException();
+    const observed = await readWorkingEvidenceCaptures({
+      database: this.databaseContext,
+      actor,
+      company,
+      lock,
+      expected: {
+        contextCapture: company.workingEvidenceContextCapture,
+        clientReadCapture: company.workingEvidenceClientReadCapture,
+      },
+    });
+    if (
+      !observed ||
+      observed.contextCapture !== company.workingEvidenceContextCapture ||
+      observed.clientReadCapture !== company.workingEvidenceClientReadCapture
+    )
+      throw new ForbiddenException();
+  }
+
   async requireReceivedAddendumNativeAccess(
     actor: ActorContext,
     options: {
@@ -2634,6 +2810,9 @@ export class CompanyContextAuthorization {
       ),
       inArray(sql`${companyRoleAssignments.bundle}::text`, [
         ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
+        COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+        COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+        COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
         COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
@@ -2862,6 +3041,47 @@ export class CompanyContextAuthorization {
         ];
         company.receivedContractAccessAssignmentId = row.assignmentId;
         company.receivedContractAccessPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.workingEvidenceCasePermissions = [
+          ...new Set([
+            ...(company.workingEvidenceCasePermissions ?? []),
+            ...workingEvidenceCaseReaderPermissionsFor(
+              row.permissionSetVersion,
+            ),
+          ]),
+        ];
+        company.workingEvidenceCaseReaderAssignmentId = row.assignmentId;
+        company.workingEvidenceCaseReaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.workingEvidenceCasePermissions = [
+          ...new Set([
+            ...(company.workingEvidenceCasePermissions ?? []),
+            ...workingEvidenceCaseRecorderPermissionsFor(
+              row.permissionSetVersion,
+            ),
+          ]),
+        ];
+        company.workingEvidenceCaseRecorderAssignmentId = row.assignmentId;
+        company.workingEvidenceCaseRecorderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...receivedAuditSourcePermissionsFor(row.permissionSetVersion),
+        ];
+        company.receivedAuditSourceAccessAssignmentId = row.assignmentId;
+        company.receivedAuditSourceAccessPermissionSetVersion = 'v1';
       }
       if (
         row.bundle === COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE &&
@@ -3210,6 +3430,22 @@ export class CompanyContextAuthorization {
         independentlyAuthorizedCompanies.has(company.id),
     );
     for (const company of authorizedCompanies) {
+      if (
+        company.workingEvidenceCaseReaderAssignmentId ||
+        company.workingEvidenceCaseRecorderAssignmentId ||
+        company.receivedAuditSourceAccessAssignmentId
+      ) {
+        const captures = await readWorkingEvidenceCaptures({
+          database: this.databaseContext,
+          actor,
+          company,
+          lock: false,
+        });
+        if (captures) {
+          company.workingEvidenceClientReadCapture = captures.clientReadCapture;
+          company.workingEvidenceContextCapture = captures.contextCapture;
+        }
+      }
       if (company.receivedAddendumAccessAssignmentId)
         company.receivedAddendumClientReadCapture =
           await receivedAddendumClientReadCapture({

@@ -87,6 +87,19 @@ export class DocumentReadBoundary {
     lockAssignment: boolean,
   ): Promise<void> {
     if (type === 'questionnaire') return;
+    if (type === 'received-audit-source') {
+      if (
+        !(await this.authorization.hasReceivedAuditSourceAccess(actor, {
+          lockAssignment,
+        }))
+      )
+        throw new NotFoundException();
+      await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+        action: 'read',
+        lockAssignment,
+      });
+      return;
+    }
     if (type === 'payment-evidence') {
       if (
         !(await this.authorization.hasPaymentEvidenceAccess(actor, {

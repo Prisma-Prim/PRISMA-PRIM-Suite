@@ -41,6 +41,9 @@ export const workspacePermission = pgEnum('workspace_permission', [
 ]);
 
 export const companyRoleBundle = pgEnum('company_role_bundle', [
+  'company_working_evidence_case_reader',
+  'company_working_evidence_case_recorder',
+  'company_received_audit_source_access',
   'company_opportunity_follow_up_coordinator',
   'company_payment_reader',
   'company_payment_recorder',
@@ -751,6 +754,12 @@ export const clientAccountCorrectionCommands = pgTable(
 );
 
 export const activityLogAction = pgEnum('activity_log_action', [
+  'company_working_evidence_case_reader_assignment.granted',
+  'company_working_evidence_case_reader_assignment.revoked',
+  'company_working_evidence_case_recorder_assignment.granted',
+  'company_working_evidence_case_recorder_assignment.revoked',
+  'company_received_audit_source_access_assignment.granted',
+  'company_received_audit_source_access_assignment.revoked',
   'company_opportunity_follow_up_coordinator_assignment.granted',
   'company_opportunity_follow_up_coordinator_assignment.revoked',
   'company_payment_reader_assignment.granted',
@@ -938,6 +947,9 @@ export const activityLogEvents = pgTable(
               | 'Company Contract Signature Declarer'
               | 'Company Received Contract Access'
               | 'Company Received Addendum Access'
+              | 'Company Working Evidence Case Reader'
+              | 'Company Working Evidence Case Recorder'
+              | 'Company Received Audit Source Access'
               | 'Company Task Result Recorder'
               | 'Company Mission Result Reviewer'
               | 'Company Project Next Action Coordinator'

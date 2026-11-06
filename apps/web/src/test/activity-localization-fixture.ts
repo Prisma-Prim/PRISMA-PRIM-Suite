@@ -141,6 +141,43 @@ const targets = {
 // Total fixture membership tracks the public canonical union, rather than a
 // private rendering helper. Each input has the public action's exact target.
 export const activityEventsByAction = {
+  'company_working_evidence_case_reader_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_working_evidence_case_reader_assignment.granted',
+    action: 'company_working_evidence_case_reader_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_working_evidence_case_reader_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_working_evidence_case_reader_assignment.revoked',
+    action: 'company_working_evidence_case_reader_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_working_evidence_case_recorder_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_working_evidence_case_recorder_assignment.granted',
+    action: 'company_working_evidence_case_recorder_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_working_evidence_case_recorder_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_working_evidence_case_recorder_assignment.revoked',
+    action: 'company_working_evidence_case_recorder_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_received_audit_source_access_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_received_audit_source_access_assignment.granted',
+    action: 'company_received_audit_source_access_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_received_audit_source_access_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_received_audit_source_access_assignment.revoked',
+    action: 'company_received_audit_source_access_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+
   'company_received_addendum_access_assignment.granted': {
     ...ordinary,
     id: 'event-company_received_addendum_access_assignment.granted',

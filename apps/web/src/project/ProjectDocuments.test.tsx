@@ -884,3 +884,37 @@ it('keeps an uncertain association command and its retry when a linked Document 
   await waitFor(() => expect(commands).toHaveLength(2));
   expect(commands[1]).toEqual(commands[0]);
 });
+
+it('refuses a received Audit source in an ordinary Project Document projection before showing its label', async () => {
+  vi.stubGlobal('fetch', async () =>
+    Response.json({
+      mutable: true,
+      documents: [
+        {
+          document: {
+            ...document,
+            type: 'received-audit-source',
+            title: 'Fictional withheld source',
+            version: {
+              id: 'source-version',
+              status: 'official',
+              representation: null,
+            },
+          },
+          revision: 0,
+        },
+      ],
+    }),
+  );
+  render(
+    <ProjectDocuments
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+    />,
+  );
+  await screen.findByRole('alert');
+  expect(
+    screen.queryByText('Fictional withheld source'),
+  ).not.toBeInTheDocument();
+});

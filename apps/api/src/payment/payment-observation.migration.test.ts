@@ -1,3 +1,7 @@
+import {
+  workingEvidenceExistingTableTriggers,
+  workingEvidenceTables,
+} from '../working-evidence/working-evidence-schema.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -243,6 +247,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
           [
             'companies.payment_company_cursor',
             ...receivedAddendumExistingTableTriggers,
+            ...workingEvidenceExistingTableTriggers,
           ].sort(),
         );
       }
@@ -256,6 +261,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
         'payment_history',
         'payments',
         'received_addendum_document_relations',
+        ...workingEvidenceTables,
       ]);
       const upgradedJournal = await paymentPredecessorJournal(
         database.targetPool,

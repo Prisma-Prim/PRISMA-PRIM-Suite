@@ -3,6 +3,1132 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/projects/{projectId}/working-evidence-cases:
+    {
+      'post':
+        {
+          'operationId': 'recordWorkingEvidenceCase',
+          'summary': 'Record one working statement and one to three exact native PDF supports',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'projectId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Committed immutable receipt, including exact replay.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'description': 'At most 256 KiB valid UTF-8 JSON. Exactly the declared keys; trimmed literal UTF-16 bounds, no NUL or unpaired surrogate, no coercion.',
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/WorkingEvidenceRecordBody',
+                        },
+                    },
+                },
+            },
+        },
+      'get':
+        {
+          'operationId': 'listWorkingEvidenceCases',
+          'summary': 'List current Case heads in original creation order',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'projectId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'query',
+                'name': 'cursor',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'minLength': 1,
+                    'maxLength': 256,
+                    'pattern': '^[!-~]+$',
+                  },
+                'description': 'Opaque continuation bound to this route, Workspace, Company and consumed current permission captures. No totals are returned.',
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Current authorized projection.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceCasePage',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}/corrections:
+    {
+      'post':
+        {
+          'operationId': 'correctWorkingEvidenceCase',
+          'summary': 'Append a complete immutable replacement revision',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Committed immutable receipt, including exact replay.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'description': 'At most 256 KiB valid UTF-8 JSON. Exactly the declared keys; trimmed literal UTF-16 bounds, no NUL or unpaired surrogate, no coercion.',
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/WorkingEvidenceCorrectBody',
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/working-evidence-sources:
+    {
+      'get':
+        {
+          'operationId': 'listWorkingEvidenceSources',
+          'summary': 'Select independently authorized exact native frozen PDF sources',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'projectId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'query',
+                'name': 'cursor',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'minLength': 1,
+                    'maxLength': 256,
+                    'pattern': '^[!-~]+$',
+                  },
+                'description': 'Opaque continuation bound to this route, Workspace, Company and consumed current permission captures. No totals are returned.',
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Current authorized projection.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceSourcePage',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}:
+    {
+      'get':
+        {
+          'operationId': 'getWorkingEvidenceCase',
+          'summary': 'Read the current working Case',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Current authorized projection.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceCaseDetail',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}/revisions:
+    {
+      'get':
+        {
+          'operationId': 'listWorkingEvidenceRevisions',
+          'summary': 'List immutable revision metadata',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'query',
+                'name': 'cursor',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'minLength': 1,
+                    'maxLength': 256,
+                    'pattern': '^[!-~]+$',
+                  },
+                'description': 'Opaque continuation bound to this route, Workspace, Company and consumed current permission captures. No totals are returned.',
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Current authorized projection.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceRevisionPage',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}/revisions/{revisionId}:
+    {
+      'get':
+        {
+          'operationId': 'getWorkingEvidenceRevision',
+          'summary': 'Read a conserved working revision',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'path',
+                'name': 'revisionId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Current authorized projection.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceRevisionDetail',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}/revisions/{revisionId}/statement:
+    {
+      'get':
+        {
+          'operationId': 'downloadWorkingEvidenceStatement',
+          'summary': 'Download authorized frozen Statement',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'path',
+                'name': 'revisionId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Complete preflight succeeds before any attachment header or byte. Exact frozen artifact; private, no-store and nosniff.',
+                  'headers':
+                    {
+                      'Cache-Control':
+                        {
+                          'schema':
+                            { 'type': 'string', 'const': 'private, no-store' },
+                        },
+                      'X-Content-Type-Options':
+                        { 'schema': { 'type': 'string', 'const': 'nosniff' } },
+                    },
+                  'content':
+                    {
+                      'text/html':
+                        { 'schema': { 'type': 'string', 'format': 'binary' } },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}/revisions/{revisionId}/annex:
+    {
+      'get':
+        {
+          'operationId': 'downloadWorkingEvidenceAnnex',
+          'summary': 'Download authorized frozen Annex',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'path',
+                'name': 'revisionId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Complete preflight succeeds before any attachment header or byte. Exact frozen artifact; private, no-store and nosniff.',
+                  'headers':
+                    {
+                      'Cache-Control':
+                        {
+                          'schema':
+                            { 'type': 'string', 'const': 'private, no-store' },
+                        },
+                      'X-Content-Type-Options':
+                        { 'schema': { 'type': 'string', 'const': 'nosniff' } },
+                    },
+                  'content':
+                    {
+                      'application/zip':
+                        { 'schema': { 'type': 'string', 'format': 'binary' } },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/working-evidence-cases/{caseId}/revisions/{revisionId}/evidence/{evidenceId}:
+    {
+      'get':
+        {
+          'operationId': 'downloadWorkingEvidenceOriginalEvidence',
+          'summary': 'Download authorized frozen OriginalEvidence',
+          'tags': ['Working Evidence'],
+          'description': 'Human-declared working material only; no official Audit, Report approval or certification. Current authority is checked before committed command replay; new-use lifecycle and byte checks follow replay. No user-supplied actor, Client or artifact URLs are accepted.',
+          'parameters':
+            [
+              {
+                'in': 'path',
+                'name': 'caseId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'path',
+                'name': 'revisionId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'in': 'path',
+                'name': 'evidenceId',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Complete preflight succeeds before any attachment header or byte. Exact frozen artifact; private, no-store and nosniff.',
+                  'headers':
+                    {
+                      'Cache-Control':
+                        {
+                          'schema':
+                            { 'type': 'string', 'const': 'private, no-store' },
+                        },
+                      'X-Content-Type-Options':
+                        { 'schema': { 'type': 'string', 'const': 'nosniff' } },
+                    },
+                  'content':
+                    {
+                      'application/pdf':
+                        { 'schema': { 'type': 'string', 'format': 'binary' } },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Closed grammar or cursor invalid.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible scope/source.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Command conflict, stale head or new use unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Conserved content missing, corrupt or unsupported.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/WorkingEvidenceError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
   /api/invoice-records:
     {
       'get':
@@ -2280,6 +3406,204 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CompanyTaskResultRecorderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-working-evidence-case-reader-assignments:
+    post:
+      operationId: grantCompanyWorkingEvidenceCaseReaderAssignment
+      summary: Grant the opt-in Company Working Evidence Case Reader v1 bundle to an active Workspace Membership
+      description: >-
+        Requires `company.assignment.manage`. The initially unassigned captured v1 bundle contains exactly `working_evidence_case.read`. Case reads also require native Company context, Project read and original-Client read. It grants no Recorder, source, native Document, PDF, formal Audit, approval or Certification authority. The actual grant records one minimal bundle-label Activity event.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Working Evidence Case Reader assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyWorkingEvidenceCaseReaderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-working-evidence-case-reader-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyWorkingEvidenceCaseReaderAssignment
+      summary: Revoke the Company Working Evidence Case Reader assignment
+      description: >-
+        An actual revocation records one
+        `company_working_evidence_case_reader_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Working Evidence Case Reader assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyWorkingEvidenceCaseReaderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-working-evidence-case-recorder-assignments:
+    post:
+      operationId: grantCompanyWorkingEvidenceCaseRecorderAssignment
+      summary: Grant the opt-in Company Working Evidence Case Recorder v1 bundle to an active Workspace Membership
+      description: >-
+        Requires `company.assignment.manage`. The initially unassigned captured v1 bundle contains exactly `working_evidence_case.read` and `working_evidence_case.record`. Case writes consume this exact Recorder capture and separately require native Company context, Project read, original-Client read and qualifying source/content authority. It grants no formal Audit, approval or Certification authority. The actual grant records one minimal bundle-label Activity event.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Working Evidence Case Recorder assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyWorkingEvidenceCaseRecorderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-working-evidence-case-recorder-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyWorkingEvidenceCaseRecorderAssignment
+      summary: Revoke the Company Working Evidence Case Recorder assignment
+      description: >-
+        An actual revocation records one
+        `company_working_evidence_case_recorder_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Working Evidence Case Recorder assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyWorkingEvidenceCaseRecorderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-received-audit-source-access-assignments:
+    post:
+      operationId: grantCompanyReceivedAuditSourceAccessAssignment
+      summary: Grant the opt-in Company Received Audit Source Access v1 bundle to an active Workspace Membership
+      description: >-
+        Requires `company.assignment.manage`. The initially unassigned captured v1 bundle contains exactly `document.received_audit_source.access`. Native metadata, correction, successor, designation and content operations retain their separate captured Document and original-Client prerequisites. It grants no Company context, Project, Case, formal Audit, approval or Certification authority. The actual grant records one minimal bundle-label Activity event.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Received Audit Source Access assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyReceivedAuditSourceAccessAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-received-audit-source-access-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyReceivedAuditSourceAccessAssignment
+      summary: Revoke the Company Received Audit Source Access assignment
+      description: >-
+        An actual revocation records one
+        `company_received_audit_source_access_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Received Audit Source Access assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyReceivedAuditSourceAccessAssignment'
         '400':
           description: A target or idempotent command is invalid.
         '401':
@@ -6113,6 +7437,625 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    WorkingEvidenceSupportInput:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'documentId',
+            'versionId',
+            'representationId',
+            'locator',
+            'supportNote',
+          ],
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'versionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'representationId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'locator':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 500 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'supportNote':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+          },
+      }
+    WorkingEvidenceValues:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'title',
+            'declaredContext',
+            'process',
+            'statement',
+            'observationNote',
+            'supports',
+          ],
+        'properties':
+          {
+            'title': { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'declaredContext':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'process': { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'statement':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+            'observationNote':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'supports':
+              {
+                'type': 'array',
+                'minItems': 1,
+                'maxItems': 3,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/WorkingEvidenceSupportInput',
+                  },
+                'description': 'Ordered, distinct exact native Document/Version/Representation tuples. Only independently preserved clean final PDFs of at most 5 MiB qualify.',
+              },
+          },
+      }
+    WorkingEvidenceRecordBody:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['format', 'commandId', 'expectedRevision', 'values'],
+        'properties':
+          {
+            'format':
+              { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE_COMMAND/1' },
+            'commandId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'expectedRevision': { 'type': 'integer', 'const': 0 },
+            'values': { '$ref': '#/components/schemas/WorkingEvidenceValues' },
+          },
+      }
+    WorkingEvidenceCorrectBody:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['format', 'commandId', 'expectedRevision', 'reason', 'values'],
+        'properties':
+          {
+            'format':
+              { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE_COMMAND/1' },
+            'commandId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'expectedRevision':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483646 },
+            'reason': { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+            'values': { '$ref': '#/components/schemas/WorkingEvidenceValues' },
+          },
+      }
+    WorkingEvidenceReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'format',
+            'commandId',
+            'caseId',
+            'revisionId',
+            'revisionNumber',
+            'action',
+            'recordedAt',
+          ],
+        'properties':
+          {
+            'format':
+              { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE_RECEIPT/1' },
+            'commandId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'caseId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionNumber':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'action': { 'type': 'string', 'enum': ['RECORD', 'CORRECT'] },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+          },
+      }
+    WorkingEvidenceActorStamp:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['membershipId', 'displayName'],
+        'properties':
+          {
+            'membershipId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'displayName': { 'type': 'string' },
+          },
+      }
+    WorkingEvidenceSupportView:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'evidenceId',
+            'documentId',
+            'versionId',
+            'versionNumber',
+            'representationId',
+            'sourceTitle',
+            'sourcePurpose',
+            'filename',
+            'mediaType',
+            'sizeBytes',
+            'sha256',
+            'locator',
+            'supportNote',
+          ],
+        'properties':
+          {
+            'evidenceId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'versionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'versionNumber': { 'type': 'integer', 'minimum': 1, 'maximum': 50 },
+            'representationId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'sourceTitle':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'sourcePurpose':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+            'filename': { 'type': 'string', 'minLength': 1, 'maxLength': 120 },
+            'mediaType': { 'type': 'string', 'const': 'application/pdf' },
+            'sizeBytes':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 5242880 },
+            'sha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'locator':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 500 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'supportNote':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+          },
+      }
+    WorkingEvidenceEvidenceView:
+      {
+        'oneOf':
+          [
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'required': ['state', 'supports'],
+              'properties':
+                {
+                  'state': { 'type': 'string', 'const': 'visible' },
+                  'supports':
+                    {
+                      'type': 'array',
+                      'minItems': 1,
+                      'maxItems': 3,
+                      'items':
+                        {
+                          '$ref': '#/components/schemas/WorkingEvidenceSupportView',
+                        },
+                    },
+                },
+            },
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'required': ['state'],
+              'properties':
+                { 'state': { 'type': 'string', 'const': 'unavailable' } },
+            },
+          ],
+        'description': 'All selected supports are visible only with current authority for all. Otherwise no source fragments, counts or array placeholders are exposed.',
+      }
+    WorkingEvidenceRevisionDetail:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'format',
+            'caseId',
+            'revisionId',
+            'revisionNumber',
+            'previousRevisionId',
+            'action',
+            'recordedAt',
+            'actor',
+            'reason',
+            'title',
+            'declaredContext',
+            'process',
+            'statement',
+            'observationNote',
+            'evidence',
+          ],
+        'properties':
+          {
+            'format':
+              { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE_REVISION/1' },
+            'caseId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionNumber':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'previousRevisionId':
+              {
+                'anyOf':
+                  [
+                    {
+                      'type': 'string',
+                      'format': 'uuid',
+                      'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                    },
+                    { 'type': 'null' },
+                  ],
+              },
+            'action': { 'type': 'string', 'enum': ['RECORD', 'CORRECT'] },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+            'actor':
+              { '$ref': '#/components/schemas/WorkingEvidenceActorStamp' },
+            'reason':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'title': { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'declaredContext':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'process': { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'statement':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+            'observationNote':
+              {
+                'anyOf':
+                  [
+                    { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+                    { 'type': 'null' },
+                  ],
+              },
+            'evidence':
+              { '$ref': '#/components/schemas/WorkingEvidenceEvidenceView' },
+          },
+      }
+    WorkingEvidenceCaseDetail:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['format', 'caseId', 'projectId', 'originalClientId', 'current'],
+        'properties':
+          {
+            'format': { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE/1' },
+            'caseId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'projectId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'originalClientId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'current':
+              { '$ref': '#/components/schemas/WorkingEvidenceRevisionDetail' },
+          },
+      }
+    WorkingEvidenceCasePageItem:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['caseId', 'revisionId', 'revisionNumber', 'title', 'recordedAt'],
+        'properties':
+          {
+            'caseId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionNumber':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'title': { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+          },
+      }
+    WorkingEvidenceRevisionPageItem:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['revisionId', 'revisionNumber', 'action', 'recordedAt', 'actor'],
+        'properties':
+          {
+            'revisionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'revisionNumber':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+            'action': { 'type': 'string', 'enum': ['RECORD', 'CORRECT'] },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+            'actor':
+              { '$ref': '#/components/schemas/WorkingEvidenceActorStamp' },
+          },
+      }
+    WorkingEvidenceSourcePageItem:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'documentId',
+            'versionId',
+            'versionNumber',
+            'representationId',
+            'sourceTitle',
+          ],
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'versionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'versionNumber': { 'type': 'integer', 'minimum': 1, 'maximum': 50 },
+            'representationId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              },
+            'sourceTitle':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+          },
+      }
+    WorkingEvidenceCasePage:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['format', 'items', 'nextCursor'],
+        'properties':
+          {
+            'format':
+              { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE_PAGE/1' },
+            'items':
+              {
+                'type': 'array',
+                'maxItems': 25,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/WorkingEvidenceCasePageItem',
+                  },
+              },
+            'nextCursor':
+              {
+                'anyOf':
+                  [
+                    {
+                      'type': 'string',
+                      'minLength': 1,
+                      'maxLength': 256,
+                      'pattern': '^[!-~]+$',
+                    },
+                    { 'type': 'null' },
+                  ],
+              },
+          },
+      }
+    WorkingEvidenceRevisionPage:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['format', 'items', 'nextCursor'],
+        'properties':
+          {
+            'format':
+              { 'type': 'string', 'const': 'WORKING_EVIDENCE_CASE_HISTORY/1' },
+            'items':
+              {
+                'type': 'array',
+                'maxItems': 25,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/WorkingEvidenceRevisionPageItem',
+                  },
+              },
+            'nextCursor':
+              {
+                'anyOf':
+                  [
+                    {
+                      'type': 'string',
+                      'minLength': 1,
+                      'maxLength': 256,
+                      'pattern': '^[!-~]+$',
+                    },
+                    { 'type': 'null' },
+                  ],
+              },
+          },
+      }
+    WorkingEvidenceSourcePage:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['format', 'items', 'nextCursor'],
+        'properties':
+          {
+            'format':
+              {
+                'type': 'string',
+                'const': 'WORKING_EVIDENCE_CASE_SOURCE_PAGE/1',
+              },
+            'items':
+              {
+                'type': 'array',
+                'maxItems': 25,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/WorkingEvidenceSourcePageItem',
+                  },
+              },
+            'nextCursor':
+              {
+                'anyOf':
+                  [
+                    {
+                      'type': 'string',
+                      'minLength': 1,
+                      'maxLength': 256,
+                      'pattern': '^[!-~]+$',
+                    },
+                    { 'type': 'null' },
+                  ],
+              },
+          },
+      }
+    WorkingEvidenceError:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['code'],
+        'properties':
+          {
+            'code':
+              {
+                'type': 'string',
+                'enum':
+                  [
+                    'invalid_request',
+                    'conflict',
+                    'new_use_unavailable',
+                    'not_found',
+                    'content_unavailable',
+                  ],
+              },
+          },
+      }
     CompanyOpportunityFollowUpCoordinatorAssignment:
       type: object
       additionalProperties: false
@@ -8533,6 +10476,12 @@ components:
             - company_invoice_recorder_assignment.revoked
             - company_external_invoice_access_assignment.granted
             - company_external_invoice_access_assignment.revoked
+            - company_working_evidence_case_reader_assignment.granted
+            - company_working_evidence_case_reader_assignment.revoked
+            - company_working_evidence_case_recorder_assignment.granted
+            - company_working_evidence_case_recorder_assignment.revoked
+            - company_received_audit_source_access_assignment.granted
+            - company_received_audit_source_access_assignment.revoked
             - company_internal_task_manager_assignment.granted
             - company_internal_task_manager_assignment.revoked
             - company_task_result_recorder_assignment.granted
@@ -8659,6 +10608,9 @@ components:
             - Company Invoice Reader
             - Company Invoice Recorder
             - Company External Invoice Access
+            - Company Working Evidence Case Reader
+            - Company Working Evidence Case Recorder
+            - Company Received Audit Source Access
             - Company Context Access
             - Company Director Client Access
             - Company Project Approver
@@ -9009,6 +10961,9 @@ components:
                     Company Invoice Reader,
                     Company Invoice Recorder,
                     Company External Invoice Access,
+                    Company Working Evidence Case Reader,
+                    Company Working Evidence Case Recorder,
+                    Company Received Audit Source Access,
                   ]
           then:
             properties:
@@ -9037,6 +10992,9 @@ components:
             - Company Invoice Reader
             - Company Invoice Recorder
             - Company External Invoice Access
+            - Company Working Evidence Case Reader
+            - Company Working Evidence Case Recorder
+            - Company Received Audit Source Access
             - Company Context Access
             - Company Director Client Access
             - Company Project Approver
@@ -9219,6 +11177,90 @@ components:
         bundle:
           type: string
           const: Company Task Result Recorder
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    CompanyWorkingEvidenceCaseReaderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Working Evidence Case Reader
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    CompanyWorkingEvidenceCaseRecorderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Working Evidence Case Recorder
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    CompanyReceivedAuditSourceAccessAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Received Audit Source Access
         permissionSetVersion:
           type: string
           const: v1
@@ -10585,6 +12627,7 @@ components:
       oneOf:
         - $ref: '#/components/schemas/RegisterQuestionnaireDocumentInput'
         - $ref: '#/components/schemas/RegisterMissionDocumentInput'
+        - $ref: '#/components/schemas/RegisterReceivedAuditSourceDocumentInput'
         - $ref: '#/components/schemas/RegisterReceivedContractDocumentInput'
         - $ref: '#/components/schemas/RegisterReceivedAddendumDocumentInput'
         - $ref: '#/components/schemas/RegisterExternalInvoiceDocumentInput'
@@ -10605,6 +12648,16 @@ components:
       required: [type, clientId, title, purpose]
       properties:
         type: { type: string, const: mission-deliverable }
+        clientId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+    RegisterReceivedAuditSourceDocumentInput:
+      type: object
+      additionalProperties: false
+      description: Literal received Audit-context preservation only. Independent native Registrar/source gate and original Client read are required; no Case or Project prerequisite and no professional approval is implied.
+      required: [type, clientId, title, purpose]
+      properties:
+        type: { type: string, const: received-audit-source }
         clientId: { type: string, format: uuid }
         title: { type: string, minLength: 1, maxLength: 200 }
         purpose: { type: string, minLength: 1, maxLength: 2000 }
@@ -11092,6 +13145,13 @@ components:
           properties:
             createdByMembershipId: { type: string, format: uuid }
             type: { type: string, const: mission-deliverable }
+            version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
+        - type: object
+          required: [type, version, createdAt, createdByMembershipId]
+          not: { required: [projectAssociation] }
+          properties:
+            createdByMembershipId: { type: string, format: uuid }
+            type: { type: string, const: received-audit-source }
             version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
         - type: object
           required:
@@ -12063,6 +14123,31 @@ components:
         - displayName
         - clientPermissions
       properties:
+        workingEvidenceCasePermissions:
+          type: array
+          uniqueItems: true
+          maxItems: 2
+          items:
+            type: string
+            enum: [working_evidence_case.read, working_evidence_case.record]
+          description: Additive captured Reader/Recorder permissions; Reader is preferred for a fresh read and Recorder is consumed for a write. Native context, Project, original Client and source/content captures remain independent.
+        workingEvidenceCaseReaderAssignmentId: { type: string, format: uuid }
+        workingEvidenceCaseReaderPermissionSetVersion:
+          { type: string, const: v1 }
+        workingEvidenceCaseRecorderAssignmentId: { type: string, format: uuid }
+        workingEvidenceCaseRecorderPermissionSetVersion:
+          { type: string, const: v1 }
+        receivedAuditSourceAccessAssignmentId: { type: string, format: uuid }
+        receivedAuditSourceAccessPermissionSetVersion:
+          { type: string, const: v1 }
+        workingEvidenceContextCapture:
+          type: string
+          pattern: '^working-evidence-context\.v1\.[0-9a-f]{64}$'
+          description: Opaque identity of the selected supported native Company admission; grants no permission. Revocation or equal-permission replacement retires the consumed identity.
+        workingEvidenceClientReadCapture:
+          type: string
+          pattern: '^working-evidence-client-read\.v1\.[0-9a-f]{64}$'
+          description: Opaque identity of the selected native original-Client read alternative, preferring Workspace client.manage when available; grants no permission. Revocation or equal-permission replacement retires the consumed identity.
         receivedAddendumAccessAssignmentId: { type: string, format: uuid }
         receivedAddendumAccessPermissionSetVersion: { type: string, const: v1 }
         receivedAddendumClientReadCapture:
@@ -12165,6 +14250,7 @@ components:
               - document.version.designate_official
               - document.content.read
               - document.content.upload
+              - document.received_audit_source.access
         documentContentReaderAssignmentId:
           type: string
           format: uuid

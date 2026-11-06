@@ -1,3 +1,6 @@
+import { WorkingEvidenceWorkspace } from '../working-evidence/WorkingEvidenceWorkspace';
+import { workingEvidenceAuthority } from '../working-evidence/working-evidence-access';
+import { useWorkingEvidenceCopy } from '../working-evidence/working-evidence.copy';
 import { ProjectPdfBundle } from './ProjectPdfBundle';
 import { ProjectNextAction } from './ProjectNextAction';
 import { MissionPlanCurrentWork } from '../mission-plan/MissionPlanCurrentWork';
@@ -47,7 +50,7 @@ import { useProjectDirectory } from './use-project-directory';
 import type { ProjectNavigationRequest } from './use-project-navigation';
 import './project.css';
 
-type DetailPanel = 'tasks' | 'documents';
+type DetailPanel = 'tasks' | 'documents' | 'working-evidence';
 /** Either the free-text search or one exact dossier identity is active. */
 type ProjectFilter =
   | { kind: 'text'; query: string }
@@ -139,6 +142,8 @@ export function ProjectWorkspace({
   onWorkspaceAccessRejected?: () => void | Promise<void>;
 }) {
   const copy = useProjectCopy();
+  const evidenceCopy = useWorkingEvidenceCopy();
+  const evidenceAuthority = workingEvidenceAuthority(actor);
   const documentsCopy = useProjectDocumentsCopy();
   const templateCopy = useProjectTemplateCopy();
   const planTaskRequestId = useRef(0);
@@ -152,6 +157,8 @@ export function ProjectWorkspace({
     useState<TemplateSelection | null>(null);
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
+  if (!evidenceAuthority && detailPanel === 'working-evidence')
+    setDetailPanel('tasks');
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<SelectedProject | null>(null);
   const [includeClosed, setIncludeClosed] = useState(false);
@@ -641,25 +648,23 @@ export function ProjectWorkspace({
   }
   function moveDetailTab(
     event: KeyboardEvent<HTMLButtonElement>,
-    current: DetailPanel,
+    panel: DetailPanel,
   ) {
-    let next: DetailPanel;
-    switch (event.key) {
-      case 'ArrowRight':
-        next = current === 'tasks' ? 'documents' : 'tasks';
-        break;
-      case 'ArrowLeft':
-        next = current === 'tasks' ? 'documents' : 'tasks';
-        break;
-      case 'Home':
-        next = 'tasks';
-        break;
-      case 'End':
-        next = 'documents';
-        break;
-      default:
-        return;
-    }
+    const panels: DetailPanel[] = evidenceAuthority
+      ? ['tasks', 'documents', 'working-evidence']
+      : ['tasks', 'documents'];
+    const index = panels.indexOf(panel);
+    const next =
+      event.key === 'ArrowRight'
+        ? panels[(index + 1) % panels.length]
+        : event.key === 'ArrowLeft'
+          ? panels[(index + panels.length - 1) % panels.length]
+          : event.key === 'Home'
+            ? panels[0]
+            : event.key === 'End'
+              ? panels[panels.length - 1]
+              : undefined;
+    if (!next) return;
     event.preventDefault();
     setDetailPanel(next);
     event.currentTarget.parentElement
@@ -1099,6 +1104,22 @@ export function ProjectWorkspace({
               >
                 {documentsCopy.title}
               </button>
+              {evidenceAuthority && (
+                <button
+                  id="project-working-evidence-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={detailPanel === 'working-evidence'}
+                  aria-controls="project-working-evidence-panel"
+                  tabIndex={detailPanel === 'working-evidence' ? 0 : -1}
+                  onClick={() => setDetailPanel('working-evidence')}
+                  onKeyDown={(event) =>
+                    moveDetailTab(event, 'working-evidence')
+                  }
+                >
+                  {evidenceCopy('title')}
+                </button>
+              )}
             </div>
           )}
           <MissionPlanProjectCopy
@@ -1178,6 +1199,26 @@ export function ProjectWorkspace({
                 onActivityRecorded={onActivityRecorded}
               />
             )}
+          <div
+            className="project-detail-panel"
+            id="project-working-evidence-panel"
+            role={isPrisme ? 'tabpanel' : undefined}
+            aria-labelledby={
+              isPrisme ? 'project-working-evidence-tab' : undefined
+            }
+            hidden={isPrisme && detailPanel !== 'working-evidence'}
+          >
+            <WorkingEvidenceWorkspace
+              actor={actor}
+              identity={identity}
+              projectId={selected.project.id}
+              projectStatus={selected.project.status}
+              onActorRevalidated={onActorRevalidated}
+              onCompanyContextRejected={onCompanyContextRejected}
+              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              onActivityRecorded={onActivityRecorded}
+            />
+          </div>
           <div
             className="project-detail-panel"
             id="project-documents-panel"
