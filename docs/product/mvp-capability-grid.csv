@@ -1,0 +1,72 @@
+id,module,group,capability,delivery_issues,status_rule
+CX-1,Sign-in and accounts,operational base,Sign-in,20;21,closed-completed
+CX-2,Sign-in and accounts,operational base,Local identity,20;65,closed-completed
+CX-3,Sign-in and accounts,operational base,Invitations,162;163,closed-completed
+CX-4,Sign-in and accounts,operational base,Suspension and revocation,160;161,closed-completed
+EN-1,Companies and access rights,operational base,Company creation,66;269,closed-completed
+EN-2,Companies and access rights,operational base,Company selection,67,closed-completed
+EN-3,Companies and access rights,operational base,Access assignment,88;159;265;357,closed-completed
+EN-4,Companies and access rights,operational base,Company isolation,67,closed-completed
+CL-1,Clients,operational base,Client creation and search,141;146;231,closed-completed
+CL-2,Clients,operational base,Client correction,146;348;349,closed-completed
+CL-3,Clients,operational base,Client relations between Companies,141,closed-completed
+CL-4,Clients,operational base,Duplicate handling,158;218;241;248,closed-completed
+CL-5,Clients,operational base,Full legal model (additional legal entities and branches),393,closed-completed
+PJ-1,Projects,operational base,Preparatory Project creation,238,closed-completed
+PJ-2,Projects,operational base,Project navigation,254;262;276,closed-completed
+PJ-3,Projects,operational base,Project activation,406,closed-completed
+PJ-4,Projects,operational base,Project business stages (categories and templates),634;687;695,closed-completed
+PJ-5,Projects,operational base,Project closure,407,closed-completed
+TA-1,Tasks,operational base,Task creation and editing,246,closed-completed
+TA-2,Tasks,operational base,Task responsible member and due date,246;299;305,closed-completed
+TA-3,Tasks,operational base,Task completion and history,246;365,closed-completed
+TA-4,Tasks,operational base,Tasks imposed by the process and templates,634;687;695,closed-completed
+DO-1,Documents and files,operational base,Document references,239;250;369,closed-completed
+DO-2,Documents and files,operational base,Document attachment to a Project,245;304;346;362;363,closed-completed
+DO-3,Documents and files,operational base,Retained Document content,633,closed-completed
+DO-4,Documents and files,operational base,Official Document Versions,400,closed-completed
+DO-5,Documents and files,operational base,Document generation,501;522;526;542;544;546;557;559;561,closed-completed
+HI-1,Action history,operational base,Event recording,22,closed-completed
+HI-2,Action history,operational base,Controlled access to history,257;313;349,closed-completed
+HI-3,Action history,operational base,History consultation,257;358,closed-completed
+HI-4,Action history,operational base,Coverage of the commercial steps (Offers and Contracts),592;593,closed-completed
+UI-1,Interface and languages,operational base,Navigation,226;275;279;297;345,closed-completed
+UI-2,Interface and languages,operational base,Real screens,,unmapped
+UI-3,Interface and languages,operational base,Mobile layout,281,closed-completed
+UI-4,Interface and languages,operational base,Translation and business vocabulary,,unmapped
+TB-1,Dashboard,operational base,Next actions,416,closed-completed
+TB-2,Dashboard,operational base,Real indicators,398,closed-completed
+TB-3,Dashboard,operational base,Open records from indicators,398,closed-completed
+SD-1,Request capture,commerce,Original Request text,291,closed-completed
+SD-2,Request capture,commerce,First Opportunity,291,closed-completed
+SD-3,Request capture,commerce,Request consultation and search,291;298;303,closed-completed
+SD-4,Request capture,commerce,Request traceability,291;313;321;358,closed-completed
+SO-1,Opportunity tracking,commerce,Next action tracking,312;340,closed-completed
+SO-2,Opportunity tracking,commerce,Qualification and Sales Stages,570;591,closed-completed
+SO-3,Opportunity tracking,commerce,Responsible reassignment,399,closed-completed
+CT-1,Catalogue and tariffs,commerce,Service catalogue,317,closed-completed
+CT-2,Catalogue and tariffs,commerce,Versioned pricing rules,360,closed-completed
+CT-3,Catalogue and tariffs,commerce,Versioned tariffs,396,closed-completed
+CA-1,Price calculation,commerce,Confirmed inputs,418,closed-completed
+CA-2,Price calculation,commerce,Deterministic calculation,418,closed-completed
+CA-3,Price calculation,commerce,Authorized adjustments,458,closed-completed
+CA-4,Price calculation,commerce,Retained result and versions,418,closed-completed
+OF-1,Commercial offers,commerce,Generated Offer document,501,closed-completed
+OF-2,Commercial offers,commerce,Offer versions,456;520,closed-completed
+OF-3,Commercial offers,commerce,Internal Offer validation,510;512,closed-completed
+OF-4,Commercial offers,commerce,Offer transmission and response recorded,516;518,closed-completed
+CO-1,Contracts,commerce,Contract origin and models,522;546;557,closed-completed
+CO-2,Contracts,commerce,Contract versions,542,closed-completed
+CO-3,Contracts,commerce,Contract validation and signature,527;532;536,closed-completed
+CO-4,Contracts,commerce,Contract conservation and later changes,544,closed-completed
+CP-1,Contract to Project,commerce,Search and link an existing Project,538,closed-completed
+CP-2,Contract to Project,commerce,Confirmed Project creation without duplicate,540,closed-completed
+TE-1,End-to-end tests,finalization,Proven operational journey,281,closed-completed
+TE-2,End-to-end tests,finalization,Complete commercial journey,597,closed-completed
+TE-3,End-to-end tests,finalization,Actual business trial,,unmapped
+CF-1,MVP configuration,finalization,Versioned provisional tariffs and examples,615,closed-completed
+CF-2,MVP configuration,finalization,Identified provisional templates,,unmapped
+CF-3,MVP configuration,finalization,Demonstration roles,620,closed-completed
+MP-1,Production release,finalization,Configured deployment,,unmapped
+MP-2,Production release,finalization,Restored backup,,unmapped
+MP-3,Production release,finalization,Supervision and incident procedure,,unmapped
