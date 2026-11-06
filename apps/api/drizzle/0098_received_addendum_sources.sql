@@ -83,7 +83,7 @@ CREATE FUNCTION received_addendum_registration_authorized(w uuid,c uuid,m uuid) 
  AND EXISTS(SELECT 1 FROM company_role_assignments a WHERE a.workspace_id=w AND a.company_id=c AND a.workspace_membership_id=m AND a.bundle::text='company_received_addendum_access' AND a.permission_set_version='v1' AND a.revoked_at IS NULL)
  AND (EXISTS(SELECT 1 FROM workspace_permission_grants g WHERE g.workspace_id=w AND g.workspace_membership_id=m AND g.permission::text='client.manage')
   OR EXISTS(SELECT 1 FROM company_role_assignments a WHERE a.workspace_id=w AND a.company_id=c AND a.workspace_membership_id=m AND a.bundle::text='company_director_client_access' AND a.permission_set_version IN ('v1','v2') AND a.revoked_at IS NULL))
- AND EXISTS(SELECT 1 FROM company_role_assignments a WHERE a.workspace_id=w AND a.company_id=c AND a.workspace_membership_id=m AND ((a.bundle::text IN ('company_contract_preparer','company_contract_approver') AND a.permission_set_version IN ('v1','v2')) OR (a.bundle::text='company_contract_early_preparation' AND a.permission_set_version='v1')) AND a.revoked_at IS NULL)
+ AND EXISTS(SELECT 1 FROM company_role_assignments a WHERE a.workspace_id=w AND a.company_id=c AND a.workspace_membership_id=m AND a.bundle::text IN ('company_contract_preparer','company_contract_approver') AND a.permission_set_version IN ('v1','v2') AND a.revoked_at IS NULL)
  AND EXISTS(SELECT 1 FROM company_role_assignments a WHERE a.workspace_id=w AND a.company_id=c AND a.workspace_membership_id=m AND a.bundle::text='company_commercial_intake' AND a.permission_set_version IN ('v1','v2','v3','v4') AND a.revoked_at IS NULL)
 $$;
 --> statement-breakpoint

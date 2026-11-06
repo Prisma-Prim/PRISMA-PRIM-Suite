@@ -285,8 +285,6 @@ function RegistrationSession({
         !uuid.test(saved.version.id) ||
         saved.companyId !== companyId ||
         saved.clientId !== command.source.clientId ||
-        saved.title !== command.metadata.title ||
-        saved.purpose !== command.metadata.purpose ||
         saved.receivedAddendumRelation.access !== 'granted'
       )
         throw new Error('Uncertain registration');

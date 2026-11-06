@@ -13,6 +13,7 @@ import {
   responseRecord,
   responseString,
 } from '../offer/offer-estimate-preparation.test-support.js';
+import { revokeModelContractFixtureGrant } from '../contract/model-contract.test-fixture.js';
 import { openDocumentScannerFixture } from './document-scanner.test-support.js';
 import { prepareReceivedAddendumParent } from './received-addendum.test-support.js';
 import { ReceivedAddendumRelationsService } from './received-addendum-relations.service.js';
@@ -62,6 +63,137 @@ withPostgres('Received Addendum integrity and atomic response boundary', () => {
       ).rows[0]?.facts;
     return value;
   }
+  it('rejects a complete coupled SQL registration with only Early Preparation while genuine Contract read remains sufficient', async () => {
+    const saved = await parent.register();
+    expect(saved.status).toBe(201);
+    const id = responseString(responseRecord(await saved.json()), 'id');
+    async function coupledRegistration() {
+      const tx = await fixture.pool.connect();
+      try {
+        await tx.query('BEGIN');
+        const root = await tx.query<{ id: string }>(
+          `INSERT INTO working_documents(workspace_id,company_id,client_id,type,title,purpose,created_by_membership_id,created_at,idempotency_key,request_fingerprint)
+          SELECT workspace_id,company_id,client_id,type,title,purpose,created_by_membership_id,date_trunc('milliseconds',now()),gen_random_uuid()::text,request_fingerprint FROM working_documents WHERE id=$1 RETURNING id`,
+          [id],
+        );
+        const candidate = root.rows[0]?.id;
+        if (!candidate) throw new Error('Complete SQL registration required');
+        await tx.query(
+          'INSERT INTO document_versions(workspace_id,company_id,document_id,number,created_by_membership_id,created_at) SELECT workspace_id,company_id,id,1,created_by_membership_id,created_at FROM working_documents WHERE id=$1',
+          [candidate],
+        );
+        await tx.query(
+          `INSERT INTO received_addendum_document_relations(document_id,workspace_id,company_id,opportunity_id,contract_id,contract_version_id,contract_version_number,illustrative_reference,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,source_description,initial_title,initial_purpose,received_on,registered_by_membership_id,registered_by_internal_user_id,registered_at)
+          SELECT d.id,r.workspace_id,r.company_id,r.opportunity_id,r.contract_id,r.contract_version_id,r.contract_version_number,r.illustrative_reference,r.recipient_kind,r.recipient_additional_legal_entity_id,r.recipient_legal_name,r.recipient_tax_id,r.recipient_legal_address,r.source_description,r.initial_title,r.initial_purpose,r.received_on,r.registered_by_membership_id,r.registered_by_internal_user_id,d.created_at
+          FROM received_addendum_document_relations r JOIN working_documents d ON d.id=$2 WHERE r.document_id=$1`,
+          [id, candidate],
+        );
+        await tx.query(
+          'INSERT INTO document_registration_events(workspace_id,company_id,document_id,actor_membership_id,occurred_at) SELECT workspace_id,company_id,id,created_by_membership_id,created_at FROM working_documents WHERE id=$1',
+          [candidate],
+        );
+        // Validate the whole coupled registration, including every deferred guard,
+        // before rolling back even the genuine-read positive control.
+        await tx.query('SET CONSTRAINTS ALL IMMEDIATE');
+        return candidate;
+      } finally {
+        await tx.query('ROLLBACK');
+        tx.release();
+      }
+    }
+    const original = await facts();
+    await expect(coupledRegistration()).resolves.toEqual(expect.any(String));
+    expect(await facts()).toEqual(original);
+    await fixture.grant({
+      path: '/company-contract-early-preparation-assignments',
+      companyId: parent.target.companyId,
+      membershipId: parent.ready.source.preparerMembershipId,
+    });
+    for (const path of [
+      '/company-contract-preparer-assignments',
+      '/company-contract-approver-assignments',
+    ])
+      await revokeModelContractFixtureGrant(
+        fixture,
+        path,
+        parent.target.companyId,
+        parent.ready.source.preparerMembershipId,
+      );
+    expect(
+      (await parent.call('/documents/received-addendum-sources')).status,
+    ).toBe(403);
+    const before = await facts();
+    await expect(coupledRegistration()).rejects.toMatchObject({
+      code: '23514',
+    });
+    expect(await facts()).toEqual(before);
+    await fixture.grant({
+      path: '/company-contract-preparer-assignments',
+      companyId: parent.target.companyId,
+      membershipId: parent.ready.source.preparerMembershipId,
+    });
+    const restored = await facts();
+    await expect(coupledRegistration()).resolves.toEqual(expect.any(String));
+    expect(await facts()).toEqual(restored);
+    expect(
+      (await parent.call('/documents/received-addendum-sources')).status,
+    ).toBe(200);
+  });
+
+  it('replays the current native detail after another authorized user corrects draft metadata without changing the registration identity', async () => {
+    const key = randomUUID();
+    const initial = await parent.register(key);
+    expect(initial.status).toBe(201);
+    const document = responseRecord(await initial.json());
+    const id = responseString(document, 'id');
+    const other = responseRecord(
+      await fixture.read({ path: '/access/current-actor' }),
+    );
+    const membershipId = responseString(other, 'workspaceMembershipId');
+    expect(membershipId).not.toBe(parent.ready.source.preparerMembershipId);
+    for (const path of [
+      '/company-document-registrar-assignments',
+      '/company-received-addendum-access-assignments',
+    ])
+      await fixture.grant({
+        path,
+        companyId: parent.target.companyId,
+        membershipId,
+      });
+    const corrected = await fixture.request({
+      path: `/documents/${id}`,
+      companyId: parent.target.companyId,
+      init: {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': randomUUID(),
+        },
+        body: JSON.stringify({
+          expectedRevision: 1,
+          title: 'Corrected by another native user',
+          purpose: 'Current corrected draft purpose',
+        }),
+      },
+    });
+    expect(corrected.status, await corrected.clone().text()).toBe(200);
+    const current = responseRecord(
+      await (await parent.call(`/documents/${id}`)).json(),
+    );
+    expect(current).toMatchObject({
+      id,
+      workingRevision: 2,
+      title: 'Corrected by another native user',
+      purpose: 'Current corrected draft purpose',
+      version: document.version,
+      receivedAddendumRelation: document.receivedAddendumRelation,
+    });
+    const before = await facts();
+    const replay = await parent.register(key);
+    expect(replay.status).toBe(201);
+    expect(await replay.json()).toEqual(current);
+    expect(await facts()).toEqual(before);
+  });
   it('rolls back final registration event refusal and then succeeds with exactly the original key', async () => {
     const before = await facts(),
       key = randomUUID();
