@@ -491,6 +491,14 @@ Excluded, and not presented as business fact:
 
 **Delivery.** #406 delivers the statuses, the Approver bundle, activation, hold and resumption. #407 delivers completion, cancellation, the closed-Project rules and the list default.
 
+The [Manual Working Evidence Case](manual-working-evidence-case-prd.md) consumes
+this native Project/original-Client read and open-lifecycle boundary. A new Case
+revision is serialized against closure through the owning public participants;
+recording changes no Project lifecycle, Task, stage, responsibility or ordinary
+completion condition. Closed Projects retain authorized Case history and exact
+committed replay; new Case recording/correction is refused. This adds no Case
+projection to ordinary Project/Task lists or queues and grants no professional work.
+
 ## 24. Approved provisional creation from an illustrative Template (#634)
 
 Dan approved this bounded example and dedicated opt-in authority on 2026-10-16.

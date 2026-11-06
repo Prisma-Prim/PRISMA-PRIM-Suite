@@ -59,6 +59,13 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 7. A Client with operational history is archived, not hard-deleted.
 8. Duplicate resolution preserves aliases, identifiers and prior references.
 
+The [Manual Working Evidence Case](manual-working-evidence-case-prd.md) retains
+the native Project's exact original Client, including through union/reversal.
+Its new revisions use this owner's identity-before-relationship participant and
+operational-use fence; historical read/replay preserves native read alternatives.
+No canonical successor retargeting, Client Legal Entity inference, Case projection
+in ordinary Client summaries or new shared/confidential Client field is introduced.
+
 ## 7. Minimal data
 
 Issue #141 fixes the first slice's complete shared interface to the server-assigned Client Account id and one required display name. Registration atomically establishes the server-validated active Company's relationship. Workspace search returns only that identity and whether it is already related to the active Company; a deliberate attach action reuses the same Client Account in another Company. Names never trigger an automatic merge.

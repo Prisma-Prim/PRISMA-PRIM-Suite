@@ -348,6 +348,17 @@ history under the same Reader/Recorder v1. Approval, contract merge and fresh
 readiness precede a separate runtime child. Scoring, responsible-person assignment,
 escalation and the broader Risk/improvement module remain deferred.
 
+### Bounded manual working evidence
+
+The [Manual Working Evidence Case PRD](manual-working-evidence-case-prd.md), under
+[#1054](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1054), owns the combined
+literal working statement, exact received-source preservation, immutable corrections
+and frozen statement/original-source annex. Its status and readiness section govern
+publication and any later runtime assignment. It preserves the formal Audit Finding,
+Report/model/Decision and actual-data gates; no whole-pilot or runtime delivery is
+inferred. Document Registry §26, Authorization §8 and Activity §7 own only their
+necessary native consequences.
+
 ## 8. Delivered foundation and live work routing
 
 The original MVP issue is a historical commercial capability source, not the current complete product authority. The Access and Accountability Release 0 sequence through #22 is delivered. The business-independent Company/RBAC foundation through #64–#67 and the narrow Company Context Access assignment in #88 are also delivered.
