@@ -115,6 +115,19 @@ export class DocumentReadBoundary {
       });
       return;
     }
+    if (type === 'received-addendum') {
+      if (
+        !(await this.authorization.hasReceivedAddendumAccess(actor, {
+          lockAssignment,
+        }))
+      )
+        throw new NotFoundException();
+      await this.authorization.requireReceivedAddendumNativeAccess(actor, {
+        action: 'read',
+        lockAssignment,
+      });
+      return;
+    }
     if (type === 'received-contract') {
       if (
         !(await this.authorization.hasReceivedContractAccess(actor, {

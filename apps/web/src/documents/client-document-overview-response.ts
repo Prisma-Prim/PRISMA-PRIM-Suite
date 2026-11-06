@@ -16,17 +16,20 @@ export function readClientDocumentItems(value: unknown, companyId: string) {
     new Set(documents.map((row) => row.id)).size !== documents.length
   )
     throw new Error('Invalid Company Document list');
-  return documents.map((row) => ({
-    id: row.id,
-    type: row.type,
-    clientId: row.clientId,
-    clientDossierId: row.clientDossierId,
-    clientDisplayName: row.clientDisplayName,
-    title: row.title,
-    confidentiality: row.confidentiality,
-    createdAt: row.createdAt,
-    version: { id: row.version.id, status: row.version.status },
-  }));
+  return documents.map((row) => {
+    const metadata = {
+      id: row.id,
+      clientId: row.clientId,
+      clientDossierId: row.clientDossierId,
+      clientDisplayName: row.clientDisplayName,
+      title: row.title,
+      confidentiality: row.confidentiality,
+      version: { id: row.version.id, status: row.version.status },
+    };
+    return row.type === 'received-addendum'
+      ? { ...metadata, type: row.type }
+      : { ...metadata, type: row.type, createdAt: row.createdAt };
+  });
 }
 export type ClientDocumentItem = ReturnType<
   typeof readClientDocumentItems

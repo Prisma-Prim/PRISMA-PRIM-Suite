@@ -15,6 +15,8 @@ const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company',
   displayName: 'Company',
   clientPermissions: ['client.read'],
+  clientPermissionAssignmentId: '10000000-0000-4000-8000-000000000007',
+  clientPermissionSetVersion: 'v1',
   documentPermissions: [
     'document.read',
     'document.register',
@@ -25,6 +27,7 @@ const company: NonNullable<ActorContext['activeCompany']> = {
     'document.content.upload',
     'document.mission_deliverable.access',
     'document.received_contract.access',
+    'document.received_addendum.access',
   ],
   documentPermissionAssignmentId: 'registrar',
   documentPermissionSetVersion: 'v3',
@@ -34,6 +37,10 @@ const company: NonNullable<ActorContext['activeCompany']> = {
   documentContentUploaderPermissionSetVersion: 'v1',
   missionDeliverableAccessAssignmentId: 'mission-grant',
   missionDeliverableAccessPermissionSetVersion: 'v1',
+  receivedAddendumAccessAssignmentId: '10000000-0000-4000-8000-000000000005',
+  receivedAddendumAccessPermissionSetVersion: 'v1',
+  receivedAddendumClientReadCapture:
+    'received-addendum-client-read.v1.' + 'a'.repeat(64),
   receivedContractAccessAssignmentId: 'received-grant',
   receivedContractAccessPermissionSetVersion: 'v1',
 };
@@ -55,16 +62,23 @@ function changeFamily(
   captureId = 'replacement',
 ): ActorContext {
   const permission =
-    family === 'received-contract'
-      ? 'document.received_contract.access'
-      : 'document.mission_deliverable.access';
+    family === 'received-addendum'
+      ? 'document.received_addendum.access'
+      : family === 'received-contract'
+        ? 'document.received_contract.access'
+        : 'document.mission_deliverable.access';
   const next: NonNullable<ActorContext['activeCompany']> = {
     ...company,
     documentPermissions: active
       ? [...(company.documentPermissions ?? [])]
       : company.documentPermissions?.filter((value) => value !== permission),
   };
-  if (family === 'received-contract') {
+  if (family === 'received-addendum') {
+    next.receivedAddendumAccessAssignmentId = active
+      ? '10000000-0000-4000-8000-000000000006'
+      : undefined;
+    next.receivedAddendumAccessPermissionSetVersion = active ? 'v1' : undefined;
+  } else if (family === 'received-contract') {
     next.receivedContractAccessAssignmentId = active ? captureId : undefined;
     next.receivedContractAccessPermissionSetVersion = active ? 'v1' : undefined;
   } else {
@@ -98,7 +112,7 @@ function http(family: DocumentFamily) {
     purpose: 'Keep exact uncertain intent',
     type: family,
     confidentiality: 'company-confidential',
-    createdAt: at,
+    ...(family === 'received-addendum' ? {} : { createdAt: at }),
     workingRevision: 1,
     correction: 'allowed',
     version: {
@@ -106,9 +120,11 @@ function http(family: DocumentFamily) {
       status: 'draft',
       representation: family === 'questionnaire' ? reference : null,
     },
-    ...(family === 'received-contract'
-      ? { receivedContractRelation: { access: 'denied' } }
-      : {}),
+    ...(family === 'received-addendum'
+      ? { receivedAddendumRelation: { access: 'denied' } }
+      : family === 'received-contract'
+        ? { receivedContractRelation: { access: 'denied' } }
+        : {}),
   };
   vi.stubGlobal('fetch', async (input: string, init?: RequestInit) => {
     const path = new URL(input, 'http://localhost').pathname;
@@ -148,8 +164,9 @@ function http(family: DocumentFamily) {
             id: 'version',
             number: 1,
             status: 'draft',
-            createdAt: at,
-            createdBy: { displayName: 'Member' },
+            ...(family === 'received-addendum'
+              ? {}
+              : { createdAt: at, createdBy: { displayName: 'Member' } }),
             representations:
               family === 'questionnaire'
                 ? [
@@ -218,6 +235,10 @@ afterEach(() => {
 it.each([
   ['questionnaire', 'mission-deliverable'],
   ['questionnaire', 'received-contract'],
+  ['questionnaire', 'received-addendum'],
+  ['received-contract', 'received-addendum'],
+  ['received-addendum', 'received-contract'],
+  ['received-addendum', 'mission-deliverable'],
   ['mission-deliverable', 'received-contract'],
   ['received-contract', 'mission-deliverable'],
 ] as const)(
@@ -255,7 +276,11 @@ it.each([
     await screen.findByText('kept-original.pdf', { exact: true });
   },
 );
-it.each(['mission-deliverable', 'received-contract'] as const)(
+it.each([
+  'mission-deliverable',
+  'received-contract',
+  'received-addendum',
+] as const)(
   'permanently retires %s uncertain PDF work when its own family access is lost and granted anew',
   async (family) => {
     http(family);
@@ -296,3 +321,70 @@ it.each(['mission-deliverable', 'received-contract'] as const)(
     expect(screen.getByLabelText('Choose the PDF file')).toHaveValue('');
   },
 );
+
+it('keeps independent Addendum PDF bytes and key while Contract/Intake captures are replaced', async () => {
+  const writes = http('received-addendum'),
+    identity = deterministicBrowserIdentity(),
+    view = render(<DocumentWorkspace actor={actor} identity={identity} />);
+  await uncertainUpload();
+  view.rerender(
+    <DocumentWorkspace
+      actor={{
+        ...actor,
+        activeCompany: {
+          ...company,
+          contractPermissionAssignmentId: 'replacement-parent',
+          contractPermissionSetVersion: 'v2',
+          commercialIntakePermissionAssignmentId: 'replacement-intake',
+          commercialIntakePermissionSetVersion: 'v4',
+        },
+      }}
+      identity={identity}
+    />,
+  );
+  expect(
+    screen.getByRole('button', { name: 'Retry the same PDF' }),
+  ).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry the same PDF' }));
+  await waitFor(() => expect(writes).toHaveLength(2));
+  expect(writes[1]?.body).toBe(writes[0]?.body);
+  expect(writes[1]?.key).toBe(writes[0]?.key);
+  await screen.findByText('kept-original.pdf', { exact: true });
+});
+
+it('keeps an uncertain Addendum upload when only its unconsumed Approver assignment is replaced', async () => {
+  const writes = http('received-addendum');
+  const identity = deterministicBrowserIdentity();
+  const current = (approverAssignmentId: string): ActorContext => ({
+    ...actor,
+    activeCompany: {
+      ...company,
+      documentPermissions: [
+        ...(company.documentPermissions ?? []),
+        'document.version.designate_official',
+      ],
+      documentApproverAssignmentId: approverAssignmentId,
+      documentApproverPermissionSetVersion: 'v1',
+    },
+  });
+  const view = render(
+    <DocumentWorkspace actor={current('approver-one')} identity={identity} />,
+  );
+  await uncertainUpload();
+  view.rerender(
+    <DocumentWorkspace actor={current('approver-one')} identity={identity} />,
+  );
+  expect(
+    screen.getByRole('button', { name: 'Retry the same PDF' }),
+  ).toBeEnabled();
+  expect(writes).toHaveLength(1);
+  view.rerender(
+    <DocumentWorkspace actor={current('approver-two')} identity={identity} />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Retry the same PDF' }));
+  await waitFor(() => expect(writes).toHaveLength(2));
+  expect(writes[1]?.body).toBe(writes[0]?.body);
+  expect(writes[1]?.key).toBe(writes[0]?.key);
+  expect(writes[1]?.path).toBe(writes[0]?.path);
+  await screen.findByText('kept-original.pdf', { exact: true });
+});

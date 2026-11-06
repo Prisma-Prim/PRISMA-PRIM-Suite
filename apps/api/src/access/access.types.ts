@@ -77,6 +77,9 @@ export interface ActiveCompanyContext
   missionDeliverableAccessPermissionSetVersion?: 'v1';
   contractSignatureDeclarerAssignmentId?: string;
   contractSignatureDeclarerPermissionSetVersion?: 'v1';
+  receivedAddendumAccessAssignmentId?: string;
+  receivedAddendumAccessPermissionSetVersion?: 'v1';
+  receivedAddendumClientReadCapture?: string;
   receivedContractAccessAssignmentId?: string;
   receivedContractAccessPermissionSetVersion?: 'v1';
   /** The live captured Company Document Approver assignment, if any. */

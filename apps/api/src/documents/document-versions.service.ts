@@ -69,6 +69,7 @@ export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
     }
   | { documentType: 'mission-deliverable'; representation: null }
   | { documentType: 'received-contract'; representation: null }
+  | { documentType: 'received-addendum'; representation: null }
   | { documentType: 'external-invoice'; representation: null }
   | { documentType: 'payment-evidence'; representation: null }
 );
@@ -112,6 +113,18 @@ export class DocumentVersionsService {
   ) {}
 
   private async canReadPdf(actor: ActorContext, type: DocumentRow['type']) {
+    if (type === 'received-addendum') {
+      try {
+        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
+          action: 'content-read',
+          lockAssignment: false,
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof ForbiddenException) return false;
+        throw error;
+      }
+    }
     if (type === 'payment-evidence') {
       try {
         await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
@@ -391,6 +404,7 @@ export class DocumentVersionsService {
           grouped.set(
             row.version.id,
             versionView({
+              documentType: visible.document.type,
               version: row.version,
               creatorDisplayName: row.creatorDisplayName,
               designatorDisplayName: row.designatorDisplayName,
@@ -509,6 +523,11 @@ export class DocumentVersionsService {
       await this.requireVersionOf(scope, input.versionId);
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
+      if (visible.document.type === 'received-addendum')
+        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
           action: 'upload',
           lockAssignment: true,
         });
@@ -709,6 +728,16 @@ export class DocumentVersionsService {
         await this.requireVersionOf(scope, command.versionId);
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
+          action:
+            command.action === 'representation_added'
+              ? 'upload'
+              : command.action === 'designated_official'
+                ? 'designate'
+                : 'version',
+          lockAssignment: true,
+        });
+      if (visible.document.type === 'received-addendum')
+        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
           action:
             command.action === 'representation_added'
               ? 'upload'
@@ -1259,6 +1288,7 @@ function reference(
  * supersession fails the read instead of rendering a partial record.
  */
 function versionView(row: {
+  documentType: DocumentRow['type'];
   version: typeof documentVersions.$inferSelect;
   creatorDisplayName: string;
   designatorDisplayName: string | null;
@@ -1267,11 +1297,17 @@ function versionView(row: {
   pdfContent: DocumentPdfContent;
 }): DocumentVersionView {
   const { version } = row;
+  const creation =
+    row.documentType === 'received-addendum' && version.number === 1
+      ? { number: 1 as const }
+      : {
+          number: version.number,
+          createdAt: version.createdAt.toISOString(),
+          createdBy: { displayName: row.creatorDisplayName },
+        };
   const base = {
     id: version.id,
-    number: version.number,
-    createdAt: version.createdAt.toISOString(),
-    createdBy: { displayName: row.creatorDisplayName },
+    ...creation,
     representations: row.reference ? [row.reference] : [],
     pdfContent: row.pdfContent,
   };

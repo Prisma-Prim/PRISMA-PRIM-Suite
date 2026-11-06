@@ -1,3 +1,4 @@
+import { useReceivedAddendumCopy } from './received-addendum.copy';
 import {
   useCallback,
   useEffect,
@@ -49,6 +50,7 @@ function captures(company: ActorContext['activeCompany']) {
       'mission-deliverable',
     ),
     'received-contract': documentFamilyCaptureKey(company, 'received-contract'),
+    'received-addendum': documentFamilyCaptureKey(company, 'received-addendum'),
     'external-invoice': documentFamilyCaptureKey(company, 'external-invoice'),
   } satisfies Record<Exclude<DocumentFamily, 'payment-evidence'>, string>;
 }
@@ -288,6 +290,7 @@ function DocumentEntry({
   const mission = useMissionDeliverableCopy(),
     received = useReceivedContractCopy();
   const invoice = useExternalInvoiceCopy();
+  const addendum = useReceivedAddendumCopy();
   const lifetime = useRef<AbortController | undefined>(undefined);
   useLayoutEffect(() => {
     const controller = new AbortController();
@@ -301,6 +304,7 @@ function DocumentEntry({
     questionnaire: documents[item.version.status],
     'mission-deliverable': mission.t(item.version.status),
     'received-contract': received.t(item.version.status),
+    'received-addendum': addendum.t(item.version.status),
     'external-invoice': invoice.t(item.version.status),
   } satisfies Record<Exclude<DocumentFamily, 'payment-evidence'>, string>;
   return (
@@ -310,12 +314,14 @@ function DocumentEntry({
       <p>
         {documents.client}: {item.clientDisplayName}
       </p>
-      <p>
-        {documents.registrationTime}:{' '}
-        <time dateTime={item.createdAt}>
-          {formatApplicationDateTime(item.createdAt)}
-        </time>
-      </p>
+      {item.type !== 'received-addendum' && (
+        <p>
+          {documents.registrationTime}:{' '}
+          <time dateTime={item.createdAt}>
+            {formatApplicationDateTime(item.createdAt)}
+          </time>
+        </p>
+      )}
       <button
         type="button"
         onClick={() => {

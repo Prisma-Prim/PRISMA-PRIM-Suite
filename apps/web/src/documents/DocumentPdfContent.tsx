@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -16,6 +17,7 @@ interface UploadCommand {
   file: File;
   key: string;
   path: string;
+  current: () => boolean;
 }
 type UploadState =
   | {
@@ -32,6 +34,7 @@ type UploadState =
 /** Only content rights expose file metadata or authenticated immutable downloads. */
 export function DocumentPdfContent({
   identity,
+  receivedAddendumOwnership,
   companyId,
   documentId,
   versionId,
@@ -45,6 +48,11 @@ export function DocumentPdfContent({
   onProtectedWorkChange,
 }: {
   identity: BrowserIdentity;
+  receivedAddendumOwnership?: {
+    readKey: string | null;
+    uploadKey: string | null;
+    captureRecovery: ReturnType<typeof useAuthorityLifetime>;
+  };
   companyId: string;
   documentId: string;
   versionId: string;
@@ -54,14 +62,27 @@ export function DocumentPdfContent({
   workingRevision: number;
   onConfirmed: () => void;
   onReload: () => void;
-  onDenied: () => Promise<void>;
+  onDenied: (isCurrent?: () => boolean) => Promise<void>;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
 }) {
   const copy = useDocumentPdfCopy();
   const locale = useInterfaceLocale();
   const id = useId();
-  const [file, setFile] = useState<File>();
-  const [upload, setUpload] = useState<UploadState>({ status: 'idle' });
+  const [heldFile, setFile] = useState<{
+    file: File;
+    current: () => boolean;
+  }>();
+  const [uploadState, setUpload] = useState<UploadState>({ status: 'idle' });
+  const upload =
+    receivedAddendumOwnership &&
+    (uploadState.status === 'pending' || uploadState.status === 'uncertain') &&
+    !uploadState.command.current()
+      ? { status: 'idle' as const }
+      : uploadState;
+  const file =
+    heldFile && (!receivedAddendumOwnership || heldFile.current())
+      ? heldFile.file
+      : undefined;
   useDocumentNavigationProtection(
     upload.status === 'pending' || upload.status === 'uncertain',
     onProtectedWorkChange,
@@ -79,12 +100,32 @@ export function DocumentPdfContent({
   const pendingRead = useRef<AbortController | undefined>(undefined);
   const historyRead = useRef<AbortController | undefined>(undefined);
   const path = `/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/content`;
+  const readSignature = JSON.stringify([
+    path,
+    receivedAddendumOwnership?.readKey,
+  ]);
+  const uploadSignature = JSON.stringify([
+    path,
+    receivedAddendumOwnership?.uploadKey,
+  ]);
+  const captureRead = useAuthorityLifetime(readSignature, identity);
+  const captureUpload = useAuthorityLifetime(uploadSignature, identity);
+  const uploadRequest = useRef<AbortController | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (!receivedAddendumOwnership) return;
+    uploadRequest.current?.abort();
+    setFile(undefined);
+    setUpload({ status: 'idle' });
+    if (fileInput.current) fileInput.current.value = '';
+  }, [uploadSignature, identity]);
+
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       pendingRead.current?.abort();
       historyRead.current?.abort();
+      uploadRequest.current?.abort();
     };
   }, []);
   useEffect(() => {
@@ -99,14 +140,25 @@ export function DocumentPdfContent({
   }
 
   async function submit(command: UploadCommand): Promise<void> {
+    const current = () =>
+      mounted.current && (!receivedAddendumOwnership || command.current());
+    if (!current()) return;
+    const actorCurrent =
+      receivedAddendumOwnership?.captureRecovery() ?? (() => true);
+    const currentRecovery = () => current() && actorCurrent();
+    const request = receivedAddendumOwnership
+      ? new AbortController()
+      : undefined;
+    if (request) uploadRequest.current = request;
     setUpload({ status: 'pending', command });
     try {
       const api = await createAuthenticatedApiClient(identity);
       // A retired owner must not dispatch a file after asynchronous token lookup.
       // Commands already sent retain their existing durable-receipt policy.
-      if (!mounted.current) return;
+      if (!current()) return;
       const result = await api.request<unknown>(command.path, {
         method: 'POST',
+        ...(request ? { signal: request.signal } : {}),
         companyContextId: companyId,
         headers: {
           'content-type': 'application/pdf',
@@ -114,16 +166,20 @@ export function DocumentPdfContent({
         },
         body: command.file,
       });
-      if (!mounted.current) return;
+      if (!current()) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
+        if (receivedAddendumOwnership) setUpload({ status: 'denied' });
+        if (!receivedAddendumOwnership || currentRecovery())
+          await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
         setWithheld(true);
         setHistory(undefined);
         setUpload({ status: 'denied' });
-        await onDenied().catch(() => undefined);
+        await (
+          receivedAddendumOwnership ? onDenied(currentRecovery) : onDenied()
+        ).catch(() => undefined);
         return;
       }
       if (result.status === 'conflict') {
@@ -148,6 +204,7 @@ export function DocumentPdfContent({
         return;
       }
       const receipt = readDocumentVersionReceipt(result.value);
+      if (!current()) return;
       if (
         receipt.action !== 'representation_added' ||
         receipt.documentId !== documentId ||
@@ -161,10 +218,15 @@ export function DocumentPdfContent({
       // The successful durable receipt stays confirmed even when refreshing fails.
       onConfirmed();
     } catch {
-      if (mounted.current) setUpload({ status: 'uncertain', command });
+      if (current()) setUpload({ status: 'uncertain', command });
     }
   }
   function preserve(): void {
+    if (
+      receivedAddendumOwnership &&
+      (!heldFile?.current() || !receivedAddendumOwnership.uploadKey)
+    )
+      return;
     if (
       !file ||
       file.type !== 'application/pdf' ||
@@ -183,16 +245,31 @@ export function DocumentPdfContent({
       file,
       key: crypto.randomUUID(),
       path: `${path}?expectedRevision=${workingRevision}&fileName=${encodeURIComponent(file.name)}`,
+      current: receivedAddendumOwnership
+        ? captureUpload()
+        : () => mounted.current,
     });
   }
   async function downloadFile(pdf: PreservedDocumentPdf): Promise<void> {
+    const readOwner = receivedAddendumOwnership
+      ? captureRead()
+      : () => mounted.current;
+    const actorCurrent =
+      receivedAddendumOwnership?.captureRecovery() ?? (() => true);
+    const allowed = () =>
+      mounted.current &&
+      readOwner() &&
+      (!receivedAddendumOwnership ||
+        receivedAddendumOwnership.readKey !== null);
+    if (!allowed()) return;
+    const currentRecovery = () => allowed() && actorCurrent();
     pendingRead.current?.abort();
     const controller = new AbortController();
     pendingRead.current = controller;
     setDownload('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (!allowed() || controller.signal.aborted) return;
       const result = await api.download(
         `${path}/${encodeURIComponent(pdf.representationId)}`,
         {
@@ -201,16 +278,20 @@ export function DocumentPdfContent({
           maximumBytes: 5242880,
         },
       );
-      if (!mounted.current || controller.signal.aborted) return;
+      if (!allowed() || controller.signal.aborted) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
+        if (receivedAddendumOwnership) setDownload('error');
+        if (!receivedAddendumOwnership || currentRecovery())
+          await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
         setWithheld(true);
         setHistory(undefined);
         setDownload('denied');
-        await onDenied().catch(() => undefined);
+        await (
+          receivedAddendumOwnership ? onDenied(currentRecovery) : onDenied()
+        ).catch(() => undefined);
         return;
       }
       if (
@@ -222,19 +303,19 @@ export function DocumentPdfContent({
         return;
       }
       const bytes = await result.value.arrayBuffer();
-      if (!mounted.current || controller.signal.aborted) return;
+      if (!allowed() || controller.signal.aborted) return;
       const digest = await crypto.subtle.digest('SHA-256', bytes);
       const sha256 = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0'),
       ).join('');
-      if (!mounted.current || controller.signal.aborted) return;
+      if (!allowed() || controller.signal.aborted) return;
       if (sha256 !== pdf.sha256) {
         setDownload('error');
         return;
       }
       const url = URL.createObjectURL(result.value);
       try {
-        if (!mounted.current || controller.signal.aborted) return;
+        if (!allowed() || controller.signal.aborted) return;
         const anchor = document.createElement('a');
         anchor.href = url;
         anchor.download = pdf.fileName;
@@ -244,24 +325,38 @@ export function DocumentPdfContent({
       }
       setDownload('idle');
     } catch {
-      if (mounted.current && !controller.signal.aborted) setDownload('error');
+      if (allowed() && !controller.signal.aborted) setDownload('error');
     }
   }
   async function loadHistory(beforeRevision?: number): Promise<void> {
+    const readOwner = receivedAddendumOwnership
+      ? captureRead()
+      : () => mounted.current;
+    const actorCurrent =
+      receivedAddendumOwnership?.captureRecovery() ?? (() => true);
+    const allowed = () =>
+      mounted.current &&
+      readOwner() &&
+      (!receivedAddendumOwnership ||
+        receivedAddendumOwnership.readKey !== null);
+    if (!allowed()) return;
+    const currentRecovery = () => allowed() && actorCurrent();
     historyRead.current?.abort();
     const controller = new AbortController();
     historyRead.current = controller;
     setHistoryState('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (!allowed() || controller.signal.aborted) return;
       const result = await api.request<unknown>(
         `${path}/history${beforeRevision === undefined ? '' : `?beforeRevision=${beforeRevision}`}`,
         { companyContextId: companyId, signal: controller.signal },
       );
-      if (!mounted.current || controller.signal.aborted) return;
+      if (!allowed() || controller.signal.aborted) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
+        if (receivedAddendumOwnership) setHistoryState('error');
+        if (!receivedAddendumOwnership || currentRecovery())
+          await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -270,7 +365,9 @@ export function DocumentPdfContent({
         setWithheld(true);
         setHistory(undefined);
         setDownload('denied');
-        await onDenied().catch(() => undefined);
+        await (
+          receivedAddendumOwnership ? onDenied(currentRecovery) : onDenied()
+        ).catch(() => undefined);
         return;
       }
       if (result.status !== 'ok') {
@@ -278,6 +375,7 @@ export function DocumentPdfContent({
         return;
       }
       const page = readDocumentPdfHistory(result.value);
+      if (!allowed() || controller.signal.aborted) return;
       if (
         beforeRevision === undefined &&
         page.uploads.length > 0 &&
@@ -300,8 +398,7 @@ export function DocumentPdfContent({
       }));
       setHistoryState('idle');
     } catch {
-      if (mounted.current && !controller.signal.aborted)
-        setHistoryState('error');
+      if (allowed() && !controller.signal.aborted) setHistoryState('error');
     }
   }
   const blocked =
@@ -406,7 +503,17 @@ export function DocumentPdfContent({
             accept="application/pdf,.pdf"
             disabled={blocked}
             onChange={(event) => {
-              setFile(event.currentTarget.files?.[0]);
+              const selected = event.currentTarget.files?.[0];
+              setFile(
+                selected
+                  ? {
+                      file: selected,
+                      current: receivedAddendumOwnership
+                        ? captureUpload()
+                        : () => mounted.current,
+                    }
+                  : undefined,
+              );
               setUpload({ status: 'idle' });
             }}
           />

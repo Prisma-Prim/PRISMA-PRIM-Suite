@@ -50,7 +50,8 @@ export class ProjectPdfBundleService {
           );
           if (
             document.type === 'external-invoice' ||
-            document.type === 'payment-evidence'
+            document.type === 'payment-evidence' ||
+            document.type === 'received-addendum'
           )
             throw new NotFoundException();
           await this.associations.requireSelectedAssociationWithinReadTransaction(

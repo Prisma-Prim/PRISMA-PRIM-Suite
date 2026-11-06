@@ -1,4 +1,8 @@
 import {
+  readReceivedAddendumRelation,
+  type ReceivedAddendumRelation,
+} from './received-addendum-response';
+import {
   readPaymentEvidenceDocument,
   type PaymentEvidenceDocument,
 } from '../payment-evidence/payment-evidence-response';
@@ -33,11 +37,17 @@ export type DocumentFamily =
   | 'questionnaire'
   | 'mission-deliverable'
   | 'received-contract'
+  | 'received-addendum'
   | 'external-invoice'
   | 'payment-evidence';
 type WorkingVersion = { id: string; status: 'draft' | 'official' };
 export type WorkingDocument =
   | PaymentEvidenceDocument
+  | (Omit<WorkingDocumentBase, 'createdAt'> & {
+      type: 'received-addendum';
+      version: WorkingVersion & { representation: null };
+      receivedAddendumRelation: ReceivedAddendumRelation;
+    })
   | (WorkingDocumentBase &
       (
         | {
@@ -73,11 +83,11 @@ export type DocumentProjectAssociation =
 export type WorkingDocumentDetail =
   | (Extract<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' }
+      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
     > & { projectAssociation?: never })
   | (Exclude<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' }
+      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
     > & {
       /** Present only for a current Project reader; absence never means unlinked. */
       projectAssociation?: DocumentProjectAssociation;
@@ -138,6 +148,7 @@ export function readDocument(value: unknown): WorkingDocument {
     (row.type !== 'questionnaire' &&
       row.type !== 'mission-deliverable' &&
       row.type !== 'received-contract' &&
+      row.type !== 'received-addendum' &&
       row.type !== 'external-invoice') ||
     row.confidentiality !== 'company-confidential' ||
     (version.status !== 'draft' && version.status !== 'official') ||
@@ -145,7 +156,7 @@ export function readDocument(value: unknown): WorkingDocument {
   )
     throw new Error('Unknown Document state');
   const clientDossierId = optionalString(row.clientDossierId);
-  const base: WorkingDocumentBase = {
+  const metadata: Omit<WorkingDocumentBase, 'createdAt'> = {
     id: string(row.id),
     companyId: string(row.companyId),
     clientId: string(row.clientId),
@@ -154,13 +165,32 @@ export function readDocument(value: unknown): WorkingDocument {
     title: string(row.title),
     purpose: string(row.purpose),
     confidentiality: row.confidentiality,
-    createdAt: instant(row.createdAt),
     workingRevision: positiveInteger(row.workingRevision),
     correction: row.correction,
   };
   const working: WorkingVersion = {
     id: string(version.id),
     status: version.status,
+  };
+  if (row.type === 'received-addendum') {
+    if (
+      Object.hasOwn(row, 'createdAt') ||
+      Object.hasOwn(row, 'createdByMembershipId') ||
+      version.representation !== null
+    )
+      throw new Error('Invalid received Addendum registration projection');
+    return {
+      ...metadata,
+      type: row.type,
+      version: { ...working, representation: null },
+      receivedAddendumRelation: readReceivedAddendumRelation(
+        row.receivedAddendumRelation,
+      ),
+    };
+  }
+  const base: WorkingDocumentBase = {
+    ...metadata,
+    createdAt: instant(row.createdAt),
   };
   if (row.type === 'questionnaire')
     return {
@@ -218,7 +248,8 @@ export function readDocumentDetail(value: unknown): WorkingDocumentDetail {
   const association = record(value).projectAssociation;
   if (
     document.type === 'external-invoice' ||
-    document.type === 'payment-evidence'
+    document.type === 'payment-evidence' ||
+    document.type === 'received-addendum'
   ) {
     if (association !== undefined)
       throw new Error('Financial source Documents cannot belong to a Project');
@@ -314,14 +345,24 @@ function readDocumentCorrection(value: unknown): DocumentCorrection {
   };
 }
 const MAXIMUM_DOCUMENT_VERSIONS = 50;
-interface DocumentVersionBase {
+interface DocumentVersionIdentity {
   id: string;
   number: number;
-  createdAt: string;
-  createdByDisplayName: string;
   references: DocumentVersionReference[];
   pdfContent: DocumentPdfContent;
 }
+type DocumentVersionCreationAttribution =
+  | {
+      createdAt: string;
+      createdByDisplayName: string;
+    }
+  | {
+      creationAttribution: 'registration';
+      createdAt?: never;
+      createdByDisplayName?: never;
+    };
+type DocumentVersionBase = DocumentVersionIdentity &
+  DocumentVersionCreationAttribution;
 export type DocumentRepresentationForm =
   'editable' | 'rendered' | 'signed' | 'other';
 export type DocumentVersionReference = DocumentReference & {
@@ -339,7 +380,7 @@ interface DocumentVersionDesignation {
   frozen: { title: string; purpose: string };
 }
 /** One formal Version, discriminated by its content status. */
-export type DocumentVersion =
+export type DocumentVersionWithRegistration =
   | (DocumentVersionBase & { status: 'draft' })
   | (DocumentVersionBase & DocumentVersionDesignation & { status: 'official' })
   | (DocumentVersionBase &
@@ -348,6 +389,11 @@ export type DocumentVersion =
         supersededAt: string;
         supersededByVersionNumber: number;
       });
+/** Existing families always retain native Version creation attribution. */
+export type DocumentVersion = Extract<
+  DocumentVersionWithRegistration,
+  { createdAt: string }
+>;
 export interface DocumentVersions {
   workingRevision: number;
   /** Commands are offered only while the original Client stays active. */
@@ -355,6 +401,10 @@ export interface DocumentVersions {
   /** Highest number first. */
   versions: DocumentVersion[];
 }
+export type DocumentVersionsWithRegistration = Omit<
+  DocumentVersions,
+  'versions'
+> & { versions: DocumentVersionWithRegistration[] };
 /**
  * One Versions read. It must list at most 50 Versions, highest number first,
  * with at most one draft and one official Version; anything else is not a
@@ -362,8 +412,16 @@ export interface DocumentVersions {
  */
 export function readDocumentVersions(
   value: unknown,
+  family?: Exclude<DocumentFamily, 'received-addendum'>,
+): DocumentVersions;
+export function readDocumentVersions(
+  value: unknown,
+  family: DocumentFamily,
+): DocumentVersionsWithRegistration;
+export function readDocumentVersions(
+  value: unknown,
   family: DocumentFamily = 'questionnaire',
-): DocumentVersions {
+): DocumentVersionsWithRegistration {
   const read = record(value);
   if (
     !Array.isArray(read.versions) ||
@@ -391,7 +449,7 @@ export function readDocumentVersions(
 function readDocumentVersion(
   value: unknown,
   family: DocumentFamily,
-): DocumentVersion {
+): DocumentVersionWithRegistration {
   const row = record(value);
   if (
     !Array.isArray(row.representations) ||
@@ -411,11 +469,23 @@ function readDocumentVersion(
       throw new Error('Invalid Version reference');
     previousPosition = reference.position;
   }
+  const number = versionNumber(row.number);
+  const registration = family === 'received-addendum' && number === 1;
+  if (
+    registration &&
+    (Object.hasOwn(row, 'createdAt') || Object.hasOwn(row, 'createdBy'))
+  )
+    throw new Error('Invalid received Addendum initial attribution');
+  const creation: DocumentVersionCreationAttribution = registration
+    ? { creationAttribution: 'registration' }
+    : {
+        createdAt: instant(row.createdAt),
+        createdByDisplayName: string(record(row.createdBy).displayName),
+      };
   const base: DocumentVersionBase = {
     id: string(row.id),
-    number: versionNumber(row.number),
-    createdAt: instant(row.createdAt),
-    createdByDisplayName: string(record(row.createdBy).displayName),
+    number,
+    ...creation,
     references,
     pdfContent: readDocumentPdfContent(row.pdfContent),
   };

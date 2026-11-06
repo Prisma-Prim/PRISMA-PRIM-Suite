@@ -391,6 +391,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Received Contract Access',
     versions: { v1: ['document.received_contract.access'] },
   },
+  company_received_addendum_access: {
+    label: 'Company Received Addendum Access',
+    versions: { v1: ['document.received_addendum.access'] },
+  },
   company_offer_model_editor: {
     label: 'Company Offer Model Editor',
     versions: {
@@ -638,6 +642,19 @@ export function receivedContractPermissionsFor(
   );
 }
 
+export const COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE =
+  'company_received_addendum_access' satisfies CompanyRoleBundle;
+export const COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_received_addendum_access.label;
+export function receivedAddendumPermissionsFor(
+  version: unknown,
+): readonly DocumentPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
+    version,
+  );
+}
+
 export const COMPANY_DOCUMENT_CONTENT_READER_BUNDLE =
   'company_document_content_reader' satisfies CompanyRoleBundle;
 export const COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL =
@@ -871,6 +888,7 @@ export type DocumentPermission =
   | CompanyRolePermission<'company_document_content_reader'>
   | CompanyRolePermission<'company_mission_deliverable_access'>
   | CompanyRolePermission<'company_received_contract_access'>
+  | CompanyRolePermission<'company_received_addendum_access'>
   | CompanyRolePermission<'company_document_content_uploader'>
   | CompanyRolePermission<'company_document_project_organizer'>;
 export type DocumentPermissionSetVersion =

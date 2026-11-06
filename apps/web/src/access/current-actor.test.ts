@@ -3,6 +3,7 @@ import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
+import { hasReceivedAddendumAccess } from '../documents/received-addendum-access';
 import { contractModelAuthority } from '../contract-model/contract-model-authority';
 import { missionPlanAuthority } from '../mission-plan/mission-plan-authority';
 import { offerModelAuthority } from '../offer-model/offer-model-authority';
@@ -42,6 +43,42 @@ afterEach(() => {
 });
 
 describe('current Actor representation', () => {
+  it.each([
+    undefined,
+    null,
+    5,
+    { future: 'opaque' },
+    'received-addendum-client-read.future',
+    'received-addendum-client-read.v1.' + 'a'.repeat(64),
+  ])(
+    'preserves the opaque Addendum Client capture and delegates exact support without retiring independent families: %j',
+    async (capture) => {
+      const native = paymentEvidenceActor(),
+        actor = {
+          ...native,
+          activeCompany: {
+            ...native.activeCompany,
+            receivedAddendumAccessAssignmentId:
+              '10000000-0000-4000-8000-000000000005',
+            receivedAddendumAccessPermissionSetVersion: 'v1',
+            receivedAddendumClientReadCapture: capture,
+            documentPermissions: [
+              ...native.activeCompany.documentPermissions,
+              'document.received_addendum.access',
+            ],
+          },
+        };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok')
+        throw new Error('Readable additive Actor required');
+      expect(paymentEvidenceAuthority(result.value)).toBeDefined();
+      expect(hasReceivedAddendumAccess(result.value.activeCompany)).toBe(
+        typeof capture === 'string' &&
+          /^received-addendum-client-read\.v1\.[a-f0-9]{64}$/u.test(capture),
+      );
+    },
+  );
   it.each([
     undefined,
     null,
@@ -237,6 +274,7 @@ describe('current Actor representation', () => {
   const typedFields = Object.entries(completeActor.activeCompany).filter(
     ([name]) =>
       ![
+        'receivedAddendumClientReadCapture',
         'missionPlanGrants',
         'offerModelGrants',
         'contractModelGrants',

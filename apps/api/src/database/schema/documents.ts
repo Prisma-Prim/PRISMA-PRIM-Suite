@@ -29,6 +29,7 @@ export const workingDocuments = pgTable(
         'questionnaire',
         'mission-deliverable',
         'received-contract',
+        'received-addendum',
         'external-invoice',
         'payment-evidence',
       ],
@@ -89,7 +90,7 @@ export const workingDocuments = pgTable(
     }),
     check(
       'working_documents_state_check',
-      sql`${table.type} IN ('questionnaire', 'mission-deliverable', 'received-contract', 'external-invoice', 'payment-evidence') AND ${table.confidentiality} = 'company-confidential' AND length(trim(${table.title})) BETWEEN 1 AND 200 AND length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
+      sql`${table.type} IN ('questionnaire', 'mission-deliverable', 'received-contract', 'external-invoice', 'payment-evidence', 'received-addendum') AND ${table.confidentiality} = 'company-confidential' AND length(trim(${table.title})) BETWEEN 1 AND 200 AND length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
     ),
   ],
 );

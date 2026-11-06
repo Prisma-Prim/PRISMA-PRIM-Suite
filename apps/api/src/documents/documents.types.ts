@@ -1,3 +1,4 @@
+import type { ReceivedAddendumRelationView } from './received-addendum.js';
 import type { PaymentEvidenceSourceView } from './payment-evidence.js';
 import type { ExternalInvoiceRelationView } from './external-invoice.js';
 import type { ReceivedContractRelationView } from './received-contract.js';
@@ -30,6 +31,11 @@ interface WorkingExternalReference {
   verification: 'unverified';
 }
 export type WorkingDocument =
+  | (Omit<WorkingDocumentBase, 'createdAt' | 'createdByMembershipId'> & {
+      type: 'received-addendum';
+      version: WorkingVersionIdentity & { representation: null };
+      receivedAddendumRelation: ReceivedAddendumRelationView;
+    })
   | (Omit<WorkingDocumentBase, 'createdByMembershipId'> & {
       type: 'external-invoice';
       version: WorkingVersionIdentity & { representation: null };
@@ -69,11 +75,11 @@ export type DocumentProjectAssociation =
 export type WorkingDocumentDetail =
   | (Extract<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' }
+      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
     > & { projectAssociation?: never })
   | (Exclude<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' }
+      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
     > & {
       /** Present only for a current Project reader; absence never means unlinked. */
       projectAssociation?: DocumentProjectAssociation;

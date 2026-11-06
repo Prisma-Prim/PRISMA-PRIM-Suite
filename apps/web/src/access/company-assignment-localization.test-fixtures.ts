@@ -605,6 +605,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'received-addendum-access',
+    canonical: 'Company Received Addendum Access',
+    version: 'v1',
+    labels: {
+      en: 'Company Received Addendum Access',
+      fr: 'Accès aux avenants reçus de la société',
+      ro: 'Acces la actele adiționale primite ale companiei',
+      ru: 'Доступ к полученным дополнительным соглашениям компании',
+    },
+  },
+  {
     value: 'received-contract-access',
     canonical: 'Company Received Contract Access',
     version: 'v1',

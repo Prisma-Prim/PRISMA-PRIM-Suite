@@ -54,6 +54,7 @@ import { DocumentContentController } from './documents/document-content.controll
 import { CompanyMissionDeliverableAccessAssignmentController } from './access/company-mission-deliverable-access-assignment.controller.js';
 import { CompanyContractSignatureDeclarerAssignmentController } from './access/company-contract-signature-declarer-assignment.controller.js';
 import { CompanyReceivedContractAccessAssignmentController } from './access/company-received-contract-access-assignment.controller.js';
+import { CompanyReceivedAddendumAccessAssignmentController } from './access/company-received-addendum-access-assignment.controller.js';
 import { TaskResultsController } from './task/task-results.controller.js';
 import { CompanyTaskResultRecorderAssignmentController } from './access/company-task-result-recorder-assignment.controller.js';
 import { CompanyMissionResultReviewerAssignmentController } from './access/company-mission-result-reviewer-assignment.controller.js';
@@ -264,6 +265,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyMissionDeliverableAccessAssignmentController,
     CompanyContractSignatureDeclarerAssignmentController,
     CompanyReceivedContractAccessAssignmentController,
+    CompanyReceivedAddendumAccessAssignmentController,
     CompanyTaskResultRecorderAssignmentController,
     CompanyMissionResultReviewerAssignmentController,
     CompanyProjectNextActionCoordinatorAssignmentController,
