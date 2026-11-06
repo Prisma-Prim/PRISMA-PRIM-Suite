@@ -57,9 +57,8 @@ function accessibleLabel(
   title: string | undefined,
   fallback: string,
 ): string {
-  const label = trigger.labels.item(0);
-  if (label) {
-    const copy = label.cloneNode(true) as HTMLLabelElement;
+  const copy = trigger.labels.item(0)?.cloneNode(true);
+  if (copy instanceof Element) {
     copy.querySelector('.shared-select')?.remove();
     const text = copy.textContent?.trim();
     if (text) return text;

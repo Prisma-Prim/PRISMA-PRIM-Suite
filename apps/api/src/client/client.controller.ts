@@ -15,6 +15,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import type { ClientCorrectionHistoryPage } from '../accountability/accountability.types.js';
 import { ClientService } from './client.service.js';
@@ -35,7 +36,7 @@ export class ClientController {
 
   @Get()
   list(@Req() request: ActorContextRequest): Promise<ClientAccountView[]> {
-    return this.clients.query(request.actorContext!, {
+    return this.clients.query(requireActorContext(request), {
       kind: 'active-company-list',
     });
   }
@@ -45,7 +46,7 @@ export class ClientController {
     @Req() request: ActorContextRequest,
     @Query('query') query: string | undefined,
   ): Promise<ClientAccountView[]> {
-    return this.clients.query(request.actorContext!, {
+    return this.clients.query(requireActorContext(request), {
       kind: 'workspace-search',
       query,
     });
@@ -57,7 +58,7 @@ export class ClientController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: ClientDossierFieldsInput,
   ): Promise<ClientAccountView> {
-    return this.clients.execute(request.actorContext!, {
+    return this.clients.execute(requireActorContext(request), {
       kind: 'register',
       fields: body ?? {},
       idempotencyKey,
@@ -69,7 +70,7 @@ export class ClientController {
     @Req() request: ActorContextRequest,
     @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
   ): Promise<ClientAccountView> {
-    return this.clients.execute(request.actorContext!, {
+    return this.clients.execute(requireActorContext(request), {
       kind: 'attach',
       clientAccountId,
     });
@@ -80,7 +81,7 @@ export class ClientController {
     @Req() request: ActorContextRequest,
     @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
   ): Promise<ClientDossierView> {
-    return this.clients.query(request.actorContext!, {
+    return this.clients.query(requireActorContext(request), {
       kind: 'dossier',
       clientAccountId,
     });
@@ -92,7 +93,7 @@ export class ClientController {
     @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
     @Query('cursor') cursor: unknown,
   ): Promise<ClientCorrectionHistoryPage> {
-    return this.clients.readCorrectionHistory(request.actorContext!, {
+    return this.clients.readCorrectionHistory(requireActorContext(request), {
       clientAccountId,
       cursor,
     });
@@ -104,7 +105,7 @@ export class ClientController {
     @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
   ): Promise<ClientLegalEntityList> {
     return this.clients.readLegalEntities(
-      request.actorContext!,
+      requireActorContext(request),
       clientAccountId,
     );
   }
@@ -116,7 +117,7 @@ export class ClientController {
     @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
     @Body() body: unknown,
   ): Promise<ClientLegalEntityMutationResult> {
-    return this.clients.registerLegalEntity(request.actorContext!, {
+    return this.clients.registerLegalEntity(requireActorContext(request), {
       clientAccountId,
       body,
       idempotencyKey,
@@ -131,7 +132,7 @@ export class ClientController {
     @Param('legalEntityId', new ParseUUIDPipe()) legalEntityId: string,
     @Body() body: unknown,
   ): Promise<ClientLegalEntityMutationResult> {
-    return this.clients.correctLegalEntity(request.actorContext!, {
+    return this.clients.correctLegalEntity(requireActorContext(request), {
       clientAccountId,
       legalEntityId,
       body,
@@ -148,7 +149,7 @@ export class ClientController {
     body: ClientDossierFieldsInput & { expectedVersion?: unknown },
   ): Promise<ClientDossierView> {
     const { expectedVersion, ...changes } = body ?? {};
-    return this.clients.execute(request.actorContext!, {
+    return this.clients.execute(requireActorContext(request), {
       kind: 'correct',
       clientAccountId,
       expectedVersion,

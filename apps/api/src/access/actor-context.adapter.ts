@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   type CanActivate,
   type ExecutionContext,
@@ -30,4 +31,16 @@ export class ActorContextAdapter implements CanActivate {
     });
     return true;
   }
+}
+
+/**
+ * The actor that {@link ActorContextAdapter} established for this request.
+ * A handler reached without one is denied with 403, the denial the adapter
+ * itself gives when it cannot resolve an actor, and no service runs.
+ */
+export function requireActorContext(
+  request: ActorContextRequest,
+): ActorContext {
+  if (!request.actorContext) throw new ForbiddenException();
+  return request.actorContext;
 }

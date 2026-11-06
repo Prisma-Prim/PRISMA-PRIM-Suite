@@ -1016,14 +1016,15 @@ function readyCompanyContext(
     recoveryMessage,
     ...(rejectionCandidate ? { rejectionCandidate } : {}),
   };
-  if (companies.length === 0)
+  const [first, second, ...others] = companies;
+  if (first === undefined)
     return { ...shared, cardinality: 'zero', companies: [] };
-  if (companies.length === 1)
-    return { ...shared, cardinality: 'one', companies: [companies[0]!] };
+  if (second === undefined)
+    return { ...shared, cardinality: 'one', companies: [first] };
   return {
     ...shared,
     cardinality: 'many',
-    companies: [companies[0]!, companies[1]!, ...companies.slice(2)],
+    companies: [first, second, ...others],
   };
 }
 

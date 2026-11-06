@@ -9,6 +9,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from './actor-context.adapter.js';
 import { WorkspaceMembershipSuspensionService } from './workspace-membership-suspension.service.js';
 import type { WorkspaceMembershipSuspensionRecord } from './workspace-membership-suspension.types.js';
@@ -26,7 +27,7 @@ export class WorkspaceMembershipSuspensionController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: { workspaceMembershipId?: unknown },
   ): Promise<WorkspaceMembershipSuspensionRecord> {
-    return this.suspensions.suspend(request.actorContext!, {
+    return this.suspensions.suspend(requireActorContext(request), {
       workspaceMembershipId: body?.workspaceMembershipId,
       idempotencyKey,
     });
