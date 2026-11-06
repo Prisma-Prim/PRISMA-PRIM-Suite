@@ -162,7 +162,18 @@ function vitestTest(fullName, state, message) {
   };
 }
 
-function vitestModule({ id, state = 'passed', errors = [], tests = [] }) {
+/** A suite as Vitest reports it: hook failures live on the nested suite. */
+function vitestSuite(fullName, errors = []) {
+  return { fullName, errors: () => errors };
+}
+
+function vitestModule({
+  id,
+  state = 'passed',
+  errors = [],
+  tests = [],
+  suites = [],
+}) {
   return {
     relativeModuleId: id,
     state: () => state,
@@ -172,6 +183,9 @@ function vitestModule({ id, state = 'passed', errors = [], tests = [] }) {
         for (const candidate of tests)
           if (filter === undefined || candidate.result().state === filter)
             yield candidate;
+      },
+      *allSuites() {
+        yield* suites;
       },
     },
   };
@@ -208,6 +222,52 @@ test('the Vitest reporter lists failed tests, broken files and unhandled errors'
   assert.ok(!summary.includes('suite > passes'));
   assert.ok(summary.includes('`SyntaxError: Unexpected token`'));
   assert.ok(summary.includes('`Error: socket hang up`'));
+});
+
+test('the Vitest reporter names a failing afterAll hook of a nested suite', async () => {
+  const summary = await withStepSummary(() =>
+    new VitestStepSummaryReporter().onTestRunEnd(
+      [
+        // Every test passes; only the teardown of one suite fails.
+        vitestModule({
+          id: 'src/teardown.test.ts',
+          state: 'failed',
+          tests: [vitestTest('teardown only > passes', 'passed')],
+          suites: [
+            vitestSuite('teardown only', [
+              { message: 'Error: afterAll teardown exploded\n    at hook' },
+            ]),
+          ],
+        }),
+        // A failing test and a failing teardown in the same file: both count.
+        vitestModule({
+          id: 'src/both.test.ts',
+          state: 'failed',
+          tests: [vitestTest('outer > inner > also fails', 'failed', 'nope')],
+          suites: [
+            vitestSuite('outer', []),
+            vitestSuite('outer > inner', [
+              { message: 'Error: inner afterAll exploded' },
+            ]),
+          ],
+        }),
+      ],
+      [],
+    ),
+  );
+  assert.match(summary, /Failing tests: Vitest \(3\)/u);
+  assert.ok(summary.includes('`src/teardown.test.ts`'), summary);
+  assert.ok(summary.includes('Suite hook or setup failed: teardown only'));
+  assert.ok(summary.includes('`Error: afterAll teardown exploded`'));
+  assert.ok(summary.includes('`outer > inner > also fails`'));
+  assert.ok(summary.includes('Suite hook or setup failed: outer > inner'));
+  assert.ok(summary.includes('`Error: inner afterAll exploded`'));
+  assert.ok(
+    !summary.includes('outer`'),
+    'a suite without errors is not listed',
+  );
+  assert.ok(!summary.includes('File failed without a failing test'));
+  assert.ok(!summary.includes('No error message recorded'));
 });
 
 test('the Vitest reporter writes nothing when every test passed', async () => {

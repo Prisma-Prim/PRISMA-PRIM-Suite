@@ -24,6 +24,15 @@ export default class VitestStepSummaryReporter {
             title: 'File failed before its tests ran',
             message: error.message,
           });
+        // A failing hook (for example `afterAll` inside a `describe`) is
+        // recorded on its own suite, not on the file or on any test.
+        for (const suite of testModule.children.allSuites())
+          for (const error of suite.errors())
+            failures.push({
+              location: testModule.relativeModuleId,
+              title: `Suite hook or setup failed: ${suite.fullName}`,
+              message: error.message,
+            });
         if (testModule.state() === 'failed' && failures.length === listedBefore)
           failures.push({
             location: testModule.relativeModuleId,
