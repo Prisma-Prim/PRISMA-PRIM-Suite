@@ -21,6 +21,14 @@ export function unsuccessfulJobs(results) {
   const documentationOnly =
     results.scope?.result === 'success' &&
     results.scope?.outputs?.docs_only === 'true';
+  // The flaky guard repeats the test files a pull request adds or changes.
+  // It may be skipped only when the scope proved there is nothing to repeat:
+  // a documentation-only change, or a run that is not a pull request or whose
+  // changed files include no test file. Proof reuse never waives it.
+  const noRepeatNeeded =
+    documentationOnly ||
+    (results.scope?.result === 'success' &&
+      results.scope?.outputs?.repeat_tests === 'false');
   const proof =
     results.scope?.result === 'success' &&
     /^[1-9][0-9]*$/u.test(results.scope?.outputs?.proof_run ?? '');
@@ -41,6 +49,9 @@ export function unsuccessfulJobs(results) {
       continue;
     unsuccessful.push(job);
   }
+  const guard = results.flaky_guard?.result;
+  if (guard !== 'success' && !(guard === 'skipped' && noRepeatNeeded))
+    unsuccessful.push('flaky_guard');
   return unsuccessful.map(
     (job) => `${job}: ${results[job]?.result ?? 'missing'}`,
   );

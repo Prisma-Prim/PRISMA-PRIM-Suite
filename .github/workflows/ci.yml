@@ -55,6 +55,8 @@ jobs:
       reuse_all: ${{ steps.proof.outputs.reuse_all }}
       reuse_api: ${{ steps.proof.outputs.reuse_api }}
       proof_run: ${{ steps.proof.outputs.proof_run }}
+      repeat_tests: ${{ steps.repeat.outputs.repeat_tests }}
+      repeat_matrix: ${{ steps.repeat.outputs.repeat_matrix }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -75,6 +77,16 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/ci-change-scope.mjs
+
+      # Pull requests only: the test files this change adds or modifies are
+      # repeated by flaky_guard, so an unstable new test fails before merge.
+      - name: Select changed test files to repeat
+        id: repeat
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/ci-changed-tests.mjs
 
       - name: Find verified reusable CI proof
         id: proof
@@ -372,6 +384,45 @@ jobs:
           POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
         run: bash scripts/railway-packaging-smoke.sh
 
+  # Repeats the test files a pull request adds or modifies, one matrix job per
+  # family, in parallel with the heavy suites. The matrix is empty (and the
+  # job skipped) unless a test file changed; `quality` accepts that skip only
+  # when the scope proved it.
+  flaky_guard:
+    name: flaky_guard (${{ matrix.label }})
+    needs: [checks, scope, postgres_image]
+    if: ${{ needs.scope.outputs.repeat_tests == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.scope.outputs.repeat_matrix) }}
+    env:
+      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
+      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: ${{ matrix.postgres }}
+          chromium: ${{ matrix.chromium }}
+
+      - name: Verify supported agent environment
+        env:
+          DOCTOR_SCRIPT: ${{ matrix.doctor }}
+        run: pnpm "$DOCTOR_SCRIPT"
+
+      # File names come from the matrix through the environment only.
+      - name: Repeat changed tests
+        env:
+          REPEAT_FAMILY: ${{ matrix.family }}
+          REPEAT_FILES: ${{ toJSON(matrix.files) }}
+        run: node scripts/ci-repeat-tests.mjs
+
   quality:
     needs:
       [
@@ -384,6 +435,7 @@ jobs:
         acceptance,
         build,
         packaging,
+        flaky_guard,
       ]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
