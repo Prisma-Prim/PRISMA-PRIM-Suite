@@ -255,10 +255,13 @@ test('independent test families and packaging share only the fast prerequisite a
   assert.doesNotMatch(await readWorkflow(), /continue-on-error/);
 });
 
-test('CI is explicitly manual, preserves read-only proof access and cancels obsolete manual runs', async () => {
+test('CI runs on pull requests and the merge queue, preserves read-only proof access and cancels obsolete runs', async () => {
   const workflow = await readWorkflow();
-  assert.match(workflow, /on:\n {2}workflow_dispatch:\n/);
-  assert.doesNotMatch(workflow, /^ {2}(?:pull_request|push|schedule):/m);
+  assert.match(
+    workflow,
+    /on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review\]\n {2}merge_group:\n {4}types: \[checks_requested\]\n {2}workflow_dispatch:\n/,
+  );
+  assert.doesNotMatch(workflow, /^ {2}(?:push|schedule|pull_request_target):/m);
   assert.match(workflow, /permissions:\n {2}contents: read\n/);
   const concurrencyStart = workflow.indexOf('\nconcurrency:\n');
   const jobsStart = workflow.indexOf('\njobs:\n');
