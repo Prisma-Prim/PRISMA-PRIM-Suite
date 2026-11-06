@@ -23,3 +23,7 @@ Apply a small certain fix in the current pull request only when it stays inside 
 Open an issue with the `Agent friction` form, or the [Markdown body](agent-friction-template.md) when the harness cannot use forms, only when the same friction blocked a required check on two occasions or when the durable fix changes CI, cloud setup, Docker, secrets, permissions, or network policy. Link the originating pull requests and deduplicate against open friction issues.
 
 The repository owner prioritizes friction issues. Do not implement one from inside a product issue, and do not turn a friction note into a process document.
+
+## After a difficult session
+
+When friction cost a session significant time, run the `retro` skill (`.agents/skills/retro/SKILL.md`) on it. Each candidate it reports becomes an `agent-friction` issue, deduplicated as above, for the owner to prioritize; candidates never become new `AGENTS.md` lines.

@@ -41,12 +41,11 @@ The environment is also an authority. Prefer package scripts, configuration and 
 
 Before editing, an agent:
 
-1. reads every applicable `AGENTS.md`;
-2. reads the complete assigned issue and comments, then confirms every blocker is closed;
-3. follows only the issue's pointers to its owning PRD, cross-cutting PRDs, decision record sections, ADRs and evidence;
-4. reads `CONTEXT.md` when domain language or business boundaries are involved;
-5. inspects the current implementation and highest stable public test seam;
-6. records the observable outcome, exclusions, authority owners, first test seam and any unresolved blocker in the execution note.
+1. reads the complete assigned issue and comments, then confirms every blocker is closed;
+2. follows only the issue's pointers to its owning PRD, cross-cutting PRDs, decision record sections, ADRs and evidence;
+3. reads `CONTEXT.md` when domain language or business boundaries are involved;
+4. inspects the current implementation and highest stable public test seam;
+5. records the observable outcome, exclusions, authority owners, first test seam and any unresolved blocker in the execution note.
 
 This route is complete when the agent can name the behaviour to deliver, the artifact that owns it, the decisions it may take, the decisions it must escalate, the proof required and the deliberately excluded work. If any of those is materially ambiguous, the issue is not implementation-ready.
 
@@ -99,6 +98,6 @@ Do not create:
 
 ## 8. Change and review rule
 
-Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the [review round](issue-execution.md#review-round) in AI agent issue execution: agents' applicable Standards/Spec preparation and recorded disposition suffice for documentation and PRD pull requests, without mandatory owner review or an automated review round.
+Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the [review round](issue-execution.md#review-round) in AI agent issue execution.
 
 The minimum verification for a documentation-only change is the repository formatting check plus link and pointer inspection for every changed authority. Additional checks run when scripts, configuration or generated artifacts change.
