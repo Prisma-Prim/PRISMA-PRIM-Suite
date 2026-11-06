@@ -253,10 +253,20 @@ export async function workingEvidenceJourney(page: Page, info: TestInfo) {
       path: info.outputPath(`working-evidence-${suffix}-en-current.png`),
       fullPage: true,
     });
-    const statement = await savedFile(
-      page,
-      cases.getByRole('button', { name: 'Download frozen statement' }),
+    extracted = await mkdtemp(join(tmpdir(), 'fictional-working-evidence-'));
+    const statementPath = join(extracted, 'downloaded-statement.html');
+    const downloadingStatement = page.waitForEvent('download');
+    await cases
+      .getByRole('button', { name: 'Download frozen statement' })
+      .click();
+    await (await downloadingStatement).saveAs(statementPath);
+    const statement = await readFile(statementPath);
+    const frozenStatement = await authorityRequest.get(
+      `${origin}/api/working-evidence-cases/${caseId}/revisions/${revisionId}/statement`,
+      { headers },
     );
+    expect(frozenStatement.status()).toBe(200);
+    expect(await frozenStatement.body()).toEqual(statement);
     expect(statement.toString('utf8')).toContain(
       '&lt;script&gt;inert()&lt;/script&gt;',
     );
@@ -284,7 +294,6 @@ export async function workingEvidenceJourney(page: Page, info: TestInfo) {
     const pdfName = pdfNames[0];
     if (!pdfName) throw new Error('Missing annex original');
     expect(files.get(pdfName)).toEqual(original);
-    extracted = await mkdtemp(join(tmpdir(), 'fictional-working-evidence-'));
     for (const [name, bytes] of files) {
       expect(
         name === 'statement.html' ||
@@ -301,10 +310,69 @@ export async function workingEvidenceJourney(page: Page, info: TestInfo) {
     await expect(annexLink).toHaveAttribute('href', pdfName);
     expect(await savedFile(offline, annexLink)).toEqual(original);
     await offline.close();
+    const appOrigin = new URL(page.url()).origin;
+    const standalone = await page.context().newPage();
+    await standalone.goto(pathToFileURL(statementPath).href);
+    const standaloneLink = standalone
+      .locator(
+        `a[href^="${appOrigin}/#working-evidence/${caseId}/${revisionId}/"]`,
+      )
+      .first();
+    await expect(standaloneLink).toBeVisible();
+    await standaloneLink.click();
+    await expect(standalone).toHaveURL(
+      (url) =>
+        url.origin === appOrigin &&
+        url.pathname === '/' &&
+        url.hash.startsWith(`#working-evidence/${caseId}/${revisionId}/`),
+    );
+    if (narrow) {
+      const navigation = standalone.getByRole('button', {
+        name: 'Open navigation',
+      });
+      await expect(navigation).toBeVisible();
+      await navigation.click();
+    }
+    await selectOption(
+      standalone.getByLabel('Active Company', { exact: true }),
+      { label: 'PRISMA-PRIM' },
+    );
+    if (narrow)
+      await standalone
+        .getByRole('button', { name: 'Close navigation' })
+        .click();
+    const standaloneResolver = standalone.getByRole('region', {
+      name: 'Open exact original PDF',
+      exact: true,
+    });
+    await expect(standaloneResolver).toBeVisible();
+    const standaloneButton = standaloneResolver.getByRole('button', {
+      name: 'Open exact original PDF',
+      exact: true,
+    });
+    await expect(standaloneButton).toBeEnabled();
+    const standaloneRequest = standalone.waitForRequest((request) =>
+      new URL(request.url()).pathname.startsWith(
+        `/api/working-evidence-cases/${caseId}/revisions/${revisionId}/evidence/`,
+      ),
+    );
+    expect(await savedFile(standalone, standaloneButton)).toEqual(original);
+    expect((await standaloneRequest).headers()['x-company-context-id']).toBe(
+      companyId,
+    );
+    await standalone.screenshot({
+      path: info.outputPath(
+        `working-evidence-${suffix}-standalone-authenticated-resolver.png`,
+      ),
+      fullPage: true,
+    });
+    await standalone.close();
     await cases.getByRole('button', { name: 'Open frozen statement' }).click();
     const online = page.frameLocator('iframe[title="Open frozen statement"]');
     const onlineLink = online
-      .locator(`a[href^="/#working-evidence/${caseId}/${revisionId}/"]`)
+      .locator(
+        `a[href^="${appOrigin}/#working-evidence/${caseId}/${revisionId}/"]`,
+      )
       .first();
     await expect(onlineLink).toBeVisible();
     const href = text(await onlineLink.getAttribute('href'));

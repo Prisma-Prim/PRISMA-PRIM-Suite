@@ -1,6 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { unzipSync, strFromU8 } from 'fflate';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { PDF_B } from '../documents/mission-document.test-support.js';
 import {
   openWorkingEvidenceFixture,
@@ -20,13 +29,16 @@ withPostgres(
     let fixture: WorkingEvidenceFixture;
     let projectId: string;
     let clientId: string;
+    let companyId: string;
     beforeAll(async () => {
       if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
       fixture = await openWorkingEvidenceFixture(databaseUrl);
     });
     beforeEach(async () => {
-      ({ projectId, clientId } = await fixture.prepare());
+      vi.stubEnv('WEB_ORIGIN', 'https://suite.example.test');
+      ({ projectId, clientId, companyId } = await fixture.prepare());
     });
+    afterEach(() => vi.unstubAllEnvs());
     afterAll(async () => {
       await fixture?.close();
     });
@@ -69,7 +81,21 @@ withPostgres(
           'versionNumber',
         ]);
       const body = fixture.recordBody([first, second]);
-      const saved = await post(casesPath(), body);
+      const saved = await fetch(`${fixture.origin}/api${casesPath()}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-test-external-provider': 'deterministic-test',
+          'x-test-external-subject': 'mission-owner',
+          'x-test-display-name': 'Mission Owner DEMO',
+          'x-test-email': 'mission-owner@example.test',
+          'x-company-context-id': companyId,
+          origin: 'https://untrusted.example.test',
+          'x-forwarded-host': 'untrusted.example.test',
+          'x-forwarded-proto': 'https',
+        },
+        body: JSON.stringify(body),
+      });
       expect(saved.status).toBe(201);
       const receipt = await json(saved);
       expect(Object.keys(receipt).sort()).toEqual([
@@ -125,7 +151,7 @@ withPostgres(
       for (const support of supports) {
         const evidenceId = text(support.evidenceId);
         expect(html).toContain(
-          `/#working-evidence/${text(receipt.caseId)}/${text(receipt.revisionId)}/${evidenceId}`,
+          `href="https://suite.example.test/#working-evidence/${text(receipt.caseId)}/${text(receipt.revisionId)}/${evidenceId}"`,
         );
         const original = await call(
           revisionPath(receipt) + '/evidence/' + evidenceId,
@@ -162,10 +188,68 @@ withPostgres(
       const again = await call(revisionPath(receipt) + '/annex');
       expect(again.status).toBe(200);
       expect(new Uint8Array(await again.arrayBuffer())).toEqual(bytes);
+      vi.stubEnv('WEB_ORIGIN', 'https://changed-app.example.test');
       expect(await json(await post(casesPath(), body))).toEqual(receipt);
+      expect(
+        await (await call(revisionPath(receipt) + '/statement')).text(),
+      ).toBe(html);
+      expect(
+        new Uint8Array(
+          await (await call(revisionPath(receipt) + '/annex')).arrayBuffer(),
+        ),
+      ).toEqual(bytes);
       const activity = await json(await call('/activity-log'));
       expect(JSON.stringify(activity)).not.toContain('working_evidence_case.');
       expect(JSON.stringify(activity)).not.toContain(first.documentId);
+    });
+
+    it('refuses invalid configured App origins atomically without changing committed output or replay', async () => {
+      const source = await fixture.source();
+      const body = fixture.recordBody([source]);
+      const receipt = await json(await post(casesPath(), body));
+      const statement = await (
+        await call(revisionPath(receipt) + '/statement')
+      ).text();
+      const annex = new Uint8Array(
+        await (await call(revisionPath(receipt) + '/annex')).arrayBuffer(),
+      );
+      const counts = () =>
+        fixture.pool.query(`SELECT
+          (SELECT count(*) FROM working_evidence_cases) AS cases,
+          (SELECT count(*) FROM working_evidence_revisions) AS revisions,
+          (SELECT count(*) FROM working_evidence_supports) AS supports,
+          (SELECT count(*) FROM working_evidence_outputs) AS outputs,
+          (SELECT count(*) FROM working_evidence_receipts) AS receipts,
+          (SELECT count(*) FROM working_evidence_events) AS events`);
+      const before = (await counts()).rows;
+      for (const origin of [
+        'https://suite.example.test/',
+        'https://suite.example.test/path',
+        'https://user@suite.example.test',
+        'https://suite.example.test?query',
+        'https://suite.example.test#fragment',
+        'javascript:alert(1)',
+        'file:///tmp/fictional-app',
+        'not-an-origin',
+      ]) {
+        vi.stubEnv('WEB_ORIGIN', origin);
+        const refused = await post(casesPath(), {
+          ...body,
+          commandId: randomUUID(),
+        });
+        expect(refused.status).toBe(503);
+        expect(await refused.json()).toEqual({ code: 'content_unavailable' });
+        expect(await json(await post(casesPath(), body))).toEqual(receipt);
+      }
+      expect((await counts()).rows).toEqual(before);
+      expect(
+        await (await call(revisionPath(receipt) + '/statement')).text(),
+      ).toBe(statement);
+      expect(
+        new Uint8Array(
+          await (await call(revisionPath(receipt) + '/annex')).arrayBuffer(),
+        ),
+      ).toEqual(annex);
     });
 
     it('preserves the complete predecessor after correction, native successor and two actual API restarts', async () => {
