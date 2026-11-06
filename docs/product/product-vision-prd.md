@@ -182,6 +182,20 @@ Governed migration preserves source provenance and uncertainty. Authorized users
 
 Release numbers define dependency order, not one monolithic delivery. Each release decomposes into capability PRDs, epics and narrow tracer-bullet issues.
 
+### 11.1 First working-version priorities — 2026-11-06
+
+Iurie's confirmed priorities for the first working version are:
+
+1. **BIC first, using a private ISO22000 certification Audit pilot**, replacing the previous ISO9001 surveillance pilot. The larger reference journey is questionnaire → duration calculation → team designation → Stage 1 and Stage 2 Plans/Reports → annex → review → human Certification Decision. Every Finding must open its exact supporting evidence.
+2. **PRISMA-PRIM private consulting Project pilot:** Offer/Contract → stages/Tasks/deliverables, showing what was promised, what was delivered, the next deadline and the responsible person.
+3. **Private service-level financial follow-up pilot:** invoiced services, confirmed receipts and remaining amounts, using business-confirmed facts retained privately.
+
+Required safeguards are separate PRISMA-PRIM/BIC access, attributable change history, verified backup restoration before actual-data use, and Iurie approval before outgoing Client communications.
+
+Training, personnel, procurement and the meeting assistant may wait. Dictaphone remains the next Audit-automation frontier immediately after the complete evidence → Report/annex journey is validated.
+
+These working priorities retain the release labels and capability dependencies above. The [decision record's source qualification and implementation boundary](consolidated-product-decision-record.md#3410-bic-pilot-direction-and-source-qualification--2026-11-06) governs assessment before implementation ordering; this reference journey does not make the broader release implementation-ready.
+
 ## 12. Cross-cutting product authorities
 
 The following PRDs govern every relevant capability:
