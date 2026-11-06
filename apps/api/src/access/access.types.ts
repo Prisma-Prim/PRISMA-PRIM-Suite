@@ -5,6 +5,7 @@ import type { MissionPlanActorProjection } from './mission-plan-captured-grants.
 import type {
   CompanyClientPermission,
   DocumentPermission,
+  WorkingEvidenceCasePermission,
   DocumentPermissionSetVersion,
   CompanyDirectorClientPermissionSetVersion,
   CompanyCommercialIntakePermission,
@@ -77,6 +78,15 @@ export interface ActiveCompanyContext
   missionDeliverableAccessPermissionSetVersion?: 'v1';
   contractSignatureDeclarerAssignmentId?: string;
   contractSignatureDeclarerPermissionSetVersion?: 'v1';
+  workingEvidenceCasePermissions?: WorkingEvidenceCasePermission[];
+  workingEvidenceCaseReaderAssignmentId?: string;
+  workingEvidenceCaseReaderPermissionSetVersion?: 'v1';
+  workingEvidenceCaseRecorderAssignmentId?: string;
+  workingEvidenceCaseRecorderPermissionSetVersion?: 'v1';
+  receivedAuditSourceAccessAssignmentId?: string;
+  receivedAuditSourceAccessPermissionSetVersion?: 'v1';
+  workingEvidenceClientReadCapture?: string;
+  workingEvidenceContextCapture?: string;
   receivedAddendumAccessAssignmentId?: string;
   receivedAddendumAccessPermissionSetVersion?: 'v1';
   receivedAddendumClientReadCapture?: string;

@@ -1,3 +1,4 @@
+import { hasReceivedAuditSourceAccess } from './received-audit-source-access';
 import { hasReceivedAddendumAccess } from './received-addendum-access';
 import {
   hasExternalInvoiceAccess,
@@ -18,6 +19,14 @@ export function documentFamilyCaptureKey(
       return 'payment-evidence-explicit-operation-owner';
     case 'questionnaire':
       return 'questionnaire';
+    case 'received-audit-source':
+      return JSON.stringify([
+        hasReceivedAuditSourceAccess(company),
+        company?.receivedAuditSourceAccessAssignmentId,
+        company?.receivedAuditSourceAccessPermissionSetVersion,
+        company?.workingEvidenceClientReadCapture,
+        company?.workingEvidenceContextCapture,
+      ]);
     case 'mission-deliverable':
       return JSON.stringify([
         hasMissionDeliverableAccess(company),
@@ -55,6 +64,8 @@ export function hasDocumentFamilyAccess(
       return false;
     case 'questionnaire':
       return true;
+    case 'received-audit-source':
+      return hasReceivedAuditSourceAccess(company);
     case 'mission-deliverable':
       return hasMissionDeliverableAccess(company);
     case 'external-invoice':

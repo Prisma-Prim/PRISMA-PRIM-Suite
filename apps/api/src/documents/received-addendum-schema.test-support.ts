@@ -1,3 +1,7 @@
+import {
+  withoutWorkingEvidenceSchema,
+  workingEvidenceExistingTableTriggers,
+} from '../working-evidence/working-evidence-schema.test-support.js';
 import { types } from 'pg';
 import { expect } from 'vitest';
 import {
@@ -23,6 +27,7 @@ const additions: Readonly<Record<string, readonly string[]>> = {
 export function withoutReceivedAddendumSchema(
   schema: Record<string, unknown>,
 ): Record<string, unknown> {
+  schema = withoutWorkingEvidenceSchema(schema);
   const constraints = fixtureObjects(schema.constraints).map((entry) => {
     const name = fixtureString(entry.name),
       definition = fixtureString(entry.definition);
@@ -101,5 +106,10 @@ export function conserveReceivedAddendumSchema(
           tables.some((table) => name.startsWith(table + '.')),
       )
       .sort(),
-  ).toEqual([...receivedAddendumExistingTableTriggers].sort());
+  ).toEqual(
+    [
+      ...receivedAddendumExistingTableTriggers,
+      ...workingEvidenceExistingTableTriggers,
+    ].sort(),
+  );
 }

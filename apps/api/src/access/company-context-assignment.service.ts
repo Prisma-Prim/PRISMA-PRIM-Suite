@@ -1,4 +1,7 @@
 import {
+  COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+  COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+  COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
   COMPANY_PAYMENT_READER_BUNDLE,
   COMPANY_PAYMENT_RECORDER_BUNDLE,
   COMPANY_PAYMENT_CONFIRMER_BUNDLE,
@@ -356,7 +359,23 @@ const OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE: BundleDefinition = {
   value: COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
   permissionSetVersion: 'v1',
 };
+const WORKING_EVIDENCE_CASE_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const WORKING_EVIDENCE_CASE_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE: BundleDefinition = {
+  value: COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
+  COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+  COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+
   COMPANY_PAYMENT_READER_BUNDLE,
   COMPANY_PAYMENT_RECORDER_BUNDLE,
   COMPANY_PAYMENT_CONFIRMER_BUNDLE,
@@ -1851,6 +1870,90 @@ export class CompanyContextAssignmentService {
       idempotencyKey,
     );
   }
+  grantWorkingEvidenceCaseReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      WORKING_EVIDENCE_CASE_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeWorkingEvidenceCaseReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      WORKING_EVIDENCE_CASE_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+  grantWorkingEvidenceCaseRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeWorkingEvidenceCaseRecorder(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+  grantReceivedAuditSourceAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeReceivedAuditSourceAccess(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
   grantReceivedAddendumAccess(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -2663,6 +2766,18 @@ function assignmentAction(
       return granted
         ? 'company_received_contract_access_assignment.granted'
         : 'company_received_contract_access_assignment.revoked';
+    case COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE:
+      return granted
+        ? 'company_working_evidence_case_reader_assignment.granted'
+        : 'company_working_evidence_case_reader_assignment.revoked';
+    case COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE:
+      return granted
+        ? 'company_working_evidence_case_recorder_assignment.granted'
+        : 'company_working_evidence_case_recorder_assignment.revoked';
+    case COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE:
+      return granted
+        ? 'company_received_audit_source_access_assignment.granted'
+        : 'company_received_audit_source_access_assignment.revoked';
     case COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE:
       return granted
         ? 'company_received_addendum_access_assignment.granted'

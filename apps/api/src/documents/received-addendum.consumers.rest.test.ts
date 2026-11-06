@@ -27,9 +27,9 @@ import {
   prepareReceivedAddendumParent,
 } from './received-addendum.test-support.js';
 const withPostgres = process.env.TEST_DATABASE_URL ? describe : describe.skip;
-withPostgres(
-  'Received Addendum excluded native consumers even with every relevant grant',
-  () => {
+withPostgres.each(['received-addendum', 'received-audit-source'])(
+  '%s excluded native consumers even with every relevant grant',
+  (family) => {
     let fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
       scanner: Awaited<ReturnType<typeof openDocumentScannerFixture>>,
       parent: Awaited<ReturnType<typeof prepareReceivedAddendumParent>>;
@@ -52,7 +52,7 @@ withPostgres(
         },
         body: JSON.stringify(body),
       });
-    const title = 'Confidential fictional Addendum source exclusion';
+    const title = `Confidential fictional ${family} source exclusion`;
     beforeAll(async () => {
       scanner = await openDocumentScannerFixture();
       fixture = await openEstimateOfferFixture({
@@ -88,7 +88,23 @@ withPostgres(
           companyId: parent.target.companyId,
           membershipId: parent.ready.source.preparerMembershipId,
         });
-      source = await preserved({ ...parent.body, title });
+      if (family === 'received-audit-source')
+        await fixture.grant({
+          path: '/company-received-audit-source-access-assignments',
+          companyId: parent.target.companyId,
+          membershipId: parent.ready.source.preparerMembershipId,
+        });
+      source = await preserved(
+        family === 'received-addendum'
+          ? { ...parent.body, title }
+          : {
+              type: 'received-audit-source',
+              clientId: parent.ready.source.clientId,
+              title,
+              purpose:
+                'Preserve a fictional unverified source for exclusion proof',
+            },
+      );
       paymentControl = await preserved({
         type: 'payment-evidence',
         clientId: parent.ready.source.clientId,

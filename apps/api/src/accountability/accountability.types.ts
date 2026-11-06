@@ -212,6 +212,12 @@ export type CanonicalActivityEvent =
         | 'company_contract_signature_declarer_assignment.revoked'
         | 'company_received_contract_access_assignment.granted'
         | 'company_received_addendum_access_assignment.granted'
+        | 'company_working_evidence_case_reader_assignment.granted'
+        | 'company_working_evidence_case_reader_assignment.revoked'
+        | 'company_working_evidence_case_recorder_assignment.granted'
+        | 'company_working_evidence_case_recorder_assignment.revoked'
+        | 'company_received_audit_source_access_assignment.granted'
+        | 'company_received_audit_source_access_assignment.revoked'
         | 'company_task_result_recorder_assignment.granted'
         | 'company_mission_result_reviewer_assignment.granted'
         | 'company_project_next_action_coordinator_assignment.granted'
@@ -322,6 +328,9 @@ export type CanonicalActivityEvent =
       metadata: {
         bundle:
           | 'Company Opportunity Follow-up Coordinator'
+          | 'Company Working Evidence Case Reader'
+          | 'Company Working Evidence Case Recorder'
+          | 'Company Received Audit Source Access'
           | typeof COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
@@ -472,6 +481,12 @@ export interface OrdinaryActivityLogEvent {
     | 'company_contract_signature_declarer_assignment.revoked'
     | 'company_received_contract_access_assignment.granted'
     | 'company_received_addendum_access_assignment.granted'
+    | 'company_working_evidence_case_reader_assignment.granted'
+    | 'company_working_evidence_case_reader_assignment.revoked'
+    | 'company_working_evidence_case_recorder_assignment.granted'
+    | 'company_working_evidence_case_recorder_assignment.revoked'
+    | 'company_received_audit_source_access_assignment.granted'
+    | 'company_received_audit_source_access_assignment.revoked'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_mission_result_reviewer_assignment.granted'
     | 'company_project_next_action_coordinator_assignment.granted'
@@ -629,6 +644,9 @@ export interface OrdinaryActivityLogEvent {
     | {
         bundle:
           | 'Company Opportunity Follow-up Coordinator'
+          | 'Company Working Evidence Case Reader'
+          | 'Company Working Evidence Case Recorder'
+          | 'Company Received Audit Source Access'
           | typeof COMPANY_INTERNAL_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL

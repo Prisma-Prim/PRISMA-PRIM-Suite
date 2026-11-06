@@ -1,3 +1,8 @@
+import { WorkingEvidenceModule } from './working-evidence/working-evidence.module.js';
+import { WorkingEvidenceController } from './working-evidence/working-evidence.controller.js';
+import { CompanyWorkingEvidenceCaseReaderAssignmentController } from './access/company-working-evidence-case-reader-assignment.controller.js';
+import { CompanyWorkingEvidenceCaseRecorderAssignmentController } from './access/company-working-evidence-case-recorder-assignment.controller.js';
+import { CompanyReceivedAuditSourceAccessAssignmentController } from './access/company-received-audit-source-access-assignment.controller.js';
 import { PaymentModule } from './payment/payment.module.js';
 import { PaymentController } from './payment/payment.controller.js';
 import { CompanyPaymentReaderAssignmentController } from './access/company-payment-reader-assignment.controller.js';
@@ -179,6 +184,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    WorkingEvidenceModule,
     PaymentModule,
     InvoiceRecordModule,
     KnowledgeModule,
@@ -212,6 +218,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    WorkingEvidenceController,
     PaymentController,
     InvoiceRecordController,
     CompanyPaymentReaderAssignmentController,
@@ -266,6 +273,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyContractSignatureDeclarerAssignmentController,
     CompanyReceivedContractAccessAssignmentController,
     CompanyReceivedAddendumAccessAssignmentController,
+    CompanyWorkingEvidenceCaseReaderAssignmentController,
+    CompanyWorkingEvidenceCaseRecorderAssignmentController,
+    CompanyReceivedAuditSourceAccessAssignmentController,
     CompanyTaskResultRecorderAssignmentController,
     CompanyMissionResultReviewerAssignmentController,
     CompanyProjectNextActionCoordinatorAssignmentController,

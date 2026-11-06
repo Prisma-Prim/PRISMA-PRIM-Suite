@@ -1,6 +1,10 @@
 // The captured versions the server may report for each administrable bundle.
 // An unlisted label or version fails closed; the screen never infers one.
 const CAPTURED_VERSIONS = {
+  'Company Working Evidence Case Reader': ['v1'],
+  'Company Working Evidence Case Recorder': ['v1'],
+  'Company Received Audit Source Access': ['v1'],
+
   'Company Opportunity Follow-up Coordinator': ['v1'],
   'Company Payment Reader': ['v1'],
   'Company Payment Recorder': ['v1'],

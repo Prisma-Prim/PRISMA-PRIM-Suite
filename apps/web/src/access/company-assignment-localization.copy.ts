@@ -1,6 +1,20 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
 const keys = [
+  'workingEvidenceCaseReaderGranted',
+  'workingEvidenceCaseReaderRevoked',
+  'workingEvidenceCaseRecorderGranted',
+  'workingEvidenceCaseRecorderRevoked',
+  'receivedAuditSourceAccessGranted',
+  'receivedAuditSourceAccessRevoked',
+
+  'workingEvidenceCaseReaderBundle',
+  'workingEvidenceCaseReaderPrerequisites',
+  'workingEvidenceCaseRecorderBundle',
+  'workingEvidenceCaseRecorderPrerequisites',
+  'receivedAuditSourceAccessBundle',
+  'receivedAuditSourceAccessPrerequisites',
+
   'eyebrow',
   'title',
   'description',
@@ -62,6 +76,32 @@ const keys = [
 // unchanged administration validator and the component's exhaustive mapping.
 export const companyAssignmentMessages = defineMessages(keys, {
   ro: {
+    workingEvidenceCaseReaderGranted:
+      'a acordat citirea cazurilor de probe de lucru ale companiei',
+    workingEvidenceCaseReaderRevoked:
+      'a revocat citirea cazurilor de probe de lucru ale companiei',
+    workingEvidenceCaseRecorderGranted:
+      'a acordat înregistrarea cazurilor de probe de lucru ale companiei',
+    workingEvidenceCaseRecorderRevoked:
+      'a revocat înregistrarea cazurilor de probe de lucru ale companiei',
+    receivedAuditSourceAccessGranted:
+      'a acordat accesul la sursele de audit primite ale companiei',
+    receivedAuditSourceAccessRevoked:
+      'a revocat accesul la sursele de audit primite ale companiei',
+
+    workingEvidenceCaseReaderBundle:
+      'Cititorul cazurilor de probe de lucru ale companiei',
+    workingEvidenceCaseReaderPrerequisites:
+      'Permite numai citirea cazurilor de lucru. Contextul companiei și citirea proiectului, clientului și surselor sunt autorizate separat. Nu acordă autoritate profesională.',
+    workingEvidenceCaseRecorderBundle:
+      'Înregistratorul cazurilor de probe de lucru ale companiei',
+    workingEvidenceCaseRecorderPrerequisites:
+      'Permite citirea, înregistrarea și corectarea cazurilor de lucru. Contextul companiei și citirea proiectului, clientului și surselor sunt autorizate separat. Nu acordă autoritate profesională.',
+    receivedAuditSourceAccessBundle:
+      'Accesul companiei la surse de audit primite',
+    receivedAuditSourceAccessPrerequisites:
+      'Permite numai familia surselor de audit primite. Drepturile native de document, client, conținut, încărcare și desemnare sunt autorizate separat. Nu acordă acces la cazuri sau autoritate profesională.',
+
     opportunityFollowUpCoordinatorBundle:
       'Coordonatorul datelor de urmărire a oportunităților companiei',
     opportunityFollowUpCoordinatorPrerequisites:
@@ -142,6 +182,32 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'Starea accesului nu a putut fi încărcată sau modificată.',
   },
   ru: {
+    workingEvidenceCaseReaderGranted:
+      'предоставил чтение рабочих дел доказательств компании',
+    workingEvidenceCaseReaderRevoked:
+      'отозвал чтение рабочих дел доказательств компании',
+    workingEvidenceCaseRecorderGranted:
+      'предоставил регистрацию рабочих дел доказательств компании',
+    workingEvidenceCaseRecorderRevoked:
+      'отозвал регистрацию рабочих дел доказательств компании',
+    receivedAuditSourceAccessGranted:
+      'предоставил доступ к полученным источникам аудита компании',
+    receivedAuditSourceAccessRevoked:
+      'отозвал доступ к полученным источникам аудита компании',
+
+    workingEvidenceCaseReaderBundle:
+      'Читатель рабочих дел доказательств компании',
+    workingEvidenceCaseReaderPrerequisites:
+      'Разрешает только чтение рабочих дел. Контекст компании и чтение проекта, клиента и источников разрешаются отдельно. Не предоставляет профессиональных полномочий.',
+    workingEvidenceCaseRecorderBundle:
+      'Регистратор рабочих дел доказательств компании',
+    workingEvidenceCaseRecorderPrerequisites:
+      'Разрешает чтение, регистрацию и исправление рабочих дел. Контекст компании и чтение проекта, клиента и источников разрешаются отдельно. Не предоставляет профессиональных полномочий.',
+    receivedAuditSourceAccessBundle:
+      'Доступ компании к полученным источникам аудита',
+    receivedAuditSourceAccessPrerequisites:
+      'Разрешает только семейство полученных источников аудита. Права на документы, клиента, содержимое, загрузку и назначение разрешаются отдельно. Не предоставляет доступа к рабочим делам или профессиональных полномочий.',
+
     opportunityFollowUpCoordinatorBundle:
       'Координатор дат сопровождения возможностей компании',
     opportunityFollowUpCoordinatorPrerequisites:
@@ -217,6 +283,32 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'Не удалось загрузить или изменить состояние доступа.',
   },
   fr: {
+    workingEvidenceCaseReaderGranted:
+      'a accordé la lecture des dossiers de preuves de travail de la société',
+    workingEvidenceCaseReaderRevoked:
+      'a révoqué la lecture des dossiers de preuves de travail de la société',
+    workingEvidenceCaseRecorderGranted:
+      'a accordé l’enregistrement des dossiers de preuves de travail de la société',
+    workingEvidenceCaseRecorderRevoked:
+      'a révoqué l’enregistrement des dossiers de preuves de travail de la société',
+    receivedAuditSourceAccessGranted:
+      'a accordé l’accès aux sources d’audit reçues de la société',
+    receivedAuditSourceAccessRevoked:
+      'a révoqué l’accès aux sources d’audit reçues de la société',
+
+    workingEvidenceCaseReaderBundle:
+      'Lecteur des dossiers de preuves de travail de la société',
+    workingEvidenceCaseReaderPrerequisites:
+      'Autorise uniquement la lecture des dossiers de travail. Le contexte société et les lectures du projet, du client et des sources restent distincts. N’accorde aucune autorité professionnelle.',
+    workingEvidenceCaseRecorderBundle:
+      'Rédacteur des dossiers de preuves de travail de la société',
+    workingEvidenceCaseRecorderPrerequisites:
+      'Autorise la lecture, l’enregistrement et la correction des dossiers de travail. Le contexte société et les lectures du projet, du client et des sources restent distincts. N’accorde aucune autorité professionnelle.',
+    receivedAuditSourceAccessBundle:
+      'Accès de la société aux sources d’audit reçues',
+    receivedAuditSourceAccessPrerequisites:
+      'Autorise uniquement la famille des sources d’audit reçues. Les droits natifs sur les documents, le client, le contenu, le téléversement et la désignation restent distincts. N’accorde aucun accès aux dossiers ni autorité professionnelle.',
+
     opportunityFollowUpCoordinatorBundle:
       'Coordinateur des dates de suivi des opportunités de la société',
     opportunityFollowUpCoordinatorPrerequisites:
@@ -296,6 +388,29 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'L’état des accès n’a pas pu être chargé ou modifié.',
   },
   en: {
+    workingEvidenceCaseReaderGranted:
+      'granted Company Working Evidence Case Reader',
+    workingEvidenceCaseReaderRevoked:
+      'revoked Company Working Evidence Case Reader',
+    workingEvidenceCaseRecorderGranted:
+      'granted Company Working Evidence Case Recorder',
+    workingEvidenceCaseRecorderRevoked:
+      'revoked Company Working Evidence Case Recorder',
+    receivedAuditSourceAccessGranted:
+      'granted Company Received Audit Source Access',
+    receivedAuditSourceAccessRevoked:
+      'revoked Company Received Audit Source Access',
+
+    workingEvidenceCaseReaderBundle: 'Company Working Evidence Case Reader',
+    workingEvidenceCaseReaderPrerequisites:
+      'Allows working Case read only. Company context and native Project, Client and source reads remain separate. Grants no professional authority.',
+    workingEvidenceCaseRecorderBundle: 'Company Working Evidence Case Recorder',
+    workingEvidenceCaseRecorderPrerequisites:
+      'Allows reading, recording and correcting working Cases. Company context and native Project, Client and source reads remain separate. Grants no professional authority.',
+    receivedAuditSourceAccessBundle: 'Company Received Audit Source Access',
+    receivedAuditSourceAccessPrerequisites:
+      'Allows the received Audit source family only. Native Document, Client, content, upload and designation rights remain separate. Grants no Case access or professional authority.',
+
     opportunityFollowUpCoordinatorBundle:
       'Company Opportunity Follow-up Coordinator',
     opportunityFollowUpCoordinatorPrerequisites:

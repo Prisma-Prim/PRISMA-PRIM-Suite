@@ -60,6 +60,10 @@ export type WorkingDocument =
             version: WorkingVersionIdentity & { representation: null };
           }
         | {
+            type: 'received-audit-source';
+            version: WorkingVersionIdentity & { representation: null };
+          }
+        | {
             type: 'received-contract';
             version: WorkingVersionIdentity & { representation: null };
             receivedContractRelation: ReceivedContractRelationView;
@@ -75,11 +79,23 @@ export type DocumentProjectAssociation =
 export type WorkingDocumentDetail =
   | (Extract<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
+      {
+        type:
+          | 'external-invoice'
+          | 'payment-evidence'
+          | 'received-addendum'
+          | 'received-audit-source';
+      }
     > & { projectAssociation?: never })
   | (Exclude<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
+      {
+        type:
+          | 'external-invoice'
+          | 'payment-evidence'
+          | 'received-addendum'
+          | 'received-audit-source';
+      }
     > & {
       /** Present only for a current Project reader; absence never means unlinked. */
       projectAssociation?: DocumentProjectAssociation;

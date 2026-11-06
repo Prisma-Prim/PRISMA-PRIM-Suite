@@ -1,4 +1,27 @@
 export const companyContextAccessCopy = {
+  workingEvidenceCaseReaderGranted:
+    'granted Company Working Evidence Case Reader',
+  workingEvidenceCaseReaderRevoked:
+    'revoked Company Working Evidence Case Reader',
+  workingEvidenceCaseRecorderGranted:
+    'granted Company Working Evidence Case Recorder',
+  workingEvidenceCaseRecorderRevoked:
+    'revoked Company Working Evidence Case Recorder',
+  receivedAuditSourceAccessGranted:
+    'granted Company Received Audit Source Access',
+  receivedAuditSourceAccessRevoked:
+    'revoked Company Received Audit Source Access',
+
+  workingEvidenceCaseReaderBundle: 'Company Working Evidence Case Reader',
+  workingEvidenceCaseReaderPrerequisites:
+    'Allows working Case read only. Company context and native Project, Client and source reads remain separate. Grants no professional authority.',
+  workingEvidenceCaseRecorderBundle: 'Company Working Evidence Case Recorder',
+  workingEvidenceCaseRecorderPrerequisites:
+    'Allows reading, recording and correcting working Cases. Company context and native Project, Client and source reads remain separate. Grants no professional authority.',
+  receivedAuditSourceAccessBundle: 'Company Received Audit Source Access',
+  receivedAuditSourceAccessPrerequisites:
+    'Allows the received Audit source family only. Native Document, Client, content, upload and designation rights remain separate. Grants no Case access or professional authority.',
+
   opportunityFollowUpCoordinatorBundle:
     'Company Opportunity Follow-up Coordinator',
   opportunityFollowUpCoordinatorPrerequisites:

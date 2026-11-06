@@ -1,3 +1,4 @@
+import { useCompanyAssignmentCopy } from '../access/company-assignment-localization.copy';
 import { useReceivedAddendumCopy } from '../documents/received-addendum.copy';
 import { usePaymentAssignmentCopy } from '../access/payment-assignment.copy';
 import { useFollowUpCopy } from '../opportunity-follow-up/follow-up.copy';
@@ -47,6 +48,7 @@ const stageOperationKeys = {
 >;
 
 export function useActivityLogDisplay() {
+  const workingEvidenceAssignments = useCompanyAssignmentCopy();
   const followUp = useFollowUpCopy();
   const message = useActivityLogCopy();
   const internalTask = useInternalTaskCopy();
@@ -89,6 +91,19 @@ export function useActivityLogDisplay() {
   const nextActionCopy = useProjectNextActionCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
+    'company_working_evidence_case_reader_assignment.granted':
+      workingEvidenceAssignments('workingEvidenceCaseReaderGranted'),
+    'company_working_evidence_case_reader_assignment.revoked':
+      workingEvidenceAssignments('workingEvidenceCaseReaderRevoked'),
+    'company_working_evidence_case_recorder_assignment.granted':
+      workingEvidenceAssignments('workingEvidenceCaseRecorderGranted'),
+    'company_working_evidence_case_recorder_assignment.revoked':
+      workingEvidenceAssignments('workingEvidenceCaseRecorderRevoked'),
+    'company_received_audit_source_access_assignment.granted':
+      workingEvidenceAssignments('receivedAuditSourceAccessGranted'),
+    'company_received_audit_source_access_assignment.revoked':
+      workingEvidenceAssignments('receivedAuditSourceAccessRevoked'),
+
     ...addendumActions,
     'company_opportunity_follow_up_coordinator_assignment.granted':
       followUp('granted'),
