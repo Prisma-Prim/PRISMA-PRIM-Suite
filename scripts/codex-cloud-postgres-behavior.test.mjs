@@ -41,7 +41,7 @@ as_root() {
   printf 'HOST %s\n' "$*" >&2
   case "$1" in
     pg_lsclusters) printf '%s\n' "$TEST_CLUSTERS" ;;
-    pg_ctlcluster) echo CLUSTER_STARTED ;;
+    pg_ctlcluster) [[ "$4" == stop ]] && echo CLUSTER_STOPPED || echo CLUSTER_STARTED ;;
     test) [[ "$TEST_KEY_EXISTS" == 1 ]] ;;
     install)
       if [[ "$2" == -m ]]; then
@@ -89,7 +89,7 @@ as_root() {
     *) echo "Unexpected privileged command: $*" >&2; return 91 ;;
   esac
 }
-[[ "$TEST_MODE" != --start ]] || touch "$TEST_ROOT/installed"
+[[ "$TEST_MODE" == --install ]] || touch "$TEST_ROOT/installed"
 main
 `;
 
@@ -131,6 +131,33 @@ async function runInstaller(overrides = {}) {
     await rm(directory, { recursive: true, force: true });
   }
 }
+
+test('stops an online cluster without provisioning or publishing targets', async () => {
+  const result = await runInstaller({
+    TEST_MODE: '--stop',
+    TEST_CLUSTERS: '17 main 5432 online postgres /data /log',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /HOST pg_ctlcluster 17 main stop/);
+  assert.match(result.stdout, /CLUSTER_STOPPED/);
+  assert.doesNotMatch(result.stdout, /CLUSTER_STARTED|TARGETS_PERSISTED/);
+  assert.doesNotMatch(result.stderr, /HOST runuser|HOST env/);
+});
+
+test('leaves a stopped or foreign cluster alone when asked to stop', async () => {
+  for (const clusters of [
+    '17 main 5432 down postgres /data /log',
+    '16 foreign 5433 online postgres /other /log',
+  ]) {
+    const result = await runInstaller({
+      TEST_MODE: '--stop',
+      TEST_CLUSTERS: clusters,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /HOST pg_ctlcluster/);
+    assert.doesNotMatch(result.stdout, /TARGETS_PERSISTED/);
+  }
+});
 
 test('rejects a target on the wrong port before starting or provisioning', async () => {
   const result = await runInstaller({

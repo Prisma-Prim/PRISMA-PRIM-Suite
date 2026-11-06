@@ -23,19 +23,19 @@ while [[ "$#" -gt 0 ]]; do
       shift
       ;;
     *)
-      echo "Usage: bash scripts/codex-cloud-maintenance.sh [--profile base|postgres] [--install-system-dependencies]" >&2
+      echo "Usage: bash scripts/codex-cloud-maintenance.sh [--profile base|postgres|web-postgres] [--install-system-dependencies]" >&2
       exit 2
       ;;
   esac
 done
 
-if [[ "${profile}" != "base" && "${profile}" != "postgres" ]]; then
-  echo "Unknown profile: ${profile}. Expected base or postgres." >&2
+if [[ "${profile}" != "base" && "${profile}" != "postgres" && "${profile}" != "web-postgres" ]]; then
+  echo "Unknown profile: ${profile}. Expected base, postgres or web-postgres." >&2
   exit 2
 fi
 
-if [[ "${install_system_dependencies}" == "true" && "${profile}" != "postgres" ]]; then
-  echo "--install-system-dependencies is valid only with --profile postgres." >&2
+if [[ "${install_system_dependencies}" == "true" && "${profile}" == "base" ]]; then
+  echo "--install-system-dependencies is valid only with --profile postgres or web-postgres." >&2
   exit 2
 fi
 
@@ -152,7 +152,17 @@ run_step "Activate pnpm ${expected_pnpm}" activate_exact_pnpm
 
 run_step "Synchronize workspace dependencies" synchronize_dependencies
 
-if [[ "${profile}" == "postgres" ]]; then
+if [[ "${profile}" == "web-postgres" ]]; then
+  # The CI command: it reuses the image's system libraries and skips a browser
+  # that is already installed.
+  run_step "Install Playwright Chromium" bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install chromium
+  # No server may outlive a Codex Cloud lifecycle script: #216 measured the
+  # 3600-second startup timeout only when one did. A task starts PostgreSQL
+  # again with scripts/codex-cloud-start.sh.
+  trap 'bash scripts/codex-cloud-postgres.sh --stop' EXIT
+fi
+
+if [[ "${profile}" == "postgres" || "${profile}" == "web-postgres" ]]; then
   if [[ "${install_system_dependencies}" == "true" ]]; then
     run_step "Install and provision local PostgreSQL" bash scripts/codex-cloud-postgres.sh --install
   else
@@ -163,6 +173,16 @@ if [[ "${profile}" == "postgres" ]]; then
   source "${HOME}/.config/prisma-prim/postgres-runtime.sh"
 fi
 
-run_step "Verify the ${profile} Codex environment" bash scripts/agent-pnpm.sh exec node scripts/agent-doctor.mjs --profile "${profile}"
+doctor_arguments=(--profile "${profile}")
+if [[ "${profile}" == "web-postgres" ]]; then
+  doctor_arguments+=(--readiness-profile cloud)
+fi
+
+run_step "Verify the ${profile} Codex environment" bash scripts/agent-pnpm.sh exec node scripts/agent-doctor.mjs "${doctor_arguments[@]}"
+
+if [[ "${profile}" == "web-postgres" ]]; then
+  trap - EXIT
+  run_step "Stop PostgreSQL until a task starts it" bash scripts/codex-cloud-postgres.sh --stop
+fi
 
 echo "Codex environment preparation completed in $((SECONDS - setup_started_at))s."
