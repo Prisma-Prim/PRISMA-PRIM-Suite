@@ -10,6 +10,8 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 The goal is the entire spec implemented on a single **integration branch**, with every ticket resolved the way the issue tracker closes work.
 
+**Repository adaptation:** this repository delivers one pull request per issue (`AGENTS.md`). Keep the task graph and the fresh implementer per ticket, but publish each ticket as its own pull request against `main`, in dependency order, instead of one integration branch and one combined pull request. Use the combined integration flow only when the owner approves it for a given spec.
+
 The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed.
 
 Start every subagent with a fresh context window.
