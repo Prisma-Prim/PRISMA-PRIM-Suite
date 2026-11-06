@@ -1,1 +1,23 @@
+# Text files are LF in the repository and in working files on every platform,
+# whatever the user's core.autocrlf setting. Without this, Windows checkouts get
+# CRLF and Prettier, byte-hash tests and shell scripts break.
+* text=auto eol=lf
+
+# Shell scripts must stay LF so that bash accepts them.
+*.sh text eol=lf
+
+# Tracked binary types are never converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.gz binary
+*.zip binary
+
 apps/api/drizzle/meta/*_snapshot.json linguist-generated=true
