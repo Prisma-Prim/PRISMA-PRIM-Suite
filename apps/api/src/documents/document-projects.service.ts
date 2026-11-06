@@ -112,6 +112,7 @@ export class DocumentProjectsService {
     if (
       document.type === 'external-invoice' ||
       document.type === 'payment-evidence' ||
+      document.type === 'received-addendum' ||
       document.companyId !== project.companyId ||
       document.clientId !== project.clientAccountId
     )
@@ -196,7 +197,8 @@ export class DocumentProjectsService {
       const document = await this.documents.read(actor, documentId);
       if (
         document.type === 'external-invoice' ||
-        document.type === 'payment-evidence'
+        document.type === 'payment-evidence' ||
+        document.type === 'received-addendum'
       )
         throw new NotFoundException();
       const project = await this.projects.read(actor, command.projectId);

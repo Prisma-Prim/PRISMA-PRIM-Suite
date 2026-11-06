@@ -12,14 +12,18 @@ export type DocumentVersionReference = {
   addedBy: { displayName: string };
 } & ({ access: 'granted'; url: string } | { access: 'denied' });
 
-interface DocumentVersionBase {
+interface DocumentVersionIdentity {
   id: string;
-  number: number;
-  createdAt: string;
-  createdBy: { displayName: string };
   representations: DocumentVersionReference[];
   pdfContent: DocumentPdfContent;
 }
+
+/** Only the initial received Addendum Version withholds registration attribution. */
+type DocumentVersionBase = DocumentVersionIdentity &
+  (
+    | { number: number; createdAt: string; createdBy: { displayName: string } }
+    | { number: 1; createdAt?: never; createdBy?: never }
+  );
 
 interface DocumentVersionDesignation {
   designatedAt: string;

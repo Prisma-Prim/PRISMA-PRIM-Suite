@@ -13,6 +13,9 @@ export const completeActor = {
   activeCompany: {
     id: 'sample',
     displayName: 'sample',
+    receivedAddendumAccessAssignmentId: 'sample-addendum',
+    receivedAddendumAccessPermissionSetVersion: 'v1',
+    receivedAddendumClientReadCapture: 'sample-addendum-client-read',
     paymentObservationReadCapture: { version: 'future', arbitrary: null },
     paymentObservationContextCapture: { version: 'future', arbitrary: null },
     paymentGrants: { version: 'future', arbitrary: null },

@@ -1,6 +1,7 @@
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import {
   receivedContractRelationsForTest,
+  receivedAddendumRelationsForTest,
   externalInvoiceRelationsForTest,
 } from './document-read.test-support.js';
 import { ConfigService } from '@nestjs/config';
@@ -592,6 +593,12 @@ describe.skipIf(!databaseUrl)(
           new DocumentPdfStorage(context),
           new DocumentMalwareScanner(new ConfigService()),
         ),
+        receivedAddendumRelationsForTest({
+          context,
+          authorization,
+          clients,
+          accountability,
+        }),
         receivedContractRelationsForTest({
           context,
           authorization,

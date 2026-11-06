@@ -3516,6 +3516,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_contract_signature_declarer_assignment.granted':
     case 'company_contract_signature_declarer_assignment.revoked':
     case 'company_received_contract_access_assignment.granted':
+    case 'company_received_addendum_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_mission_result_reviewer_assignment.granted':
     case 'company_project_next_action_coordinator_assignment.granted':
@@ -3524,6 +3525,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
     case 'company_received_contract_access_assignment.revoked':
+    case 'company_received_addendum_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
     case 'company_mission_result_reviewer_assignment.revoked':
     case 'company_project_next_action_coordinator_assignment.revoked':

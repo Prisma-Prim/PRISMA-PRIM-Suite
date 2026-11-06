@@ -1,3 +1,4 @@
+import { receivedAddendumExistingTableTriggers } from './received-addendum-schema.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -67,6 +68,7 @@ const changedExistingSchema: Readonly<Record<string, readonly string[]>> = {
 };
 
 const addedExistingTableTriggers = [
+  ...receivedAddendumExistingTableTriggers,
   'companies.payment_company_cursor',
   'working_documents.working_documents_payment_evidence_identity',
   'working_documents.working_documents_payment_evidence_required',
@@ -76,6 +78,7 @@ const addedExistingTableTriggers = [
 
 const newEnumLabels: Readonly<Record<string, readonly string[]>> = {
   company_role_bundle: [
+    'company_received_addendum_access',
     'company_payment_reader',
     'company_payment_recorder',
     'company_payment_confirmer',
@@ -83,6 +86,8 @@ const newEnumLabels: Readonly<Record<string, readonly string[]>> = {
     'company_payment_evidence_access',
   ],
   activity_log_action: [
+    'company_received_addendum_access_assignment.granted',
+    'company_received_addendum_access_assignment.revoked',
     'company_payment_reader_assignment.granted',
     'company_payment_reader_assignment.revoked',
     'company_payment_recorder_assignment.granted',
@@ -320,6 +325,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
         'payment_evidence_document_sources',
         'payment_history',
         'payments',
+        'received_addendum_document_relations',
       ]);
       async function noInferredPayment() {
         expect(

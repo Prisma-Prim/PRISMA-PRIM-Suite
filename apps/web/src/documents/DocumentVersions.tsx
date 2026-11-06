@@ -1,3 +1,5 @@
+import { hasReceivedAddendumAccess } from './received-addendum-access';
+import { useReceivedAddendumCopy } from './received-addendum.copy';
 import { PaymentEvidenceVersions } from '../payment-evidence/PaymentEvidenceVersions';
 import type { PaymentEvidenceOperationKeys } from '../payment-evidence/payment-evidence-authority';
 import {
@@ -36,9 +38,9 @@ import {
   readDocumentVersions,
   type DocumentFamily,
   type DocumentRepresentationForm,
-  type DocumentVersion,
+  type DocumentVersionWithRegistration as DocumentVersion,
   type DocumentVersionReference,
-  type DocumentVersions as VersionsRead,
+  type DocumentVersionsWithRegistration as VersionsRead,
   type DocumentVersionReceipt,
 } from './document-response';
 import { useDocumentVersionsCopy } from './document-versions.copy';
@@ -171,6 +173,8 @@ export function DocumentVersions({
     !permissions.includes('document.read') ||
     (documentType === 'mission-deliverable' &&
       !hasMissionDeliverableAccess(company)) ||
+    (documentType === 'received-addendum' &&
+      !hasReceivedAddendumAccess(company)) ||
     (documentType === 'received-contract' &&
       !hasReceivedContractAccess(company)) ||
     (documentType === 'external-invoice' &&
@@ -732,10 +736,12 @@ function VersionRow({
           {copy.statusLabels[version.status]}
         </span>
       </div>
-      <Attribution
-        label={copy.createdBy(version.createdByDisplayName)}
-        at={version.createdAt}
-      />
+      {version.createdAt !== undefined && (
+        <Attribution
+          label={copy.createdBy(version.createdByDisplayName)}
+          at={version.createdAt}
+        />
+      )}
       <Designation version={version} documentType={documentType} />
       {documentType === 'questionnaire' && (
         <ol
@@ -791,6 +797,7 @@ function Designation({
   const copy = useDocumentVersionsCopy();
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
+  const addendumCopy = useReceivedAddendumCopy();
   const invoiceCopy = useExternalInvoiceCopy();
   switch (version.status) {
     case 'draft':
@@ -818,13 +825,15 @@ function Designation({
             />
           ) : (
             <p className="working-document-version-notice">
-              {documentType === 'external-invoice'
-                ? invoiceCopy.t('warning')
-                : documentType === 'received-contract'
-                  ? receivedCopy.t('warning')
-                  : documentType === 'mission-deliverable'
-                    ? missionCopy.t('warning')
-                    : copy.frozenNotice}
+              {documentType === 'received-addendum'
+                ? addendumCopy.t('warning')
+                : documentType === 'external-invoice'
+                  ? invoiceCopy.t('warning')
+                  : documentType === 'received-contract'
+                    ? receivedCopy.t('warning')
+                    : documentType === 'mission-deliverable'
+                      ? missionCopy.t('warning')
+                      : copy.frozenNotice}
             </p>
           )}
         </>

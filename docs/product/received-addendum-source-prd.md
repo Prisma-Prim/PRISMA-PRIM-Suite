@@ -1,6 +1,6 @@
 # PRD — Exact received Addendum sources
 
-**Status:** Approved — bounded software contract after ordered independent Standards then Spec preparation, correction of the native designation prerequisite and [root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031#issuecomment-6561554661), 2026-11-01. No runtime readiness or delivery is claimed.\
+**Status:** Approved — bounded software contract after ordered independent Standards then Spec preparation, correction of the native designation prerequisite and [root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031#issuecomment-6561554661), 2026-11-01. Runtime implementation is tracked by [#1049](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1049); verification and delivery state belong to that issue and its linked pull request.\
 **Version:** 1.0\
 **Owner:** Dan Popescu\
 **Contract issue:** [#1031](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031)\
@@ -439,30 +439,20 @@ acceptance. A helper may own new source-specific UI files after DTO/props freeze
 another may own separately named native proof files/fixtures. They do not edit
 shared App/navigation/Current-Actor, schema, production owners or evolving fixtures.
 Independent source/dependency graphs and one exclusive PG/build/browser/heavy owner
-are required. This is a future allocation plan, not a current runtime lease.
+are required. The implementation issue owns the actual shared-file and helper leases.
 
-| Standard gate                      | Contract coverage                                                                  | Closure still required                                                                                                                  |
-| ---------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Unambiguous outcome             | Approved §§1–3 preserve/reopen a source; no new legal instrument.                  | Recheck outcome and public seams on the fresh runtime source.                                                                           |
-| 2. Workspace/Company/legal entity  | §§3–4 exact original scope and recorded party.                                     | Fit genuine then-current parent seam/fixtures.                                                                                          |
-| 3. Actors/permissions/approvals    | Approved §5 exact opt-in capture and native operation matrix.                      | Fit native captures/operation prerequisites on actual main; no actual assignments inferred.                                             |
-| 4. Lifecycle/correction/deletion   | §§4/6 immutable relation/uploads, empty successors and no delete command.          | Confirm then-current native rules and the planned boundary/exception proof.                                                             |
-| 5. Source/provider                 | §§4/6 PostgreSQL parent/storage, configured fail-closed scan outside transaction.  | Current interface/provider fit; real activation remains operational.                                                                    |
-| 6. Representative examples         | §10 fictional P-17/V2 with unknown receipt date and genuine execution declaration. | Runnable synthetic fixture; no representative-real-original claim.                                                                      |
-| 7. Failure/empty/permission states | §§5/7/9 operation-specific unavailable, conflict and recovery.                     | Confirm native/App seam and complete planned cases on actual main.                                                                      |
-| 8. Security/Activity/observability | §§5/7–9 privacy, scoped integrity, indirect exclusions and safe diagnostics.       | Current consumer/lock/seam fit and runnable adversarial proof plan.                                                                     |
-| 9. Dependencies/migration          | Inherited delivered owners and populated immediate predecessor above.              | Canonical merge, selected Invoice Record/financial continuation sequencing and exclusive resource handoff; recheck actual main/journal. |
-| 10. Public acceptance              | §10 native/App/restart/integrity/upgrade/provider/visual plan.                     | Bind the complete plan to actual public seams/fixtures; execute original proof during runtime delivery.                                 |
-| 11. One fresh session              | One bounded complete source family; optional disjoint UI/proof helpers.            | Fresh complexity/ownership assessment, no horizontal runtime tickets.                                                                   |
-| 12. All blockers closed            | Product contract approved; runtime blockers remain unclosed.                       | Canonical merge, fresh source/fixture fit, complete runtime issue/claim and exclusive shared/heavy handoff.                             |
+The twelve fresh readiness gates closed for the bounded native implementation in
+[#1049](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1049), against actual
+post-Payment main `a917f06c290fbe8bbc5f693e2b645eecc9facd9a`. Its complete public
+acceptance contract, active claim, frozen interfaces, exclusive runtime lane and
+actual immediate-predecessor strategy replace the former pre-launch NOT READY
+status. Invoice Records and Payment observations are delivered prerequisites,
+not legal conditions for preserving a received Addendum.
 
-Current runtime status is **NOT READY**. Product contract approval alone cannot
-create a runtime child or waive the fresh gates. Invoice Records and the selected
-financial continuation are current sequencing/shared-interface constraints, not
-new legal prerequisites of preservation. Live trackers own that evolving order.
-Fresh readiness establishes a complete runnable implementation contract and its
-proof plan. Executed new-family tests and browser artifacts are subsequent runtime
-delivery evidence, not a circular prerequisite to starting that implementation.
+The issue and linked pull request own implementation progress, executed evidence,
+review and final integration identity. Readiness does not imply production scanner
+activation, real grants, legal validity or completion of the wider Addendum/SARCINA
+frontier. The behaviour and exclusions in this PRD remain authoritative.
 
 ## 12. Deferred facts and later instrument frontier
 

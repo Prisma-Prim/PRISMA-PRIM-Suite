@@ -247,3 +247,71 @@ test('Both reference routes expose valid error response descriptions', () => {
     }
   }
 });
+
+test('received Addendum registration attribution belongs only to its guarded relation', () => {
+  const document = {
+    id: uuid,
+    workspaceId: uuid,
+    companyId: uuid,
+    clientId: uuid,
+    clientDisplayName: 'Fictional Client',
+    title: 'Fictional Addendum',
+    purpose: 'Preserve source',
+    confidentiality: 'company-confidential',
+    workingRevision: 1,
+    correction: 'allowed',
+    type: 'received-addendum',
+    version: { id: uuid, status: 'draft', representation: null },
+    receivedAddendumRelation: { access: 'denied' },
+  };
+  const metadata = validator({ $ref: '#/components/schemas/WorkingDocument' });
+  accepts(metadata, document);
+  assert.equal(metadata({ ...document, createdAt: occurredAt }), false);
+  assert.equal(metadata({ ...document, createdByMembershipId: uuid }), false);
+  const initial = validator({
+    $ref: '#/components/schemas/InitialReceivedAddendumVersion',
+  });
+  const version = {
+    id: uuid,
+    number: 1,
+    status: 'draft',
+    representations: [],
+    pdfContent: { state: 'absent' },
+  };
+  accepts(initial, version);
+  for (const extra of [
+    { createdAt: occurredAt },
+    { createdBy: { displayName: 'Registrar' } },
+    { number: 2 },
+  ])
+    assert.equal(initial({ ...version, ...extra }), false);
+  const official = {
+    ...version,
+    status: 'official',
+    designatedAt: occurredAt,
+    designatedBy: { displayName: 'Native approver' },
+    frozen: { title: 'Frozen', purpose: 'Frozen purpose' },
+  };
+  assert.equal(
+    initial(official),
+    false,
+    'empty initial Addendum cannot be official',
+  );
+  accepts(initial, {
+    ...official,
+    pdfContent: { state: 'stored', access: 'denied' },
+  });
+  const native = validator({
+    $ref: '#/components/schemas/DraftDocumentVersion',
+  });
+  assert.equal(
+    native(version),
+    false,
+    'old named native Version still requires creation attribution',
+  );
+  accepts(native, {
+    ...version,
+    createdAt: occurredAt,
+    createdBy: { displayName: 'Native creator' },
+  });
+});

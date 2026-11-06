@@ -1,3 +1,5 @@
+import { ReceivedAddendumRelationsService } from './received-addendum-relations.service.js';
+import { ContractReceivedAddendumReferenceService } from '../contract/contract-received-addendum-reference.service.js';
 import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
 import { ContractExternalInvoiceReferenceService } from '../contract/contract-external-invoice-reference.service.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
@@ -53,6 +55,21 @@ export function externalInvoiceRelationsForTest(
         new CommercialResponsibleAccessService(context),
         new SalesStageService(context, authorization, accountability),
       ),
+      clients,
+    ),
+    authorization,
+  );
+}
+
+export function receivedAddendumRelationsForTest(
+  input: Parameters<typeof receivedContractRelationsForTest>[0],
+) {
+  const { context, authorization, clients } = input;
+  return new ReceivedAddendumRelationsService(
+    context,
+    new ContractReceivedAddendumReferenceService(
+      context,
+      authorization,
       clients,
     ),
     authorization,

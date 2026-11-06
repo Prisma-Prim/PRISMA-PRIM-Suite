@@ -329,6 +329,7 @@ const isActorContext = object({
         array(
           literal(
             'document.received_contract.access',
+            'document.received_addendum.access',
             'document.mission_deliverable.access',
             'document.read',
             'document.register',
@@ -346,6 +347,9 @@ const isActorContext = object({
       missionDeliverableAccessPermissionSetVersion: optional(literal('v1')),
       contractSignatureDeclarerAssignmentId: optional(isString),
       contractSignatureDeclarerPermissionSetVersion: optional(literal('v1')),
+      receivedAddendumAccessAssignmentId: optional(isString),
+      receivedAddendumAccessPermissionSetVersion: optional(literal('v1')),
+      receivedAddendumClientReadCapture: optional(isOpaque),
       receivedContractAccessAssignmentId: optional(isString),
       receivedContractAccessPermissionSetVersion: optional(literal('v1')),
       documentPermissionSetVersion: optional(literal('v1', 'v2', 'v3')),

@@ -1220,6 +1220,12 @@ paths:
       operationId: registerWorkingDocument
       summary: Register a native Document with an empty first draft
       description: >-
+        Received Addendum registration consumes only exact family v1, native Document and Client
+        read alternatives and independent Contract/Opportunity read. The Contract owner qualifies
+        the exact ordinary Company-model APPROVED/EXECUTED parent and genuine declaration before
+        any discovery bound. No Finance, Company identity, current-head, OPEN Opportunity or
+        current Offer/model/economic prerequisite is added. The complete relation attribution
+        is withheld after parent-read loss while independently authorized Version/PDF work survives.
         Uses the existing actor-owned Idempotency-Key registration namespace. Native Document
         registration/read and native Client reference read are independent prerequisites. External invoices
         additionally require exact live Invoice Recorder v1 and External Invoice Access v1
@@ -1296,6 +1302,39 @@ paths:
           description: No verified identity.
         '403':
           description: Native active Company, Document or Client read is unavailable.
+  /api/documents/received-addendum-sources:
+    get:
+      operationId: listReceivedAddendumDocumentSources
+      summary: Discover exact declared Contract Versions and their frozen receiving party
+      description: >-
+        Requires Received Addendum Access v1, exact native Document registrar,
+        Contract and Opportunity read captures, and original Client read/new-use eligibility.
+        Only ordinary COMPANY_MODEL_OFFER Contracts with exact APPROVED/EXECUTED Version and
+        genuine conserved reported-signing declaration qualify. Execution is a human unverified
+        declaration, never fiscal/signature/mandate validation. No current-head, OPEN Opportunity,
+        current Offer/model or pricing condition is added. The optional opaque cursor must identify
+        a currently qualifying visible Version. Unknown or repeated query keys fail closed.
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: cursor
+          required: false
+          description: Use only the preceding page's opaque nextCursor.
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{48}$' }
+      responses:
+        '200':
+          description: At most 20 exact Version choices with human labels and one-row lookahead; no total.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/ReceivedAddendumSourcePage' }
+        '400':
+          description: Invalid or stale source cursor, repeated or unknown query key.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Required current family or native discovery authority is unavailable.
   /api/documents/external-invoice-sources:
     get:
       operationId: listExternalInvoiceDocumentSources
@@ -10547,6 +10586,7 @@ components:
         - $ref: '#/components/schemas/RegisterQuestionnaireDocumentInput'
         - $ref: '#/components/schemas/RegisterMissionDocumentInput'
         - $ref: '#/components/schemas/RegisterReceivedContractDocumentInput'
+        - $ref: '#/components/schemas/RegisterReceivedAddendumDocumentInput'
         - $ref: '#/components/schemas/RegisterExternalInvoiceDocumentInput'
         - $ref: '#/components/schemas/RegisterPaymentEvidenceDocumentInput'
     RegisterQuestionnaireDocumentInput:
@@ -10586,6 +10626,26 @@ components:
         opportunityId: { type: string, format: uuid }
         contractId: { type: string, format: uuid }
         contractVersionId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        purpose: { type: string, minLength: 1, maxLength: 2000 }
+        sourceDescription: { type: string, minLength: 1, maxLength: 2000 }
+        receivedOn: { type: [string, 'null'], format: date }
+    RegisterReceivedAddendumDocumentInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          type,
+          parentContractId,
+          parentContractVersionId,
+          title,
+          purpose,
+          sourceDescription,
+        ]
+      properties:
+        type: { type: string, const: received-addendum }
+        parentContractId: { type: string, format: uuid }
+        parentContractVersionId: { type: string, format: uuid }
         title: { type: string, minLength: 1, maxLength: 200 }
         purpose: { type: string, minLength: 1, maxLength: 2000 }
         sourceDescription: { type: string, minLength: 1, maxLength: 2000 }
@@ -10742,6 +10802,108 @@ components:
             legalName: { type: string }
             taxId: { type: [string, 'null'] }
             legalAddress: { type: [string, 'null'] }
+    ReceivedAddendumRecordedRecipient:
+      description: Immutable native Contract Version copy; no current Client correction is recopied.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, legalName, taxId, legalAddress]
+          properties:
+            kind: { type: string, const: PRIMARY }
+            legalName: { type: string }
+            taxId: { type: [string, 'null'] }
+            legalAddress: { type: [string, 'null'] }
+        - type: object
+          additionalProperties: false
+          required:
+            [kind, additionalLegalEntityId, legalName, taxId, legalAddress]
+          properties:
+            kind: { type: string, const: ADDITIONAL }
+            additionalLegalEntityId: { type: string, format: uuid }
+            legalName: { type: string }
+            taxId: { type: [string, 'null'] }
+            legalAddress: { type: [string, 'null'] }
+    ReceivedAddendumSourcePage:
+      type: object
+      additionalProperties: false
+      required: [sources, nextCursor]
+      properties:
+        sources:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/ReceivedAddendumSource' }
+        nextCursor:
+          type: [string, 'null']
+          pattern: '^[A-Za-z0-9_-]{48}$'
+    ReceivedAddendumSource:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          parentContractId,
+          parentContractVersionId,
+          contractVersionNumber,
+          illustrativeReference,
+          clientId,
+          clientDisplayName,
+          opportunityTitle,
+          recordedRecipient,
+        ]
+      properties:
+        parentContractId: { type: string, format: uuid }
+        parentContractVersionId: { type: string, format: uuid }
+        contractVersionNumber: { type: integer, minimum: 1 }
+        illustrativeReference: { type: integer, minimum: 1 }
+        clientId: { type: string, format: uuid }
+        clientDisplayName: { type: string }
+        opportunityTitle: { type: string }
+        recordedRecipient:
+          { $ref: '#/components/schemas/ReceivedAddendumRecordedRecipient' }
+    ReceivedAddendumRelation:
+      description: >-
+        Current two-end disclosure. Denial contains only access; no relation identifiers,
+        Contract reference, party, source/date or registration attribution survives.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [access]
+          properties:
+            access: { type: string, const: denied }
+        - type: object
+          additionalProperties: false
+          required:
+            [
+              access,
+              opportunityId,
+              parentContractId,
+              parentContractVersionId,
+              contractVersionNumber,
+              illustrativeReference,
+              recordedRecipient,
+              sourceDescription,
+              receivedOn,
+              registeredAt,
+              registeredBy,
+            ]
+          properties:
+            access: { type: string, const: granted }
+            opportunityId: { type: string, format: uuid }
+            parentContractId: { type: string, format: uuid }
+            parentContractVersionId: { type: string, format: uuid }
+            contractVersionNumber: { type: integer, minimum: 1 }
+            illustrativeReference: { type: integer, minimum: 1 }
+            recordedRecipient:
+              { $ref: '#/components/schemas/ReceivedAddendumRecordedRecipient' }
+            sourceDescription: { type: string }
+            receivedOn: { type: [string, 'null'], format: date }
+            registeredAt: { type: string, format: date-time }
+            registeredBy:
+              type: object
+              additionalProperties: false
+              required: [workspaceMembershipId, internalUserId]
+              properties:
+                workspaceMembershipId: { type: string, format: uuid }
+                internalUserId: { type: string, format: uuid }
     ExternalInvoiceSourcePage:
       type: object
       additionalProperties: false
@@ -10876,7 +11038,6 @@ components:
           title,
           purpose,
           confidentiality,
-          createdAt,
           workingRevision,
           correction,
         ]
@@ -10896,7 +11057,7 @@ components:
     WorkingDocumentFamily:
       oneOf:
         - type: object
-          required: [type, version, createdByMembershipId]
+          required: [type, version, createdAt, createdByMembershipId]
           properties:
             createdByMembershipId: { type: string, format: uuid }
             type: { type: string, const: questionnaire }
@@ -10927,14 +11088,20 @@ components:
                         access: { type: string, const: granted }
                         url: { type: string, format: uri }
         - type: object
-          required: [type, version, createdByMembershipId]
+          required: [type, version, createdAt, createdByMembershipId]
           properties:
             createdByMembershipId: { type: string, format: uuid }
             type: { type: string, const: mission-deliverable }
             version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
         - type: object
           required:
-            [type, version, receivedContractRelation, createdByMembershipId]
+            [
+              type,
+              version,
+              receivedContractRelation,
+              createdAt,
+              createdByMembershipId,
+            ]
           properties:
             createdByMembershipId: { type: string, format: uuid }
             type: { type: string, const: received-contract }
@@ -10942,7 +11109,7 @@ components:
             receivedContractRelation:
               { $ref: '#/components/schemas/ReceivedContractDocumentRelation' }
         - type: object
-          required: [type, version, externalInvoiceRelation]
+          required: [type, version, externalInvoiceRelation, createdAt]
           not: { required: [projectAssociation] }
           properties:
             type: { type: string, const: external-invoice }
@@ -10951,7 +11118,13 @@ components:
               { $ref: '#/components/schemas/ExternalInvoiceRelation' }
         - type: object
           required:
-            [type, version, paymentEvidenceSource, createdByMembershipId]
+            [
+              type,
+              version,
+              paymentEvidenceSource,
+              createdAt,
+              createdByMembershipId,
+            ]
           not: { required: [projectAssociation] }
           properties:
             createdByMembershipId: { type: string, format: uuid }
@@ -10959,6 +11132,18 @@ components:
             version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
             paymentEvidenceSource:
               { $ref: '#/components/schemas/PaymentEvidenceSource' }
+        - type: object
+          required: [type, version, receivedAddendumRelation]
+          not:
+            anyOf:
+              - required: [projectAssociation]
+              - required: [createdByMembershipId]
+              - required: [createdAt]
+          properties:
+            type: { type: string, const: received-addendum }
+            version: { $ref: '#/components/schemas/WorkingPdfDocumentVersion' }
+            receivedAddendumRelation:
+              { $ref: '#/components/schemas/ReceivedAddendumRelation' }
     WorkingPdfDocumentVersion:
       type: object
       additionalProperties: false
@@ -11188,12 +11373,7 @@ components:
         - $ref: '#/components/schemas/DraftDocumentVersion'
         - $ref: '#/components/schemas/OfficialDocumentVersion'
         - $ref: '#/components/schemas/SupersededDocumentVersion'
-      discriminator:
-        propertyName: status
-        mapping:
-          draft: '#/components/schemas/DraftDocumentVersion'
-          official: '#/components/schemas/OfficialDocumentVersion'
-          superseded: '#/components/schemas/SupersededDocumentVersion'
+        - $ref: '#/components/schemas/InitialReceivedAddendumVersion'
     DraftDocumentVersion:
       type: object
       additionalProperties: false
@@ -11314,6 +11494,64 @@ components:
           type: integer
           minimum: 2
           maximum: 50
+    InitialReceivedAddendumVersion:
+      description: >-
+        Only Version 1 of received-addendum. Its creation is atomic registration;
+        registration actor and time are exposed only by the independently guarded
+        source relation. Later native creation, designation, supersession and PDF
+        attribution keep their own rights. Existing family Version wires retain
+        both createdAt and createdBy.
+      type: object
+      additionalProperties: false
+      required: [id, number, status, representations, pdfContent]
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: integer, const: 1 }
+        status: { type: string, enum: [draft, official, superseded] }
+        representations:
+          type: array
+          maxItems: 0
+        pdfContent: { $ref: '#/components/schemas/DocumentPdfContent' }
+        designatedAt: { type: string, format: date-time }
+        designatedBy: { $ref: '#/components/schemas/DocumentActorLabel' }
+        frozen: { $ref: '#/components/schemas/DocumentVersionFrozenSnapshot' }
+        supersededAt: { type: string, format: date-time }
+        supersededByVersionNumber: { type: integer, minimum: 2, maximum: 50 }
+      oneOf:
+        - properties:
+            status: { const: draft }
+          not:
+            anyOf:
+              - required: [designatedAt]
+              - required: [designatedBy]
+              - required: [frozen]
+              - required: [supersededAt]
+              - required: [supersededByVersionNumber]
+        - required: [designatedAt, designatedBy, frozen]
+          properties:
+            status: { const: official }
+            pdfContent:
+              required: [state]
+              properties:
+                state: { const: stored }
+          not:
+            anyOf:
+              - required: [supersededAt]
+              - required: [supersededByVersionNumber]
+        - required:
+            [
+              designatedAt,
+              designatedBy,
+              frozen,
+              supersededAt,
+              supersededByVersionNumber,
+            ]
+          properties:
+            status: { const: superseded }
+            pdfContent:
+              required: [state]
+              properties:
+                state: { const: stored }
     DocumentActorLabel:
       description: The actor's existing display label, never an email.
       type: object
@@ -11825,6 +12063,13 @@ components:
         - displayName
         - clientPermissions
       properties:
+        receivedAddendumAccessAssignmentId: { type: string, format: uuid }
+        receivedAddendumAccessPermissionSetVersion: { type: string, const: v1 }
+        receivedAddendumClientReadCapture:
+          type: string
+          pattern: '^received-addendum-client-read\.v1\.[a-f0-9]{64}$'
+          description: Exact scoped native Client-read alternative identity; Workspace client.manage remains a supported alternative. Parent and PDF authorities are independent.
+
         opportunityFollowUpPermissions:
           type: array
           uniqueItems: true

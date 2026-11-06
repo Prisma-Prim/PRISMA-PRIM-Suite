@@ -26,6 +26,10 @@ import {
   replayPaymentPredecessorOriginalReadsAndBytes,
   restorePaymentPredecessor,
 } from '../documents/payment-evidence-predecessor.test-support.js';
+import {
+  withoutReceivedAddendumSchema,
+  receivedAddendumExistingTableTriggers,
+} from '../documents/received-addendum-schema.test-support.js';
 import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
 
 function capturedCount(value: unknown): number {
@@ -214,11 +218,12 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
             ),
           );
         }
-        const after = await paymentPredecessorSchema(database.targetPool);
+        const after = await paymentPredecessorSchema(database.targetPool),
+          normalized = withoutReceivedAddendumSchema(after);
         for (const [kind, rows] of Object.entries(schema))
           for (const entry of fixtureObjects(rows))
             expect(
-              fixtureObjects(after[kind]).find(
+              fixtureObjects(normalized[kind]).find(
                 (value) => value.name === entry.name,
               ),
               kind + ':' + String(entry.name),
@@ -234,7 +239,12 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
                 !oldTriggers.has(name) &&
                 tables.some((table) => name.startsWith(table + '.')),
             ),
-        ).toEqual(['companies.payment_company_cursor']);
+        ).toEqual(
+          [
+            'companies.payment_company_cursor',
+            ...receivedAddendumExistingTableTriggers,
+          ].sort(),
+        );
       }
       const actualTables = await paymentPredecessorTables(database.targetPool),
         currentTables = await committedMigrationTables(entries);
@@ -245,6 +255,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
         'payment_events',
         'payment_history',
         'payments',
+        'received_addendum_document_relations',
       ]);
       const upgradedJournal = await paymentPredecessorJournal(
         database.targetPool,
@@ -355,8 +366,16 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
                 {
                   paymentObservationReadCapture,
                   paymentObservationContextCapture,
+                  receivedAddendumAccessAssignmentId,
+                  receivedAddendumAccessPermissionSetVersion,
+                  receivedAddendumClientReadCapture,
                   ...preserved
                 } = company;
+              expect(receivedAddendumAccessAssignmentId).toBeUndefined();
+              expect(
+                receivedAddendumAccessPermissionSetVersion,
+              ).toBeUndefined();
+              expect(receivedAddendumClientReadCapture).toBeUndefined();
               expect(paymentObservationReadCapture).toMatch(
                 /^payment-observation-read\.v1\.[a-f0-9]{64}$/u,
               );

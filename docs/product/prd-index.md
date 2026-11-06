@@ -65,8 +65,9 @@ Document Registry #60 and consuming Commercial #290, owns one bounded separate
 source-preservation family. Ordered independent Standards then Spec preparation,
 the native designation prerequisite correction and
 [actual root disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1031#issuecomment-6561554661)
-are complete; canonical merge and all fresh runtime
-gates precede implementation. It generates/executes no Addendum and leaves the
+are complete. The merged contract and all twelve fresh readiness gates now
+support implementation [#1049](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1049),
+which owns current delivery state and linked verification. It generates/executes no Addendum and leaves the
 wider Addendum/SARCINA requirement open.
 
 The [reported signing/case-acceptance contract](release-3-commercial-31-reported-signing-case-acceptance.md)

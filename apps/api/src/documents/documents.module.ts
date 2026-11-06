@@ -1,3 +1,4 @@
+import { ReceivedAddendumRelationsService } from './received-addendum-relations.service.js';
 import { DocumentPaymentSource } from './document-payment-source.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import { DocumentInvoiceRecordSource } from './document-invoice-record-source.js';
@@ -35,6 +36,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentInvoiceRecordSource,
     ProjectPdfBundleService,
     ReceivedContractRelationsService,
+    ReceivedAddendumRelationsService,
     ExternalInvoiceRelationsService,
     DocumentsService,
     DocumentProjectsService,
