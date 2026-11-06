@@ -24,6 +24,8 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 For the dated first working-version priorities, see [Product Vision §11.1](product-vision-prd.md#111-first-working-version-priorities--2026-11-06).
 
+MVP progress: run `node scripts/mvp-progress.mjs` (the [MVP capability grid](mvp-capability-grid.md) owns the 71 capabilities and their delivery issues).
+
 ## 3. Evidence and non-canonical reconciliation
 
 | Artifact                                                                                                                              | Purpose                                                                                                  |
