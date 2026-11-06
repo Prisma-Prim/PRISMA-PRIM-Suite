@@ -95,7 +95,7 @@ image/token endpoints for these checks while retaining the existing image versio
 ECR Public remains an external dependency with its own availability and rate
 limits; acquiring an image does not prove that packaging or the complete verification gate executed.
 
-`pnpm verify` remains an optional broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration; the [GitHub integration gate](issue-execution.md#github-integration-evidence) is the sole complete merge gate, with its existing scope optimization and full PostgreSQL, browser and packaging coverage when required. The complete local verifier remains optional diagnosis or reproduction. Use the existing manual workflow dispatch and report only checks that actually executed.
+`pnpm verify` remains an optional broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration. GitHub CI runs the complete verification, with its scope optimization and full PostgreSQL, browser and packaging coverage when required, on every pull request update and in the merge queue ([CI and merge](issue-execution.md#ci-and-merge)). Report only checks that actually executed.
 
 Narrow seams for targeted runs:
 
@@ -296,13 +296,13 @@ and health states, exit code and observation count; exhaustion also reports the
 poll interval. They do not dump health logs, environment or database URLs.
 Verification-command and test deadlines are unchanged.
 
-Some hosted command boundaries virtualize spawned process identifiers and do not expose the detached child through `/proc` or deliver the normal child lifecycle events. The process-group integration tests run a capability probe first and skip only the real detached-child cases when those semantics are unavailable; deterministic injected tests still cover TERM-to-KILL escalation. A capability skip is honest missing local coverage, and does not make the managed runner safe in that harness. Use native PostgreSQL or another capable local harness to execute these cases. Explicitly request manual GitHub Actions when independent real POSIX process-group coverage is needed, and confirm that the cases executed. A skipped process-group case is not an executed pass.
+Some hosted command boundaries virtualize spawned process identifiers and do not expose the detached child through `/proc` or deliver the normal child lifecycle events. The process-group integration tests run a capability probe first and skip only the real detached-child cases when those semantics are unavailable; deterministic injected tests still cover TERM-to-KILL escalation. A capability skip is honest missing local coverage, and does not make the managed runner safe in that harness. Use native PostgreSQL or another capable local harness to execute these cases. The pull request's GitHub Actions run provides independent real POSIX process-group coverage; confirm there that the cases executed. A skipped process-group case is not an executed pass.
 
 ### Browser tests
 
-The `web-postgres` Cloud setup installs Playwright Chromium with the CI command, which reuses the image's system libraries and installs none. The doctor proves only that the browser executable is present; an actual launch can still fail on a missing system library. A Cloud `pnpm verify` result therefore does not establish the GitHub integration result. A targeted local browser check or optional complete local reproduction needs a harness with a launchable Chromium and the relevant database/packaging prerequisites.
+The `web-postgres` Cloud setup installs Playwright Chromium with the CI command, which reuses the image's system libraries and installs none. The doctor proves only that the browser executable is present; an actual launch can still fail on a missing system library. A Cloud `pnpm verify` result therefore does not establish the GitHub integration result. A targeted local browser check or a [local reproduction](local-integration-verifier.md) needs a harness with a launchable Chromium and the relevant database/packaging prerequisites.
 
-Install Chromium during setup, not during the agent phase. Local browser runs must preserve the synthetic evidence as required by the execution guide. The GitHub integration gate provides runner evidence through manual dispatch; ordinary PR publication does not start it.
+Install Chromium during setup, not during the agent phase. Local browser runs must preserve the synthetic evidence as required by the execution guide. GitHub CI runs the browser suites on every pull request update and in the merge queue.
 
 ### Network and credentials
 
@@ -358,7 +358,7 @@ Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses tha
 | Claude Code     | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
 | Generic harness | Must be verified             | Must be verified             | Must be verified                | Must be verified             | Never assume                                            |
 
-A harness that cannot run the local checks required by the issue may draft issues, documentation, and reviews; it must not publish code.
+[Issue execution](issue-execution.md#capability-aware-publication) owns what each capability allows a harness to publish.
 
 ## Updating this contract
 

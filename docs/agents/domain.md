@@ -15,6 +15,6 @@ Use glossary terms in code, tests, issues, and documentation. If a required busi
 - `CONTEXT.md` defines domain language only.
 - `docs/adr/` explains durable, costly-to-reverse decisions.
 - Product specifications define user-visible behaviour, scope, and success criteria.
-- `AGENTS.md` defines the delivery process and repository-wide engineering rules.
+- `AGENTS.md` defines repository-wide engineering rules; `docs/agents/issue-execution.md` defines the delivery process.
 
 Keep each fact in its owning document and link to it instead of duplicating it.

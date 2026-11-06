@@ -1,109 +1,57 @@
 # AI coding agent repository instructions
 
-## Product boundary
+PRISMA-PRIM Suite. One session delivers only its assigned GitHub issue, as one pull request, through [issue execution](docs/agents/issue-execution.md), which owns the claim, verification, review, CI and merge rules.
 
-This repository contains PRISMA-PRIM Suite. Implement only the scope of the assigned GitHub issue. Do not infer missing prices, legal clauses, certification decisions, or business rules.
+## Navigation
 
-Before changing business behaviour, read the complete issue, `CONTEXT.md`, and the relevant ADRs in `docs/adr/`. Use the canonical domain terms in code, tests, issues, and documentation.
+- Issues and pull requests: [issue tracker](docs/agents/issue-tracker.md).
+- Domain: `CONTEXT.md` terms everywhere, decisions in `docs/adr/`, [domain docs](docs/agents/domain.md) for a missing concept.
+- Product behaviour: the PRD the issue links; in `docs/product/consolidated-product-decision-record.md`, only the DEC sections the issue links.
+- Drafting or decomposing product work: `docs/product/prd-index.md`, `docs/product/specification-and-ticketing-standard.md`.
+- Documentation changes: [repository knowledge system](docs/agents/repository-knowledge-system.md).
+- TypeScript: before reading or editing any `.ts` or `.tsx` file, apply the [mandatory TypeScript discipline](docs/agents/typescript-discipline.md), the default for every implementation and review.
+- Product UI: follow the Prisme & lumière direction ([#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225), [frame provenance](apps/web/src/production-shell/prisme/README.md)); `/ui-baseline` stays a synthetic snapshot. Neither proves business behaviour.
+- Skills: `.agents/skills/<name>/SKILL.md`. Run `thermos`, `thermo-nuclear-code-quality-review` and `improve-codebase-architecture` only at structural checkpoints; their findings become candidate issues.
 
-While product reconciliation is active, read `docs/product/consolidated-product-decision-record.md` before proposing or changing product scope, tenancy, Company/Client/Project/Task/Document boundaries, authorization, integrations, roadmap sequencing, or AI priorities. The record preserves approved rationale; implementation still requires an approved PRD or GitHub issue.
+## Guardrails
 
-When drafting, reviewing or decomposing product work, also read `docs/product/prd-index.md` and `docs/product/specification-and-ticketing-standard.md`. Treat the linked PRD as the canonical behaviour source, keep tracker issues concise, and create only vertical implementation issues whose readiness blockers are closed.
-
-The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225) is the preferred evolving visual reference for its production slices. Preserve the Atlas Blue mockup at `/ui-baseline` as a recoverable synthetic snapshot; neither visual reference proves implemented business behavior.
-
-For product UI work under #225, ground visual decisions in its accepted reference and the assigned issue; read the [delivered frame provenance](apps/web/src/production-shell/prisme/README.md) when continuing that integration. Do not revive rejected historical directions or invent an independent visual system. The former design gate and T00 no longer block production work. Implement the assigned vertical feature issue without treating the baseline as a frozen final design or smuggling in unrequested business behaviour.
-
-## Repository knowledge system
-
-The repository must contain the durable context required for a fresh agent to execute one assigned issue without private conversation history. Each fact has one authoritative owner; issues and documents link to that owner instead of copying it. Keep the reading route targeted to the assigned issue and remove stale instructions when their replacement is delivered.
-
-Before creating or restructuring documentation, reconciliation artifacts, evidence matrices, external reports, or fresh-agent reading routes, read [Repository knowledge and deliverable system](docs/agents/repository-knowledge-system.md).
-
-## Durable technical decisions
-
-- Frontend: React + Vite + TypeScript.
-- Business backend: NestJS + TypeScript.
-- Database: PostgreSQL accessed with Drizzle ORM and `node-postgres`.
-- Authentication: Clerk, introduced only by the authentication issue.
-- AI: NestJS may call external model APIs. Add Python only for a concrete NLP/ML workload that justifies a separately deployable worker.
-- NestJS owns business data, workflows, validation, permissions, and final decisions.
-- AI outputs are proposals. Important actions require deterministic validation and human approval.
-
-## Engineering rules
-
-- Keep code, identifiers, commit messages, and technical documentation in English.
-- Keep user-facing copy ready for localization; do not scatter hard-coded multilingual strings.
-- Prefer explicit, readable code over abstractions created for hypothetical future needs.
-- Do not add dependencies unless the issue requires them.
-- Before reading or editing any `.ts` or `.tsx` file, read and apply the [mandatory TypeScript discipline](docs/agents/typescript-discipline.md). It is the repository default for every TypeScript implementation and pull-request review, whether or not a skill was named.
-- Do not bypass the shared TypeScript, ESLint, or Prettier configuration.
-- Every schema change requires a reviewed Drizzle migration committed to the repository.
-- Never use `drizzle-kit push` against production.
-- Never commit secrets or real client documents.
-- Preserve the boundary between confirmed, inferred, missing, and contradictory AI-extracted information.
-
-## Delivery workflow
-
-- Use a fresh AI-agent session for one GitHub issue and deliver only that issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that makes the behaviour complete.
-- Work from a harness that can run the local checks required by the issue and `docs/agents/issue-execution.md`. The default is Codex Cloud launched from an `@codex` comment on the originating issue; a local harness with a shell, such as Codex CLI or Claude Code, is equivalent. A harness that cannot execute those checks, such as a GitHub connector without a shell, must not publish code. It may draft issues, documentation, and reviews.
-- Follow [AI agent issue execution](docs/agents/issue-execution.md), beginning with its [issue ownership check and session claim](docs/agents/issue-execution.md#before-changing-anything). Its implementation, verification, and review rules are invariant; Git, GitHub, CI, and merge actions remain capability- and authorization-dependent.
-- Run `node scripts/agent-doctor.mjs` before editing. Use `--profile postgres` for PostgreSQL work, `--profile web` for browser work, and `--profile web-postgres` only when the same slice needs both.
-- Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
-- Give each owning module the narrowest stable public interface that completes the slice. Prefer tests through that interface, the API, or the user interface over tests coupled to implementation details.
-- Run the targeted local verification required by `docs/agents/issue-execution.md` before publication. Publish one focused commit and one pull request per issue.
-- Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
-- Keep scope explicit. Record valuable follow-up work as a separate issue rather than implementing it silently.
-- Do not create process, tooling, or environment work from inside a product issue. Note avoidable environment friction in the pull request as described in `docs/agents/environment-friction.md`; open an `agent-friction` issue only when the same friction blocked a required check twice, and implement it only after the repository owner prioritizes it.
-- Run `thermo-nuclear-code-quality-review` after structurally significant slices and at milestone boundaries when that repository skill is available, not as a reason to expand every small issue.
-- Run `improve-codebase-architecture` periodically after several business slices exist when that repository skill is available. Treat its output as candidate work requiring a separate decision or issue.
-
-## Review policy
-
-Each pull request receives one self-review and at most one review round. `docs/agents/issue-execution.md` owns the exact sequence; the rules are:
-
-- Before publication, review the final diff once against repository Standards and once against the originating issue, and fix what you find.
-- Apply the [acceptance evidence and review preparation](docs/agents/issue-execution.md#acceptance-evidence-and-review-preparation) procedure in every session: verify the complete acceptance contract before requesting review, and investigate the same defect pattern throughout the authorized scope when addressing a finding. Keep the evidence and review disposition in the pull request so another session can resume without private conversation history.
-- After targeted local checks and Standards/Spec preparation pass, complete the applicable review before the final GitHub integration gate. Use one review trigger; reuse an automatic opening/ready-transition review instead of requesting a duplicate. For documentation and PRD pull requests, agents' applicable Standards/Spec preparation and recorded disposition suffice; neither owner review nor separate owner confirmation is required.
-- A finding blocks only when it is a defect inside the changed scope that breaks an acceptance criterion, a security or data-integrity boundary, or a regression against `main`. Every other finding is recorded as a follow-up in the pull request body and does not change the branch.
-- Apply all blocking findings in one correction commit and rerun affected local checks before final integration verification. Do not request another review after it; a single confirmation review is allowed only when the correction touched authorization, tenancy, migration, or Activity Log code, and it cannot lead to a third.
-- An advance of `main` alone requires fresh final integration verification, not another review. Inspect and record whether the reviewed material and contracts still apply; examine material conflict resolutions or CI corrections under the existing bounded review rules. A green final gate does not itself trigger another review or owner-confirmation request.
-- Follow the [review stopping rules](docs/agents/issue-execution.md#review-round): oversized corrections and new blocking confirmation findings still require closure and re-scoping. Two failed complete verification runs pause further full runs without closing the pull request; targeted diagnosis may continue.
+- Stack: React + Vite, NestJS, PostgreSQL with Drizzle and `node-postgres`, Clerk, all TypeScript. NestJS may call external model APIs; Python only as a separate worker for a concrete NLP/ML workload.
+- NestJS owns business data, workflows, validation, permissions and final decisions. AI outputs are proposals needing deterministic validation and human approval; label AI-extracted facts confirmed, inferred, missing or contradictory.
+- English code, identifiers, commits and technical docs; localization-ready user-facing copy.
+- Test first at the highest stable public seam, then red-green-refactor; keep module interfaces narrow.
+- Add dependencies only when the issue requires them; keep the shared TypeScript, ESLint and Prettier configuration.
+- Every schema change ships a reviewed, committed Drizzle migration; `drizzle-kit push` never touches production.
+- Never commit secrets, real Client data or production bypasses.
 
 ## Decision authority
 
-- Escalate product decisions that would change observable business rules, prices, legal clauses, certification decisions, permissions, workflow meaning, or issue acceptance criteria when the assigned issue and its references do not decide them.
-- Escalate major delivery decisions before committing to work that could substantially increase delays, costs or resource use, or significantly restructure architecture, development, verification, delivery, infrastructure or operations. Follow the [shared decision procedure](docs/agents/issue-execution.md#shared-decisions-for-major-trade-offs); raise an unexpectedly large impact as soon as it becomes apparent. General autonomy, legacy instructions, silence and preselected answers do not authorize a new major trade-off.
-- Take reversible technical decisions autonomously when they stay inside the issue's public boundary and comply with the durable technical decisions above. Document consequential choices in the pull request.
-- Stop for a genuine external or product blocker. Resolve ordinary implementation choices, fixable check failures, and formatting issues without handing routine work back to the user.
-- The repository owner has granted standing authorization for AI agents with merge access to squash-merge conformant PRs without asking again. Merge only after the required GitHub workflow succeeds for the current source head, current base and exact tested integration tree, the review round is complete, the final scope matches the issue, and no blocking finding remains. Stop instead of merging if any precondition is failed, unresolved, or uncertain, or if this standing authorization is revoked.
+- Escalate, never infer, product decisions the issue leaves open: business rules, prices, legal clauses, certification decisions, permissions, workflow meaning, acceptance criteria.
+- Raise major delivery trade-offs (delay, cost, architecture, verification, delivery, infrastructure, operations) through the [shared decision procedure](docs/agents/issue-execution.md#shared-decisions-for-major-trade-offs) before committing; only the owner's explicit choice authorizes them.
+- Decide reversible technical choices inside the issue yourself; record consequential ones in the PR.
+- Standing merge authorization: with merge access, run `gh pr merge <n> --squash --auto` once the [merge preconditions](docs/agents/issue-execution.md#ci-and-merge) hold; stop if one is unmet or uncertain, or the owner revokes it.
 
-## Required verification
+## Code Review Rules
 
-Run the doctor before editing:
+CI covers format, lint and types. Each rule: risky pattern, consequence, safe pattern.
 
-```bash
-node scripts/agent-doctor.mjs
-```
+**Workspace and Company isolation** ([ADR 0006](docs/adr/0006-workspace-tenancy-and-company-scoped-authorization.md))
 
-Before publication, run the appropriate local format, lint, and type checks, focused behavioral tests, and every affected PostgreSQL or browser check. A broader local check such as `pnpm verify` is optional diagnosis, not another required whole-project run; choose it only when needed and apply the decision-authority rule above if its additional cost is major. Use the matching doctor profile for PostgreSQL or browser work, and report every relevant check that could not run with the exact sanitized reason in the pull request.
+- Query or command scoped by a request-supplied identifier, or unscoped: leaks or corrupts another tenant's data. Safe: scope from the server actor context.
+- Business table without `workspace_id`, or Company-owned without `company_id` and composite foreign keys: allows cross-Workspace references. Safe: both columns, composite constraints.
+- Responses differing for hidden and missing records, lists, counts or events: reveal existence. Safe: one identical denial.
 
-After review disposition and affected correction checks, use the existing complete GitHub Actions workflow as the sole full integration gate, as documented in [AI agent issue execution](docs/agents/issue-execution.md#github-integration-evidence). Keep its source-derived documentation optimization, test coverage and evidence requirements. Bind the successful run to the published source head, current base and exact tested integration tree; link the actual run and artifacts in the PR. Targeted local checks support development. `node scripts/verify-local.mjs` remains optional for diagnosis or reproduction, not a second mandatory complete run. Once final verification passes and no blocking finding remains, merge under standing authorization without another routine review or permission request. Standards/Spec preparation and the bounded review policy remain mandatory. Do not silently change workflow triggers, repository protection or required-check settings.
+**Authorization**
 
-## Agent skills
+- Authority from the payload, role names, controller conditions or direct Access-table queries: drifts from the Access module. Safe: actor-context grants through the owning module; no grant denies.
+- Check made before the transaction relying on it: races revocation. Safe: recheck authorization, versions and state inside it.
 
-### Issue tracker
+**Drizzle migrations** ([ADR 0002](docs/adr/0002-postgresql-with-drizzle.md))
 
-For issue or pull-request work, read `docs/agents/issue-tracker.md` for the canonical repository and publication interface.
+- Schema change without generated SQL and meta in `apps/api/drizzle`: environments diverge. Safe: the reviewed generated migration.
+- Drop or rename in one step: loses data, breaks consumers. Safe: expand, backfill, contract, preserving identifiers and events.
 
-### Domain docs
+**Activity Log**
 
-This repository uses a single domain context in `CONTEXT.md`, with durable decisions in `docs/adr/`. See `docs/agents/domain.md`.
-
-### Workflow skills
-
-Use the repository skills under `.agents/skills/` when their descriptions match the task and the active harness exposes them. In particular: sharpen language and decisions before a spec; synthesize approved discussion with `to-spec`; create vertical tickets with `to-tickets`; implement with `implement` and `tdd`; review with `code-review` before final integration verification; reserve the thermo-nuclear and architecture reviews for structural checkpoints.
-
-For requested combined correctness/security and maintainability reviews, use `.agents/skills/thermos/SKILL.md`; its two parallel passes share one review round under the review policy above. Use `.agents/skills/thermo-nuclear-review/SKILL.md` for a correctness/security pass alone and `.agents/skills/deslop/SKILL.md` for focused style cleanup.
-
-For autonomous execution of one implementation ticket, use `docs/agents/issue-execution.md`. `docs/agents/local-codex-execution.md` remains a compatibility entry point for existing prompts.
+- Event updated or deleted: rewrites evidence. Safe: append-only, corrected by a new event.
+- Event outside the change's transaction, or for a denied, failed, no-op or replayed command: false history. Safe: the PRD's event in the same transaction.
+- Actor, scope or target from client input, or metadata wider than target visibility: leaks activity. Safe: server-established fields, minimal metadata.

@@ -7,26 +7,22 @@ Closes #
 ## Scope
 
 - Delivered:
-- Explicitly excluded:
-- Follow-up issues created:
+- Excluded:
+- Follow-ups (issues created, nonblocking review findings):
 
-## Verification
+## Tests added
 
-<!-- Link the actual successful GitHub run and evidence artifacts, source/base/integration tree, required scope and executed checks. Include targeted local commands/results. Name every failed/unexecuted check and why; report scoped exclusions honestly. A complete local manifest/report is optional diagnostic evidence, not a second merge gate. -->
+<!-- The tests that prove the behaviour, or "none (documentation)". Name each relevant check that could not run locally. -->
 
-- `node scripts/agent-doctor.mjs` (profile):
-- Targeted local checks (include `pnpm verify` only when needed):
-- PostgreSQL or browser seams:
+## Risks and merge danger
 
-## Review round
+<!-- Door: one-way or two-way. Blast radius: one word, then any ramification. -->
 
-<!-- See docs/agents/issue-execution.md#review-round. One round at most. -->
+## CI and review
 
-- Self-review against Standards and the originating issue: done.
-- Automated review: not applicable (documentation) / requested on `<sha>` / completed.
-- Blocking findings fixed in the correction commit:
-- Follow-ups (nonblocking findings recorded without changing the branch):
+- CI run:
+- Review: <!-- self-review done; automated review used, requested or not applicable; blocking findings fixed -->
 
 ## Environment friction
 
-<!-- Keep only when avoidable friction occurred; see docs/agents/environment-friction.md. Otherwise delete this section. -->
+<!-- Keep only when avoidable friction occurred (docs/agents/environment-friction.md); otherwise delete this section. -->

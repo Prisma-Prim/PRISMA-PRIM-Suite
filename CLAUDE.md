@@ -2,6 +2,6 @@
 
 @AGENTS.md
 
-Treat the imported `AGENTS.md` as the canonical repository policy. Do not duplicate or override it here.
+The imported `AGENTS.md` is the canonical repository policy; keep this file to Claude Code specifics.
 
-Before starting work, read and apply [AI agent issue execution](docs/agents/issue-execution.md), including its acceptance evidence and review preparation procedure. Follow these repository instructions in every fresh session, without relying on previous chat history.
+Claude Code does not load `.agents/skills`. When a task matches a repository skill, read `.agents/skills/<name>/SKILL.md` and follow it. For pull-request reviews, use the repository `code-review` skill instead of the built-in reviewer.
