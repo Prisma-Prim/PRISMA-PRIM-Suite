@@ -6,15 +6,17 @@ import { classifyTestFiles, testFamilies } from './ci-changed-tests.mjs';
 export const repeatCount = 3;
 
 const vitestPackages = { api: '@prisma-prim/api', web: '@prisma-prim/web' };
-const playwrightScripts = {
-  browser: 'test:browser',
-  acceptance: 'test:browser:acceptance',
-};
 
 /**
- * The commands that repeat one family's changed files. Vitest has no repeat
- * option for a run, so each repetition is a fresh `vitest run` process;
- * Playwright repeats natively with --repeat-each.
+ * The commands that repeat one family's changed files.
+ * - Vitest has no repeat option for a run, so each repetition is a fresh
+ *   `vitest run` process.
+ * - Browser specs intercept their API calls, so Playwright repeats them
+ *   natively with --repeat-each.
+ * - Acceptance specs write fixed synthetic records to PostgreSQL, and the
+ *   database is created once per Playwright run by its global setup: a repeat
+ *   inside one run hits those records (HTTP 409) and fails every spec. Each
+ *   repetition is therefore a whole Playwright run with a fresh database.
  */
 export function repeatInvocations({ family, files, repeats = repeatCount }) {
   if (!Object.hasOwn(testFamilies, family))
@@ -32,22 +34,32 @@ export function repeatInvocations({ family, files, repeats = repeatCount }) {
   const relative = files.map((file) =>
     file.slice(testFamilies[family].root.length),
   );
-  if (Object.hasOwn(playwrightScripts, family))
-    // Playwright reads positional arguments as regular expressions. A safe
-    // path (letters, digits, `._@-/`) under `e2e/` selects only that spec and
-    // needs no quoting through pnpm.
+  // Playwright reads positional arguments as regular expressions. A safe
+  // path (letters, digits, `._@-/`) under `e2e/` selects only that spec and
+  // needs no quoting through pnpm.
+  if (family === 'browser')
     return [
       {
         command: 'pnpm',
         args: [
           '--filter',
           '@prisma-prim/web',
-          playwrightScripts[family],
+          'test:browser',
           `--repeat-each=${repeats}`,
           ...relative,
         ],
       },
     ];
+  if (family === 'acceptance')
+    return Array.from({ length: repeats }, () => ({
+      command: 'pnpm',
+      args: [
+        '--filter',
+        '@prisma-prim/web',
+        'test:browser:acceptance',
+        ...relative,
+      ],
+    }));
   // Shared-database API files must not interleave, as in the serial suite.
   const isolation = family === 'api' ? ['--no-file-parallelism'] : [];
   return Array.from({ length: repeats }, () => ({
@@ -71,7 +83,7 @@ export function runRepeats({ family, files, repeats = repeatCount, run }) {
     if (run(command, args) !== 0)
       return {
         ok: false,
-        // Playwright repeats inside its single run and cannot name the repeat.
+        // --repeat-each repeats inside one run and cannot name the repeat.
         failedRepetition: invocations.length === 1 ? undefined : index + 1,
         repetitions: repeats,
       };

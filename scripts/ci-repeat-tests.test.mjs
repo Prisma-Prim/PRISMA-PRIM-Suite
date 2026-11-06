@@ -75,24 +75,36 @@ test('Playwright families use one --repeat-each run restricted to the changed sp
       },
     ],
   );
+});
+
+test('acceptance specs repeat as whole Playwright runs, each with its own fresh database', () => {
+  // --repeat-each would reuse one database and its fixed synthetic records:
+  // every repetition after the first fails with HTTP 409 (seen on real CI).
   assert.deepEqual(
     repeatInvocations({
       family: 'acceptance',
       files: ['apps/web/e2e/mission-plan.acceptance.spec.ts'],
     }),
-    [
-      {
-        command: 'pnpm',
-        args: [
-          '--filter',
-          '@prisma-prim/web',
-          'test:browser:acceptance',
-          '--repeat-each=3',
-          'e2e/mission-plan.acceptance.spec.ts',
-        ],
-      },
-    ],
+    Array(3).fill({
+      command: 'pnpm',
+      args: [
+        '--filter',
+        '@prisma-prim/web',
+        'test:browser:acceptance',
+        'e2e/mission-plan.acceptance.spec.ts',
+      ],
+    }),
   );
+  const calls = [];
+  const result = runRepeats({
+    family: 'acceptance',
+    files: ['apps/web/e2e/mission-plan.acceptance.spec.ts'],
+    run: () => {
+      calls.push(1);
+      return calls.length === 3 ? 1 : 0;
+    },
+  });
+  assert.deepEqual(result, { ok: false, failedRepetition: 3, repetitions: 3 });
 });
 
 test('a file outside the declared family, an empty list or an unknown family is refused', () => {
