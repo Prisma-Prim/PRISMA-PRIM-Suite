@@ -27,6 +27,7 @@ import {
   documentCorrectionCommands,
   documentVersions,
   internalUsers,
+  receivedAuditSourceRegistrations,
   workingDocuments,
   workspaceMemberships,
 } from '../database/schema/index.js';
@@ -93,6 +94,11 @@ export class DocumentsService {
       .digest('hex');
     return this.database.transaction(async () => {
       await this.authorization.requireDocumentAccess(actor, true);
+      if (command.type === 'received-audit-source')
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action: 'register',
+          lockAssignment: true,
+        });
       if (
         command.type === 'mission-deliverable' &&
         !(await this.authorization.hasMissionDeliverableAccess(actor, {
@@ -176,7 +182,10 @@ export class DocumentsService {
         binding.kind !== 'client'
           ? binding.reference.originalClientAccountId
           : binding.clientId;
-      if (command.type === 'mission-deliverable')
+      if (
+        command.type === 'mission-deliverable' ||
+        command.type === 'received-audit-source'
+      )
         await this.clients.lockActiveReferenceClient(actor, clientId);
       await this.clients.recordReferenceUse(actor, clientId);
       const [document] = await this.database.connection
@@ -209,6 +218,19 @@ export class DocumentsService {
         })
         .returning();
       if (!version) throw new Error('Version was not created.');
+      if (command.type === 'received-audit-source')
+        await this.database.connection
+          .insert(receivedAuditSourceRegistrations)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            documentId: document.id,
+            originalClientId: clientId,
+            actorMembershipId: actor.workspaceMembershipId,
+            registeredAt: sql`(SELECT created_at FROM working_documents WHERE id=${document.id} AND workspace_id=${actor.workspaceId} AND company_id=${companyId})`,
+            originalTitle: command.title,
+            originalPurpose: command.purpose,
+          });
       if (binding.kind === 'received-addendum')
         await this.receivedAddenda.attach({
           actor,
@@ -317,6 +339,8 @@ export class DocumentsService {
       await this.authorization.hasReceivedAddendumAccess(actor);
     const receivedAllowed =
       await this.authorization.hasReceivedContractAccess(actor);
+    const auditSourceAllowed =
+      await this.authorization.hasReceivedAuditSourceAccess(actor);
     const rows = await this.database.connection
       .select({
         id: workingDocuments.id,
@@ -358,6 +382,7 @@ export class DocumentsService {
             ...(familyAllowed ? ['mission-deliverable' as const] : []),
             ...(receivedAllowed ? ['received-contract' as const] : []),
             ...(addendumAllowed ? ['received-addendum' as const] : []),
+            ...(auditSourceAllowed ? ['received-audit-source' as const] : []),
           ]),
         ),
       )
@@ -404,7 +429,8 @@ export class DocumentsService {
     if (
       document.type === 'external-invoice' ||
       document.type === 'payment-evidence' ||
-      document.type === 'received-addendum'
+      document.type === 'received-addendum' ||
+      document.type === 'received-audit-source'
     )
       return document;
     const projectAssociation = await this.projectAssociation(actor, projectId);
@@ -551,35 +577,42 @@ export class DocumentsService {
                     row,
                   ),
                 }
-              : working.documentType === 'mission-deliverable'
+              : working.documentType === 'received-audit-source'
                 ? {
                     ...registered,
-                    type: 'mission-deliverable',
+                    type: 'received-audit-source',
                     createdByMembershipId: row.createdByMembershipId,
                     version: { ...identity, representation: null },
                   }
-                : {
-                    ...registered,
-                    type: 'questionnaire',
-                    createdByMembershipId: row.createdByMembershipId,
-                    version: {
-                      ...identity,
-                      representation: canReadReference(actor)
-                        ? {
-                            id: working.representation.id,
-                            kind: 'external-reference',
-                            verification: 'unverified',
-                            access: 'granted',
-                            url: working.representation.url,
-                          }
-                        : {
-                            id: working.representation.id,
-                            kind: 'external-reference',
-                            verification: 'unverified',
-                            access: 'denied',
-                          },
-                    },
-                  };
+                : working.documentType === 'mission-deliverable'
+                  ? {
+                      ...registered,
+                      type: 'mission-deliverable',
+                      createdByMembershipId: row.createdByMembershipId,
+                      version: { ...identity, representation: null },
+                    }
+                  : {
+                      ...registered,
+                      type: 'questionnaire',
+                      createdByMembershipId: row.createdByMembershipId,
+                      version: {
+                        ...identity,
+                        representation: canReadReference(actor)
+                          ? {
+                              id: working.representation.id,
+                              kind: 'external-reference',
+                              verification: 'unverified',
+                              access: 'granted',
+                              url: working.representation.url,
+                            }
+                          : {
+                              id: working.representation.id,
+                              kind: 'external-reference',
+                              verification: 'unverified',
+                              access: 'denied',
+                            },
+                      },
+                    };
     return { document, projectId: row.projectId };
   }
   /**
@@ -723,6 +756,11 @@ export class DocumentsService {
           lockFamily: true,
         })
       ).document;
+      if (visible.type === 'received-audit-source')
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action: 'correct',
+          lockAssignment: true,
+        });
       if (visible.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
           action: 'correct',
@@ -904,6 +942,18 @@ function registration(value: unknown) {
   const clientId = requireUuid(row.clientId);
   const title = requiredText(row.title, 200);
   const purpose = requiredText(row.purpose, 2000);
+  if (row.type === 'received-audit-source') {
+    if (
+      Object.keys(row).length !== 4 ||
+      Object.keys(row).some(
+        (key) => !['type', 'clientId', 'title', 'purpose'].includes(key),
+      )
+    )
+      throw new BadRequestException(
+        'Received Audit sources accept only their original Client and literal title and purpose.',
+      );
+    return { type: 'received-audit-source' as const, clientId, title, purpose };
+  }
   if (row.type === 'mission-deliverable') {
     if (
       Object.keys(row).some(

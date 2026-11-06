@@ -1,3 +1,8 @@
+import {
+  withoutWorkingEvidenceSchema,
+  workingEvidenceExistingTableTriggers,
+  workingEvidenceTables,
+} from '../working-evidence/working-evidence-schema.test-support.js';
 import { receivedAddendumExistingTableTriggers } from './received-addendum-schema.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -69,6 +74,7 @@ const changedExistingSchema: Readonly<Record<string, readonly string[]>> = {
 
 const addedExistingTableTriggers = [
   ...receivedAddendumExistingTableTriggers,
+  ...workingEvidenceExistingTableTriggers,
   'companies.payment_company_cursor',
   'working_documents.working_documents_payment_evidence_identity',
   'working_documents.working_documents_payment_evidence_required',
@@ -106,6 +112,7 @@ function conserveSchema(
   after: Record<string, unknown>,
   tables: readonly string[],
 ) {
+  after = withoutWorkingEvidenceSchema(after);
   for (const [kind, rows] of Object.entries(before)) {
     const actual = fixtureObjects(after[kind]);
     const expected = fixtureObjects(rows);
@@ -326,6 +333,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
         'payment_history',
         'payments',
         'received_addendum_document_relations',
+        ...workingEvidenceTables,
       ]);
       async function noInferredPayment() {
         expect(

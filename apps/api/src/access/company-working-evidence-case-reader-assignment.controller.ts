@@ -1,0 +1,68 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Headers,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
+import {
+  ActorContextAdapter,
+  type ActorContextRequest,
+} from './actor-context.adapter.js';
+import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
+import type { CompanyContextAssignmentRecord } from './company-context-assignment.types.js';
+
+@Controller('company-working-evidence-case-reader-assignments')
+@UseGuards(ActorContextAdapter)
+export class CompanyWorkingEvidenceCaseReaderAssignmentController {
+  constructor(private readonly assignments: CompanyContextAssignmentService) {}
+  @Post()
+  grant(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() value: unknown,
+  ): Promise<CompanyContextAssignmentRecord> {
+    if (!request.actorContext) throw new ForbiddenException();
+    const body =
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value))
+        : {};
+    if (
+      Object.keys(body).length !== 2 ||
+      Object.keys(body).some(
+        (key) => key !== 'workspaceMembershipId' && key !== 'companyId',
+      )
+    )
+      throw new BadRequestException(
+        'Expected exactly the Company and membership.',
+      );
+    return this.assignments.grantWorkingEvidenceCaseReader(
+      request.actorContext,
+      {
+        workspaceMembershipId: body.workspaceMembershipId,
+        companyId: body.companyId,
+        idempotencyKey: key,
+      },
+    );
+  }
+  @Delete(':workspaceMembershipId/:companyId')
+  revoke(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('workspaceMembershipId') workspaceMembershipId: string,
+    @Param('companyId') companyId: string,
+  ): Promise<CompanyContextAssignmentRecord> {
+    if (!request.actorContext) throw new ForbiddenException();
+    return this.assignments.revokeWorkingEvidenceCaseReader(
+      request.actorContext,
+      workspaceMembershipId,
+      companyId,
+      key,
+    );
+  }
+}

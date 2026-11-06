@@ -321,3 +321,21 @@ test('preserves and corrects a questionnaire draft PDF, reopens both uploads and
       });
   }
 });
+
+test('records and corrects a working Case with frozen factual output and functioning exact-original links', async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const { workingEvidenceJourney } =
+    await import('./working-evidence.acceptance.fixture');
+  await workingEvidenceJourney(page, info);
+});
+
+test('retires actual-App token, response, parser, hash, Blob and recovery work under native authority changes', async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const { workingEvidenceLifetimes } =
+    await import('./working-evidence-lifetime.acceptance.fixture');
+  await workingEvidenceLifetimes(page, info);
+});

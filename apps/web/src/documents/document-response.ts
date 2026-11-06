@@ -37,6 +37,7 @@ export type DocumentFamily =
   | 'questionnaire'
   | 'mission-deliverable'
   | 'received-contract'
+  | 'received-audit-source'
   | 'received-addendum'
   | 'external-invoice'
   | 'payment-evidence';
@@ -56,6 +57,10 @@ export type WorkingDocument =
           }
         | {
             type: 'mission-deliverable';
+            version: WorkingVersion & { representation: null };
+          }
+        | {
+            type: 'received-audit-source';
             version: WorkingVersion & { representation: null };
           }
         | {
@@ -83,11 +88,23 @@ export type DocumentProjectAssociation =
 export type WorkingDocumentDetail =
   | (Extract<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
+      {
+        type:
+          | 'external-invoice'
+          | 'payment-evidence'
+          | 'received-addendum'
+          | 'received-audit-source';
+      }
     > & { projectAssociation?: never })
   | (Exclude<
       WorkingDocument,
-      { type: 'external-invoice' | 'payment-evidence' | 'received-addendum' }
+      {
+        type:
+          | 'external-invoice'
+          | 'payment-evidence'
+          | 'received-addendum'
+          | 'received-audit-source';
+      }
     > & {
       /** Present only for a current Project reader; absence never means unlinked. */
       projectAssociation?: DocumentProjectAssociation;
@@ -147,6 +164,7 @@ export function readDocument(value: unknown): WorkingDocument {
   if (
     (row.type !== 'questionnaire' &&
       row.type !== 'mission-deliverable' &&
+      row.type !== 'received-audit-source' &&
       row.type !== 'received-contract' &&
       row.type !== 'received-addendum' &&
       row.type !== 'external-invoice') ||
@@ -249,7 +267,8 @@ export function readDocumentDetail(value: unknown): WorkingDocumentDetail {
   if (
     document.type === 'external-invoice' ||
     document.type === 'payment-evidence' ||
-    document.type === 'received-addendum'
+    document.type === 'received-addendum' ||
+    document.type === 'received-audit-source'
   ) {
     if (association !== undefined)
       throw new Error('Financial source Documents cannot belong to a Project');

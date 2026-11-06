@@ -79,6 +79,9 @@ type AssignmentBundle =
   | 'contract-signature-declarer'
   | 'received-contract-access'
   | 'received-addendum-access'
+  | 'working-evidence-case-reader'
+  | 'working-evidence-case-recorder'
+  | 'received-audit-source-access'
   | 'document-registrar'
   | 'document-content-reader'
   | 'document-content-uploader'
@@ -153,6 +156,13 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
     '/company-contract-signature-declarer-assignments',
   'received-contract-access': '/company-received-contract-access-assignments',
   'received-addendum-access': '/company-received-addendum-access-assignments',
+  'working-evidence-case-reader':
+    '/company-working-evidence-case-reader-assignments',
+  'working-evidence-case-recorder':
+    '/company-working-evidence-case-recorder-assignments',
+  'received-audit-source-access':
+    '/company-received-audit-source-access-assignments',
+
   'mission-deliverable-access':
     '/company-mission-deliverable-access-assignments',
   'document-content-reader': '/company-document-content-reader-assignments',
@@ -770,6 +780,18 @@ export function CompanyContextAccess({
                 label: signingCopy('bundle'),
               },
               {
+                value: 'working-evidence-case-reader',
+                label: copy('workingEvidenceCaseReaderBundle'),
+              },
+              {
+                value: 'working-evidence-case-recorder',
+                label: copy('workingEvidenceCaseRecorderBundle'),
+              },
+              {
+                value: 'received-audit-source-access',
+                label: copy('receivedAuditSourceAccessBundle'),
+              },
+              {
                 value: 'received-addendum-access',
                 label: addendumCopy.t('bundle'),
               },
@@ -882,6 +904,9 @@ export function CompanyContextAccess({
                 value === 'contract-signature-declarer' ||
                 value === 'received-contract-access' ||
                 value === 'received-addendum-access' ||
+                value === 'working-evidence-case-reader' ||
+                value === 'working-evidence-case-recorder' ||
+                value === 'received-audit-source-access' ||
                 value === 'mission-deliverable-access' ||
                 value === 'document-registrar' ||
                 value === 'project' ||
@@ -945,6 +970,15 @@ export function CompanyContextAccess({
           )}
           {bundle === 'contract-signature-declarer' && (
             <p>{signingCopy('prerequisites')}</p>
+          )}
+          {bundle === 'working-evidence-case-reader' && (
+            <p>{copy('workingEvidenceCaseReaderPrerequisites')}</p>
+          )}
+          {bundle === 'working-evidence-case-recorder' && (
+            <p>{copy('workingEvidenceCaseRecorderPrerequisites')}</p>
+          )}
+          {bundle === 'received-audit-source-access' && (
+            <p>{copy('receivedAuditSourceAccessPrerequisites')}</p>
           )}
           {bundle === 'received-addendum-access' && (
             <p>{addendumCopy.t('prerequisites')}</p>
@@ -1156,6 +1190,10 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'contract-signature-declarer': 'Company Contract Signature Declarer',
     'received-contract-access': 'Company Received Contract Access',
     'received-addendum-access': 'Company Received Addendum Access',
+    'working-evidence-case-reader': 'Company Working Evidence Case Reader',
+    'working-evidence-case-recorder': 'Company Working Evidence Case Recorder',
+    'received-audit-source-access': 'Company Received Audit Source Access',
+
     'document-content-reader': 'Company Document Content Reader',
     'document-content-uploader': 'Company Document Content Uploader',
     'document-approver': 'Company Document Approver',

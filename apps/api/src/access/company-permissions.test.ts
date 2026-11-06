@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPANY_ROLE_BUNDLES,
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialActivityPermissionsFor,
   profitabilityContributorPermissionsFor,
@@ -552,5 +553,34 @@ describe('Company Sales Stage Configuration permission sets', () => {
           !commercialIntakePermissionsFor('v3').includes(permission),
       ),
     ).toEqual(['commercial.opportunity.stage.set']);
+  });
+});
+
+describe('Working Evidence opt-in bundles', () => {
+  it('publishes exactly the bounded working-case and source permissions without expanding native captures', () => {
+    const bundles = Object.entries(COMPANY_ROLE_BUNDLES);
+    expect(
+      bundles.find(
+        ([code]) => code === 'company_working_evidence_case_reader',
+      )?.[1].versions,
+    ).toEqual({ v1: ['working_evidence_case.read'] });
+    expect(
+      bundles.find(
+        ([code]) => code === 'company_working_evidence_case_recorder',
+      )?.[1].versions,
+    ).toEqual({
+      v1: ['working_evidence_case.read', 'working_evidence_case.record'],
+    });
+    expect(
+      bundles.find(
+        ([code]) => code === 'company_received_audit_source_access',
+      )?.[1].versions,
+    ).toEqual({ v1: ['document.received_audit_source.access'] });
+    expect(documentPermissionsFor('v3')).not.toContain(
+      'document.received_audit_source.access',
+    );
+    expect(projectPermissionsFor('v2')).not.toContain(
+      'working_evidence_case.record',
+    );
   });
 });

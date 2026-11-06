@@ -24,6 +24,27 @@ const owner: ActorContext = {
 afterEach(() => vi.unstubAllGlobals());
 it.each([
   {
+    role: 'working-evidence-case-reader',
+    route: 'working-evidence-case-reader',
+    value: 'working-evidence-case-reader',
+    label: 'Company Working Evidence Case Reader',
+    option: 'Company Working Evidence Case Reader',
+  },
+  {
+    role: 'working-evidence-case-recorder',
+    route: 'working-evidence-case-recorder',
+    value: 'working-evidence-case-recorder',
+    label: 'Company Working Evidence Case Recorder',
+    option: 'Company Working Evidence Case Recorder',
+  },
+  {
+    role: 'received-audit-source-access',
+    route: 'received-audit-source-access',
+    value: 'received-audit-source-access',
+    label: 'Company Received Audit Source Access',
+    option: 'Company Received Audit Source Access',
+  },
+  {
     role: 'Contract signature declarer',
     route: 'contract-signature-declarer',
     value: 'contract-signature-declarer',
@@ -155,6 +176,9 @@ it.each([
   },
 );
 it.each([
+  'Company Working Evidence Case Reader',
+  'Company Working Evidence Case Recorder',
+  'Company Received Audit Source Access',
   'Company Task Result Recorder',
   'Company Document Content Reader',
   'Company Document Content Uploader',

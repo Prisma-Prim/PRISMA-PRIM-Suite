@@ -275,6 +275,16 @@ describe('current Actor representation', () => {
     ([name]) =>
       ![
         'receivedAddendumClientReadCapture',
+        'workingEvidenceCasePermissions',
+        'workingEvidenceCaseReaderAssignmentId',
+        'workingEvidenceCaseReaderPermissionSetVersion',
+        'workingEvidenceCaseRecorderAssignmentId',
+        'workingEvidenceCaseRecorderPermissionSetVersion',
+        'receivedAuditSourceAccessAssignmentId',
+        'receivedAuditSourceAccessPermissionSetVersion',
+        'workingEvidenceClientReadCapture',
+        'workingEvidenceContextCapture',
+
         'missionPlanGrants',
         'offerModelGrants',
         'contractModelGrants',
@@ -569,3 +579,37 @@ describe('current Actor transport', () => {
     await expect(readCurrentActor({ api })).rejects.toBe(abortion);
   });
 });
+
+it.each([
+  'workingEvidenceCasePermissions',
+  'workingEvidenceCaseReaderAssignmentId',
+  'workingEvidenceCaseReaderPermissionSetVersion',
+  'workingEvidenceCaseRecorderAssignmentId',
+  'workingEvidenceCaseRecorderPermissionSetVersion',
+  'receivedAuditSourceAccessAssignmentId',
+  'receivedAuditSourceAccessPermissionSetVersion',
+  'workingEvidenceClientReadCapture',
+  'workingEvidenceContextCapture',
+])(
+  'preserves opaque Working Evidence %s without invalidating independent native authority',
+  async (field) => {
+    const native = paymentEvidenceActor();
+    for (const value of [
+      undefined,
+      null,
+      7,
+      { future: 'opaque' },
+      'working-evidence.future',
+    ]) {
+      const actor = {
+        ...native,
+        activeCompany: { ...native.activeCompany, [field]: value },
+      };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok')
+        throw new Error('Independent Actor must remain readable');
+      expect(paymentEvidenceAuthority(result.value)).toBeDefined();
+    }
+  },
+);

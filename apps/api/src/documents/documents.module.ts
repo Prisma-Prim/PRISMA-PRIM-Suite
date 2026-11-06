@@ -9,6 +9,7 @@ import { DocumentContentService } from './document-content.service.js';
 import { ReceivedContractRelationsService } from './received-contract-relations.service.js';
 import { ContractDocumentReferenceModule } from '../contract/contract-document-reference.module.js';
 import { DocumentTaskResultReferenceService } from './document-task-result-reference.service.js';
+import { DocumentWorkingEvidenceReferenceService } from './document-working-evidence-reference.service.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import { ProjectModule } from '../project/project.module.js';
@@ -45,6 +46,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentContentService,
     DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
+    DocumentWorkingEvidenceReferenceService,
     DocumentPdfStorage,
     DocumentMalwareScanner,
   ],
@@ -59,6 +61,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentContentService,
     DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
+    DocumentWorkingEvidenceReferenceService,
   ],
 })
 export class DocumentsModule {}

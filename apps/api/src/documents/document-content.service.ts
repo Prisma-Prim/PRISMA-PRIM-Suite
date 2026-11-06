@@ -57,6 +57,11 @@ export class DocumentContentService {
         actor,
         documentId,
       );
+      if (family === 'received-audit-source')
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action: 'upload',
+          lockAssignment: true,
+        });
       if (family === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
           action: 'upload',
@@ -97,6 +102,11 @@ export class DocumentContentService {
       const companyId =
         await this.authorization.requireDocumentContentRead(actor);
       const visible = await this.boundary.requireVisible(actor, documentId);
+      if (visible.document.type === 'received-audit-source')
+        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+          action: 'content-read',
+          lockAssignment: false,
+        });
       if (visible.document.type === 'external-invoice')
         await this.authorization.requireExternalInvoiceNativeAccess(actor, {
           action: 'content-read',
@@ -179,6 +189,11 @@ export class DocumentContentService {
         )
       : await this.authorization.requireDocumentContentRead(actor);
     const visible = await this.boundary.requireVisible(actor, documentId);
+    if (visible.document.type === 'received-audit-source')
+      await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
+        action: 'content-read',
+        lockAssignment: false,
+      });
     if (visible.document.type === 'external-invoice')
       await this.authorization.requireExternalInvoiceNativeAccess(actor, {
         action: 'content-read',

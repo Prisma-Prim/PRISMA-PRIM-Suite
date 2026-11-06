@@ -143,6 +143,40 @@ export const assignmentLocaleCases = [
 
 export const assignmentBundleCases = [
   {
+    value: 'working-evidence-case-reader',
+    canonical: 'Company Working Evidence Case Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Cititorul cazurilor de probe de lucru ale companiei',
+      ru: 'Читатель рабочих дел доказательств компании',
+      fr: 'Lecteur des dossiers de preuves de travail de la société',
+      en: 'Company Working Evidence Case Reader',
+    },
+  },
+  {
+    value: 'working-evidence-case-recorder',
+    canonical: 'Company Working Evidence Case Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Înregistratorul cazurilor de probe de lucru ale companiei',
+      ru: 'Регистратор рабочих дел доказательств компании',
+      fr: 'Rédacteur des dossiers de preuves de travail de la société',
+      en: 'Company Working Evidence Case Recorder',
+    },
+  },
+  {
+    value: 'received-audit-source-access',
+    canonical: 'Company Received Audit Source Access',
+    version: 'v1',
+    labels: {
+      ro: 'Accesul companiei la surse de audit primite',
+      ru: 'Доступ компании к полученным источникам аудита',
+      fr: 'Accès de la société aux sources d’audit reçues',
+      en: 'Company Received Audit Source Access',
+    },
+  },
+
+  {
     value: 'ideas-reader',
     canonical: 'Company Ideas Reader',
     version: 'v1',

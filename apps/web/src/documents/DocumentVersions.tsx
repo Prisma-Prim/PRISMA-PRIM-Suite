@@ -1,4 +1,9 @@
 import {
+  receivedAuditSourceNativeAuthority,
+  hasReceivedAuditSourceAccess,
+} from './received-audit-source-access';
+import { useReceivedAuditSourceCopy } from './received-audit-source.copy';
+import {
   hasReceivedAddendumAccess,
   receivedAddendumNativeAuthority,
   type ReceivedAddendumNativeAuthority,
@@ -180,15 +185,20 @@ export function DocumentVersions({
   const receivedAddendum =
     documentType === 'received-addendum'
       ? receivedAddendumNativeAuthority(actor)
-      : undefined;
+      : documentType === 'received-audit-source'
+        ? receivedAuditSourceNativeAuthority(actor)
+        : undefined;
   if (
-    documentType === 'received-addendum' &&
+    (documentType === 'received-addendum' ||
+      documentType === 'received-audit-source') &&
     (!receivedAddendum || !identity.loaded || !identity.signedIn)
   )
     return null;
   if (
     !company ||
     !permissions.includes('document.read') ||
+    (documentType === 'received-audit-source' &&
+      !hasReceivedAuditSourceAccess(company)) ||
     (documentType === 'mission-deliverable' &&
       !hasMissionDeliverableAccess(company)) ||
     (documentType === 'received-addendum' &&
@@ -971,6 +981,7 @@ function Designation({
 }) {
   const copy = useDocumentVersionsCopy();
   const missionCopy = useMissionDeliverableCopy();
+  const auditSourceCopy = useReceivedAuditSourceCopy();
   const receivedCopy = useReceivedContractCopy();
   const addendumCopy = useReceivedAddendumCopy();
   const invoiceCopy = useExternalInvoiceCopy();
@@ -1000,15 +1011,17 @@ function Designation({
             />
           ) : (
             <p className="working-document-version-notice">
-              {documentType === 'received-addendum'
-                ? addendumCopy.t('warning')
-                : documentType === 'external-invoice'
-                  ? invoiceCopy.t('warning')
-                  : documentType === 'received-contract'
-                    ? receivedCopy.t('warning')
-                    : documentType === 'mission-deliverable'
-                      ? missionCopy.t('warning')
-                      : copy.frozenNotice}
+              {documentType === 'received-audit-source'
+                ? auditSourceCopy('warning')
+                : documentType === 'received-addendum'
+                  ? addendumCopy.t('warning')
+                  : documentType === 'external-invoice'
+                    ? invoiceCopy.t('warning')
+                    : documentType === 'received-contract'
+                      ? receivedCopy.t('warning')
+                      : documentType === 'mission-deliverable'
+                        ? missionCopy.t('warning')
+                        : copy.frozenNotice}
             </p>
           )}
         </>

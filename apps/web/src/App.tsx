@@ -1,3 +1,4 @@
+import { WorkingEvidenceResolver } from './working-evidence/WorkingEvidenceResolver';
 import { useInterfaceLocale } from './localization/interface-locale';
 import { PaymentWorkspace } from './payment-observation/PaymentWorkspace';
 import { paymentAuthority } from './payment-observation/payment-authority';
@@ -1260,6 +1261,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ),
     });
 
+  const workingEvidenceResolver = (
+    <WorkingEvidenceResolver
+      actor={access.actor}
+      identity={identity}
+      onActorRevalidated={acceptRevalidatedActor}
+      onCompanyContextRejected={rejectCompanyContext}
+      onWorkspaceAccessRejected={rejectWorkspaceAccess}
+    />
+  );
   return (
     <ApplicationShell
       context={{
@@ -1287,9 +1297,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           </button>
         </span>
       }
-      overviewSummary={operationalHome}
+      overviewSummary={
+        <>
+          {workingEvidenceResolver}
+          {operationalHome}
+        </>
+      }
     >
       <ApplicationContentSurface>
+        {workingEvidenceResolver}
         <p className="eyebrow">{access.actor.workspaceName}</p>
         <h1>{copy.homeTitle}</h1>
         <p className="production-home-introduction">{copy.homeIntroduction}</p>

@@ -1,3 +1,4 @@
+import { workingEvidenceTables } from '../working-evidence/working-evidence-schema.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -216,7 +217,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each(inherited)(
         (await paymentPredecessorTables(database.targetPool)).filter(
           (table) => !tables.includes(table),
         ),
-      ).toEqual(['received_addendum_document_relations']);
+      ).toEqual([
+        'received_addendum_document_relations',
+        ...workingEvidenceTables,
+      ]);
       const afterJournal = await paymentPredecessorJournal(database.targetPool);
       for (let restart = 0; restart < 3; restart++) {
         if (replay) {

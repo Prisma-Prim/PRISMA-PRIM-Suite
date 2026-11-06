@@ -76,6 +76,7 @@ export function readProjectPdfAssociations(
     uuid(document.version.id);
     if (
       document.type === 'received-addendum' ||
+      document.type === 'received-audit-source' ||
       document.companyId !== scope.companyId ||
       document.clientId !== scope.originalClientId ||
       ids.has(document.id) ||
@@ -91,7 +92,7 @@ export function readProjectPdfVersions(
   value: unknown,
   family: WorkingDocument['type'],
 ) {
-  if (family === 'received-addendum')
+  if (family === 'received-addendum' || family === 'received-audit-source')
     throw new Error(
       'Received Addendum sources are not Project bundle evidence',
     );

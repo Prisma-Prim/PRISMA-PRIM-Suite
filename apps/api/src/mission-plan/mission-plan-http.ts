@@ -1,3 +1,4 @@
+import { configureWorkingEvidenceTransport } from '../working-evidence/working-evidence.http.js';
 import type { IncomingMessage } from 'node:http';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
@@ -16,6 +17,7 @@ export function configureMissionPlanTransport(app: NestExpressApplication) {
       );
     },
   });
+  configureWorkingEvidenceTransport(app);
   // The first parser consumes matching streams; every other route retains Nest's100kb default.
   app.useBodyParser('json', { limit: '100kb' });
 }
