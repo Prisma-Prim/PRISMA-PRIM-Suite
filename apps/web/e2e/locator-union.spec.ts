@@ -38,3 +38,4 @@ test('detects a later matching predicate without escaping its original scope', a
 test('rejects an empty union rather than omitting its checks', () => {
   expect(() => unionLocators([])).toThrow('At least one locator');
 });
+// d20 measurement

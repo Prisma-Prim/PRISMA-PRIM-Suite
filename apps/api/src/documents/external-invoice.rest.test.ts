@@ -58,3 +58,4 @@ withPostgres('Confidential external invoice source public REST', () => {
     expect(responseString(document, 'id')).not.toBe(ready.selection.contractId);
   });
 });
+// d20 measurement
