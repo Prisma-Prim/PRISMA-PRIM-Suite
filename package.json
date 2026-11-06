@@ -32,6 +32,7 @@
     "test:scripts": "node --test --test-concurrency=2 scripts/*.test.mjs",
     "typecheck": "pnpm --recursive typecheck",
     "validate:iurie-coverage": "node scripts/validate-iurie-coverage.mjs",
+    "db:check-drift": "node scripts/check-drizzle-drift.mjs",
     "db:generate": "pnpm --filter @prisma-prim/api db:generate",
     "db:migrate": "pnpm --filter @prisma-prim/api db:migrate",
     "demo:seed": "pnpm --filter @prisma-prim/api demo:seed"
