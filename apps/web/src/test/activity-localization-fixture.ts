@@ -141,6 +141,18 @@ const targets = {
 // Total fixture membership tracks the public canonical union, rather than a
 // private rendering helper. Each input has the public action's exact target.
 export const activityEventsByAction = {
+  'company_received_addendum_access_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_received_addendum_access_assignment.granted',
+    action: 'company_received_addendum_access_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_received_addendum_access_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_received_addendum_access_assignment.revoked',
+    action: 'company_received_addendum_access_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_opportunity_follow_up_coordinator_assignment.granted': {
     ...ordinary,
     id: 'event-company_opportunity_follow_up_coordinator_assignment.granted',

@@ -1,4 +1,8 @@
 import {
+  receivedAddendumAssignment,
+  receivedAddendumClientReadCapture,
+} from './received-addendum-access.js';
+import {
   PAYMENT_BUNDLES,
   capturePaymentGrant,
   paymentCapturedGrant,
@@ -75,7 +79,9 @@ import {
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
   COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
+  COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
   receivedContractPermissionsFor,
+  receivedAddendumPermissionsFor,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
   missionDeliverablePermissionsFor,
@@ -358,7 +364,7 @@ export class CompanyContextAuthorization {
     const company = actor.activeCompany;
     if (!company?.clientPermissions.includes('client.read')) return false;
     try {
-      await this.requireExternalInvoiceCapture(actor, {
+      await this.requireCapturedCompanyGrant(actor, {
         bundle: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
         assignmentId: company.clientPermissionAssignmentId,
         version: company.clientPermissionSetVersion,
@@ -1117,13 +1123,13 @@ export class CompanyContextAuthorization {
       options.lockAssignment,
     );
     const alternatives = [
-      externalInvoiceNativeCapture({
+      nativeDocumentCapturedGrant({
         bundle: COMPANY_CONTRACT_PREPARER_BUNDLE,
         assignmentId: company.contractPermissionAssignmentId,
         version: company.contractPermissionSetVersion,
         versions: ['v1', 'v2'],
       }),
-      externalInvoiceNativeCapture({
+      nativeDocumentCapturedGrant({
         bundle: COMPANY_CONTRACT_APPROVER_BUNDLE,
         assignmentId: company.contractApproverAssignmentId,
         version: company.contractApproverPermissionSetVersion,
@@ -1137,7 +1143,7 @@ export class CompanyContextAuthorization {
       sql`(${sql.join(alternatives, sql` OR `)})`,
       options.lockAssignment,
     );
-    await this.requireExternalInvoiceCapture(actor, {
+    await this.requireCapturedCompanyGrant(actor, {
       bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
       assignmentId: company.commercialIntakePermissionAssignmentId,
       version: company.commercialIntakePermissionSetVersion,
@@ -1148,7 +1154,61 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
-  private async requireExternalInvoiceCapture(
+  /** Exact parent-read captures, independent from native Document and Client work. */
+  async requireReceivedAddendumSourceAccess(
+    actor: ActorContext,
+    options: { lockAssignment: boolean },
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      !company.contractPermissions?.includes('commercial.contract.read') ||
+      !company.commercialIntakePermissions?.includes(
+        'commercial.request.read',
+      ) ||
+      !company.commercialIntakePermissions.includes(
+        'commercial.opportunity.read',
+      )
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(
+      actor,
+      company.id,
+      options.lockAssignment,
+    );
+    const alternatives = [
+      nativeDocumentCapturedGrant({
+        bundle: COMPANY_CONTRACT_PREPARER_BUNDLE,
+        assignmentId: company.contractPermissionAssignmentId,
+        version: company.contractPermissionSetVersion,
+        versions: ['v1', 'v2'],
+      }),
+      nativeDocumentCapturedGrant({
+        bundle: COMPANY_CONTRACT_APPROVER_BUNDLE,
+        assignmentId: company.contractApproverAssignmentId,
+        version: company.contractApproverPermissionSetVersion,
+        versions: ['v1', 'v2'],
+      }),
+    ].filter((condition): condition is SQL => condition !== undefined);
+    if (!alternatives.length) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      sql`(${sql.join(alternatives, sql` OR `)})`,
+      options.lockAssignment,
+    );
+    await this.requireCapturedCompanyGrant(actor, {
+      bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+      assignmentId: company.commercialIntakePermissionAssignmentId,
+      version: company.commercialIntakePermissionSetVersion,
+      versions: ['v1', 'v2', 'v3', 'v4'],
+      lock: options.lockAssignment,
+    });
+    return company.id;
+  }
+
+  private async requireCapturedCompanyGrant(
     actor: ActorContext,
     input: {
       bundle: typeof companyRoleAssignments.$inferSelect.bundle;
@@ -1159,7 +1219,7 @@ export class CompanyContextAuthorization {
     },
   ): Promise<void> {
     const company = actor.activeCompany;
-    const condition = externalInvoiceNativeCapture(input);
+    const condition = nativeDocumentCapturedGrant(input);
     if (!company || !condition) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
@@ -1194,7 +1254,7 @@ export class CompanyContextAuthorization {
     }
     if (!company.clientPermissions.includes('client.read'))
       throw new ForbiddenException();
-    await this.requireExternalInvoiceCapture(actor, {
+    await this.requireCapturedCompanyGrant(actor, {
       bundle: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
       assignmentId: company.clientPermissionAssignmentId,
       version: company.clientPermissionSetVersion,
@@ -1235,7 +1295,7 @@ export class CompanyContextAuthorization {
       version: unknown;
       versions: readonly string[];
     }) =>
-      this.requireExternalInvoiceCapture(actor, {
+      this.requireCapturedCompanyGrant(actor, {
         ...input,
         lock: options.lockAssignment,
       });
@@ -1317,6 +1377,42 @@ export class CompanyContextAuthorization {
       lockAssignment: boolean;
     },
   ): Promise<string> {
+    return this.requireDocumentFamilyNativeAccess(actor, options, true);
+  }
+
+  async requireReceivedAddendumNativeAccess(
+    actor: ActorContext,
+    options: {
+      action:
+        | 'read'
+        | 'register'
+        | 'correct'
+        | 'version'
+        | 'designate'
+        | 'content-read'
+        | 'upload';
+      lockAssignment: boolean;
+    },
+  ): Promise<string> {
+    return this.requireDocumentFamilyNativeAccess(actor, options, false);
+  }
+
+  /** Exact independent native grants; parent and financial authority stay with their owners. */
+  private async requireDocumentFamilyNativeAccess(
+    actor: ActorContext,
+    options: {
+      action:
+        | 'read'
+        | 'register'
+        | 'correct'
+        | 'version'
+        | 'designate'
+        | 'content-read'
+        | 'upload';
+      lockAssignment: boolean;
+    },
+    requireClientRead: boolean,
+  ): Promise<string> {
     const company = actor.activeCompany;
     if (
       !actor.active ||
@@ -1335,7 +1431,7 @@ export class CompanyContextAuthorization {
       version: unknown;
       versions: readonly string[];
     }) =>
-      this.requireExternalInvoiceCapture(actor, {
+      this.requireCapturedCompanyGrant(actor, {
         ...input,
         lock: options.lockAssignment,
       });
@@ -1351,7 +1447,11 @@ export class CompanyContextAuthorization {
       version: company.documentPermissionSetVersion,
       versions,
     });
-    await this.requireExternalInvoiceClientRead(actor, options.lockAssignment);
+    if (requireClientRead)
+      await this.requireExternalInvoiceClientRead(
+        actor,
+        options.lockAssignment,
+      );
     if (
       options.action === 'register' &&
       !company.documentPermissions.includes('document.register')
@@ -1403,7 +1503,6 @@ export class CompanyContextAuthorization {
     }
     return company.id;
   }
-
   /** Finance and family captures remain independent from every ordinary native Document grant. */
   async hasExternalInvoiceAccess(
     actor: ActorContext,
@@ -1458,6 +1557,30 @@ export class CompanyContextAuthorization {
   ): Promise<boolean> {
     const condition = receivedContractAssignment(actor);
     if (!condition) return false;
+    const query = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(condition);
+    const [assignment] = options.lockAssignment
+      ? await query.for('share')
+      : await query;
+    return assignment !== undefined;
+  }
+
+  async hasReceivedAddendumAccess(
+    actor: ActorContext,
+    options: { lockAssignment: boolean } = { lockAssignment: false },
+  ): Promise<boolean> {
+    const condition = receivedAddendumAssignment(actor);
+    if (!condition || !actor.activeCompany) return false;
+    const capture = await receivedAddendumClientReadCapture({
+      database: this.databaseContext,
+      actor,
+      company: actor.activeCompany,
+      lock: options.lockAssignment,
+    });
+    if (capture !== actor.activeCompany.receivedAddendumClientReadCapture)
+      return false;
     const query = this.databaseContext.connection
       .select({ id: companyRoleAssignments.id })
       .from(companyRoleAssignments)
@@ -2556,6 +2679,7 @@ export class CompanyContextAuthorization {
         COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
         COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
         COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
+        COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
         COMPANY_TASK_RESULT_RECORDER_BUNDLE,
         COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
         COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
@@ -2738,6 +2862,17 @@ export class CompanyContextAuthorization {
         ];
         company.receivedContractAccessAssignmentId = row.assignmentId;
         company.receivedContractAccessPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...receivedAddendumPermissionsFor(row.permissionSetVersion),
+        ];
+        company.receivedAddendumAccessAssignmentId = row.assignmentId;
+        company.receivedAddendumAccessPermissionSetVersion = 'v1';
       }
       if (
         row.bundle === COMPANY_TASK_RESULT_RECORDER_BUNDLE &&
@@ -3075,6 +3210,14 @@ export class CompanyContextAuthorization {
         independentlyAuthorizedCompanies.has(company.id),
     );
     for (const company of authorizedCompanies) {
+      if (company.receivedAddendumAccessAssignmentId)
+        company.receivedAddendumClientReadCapture =
+          await receivedAddendumClientReadCapture({
+            database: this.databaseContext,
+            actor,
+            company,
+            lock: false,
+          });
       if (
         company.offerPermissions?.includes('commercial.offer.read') &&
         COMMERCIAL_INTAKE_READ_PERMISSIONS.every((permission) =>
@@ -3286,7 +3429,7 @@ function assertNeverMode(mode: never): never {
 }
 
 /** Complete runtime proof for one feature-consumed native assignment identity. */
-function externalInvoiceNativeCapture(input: {
+function nativeDocumentCapturedGrant(input: {
   bundle: typeof companyRoleAssignments.$inferSelect.bundle;
   assignmentId: unknown;
   version: unknown;

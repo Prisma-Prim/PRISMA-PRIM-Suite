@@ -21,6 +21,7 @@ import {
   activityLocaleIds,
   activityLiteral,
   heterogeneousActivityEvents,
+  activityEventsByAction,
   activityDetailPath,
   activityOfferPath,
   activityContractPath,
@@ -401,9 +402,19 @@ it.each(journeyLocales)(
     switchJourneyLocale(locale.code);
     expect(screen.getByRole('status')).toHaveTextContent(locale.loading);
     expect(boundary.fetch).toHaveBeenCalledTimes(before);
-    await late.settle({ events: heterogeneousActivityEvents });
+    await late.settle({
+      events: [
+        ...heterogeneousActivityEvents,
+        activityEventsByAction[
+          'company_received_addendum_access_assignment.granted'
+        ],
+        activityEventsByAction[
+          'company_received_addendum_access_assignment.revoked'
+        ],
+      ],
+    });
     const rows = latestActivityRows(locale.title);
-    expect(rows).toHaveLength(11);
+    expect(rows).toHaveLength(13);
     expect(rows[0]).toHaveTextContent(
       `Alex {literal} — Știință / Имя ${locale.created}`,
     );
@@ -415,6 +426,10 @@ it.each(journeyLocales)(
     expect(rows[7]).not.toHaveTextContent('2026');
     expect(rows[7]).not.toHaveTextContent('projection-client.union_confirmed');
     expect(boundary.fetch).toHaveBeenCalledTimes(before);
+    expect(rows[11]).not.toHaveTextContent('company_received_addendum');
+    expect(rows[12]).not.toHaveTextContent('company_received_addendum');
+    expect(rows[11]?.querySelector('button')).toBeNull();
+    expect(rows[12]?.querySelector('button')).toBeNull();
     expect(boundary.state.commands).toEqual([]);
   },
 );

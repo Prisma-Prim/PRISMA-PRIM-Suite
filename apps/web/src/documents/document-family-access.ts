@@ -1,3 +1,4 @@
+import { hasReceivedAddendumAccess } from './received-addendum-access';
 import {
   hasExternalInvoiceAccess,
   externalInvoiceCaptureKey,
@@ -25,6 +26,13 @@ export function documentFamilyCaptureKey(
       ]);
     case 'external-invoice':
       return externalInvoiceCaptureKey(company);
+    case 'received-addendum':
+      return JSON.stringify([
+        hasReceivedAddendumAccess(company),
+        company?.receivedAddendumAccessAssignmentId,
+        company?.receivedAddendumAccessPermissionSetVersion,
+        company?.receivedAddendumClientReadCapture,
+      ]);
     case 'received-contract':
       return JSON.stringify([
         hasReceivedContractAccess(company),
@@ -51,6 +59,8 @@ export function hasDocumentFamilyAccess(
       return hasMissionDeliverableAccess(company);
     case 'external-invoice':
       return hasExternalInvoiceAccess(company);
+    case 'received-addendum':
+      return hasReceivedAddendumAccess(company);
     case 'received-contract':
       return hasReceivedContractAccess(company);
     default: {

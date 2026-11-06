@@ -6,7 +6,10 @@ import {
   type WorkingDocument,
   type DocumentVersion,
 } from '../documents/document-response';
-export type Association = { document: WorkingDocument; revision: number };
+export type Association = {
+  document: Exclude<WorkingDocument, { type: 'received-addendum' }>;
+  revision: number;
+};
 export type Discovery =
   | { kind: 'idle' | 'loading' | 'denied' | 'malformed' | 'error' }
   | { kind: 'ready'; documents: Association[] };
@@ -72,6 +75,7 @@ export function readProjectPdfAssociations(
     uuid(document.clientId);
     uuid(document.version.id);
     if (
+      document.type === 'received-addendum' ||
       document.companyId !== scope.companyId ||
       document.clientId !== scope.originalClientId ||
       ids.has(document.id) ||
@@ -87,6 +91,10 @@ export function readProjectPdfVersions(
   value: unknown,
   family: WorkingDocument['type'],
 ) {
+  if (family === 'received-addendum')
+    throw new Error(
+      'Received Addendum sources are not Project bundle evidence',
+    );
   const read = readDocumentVersions(value, family);
   if (read.versions.length === 0 || read.workingRevision > 2147483647)
     throw new Error('Invalid Versions');

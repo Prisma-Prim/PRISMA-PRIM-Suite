@@ -27,6 +27,7 @@ const CAPTURED_VERSIONS = {
   'Company Mission Deliverable Access': ['v1'],
   'Company Contract Signature Declarer': ['v1'],
   'Company Received Contract Access': ['v1'],
+  'Company Received Addendum Access': ['v1'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],
   'Company Document Approver': ['v1'],
   'Company Document Content Reader': ['v1'],

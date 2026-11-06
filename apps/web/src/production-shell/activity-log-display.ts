@@ -1,3 +1,4 @@
+import { useReceivedAddendumCopy } from '../documents/received-addendum.copy';
 import { usePaymentAssignmentCopy } from '../access/payment-assignment.copy';
 import { useFollowUpCopy } from '../opportunity-follow-up/follow-up.copy';
 import { useExternalInvoiceAssignmentCopy } from '../access/external-invoice-assignment.copy';
@@ -81,12 +82,14 @@ export function useActivityLogDisplay() {
   const risk = useOperationalRiskCopy();
   const missionActions = useMissionDeliverableCopy().activityActionLabels;
   const receivedActions = useReceivedContractCopy().activityActionLabels;
+  const addendumActions = useReceivedAddendumCopy().activityActionLabels;
   const signing = useReportedSigningCopy();
   const reviewCopy = useMissionReviewCopy();
   const applicabilityCopy = useMissionApplicabilityCopy();
   const nextActionCopy = useProjectNextActionCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
+    ...addendumActions,
     'company_opportunity_follow_up_coordinator_assignment.granted':
       followUp('granted'),
     'company_opportunity_follow_up_coordinator_assignment.revoked':

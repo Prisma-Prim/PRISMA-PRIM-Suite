@@ -22,7 +22,10 @@ type NativeIntent =
   | { kind: 'client'; filter: NativeClientFilter };
 type Props = Omit<
   Parameters<typeof DocumentWorkspace>[0],
-  'onSelectPaymentEvidence' | 'onProtectedWorkChange' | 'clientFilter'
+  | 'onSelectPaymentEvidence'
+  | 'onProtectedWorkChange'
+  | 'onProtectedReceivedAddendumWorkChange'
+  | 'clientFilter'
 > & {
   legacyKey: string;
   requestedPaymentEvidence?: RequestedDocument & {
@@ -182,6 +185,7 @@ export function DocumentsSection({
           pane.kind === 'native-opening' ? undefined : props.requestedDocument
         }
         onProtectedWorkChange={protect}
+        onProtectedReceivedAddendumWorkChange={onProtectedSourceWorkChange}
         onSelectPaymentEvidence={
           canReadSource
             ? (documentId) =>

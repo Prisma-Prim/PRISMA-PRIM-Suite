@@ -31,6 +31,13 @@ it.each([
     option: 'Company Contract Signature Declarer',
   },
   {
+    role: 'received Addendum family',
+    route: 'received-addendum-access',
+    value: 'received-addendum-access',
+    label: 'Company Received Addendum Access',
+    option: 'Company Received Addendum Access',
+  },
+  {
     role: 'received Contract family',
     route: 'received-contract-access',
     value: 'received-contract-access',

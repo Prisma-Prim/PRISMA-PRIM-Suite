@@ -1,3 +1,11 @@
+import {
+  hasReceivedAddendumAccess,
+  canReadReceivedAddendumRelation,
+  receivedAddendumSourceAuthority,
+} from './received-addendum-access';
+import { useReceivedAddendumCopy } from './received-addendum.copy';
+import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
+import { ReceivedAddendumRelation } from './ReceivedAddendumRelation';
 import { usePaymentEvidenceCopy } from '../payment-evidence/payment-evidence.copy';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { ExternalInvoiceRegistration } from './ExternalInvoiceRegistration';
@@ -132,6 +140,7 @@ function DocumentSession({
   onWorkspaceAccessRejected,
   onSelectPaymentEvidence,
   onProtectedWorkChange,
+  onProtectedReceivedAddendumWorkChange,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -154,11 +163,13 @@ function DocumentSession({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onSelectPaymentEvidence?: (documentId?: string) => void;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
+  onProtectedReceivedAddendumWorkChange?: (protectedWork: boolean) => void;
 }) {
   const copy = useDocumentsCopy();
   const paymentCopy = usePaymentEvidenceCopy();
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
+  const addendumCopy = useReceivedAddendumCopy();
   const invoiceCopy = useExternalInvoiceCopy();
   const sectionVisible = useContext(SectionVisibility);
   const [receivedBusy, setReceivedBusy] = useState(false);
@@ -302,10 +313,19 @@ function DocumentSession({
     onProtectedWorkChange?.(hostProtected);
     return () => onProtectedWorkChange?.(false);
   }, [hostProtected, onProtectedWorkChange]);
+  const addendumProtected =
+    hostProtected &&
+    ((receivedBusy && family === 'received-addendum') ||
+      detail?.type === 'received-addendum');
+  useEffect(() => {
+    onProtectedReceivedAddendumWorkChange?.(addendumProtected);
+    return () => onProtectedReceivedAddendumWorkChange?.(false);
+  }, [addendumProtected, onProtectedReceivedAddendumWorkChange]);
   const canRead =
     actor.activeCompany?.documentPermissions?.includes('document.read') ===
     true;
   const canUseMission = hasMissionDeliverableAccess(actor.activeCompany);
+  const canUseAddendum = hasReceivedAddendumAccess(actor.activeCompany);
   const canUseReceived = hasReceivedContractAccess(actor.activeCompany);
   const canUseInvoice =
     actor.active &&
@@ -362,7 +382,12 @@ function DocumentSession({
     actor.activeCompany,
     'received-contract',
   );
+  const addendumCapture = documentFamilyCaptureKey(
+    actor.activeCompany,
+    'received-addendum',
+  );
   const familyCaptures = {
+    'received-addendum': addendumCapture,
     questionnaire: 'questionnaire',
     'mission-deliverable': missionCapture,
     'received-contract': receivedCapture,
@@ -380,6 +405,7 @@ function DocumentSession({
     if (
       !retired('mission-deliverable') &&
       !retired('received-contract') &&
+      !retired('received-addendum') &&
       !retired('external-invoice')
     )
       return;
@@ -423,7 +449,16 @@ function DocumentSession({
       retry.current = undefined;
       setFamily('questionnaire');
     }
-  }, [missionCapture, receivedCapture, invoiceCapture, detail, family]);
+  }, [
+    missionCapture,
+    receivedCapture,
+    addendumCapture,
+    invoiceCapture,
+    detail,
+    family,
+  ]);
+  const canSelectAddendum =
+    canUseAddendum && canReadReceivedAddendumRelation(actor);
   const canSelectReceived =
     canUseReceived && canReadReceivedContractRelation(actor.activeCompany);
   const canSelectInvoice =
@@ -437,11 +472,13 @@ function DocumentSession({
   function metadataOnly(
     document: WorkingDocumentDetail,
   ): WorkingDocumentDetail {
-    return document.type === 'external-invoice'
-      ? { ...document, externalInvoiceRelation: { access: 'denied' } }
-      : document.type === 'received-contract'
-        ? { ...document, receivedContractRelation: { access: 'denied' } }
-        : document;
+    return document.type === 'received-addendum'
+      ? { ...document, receivedAddendumRelation: { access: 'denied' } }
+      : document.type === 'external-invoice'
+        ? { ...document, externalInvoiceRelation: { access: 'denied' } }
+        : document.type === 'received-contract'
+          ? { ...document, receivedContractRelation: { access: 'denied' } }
+          : document;
   }
   function readVisibleDocuments(value: unknown): WorkingDocument[] {
     return readDocuments(value)
@@ -702,6 +739,7 @@ function DocumentSession({
     clientIdentityRevision,
     missionCapture,
     receivedCapture,
+    addendumCapture,
     invoiceListCapture,
   ]);
   // The opened Document owes the same derived refresh. An open correction
@@ -1323,18 +1361,21 @@ function DocumentSession({
         </button>
       )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
-        {detail?.type === 'external-invoice' ||
-        (!detail && family === 'external-invoice')
-          ? invoiceCopy.t('warning')
-          : detail?.type === 'received-contract' ||
-              (!detail && family === 'received-contract')
-            ? receivedCopy.t('warning')
-            : detail?.type === 'mission-deliverable' ||
-                (!detail && family === 'mission-deliverable')
-              ? missionCopy.t('warning')
-              : detail?.version.status === 'official'
-                ? copy.officialWarning
-                : copy.warning}
+        {detail?.type === 'received-addendum' ||
+        (!detail && family === 'received-addendum')
+          ? addendumCopy.t('warning')
+          : detail?.type === 'external-invoice' ||
+              (!detail && family === 'external-invoice')
+            ? invoiceCopy.t('warning')
+            : detail?.type === 'received-contract' ||
+                (!detail && family === 'received-contract')
+              ? receivedCopy.t('warning')
+              : detail?.type === 'mission-deliverable' ||
+                  (!detail && family === 'mission-deliverable')
+                ? missionCopy.t('warning')
+                : detail?.version.status === 'official'
+                  ? copy.officialWarning
+                  : copy.warning}
       </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -1437,13 +1478,15 @@ function DocumentSession({
                     {detail.title}
                   </h3>
                   <p>
-                    {detail.type === 'external-invoice'
-                      ? invoiceCopy.t(detail.version.status)
-                      : detail.type === 'received-contract'
-                        ? receivedCopy.t(detail.version.status)
-                        : detail.type === 'mission-deliverable'
-                          ? missionCopy.t(detail.version.status)
-                          : workingVersionLabel(detail.version.status, copy)}
+                    {detail.type === 'received-addendum'
+                      ? addendumCopy.t(detail.version.status)
+                      : detail.type === 'external-invoice'
+                        ? invoiceCopy.t(detail.version.status)
+                        : detail.type === 'received-contract'
+                          ? receivedCopy.t(detail.version.status)
+                          : detail.type === 'mission-deliverable'
+                            ? missionCopy.t(detail.version.status)
+                            : workingVersionLabel(detail.version.status, copy)}
                   </p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
@@ -1457,9 +1500,21 @@ function DocumentSession({
                   <p>{detail.purpose}</p>
                 </>
               )}
-              <RegistrationTime registeredAt={detail.createdAt} />
+              {detail.type !== 'received-addendum' && (
+                <RegistrationTime registeredAt={detail.createdAt} />
+              )}
               {detail.type === 'received-contract' && (
                 <ReceivedContractRelation
+                  actor={actor}
+                  identity={identity}
+                  documentId={detail.id}
+                  onActorRevalidated={onActorRevalidated}
+                  onCompanyContextRejected={onCompanyContextRejected}
+                  onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+                />
+              )}
+              {detail.type === 'received-addendum' && (
+                <ReceivedAddendumRelation
                   actor={actor}
                   identity={identity}
                   documentId={detail.id}
@@ -1480,6 +1535,7 @@ function DocumentSession({
                 />
               )}
               {detail.type !== 'external-invoice' &&
+                detail.type !== 'received-addendum' &&
                 canReadProjects &&
                 detail.projectAssociation && (
                   <ProjectAssociation
@@ -1619,7 +1675,9 @@ function DocumentSession({
                       {document.title}
                     </button>{' '}
                     — {document.clientDisplayName}
-                    <RegistrationTime registeredAt={document.createdAt} />
+                    {document.type !== 'received-addendum' && (
+                      <RegistrationTime registeredAt={document.createdAt} />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -1628,7 +1686,10 @@ function DocumentSession({
               )}
               {canRegister && (
                 <>
-                  {(canUseMission || canUseReceived || canUseInvoice) && (
+                  {(canUseMission ||
+                    canUseReceived ||
+                    canUseAddendum ||
+                    canUseInvoice) && (
                     <>
                       <label htmlFor="document-family">
                         {missionCopy.t('family')}
@@ -1660,6 +1721,14 @@ function DocumentSession({
                                 },
                               ]
                             : []),
+                          ...(canUseAddendum
+                            ? [
+                                {
+                                  value: 'received-addendum',
+                                  label: addendumCopy.t('family'),
+                                },
+                              ]
+                            : []),
                           ...(canUseReceived
                             ? [
                                 {
@@ -1675,6 +1744,7 @@ function DocumentSession({
                             (value === 'questionnaire' ||
                               value === 'mission-deliverable' ||
                               value === 'received-contract' ||
+                              value === 'received-addendum' ||
                               value === 'external-invoice')
                           )
                             setFamily(value);
@@ -1780,6 +1850,55 @@ function DocumentSession({
                       />
                     ) : (
                       <p>{receivedCopy.t('sourceDenied')}</p>
+                    )
+                  ) : family === 'received-addendum' ? (
+                    canSelectAddendum && companyId ? (
+                      <ReceivedAddendumRegistration
+                        key={JSON.stringify([
+                          addendumCapture,
+                          receivedAddendumSourceAuthority(actor),
+                        ])}
+                        actor={actor}
+                        identity={identity}
+                        companyId={companyId}
+                        onBusyChange={setReceivedBusy}
+                        onAccessRejected={async (signal, isCurrent) => {
+                          await handleAuthenticatedAccessRejection({
+                            result: { status: 'forbidden' },
+                            identity,
+                            companyContextId: companyId,
+                            signal,
+                            isCurrent,
+                            onActorRevalidated:
+                              onActorRevalidated ?? (() => undefined),
+                            onCompanyContextRejected:
+                              onCompanyContextRejected ?? (() => undefined),
+                            onWorkspaceAccessRejected:
+                              onWorkspaceAccessRejected ?? (() => undefined),
+                          });
+                        }}
+                        onStarted={() => {
+                          receivedRegistrationOrigin.current = {
+                            filter: activeFilter.current,
+                            identityRevision: identityRevision.current,
+                          };
+                        }}
+                        onRegistered={(saved) => {
+                          const origin = receivedRegistrationOrigin.current;
+                          if (!origin)
+                            throw new Error(
+                              'Missing received registration origin',
+                            );
+                          if (saved.type === 'payment-evidence')
+                            throw new Error('Unexpected Document family');
+                          publishRegistration({ saved, origin });
+                          void Promise.resolve()
+                            .then(onActivityRecorded)
+                            .catch(() => undefined);
+                        }}
+                      />
+                    ) : (
+                      <p>{addendumCopy.t('sourceDenied')}</p>
                     )
                   ) : (
                     <form

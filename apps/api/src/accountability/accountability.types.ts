@@ -39,6 +39,7 @@ import type {
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL,
+  COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE_LABEL,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL,
   COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL,
@@ -210,6 +211,7 @@ export type CanonicalActivityEvent =
         | 'company_contract_signature_declarer_assignment.granted'
         | 'company_contract_signature_declarer_assignment.revoked'
         | 'company_received_contract_access_assignment.granted'
+        | 'company_received_addendum_access_assignment.granted'
         | 'company_task_result_recorder_assignment.granted'
         | 'company_mission_result_reviewer_assignment.granted'
         | 'company_project_next_action_coordinator_assignment.granted'
@@ -218,6 +220,7 @@ export type CanonicalActivityEvent =
         | 'company_document_content_reader_assignment.revoked'
         | 'company_mission_deliverable_access_assignment.revoked'
         | 'company_received_contract_access_assignment.revoked'
+        | 'company_received_addendum_access_assignment.revoked'
         | 'company_task_result_recorder_assignment.revoked'
         | 'company_mission_result_reviewer_assignment.revoked'
         | 'company_project_next_action_coordinator_assignment.revoked'
@@ -327,6 +330,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
+          | typeof COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL
@@ -467,6 +471,7 @@ export interface OrdinaryActivityLogEvent {
     | 'company_contract_signature_declarer_assignment.granted'
     | 'company_contract_signature_declarer_assignment.revoked'
     | 'company_received_contract_access_assignment.granted'
+    | 'company_received_addendum_access_assignment.granted'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_mission_result_reviewer_assignment.granted'
     | 'company_project_next_action_coordinator_assignment.granted'
@@ -475,6 +480,7 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_content_reader_assignment.revoked'
     | 'company_mission_deliverable_access_assignment.revoked'
     | 'company_received_contract_access_assignment.revoked'
+    | 'company_received_addendum_access_assignment.revoked'
     | 'company_task_result_recorder_assignment.revoked'
     | 'company_mission_result_reviewer_assignment.revoked'
     | 'company_project_next_action_coordinator_assignment.revoked'
@@ -631,6 +637,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
+          | typeof COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL
