@@ -6,7 +6,10 @@ import test from 'node:test';
 const gate = fileURLToPath(new URL('./verify-ci-results.mjs', import.meta.url));
 const successfulResults = {
   checks: { result: 'success' },
-  scope: { result: 'success', outputs: { docs_only: 'false' } },
+  scope: {
+    result: 'success',
+    outputs: { docs_only: 'false', repeat_tests: 'true' },
+  },
   postgres_image: { result: 'success' },
   api: { result: 'success' },
   web_unit: { result: 'success' },
@@ -14,6 +17,7 @@ const successfulResults = {
   acceptance: { result: 'success' },
   build: { result: 'success' },
   packaging: { result: 'success' },
+  flaky_guard: { result: 'success' },
 };
 
 function invoke(results) {
@@ -66,7 +70,7 @@ test('quality accepts skipped heavy families only after a successful docs-only s
     'packaging',
   ];
   const skippedHeavy = Object.fromEntries(
-    heavy.map((job) => [job, { result: 'skipped' }]),
+    [...heavy, 'flaky_guard'].map((job) => [job, { result: 'skipped' }]),
   );
   const docsOnly = invoke({
     checks: { result: 'success' },
@@ -151,4 +155,95 @@ test('an API proof cannot waive a frontend or packaging suite', () => {
       invoke({ ...results, [job]: { result: 'skipped' } }).status,
       1,
     );
+});
+
+const scopeWithRepeat = (repeat_tests, result = 'success') => ({
+  result,
+  outputs: { docs_only: 'false', repeat_tests },
+});
+
+test('quality accepts a skipped flaky_guard only when the scope proved no test file needs repeating', () => {
+  const skippedGuard = {
+    ...successfulResults,
+    flaky_guard: { result: 'skipped' },
+  };
+  const proven = invoke({ ...skippedGuard, scope: scopeWithRepeat('false') });
+  assert.equal(proven.status, 0, proven.stderr);
+  for (const repeat_tests of ['true', '', 'unknown', undefined, 'FALSE']) {
+    const child = invoke({
+      ...skippedGuard,
+      scope: scopeWithRepeat(repeat_tests),
+    });
+    assert.equal(child.status, 1, String(repeat_tests));
+    assert.match(child.stderr, /flaky_guard: skipped/);
+  }
+  const failedScope = invoke({
+    ...skippedGuard,
+    scope: scopeWithRepeat('false', 'failure'),
+  });
+  assert.equal(failedScope.status, 1);
+  assert.match(failedScope.stderr, /scope: failure/);
+  assert.match(failedScope.stderr, /flaky_guard: skipped/);
+});
+
+test('a documentation-only change needs no repeat proof for its skipped flaky_guard', () => {
+  const heavy = [
+    'postgres_image',
+    'api',
+    'web_unit',
+    'browser',
+    'acceptance',
+    'build',
+    'packaging',
+    'flaky_guard',
+  ];
+  const child = invoke({
+    checks: { result: 'success' },
+    scope: { result: 'success', outputs: { docs_only: 'true' } },
+    ...Object.fromEntries(heavy.map((job) => [job, { result: 'skipped' }])),
+  });
+  assert.equal(child.status, 0, child.stderr);
+});
+
+test('a failed or cancelled flaky_guard blocks quality even when no repeat was required', () => {
+  for (const repeat_tests of ['true', 'false'])
+    for (const result of ['failure', 'cancelled']) {
+      const child = invoke({
+        ...successfulResults,
+        scope: scopeWithRepeat(repeat_tests),
+        flaky_guard: { result },
+      });
+      assert.equal(child.status, 1, `${repeat_tests} ${result}`);
+      assert.match(child.stderr, new RegExp(`flaky_guard: ${result}`));
+    }
+});
+
+test('proof reuse never waives a required flaky_guard', () => {
+  const reused = {
+    ...successfulResults,
+    scope: {
+      result: 'success',
+      outputs: {
+        docs_only: 'false',
+        repeat_tests: 'true',
+        reuse_all: 'true',
+        reuse_api: 'true',
+        proof_run: '123',
+      },
+    },
+    flaky_guard: { result: 'skipped' },
+  };
+  for (const job of [
+    'api',
+    'web_unit',
+    'browser',
+    'acceptance',
+    'build',
+    'packaging',
+  ])
+    reused[job] = { result: 'skipped' };
+  const child = invoke(reused);
+  assert.equal(child.status, 1);
+  assert.match(child.stderr, /flaky_guard: skipped/);
+  assert.doesNotMatch(child.stderr, /api:|web_unit:/);
 });
