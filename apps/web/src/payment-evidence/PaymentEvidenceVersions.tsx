@@ -30,6 +30,7 @@ export interface PaymentEvidenceVersionsProps extends PaymentEvidenceAccessCallb
   actor: ActorContext;
   identity: BrowserIdentity;
   documentId: string;
+  requestedVersionId?: string;
   documentType?: 'payment-evidence';
   workingRevision: number;
   operationKeys: PaymentEvidenceOperationKeys;
@@ -73,6 +74,7 @@ function SourceVersions({
   identity,
   documentId,
   workingRevision,
+  requestedVersionId,
   operationKeys,
   metadataReadable = true,
   recoveryGeneration = 0,
@@ -171,6 +173,11 @@ function SourceVersions({
           page.versions.some((version) => !uuid(version.id))
         )
           throw new Error('Invalid evidence Version read');
+        const initialVersion = requestedVersionId
+          ? page.versions.find((version) => version.id === requestedVersionId)
+          : page.versions[0];
+        if (!initialVersion)
+          throw new Error('The requested Source Version is unavailable.');
         // Protected PDF metadata belongs only to the independently keyed PDF reader.
         const metadata = {
           ...page,
@@ -193,12 +200,10 @@ function SourceVersions({
         setSelection((currentSelection) =>
           currentSelection.version === undefined
             ? {
-                version: metadata.versions[0]
-                  ? {
-                      id: metadata.versions[0].id,
-                      number: metadata.versions[0].number,
-                    }
-                  : undefined,
+                version: {
+                  id: initialVersion.id,
+                  number: initialVersion.number,
+                },
                 generation: currentSelection.generation + 1,
               }
             : currentSelection,
@@ -217,6 +222,7 @@ function SourceVersions({
     metadataReadable,
     rejected,
     requestedRevision,
+    requestedVersionId,
     recoveryGeneration,
     retry,
   ]);

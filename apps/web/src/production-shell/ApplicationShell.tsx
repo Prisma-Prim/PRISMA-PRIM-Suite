@@ -24,6 +24,7 @@ import './prisme/prisme-frame.css';
 
 export interface ApplicationSection {
   id:
+    | 'payments'
     | 'invoice-records'
     | 'knowledge-evidence'
     | 'internal-tasks'
@@ -60,6 +61,7 @@ export interface ApplicationSection {
  */
 const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
   new Set([
+    'payments',
     'invoice-records',
     'knowledge-evidence',
     'internal-tasks',
@@ -367,6 +369,7 @@ export function ApplicationShell({
               .filter(
                 (section) =>
                   isPrisme ||
+                  section.id === 'payments' ||
                   section.id === 'invoice-records' ||
                   section.id === 'knowledge-evidence' ||
                   section.id === 'clients' ||

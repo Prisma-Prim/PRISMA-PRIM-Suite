@@ -67,6 +67,7 @@ const changedExistingSchema: Readonly<Record<string, readonly string[]>> = {
 };
 
 const addedExistingTableTriggers = [
+  'companies.payment_company_cursor',
   'working_documents.working_documents_payment_evidence_identity',
   'working_documents.working_documents_payment_evidence_required',
   'document_version_commands.document_version_commands_payment_evidence_authority',
@@ -313,7 +314,12 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
       const actualTables = await paymentPredecessorTables(database.targetPool);
       expect(actualTables).toEqual(await committedMigrationTables(entries));
       expect(actualTables.filter((table) => !tables.includes(table))).toEqual([
+        'payment_commands',
+        'payment_cursor_keys',
+        'payment_events',
         'payment_evidence_document_sources',
+        'payment_history',
+        'payments',
       ]);
       async function noInferredPayment() {
         expect(

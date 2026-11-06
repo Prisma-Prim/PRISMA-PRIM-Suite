@@ -32,6 +32,7 @@ export function PaymentEvidenceDetail({
   actor,
   identity,
   documentId,
+  requestedVersionId,
   selectionGeneration,
   operationKeys,
   onProtectedWorkChange,
@@ -43,6 +44,7 @@ export function PaymentEvidenceDetail({
   actor: ActorContext;
   identity: BrowserIdentity;
   documentId: string;
+  requestedVersionId?: string;
   selectionGeneration: number;
   operationKeys: PaymentEvidenceOperationKeys;
   onProtectedWorkChange: (protectedWork: boolean) => void;
@@ -265,6 +267,7 @@ export function PaymentEvidenceDetail({
             identity={identity}
             documentId={documentId}
             documentType="payment-evidence"
+            paymentEvidenceRequestedVersionId={requestedVersionId}
             workingRevision={versionRevision}
             operationKeys={operationKeys}
             paymentEvidenceReadable={readable}

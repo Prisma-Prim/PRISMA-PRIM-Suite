@@ -119,6 +119,7 @@ export function DocumentVersions({
   workingRevision,
   onRefresh,
   onProtectedWorkChange,
+  paymentEvidenceRequestedVersionId,
   paymentEvidenceReadable = true,
   paymentEvidenceRecoveryGeneration = 0,
   onCompanyContextRejected = () => undefined,
@@ -132,6 +133,7 @@ export function DocumentVersions({
   operationKeys?: PaymentEvidenceOperationKeys;
   /** Source read projection availability never owns an existing write envelope. */
   paymentEvidenceReadable?: boolean;
+  paymentEvidenceRequestedVersionId?: string;
   /** A successful deliberate Source reload, never a command lifetime/key. */
   paymentEvidenceRecoveryGeneration?: number;
   /** The open Document's revision; a newer one reloads the Versions. */
@@ -151,6 +153,7 @@ export function DocumentVersions({
         documentType={documentType}
         workingRevision={workingRevision}
         operationKeys={operationKeys}
+        requestedVersionId={paymentEvidenceRequestedVersionId}
         metadataReadable={paymentEvidenceReadable}
         recoveryGeneration={paymentEvidenceRecoveryGeneration}
         onRefresh={onRefresh}

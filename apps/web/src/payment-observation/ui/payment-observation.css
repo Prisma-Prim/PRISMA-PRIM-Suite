@@ -1,0 +1,212 @@
+.payment-observation {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.payment-observation-summary,
+.payment-observation-revision,
+.payment-observation-source {
+  min-width: 0;
+}
+.payment-observation-summary-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.payment-observation-summary-heading h3 {
+  margin-block: 0;
+}
+.payment-observation-revision-number,
+.payment-observation-party-kind {
+  color: #596579;
+}
+.payment-observation-party-kind {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.9em;
+}
+.payment-observation-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  min-width: 0;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.75rem;
+}
+.payment-observation-fields legend {
+  max-width: 100%;
+  padding-inline: 0.25rem;
+  overflow-wrap: anywhere;
+}
+.payment-observation-fields label,
+.payment-observation-field,
+.payment-observation form > label {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.payment-observation-fields input,
+.payment-observation-fields textarea,
+.payment-observation form > label textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cbd3df;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+.payment-observation-fields textarea,
+.payment-observation form > label textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.payment-observation-wide {
+  grid-column: 1 / -1;
+}
+.payment-observation-help {
+  margin: 0;
+  color: #596579;
+  font-size: 0.925em;
+}
+.payment-observation-facts {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 0.6rem 1rem;
+  margin: 1.25rem 0;
+}
+.payment-observation-facts dt {
+  color: #596579;
+}
+.payment-observation-facts dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.payment-observation-amount {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.payment-observation-revision-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.payment-observation-revision-values > section {
+  min-width: 0;
+  padding: 0.875rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.5rem;
+  background: #f7f9fc;
+}
+.payment-observation-confirmation,
+.payment-observation-lineage {
+  min-width: 0;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e6eaf1;
+}
+.payment-observation-confirmation h5,
+.payment-observation-lineage h4 {
+  margin-top: 0;
+}
+.payment-observation-confirmation .payment-observation-facts {
+  margin-bottom: 0;
+}
+.payment-observation-literal,
+.payment-observation-source h4,
+.payment-observation-revision h4,
+.payment-observation-lineage p,
+.payment-observation p,
+.payment-observation-state {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.payment-observation-hash {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+.payment-observation-state {
+  font-weight: 600;
+}
+.payment-observation-notice,
+.payment-observation-panel {
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+.payment-observation-notice {
+  border-color: #e6e1f4;
+  background: #faf8ff;
+  color: #3c315e;
+}
+.payment-observation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.payment-observation button:not(.shared-select__trigger) {
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--shell-line, #d7dfeb);
+  border-radius: 0.5rem;
+  background: var(--shell-surface, #fff);
+  color: var(--shell-ink, #18243a);
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.payment-observation button[type='submit'] {
+  border-color: var(--shell-blue, #375eaa);
+  background: var(--shell-blue, #375eaa);
+  color: #fff;
+}
+.payment-observation button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.payment-observation button:focus-visible,
+.payment-observation input:focus-visible,
+.payment-observation textarea:focus-visible,
+.payment-observation-fields input:focus-visible,
+.payment-observation-fields textarea:focus-visible,
+.payment-observation-fields button:focus-visible {
+  outline: 3px solid #9076ed;
+  outline-offset: 3px;
+}
+.payment-observation-fields [aria-invalid='true'] {
+  border-color: #a82a39;
+}
+@media (max-width: 650px) {
+  .payment-observation-fields,
+  .payment-observation-revision-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .payment-observation-fields,
+  .payment-observation-panel,
+  .payment-observation-notice {
+    padding: 0.875rem;
+  }
+  .payment-observation-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+  .payment-observation-facts dd {
+    margin-bottom: 0.6rem;
+  }
+  .payment-observation-summary-heading,
+  .payment-observation-actions {
+    align-items: stretch;
+  }
+}

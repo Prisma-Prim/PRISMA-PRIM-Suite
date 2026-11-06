@@ -317,13 +317,14 @@ export async function createPaymentEvidenceFixture(
     bytes: Buffer;
     key?: string;
     identity?: PaymentEvidenceIdentity;
+    company?: string;
   }) {
     return fetch(
       `${harness.origin}/api/documents/${input.documentId}/versions/${input.versionId}/content?expectedRevision=${input.revision}&fileName=fictional-payment-notice.pdf`,
       {
         method: 'POST',
         headers: {
-          ...headers(input.identity ?? 'owner', companyId),
+          ...headers(input.identity ?? 'owner', input.company ?? companyId),
           'content-type': 'application/pdf',
           'idempotency-key': input.key ?? randomUUID(),
         },

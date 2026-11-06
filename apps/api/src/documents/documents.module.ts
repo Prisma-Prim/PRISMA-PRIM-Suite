@@ -1,3 +1,4 @@
+import { DocumentPaymentSource } from './document-payment-source.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import { DocumentInvoiceRecordSource } from './document-invoice-record-source.js';
 import { ExternalInvoiceRelationsService } from './external-invoice-relations.service.js';
@@ -29,6 +30,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     AccountabilityModule,
   ],
   providers: [
+    DocumentPaymentSource,
     PaymentEvidenceSourcesService,
     DocumentInvoiceRecordSource,
     ProjectPdfBundleService,
@@ -45,6 +47,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentMalwareScanner,
   ],
   exports: [
+    DocumentPaymentSource,
     DocumentInvoiceRecordSource,
     DocumentReadBoundary,
     ProjectPdfBundleService,

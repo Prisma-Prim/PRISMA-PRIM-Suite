@@ -82,6 +82,8 @@ const isActorContext = object({
       knowledgeGrants: optional(isOpaque),
       externalInvoiceGrants: optional(isOpaque),
       paymentGrants: optional(isOpaque),
+      paymentObservationReadCapture: optional(isOpaque),
+      paymentObservationContextCapture: optional(isOpaque),
       paymentEvidenceContextCapture: optional(isOpaque),
       paymentEvidenceReferenceReadCapture: optional(isOpaque),
       invoiceRecordReadCapture: optional(isOpaque),

@@ -1,3 +1,5 @@
+import { PaymentModule } from './payment/payment.module.js';
+import { PaymentController } from './payment/payment.controller.js';
 import { CompanyPaymentReaderAssignmentController } from './access/company-payment-reader-assignment.controller.js';
 import { CompanyPaymentRecorderAssignmentController } from './access/company-payment-recorder-assignment.controller.js';
 import { CompanyPaymentConfirmerAssignmentController } from './access/company-payment-confirmer-assignment.controller.js';
@@ -176,6 +178,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    PaymentModule,
     InvoiceRecordModule,
     KnowledgeModule,
     MissionPlanModule,
@@ -208,6 +211,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    PaymentController,
     InvoiceRecordController,
     CompanyPaymentReaderAssignmentController,
     CompanyPaymentRecorderAssignmentController,

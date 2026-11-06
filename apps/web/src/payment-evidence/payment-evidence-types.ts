@@ -1,7 +1,8 @@
 import type { ApiResult } from '../api/authenticated-api-client';
 import type { ActorContext } from '../access-types';
 export type PaymentEvidenceTarget =
-  { kind: 'register' } | { kind: 'document'; documentId: string };
+  | { kind: 'register' }
+  | { kind: 'document'; documentId: string; requestedVersionId?: string };
 export type PaymentEvidenceSelection = PaymentEvidenceTarget & {
   generation: number;
 };
