@@ -42,6 +42,7 @@ const keys = [
   'restrictedTitle',
   'originals',
   'reversalBlocked',
+  'remediation',
 ] as const;
 
 export const clientUnionHistoryMessages = defineMessages(keys, {
@@ -91,6 +92,8 @@ export const clientUnionHistoryMessages = defineMessages(keys, {
     originals: 'Dosarele originale păstrate',
     reversalBlocked:
       'Această unire nu poate fi inversată din detaliul autorizat curent. Este posibil ca starea sau condițiile aplicabile să se fi schimbat.',
+    remediation:
+      'Acest identificator necesită o remediere separată a datelor înainte ca o pereche să poată fi unită.',
   },
   ru: {
     title: 'Управляемое объединение Клиентов',
@@ -137,6 +140,8 @@ export const clientUnionHistoryMessages = defineMessages(keys, {
     originals: 'Сохранённые исходные досье',
     reversalBlocked:
       'Это объединение нельзя отменить из текущих разрешённых подробностей. Его состояние или действующие условия могли измениться.',
+    remediation:
+      'Для этого идентификатора необходимо отдельное исправление данных, прежде чем пару можно будет объединить.',
   },
   fr: {
     title: 'Union encadrée de Clients',
@@ -187,6 +192,8 @@ export const clientUnionHistoryMessages = defineMessages(keys, {
     originals: 'Dossiers d’origine préservés',
     reversalBlocked:
       'Cette union ne peut pas être annulée depuis les détails autorisés actuels. Son état ou les conditions applicables peuvent avoir changé.',
+    remediation:
+      'Cet identifiant nécessite une correction distincte des données avant qu’une paire puisse être unie.',
   },
   en: {
     title: 'Governed Client union',
@@ -234,6 +241,8 @@ export const clientUnionHistoryMessages = defineMessages(keys, {
     originals: 'Preserved original dossiers',
     reversalBlocked:
       'This union cannot be reversed from the current authorized detail. Its state or governing conditions may have changed.',
+    remediation:
+      'This identifier needs separate data remediation before a pair can be united.',
   },
 });
 
@@ -280,6 +289,7 @@ export function useClientUnionHistoryCopy() {
     restrictedTitle: message('restrictedTitle'),
     originals: message('originals'),
     reversalBlocked: message('reversalBlocked'),
+    remediation: message('remediation'),
     actionLabels: {
       'client.union_confirmed': message('confirmedAction'),
       'client.union_reversed': message('reversedAction'),

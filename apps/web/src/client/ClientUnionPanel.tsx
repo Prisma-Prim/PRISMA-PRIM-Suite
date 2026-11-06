@@ -20,7 +20,7 @@ import {
   type UnionField,
   type UnionHistory,
 } from './client-union-contract';
-import { clientUnionCopy as legacyCopy } from './client-union.copy';
+import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
 import { useClientUnionHistoryCopy } from './client-union-history.copy';
 import { useClientDossierCopy } from './client-dossier.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -68,6 +68,7 @@ export function ClientUnionPanel({
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
   const copy = useClientUnionHistoryCopy();
+  const confirmationCopy = useClientUnionConfirmationCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const openingTrigger = useRef<Element | null>(null);
   const receiveComparisonHeading = useCallback(
@@ -280,9 +281,7 @@ export function ClientUnionPanel({
       {feedback === 'refreshError' && <p role="alert">{copy.refreshError}</p>}
       {feedback === 'unavailable' && <p role="alert">{copy.unavailable}</p>}
       {feedback === 'reversalStale' && <p role="alert">{copy.reversalStale}</p>}
-      {view.kind === 'remediation' && (
-        <p role="alert">{legacyCopy.remediation}</p>
-      )}
+      {view.kind === 'remediation' && <p role="alert">{copy.remediation}</p>}
       {view.kind === 'comparison' && (
         <ClientUnionComparison
           key={view.comparison.reviewReference}
@@ -319,7 +318,7 @@ export function ClientUnionPanel({
       )}
       {view.kind === 'saved' && (
         <div>
-          {!onConfirmed && <p role="status">{legacyCopy.saved}</p>}
+          {!onConfirmed && <p role="status">{confirmationCopy.saved}</p>}
           <button
             type="button"
             disabled={busy}

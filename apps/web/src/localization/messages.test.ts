@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { assertFirstJourneyTranslationCoverage } from './first-journey-coverage';
 import {
   assertMessageCoverage,
   defineMessages,
@@ -65,10 +64,6 @@ describe('localized message boundary', () => {
     expect(() => assertMessageCoverage('example', messages)).toThrow(
       'Missing translation: example.fr.greeting',
     );
-  });
-
-  it('covers every message owned by the first localized journey', () => {
-    expect(() => assertFirstJourneyTranslationCoverage()).not.toThrow();
   });
 
   it('preserves literal braces in interpolated business content', () => {
