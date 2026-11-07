@@ -20,6 +20,7 @@ import {
   paymentKey,
   paymentQuery,
   type PaymentInput,
+  type PaymentSource,
 } from './payment.input.js';
 import {
   paymentCursor,
@@ -50,6 +51,28 @@ export class PaymentService {
     private readonly store: PaymentStore,
     private readonly accountability: PaymentAccountability,
   ) {}
+  /**
+   * Whether the frozen Source still qualifies for new use. A native refusal is
+   * an answer here, not a failure, so it must not abort the surrounding read.
+   */
+  private async qualifiesForNewUse(
+    actor: ActorContext,
+    source: PaymentSource,
+  ): Promise<boolean> {
+    const connection = this.database.connection;
+    await connection.execute(sql`SAVEPOINT payment_new_use_probe`);
+    try {
+      await this.source.inspect(actor, source, true);
+    } catch (error) {
+      if (!nativeSourceRefusal(error)) throw error;
+      await connection.execute(
+        sql`ROLLBACK TO SAVEPOINT payment_new_use_probe`,
+      );
+      return false;
+    }
+    await connection.execute(sql`RELEASE SAVEPOINT payment_new_use_probe`);
+    return true;
+  }
   private binding(
     actor: ActorContext,
     scope: PaymentScope,
@@ -278,7 +301,10 @@ export class PaymentService {
           });
           if (source) {
             await this.source.requireAuthority(actor, current.snapshot.source);
-            await this.source.inspect(actor, current.snapshot.source, true);
+            return await this.qualifiesForNewUse(
+              actor,
+              current.snapshot.source,
+            );
           }
           return true;
         } catch (e) {
@@ -475,6 +501,23 @@ export class PaymentService {
       }
     }
   }
+}
+const NATIVE_SOURCE_REFUSALS: ReadonlySet<unknown> = new Set([
+  'payment_native_source',
+  'payment_native_source_authority',
+]);
+function nativeSourceRefusal(error: unknown): boolean {
+  let cause: unknown = error;
+  for (
+    let depth = 0;
+    depth < 4 && cause && typeof cause === 'object';
+    depth++
+  ) {
+    if ('constraint' in cause && NATIVE_SOURCE_REFUSALS.has(cause.constraint))
+      return true;
+    cause = 'cause' in cause ? cause.cause : undefined;
+  }
+  return false;
 }
 function unavailable(error: unknown): never {
   if (error instanceof HttpException) throw error;
