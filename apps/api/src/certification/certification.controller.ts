@@ -4,6 +4,7 @@ import {
   Get,
   Header,
   Headers,
+  HttpCode,
   Param,
   Post,
   Req,
@@ -104,6 +105,36 @@ export class CertificationController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.certification.reviewApplication({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Header('Cache-Control', 'private, no-store')
+  @HttpCode(200)
+  @Post('certification-cases/:caseId/duration-proposal')
+  durationProposal(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+  ) {
+    return this.certification.durationProposal({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+    });
+  }
+
+  @Post('certification-cases/:caseId/duration')
+  confirmDuration(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.confirmDuration({
       actor: requireActorContext(request),
       caseId,
       body,

@@ -1,3 +1,10 @@
+import type {
+  DURATION_RULE_VERSION,
+  DurationProposal,
+  IncreaseFactor,
+  ReductionFactor,
+} from './certification-duration.js';
+
 /** ISO 22003-1 food chain subcategories used by ISO 22000 certification. */
 export const FOOD_CHAIN_SUBCATEGORIES = [
   'AI',
@@ -65,6 +72,35 @@ export type ApplicationReview = {
   | { outcome: 'rejected'; rejectionReason: string }
 );
 
+/** Confirmed auditor-days, as decimal strings with at most two decimals. */
+export interface ConfirmedDuration {
+  initialOnSite: string;
+  stage1OnSite: string;
+  stage2OnSite: string;
+  surveillanceOnSite: string;
+  recertificationOnSite: string;
+}
+
+export interface DurationFactorInputs {
+  primary: FoodChainSubcategory;
+  haccpStudies: Partial<Record<FoodChainSubcategory, number>>;
+  increases: Partial<Record<IncreaseFactor, number>>;
+  reductions: Partial<Record<ReductionFactor, number>>;
+}
+
+export interface DurationDetermination {
+  ruleVersion: typeof DURATION_RULE_VERSION;
+  inputs: DurationFactorInputs & {
+    subcategories: FoodChainSubcategory[];
+    effectiveFte: number;
+  };
+  computation:
+    | { kind: 'proposal'; proposal: DurationProposal }
+    | { kind: 'manual'; reason: 'FTE_BAND_AMBIGUOUS' };
+  confirmed: ConfirmedDuration;
+  justification: string | null;
+}
+
 export interface CertificationActorReference {
   workspaceMembershipId: string;
   displayName: string;
@@ -84,7 +120,8 @@ export type CertificationStepVersion =
   | (StepVersionBase & {
       step: 'application_review';
       value: ApplicationReview;
-    });
+    })
+  | (StepVersionBase & { step: 'duration'; value: DurationDetermination });
 
 export type ApplicationVersion = Extract<
   CertificationStepVersion,
@@ -94,10 +131,14 @@ export type ApplicationReviewVersion = Extract<
   CertificationStepVersion,
   { step: 'application_review' }
 >;
+export type DurationVersion = Extract<
+  CertificationStepVersion,
+  { step: 'duration' }
+>;
 
 /** The next step a programme manager can record, or none once closed. */
 export type CertificationNextStep =
-  'application' | 'application_review' | 'duration' | null;
+  'application' | 'application_review' | 'duration' | 'agreement' | null;
 
 export interface CertificationCaseSummary {
   id: string;
@@ -118,6 +159,7 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   clientAccountId: string;
   application: ApplicationVersion | null;
   applicationReview: ApplicationReviewVersion | null;
+  duration: DurationVersion | null;
 }
 
 export interface CertificationCaseList {

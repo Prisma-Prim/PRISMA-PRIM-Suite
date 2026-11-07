@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { useCertificationCopy } from './certification.copy';
+import { DurationView } from './CertificationDurationViews';
 import {
   REVIEW_CRITERIA,
   type ApplicationFacts,
@@ -140,7 +142,16 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
     : detail.application
       ? copy('stepToRecord')
       : copy('stepWaiting');
-  const duration = closed ? copy('stepClosed') : copy('stepNotAvailable');
+  const duration = closed
+    ? copy('stepClosed')
+    : detail.duration
+      ? formatMessage(copy('stepRecorded'), {
+          version: detail.duration.version,
+        })
+      : detail.applicationReview?.value.outcome === 'accepted'
+        ? copy('stepToRecord')
+        : copy('stepWaitingReview');
+  const agreement = closed ? copy('stepClosed') : copy('stepNotAvailable');
   return (
     <ol className="certification-steps" aria-label={copy('steps')}>
       <li data-current={detail.nextStep === 'application'}>
@@ -151,6 +162,9 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       </li>
       <li data-current={detail.nextStep === 'duration'}>
         <strong>{copy('stepDuration')}</strong> {duration}
+      </li>
+      <li data-current={detail.nextStep === 'agreement'}>
+        <strong>{copy('stepAgreement')}</strong> {agreement}
       </li>
     </ol>
   );
@@ -165,6 +179,8 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
       return <>{copy('nextApplicationReview')}</>;
     case 'duration':
       return <>{copy('nextDuration')}</>;
+    case 'agreement':
+      return <>{copy('nextAgreement')}</>;
     case null:
       return <>{copy('nextNone')}</>;
   }
@@ -179,28 +195,45 @@ export function TimelineView({ timeline }: { timeline: CaseTimeline }) {
     <ol className="certification-timeline">
       {timeline.entries.map((entry) => (
         <li key={entry.id}>
-          <strong>
-            {entry.step === 'application'
-              ? formatMessage(copy('timelineApplication'), {
-                  version: entry.version,
-                })
-              : formatMessage(copy('timelineReview'), {
-                  outcome: copy(entry.value.outcome),
-                })}
-          </strong>
-          <VersionAttribution version={entry} />
-          <details>
-            <summary>{copy('showValues')}</summary>
-            {entry.step === 'application' ? (
-              <FactsView facts={entry.value} />
-            ) : (
-              <ReviewView review={entry.value} />
-            )}
-          </details>
+          <TimelineEntry entry={entry} />
         </li>
       ))}
     </ol>
   );
+}
+
+function TimelineEntry({ entry }: { entry: StepVersion }) {
+  const copy = useCertificationCopy();
+  const values = (title: string, recorded: ReactNode) => (
+    <>
+      <strong>{title}</strong>
+      <VersionAttribution version={entry} />
+      <details>
+        <summary>{copy('showValues')}</summary>
+        {recorded}
+      </details>
+    </>
+  );
+  switch (entry.step) {
+    case 'application':
+      return values(
+        formatMessage(copy('timelineApplication'), { version: entry.version }),
+        <FactsView facts={entry.value} />,
+      );
+    case 'application_review':
+      return values(
+        formatMessage(copy('timelineReview'), {
+          outcome: copy(entry.value.outcome),
+        }),
+        <ReviewView review={entry.value} />,
+      );
+    case 'duration':
+      return values(
+        formatMessage(copy('timelineDuration'), { version: entry.version }),
+        <DurationView determination={entry.value} />,
+      );
+  }
+  return unexpected(entry);
 }
 
 function unexpected(value: never): never {

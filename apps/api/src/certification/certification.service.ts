@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -32,8 +33,23 @@ import {
 } from '../database/schema/certification.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
 import { ProjectService } from '../project/project.service.js';
+import {
+  proposeDuration,
+  roundToHundredths,
+  type DurationResult,
+} from './certification-duration.js';
+import {
+  cents,
+  durationCommand,
+  durationDetermination,
+  durationFactorInputs,
+} from './certification-duration.validation.js';
 import type {
+  ApplicationFacts,
   ApplicationReviewVersion,
+  DurationDetermination,
+  DurationFactorInputs,
+  DurationVersion,
   ApplicationVersion,
   CertificationCaseDetail,
   CertificationCaseList,
@@ -262,6 +278,108 @@ export class CertificationService {
     });
   }
 
+  /** A read: computes the proposal from the accepted application and the given factors. */
+  durationProposal({
+    actor,
+    caseId,
+    body,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+  }): Promise<DurationResult> {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'programme_manager', async (companyId) => {
+      const factors = durationFactorInputs(body);
+      await this.visibleCase(actor, companyId, targetId);
+      const facts = this.acceptedApplication(
+        await this.steps(actor, companyId, targetId),
+      );
+      return computeDuration(facts, factors);
+    });
+  }
+
+  confirmDuration({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      kind: 'duration',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = durationCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        const facts = this.acceptedApplication(steps);
+        const previous = latest(steps, 'duration');
+        const version = (previous?.version ?? 0) + 1;
+        if ((version === 1) !== (input.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A correction states its reason; a first determination has none.',
+          );
+        const result = computeDuration(facts, input.inputs);
+        if (result.kind === 'refused')
+          throw new BadRequestException({
+            code: 'CERTIFICATION_DURATION_REFUSED',
+            message: 'The duration inputs are inconsistent.',
+            refusals: result.refusals,
+          });
+        const factorsUsed =
+          Object.values(input.inputs.increases).some((value) => value > 0) ||
+          Object.values(input.inputs.reductions).some((value) => value > 0);
+        const differs =
+          result.kind === 'manual' ||
+          differsFromProposal(input.confirmed, result.proposal);
+        if ((factorsUsed || differs) && input.justification === null)
+          throw new BadRequestException({
+            code: 'CERTIFICATION_DURATION_JUSTIFICATION_REQUIRED',
+            message:
+              'Justify adjustment factors and any value other than the proposal.',
+          });
+        const determination: DurationDetermination = {
+          ruleVersion: 'iso22000-basic-2026-11',
+          inputs: {
+            ...input.inputs,
+            subcategories: facts.foodChainSubcategories,
+            effectiveFte: facts.effectiveFte,
+          },
+          computation: result,
+          confirmed: input.confirmed,
+          justification: input.justification,
+        };
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step: 'duration',
+          version,
+          replaces: previous,
+          payload: determination,
+          reason: input.reason,
+          action: 'certification_case.duration_confirmed',
+          metadata: { version },
+        });
+      },
+    });
+  }
+
   list({
     actor,
     projectId,
@@ -443,7 +561,8 @@ export class CertificationService {
     reason: string | null;
     action:
       | 'certification_case.application_recorded'
-      | 'certification_case.application_reviewed';
+      | 'certification_case.application_reviewed'
+      | 'certification_case.duration_confirmed';
     metadata: Record<string, string | number>;
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
@@ -563,12 +682,14 @@ export class CertificationService {
     const summary = this.summary(row, await this.legalName(actor, row), steps);
     const application = latest(steps, 'application');
     const review = latest(steps, 'application_review');
+    const duration = latest(steps, 'duration');
     return {
       ...summary,
       companyId: row.companyId,
       clientAccountId: row.clientAccountId,
       application: application ? applicationVersion(application) : null,
       applicationReview: review ? reviewVersion(review) : null,
+      duration: duration ? durationVersion(duration) : null,
     };
   }
 
@@ -593,6 +714,22 @@ export class CertificationService {
       },
       openedAt: row.openedAt.toISOString(),
     };
+  }
+
+  /** The latest application facts once the review accepted them. */
+  private acceptedApplication(steps: readonly StepRow[]): ApplicationFacts {
+    const review = latest(steps, 'application_review');
+    const application = latest(steps, 'application');
+    if (
+      !review ||
+      !application ||
+      reviewVersion(review).value.outcome !== 'accepted'
+    )
+      throw stepConflict(
+        'CERTIFICATION_APPLICATION_NOT_ACCEPTED',
+        'The duration is determined after the application review accepts it.',
+      );
+    return applicationVersion(application).value;
   }
 
   private async legalName(actor: ActorContext, row: CaseRow): Promise<string> {
@@ -709,7 +846,8 @@ function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
   if (row.status !== 'open') return null;
   if (!latest(steps, 'application')) return 'application';
   if (!latest(steps, 'application_review')) return 'application_review';
-  return 'duration';
+  if (!latest(steps, 'duration')) return 'duration';
+  return 'agreement';
 }
 
 function stepConflict(code: string, message: string): ConflictException {
@@ -759,6 +897,51 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
   };
 }
 
+function durationVersion(row: StepRow): DurationVersion {
+  return {
+    ...base(row),
+    step: 'duration',
+    value: persisted(() => durationDetermination(row.payload)),
+  };
+}
+
+/** The proposal for the accepted application, or why none exists. */
+function computeDuration(
+  facts: ApplicationFacts,
+  factors: DurationFactorInputs,
+): DurationResult {
+  const studies = Object.values(factors.haccpStudies).reduce(
+    (total, value) => total + value,
+    0,
+  );
+  if (studies !== facts.haccpStudyCount)
+    return { kind: 'refused', refusals: ['HACCP_STUDIES_MISMATCH'] };
+  return proposeDuration({
+    subcategories: facts.foodChainSubcategories,
+    primary: factors.primary,
+    haccpStudies: factors.haccpStudies,
+    effectiveFte: facts.effectiveFte,
+    increases: factors.increases,
+    reductions: factors.reductions,
+  });
+}
+
+function differsFromProposal(
+  confirmed: DurationDetermination['confirmed'],
+  proposal: Extract<DurationResult, { kind: 'proposal' }>['proposal'],
+): boolean {
+  const pairs: readonly (readonly [string, string])[] = [
+    [confirmed.initialOnSite, proposal.initialOnSite],
+    [confirmed.stage1OnSite, proposal.stage1OnSite],
+    [confirmed.stage2OnSite, proposal.stage2OnSite],
+    [confirmed.surveillanceOnSite, proposal.surveillanceOnSite],
+    [confirmed.recertificationOnSite, proposal.recertificationOnSite],
+  ];
+  return pairs.some(
+    ([value, proposed]) => cents(value) !== cents(roundToHundredths(proposed)),
+  );
+}
+
 /** Stored payloads were validated on write; a failure here is corruption. */
 function persisted<T>(decode: () => T): T {
   try {
@@ -776,6 +959,8 @@ function stepVersion(row: StepRow): CertificationStepVersion {
       return applicationVersion(row);
     case 'application_review':
       return reviewVersion(row);
+    case 'duration':
+      return durationVersion(row);
   }
   return unexpectedStep(row.step);
 }

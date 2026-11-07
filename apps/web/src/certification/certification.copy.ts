@@ -45,6 +45,7 @@ const keys = [
   'nextApplication',
   'nextApplicationReview',
   'nextDuration',
+  'nextAgreement',
   'nextNone',
   'openedBy',
   'openedAt',
@@ -72,9 +73,11 @@ const keys = [
   'stepApplication',
   'stepReview',
   'stepDuration',
+  'stepAgreement',
   'stepRecorded',
   'stepToRecord',
   'stepWaiting',
+  'stepWaitingReview',
   'stepAccepted',
   'stepRejected',
   'stepNotAvailable',
@@ -145,12 +148,93 @@ const keys = [
   'blockedClosed',
   'blockedCorrectionReason',
   'blockedCorrectionUnchanged',
-  'nextDurationPending',
+  'nextAgreementPending',
+
+  'durationTitle',
+  'durationMissing',
+  'durationHelp',
+  'durationInputs',
+  'primarySubcategory',
+  'selectPrimarySubcategory',
+  'primarySubcategoryHelp',
+  'haccpStudiesPerSubcategory',
+  'haccpStudiesFor',
+  'haccpStudiesTotal',
+  'increaseFactors',
+  'increaseFactorsHelp',
+  'reductionFactors',
+  'reductionFactorsHelp',
+  'factorProductTypes',
+  'factorProductLines',
+  'factorProductDevelopment',
+  'factorCriticalControlPoints',
+  'factorOperationalPrerequisites',
+  'factorConstructionSites',
+  'factorComplexInfrastructure',
+  'factorOnSiteLaboratory',
+  'factorRemoteAuditTechnology',
+  'factorInterpreter',
+  'factorSystemMaturity',
+  'factorPriorCertification',
+  'factorTransferPreparedness',
+  'factorAutomation',
+  'computeProposal',
+  'computing',
+  'durationInputsValidation',
+  'haccpStudiesMismatch',
+  'proposalTitle',
+  'proposalUnavailable',
+  'proposalOutdated',
+  'durationNotAccepted',
+  'amountsInAuditorDays',
+  'ruleVersion',
+  'basicTime',
+  'haccpTime',
+  'fteTime',
+  'baseDays',
+  'netAdjustment',
+  'percentValue',
+  'initialOnSite',
+  'initialTotal',
+  'stage1OnSite',
+  'stage2OnSite',
+  'surveillanceOnSite',
+  'surveillanceTotal',
+  'recertificationOnSite',
+  'recertificationTotal',
+  'warningsTitle',
+  'warningSurveillanceBelowOneDay',
+  'warningRecertificationBelowOneDay',
+  'warningStage2BelowOneDay',
+  'durationManual',
+  'refusalsTitle',
+  'refusalPrimaryNotSelected',
+  'refusalPrimaryNotHighestBasicTime',
+  'refusalHaccpStudiesMismatch',
+  'refusalReductionFactorCap',
+  'refusalReductionTotalCap',
+  'confirmDuration',
+  'correctDuration',
+  'confirmHelp',
+  'justification',
+  'justificationRequiredHint',
+  'durationValuesValidation',
+  'durationStagesMismatch',
+  'durationJustificationRequired',
+  'durationRefused',
+  'blockedDurationCorrectionReason',
+  'computation',
+  'computationProposal',
+  'computationManual',
+  'confirmedDays',
+  'noFactor',
+  'showProposal',
 
   'timelineTitle',
   'timelineEmpty',
   'timelineApplication',
   'timelineReview',
+  'timelineDuration',
   'showValues',
 ] as const;
 
@@ -171,7 +255,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certification',
     introduction:
-      'Certification Cases of this Project: the client’s application and its review, with every recorded version.',
+      'Certification Cases of this Project: the client’s application, its review and the audit duration, with every recorded version.',
     refresh: 'Refresh Certification Cases',
     loading: 'Loading Certification Cases…',
     caseLoading: 'Loading the Certification Case…',
@@ -212,6 +296,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplication: 'Record the application',
     nextApplicationReview: 'Review the application',
     nextDuration: 'Audit duration',
+    nextAgreement: 'Certification agreement',
     nextNone: 'None',
     openedBy: 'Opened by',
     openedAt: 'Opened on',
@@ -245,9 +330,11 @@ export const certificationMessages = defineMessages(keys, {
     stepApplication: 'Application',
     stepReview: 'Application review',
     stepDuration: 'Audit duration',
+    stepAgreement: 'Certification agreement',
     stepRecorded: 'Recorded — version {version}',
     stepToRecord: 'To record',
     stepWaiting: 'Waits for the application',
+    stepWaitingReview: 'Waits for the accepted review',
     stepAccepted: 'Accepted',
     stepRejected: 'Rejected',
     stepNotAvailable: 'Not available yet',
@@ -332,13 +419,117 @@ export const certificationMessages = defineMessages(keys, {
       'A correction needs a reason and a first application has none. Reload the Case before saving again.',
     blockedCorrectionUnchanged:
       'The correction changes no value. Change at least one value or cancel the correction.',
-    nextDurationPending:
-      'The application is accepted. The next step, audit duration, is not available in this version yet.',
+    nextAgreementPending:
+      'The audit duration is confirmed. The next step, the certification agreement, is not available in this version yet.',
+
+    durationTitle: 'Audit duration',
+    durationMissing: 'No audit duration is confirmed yet.',
+    durationHelp:
+      'The calculator proposes auditor-days from the accepted application and the factors you state. Confirm the proposal or adjust it with a justification.',
+    durationInputs: 'Duration inputs',
+    primarySubcategory: 'Primary subcategory',
+    selectPrimarySubcategory: 'Select the primary subcategory',
+    primarySubcategoryHelp:
+      'The application subcategory with the highest basic time.',
+    haccpStudiesPerSubcategory: 'HACCP studies per subcategory',
+    haccpStudiesFor: 'HACCP studies in {code}',
+    haccpStudiesTotal:
+      'Total: {total} of the {declared} HACCP studies declared in the application.',
+    increaseFactors: 'Increase factors (%)',
+    increaseFactorsHelp:
+      'Whole percentages from 0 to 100. Any factor above 0 needs a justification.',
+    reductionFactors: 'Reduction factors (%)',
+    reductionFactorsHelp:
+      'Whole percentages, at most 10% each and 20% together. Any factor above 0 needs a justification.',
+    factorProductTypes: 'Number of product types',
+    factorProductLines: 'Number of production lines',
+    factorProductDevelopment: 'Product development',
+    factorCriticalControlPoints: 'Number of critical control points',
+    factorOperationalPrerequisites:
+      'Number of operational prerequisite programmes',
+    factorConstructionSites: 'Construction sites',
+    factorComplexInfrastructure: 'Complex infrastructure',
+    factorOnSiteLaboratory: 'Laboratory on site',
+    factorRemoteAuditTechnology: 'Remote audit technology',
+    factorInterpreter: 'Interpreter',
+    factorSystemMaturity: 'Management system maturity',
+    factorPriorCertification: 'Prior certification',
+    factorTransferPreparedness: 'Transfer preparedness',
+    factorAutomation: 'Automation',
+    computeProposal: 'Compute the proposal',
+    computing: 'Computing…',
+    durationInputsValidation:
+      'Choose the primary subcategory and enter whole numbers: HACCP studies from 0 to 999 per subcategory and factor percentages from 0 to 100.',
+    haccpStudiesMismatch:
+      'The HACCP studies per subcategory must add up to the number declared in the application.',
+    proposalTitle: 'Proposal',
+    proposalUnavailable: 'The proposal could not be computed. Try again.',
+    proposalOutdated:
+      'The inputs changed since this proposal was computed. Compute it again before confirming.',
+    durationNotAccepted:
+      'The audit duration is determined once the application review accepts the application. Reload the Case.',
+    amountsInAuditorDays: 'Amounts in auditor-days.',
+    ruleVersion: 'Rule version',
+    basicTime: 'Basic time (TD)',
+    haccpTime: 'Additional HACCP studies (TH)',
+    fteTime: 'Effective workforce (TFTE)',
+    baseDays: 'Base duration (TD + TH + TFTE)',
+    netAdjustment: 'Net adjustment',
+    percentValue: '{percent}%',
+    initialOnSite: 'Initial audit on site',
+    initialTotal: 'Initial audit in total',
+    stage1OnSite: 'Stage 1 on site',
+    stage2OnSite: 'Stage 2 on site',
+    surveillanceOnSite: 'Surveillance audit on site',
+    surveillanceTotal: 'Surveillance audit in total',
+    recertificationOnSite: 'Recertification audit on site',
+    recertificationTotal: 'Recertification audit in total',
+    warningsTitle: 'Points to check',
+    warningSurveillanceBelowOneDay:
+      'The surveillance audit is below one auditor-day on site.',
+    warningRecertificationBelowOneDay:
+      'The recertification audit is below one auditor-day on site.',
+    warningStage2BelowOneDay: 'Stage 2 is below one auditor-day on site.',
+    durationManual:
+      'The effective workforce falls where the calculator’s workforce bands overlap, so no proposal is computed. Enter the auditor-days and justify them.',
+    refusalsTitle: 'No proposal can be computed:',
+    refusalPrimaryNotSelected:
+      'The primary subcategory must be one of the application’s subcategories.',
+    refusalPrimaryNotHighestBasicTime:
+      'Another subcategory of the application has a higher basic time. Choose it as the primary subcategory.',
+    refusalHaccpStudiesMismatch:
+      'The HACCP studies must add up to the application’s count, for its subcategories only, with at least one study in the primary subcategory.',
+    refusalReductionFactorCap: 'A reduction factor exceeds 10%.',
+    refusalReductionTotalCap: 'The reduction factors exceed 20% together.',
+    confirmDuration: 'Confirm the audit duration',
+    correctDuration: 'Correct the audit duration',
+    confirmHelp:
+      'Auditor-days with at most two decimals, prefilled with the proposal rounded to hundredths. Stage 1 and Stage 2 add up to the initial audit on site.',
+    justification: 'Justification',
+    justificationRequiredHint:
+      'Required: factors are used, the duration is determined manually or a value differs from the rounded proposal.',
+    durationValuesValidation:
+      'Enter every confirmed value as auditor-days above zero and below 1,000, with at most two decimals.',
+    durationStagesMismatch:
+      'Stage 1 and Stage 2 on site must add up to the initial audit on site.',
+    durationJustificationRequired:
+      'Justify the factors used, a manual determination or any value other than the rounded proposal (at most 4,000 characters).',
+    durationRefused:
+      'The server refused these inputs. Compute the proposal again to see why.',
+    blockedDurationCorrectionReason:
+      'A correction needs a reason and a first determination has none. Reload the Case before saving again.',
+    computation: 'Computation',
+    computationProposal: 'Computed proposal',
+    computationManual: 'Manual determination: the workforce bands overlap',
+    confirmedDays: 'Confirmed auditor-days',
+    noFactor: 'None',
+    showProposal: 'Show the computed proposal',
 
     timelineTitle: 'Timeline',
     timelineEmpty: 'No step recorded yet.',
     timelineApplication: 'Application — version {version}',
     timelineReview: 'Application review — {outcome}',
+    timelineDuration: 'Audit duration — version {version}',
     showValues: 'Show the recorded values',
   },
   fr: {
@@ -357,7 +548,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certification',
     introduction:
-      'Dossiers de certification de ce Projet : la demande du client et sa revue, avec chaque version enregistrée.',
+      'Dossiers de certification de ce Projet : la demande du client, sa revue et la durée d’audit, avec chaque version enregistrée.',
     refresh: 'Actualiser les dossiers de certification',
     loading: 'Chargement des dossiers de certification…',
     caseLoading: 'Chargement du dossier de certification…',
@@ -400,6 +591,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplication: 'Enregistrer la demande',
     nextApplicationReview: 'Revoir la demande',
     nextDuration: 'Durée d’audit',
+    nextAgreement: 'Contrat de certification',
     nextNone: 'Aucune',
     openedBy: 'Ouvert par',
     openedAt: 'Ouvert le',
@@ -433,9 +625,11 @@ export const certificationMessages = defineMessages(keys, {
     stepApplication: 'Demande',
     stepReview: 'Revue de la demande',
     stepDuration: 'Durée d’audit',
+    stepAgreement: 'Contrat de certification',
     stepRecorded: 'Enregistrée — version {version}',
     stepToRecord: 'À enregistrer',
     stepWaiting: 'Attend la demande',
+    stepWaitingReview: 'Attend la revue acceptée',
     stepAccepted: 'Acceptée',
     stepRejected: 'Rejetée',
     stepNotAvailable: 'Pas encore disponible',
@@ -522,13 +716,120 @@ export const certificationMessages = defineMessages(keys, {
       'Une correction exige un motif et une première demande n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
     blockedCorrectionUnchanged:
       'La correction ne change aucune valeur. Modifiez au moins une valeur ou annulez la correction.',
-    nextDurationPending:
-      'La demande est acceptée. L’étape suivante, la durée d’audit, n’est pas encore disponible dans cette version.',
+    nextAgreementPending:
+      'La durée d’audit est confirmée. L’étape suivante, le contrat de certification, n’est pas encore disponible dans cette version.',
+
+    durationTitle: 'Durée d’audit',
+    durationMissing: 'Aucune durée d’audit n’est encore confirmée.',
+    durationHelp:
+      'Le calculateur propose les jours-auditeur à partir de la demande acceptée et des facteurs que vous indiquez. Confirmez la proposition ou ajustez-la avec une justification.',
+    durationInputs: 'Données de la durée',
+    primarySubcategory: 'Sous-catégorie principale',
+    selectPrimarySubcategory: 'Choisir la sous-catégorie principale',
+    primarySubcategoryHelp:
+      'La sous-catégorie de la demande dont le temps de base est le plus élevé.',
+    haccpStudiesPerSubcategory: 'Études HACCP par sous-catégorie',
+    haccpStudiesFor: 'Études HACCP en {code}',
+    haccpStudiesTotal:
+      'Total : {total} sur les {declared} études HACCP déclarées dans la demande.',
+    increaseFactors: 'Facteurs d’augmentation (%)',
+    increaseFactorsHelp:
+      'Pourcentages entiers de 0 à 100. Tout facteur supérieur à 0 exige une justification.',
+    reductionFactors: 'Facteurs de réduction (%)',
+    reductionFactorsHelp:
+      'Pourcentages entiers, 10 % au plus chacun et 20 % au plus ensemble. Tout facteur supérieur à 0 exige une justification.',
+    factorProductTypes: 'Nombre de types de produits',
+    factorProductLines: 'Nombre de lignes de production',
+    factorProductDevelopment: 'Développement de produits',
+    factorCriticalControlPoints: 'Nombre de points critiques pour la maîtrise',
+    factorOperationalPrerequisites:
+      'Nombre de programmes prérequis opérationnels',
+    factorConstructionSites: 'Chantiers',
+    factorComplexInfrastructure: 'Infrastructure complexe',
+    factorOnSiteLaboratory: 'Laboratoire sur site',
+    factorRemoteAuditTechnology: 'Technologie d’audit à distance',
+    factorInterpreter: 'Interprète',
+    factorSystemMaturity: 'Maturité du système de management',
+    factorPriorCertification: 'Certification antérieure',
+    factorTransferPreparedness: 'Préparation au transfert',
+    factorAutomation: 'Automatisation',
+    computeProposal: 'Calculer la proposition',
+    computing: 'Calcul…',
+    durationInputsValidation:
+      'Choisissez la sous-catégorie principale et saisissez des nombres entiers : de 0 à 999 études HACCP par sous-catégorie et des pourcentages de facteurs de 0 à 100.',
+    haccpStudiesMismatch:
+      'Les études HACCP par sous-catégorie doivent totaliser le nombre déclaré dans la demande.',
+    proposalTitle: 'Proposition',
+    proposalUnavailable: 'La proposition n’a pas pu être calculée. Réessayez.',
+    proposalOutdated:
+      'Les données ont changé depuis le calcul de cette proposition. Recalculez-la avant de confirmer.',
+    durationNotAccepted:
+      'La durée d’audit se détermine une fois la demande acceptée par la revue. Rechargez le dossier.',
+    amountsInAuditorDays: 'Montants en jours-auditeur.',
+    ruleVersion: 'Version de la règle',
+    basicTime: 'Temps de base (TD)',
+    haccpTime: 'Études HACCP supplémentaires (TH)',
+    fteTime: 'Effectif (TFTE)',
+    baseDays: 'Durée de base (TD + TH + TFTE)',
+    netAdjustment: 'Ajustement net',
+    percentValue: '{percent} %',
+    initialOnSite: 'Audit initial sur site',
+    initialTotal: 'Audit initial au total',
+    stage1OnSite: 'Étape 1 sur site',
+    stage2OnSite: 'Étape 2 sur site',
+    surveillanceOnSite: 'Audit de surveillance sur site',
+    surveillanceTotal: 'Audit de surveillance au total',
+    recertificationOnSite: 'Audit de renouvellement sur site',
+    recertificationTotal: 'Audit de renouvellement au total',
+    warningsTitle: 'Points à vérifier',
+    warningSurveillanceBelowOneDay:
+      'L’audit de surveillance est inférieur à un jour-auditeur sur site.',
+    warningRecertificationBelowOneDay:
+      'L’audit de renouvellement est inférieur à un jour-auditeur sur site.',
+    warningStage2BelowOneDay:
+      'L’étape 2 est inférieure à un jour-auditeur sur site.',
+    durationManual:
+      'L’effectif se situe là où les tranches d’effectif du calculateur se chevauchent : aucune proposition n’est calculée. Saisissez les jours-auditeur et justifiez-les.',
+    refusalsTitle: 'Aucune proposition ne peut être calculée :',
+    refusalPrimaryNotSelected:
+      'La sous-catégorie principale doit être l’une des sous-catégories de la demande.',
+    refusalPrimaryNotHighestBasicTime:
+      'Une autre sous-catégorie de la demande a un temps de base plus élevé. Choisissez-la comme sous-catégorie principale.',
+    refusalHaccpStudiesMismatch:
+      'Les études HACCP doivent totaliser le nombre de la demande, pour ses seules sous-catégories, avec au moins une étude dans la sous-catégorie principale.',
+    refusalReductionFactorCap: 'Un facteur de réduction dépasse 10 %.',
+    refusalReductionTotalCap:
+      'Les facteurs de réduction dépassent 20 % ensemble.',
+    confirmDuration: 'Confirmer la durée d’audit',
+    correctDuration: 'Corriger la durée d’audit',
+    confirmHelp:
+      'Jours-auditeur avec deux décimales au plus, préremplis avec la proposition arrondie au centième. L’étape 1 et l’étape 2 totalisent l’audit initial sur site.',
+    justification: 'Justification',
+    justificationRequiredHint:
+      'Obligatoire : des facteurs sont utilisés, la durée est déterminée manuellement ou une valeur diffère de la proposition arrondie.',
+    durationValuesValidation:
+      'Saisissez chaque valeur confirmée en jours-auditeur, supérieure à zéro et inférieure à 1 000, avec deux décimales au plus.',
+    durationStagesMismatch:
+      'L’étape 1 et l’étape 2 sur site doivent totaliser l’audit initial sur site.',
+    durationJustificationRequired:
+      'Justifiez les facteurs utilisés, une détermination manuelle ou toute valeur autre que la proposition arrondie (4 000 caractères au plus).',
+    durationRefused:
+      'Le serveur a refusé ces données. Recalculez la proposition pour en connaître la raison.',
+    blockedDurationCorrectionReason:
+      'Une correction exige un motif et une première détermination n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+    computation: 'Calcul',
+    computationProposal: 'Proposition calculée',
+    computationManual:
+      'Détermination manuelle : les tranches d’effectif se chevauchent',
+    confirmedDays: 'Jours-auditeur confirmés',
+    noFactor: 'Aucun',
+    showProposal: 'Afficher la proposition calculée',
 
     timelineTitle: 'Chronologie',
     timelineEmpty: 'Aucune étape enregistrée pour l’instant.',
     timelineApplication: 'Demande — version {version}',
     timelineReview: 'Revue de la demande — {outcome}',
+    timelineDuration: 'Durée d’audit — version {version}',
     showValues: 'Afficher les valeurs enregistrées',
   },
   ro: {
@@ -545,7 +846,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certificare',
     introduction:
-      'Dosarele de certificare ale acestui Proiect: cererea clientului și analiza ei, cu fiecare versiune înregistrată.',
+      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei și durata auditului, cu fiecare versiune înregistrată.',
     refresh: 'Actualizați dosarele de certificare',
     loading: 'Se încarcă dosarele de certificare…',
     caseLoading: 'Se încarcă dosarul de certificare…',
@@ -588,6 +889,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplication: 'Înregistrarea cererii',
     nextApplicationReview: 'Analiza cererii',
     nextDuration: 'Durata auditului',
+    nextAgreement: 'Contractul de certificare',
     nextNone: 'Niciuna',
     openedBy: 'Deschis de',
     openedAt: 'Deschis la',
@@ -621,9 +923,11 @@ export const certificationMessages = defineMessages(keys, {
     stepApplication: 'Cerere',
     stepReview: 'Analiza cererii',
     stepDuration: 'Durata auditului',
+    stepAgreement: 'Contractul de certificare',
     stepRecorded: 'Înregistrată — versiunea {version}',
     stepToRecord: 'De înregistrat',
     stepWaiting: 'Așteaptă cererea',
+    stepWaitingReview: 'Așteaptă analiza acceptată',
     stepAccepted: 'Acceptată',
     stepRejected: 'Respinsă',
     stepNotAvailable: 'Încă indisponibilă',
@@ -709,13 +1013,117 @@ export const certificationMessages = defineMessages(keys, {
       'O corectare necesită un motiv, iar prima cerere nu are. Reîncărcați dosarul înainte de o nouă salvare.',
     blockedCorrectionUnchanged:
       'Corectarea nu schimbă nicio valoare. Modificați cel puțin o valoare sau anulați corectarea.',
-    nextDurationPending:
-      'Cererea este acceptată. Etapa următoare, durata auditului, nu este încă disponibilă în această versiune.',
+    nextAgreementPending:
+      'Durata auditului este confirmată. Etapa următoare, contractul de certificare, nu este încă disponibilă în această versiune.',
+
+    durationTitle: 'Durata auditului',
+    durationMissing: 'Nicio durată a auditului nu este încă confirmată.',
+    durationHelp:
+      'Calculatorul propune zilele-auditor pe baza cererii acceptate și a factorilor pe care îi indicați. Confirmați propunerea sau ajustați-o cu o justificare.',
+    durationInputs: 'Datele duratei',
+    primarySubcategory: 'Subcategoria principală',
+    selectPrimarySubcategory: 'Alegeți subcategoria principală',
+    primarySubcategoryHelp:
+      'Subcategoria din cerere cu cel mai mare timp de bază.',
+    haccpStudiesPerSubcategory: 'Studii HACCP pe subcategorie',
+    haccpStudiesFor: 'Studii HACCP în {code}',
+    haccpStudiesTotal:
+      'Total: {total} din cele {declared} studii HACCP declarate în cerere.',
+    increaseFactors: 'Factori de majorare (%)',
+    increaseFactorsHelp:
+      'Procente întregi între 0 și 100. Orice factor peste 0 necesită o justificare.',
+    reductionFactors: 'Factori de reducere (%)',
+    reductionFactorsHelp:
+      'Procente întregi, cel mult 10% fiecare și 20% împreună. Orice factor peste 0 necesită o justificare.',
+    factorProductTypes: 'Numărul tipurilor de produse',
+    factorProductLines: 'Numărul liniilor de producție',
+    factorProductDevelopment: 'Dezvoltare de produse',
+    factorCriticalControlPoints: 'Numărul punctelor critice de control',
+    factorOperationalPrerequisites:
+      'Numărul programelor preliminare operaționale',
+    factorConstructionSites: 'Șantiere',
+    factorComplexInfrastructure: 'Infrastructură complexă',
+    factorOnSiteLaboratory: 'Laborator pe amplasament',
+    factorRemoteAuditTechnology: 'Tehnologie de audit la distanță',
+    factorInterpreter: 'Interpret',
+    factorSystemMaturity: 'Maturitatea sistemului de management',
+    factorPriorCertification: 'Certificare anterioară',
+    factorTransferPreparedness: 'Pregătire pentru transfer',
+    factorAutomation: 'Automatizare',
+    computeProposal: 'Calculați propunerea',
+    computing: 'Se calculează…',
+    durationInputsValidation:
+      'Alegeți subcategoria principală și introduceți numere întregi: între 0 și 999 de studii HACCP pe subcategorie și procente ale factorilor între 0 și 100.',
+    haccpStudiesMismatch:
+      'Studiile HACCP pe subcategorie trebuie să totalizeze numărul declarat în cerere.',
+    proposalTitle: 'Propunere',
+    proposalUnavailable: 'Propunerea nu a putut fi calculată. Reîncercați.',
+    proposalOutdated:
+      'Datele s-au modificat de la calcularea acestei propuneri. Recalculați-o înainte de confirmare.',
+    durationNotAccepted:
+      'Durata auditului se stabilește după ce analiza acceptă cererea. Reîncărcați dosarul.',
+    amountsInAuditorDays: 'Valori în zile-auditor.',
+    ruleVersion: 'Versiunea regulii',
+    basicTime: 'Timp de bază (TD)',
+    haccpTime: 'Studii HACCP suplimentare (TH)',
+    fteTime: 'Personal efectiv (TFTE)',
+    baseDays: 'Durata de bază (TD + TH + TFTE)',
+    netAdjustment: 'Ajustare netă',
+    percentValue: '{percent}%',
+    initialOnSite: 'Auditul inițial pe amplasament',
+    initialTotal: 'Auditul inițial în total',
+    stage1OnSite: 'Etapa 1 pe amplasament',
+    stage2OnSite: 'Etapa 2 pe amplasament',
+    surveillanceOnSite: 'Auditul de supraveghere pe amplasament',
+    surveillanceTotal: 'Auditul de supraveghere în total',
+    recertificationOnSite: 'Auditul de recertificare pe amplasament',
+    recertificationTotal: 'Auditul de recertificare în total',
+    warningsTitle: 'De verificat',
+    warningSurveillanceBelowOneDay:
+      'Auditul de supraveghere are sub o zi-auditor pe amplasament.',
+    warningRecertificationBelowOneDay:
+      'Auditul de recertificare are sub o zi-auditor pe amplasament.',
+    warningStage2BelowOneDay: 'Etapa 2 are sub o zi-auditor pe amplasament.',
+    durationManual:
+      'Personalul efectiv se află acolo unde intervalele de personal ale calculatorului se suprapun, deci nu se calculează nicio propunere. Introduceți zilele-auditor și justificați-le.',
+    refusalsTitle: 'Nu se poate calcula nicio propunere:',
+    refusalPrimaryNotSelected:
+      'Subcategoria principală trebuie să fie una dintre subcategoriile cererii.',
+    refusalPrimaryNotHighestBasicTime:
+      'O altă subcategorie a cererii are un timp de bază mai mare. Alegeți-o ca subcategorie principală.',
+    refusalHaccpStudiesMismatch:
+      'Studiile HACCP trebuie să totalizeze numărul din cerere, doar pentru subcategoriile ei, cu cel puțin un studiu în subcategoria principală.',
+    refusalReductionFactorCap: 'Un factor de reducere depășește 10%.',
+    refusalReductionTotalCap: 'Factorii de reducere depășesc împreună 20%.',
+    confirmDuration: 'Confirmați durata auditului',
+    correctDuration: 'Corectați durata auditului',
+    confirmHelp:
+      'Zile-auditor cu cel mult două zecimale, precompletate cu propunerea rotunjită la sutimi. Etapa 1 și etapa 2 totalizează auditul inițial pe amplasament.',
+    justification: 'Justificare',
+    justificationRequiredHint:
+      'Obligatorie: se folosesc factori, durata este stabilită manual sau o valoare diferă de propunerea rotunjită.',
+    durationValuesValidation:
+      'Introduceți fiecare valoare confirmată în zile-auditor, peste zero și sub 1.000, cu cel mult două zecimale.',
+    durationStagesMismatch:
+      'Etapa 1 și etapa 2 pe amplasament trebuie să totalizeze auditul inițial pe amplasament.',
+    durationJustificationRequired:
+      'Justificați factorii folosiți, o stabilire manuală sau orice valoare diferită de propunerea rotunjită (cel mult 4.000 de caractere).',
+    durationRefused:
+      'Serverul a refuzat aceste date. Recalculați propunerea pentru a afla motivul.',
+    blockedDurationCorrectionReason:
+      'O corectare necesită un motiv, iar prima stabilire nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+    computation: 'Calcul',
+    computationProposal: 'Propunere calculată',
+    computationManual: 'Stabilire manuală: intervalele de personal se suprapun',
+    confirmedDays: 'Zile-auditor confirmate',
+    noFactor: 'Niciunul',
+    showProposal: 'Afișați propunerea calculată',
 
     timelineTitle: 'Cronologie',
     timelineEmpty: 'Nicio etapă înregistrată încă.',
     timelineApplication: 'Cerere — versiunea {version}',
     timelineReview: 'Analiza cererii — {outcome}',
+    timelineDuration: 'Durata auditului — versiunea {version}',
     showValues: 'Afișați valorile înregistrate',
   },
   ru: {
@@ -733,7 +1141,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Сертификация',
     introduction:
-      'Дела по сертификации этого Проекта: заявка клиента и её анализ со всеми записанными версиями.',
+      'Дела по сертификации этого Проекта: заявка клиента, её анализ и продолжительность аудита со всеми записанными версиями.',
     refresh: 'Обновить дела по сертификации',
     loading: 'Загрузка дел по сертификации…',
     caseLoading: 'Загрузка дела по сертификации…',
@@ -774,6 +1182,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplication: 'Записать заявку',
     nextApplicationReview: 'Проанализировать заявку',
     nextDuration: 'Продолжительность аудита',
+    nextAgreement: 'Договор о сертификации',
     nextNone: 'Нет',
     openedBy: 'Открыл(а)',
     openedAt: 'Дата открытия',
@@ -807,9 +1216,11 @@ export const certificationMessages = defineMessages(keys, {
     stepApplication: 'Заявка',
     stepReview: 'Анализ заявки',
     stepDuration: 'Продолжительность аудита',
+    stepAgreement: 'Договор о сертификации',
     stepRecorded: 'Записана — версия {version}',
     stepToRecord: 'Нужно записать',
     stepWaiting: 'Ожидает заявку',
+    stepWaitingReview: 'Ожидает принятия заявки',
     stepAccepted: 'Принята',
     stepRejected: 'Отклонена',
     stepNotAvailable: 'Пока недоступно',
@@ -894,13 +1305,118 @@ export const certificationMessages = defineMessages(keys, {
       'Исправлению нужна причина, а у первой заявки её нет. Загрузите дело заново перед новым сохранением.',
     blockedCorrectionUnchanged:
       'Исправление не меняет ни одного значения. Измените хотя бы одно значение или отмените исправление.',
-    nextDurationPending:
-      'Заявка принята. Следующий этап, продолжительность аудита, в этой версии пока недоступен.',
+    nextAgreementPending:
+      'Продолжительность аудита подтверждена. Следующий этап, договор о сертификации, в этой версии пока недоступен.',
+
+    durationTitle: 'Продолжительность аудита',
+    durationMissing: 'Продолжительность аудита ещё не подтверждена.',
+    durationHelp:
+      'Калькулятор предлагает число аудитор-дней на основе принятой заявки и указанных вами факторов. Подтвердите предложение или скорректируйте его с обоснованием.',
+    durationInputs: 'Данные для расчёта продолжительности',
+    primarySubcategory: 'Основная подкатегория',
+    selectPrimarySubcategory: 'Выберите основную подкатегорию',
+    primarySubcategoryHelp:
+      'Подкатегория заявки с наибольшим базовым временем.',
+    haccpStudiesPerSubcategory: 'Исследования HACCP по подкатегориям',
+    haccpStudiesFor: 'Исследования HACCP в {code}',
+    haccpStudiesTotal:
+      'Итого: {total} из {declared} исследований HACCP, указанных в заявке.',
+    increaseFactors: 'Факторы увеличения (%)',
+    increaseFactorsHelp:
+      'Целые проценты от 0 до 100. Любой фактор больше 0 требует обоснования.',
+    reductionFactors: 'Факторы уменьшения (%)',
+    reductionFactorsHelp:
+      'Целые проценты: не более 10 % каждый и не более 20 % вместе. Любой фактор больше 0 требует обоснования.',
+    factorProductTypes: 'Число видов продукции',
+    factorProductLines: 'Число производственных линий',
+    factorProductDevelopment: 'Разработка продукции',
+    factorCriticalControlPoints: 'Число критических контрольных точек',
+    factorOperationalPrerequisites:
+      'Число операционных программ предварительных условий',
+    factorConstructionSites: 'Строительные площадки',
+    factorComplexInfrastructure: 'Сложная инфраструктура',
+    factorOnSiteLaboratory: 'Лаборатория на площадке',
+    factorRemoteAuditTechnology: 'Технологии дистанционного аудита',
+    factorInterpreter: 'Переводчик',
+    factorSystemMaturity: 'Зрелость системы менеджмента',
+    factorPriorCertification: 'Предыдущая сертификация',
+    factorTransferPreparedness: 'Готовность к переводу сертификации',
+    factorAutomation: 'Автоматизация',
+    computeProposal: 'Рассчитать предложение',
+    computing: 'Расчёт…',
+    durationInputsValidation:
+      'Выберите основную подкатегорию и введите целые числа: от 0 до 999 исследований HACCP на подкатегорию и проценты факторов от 0 до 100.',
+    haccpStudiesMismatch:
+      'Сумма исследований HACCP по подкатегориям должна равняться числу, указанному в заявке.',
+    proposalTitle: 'Предложение',
+    proposalUnavailable:
+      'Не удалось рассчитать предложение. Повторите попытку.',
+    proposalOutdated:
+      'Данные изменились после расчёта этого предложения. Рассчитайте его заново перед подтверждением.',
+    durationNotAccepted:
+      'Продолжительность аудита определяется после того, как анализ принял заявку. Загрузите дело заново.',
+    amountsInAuditorDays: 'Значения в аудитор-днях.',
+    ruleVersion: 'Версия правила',
+    basicTime: 'Базовое время (TD)',
+    haccpTime: 'Дополнительные исследования HACCP (TH)',
+    fteTime: 'Численность персонала (TFTE)',
+    baseDays: 'Базовая продолжительность (TD + TH + TFTE)',
+    netAdjustment: 'Итоговая корректировка',
+    percentValue: '{percent} %',
+    initialOnSite: 'Первичный аудит на площадке',
+    initialTotal: 'Первичный аудит всего',
+    stage1OnSite: 'Этап 1 на площадке',
+    stage2OnSite: 'Этап 2 на площадке',
+    surveillanceOnSite: 'Надзорный аудит на площадке',
+    surveillanceTotal: 'Надзорный аудит всего',
+    recertificationOnSite: 'Ресертификационный аудит на площадке',
+    recertificationTotal: 'Ресертификационный аудит всего',
+    warningsTitle: 'Что проверить',
+    warningSurveillanceBelowOneDay:
+      'Надзорный аудит на площадке короче одного аудитор-дня.',
+    warningRecertificationBelowOneDay:
+      'Ресертификационный аудит на площадке короче одного аудитор-дня.',
+    warningStage2BelowOneDay: 'Этап 2 на площадке короче одного аудитор-дня.',
+    durationManual:
+      'Численность персонала попадает туда, где диапазоны калькулятора пересекаются, поэтому предложение не рассчитывается. Введите аудитор-дни и обоснуйте их.',
+    refusalsTitle: 'Предложение рассчитать нельзя:',
+    refusalPrimaryNotSelected:
+      'Основная подкатегория должна быть одной из подкатегорий заявки.',
+    refusalPrimaryNotHighestBasicTime:
+      'У другой подкатегории заявки базовое время больше. Выберите её основной подкатегорией.',
+    refusalHaccpStudiesMismatch:
+      'Сумма исследований HACCP должна равняться числу в заявке, только по её подкатегориям и хотя бы с одним исследованием в основной подкатегории.',
+    refusalReductionFactorCap: 'Фактор уменьшения превышает 10 %.',
+    refusalReductionTotalCap: 'Факторы уменьшения вместе превышают 20 %.',
+    confirmDuration: 'Подтвердить продолжительность аудита',
+    correctDuration: 'Исправить продолжительность аудита',
+    confirmHelp:
+      'Аудитор-дни, не более двух знаков после запятой; заполнено предложением, округлённым до сотых. Этап 1 и этап 2 в сумме равны первичному аудиту на площадке.',
+    justification: 'Обоснование',
+    justificationRequiredHint:
+      'Обязательно: использованы факторы, продолжительность определена вручную или значение отличается от округлённого предложения.',
+    durationValuesValidation:
+      'Введите каждое подтверждаемое значение в аудитор-днях: больше нуля, меньше 1 000, не более двух знаков после запятой.',
+    durationStagesMismatch:
+      'Этап 1 и этап 2 на площадке в сумме должны равняться первичному аудиту на площадке.',
+    durationJustificationRequired:
+      'Обоснуйте использованные факторы, ручное определение или любое значение, отличное от округлённого предложения (не более 4 000 символов).',
+    durationRefused:
+      'Сервер отклонил эти данные. Рассчитайте предложение заново, чтобы узнать причину.',
+    blockedDurationCorrectionReason:
+      'Исправлению нужна причина, а у первого определения её нет. Загрузите дело заново перед новым сохранением.',
+    computation: 'Расчёт',
+    computationProposal: 'Рассчитанное предложение',
+    computationManual: 'Ручное определение: диапазоны численности пересекаются',
+    confirmedDays: 'Подтверждённые аудитор-дни',
+    noFactor: 'Нет',
+    showProposal: 'Показать рассчитанное предложение',
 
     timelineTitle: 'Хронология',
     timelineEmpty: 'Этапы ещё не записаны.',
     timelineApplication: 'Заявка — версия {version}',
     timelineReview: 'Анализ заявки — {outcome}',
+    timelineDuration: 'Продолжительность аудита — версия {version}',
     showValues: 'Показать записанные значения',
   },
 });
