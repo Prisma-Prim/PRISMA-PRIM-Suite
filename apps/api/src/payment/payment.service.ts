@@ -390,7 +390,7 @@ export class PaymentService {
         if (position.kind !== 'history' || position.paymentId !== id)
           throw new BadRequestException();
         if (position.headRevision !== current.row.revision)
-          conflict('INVOICE_HISTORY_CHANGED');
+          conflict('PAYMENT_HISTORY_CHANGED');
         before = position.before;
       }
       return {

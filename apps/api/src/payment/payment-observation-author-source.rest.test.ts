@@ -69,6 +69,18 @@ withPostgres(
       await fixture?.close();
     });
 
+    it('refuses an over-long Idempotency-Key as a client error before any effect', async () => {
+      const { source } = await prepareAuthorSource(fixture);
+      const before = await authorSourceReadEffects(fixture);
+      const response = await fixture.call('/payments', {
+        method: 'POST',
+        body: authorSourceCreateBody(source),
+        key: 'k'.repeat(201),
+      });
+      expect(response.status).toBe(400);
+      expect(await authorSourceReadEffects(fixture)).toEqual(before);
+    });
+
     describe.each([
       { payerKind: 'PRIMARY', payer: primaryPayer },
       {

@@ -240,13 +240,13 @@ withPostgres('Payment bounded inventory and complete immutable history', () => {
       }),
       { action: 'CORRECT_DRAFT', revision: 29 },
     );
-    expect(
-      (
-        await fixture.call(
-          `/payments/${id}/history?cursor=${encodeURIComponent(cursor)}`,
-          { identity: 'reader' },
-        )
-      ).status,
-    ).toBe(409);
+    const changed = await fixture.call(
+      `/payments/${id}/history?cursor=${encodeURIComponent(cursor)}`,
+      { identity: 'reader' },
+    );
+    expect(changed.status).toBe(409);
+    expect(await changed.json()).toMatchObject({
+      code: 'PAYMENT_HISTORY_CHANGED',
+    });
   });
 });

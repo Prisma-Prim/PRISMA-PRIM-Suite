@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import {
-  requireIdempotencyKey,
+  requireBoundedIdempotencyKey,
   requireUuid,
 } from '../access/access-command-validation.js';
 
@@ -210,7 +210,9 @@ export function paymentQuery(value: unknown): string | undefined {
     throw invalid();
   return typeof v.cursor === 'string' ? v.cursor : undefined;
 }
-export const paymentKey = requireIdempotencyKey;
+// payment_commands stores keys of 1 to 200 characters.
+export const paymentKey = (value: string | undefined) =>
+  requireBoundedIdempotencyKey(value, 200);
 function invalid() {
   return new BadRequestException({
     code: 'PAYMENT_INPUT_INVALID',
