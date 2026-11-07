@@ -488,6 +488,70 @@ test('a DO block or a function body in dollar quotes is still scanned as code', 
   }
 });
 
+test('a dollar-quoted body nested inside an executable body is still scanned as code', () => {
+  const nested = [
+    'DO $$ BEGIN DO $inner$ BEGIN DROP TABLE notes; END $inner$; END $$;',
+    'DO $$ BEGIN\n  DO $inner$ BEGIN\n    DROP TABLE notes;\n  END $inner$;\nEND $$;',
+    'DO $a$ BEGIN DO $b$ BEGIN DO $c$ BEGIN DROP TABLE notes; END $c$; END $b$; END $a$;',
+    'DO $$ BEGIN CREATE FUNCTION f() RETURNS void LANGUAGE plpgsql AS $f$ BEGIN DROP TABLE "notes"; END $f$; END $$;',
+    'CREATE FUNCTION "outer"() RETURNS void LANGUAGE plpgsql AS $o$ BEGIN CREATE OR REPLACE PROCEDURE "p"() AS $p$ BEGIN DROP TABLE "notes"; END $p$ LANGUAGE plpgsql; END $o$;',
+    'DO $$ BEGIN EXECUTE $q$ DROP TABLE notes $q$; END $$;',
+    'DO $$ BEGIN EXECUTE $q$ ALTER TABLE notes DROP COLUMN body $q$; END $$;',
+  ];
+
+  for (const sql of nested) {
+    assert.ok(
+      findDestructiveStatements(sql).some((finding) =>
+        finding.kind.startsWith('drop-'),
+      ),
+      sql,
+    );
+    assert.ok(checkMigrations(fixture(sql), []).length >= 1, sql);
+  }
+  assert.deepEqual(
+    findDestructiveStatements(nested[0]).map((finding) => [
+      finding.kind,
+      finding.line,
+    ]),
+    [['drop-table', 1]],
+  );
+});
+
+test('a dollar-quoted body nested inside a text literal stays text', () => {
+  const harmless = [
+    'SELECT $$ DO $x$ BEGIN DROP TABLE notes; END $x$ $$;',
+    'COMMENT ON TABLE "notes" IS $c$ DO $$ BEGIN TRUNCATE notes; END $$ $c$;',
+  ];
+
+  for (const sql of harmless) {
+    assert.deepEqual(findDestructiveStatements(sql), [], sql);
+  }
+});
+
+// Every SQL migration is scanned in CI, so a large backfill must not stall it.
+test('a very large statement is scanned in linear time', () => {
+  const insert = (row) =>
+    `INSERT INTO notes(id, body) VALUES ${Array.from({ length: 22_000 }, (_, id) => row(id)).join(', ')};`;
+  const statements = [
+    insert((id) => `(${id}, 1)`),
+    insert((id) => `(${id}, 'it''s ${id}')`),
+    insert((id) => `(${id}, $$it's ${id}$$)`),
+  ];
+
+  for (const sql of statements) {
+    assert.ok(sql.length > 190_000, `${sql.length} characters`);
+    const startedAt = performance.now();
+    const found = findDestructiveStatements(sql);
+    const elapsed = performance.now() - startedAt;
+
+    assert.deepEqual(found, []);
+    assert.ok(
+      elapsed < 2000,
+      `${Math.round(elapsed)} ms for ${sql.length} characters`,
+    );
+  }
+});
+
 test('a marker above a DO block accepts what its body drops', () => {
   const sql = [
     marker,

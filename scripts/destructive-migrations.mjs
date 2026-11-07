@@ -145,10 +145,15 @@ const defaultSchema = 'public';
 // PostgreSQL dollar quoting: $$...$$ or $tag$...$tag$. The tag follows the
 // rules of an unquoted identifier, minus the dollar sign.
 const dollarDelimiter = /\$(?:[A-Za-z_\u0080-\uFFFF][\w\u0080-\uFFFF]*)?\$/y;
+const identifierCharacter = /[\w$\u0080-\uFFFF]/;
 // The body of a DO block or of a function or procedure is SQL, not text: it
-// stays visible so a destructive statement inside it is still found.
+// stays visible so a destructive statement inside it is still found. Inside
+// such a body every nested dollar-quoted string stays visible too, including
+// the one behind EXECUTE: a false positive is acceptable for a guard, a hidden
+// DROP is not.
 const codeBodyStatement =
   /^\s*(?:DO|CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE))\b/i;
+const statementHeadLength = 256;
 
 /**
  * Returns a copy of the SQL of the same length in which comments and string
@@ -157,50 +162,63 @@ const codeBodyStatement =
  * matched without false positives. The body of a DO block or of a function is
  * masked the same way but stays code. Offsets and line numbers are identical
  * to the original.
+ *
+ * The output is only appended to, never read back: reading a string under
+ * construction flattens it and makes the scan quadratic. The last character
+ * and the start of the current statement are tracked on the side.
  */
-function maskSql(sql) {
+function maskSql(sql, insideBody = false) {
   const hide = (text, fill) => text.replace(/[^\n]/g, fill);
   let masked = '';
-  let statementStart = 0;
+  let previous = '';
+  let statementHead = '';
+  const emit = (chunk) => {
+    masked += chunk;
+    if (chunk !== '') previous = chunk.at(-1);
+    if (statementHead.length < statementHeadLength) {
+      const visible = statementHead === '' ? chunk.trimStart() : chunk;
+      statementHead = (statementHead + visible).slice(0, statementHeadLength);
+    }
+  };
   let index = 0;
   while (index < sql.length) {
     const pair = sql.slice(index, index + 2);
-    const delimiter = dollarDelimiterAt(sql, index, masked.at(-1));
+    const delimiter = dollarDelimiterAt(sql, index, previous);
     let end = index + 1;
     if (pair === '--') {
       end = sql.indexOf('\n', index);
       if (end === -1) end = sql.length;
-      masked += hide(sql.slice(index, end), ' ');
+      emit(hide(sql.slice(index, end), ' '));
     } else if (pair === '/*') {
       end = endOfBlockComment(sql, index);
-      masked += hide(sql.slice(index, end), ' ');
+      emit(hide(sql.slice(index, end), ' '));
     } else if (delimiter) {
       const bodyStart = index + delimiter.length;
       const closing = sql.indexOf(delimiter, bodyStart);
       const bodyEnd = closing === -1 ? sql.length : closing;
       const body = sql.slice(bodyStart, bodyEnd);
+      const isCode = insideBody || codeBodyStatement.test(statementHead);
       end = closing === -1 ? sql.length : closing + delimiter.length;
-      masked += hide(delimiter, ' ');
-      masked += codeBodyStatement.test(masked.slice(statementStart))
-        ? maskSql(body)
-        : hide(body, ' ');
-      masked += hide(sql.slice(bodyEnd, end), ' ');
+      emit(hide(delimiter, ' '));
+      emit(isCode ? maskSql(body, true) : hide(body, ' '));
+      emit(hide(sql.slice(bodyEnd, end), ' '));
     } else if (sql[index] === "'") {
       const escapes = /(?:^|\W)[eE]$/.test(
         sql.slice(Math.max(0, index - 2), index),
       );
       end = endOfQuoted(sql, index, "'", escapes);
-      masked += hide(sql.slice(index, end), ' ');
+      emit(hide(sql.slice(index, end), ' '));
     } else if (sql[index] === '"') {
       end = endOfQuoted(sql, index, '"', false);
       const quoted = sql.slice(index, end);
-      masked +=
+      emit(
         quoted.length < 2
           ? quoted
-          : `"${hide(quoted.slice(1, -1), '_')}${quoted.at(-1)}`;
+          : `"${hide(quoted.slice(1, -1), '_')}${quoted.at(-1)}`,
+      );
     } else {
-      masked += sql[index];
-      if (sql[index] === ';') statementStart = masked.length;
+      emit(sql[index]);
+      if (sql[index] === ';') statementHead = '';
     }
     index = end;
   }
@@ -209,15 +227,11 @@ function maskSql(sql) {
 
 /**
  * Returns the dollar-quote delimiter that opens at `index`, or null. A dollar
- * sign inside an identifier (`price$$`) or a parameter (`$1`) opens nothing.
+ * sign inside an identifier (`price$$`) or a parameter (`$1`) opens nothing;
+ * `previous` is the character masked just before `index`, or ''.
  */
 function dollarDelimiterAt(sql, index, previous) {
-  if (
-    sql[index] !== '$' ||
-    (previous !== undefined && /[\w$\u0080-\uFFFF]/.test(previous))
-  ) {
-    return null;
-  }
+  if (sql[index] !== '$' || identifierCharacter.test(previous)) return null;
   dollarDelimiter.lastIndex = index;
   return dollarDelimiter.exec(sql)?.[0] ?? null;
 }
