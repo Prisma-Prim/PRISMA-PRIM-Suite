@@ -346,5 +346,39 @@ withPostgres(
       expect(unknownUpdate.status).toBe(404);
       expect(await fixture.eventCount(caseId)).toBe(12);
     });
+
+    it('accepts an opportunity for improvement without clause or area, but not other Findings', async () => {
+      const caseId = await stage1Planned();
+      const base = {
+        expectedRevision: 10,
+        stage: 'stage_1',
+        clause: null,
+        area: null,
+        statement: 'Consider digital temperature records.',
+        evidenceAttachmentIds: [],
+      };
+      const opportunity = findings(
+        await ok(
+          CERTIFICATION_AUDITOR,
+          `/certification-cases/${caseId}/findings`,
+          {
+            ...base,
+            classification: 'opportunity_for_improvement',
+          },
+        ),
+      )[0];
+      expect(opportunity).toMatchObject({
+        statement: { clause: null, area: null },
+        status: 'no_action_required',
+      });
+      const concern = await post(
+        CERTIFICATION_AUDITOR,
+        `/certification-cases/${caseId}/findings`,
+        { ...base, expectedRevision: 11, classification: 'area_of_concern' },
+      );
+      expect(record(await concern.json()).code).toBe(
+        'CERTIFICATION_FINDING_CLAUSE_REQUIRED',
+      );
+    });
   },
 );

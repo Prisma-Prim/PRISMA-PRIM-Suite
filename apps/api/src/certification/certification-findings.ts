@@ -21,8 +21,9 @@ export const FINDING_RECORD_KINDS = [
 export type FindingRecordKind = (typeof FINDING_RECORD_KINDS)[number];
 
 export interface FindingStatement {
-  clause: string;
-  area: string;
+  /** Required except for an opportunity for improvement. */
+  clause: string | null;
+  area: string | null;
   statement: string;
   evidenceAttachmentIds: string[];
 }
@@ -86,8 +87,8 @@ export function findingStatement(value: unknown): FindingStatement {
     'evidenceAttachmentIds',
   ]);
   return {
-    clause: text(body.clause, 40),
-    area: text(body.area, 300),
+    clause: optionalText(body.clause, 40),
+    area: optionalText(body.area, 300),
     statement: text(body.statement, 4000),
     evidenceAttachmentIds: attachments(body.evidenceAttachmentIds),
   };
@@ -213,6 +214,10 @@ function attachments(value: unknown): string[] {
 function date(value: unknown): string {
   if (!calendarDate(value)) return invalid();
   return value;
+}
+
+function optionalText(value: unknown, limit: number): string | null {
+  return value === undefined || value === null ? null : text(value, limit);
 }
 
 function text(value: unknown, limit: number): string {

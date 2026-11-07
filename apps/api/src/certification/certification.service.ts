@@ -1811,6 +1811,14 @@ export class CertificationService {
     stage: FindingView['stage'],
     statement: FindingView['statement'],
   ): void {
+    if (
+      classification !== 'opportunity_for_improvement' &&
+      (statement.clause === null || statement.area === null)
+    )
+      throw findingRule(
+        'CERTIFICATION_FINDING_CLAUSE_REQUIRED',
+        'State the requirement clause and the process or area.',
+      );
     if (!allowedInStage(classification, stage))
       throw findingRule(
         'CERTIFICATION_FINDING_CLASSIFICATION_STAGE',
