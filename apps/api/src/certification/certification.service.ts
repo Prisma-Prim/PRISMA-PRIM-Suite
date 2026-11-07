@@ -1911,6 +1911,11 @@ export class CertificationService {
           eq(certificationFindingRecords.companyId, companyId),
           eq(certificationFindingRecords.caseId, caseId),
         ),
+      )
+      .orderBy(
+        asc(certificationFindingRecords.caseRevision),
+        asc(certificationFindingRecords.kind),
+        asc(certificationFindingRecords.version),
       );
     const today = this.clock.now().toISOString().slice(0, 10);
     return rows.map((row) => {
