@@ -215,6 +215,34 @@ _Avoid_: Chat answer, generated answer
 The append-only record of actors, actions, affected versions, and metadata needed to trace critical operations.
 _Avoid_: Application log, debug log
 
+## Certification
+
+Behavior: [Certification Case PRD](docs/product/release-4-certification-case-prd.md).
+
+**Certification Case**:
+The initial certification of one Client Legal Entity by one certifying Company against one Standard Edition, carried out under one Project.
+_Avoid_: Working Evidence Case, Project, Certificate
+
+**Audit**:
+One dated Stage of a Certification Case, with its plan and report.
+_Avoid_: Certification Case, audit programme
+
+**Audit Team**:
+The persons assigned to a Certification Case with their role, competence and impartiality declarations, approved by an approver outside the team.
+_Avoid_: Project team, assignees
+
+**Finding**:
+A formal, classified statement recorded in one Audit against a requirement clause, with its exact evidence and classification history.
+_Avoid_: Working Statement, checklist answer, corrective action
+
+**Certification Decision**:
+The immutable human decision to grant or refuse certification, taken by a person outside the Audit Team.
+_Avoid_: Recommendation, Approval of a document version, Certificate
+
+**Certificate**:
+The recorded credential issued after a granting Certification Decision, with its number, agreed data and computed validity.
+_Avoid_: Certification Decision, Certificate PDF alone
+
 ## Ideas and review history
 
 **Idea**:
