@@ -32,26 +32,19 @@ PRISMA-PRIM Suite. One session delivers only its assigned GitHub issue, as one p
 
 ## Code Review Rules
 
-CI covers format, lint and types. Each rule: risky pattern, consequence, safe pattern.
+CI enforces format, lint, types and the mechanical rules listed in [review rule enforcement](docs/agents/review-rule-enforcement.md). Review only these judgment calls; each rule names the risky pattern, its consequence and the safe pattern.
 
 **Workspace and Company isolation** ([ADR 0006](docs/adr/0006-workspace-tenancy-and-company-scoped-authorization.md))
 
 - Query or command scoped by a request-supplied identifier, or unscoped: leaks or corrupts another tenant's data. Safe: scope from the server actor context.
-- Business table without `workspace_id`, or Company-owned without `company_id` and composite foreign keys: allows cross-Workspace references. Safe: both columns, composite constraints.
 - Responses differing for hidden and missing records, lists, counts or events: reveal existence. Safe: one identical denial.
 
 **Authorization**
 
-- Authority from the payload, role names, controller conditions or direct Access-table queries: drifts from the Access module. Safe: actor-context grants through the owning module; no grant denies.
+- Authority from the payload, role names or controller conditions: drifts from the Access module. Safe: actor-context grants through the owning module; no grant denies.
 - Check made before the transaction relying on it: races revocation. Safe: recheck authorization, versions and state inside it.
-
-**Drizzle migrations** ([ADR 0002](docs/adr/0002-postgresql-with-drizzle.md))
-
-- Schema change without generated SQL and meta in `apps/api/drizzle`: environments diverge. Safe: the reviewed generated migration.
-- Drop or rename in one step: loses data, breaks consumers. Safe: expand, backfill, contract, preserving identifiers and events.
 
 **Activity Log**
 
-- Event updated or deleted: rewrites evidence. Safe: append-only, corrected by a new event.
 - Event outside the change's transaction, or for a denied, failed, no-op or replayed command: false history. Safe: the PRD's event in the same transaction.
 - Actor, scope or target from client input, or metadata wider than target visibility: leaks activity. Safe: server-established fields, minimal metadata.
