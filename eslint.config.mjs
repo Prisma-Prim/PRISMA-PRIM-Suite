@@ -2,6 +2,20 @@ import eslint from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+// Tables only the Access module may read or write. The identity tables
+// `workspaceMemberships` and `internalUsers` stay importable: event readers
+// join them to resolve actor display names, which confers no authority.
+const accessOwnedTables = [
+  'companyContextAssignmentCommands',
+  'companyRoleAssignments',
+  'workspaceInvitationAcceptances',
+  'workspaceInvitationCommands',
+  'workspaceInvitationProofs',
+  'workspaceInvitations',
+  'workspaceMembershipSuspensionCommands',
+  'workspacePermissionGrants',
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -26,6 +40,52 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-assertions': [
         'error',
         { assertionStyle: 'never' },
+      ],
+    },
+  },
+  {
+    // AGENTS.md Code Review Rules, Authorization: a direct Access-table query
+    // drifts from the Access module. A justified exception sits on the
+    // offending import line with an `-- reason`. Extend this block rather
+    // than configuring the rule again: a later block replaces its options.
+    files: ['apps/api/**/*.ts'],
+    ignores: ['apps/api/src/access/**', 'apps/api/src/database/schema/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '(^|/)schema(/|$)',
+              importNames: accessOwnedTables,
+              message:
+                'Access owns this table. Use the ActorContext grants, rechecked inside the transaction by a CompanyContextAuthorization require/has method, or readMemberAuthority() for another member (apps/api/src/access/); add an Access function there when none fits.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // AGENTS.md Code Review Rules, Activity Log: updating or deleting an
+    // event rewrites evidence. Every event table is named `*Events`
+    // (scripts/eslint-module-boundaries.test.mjs checks the schema). Extend
+    // this block rather than configuring the rule again.
+    files: ['apps/api/**/*.ts'],
+    ignores: [
+      '**/*.{test,spec}.ts',
+      '**/*.test-{support,fixture}.ts',
+      'apps/api/test-support/**',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.property.name=/^(update|delete)$/] > Identifier.arguments[name=/Events$/]',
+          message:
+            'Activity Log events are append-only: never update or delete one; append a correcting event in the same transaction instead.',
+        },
       ],
     },
   },

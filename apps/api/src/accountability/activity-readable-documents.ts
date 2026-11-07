@@ -6,6 +6,7 @@ import type { DatabaseContext } from '../database/database-context.js';
 import {
   clientAccounts,
   clientCompanyRelationships,
+  // eslint-disable-next-line no-restricted-imports -- Document family grant EXISTS predates the Access boundary rule; #1106 moves it into Access.
   companyRoleAssignments,
   workingDocuments,
 } from '../database/schema/index.js';
