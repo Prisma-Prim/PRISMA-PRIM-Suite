@@ -18,6 +18,11 @@ export type ApiResult<T> =
       reason?: undefined;
       /** A conflict or service-unavailable machine code, when stated. */
       code?: string;
+      /**
+       * A conflict's unparsed list of unmet conditions, when the server
+       * states one; its owner parses it.
+       */
+      failures?: unknown;
     }
   | { status: 'validation'; message?: string; code?: string };
 
@@ -25,6 +30,13 @@ export type ApiResult<T> =
 export function conflictCode(result: ApiResult<unknown>): string | undefined {
   return result.status === 'conflict' && result.reason === undefined
     ? result.code
+    : undefined;
+}
+
+/** The unparsed unmet conditions a conflict states, if any. */
+export function conflictFailures(result: ApiResult<unknown>): unknown {
+  return result.status === 'conflict' && result.reason === undefined
+    ? result.failures
     : undefined;
 }
 
@@ -141,9 +153,12 @@ export async function createAuthenticatedApiClient(
               reason: 'clientLegalEntityCapacityExceeded',
             };
           const code = codeFrom(body);
-          return code === undefined
-            ? { status: 'conflict' }
-            : { status: 'conflict', code };
+          const failures = isRecord(body) ? body.failures : undefined;
+          return {
+            status: 'conflict',
+            ...(code === undefined ? {} : { code }),
+            ...(failures === undefined ? {} : { failures }),
+          };
         }
         if (response.status === 400) {
           const body = await optionalJson(response);

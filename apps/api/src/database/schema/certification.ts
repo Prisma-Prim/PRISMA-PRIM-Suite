@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  date,
   foreignKey,
   index,
   integer,
@@ -16,7 +17,12 @@ import { clientLegalEntities } from './client-legal-entity.js';
 import { projects } from './project.js';
 import { documentPdfs } from './document-pdfs.js';
 
-export const CERTIFICATION_CASE_STATUSES = ['open', 'rejected'] as const;
+export const CERTIFICATION_CASE_STATUSES = [
+  'open',
+  'rejected',
+  'refused',
+  'certified',
+] as const;
 export const CERTIFICATION_STEPS = [
   'application',
   'application_review',
@@ -28,6 +34,10 @@ export const CERTIFICATION_STEPS = [
   'stage_1_report',
   'stage_2_plan',
   'stage_2_report',
+  'recommendation',
+  'dossier_review',
+  'decision',
+  'certificate_data',
 ] as const;
 export const CERTIFICATION_DOCUMENT_ROLES = [
   'questionnaire',
@@ -38,6 +48,8 @@ export const CERTIFICATION_DOCUMENT_ROLES = [
   'report',
   'evidence',
   'certificate',
+  'certificate_data',
+  'decision_form',
   'other',
 ] as const;
 export const CERTIFICATION_EVENT_ACTIONS = [
@@ -57,6 +69,11 @@ export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.nonconformity_response_recorded',
   'certification_case.nonconformity_plan_judged',
   'certification_case.nonconformity_verified',
+  'certification_case.recommendation_recorded',
+  'certification_case.dossier_reviewed',
+  'certification_case.decision_recorded',
+  'certification_case.certificate_data_agreed',
+  'certification_case.certificate_recorded',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
@@ -71,6 +88,11 @@ export const CERTIFICATION_COMMAND_KINDS = [
   'stage_report',
   'finding',
   'finding_record',
+  'recommendation',
+  'dossier_review',
+  'decision',
+  'certificate_data',
+  'certificate',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -157,7 +179,7 @@ export const certificationCases = pgTable(
     check('certification_cases_revision_check', sql`${table.revision} > 0`),
     check(
       'certification_cases_kind_check',
-      sql`${table.standard} = 'iso_22000_2018' AND ${table.auditType} = 'initial_certification' AND ${table.status} IN ('open', 'rejected')`,
+      sql`${table.standard} = 'iso_22000_2018' AND ${table.auditType} = 'initial_certification' AND ${table.status} IN ('open', 'rejected', 'refused', 'certified')`,
     ),
     check(
       'certification_cases_order_reference_check',
@@ -226,7 +248,7 @@ export const certificationStepVersions = pgTable(
     ),
     check(
       'certification_step_versions_step_check',
-      sql`${table.step} IN ('application', 'application_review', 'duration', 'agreement', 'team', 'team_decision', 'stage_1_plan', 'stage_1_report', 'stage_2_plan', 'stage_2_report') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
+      sql`${table.step} IN ('application', 'application_review', 'duration', 'agreement', 'team', 'team_decision', 'stage_1_plan', 'stage_1_report', 'stage_2_plan', 'stage_2_report', 'recommendation', 'dossier_review', 'decision', 'certificate_data') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
     ),
     check(
       'certification_step_versions_payload_check',
@@ -261,7 +283,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -307,7 +329,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',
@@ -414,7 +436,7 @@ export const certificationCaseDocuments = pgTable(
     }),
     check(
       'certification_case_documents_role_check',
-      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
+      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'decision_form', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
     ),
     check(
       'certification_case_documents_note_check',
@@ -536,6 +558,85 @@ export const certificationFindingRecords = pgTable(
     check(
       'certification_finding_records_reason_check',
       sql`(${table.kind} IN ('statement', 'classification') AND ((${table.version} = 1 AND ${table.reason} IS NULL) OR (${table.version} > 1 AND length(btrim(${table.reason})) > 0))) OR (${table.kind} NOT IN ('statement', 'classification') AND ${table.reason} IS NULL)`,
+    ),
+  ],
+);
+
+/** The Certificate issued for a Case after a granting decision; one per Case. */
+export const certificationCertificates = pgTable(
+  'certification_certificates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    number: text('number').notNull(),
+    validFrom: date('valid_from', { mode: 'string' }).notNull(),
+    validUntil: date('valid_until', { mode: 'string' }).notNull(),
+    firstSurveillanceBy: date('first_surveillance_by', {
+      mode: 'string',
+    }).notNull(),
+    texts: jsonb('texts').$type<unknown>().notNull(),
+    signedBy: text('signed_by'),
+    signedByFunction: text('signed_by_function'),
+    attachmentId: uuid('attachment_id').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_certificates_case_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+    ),
+    uniqueIndex('certification_certificates_number_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.number,
+    ),
+    foreignKey({
+      name: 'certification_certificates_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_certificates_attachment_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.attachmentId,
+      ],
+      foreignColumns: [
+        certificationCaseDocuments.workspaceId,
+        certificationCaseDocuments.companyId,
+        certificationCaseDocuments.caseId,
+        certificationCaseDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_certificates_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_certificates_values_check',
+      sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.texts}) = 'array'`,
     ),
   ],
 );

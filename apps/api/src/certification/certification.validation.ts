@@ -71,6 +71,8 @@ export const DOCUMENT_ROLES: readonly CertificationDocumentRole[] = [
   'report',
   'evidence',
   'certificate',
+  'certificate_data',
+  'decision_form',
   'other',
 ];
 
