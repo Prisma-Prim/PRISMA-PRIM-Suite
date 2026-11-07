@@ -18,6 +18,8 @@ import type {
   ReductionFactor,
 } from './certification-duration.js';
 
+import type { ActAttribution } from './certification-attribution.js';
+
 /** ISO 22003-1 food chain subcategories used by ISO 22000 certification. */
 export const FOOD_CHAIN_SUBCATEGORIES = [
   'AI',
@@ -56,6 +58,8 @@ export interface CertificationSite {
 }
 
 export interface ApplicationFacts {
+  /** Business date of the signed application, when known. */
+  submittedOn: string | null;
   declaredLegalName: string;
   declaredAddress: string;
   sites: CertificationSite[];
@@ -80,6 +84,7 @@ export interface ReviewAnswer {
 
 export type ApplicationReview = {
   criteria: Record<ReviewCriterion, ReviewAnswer>;
+  onBehalf: ActAttribution | null;
 } & (
   | { outcome: 'accepted'; rejectionReason: null }
   | { outcome: 'rejected'; rejectionReason: string }
@@ -112,6 +117,7 @@ export interface DurationDetermination {
     | { kind: 'manual'; reason: 'FTE_BAND_AMBIGUOUS' };
   confirmed: ConfirmedDuration;
   justification: string | null;
+  onBehalf: ActAttribution | null;
 }
 
 export type CertificationDocumentRole =

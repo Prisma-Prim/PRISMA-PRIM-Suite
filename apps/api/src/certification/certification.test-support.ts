@@ -184,12 +184,13 @@ export async function openCertificationFixture(input: {
     return { documentId, versionId, representationId };
   }
   /** A small accepted Case with confirmed duration and recorded agreement (revision 6). */
-  async function agreedCase() {
+  async function agreedCase(overrides: Record<string, unknown> = {}) {
     const caseId = await acceptedCase(
       applicationFacts({
         haccpStudyCount: 1,
         effectiveFte: 10,
         totalHeadcount: 10,
+        ...overrides,
       }),
     );
     await created(
@@ -317,7 +318,12 @@ export async function openCertificationFixture(input: {
         `/certification-cases/${caseId}/team-decision`,
         {
           method: 'POST',
-          body: { expectedRevision: 7, teamVersion: 1, decision: 'approved' },
+          body: {
+            expectedRevision: 7,
+            teamVersion: 1,
+            decision: 'approved',
+            independenceAttested: true,
+          },
         },
       ),
     );

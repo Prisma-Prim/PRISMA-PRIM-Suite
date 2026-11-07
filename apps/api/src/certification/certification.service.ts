@@ -51,6 +51,10 @@ import {
   durationFactorInputs,
 } from './certification-duration.validation.js';
 import {
+  requireIndependenceAttestation,
+  sameName,
+} from './certification-attribution.js';
+import {
   auditTeam,
   teamCommand,
   teamDecision,
@@ -331,6 +335,12 @@ export class CertificationService {
             'CERTIFICATION_APPLICATION_ALREADY_REVIEWED',
             'The application has already been reviewed.',
           );
+        await this.requireActForm(
+          actor,
+          companyId,
+          targetId,
+          input.review.onBehalf,
+        );
         return this.appendStep({
           actor,
           companyId,
@@ -404,6 +414,7 @@ export class CertificationService {
             'CERTIFICATION_CORRECTION_REASON',
             'A correction states its reason; a first determination has none.',
           );
+        await this.requireActForm(actor, companyId, targetId, input.onBehalf);
         const result = computeDuration(facts, input.inputs);
         if (result.kind === 'refused')
           throw new BadRequestException({
@@ -433,6 +444,7 @@ export class CertificationService {
           computation: result,
           confirmed: input.confirmed,
           justification: input.justification,
+          onBehalf: input.onBehalf,
         };
         return this.appendStep({
           actor,
@@ -781,6 +793,19 @@ export class CertificationService {
             'CERTIFICATION_INDEPENDENCE',
             'A member who decided on the team, reviewed the dossier or recorded the decision cannot join the audit team.',
           );
+        const facts = this.acceptedApplication(steps);
+        if (facts.consultant.used && input.team.impartialityAnalysis === null)
+          throw new BadRequestException({
+            code: 'CERTIFICATION_TEAM_ANALYSIS_REQUIRED',
+            message:
+              'The applicant declared a consultant: document the impartiality analysis of the team.',
+          });
+        await this.requireAttachments(
+          actor,
+          companyId,
+          targetId,
+          input.team.impartialityAnalysis?.evidenceAttachmentIds ?? [],
+        );
         for (const membershipId of teamMembershipIds(input.team)) {
           const [member] = await this.database.connection
             .select({ id: workspaceMemberships.id })
@@ -864,6 +889,13 @@ export class CertificationService {
             'CERTIFICATION_INDEPENDENCE',
             'A member of the audit team cannot approve it.',
           );
+        this.requireNotNamedOnTeam(steps, input.decision.onBehalf?.actedBy);
+        await this.requireActForm(
+          actor,
+          companyId,
+          targetId,
+          input.decision.onBehalf,
+        );
         if (
           input.decision.decision === 'approved' &&
           !teamWithoutConflict(team)
@@ -1508,8 +1540,18 @@ export class CertificationService {
       step: 'dossier_review',
       parse: dossierReview,
       action: 'certification_case.dossier_reviewed',
-      check: ({ steps, payload }) => {
+      check: async ({ steps, companyId, payload }) => {
         this.requireIndependent(input.actor, steps);
+        requireIndependenceAttestation(payload.independenceAttested);
+        for (const act of [payload.reviewedBy, payload.approvedBy]) {
+          this.requireNotNamedOnTeam(steps, act?.actedBy);
+          await this.requireActForm(
+            input.actor,
+            companyId,
+            requireUuid(input.caseId),
+            act,
+          );
+        }
         if (!latest(steps, 'recommendation'))
           throw stepConflict(
             'CERTIFICATION_RECOMMENDATION_MISSING',
@@ -1520,7 +1562,7 @@ export class CertificationService {
             'CERTIFICATION_DECIDED',
             'The Case is already decided.',
           );
-        return Promise.resolve({ complete: dossierComplete(payload) ? 1 : 0 });
+        return { complete: dossierComplete(payload) ? 1 : 0 };
       },
     });
   }
@@ -1802,6 +1844,40 @@ export class CertificationService {
     if (decision.decidedOn > this.clock.now().toISOString().slice(0, 10))
       failures.push('DECISION_IN_FUTURE');
     return failures;
+  }
+
+  /** Refuses a person named like a member of any team version. */
+  private requireNotNamedOnTeam(
+    steps: readonly StepRow[],
+    name: string | undefined,
+  ): void {
+    if (
+      name !== undefined &&
+      steps
+        .filter((row) => row.step === 'team')
+        .some((row) =>
+          teamVersion(row).value.members.some((member) =>
+            sameName(member.name, name),
+          ),
+        )
+    )
+      throw stepConflict(
+        'CERTIFICATION_INDEPENDENCE',
+        'A member of the audit team cannot perform this act.',
+      );
+  }
+
+  /** The signed form of an act on behalf of the certification body belongs to the Case. */
+  private async requireActForm(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    act: { formAttachmentId: string | null } | null,
+  ): Promise<void> {
+    if (act?.formAttachmentId)
+      await this.requireAttachments(actor, companyId, caseId, [
+        act.formAttachmentId,
+      ]);
   }
 
   /** Refuses an actor linked to any member of any team version. */
@@ -2684,18 +2760,6 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
   };
-}
-
-/** Names compared without case, accents or repeated spaces. */
-function sameName(left: string, right: string): boolean {
-  const normal = (value: string) =>
-    value
-      .normalize('NFKD')
-      .replace(/\p{M}/gu, '')
-      .replace(/\s+/gu, ' ')
-      .trim()
-      .toLocaleLowerCase('en');
-  return normal(left) === normal(right);
 }
 
 type CaseCommandInput = {

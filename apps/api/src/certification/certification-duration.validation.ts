@@ -14,6 +14,10 @@ import {
   type FoodChainSubcategory,
 } from './certification.types.js';
 import { inputObject } from './certification.validation.js';
+import {
+  optionalAttribution,
+  type ActAttribution,
+} from './certification-attribution.js';
 
 const WARNINGS: readonly DurationWarning[] = [
   'SURVEILLANCE_BELOW_ONE_DAY',
@@ -71,6 +75,7 @@ export function durationCommand(value: unknown): {
   inputs: DurationFactorInputs;
   confirmed: ConfirmedDuration;
   justification: string | null;
+  onBehalf: ActAttribution | null;
 } {
   const body = inputObject(value, [
     'expectedRevision',
@@ -78,6 +83,7 @@ export function durationCommand(value: unknown): {
     'inputs',
     'confirmed',
     'justification',
+    'onBehalf',
   ]);
   return {
     expectedRevision: integer(body.expectedRevision, 1, 2147483646),
@@ -85,6 +91,7 @@ export function durationCommand(value: unknown): {
     inputs: durationFactorInputs(body.inputs),
     confirmed: confirmedDuration(body.confirmed),
     justification: optionalText(body.justification, 4000),
+    onBehalf: optionalAttribution(body.onBehalf),
   };
 }
 
@@ -118,6 +125,7 @@ export function durationDetermination(value: unknown): DurationDetermination {
     'computation',
     'confirmed',
     'justification',
+    'onBehalf',
   ]);
   if (body.ruleVersion !== DURATION_RULE_VERSION) invalid();
   const inputsBody = inputObject(body.inputs, [
@@ -157,6 +165,7 @@ export function durationDetermination(value: unknown): DurationDetermination {
     computation,
     confirmed: confirmedDuration(body.confirmed),
     justification: optionalText(body.justification, 4000),
+    onBehalf: optionalAttribution(body.onBehalf),
   };
 }
 

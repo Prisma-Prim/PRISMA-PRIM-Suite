@@ -61,6 +61,7 @@ function review(missing?: string) {
       ]),
     ),
     conclusion: 'Dossier complete; recommendation supported.',
+    independenceAttested: true,
   };
 }
 

@@ -1,11 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import { addDays, addMonths } from './certification-findings.js';
+import {
+  optionalAttribution,
+  type ActAttribution,
+} from './certification-attribution.js';
 import { calendarDate, inputObject } from './certification.validation.js';
 
 export interface Recommendation {
   recommendation: 'grant' | 'do_not_grant' | 'additional_audit';
   basis: string;
+  recommendedOn: string | null;
 }
 
 /** The dossier items an approver checks, in display order. */
@@ -34,6 +39,11 @@ export interface DossierAnswer {
 export interface DossierReview {
   items: Record<DossierItem, DossierAnswer>;
   conclusion: string;
+  /** The certification body's dossier reviewer and approver, when recorded on their behalf. */
+  reviewedBy: ActAttribution | null;
+  approvedBy: ActAttribution | null;
+  /** False only in reviews recorded before the attestation existed. */
+  independenceAttested: boolean;
 }
 
 export type CertificationDecision = {
@@ -66,19 +76,32 @@ export interface CertificateData {
 }
 
 export function recommendation(value: unknown): Recommendation {
-  const body = inputObject(value, ['recommendation', 'basis']);
+  const body = inputObject(value, ['recommendation', 'basis', 'recommendedOn']);
   if (
     body.recommendation !== 'grant' &&
     body.recommendation !== 'do_not_grant' &&
     body.recommendation !== 'additional_audit'
   )
     return invalid();
-  return { recommendation: body.recommendation, basis: text(body.basis, 4000) };
+  return {
+    recommendation: body.recommendation,
+    basis: text(body.basis, 4000),
+    recommendedOn:
+      body.recommendedOn === undefined || body.recommendedOn === null
+        ? null
+        : date(body.recommendedOn),
+  };
 }
 
 /** Every item answered explicitly; a missing item needs a note. */
 export function dossierReview(value: unknown): DossierReview {
-  const body = inputObject(value, ['items', 'conclusion']);
+  const body = inputObject(value, [
+    'items',
+    'conclusion',
+    'reviewedBy',
+    'approvedBy',
+    'independenceAttested',
+  ]);
   const itemsBody = inputObject(body.items, DOSSIER_ITEMS);
   const entries = DOSSIER_ITEMS.map((item): [DossierItem, DossierAnswer] => {
     const entry = inputObject(itemsBody[item], ['answer', 'note']);
@@ -112,6 +135,9 @@ export function dossierReview(value: unknown): DossierReview {
       certificate_data: answerOf(entries, 'certificate_data'),
     },
     conclusion: text(body.conclusion, 4000),
+    reviewedBy: optionalAttribution(body.reviewedBy),
+    approvedBy: optionalAttribution(body.approvedBy),
+    independenceAttested: body.independenceAttested === true,
   };
 }
 
