@@ -39,9 +39,21 @@ import {
   reviewFromDraft,
 } from './certification-draft';
 import {
+  proposedConfirmation,
+  type DurationResult,
+} from './certification-duration';
+import {
+  confirmationFromDraft,
+  durationDraftFor,
+  durationInputsFromDraft,
+  type ConfirmationCheck,
+  type DurationDraft,
+} from './certification-duration-draft';
+import {
   CERTIFICATION_LIMITS,
   parseCaseDetail,
   parseCaseList,
+  parseDurationResult,
   parseLegalEntityOptions,
   parseTimeline,
   type CaseDetail,
@@ -49,6 +61,8 @@ import {
   type CaseTimeline,
   type LegalEntityOption,
 } from './certification-response';
+import { DurationForm } from './CertificationDurationForm';
+import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
 import {
   FactsView,
@@ -85,9 +99,19 @@ type Feedback =
   | { status: 'saving' | 'uncertain'; intent: Intent }
   /** `reload`: the shown Case is outdated; saving waits for a reload. */
   | { status: 'refused'; message: CertificationMessageKey; reload: boolean };
-type MutationKind = 'open' | 'application' | 'review';
+type MutationKind = 'open' | 'application' | 'review' | 'duration';
+/**
+ * The duration-proposal read, keyed by the serialized inputs it computed so a
+ * later edit of the inputs makes it outdated instead of confirmable.
+ */
+type Proposal =
+  | { status: 'idle' }
+  | { status: 'computing'; inputs: string }
+  | { status: 'ready'; inputs: string; result: DurationResult }
+  | { status: 'refused'; message: CertificationMessageKey };
 
 const IDLE: Feedback = { status: 'idle' };
+const NO_PROPOSAL: Proposal = { status: 'idle' };
 const ABANDONED: ApiResult<unknown> = { status: 'error' };
 
 /**
@@ -121,6 +145,7 @@ function CertificationRegistry(
   const detailOperation = useScopedOperation(props.scope);
   const entitiesOperation = useScopedOperation(props.scope);
   const mutationOperation = useScopedOperation(props.scope);
+  const proposalOperation = useScopedOperation(props.scope);
   const [list, setList] = useState<View<CaseList>>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<string>();
   const selected = useRef<string | undefined>(undefined);
@@ -139,12 +164,22 @@ function CertificationRegistry(
     useState<Feedback>(IDLE);
   const [reviewDraft, setReviewDraft] = useState(emptyReviewDraft);
   const [reviewFeedback, setReviewFeedback] = useState<Feedback>(IDLE);
+  /** Null until edited: the panel then derives it from the read Case. */
+  const [durationDraft, setDurationDraft] = useState<DurationDraft | null>(
+    null,
+  );
+  /** The user is editing the duration (a first determination or a correction). */
+  const [durationOpen, setDurationOpen] = useState(false);
+  const [durationFeedback, setDurationFeedback] = useState<Feedback>(IDLE);
+  const [proposal, setProposal] = useState<Proposal>(NO_PROPOSAL);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const openingTrigger = useRef<Element | null>(null);
-  const busy = [openFeedback, applicationFeedback, reviewFeedback].some(
-    (feedback) => feedback.status === 'saving',
-  );
+  const busy =
+    proposal.status === 'computing' ||
+    [openFeedback, applicationFeedback, reviewFeedback, durationFeedback].some(
+      (feedback) => feedback.status === 'saving',
+    );
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
   function feedbackSetter(kind: MutationKind) {
@@ -155,8 +190,17 @@ function CertificationRegistry(
         return setApplicationFeedback;
       case 'review':
         return setReviewFeedback;
+      case 'duration':
+        return setDurationFeedback;
     }
     return unexpected(kind);
+  }
+
+  function resetDurationDraft() {
+    proposalOperation.retire();
+    setDurationDraft(null);
+    setDurationOpen(false);
+    setProposal(NO_PROPOSAL);
   }
 
   function resetCaseDrafts() {
@@ -165,6 +209,8 @@ function CertificationRegistry(
     setApplicationFeedback(IDLE);
     setReviewDraft(emptyReviewDraft());
     setReviewFeedback(IDLE);
+    resetDurationDraft();
+    setDurationFeedback(IDLE);
   }
 
   /** Access loss retires every private value before authority is rechecked. */
@@ -182,24 +228,30 @@ function CertificationRegistry(
     openingTrigger.current = null;
   }
 
+  /**
+   * A read, or a POST: a command carries its idempotency key; the duration
+   * proposal is a read sent as a POST body and carries none.
+   */
   async function query(
     slot: ScopedOperation,
     signal: AbortSignal,
     path: string,
-    command?: Intent,
+    post?: { body: string; key?: string },
   ): Promise<ApiResult<unknown>> {
     const api = await createAuthenticatedApiClient(identity);
     if (signal.aborted) return ABANDONED;
     const result = await api.request<unknown>(
       path,
-      command
+      post
         ? {
             companyContextId: companyId,
             signal,
             method: 'POST',
-            body: command.body,
+            body: post.body,
             headers: {
-              'idempotency-key': command.key,
+              ...(post.key === undefined
+                ? {}
+                : { 'idempotency-key': post.key }),
               'content-type': 'application/json',
             },
           }
@@ -212,6 +264,7 @@ function CertificationRegistry(
         detailOperation,
         entitiesOperation,
         mutationOperation,
+        proposalOperation,
       ])
         if (other !== slot) other.retire();
       retirePrivateState();
@@ -284,6 +337,7 @@ function CertificationRegistry(
         feedback.status === 'refused' ? IDLE : feedback;
       setApplicationFeedback(clear);
       setReviewFeedback(clear);
+      setDurationFeedback(clear);
     }
     selected.current = caseId;
     setSelectedId(caseId);
@@ -393,6 +447,9 @@ function CertificationRegistry(
       case 'review':
         setReviewDraft(emptyReviewDraft());
         break;
+      case 'duration':
+        resetDurationDraft();
+        break;
       default:
         unexpected(kind);
     }
@@ -498,6 +555,118 @@ function CertificationRegistry(
     );
   }
 
+  /** The duration draft being edited, or the one the read Case starts from. */
+  function currentDurationDraft(current: CaseDetail): DurationDraft | null {
+    if (durationDraft) return durationDraft;
+    const application = current.application;
+    return application
+      ? durationDraftFor({
+          facts: application.value,
+          current: current.duration?.value ?? null,
+        })
+      : null;
+  }
+
+  /** A read: the server computes the proposal for the inputs as typed. */
+  async function computeProposal(event: FormEvent) {
+    event.preventDefault();
+    if (busy || !authority.manage || detail?.status !== 'ready') return;
+    const current = detail.value.caseDetail;
+    const draft = currentDurationDraft(current);
+    if (!current.application || !draft) return;
+    const check = durationInputsFromDraft(draft, current.application.value);
+    if (check.status !== 'valid') {
+      setProposal({
+        status: 'refused',
+        message:
+          check.status === 'studiesMismatch'
+            ? 'haccpStudiesMismatch'
+            : 'durationInputsValidation',
+      });
+      return;
+    }
+    const signal = proposalOperation.begin();
+    if (!signal) return;
+    const body = JSON.stringify(check.inputs);
+    setProposal({ status: 'computing', inputs: body });
+    try {
+      const result = await query(
+        proposalOperation,
+        signal,
+        `/certification-cases/${encodeURIComponent(current.id)}/duration-proposal`,
+        { body },
+      );
+      if (signal.aborted) return;
+      if (result.status !== 'ok') {
+        setProposal({ status: 'refused', message: proposalRefusal(result) });
+        return;
+      }
+      const computed = parseDurationResult(result.value);
+      setProposal({ status: 'ready', inputs: body, result: computed });
+      setDurationOpen(true);
+      // A new proposal restarts the confirmation from its rounded values.
+      setDurationDraft(
+        computed.kind === 'proposal'
+          ? { ...draft, confirmed: proposedConfirmation(computed.proposal) }
+          : draft,
+      );
+    } catch {
+      if (!signal.aborted)
+        setProposal({ status: 'refused', message: 'proposalUnavailable' });
+    }
+  }
+
+  function submitDuration(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      !authority.manage ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(durationFeedback)
+    )
+      return;
+    const current = detail.value.caseDetail;
+    const draft = currentDurationDraft(current);
+    if (!current.application || !draft) return;
+    const check = durationInputsFromDraft(draft, current.application.value);
+    if (
+      check.status !== 'valid' ||
+      proposal.status !== 'ready' ||
+      proposal.inputs !== JSON.stringify(check.inputs) ||
+      proposal.result.kind === 'refused'
+    ) {
+      setDurationFeedback(refusedWith('proposalOutdated'));
+      return;
+    }
+    const correcting = current.duration !== null;
+    const confirmation = confirmationFromDraft(draft, {
+      inputs: check.inputs,
+      computation: proposal.result,
+      correcting,
+    });
+    if (confirmation.status !== 'valid') {
+      setDurationFeedback(refusedWith(confirmationMessage(confirmation)));
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      ...(correcting ? { reason: confirmation.reason } : {}),
+      inputs: check.inputs,
+      confirmed: confirmation.confirmed,
+      ...(confirmation.justification === null
+        ? {}
+        : { justification: confirmation.justification }),
+    });
+    void execute(
+      'duration',
+      reuse(durationFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/duration`,
+        body,
+        caseId: current.id,
+      }),
+    );
+  }
+
   function retry(kind: MutationKind, feedback: Feedback) {
     if (feedback.status === 'uncertain') void execute(kind, feedback.intent);
   }
@@ -506,6 +675,7 @@ function CertificationRegistry(
     open: `${prefix}-open-feedback`,
     application: `${prefix}-application-feedback`,
     review: `${prefix}-review-feedback`,
+    duration: `${prefix}-duration-feedback`,
   };
 
   /** A step's confirmation is shown above the Case and survives its reload. */
@@ -727,7 +897,8 @@ function CertificationRegistry(
             </button>
           </div>
           {(applicationFeedback.status === 'saved' ||
-            reviewFeedback.status === 'saved') && (
+            reviewFeedback.status === 'saved' ||
+            durationFeedback.status === 'saved') && (
             <p role="status">{copy('saveConfirmed')}</p>
           )}
           {detail?.status === 'loading' && (
@@ -804,9 +975,9 @@ function CertificationRegistry(
               {caseView.caseDetail.status === 'rejected' && (
                 <p className="certification-blocked">{copy('blockedClosed')}</p>
               )}
-              {caseView.caseDetail.nextStep === 'duration' && (
+              {caseView.caseDetail.nextStep === 'agreement' && (
                 <p className="certification-note">
-                  {copy('nextDurationPending')}
+                  {copy('nextAgreementPending')}
                 </p>
               )}
               <section aria-labelledby={`${prefix}-application-title`}>
@@ -851,6 +1022,32 @@ function CertificationRegistry(
                   </>
                 )}
               </section>
+              {caseView.caseDetail.applicationReview?.value.outcome ===
+                'accepted' && (
+                <section aria-labelledby={`${prefix}-duration-title`}>
+                  <h5 id={`${prefix}-duration-title`}>
+                    {copy('durationTitle')}
+                  </h5>
+                  {caseView.caseDetail.duration ? (
+                    <>
+                      <VersionAttribution
+                        version={caseView.caseDetail.duration}
+                      />
+                      <DurationView
+                        determination={caseView.caseDetail.duration.value}
+                      />
+                    </>
+                  ) : (
+                    <p>{copy('durationMissing')}</p>
+                  )}
+                  {authority.manage && (
+                    <>
+                      {feedbackMessage('duration', durationFeedback)}
+                      {durationStep(caseView.caseDetail)}
+                    </>
+                  )}
+                </section>
+              )}
               <section aria-labelledby={`${prefix}-timeline-title`}>
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
                 <TimelineView timeline={caseView.timeline} />
@@ -949,6 +1146,122 @@ function CertificationRegistry(
       />
     );
   }
+
+  /** The duration inputs, proposal and confirmation, or the correction entry. */
+  function durationStep(current: CaseDetail) {
+    const application = current.application;
+    const recorded = current.duration;
+    if (current.status !== 'open' || !application) return null;
+    if (recorded && !durationOpen)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            resetDurationDraft();
+            setDurationDraft(
+              durationDraftFor({
+                facts: application.value,
+                current: recorded.value,
+              }),
+            );
+            setDurationOpen(true);
+            setDurationFeedback(IDLE);
+          }}
+        >
+          {copy('correctDuration')}
+        </button>
+      );
+    const draft =
+      durationDraft ??
+      durationDraftFor({
+        facts: application.value,
+        current: recorded?.value ?? null,
+      });
+    const check = durationInputsFromDraft(draft, application.value);
+    const typed =
+      check.status === 'valid' ? JSON.stringify(check.inputs) : undefined;
+    return (
+      <DurationForm
+        idPrefix={`${prefix}-duration`}
+        facts={application.value}
+        draft={draft}
+        correcting={recorded !== null}
+        disabled={busy}
+        computing={proposal.status === 'computing'}
+        submitting={durationFeedback.status === 'saving'}
+        submitBlocked={blockedUntilReload(durationFeedback)}
+        proposal={
+          proposal.status === 'ready'
+            ? { result: proposal.result, current: proposal.inputs === typed }
+            : undefined
+        }
+        inputsRefusal={
+          proposal.status === 'refused'
+            ? { id: `${prefix}-proposal-feedback`, message: proposal.message }
+            : undefined
+        }
+        feedbackId={describedFeedback('duration', durationFeedback)}
+        onChange={(next) => {
+          setDurationDraft(next);
+          setDurationOpen(true);
+          if (proposal.status === 'refused') setProposal(NO_PROPOSAL);
+          if (
+            durationFeedback.status === 'saved' ||
+            (durationFeedback.status === 'refused' && !durationFeedback.reload)
+          )
+            setDurationFeedback(IDLE);
+        }}
+        onCompute={(event) => void computeProposal(event)}
+        onSubmit={submitDuration}
+        onCancel={
+          recorded
+            ? () => {
+                resetDurationDraft();
+                setDurationFeedback(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+}
+
+/** Why the proposal read gave no proposal, in plain language. */
+function proposalRefusal(result: ApiResult<unknown>): CertificationMessageKey {
+  switch (result.status) {
+    case 'forbidden':
+    case 'unauthorized':
+      return 'denied';
+    case 'notFound':
+      return 'unavailable';
+    case 'validation':
+      return 'invalid';
+    case 'conflict':
+      return conflictCode(result) === 'CERTIFICATION_APPLICATION_NOT_ACCEPTED'
+        ? 'durationNotAccepted'
+        : 'proposalUnavailable';
+    case 'ok':
+    case 'error':
+      return 'proposalUnavailable';
+  }
+  return unexpected(result);
+}
+
+function confirmationMessage(
+  check: Exclude<ConfirmationCheck, { status: 'valid' }>,
+): CertificationMessageKey {
+  switch (check.status) {
+    case 'invalidValues':
+      return 'durationValuesValidation';
+    case 'stagesMismatch':
+      return 'durationStagesMismatch';
+    case 'justificationRequired':
+      return 'durationJustificationRequired';
+    case 'reasonRequired':
+      return 'reasonRequired';
+  }
+  return unexpected(check);
 }
 
 /** The detail and its timeline must describe the same recorded versions. */
@@ -963,7 +1276,12 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
     (detail.application === null ||
       recorded(detail.application.id, detail.application.version)) &&
     (detail.applicationReview === null ||
-      recorded(detail.applicationReview.id, detail.applicationReview.version))
+      recorded(
+        detail.applicationReview.id,
+        detail.applicationReview.version,
+      )) &&
+    (detail.duration === null ||
+      recorded(detail.duration.id, detail.duration.version))
   );
 }
 
@@ -999,15 +1317,24 @@ function commandFeedback(
     case 'notFound':
       return refusedWith(kind === 'open' ? 'entityUnavailable' : 'unavailable');
     case 'validation':
-      return refusedWith(
-        result.code === 'CERTIFICATION_REVIEW_CRITERIA_NOT_MET'
-          ? 'criteriaNotMet'
-          : 'invalid',
-      );
+      switch (result.code) {
+        case 'CERTIFICATION_REVIEW_CRITERIA_NOT_MET':
+          return refusedWith('criteriaNotMet');
+        case 'CERTIFICATION_DURATION_JUSTIFICATION_REQUIRED':
+          return refusedWith('durationJustificationRequired');
+        case 'CERTIFICATION_DURATION_STAGES_MISMATCH':
+          return refusedWith('durationStagesMismatch');
+        case 'CERTIFICATION_DURATION_REFUSED':
+          return refusedWith('durationRefused');
+        default:
+          return refusedWith('invalid');
+      }
     case 'conflict':
       switch (conflictCode(result)) {
         case 'STALE_VERSION':
           return refusedWith('stale', true);
+        case 'CERTIFICATION_APPLICATION_NOT_ACCEPTED':
+          return refusedWith('durationNotAccepted', true);
         case 'CERTIFICATION_ORDER_REFERENCE_TAKEN':
           return refusedWith('referenceTaken');
         case 'CERTIFICATION_APPLICATION_REVIEWED':
@@ -1019,7 +1346,12 @@ function commandFeedback(
         case 'CERTIFICATION_CASE_CLOSED':
           return refusedWith('blockedClosed', true);
         case 'CERTIFICATION_CORRECTION_REASON':
-          return refusedWith('blockedCorrectionReason', true);
+          return refusedWith(
+            kind === 'duration'
+              ? 'blockedDurationCorrectionReason'
+              : 'blockedCorrectionReason',
+            true,
+          );
         case 'CERTIFICATION_CORRECTION_UNCHANGED':
           return refusedWith('blockedCorrectionUnchanged');
         default:

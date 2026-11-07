@@ -416,7 +416,7 @@ function OptionalText({
   );
 }
 
-function NumberField({
+export function NumberField({
   id,
   label,
   value,

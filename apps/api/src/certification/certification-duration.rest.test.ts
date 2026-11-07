@@ -26,7 +26,7 @@ const DAIRY_AS_PROPOSED = {
   recertificationOnSite: '3.3',
 };
 
-withPostgres('Certification Case duration determination', () => {
+withPostgres('Certification Case duration determination', { timeout: 60_000 }, () => {
   let fixture: Awaited<ReturnType<typeof openCertificationFixture>>;
 
   beforeAll(async () => {

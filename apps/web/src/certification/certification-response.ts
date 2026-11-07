@@ -1,3 +1,25 @@
+import {
+  DURATION_REFUSALS,
+  DURATION_RULE_VERSION,
+  DURATION_WARNINGS,
+  INCREASE_FACTORS,
+  REDUCTION_FACTORS,
+  confirmedCents,
+  confirmedStagesAddUp,
+  durationJustificationRequired,
+  exactUnits,
+  proposedStagesAddUp,
+  type ConfirmedDuration,
+  type ConfirmedDurationField,
+  type DurationComputation,
+  type DurationDetermination,
+  type DurationFactorInputs,
+  type DurationProposal,
+  type DurationRefusal,
+  type DurationResult,
+  type DurationWarning,
+} from './certification-duration';
+
 /** ISO 22003-1 food chain subcategories used by ISO 22000 certification. */
 export const FOOD_CHAIN_SUBCATEGORIES = [
   'AI',
@@ -49,6 +71,9 @@ export const CERTIFICATION_LIMITS = {
   totalHeadcount: 100000,
   effectiveFte: 100000,
   shiftCount: 10,
+  justification: 4000,
+  haccpStudiesPerSubcategory: 999,
+  factorPercent: 100,
 } as const;
 
 export interface CertificationSite {
@@ -105,15 +130,17 @@ export type StepVersion =
   | (StepVersionBase & {
       step: 'application_review';
       value: ApplicationReview;
-    });
+    })
+  | (StepVersionBase & { step: 'duration'; value: DurationDetermination });
 export type ApplicationVersion = Extract<StepVersion, { step: 'application' }>;
 export type ApplicationReviewVersion = Extract<
   StepVersion,
   { step: 'application_review' }
 >;
+export type DurationVersion = Extract<StepVersion, { step: 'duration' }>;
 
 export type CertificationNextStep =
-  'application' | 'application_review' | 'duration' | null;
+  'application' | 'application_review' | 'duration' | 'agreement' | null;
 
 export interface CaseSummary {
   id: string;
@@ -134,6 +161,7 @@ export interface CaseDetail extends CaseSummary {
   clientAccountId: string;
   application: ApplicationVersion | null;
   applicationReview: ApplicationReviewVersion | null;
+  duration: DurationVersion | null;
 }
 
 export interface CaseList {
@@ -197,9 +225,21 @@ export function parseCaseDetail(
       body.applicationReview === null
         ? null
         : reviewVersion(body.applicationReview),
+    duration: body.duration === null ? null : durationVersion(body.duration),
   };
   if (!consistent(detail)) invalid();
   return detail;
+}
+
+/** The duration-proposal read: a proposal, a manual case or its refusals. */
+export function parseDurationResult(value: unknown): DurationResult {
+  const body = object(value);
+  if (body.kind !== 'refused') return durationComputation(body);
+  const refusals = list(body.refusals, 1, DURATION_REFUSALS.length).map(
+    refusalCode,
+  );
+  if (new Set(refusals).size !== refusals.length) invalid();
+  return { kind: 'refused', refusals };
 }
 
 function applicationVersion(value: unknown): ApplicationVersion {
@@ -210,6 +250,11 @@ function applicationVersion(value: unknown): ApplicationVersion {
 function reviewVersion(value: unknown): ApplicationReviewVersion {
   const version = parseStepVersion(value);
   return version.step === 'application_review' ? version : invalid();
+}
+
+function durationVersion(value: unknown): DurationVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'duration' ? version : invalid();
 }
 
 export function parseTimeline(value: unknown, caseId: string): CaseTimeline {
@@ -294,6 +339,7 @@ function parseNextStep(value: unknown): CertificationNextStep {
     case 'application':
     case 'application_review':
     case 'duration':
+    case 'agreement':
       return value;
     default:
       return invalid();
@@ -302,12 +348,20 @@ function parseNextStep(value: unknown): CertificationNextStep {
 
 /** The server derives status and next step from the recorded steps. */
 function consistent(detail: CaseDetail): boolean {
-  const { application, applicationReview: review } = detail;
+  const { application, applicationReview: review, duration } = detail;
   if (review && !application) return false;
+  // A duration is determined only once the review accepted the application.
+  if (duration && review?.value.outcome !== 'accepted') return false;
+  // Steps are recorded in order, each at a revision the Case has reached.
+  const revisions = [application, review, duration].flatMap((version) =>
+    version ? [version.caseRevision] : [],
+  );
   if (
-    (application && application.caseRevision > detail.revision) ||
-    (review && review.caseRevision > detail.revision) ||
-    (application && review && application.caseRevision >= review.caseRevision)
+    revisions.some(
+      (revision, index) =>
+        revision > detail.revision ||
+        revision <= (revisions[index - 1] ?? Number.NEGATIVE_INFINITY),
+    )
   )
     return false;
   if (detail.status === 'rejected')
@@ -317,7 +371,9 @@ function consistent(detail: CaseDetail): boolean {
     ? 'application'
     : !review
       ? 'application_review'
-      : 'duration';
+      : !duration
+        ? 'duration'
+        : 'agreement';
   return detail.nextStep === expected;
 }
 
@@ -345,6 +401,15 @@ function parseStepVersion(value: unknown): StepVersion {
       ...base,
       step: 'application_review',
       value: applicationReview(row.value),
+    };
+  }
+  if (row.step === 'duration') {
+    // A correction of a confirmed determination states its reason.
+    if ((base.version === 1) !== (base.reason === null)) invalid();
+    return {
+      ...base,
+      step: 'duration',
+      value: durationDetermination(row.value),
     };
   }
   return invalid();
@@ -454,6 +519,157 @@ function applicationReview(value: unknown): ApplicationReview {
   return invalid();
 }
 
+function durationDetermination(value: unknown): DurationDetermination {
+  const body = object(value);
+  if (body.ruleVersion !== DURATION_RULE_VERSION) invalid();
+  const inputsBody = object(body.inputs);
+  const subcategories = list(
+    inputsBody.subcategories,
+    1,
+    FOOD_CHAIN_SUBCATEGORIES.length,
+  ).map(subcategory);
+  if (new Set(subcategories).size !== subcategories.length) invalid();
+  const factors = durationFactorInputs(inputsBody, subcategories);
+  const computation = durationComputation(object(body.computation));
+  const confirmed = confirmedDuration(body.confirmed);
+  const justification =
+    body.justification === null
+      ? null
+      : text(body.justification, CERTIFICATION_LIMITS.justification);
+  if (
+    justification === null &&
+    durationJustificationRequired({ ...factors, computation, confirmed })
+  )
+    invalid();
+  return {
+    ruleVersion: DURATION_RULE_VERSION,
+    inputs: {
+      ...factors,
+      subcategories,
+      effectiveFte: fte(inputsBody.effectiveFte),
+    },
+    computation,
+    confirmed,
+    justification,
+  };
+}
+
+/** The stated factors, with studies only for the application's subcategories. */
+function durationFactorInputs(
+  body: Record<string, unknown>,
+  subcategories: readonly FoodChainSubcategory[],
+): DurationFactorInputs {
+  const primary = subcategory(body.primary);
+  if (!subcategories.includes(primary)) invalid();
+  return {
+    primary,
+    haccpStudies: wholesByKey(
+      body.haccpStudies,
+      subcategories,
+      CERTIFICATION_LIMITS.haccpStudiesPerSubcategory,
+    ),
+    increases: wholesByKey(
+      body.increases,
+      INCREASE_FACTORS,
+      CERTIFICATION_LIMITS.factorPercent,
+    ),
+    reductions: wholesByKey(
+      body.reductions,
+      REDUCTION_FACTORS,
+      CERTIFICATION_LIMITS.factorPercent,
+    ),
+  };
+}
+
+function durationComputation(
+  body: Record<string, unknown>,
+): DurationComputation {
+  if (body.kind === 'manual') {
+    if (body.reason !== 'FTE_BAND_AMBIGUOUS') invalid();
+    return { kind: 'manual', reason: 'FTE_BAND_AMBIGUOUS' };
+  }
+  if (body.kind === 'proposal')
+    return { kind: 'proposal', proposal: durationProposal(body.proposal) };
+  return invalid();
+}
+
+function durationProposal(value: unknown): DurationProposal {
+  const body = object(value);
+  if (body.ruleVersion !== DURATION_RULE_VERSION) invalid();
+  const warnings = list(body.warnings, 0, DURATION_WARNINGS.length).map(
+    warningCode,
+  );
+  if (new Set(warnings).size !== warnings.length) invalid();
+  const proposal: DurationProposal = {
+    ruleVersion: DURATION_RULE_VERSION,
+    basicTime: exactAmount(body.basicTime),
+    haccpTime: exactAmount(body.haccpTime),
+    fteTime: exactAmount(body.fteTime),
+    baseDays: exactAmount(body.baseDays),
+    netAdjustmentPercent: whole(body.netAdjustmentPercent, -100, 1000),
+    initialOnSite: exactAmount(body.initialOnSite),
+    initialTotal: exactAmount(body.initialTotal),
+    stage1OnSite: exactAmount(body.stage1OnSite),
+    stage2OnSite: exactAmount(body.stage2OnSite),
+    surveillanceOnSite: exactAmount(body.surveillanceOnSite),
+    surveillanceTotal: exactAmount(body.surveillanceTotal),
+    recertificationOnSite: exactAmount(body.recertificationOnSite),
+    recertificationTotal: exactAmount(body.recertificationTotal),
+    warnings,
+  };
+  if (!proposedStagesAddUp(proposal)) invalid();
+  return proposal;
+}
+
+/** Confirmed amounts: positive hundredths, Stage 1 + Stage 2 = initial. */
+function confirmedDuration(value: unknown): ConfirmedDuration {
+  const body = object(value);
+  const amount = (field: ConfirmedDurationField): string => {
+    const entry = body[field];
+    return typeof entry === 'string' && confirmedCents(entry) !== undefined
+      ? entry
+      : invalid();
+  };
+  const confirmed: ConfirmedDuration = {
+    initialOnSite: amount('initialOnSite'),
+    stage1OnSite: amount('stage1OnSite'),
+    stage2OnSite: amount('stage2OnSite'),
+    surveillanceOnSite: amount('surveillanceOnSite'),
+    recertificationOnSite: amount('recertificationOnSite'),
+  };
+  if (!confirmedStagesAddUp(confirmed)) invalid();
+  return confirmed;
+}
+
+/** Whole numbers by key; every key is known and an absent one is zero. */
+function wholesByKey<Key extends string>(
+  value: unknown,
+  keys: readonly Key[],
+  maximum: number,
+): Partial<Record<Key, number>> {
+  const body = object(value);
+  if (Object.keys(body).some((key) => !keys.some((known) => known === key)))
+    invalid();
+  const result: Partial<Record<Key, number>> = {};
+  for (const key of keys)
+    if (body[key] !== undefined) result[key] = whole(body[key], 0, maximum);
+  return result;
+}
+
+function exactAmount(value: unknown): string {
+  return typeof value === 'string' && exactUnits(value) !== undefined
+    ? value
+    : invalid();
+}
+
+function warningCode(value: unknown): DurationWarning {
+  return DURATION_WARNINGS.find((code) => code === value) ?? invalid();
+}
+
+function refusalCode(value: unknown): DurationRefusal {
+  return DURATION_REFUSALS.find((code) => code === value) ?? invalid();
+}
+
 function answer(value: unknown): ReviewAnswer {
   const body = object(value);
   if (body.answer !== 'yes' && body.answer !== 'no') invalid();
@@ -515,6 +731,17 @@ function fte(value: unknown): number {
     value <= 0 ||
     value > CERTIFICATION_LIMITS.effectiveFte ||
     Math.abs(Math.round(value * 10) - value * 10) > 1e-9
+  )
+    invalid();
+  return value;
+}
+
+function whole(value: unknown, minimum: number, maximum: number): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isSafeInteger(value) ||
+    value < minimum ||
+    value > maximum
   )
     invalid();
   return value;
