@@ -5,6 +5,13 @@ import {
   fixtureString,
 } from '../documents/external-invoice-migration.test-support.js';
 
+/** Tables added by the certification migrations, in PostgreSQL name order. */
+export const certificationTables = [
+  'certification_cases',
+  'certification_events',
+  'certification_receipts',
+  'certification_step_versions',
+];
 const roles = [
   'company_certification_reader',
   'company_certification_programme_manager',
