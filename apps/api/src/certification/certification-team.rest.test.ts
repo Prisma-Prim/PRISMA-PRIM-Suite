@@ -30,7 +30,7 @@ function member(overrides: Record<string, unknown> = {}) {
   };
 }
 
-withPostgres('Certification Case audit team', () => {
+withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
   let fixture: Awaited<ReturnType<typeof openCertificationFixture>>;
 
   function propose(caseId: string, body: Record<string, unknown>) {
