@@ -395,6 +395,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         const facts = this.acceptedApplication(steps);
         const previous = latest(steps, 'duration');
         const version = (previous?.version ?? 0) + 1;
@@ -665,6 +666,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         if (!latest(steps, 'duration'))
           throw stepConflict(
             'CERTIFICATION_DURATION_MISSING',
@@ -743,6 +745,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         if (!latest(steps, 'agreement'))
           throw stepConflict(
             'CERTIFICATION_AGREEMENT_MISSING',
@@ -839,6 +842,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         const proposed = latest(steps, 'team');
         const decided = latest(steps, 'team_decision');
         if (
@@ -919,6 +923,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         if (!approvedTeam(steps))
           throw stepConflict(
             'CERTIFICATION_TEAM_NOT_APPROVED',
@@ -1036,6 +1041,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         this.requireTeamLeader(actor, steps);
         const plan = latest(steps, planStep);
         if (!plan)
@@ -1155,6 +1161,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         this.requireTeamLeader(actor, steps);
         const { stage, classification, statement } = input.payload;
         if (
@@ -1270,6 +1277,7 @@ export class CertificationService {
           findingCommand(body, () => null).expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
+        requireUndecided(steps);
         if (kind === 'reclassification') {
           if (this.onTeam(actor, steps))
             throw stepConflict(
@@ -2612,6 +2620,15 @@ function nextStep(
   if (!latest(steps, 'decision')) return 'decision';
   if (!latest(steps, 'certificate_data')) return 'certificate_data';
   return 'certificate';
+}
+
+/** Once decided, only the Certificate data and the Certificate remain. */
+function requireUndecided(steps: readonly StepRow[]): void {
+  if (latest(steps, 'decision'))
+    throw stepConflict(
+      'CERTIFICATION_DECIDED',
+      'The Case is decided; only the Certificate data and the Certificate remain.',
+    );
 }
 
 function stepConflict(code: string, message: string): ConflictException {

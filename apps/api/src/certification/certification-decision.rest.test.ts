@@ -186,21 +186,54 @@ withPostgres(
         nextStep: 'certificate_data',
         decision: { value: { decision: 'granted', decidedOn: '2026-11-06' } },
       });
-      const form = await fixture.attach(caseId, 'certificate_data', 19);
+      // What the decision relied on is frozen once it is recorded.
+      const evidence = await fixture.attach(caseId, 'evidence', 19);
+      const lateFinding = await post(
+        CERTIFICATION_AUDITOR,
+        `${base}/findings`,
+        {
+          expectedRevision: 20,
+          stage: 'stage_2',
+          classification: 'major_nonconformity',
+          clause: '8.5.1',
+          area: 'Receiving',
+          statement: 'Found after the decision.',
+          evidenceAttachmentIds: [evidence],
+        },
+      );
+      expect(lateFinding.status).toBe(409);
+      expect(record(await lateFinding.json()).code).toBe(
+        'CERTIFICATION_DECIDED',
+      );
+      const lateReport = await post(
+        CERTIFICATION_AUDITOR,
+        `${base}/stages/stage-2/report`,
+        {
+          expectedRevision: 20,
+          reason: 'Changed after the decision.',
+          reportDate: '2026-10-21',
+          summary: 'Stage 2 completed, revised.',
+          reportAttachmentId: evidence,
+        },
+      );
+      expect(record(await lateReport.json()).code).toBe(
+        'CERTIFICATION_DECIDED',
+      );
+      const form = await fixture.attach(caseId, 'certificate_data', 20);
       expect(
         await ok(CERTIFICATION_OWNER, `${base}/certificate-data`, {
-          expectedRevision: 20,
+          expectedRevision: 21,
           texts: TEXTS,
           agreedOn: '2026-10-21',
           agreementAttachmentId: form,
         }),
-      ).toMatchObject({ revision: 21, nextStep: 'certificate' });
-      const pdf = await fixture.attach(caseId, 'certificate', 21);
+      ).toMatchObject({ revision: 22, nextStep: 'certificate' });
+      const pdf = await fixture.attach(caseId, 'certificate', 22);
       const certified = await ok(
         CERTIFICATION_APPROVER,
         `${base}/certificate`,
         {
-          expectedRevision: 22,
+          expectedRevision: 23,
           number: 'DEMO-0001',
           attachmentId: pdf,
           signedBy: 'Decision Maker Demo',
@@ -220,11 +253,11 @@ withPostgres(
           signedBy: 'Decision Maker Demo',
         },
       });
-      expect(await fixture.eventCount(caseId)).toBe(23);
+      expect(await fixture.eventCount(caseId)).toBe(24);
       const second = await post(
         CERTIFICATION_APPROVER,
         `${base}/decision`,
-        decision(23),
+        decision(24),
       );
       expect(second.status).toBe(409);
       const other = await recommendedCase();

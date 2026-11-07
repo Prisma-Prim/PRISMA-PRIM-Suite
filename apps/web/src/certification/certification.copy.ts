@@ -1570,7 +1570,7 @@ export const certificationMessages = defineMessages(keys, {
     blockedDossierBeforeRecommendation:
       'The dossier is reviewed after the team recommendation. Reload the Case.',
     blockedDecided:
-      'The Certification Decision is recorded: the recommendation and the dossier review no longer change. Reload the Case.',
+      'The Certification Decision is recorded: what it relied on (duration, agreement, team, Stages, Findings, recommendation, dossier review) no longer changes; only the Certificate data and the Certificate remain. Reload the Case.',
     certificationDecisionTitle: 'Certification Decision',
     certificationDecisionMissing: 'No Certification Decision is recorded yet.',
     recordCertificationDecision: 'Record the Certification Decision',
@@ -2580,7 +2580,7 @@ export const certificationMessages = defineMessages(keys, {
     blockedDossierBeforeRecommendation:
       'Le dossier est revu après la recommandation de l’équipe. Rechargez le dossier.',
     blockedDecided:
-      'La décision de certification est enregistrée : la recommandation et la revue du dossier ne changent plus. Rechargez le dossier.',
+      'La décision de certification est enregistrée : ce sur quoi elle repose (durée, contrat, équipe, étapes, constats, recommandation, revue du dossier) ne change plus ; il ne reste que les données du certificat et le certificat. Rechargez le dossier.',
     certificationDecisionTitle: 'Décision de certification',
     certificationDecisionMissing:
       'Aucune décision de certification n’est encore enregistrée.',
@@ -3590,7 +3590,7 @@ export const certificationMessages = defineMessages(keys, {
     blockedDossierBeforeRecommendation:
       'Dosarul se analizează după recomandarea echipei. Reîncărcați dosarul.',
     blockedDecided:
-      'Decizia de certificare este înregistrată: recomandarea și analiza dosarului nu se mai modifică. Reîncărcați dosarul.',
+      'Decizia de certificare este înregistrată: elementele pe care se bazează (durata, contractul, echipa, etapele, constatările, recomandarea, analiza dosarului) nu se mai modifică; rămân doar datele certificatului și certificatul. Reîncărcați dosarul.',
     certificationDecisionTitle: 'Decizia de certificare',
     certificationDecisionMissing:
       'Nicio decizie de certificare nu este încă înregistrată.',
@@ -4585,7 +4585,7 @@ export const certificationMessages = defineMessages(keys, {
     blockedDossierBeforeRecommendation:
       'Досье анализируется после рекомендации группы. Загрузите дело заново.',
     blockedDecided:
-      'Решение о сертификации записано: рекомендация и анализ досье больше не меняются. Загрузите дело заново.',
+      'Решение о сертификации записано: то, на чём оно основано (продолжительность, договор, группа, этапы, наблюдения, рекомендация, анализ досье), больше не меняется; остаются только данные сертификата и сам сертификат. Загрузите дело заново.',
     certificationDecisionTitle: 'Решение о сертификации',
     certificationDecisionMissing: 'Решение о сертификации ещё не записано.',
     recordCertificationDecision: 'Записать решение о сертификации',
