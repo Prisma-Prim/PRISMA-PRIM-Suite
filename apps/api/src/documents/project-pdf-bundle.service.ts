@@ -1,4 +1,5 @@
 import { DocumentProjectsService } from './document-projects.service.js';
+import { isProjectLinkableDocument } from './document-family-policy.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import {
   BadRequestException,
@@ -48,12 +49,7 @@ export class ProjectPdfBundleService {
             actor,
             item.documentId,
           );
-          if (
-            document.type === 'external-invoice' ||
-            document.type === 'payment-evidence' ||
-            document.type === 'received-addendum' ||
-            document.type === 'received-audit-source'
-          )
+          if (!isProjectLinkableDocument(document))
             throw new NotFoundException();
           await this.associations.requireSelectedAssociationWithinReadTransaction(
             {
