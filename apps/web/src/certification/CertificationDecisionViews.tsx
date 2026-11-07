@@ -4,6 +4,7 @@ import {
   useAttachmentReference,
   type RegisterDownload,
 } from './CertificationDocumentViews';
+import { ActingRow, IndependenceRow } from './CertificationAttribution';
 import {
   useCertificationCopy,
   type CertificationMessageKey,
@@ -138,13 +139,14 @@ function textFieldLabel(field: CertificateTextField): CertificationMessageKey {
   return unexpected(field);
 }
 
-/** The team leader's recommendation and its basis. */
+/** The team leader's recommendation, its basis and its business date. */
 export function RecommendationView({
   recommendation,
 }: {
   recommendation: Recommendation;
 }) {
   const copy = useCertificationCopy();
+  const { formatDate } = useInterfaceLocale();
   return (
     <dl className="certification-facts">
       <div>
@@ -155,12 +157,34 @@ export function RecommendationView({
         <dt>{copy('recommendationBasis')}</dt>
         <dd>{recommendation.basis}</dd>
       </div>
+      <div>
+        <dt>{copy('recommendedOn')}</dt>
+        <dd>
+          {recommendation.recommendedOn === null ? (
+            copy('notProvided')
+          ) : (
+            <time dateTime={recommendation.recommendedOn}>
+              {formatDate(recommendation.recommendedOn)}
+            </time>
+          )}
+        </dd>
+      </div>
     </dl>
   );
 }
 
-/** Whether an item is missing, then every explicit answer with its note. */
-export function DossierReviewView({ review }: { review: DossierReview }) {
+/**
+ * Whether an item is missing, then every explicit answer with its note, the
+ * conclusion, who reviewed and approved on behalf of the certification body
+ * and the attestation of independence.
+ */
+export function DossierReviewView({
+  review,
+  register,
+}: {
+  review: DossierReview;
+  register: DocumentRegister;
+}) {
   const copy = useCertificationCopy();
   return (
     <dl className="certification-facts">
@@ -194,6 +218,17 @@ export function DossierReviewView({ review }: { review: DossierReview }) {
         <dt>{copy('dossierConclusion')}</dt>
         <dd>{review.conclusion}</dd>
       </div>
+      <ActingRow
+        label="dossierReviewerView"
+        act={review.reviewedBy}
+        register={register}
+      />
+      <ActingRow
+        label="dossierApproverView"
+        act={review.approvedBy}
+        register={register}
+      />
+      <IndependenceRow attested={review.independenceAttested} />
     </dl>
   );
 }

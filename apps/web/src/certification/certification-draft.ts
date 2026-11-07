@@ -1,14 +1,23 @@
 import {
+  actingFromDraft,
+  emptyActingDraft,
+  type ActingDraft,
+} from './certification-attribution';
+import {
   CERTIFICATION_LIMITS,
   REVIEW_CRITERIA,
+  isCalendarDate,
   type ApplicationFacts,
   type ApplicationReview,
+  type CertificationAttachment,
   type FoodChainSubcategory,
   type ReviewCriterion,
 } from './certification-response';
 
 /** The editable application, kept as typed text until it is submitted. */
 export interface ApplicationDraft {
+  /** Empty when the business date of the signed application is not known. */
+  submittedOn: string;
   declaredLegalName: string;
   declaredAddress: string;
   sites: { address: string; activity: string }[];
@@ -37,10 +46,13 @@ export interface ReviewDraft {
   >;
   outcome: 'accepted' | 'rejected' | null;
   rejectionReason: string;
+  /** The certification body's reviewer, when recorded on their behalf. */
+  onBehalf: ActingDraft;
 }
 
 export function emptyApplicationDraft(): ApplicationDraft {
   return {
+    submittedOn: '',
     declaredLegalName: '',
     declaredAddress: '',
     sites: [{ address: '', activity: '' }],
@@ -64,6 +76,7 @@ export function emptyApplicationDraft(): ApplicationDraft {
 /** A correction starts from the current version's exact values. */
 export function draftFromFacts(facts: ApplicationFacts): ApplicationDraft {
   return {
+    submittedOn: facts.submittedOn ?? '',
     declaredLegalName: facts.declaredLegalName,
     declaredAddress: facts.declaredAddress,
     sites: facts.sites.map((site) => ({ ...site })),
@@ -94,6 +107,7 @@ export function emptyReviewDraft(): ReviewDraft {
     },
     outcome: null,
     rejectionReason: '',
+    onBehalf: emptyActingDraft(),
   };
 }
 
@@ -153,6 +167,7 @@ export function factsFromDraft(
     draft.consultantName,
     CERTIFICATION_LIMITS.consultantName,
   );
+  const submittedOn = draft.submittedOn.trim();
   const consultant: ApplicationFacts['consultant'] | undefined =
     draft.consultantUsed === 'no'
       ? { used: false }
@@ -188,10 +203,12 @@ export function factsFromDraft(
     otherCertifiedSystems === undefined ||
     outsourcedProcesses === undefined ||
     preferredAuditPeriod === undefined ||
-    consultant === undefined
+    consultant === undefined ||
+    (submittedOn !== '' && !isCalendarDate(submittedOn))
   )
     return undefined;
   return {
+    submittedOn: submittedOn || null,
     declaredLegalName,
     declaredAddress,
     sites: validSites,
@@ -218,10 +235,17 @@ export function correctionReason(draft: ApplicationDraft): string | undefined {
 export type ReviewCheck =
   | { status: 'valid'; review: ApplicationReview }
   | { status: 'incomplete' }
+  | { status: 'acting' }
   | { status: 'criteriaNotMet' };
 
-/** Mirrors the server: complete explicit answers; acceptance only with all yes. */
-export function reviewFromDraft(draft: ReviewDraft): ReviewCheck {
+/**
+ * Mirrors the server: complete explicit answers; acceptance only with all
+ * yes; a complete act on behalf of the certification body, when recorded so.
+ */
+export function reviewFromDraft(
+  draft: ReviewDraft,
+  documents: readonly CertificationAttachment[],
+): ReviewCheck {
   const answers = REVIEW_CRITERIA.map((criterion) => {
     const entry = draft.criteria[criterion];
     const note = required(entry.note, CERTIFICATION_LIMITS.note);
@@ -238,11 +262,18 @@ export function reviewFromDraft(draft: ReviewDraft): ReviewCheck {
     competentDecisionMakerAvailable: decisionMaker,
     risksAcceptable: risks,
   };
+  const onBehalf = actingFromDraft(draft.onBehalf, documents);
+  if (onBehalf === undefined) return { status: 'acting' };
   if (draft.outcome === 'accepted')
     return Object.values(criteria).every((entry) => entry.answer === 'yes')
       ? {
           status: 'valid',
-          review: { criteria, outcome: 'accepted', rejectionReason: null },
+          review: {
+            criteria,
+            onBehalf,
+            outcome: 'accepted',
+            rejectionReason: null,
+          },
         }
       : { status: 'criteriaNotMet' };
   const rejectionReason = required(
@@ -253,7 +284,7 @@ export function reviewFromDraft(draft: ReviewDraft): ReviewCheck {
     ? { status: 'incomplete' }
     : {
         status: 'valid',
-        review: { criteria, outcome: 'rejected', rejectionReason },
+        review: { criteria, onBehalf, outcome: 'rejected', rejectionReason },
       };
 }
 

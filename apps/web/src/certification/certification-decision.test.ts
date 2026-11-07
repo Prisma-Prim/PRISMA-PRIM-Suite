@@ -26,6 +26,7 @@ const team = {
       conflictNote: null,
     },
   ],
+  impartialityAnalysis: null,
 };
 
 /** A complete review, as the parser reads the fixture's answers. */
@@ -46,6 +47,9 @@ const complete: DossierReview = {
     certificate_data: { answer: 'present', note: null },
   },
   conclusion: dossierReview().conclusion,
+  reviewedBy: null,
+  approvedBy: null,
+  independenceAttested: true,
 };
 
 /** Every precondition of a decision holds in this read. */
@@ -60,7 +64,11 @@ function ready(overrides: Partial<DecisionContext> = {}): DecisionContext {
     stage2Report: {},
     findings: [],
     recommendation: {
-      value: { recommendation: 'grant', basis: 'No nonconformity.' },
+      value: {
+        recommendation: 'grant',
+        basis: 'No nonconformity.',
+        recommendedOn: null,
+      },
     },
     dossierReview: { value: complete },
     ...overrides,
@@ -151,7 +159,9 @@ describe('Certification Decision preconditions', () => {
       'additional_audit',
     ] as const) {
       const context = ready({
-        recommendation: { value: { recommendation, basis: 'Basis.' } },
+        recommendation: {
+          value: { recommendation, basis: 'Basis.', recommendedOn: null },
+        },
       });
       expect(decisionPreconditions(context, 'granted')).toEqual([
         'GRANT_AGAINST_RECOMMENDATION',

@@ -27,6 +27,9 @@ const DECLARATIONS = [
   'Committed to confidentiality',
 ];
 const CATEGORY = 'Holds the client’s food chain category';
+const ATTESTATION =
+  'I attest that the person deciding on this team is not a member of the audit team.';
+const CONFLICT_NOTE = 'Conflict or point to verify';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -90,13 +93,16 @@ function member(form: HTMLElement, number: number) {
   return within(form).getByRole('group', { name: `Member ${number}` });
 }
 
+/** An impartiality declaration state, as its radio is labelled. */
+type Answer = 'Confirmed' | 'Conflict' | 'To verify';
+
 type MemberInput = {
   name: string;
   role: string;
   link?: string;
   holdsCategory?: boolean;
   competence: string;
-  answers?: readonly ('Yes' | 'No')[];
+  answers?: readonly Answer[];
 };
 
 /** Types one member as a person would; the category box starts unchecked. */
@@ -118,10 +124,13 @@ function fillMember(group: HTMLElement, input: MemberInput) {
   )
     fireEvent.click(category);
   change(within(group).getByLabelText('Competence'), input.competence);
-  answer(group, input.answers ?? ['Yes', 'Yes', 'Yes', 'Yes']);
+  answer(
+    group,
+    input.answers ?? ['Confirmed', 'Confirmed', 'Confirmed', 'Confirmed'],
+  );
 }
 
-function answer(group: HTMLElement, answers: readonly ('Yes' | 'No')[]) {
+function answer(group: HTMLElement, answers: readonly Answer[]) {
   DECLARATIONS.forEach((declaration, index) => {
     const choice = answers[index];
     if (!choice) return;
@@ -152,6 +161,11 @@ function decide(
   fireEvent.click(within(form).getByRole('radio', { name: choice }));
   if (reason !== undefined)
     change(within(form).getByLabelText('Reason for returning'), reason);
+  const attestation = within(form).getByRole('checkbox', {
+    name: ATTESTATION,
+  });
+  if (attestation instanceof HTMLInputElement && !attestation.checked)
+    fireEvent.click(attestation);
   fireEvent.click(
     within(form).getByRole('button', { name: 'Record the decision' }),
   );
@@ -220,7 +234,7 @@ describe('Certification audit team and its approval', () => {
     expect(definition(first, CATEGORY)).toBe('No');
     expect(definition(third, 'Workspace member')).toBe('Not linked');
     expect(definition(third, 'Competence')).toBe('ISO 22000 auditor');
-    expect(definition(third, 'Committed to confidentiality')).toBe('Yes');
+    expect(definition(third, 'Committed to confidentiality')).toBe('Confirmed');
 
     const decision = region(DECISION);
     expect(definition(decision, 'Decision')).toBe('Returned');
@@ -275,7 +289,7 @@ describe('Certification audit team and its approval', () => {
     submitTeam(form);
     expect(
       await within(region(TEAM)).findByText(
-        'Complete every member: a name (at most 200 characters), a role, a competence note (at most 1,000 characters) and a yes or no answer to each declaration. A team has one to ten members.',
+        'Complete every member: a name (at most 200 characters), a role, a competence note (at most 1,000 characters) and an answer to each declaration. A team has one to ten members.',
       ),
     ).toBeVisible();
 
@@ -312,29 +326,29 @@ describe('Certification audit team and its approval', () => {
       role: 'Technical expert',
       holdsCategory: true,
       competence: 'Dairy technologist',
-      answers: ['No', 'Yes', 'Yes', 'Yes'],
+      answers: ['Conflict', 'Confirmed', 'Confirmed', 'Confirmed'],
     });
     expect(
       within(member(form, 2)).getByText(
-        'Required because a declaration is answered no. A team with a declared conflict can be proposed, but it can only be returned, not approved.',
+        'Required because a declaration is a conflict or still to verify: describe the conflict or what remains to verify. The team can be proposed, but it is approved only once every declaration is confirmed.',
       ),
     ).toBeVisible();
     submitTeam(form);
     expect(
       await within(region(TEAM)).findByText(
-        'Describe the conflict (at most 1,000 characters) for every member with a declaration answered no.',
+        'Describe the conflict or what remains to verify (at most 1,000 characters) for every member with a declaration that is not confirmed.',
       ),
     ).toBeVisible();
     expect(server.mutations()).toEqual([]);
 
     // Answering yes again hides the description, which is then not sent.
     change(
-      within(member(form, 2)).getByLabelText('Description of the conflict'),
+      within(member(form, 2)).getByLabelText(CONFLICT_NOTE),
       'Unsent draft',
     );
-    answer(member(form, 2), ['Yes']);
+    answer(member(form, 2), ['Confirmed']);
     expect(
-      within(member(form, 2)).queryByLabelText('Description of the conflict'),
+      within(member(form, 2)).queryByLabelText(CONFLICT_NOTE),
     ).not.toBeInTheDocument();
     // Only the people the Case shows can be linked, each to one member.
     const link = within(member(form, 1)).getByLabelText('Workspace member');
@@ -430,7 +444,7 @@ describe('Certification audit team and its approval', () => {
     [
       400,
       'CERTIFICATION_TEAM_CONFLICT_NOTE',
-      'Describe the conflict (at most 1,000 characters) for every member with a declaration answered no.',
+      'Describe the conflict or what remains to verify (at most 1,000 characters) for every member with a declaration that is not confirmed.',
       false,
     ],
     [
@@ -454,7 +468,7 @@ describe('Certification audit team and its approval', () => {
     [
       409,
       'CERTIFICATION_INDEPENDENCE',
-      'A member who approved this team, reviewed the dossier or recorded the decision cannot join the team. Remove that link, reload the Case and propose again.',
+      'A person who approved this team, reviewed the dossier or recorded the decision, directly or on behalf of the certification body, cannot join the team. Remove that person or that link, reload the Case and propose again.',
       true,
     ],
   ] as const)(
@@ -526,7 +540,7 @@ describe('Certification audit team and its approval', () => {
     expect(
       within(
         within(member(form, 2)).getByRole('group', { name: DECLARATIONS[0] }),
-      ).getByRole('radio', { name: 'Yes' }),
+      ).getByRole('radio', { name: 'Confirmed' }),
     ).toBeChecked();
     fireEvent.click(within(form).getByRole('button', { name: 'Add a member' }));
     fillMember(member(form, 3), {
@@ -624,7 +638,12 @@ describe('Certification audit team and its approval', () => {
       expect.objectContaining({
         path: `/api/certification-cases/${caseId}/team-decision`,
         company: certificationIds.company,
-        body: { expectedRevision: 7, teamVersion: 1, decision: 'approved' },
+        body: {
+          expectedRevision: 7,
+          teamVersion: 1,
+          decision: 'approved',
+          independenceAttested: true,
+        },
       }),
     ]);
     expect(server.mutations()[0]?.key).toBeTruthy();
@@ -671,6 +690,7 @@ describe('Certification audit team and its approval', () => {
           teamVersion: 1,
           decision: 'returned',
           reason: 'Add an auditor for the second shift.',
+          independenceAttested: true,
         },
       }),
     ]);
@@ -760,13 +780,13 @@ describe('Certification audit team and its approval', () => {
     renderWorkspace(actor);
     await openSeededCase('CERT-TEAM-CONFLICT');
     expect(within(region(TEAM)).getByText('Conflict declared')).toBeVisible();
-    expect(definition(region(TEAM), 'Description of the conflict')).toBe(
+    expect(definition(region(TEAM), CONFLICT_NOTE)).toBe(
       'Delivered a training to the client last year.',
     );
     const form = decisionForm();
     expect(
       within(form).getByText(
-        'A member of this team declared a conflict of interest, so the team cannot be approved. Return it with a reason.',
+        'A declaration of this team is not confirmed (a conflict or a point to verify), so the team cannot be approved. Return it with a reason; it can be approved once a new version confirms every declaration.',
       ),
     ).toBeVisible();
     expect(
@@ -788,7 +808,7 @@ describe('Certification audit team and its approval', () => {
     decide('Approve the team');
     expect(
       await within(region(DECISION)).findByText(
-        'A team with a declared conflict of interest cannot be approved. Return it with a reason.',
+        'A team with a declaration that is not confirmed cannot be approved. Return it with a reason.',
       ),
     ).toBeVisible();
     decide('Return the team', 'Clarify the consultancy declaration.');
@@ -896,11 +916,13 @@ describe('Certification audit team and its approval', () => {
       expectedRevision: 7,
       teamVersion: 1,
       decision: 'approved',
+      independenceAttested: true,
     });
     expect(saved?.body).toEqual({
       expectedRevision: 8,
       teamVersion: 2,
       decision: 'approved',
+      independenceAttested: true,
     });
   });
 

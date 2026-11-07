@@ -231,6 +231,12 @@
   padding-block: 0.75rem;
   border-bottom: 1px dashed #e6eaf1;
 }
+.certification-workspace .certification-acting {
+  display: grid;
+  gap: 0.4rem;
+  border-color: #d9d1ed;
+  background: #fbfaff;
+}
 .certification-workspace .certification-form fieldset small {
   display: block;
   margin-block-end: 0.35rem;

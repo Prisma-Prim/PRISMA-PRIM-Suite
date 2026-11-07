@@ -1,4 +1,10 @@
 import {
+  actingDraftFor,
+  actingFromDraft,
+  type ActAttribution,
+  type ActingDraft,
+} from './certification-attribution';
+import {
   CONFIRMED_DURATION_FIELDS,
   INCREASE_FACTORS,
   REDUCTION_FACTORS,
@@ -17,6 +23,7 @@ import {
   CERTIFICATION_LIMITS,
   FOOD_CHAIN_SUBCATEGORIES,
   type ApplicationFacts,
+  type CertificationAttachment,
   type FoodChainSubcategory,
 } from './certification-response';
 
@@ -31,6 +38,8 @@ export interface DurationDraft {
   reductions: Partial<Record<ReductionFactor, string>>;
   confirmed: Record<ConfirmedDurationField, string>;
   justification: string;
+  /** The certification body's approval, when recorded on its behalf. */
+  onBehalf: ActingDraft;
   reason: string;
 }
 
@@ -60,6 +69,7 @@ export function durationDraftFor({
       reductions: percentTexts(REDUCTION_FACTORS, {}),
       confirmed: blankConfirmation(),
       justification: '',
+      onBehalf: actingDraftFor(null),
       reason: '',
     };
   const { inputs } = current;
@@ -75,6 +85,7 @@ export function durationDraftFor({
     reductions: percentTexts(REDUCTION_FACTORS, inputs.reductions),
     confirmed: { ...current.confirmed },
     justification: current.justification ?? '',
+    onBehalf: actingDraftFor(current.onBehalf),
     reason: '',
   };
 }
@@ -142,11 +153,13 @@ export type ConfirmationCheck =
       status: 'valid';
       confirmed: ConfirmedDuration;
       justification: string | null;
+      onBehalf: ActAttribution | null;
       reason: string | null;
     }
   | { status: 'invalidValues' }
   | { status: 'stagesMismatch' }
   | { status: 'justificationRequired' }
+  | { status: 'acting' }
   | { status: 'reasonRequired' };
 
 /** Mirrors the server's checks of a confirmation, which stays authoritative. */
@@ -156,10 +169,12 @@ export function confirmationFromDraft(
     inputs,
     computation,
     correcting,
+    documents,
   }: {
     inputs: DurationFactorInputs;
     computation: DurationComputation;
     correcting: boolean;
+    documents: readonly CertificationAttachment[];
   },
 ): ConfirmationCheck {
   const confirmed = normalizedConfirmation(draft.confirmed);
@@ -177,6 +192,8 @@ export function confirmationFromDraft(
       durationJustificationRequired({ ...inputs, computation, confirmed }))
   )
     return { status: 'justificationRequired' };
+  const onBehalf = actingFromDraft(draft.onBehalf, documents);
+  if (onBehalf === undefined) return { status: 'acting' };
   const reason = draft.reason.trim();
   if (correcting && (!reason || reason.length > CERTIFICATION_LIMITS.reason))
     return { status: 'reasonRequired' };
@@ -184,6 +201,7 @@ export function confirmationFromDraft(
     status: 'valid',
     confirmed,
     justification: justification || null,
+    onBehalf,
     reason: correcting ? reason : null,
   };
 }

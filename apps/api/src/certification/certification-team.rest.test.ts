@@ -11,10 +11,10 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 
 const NO_CONFLICT = {
-  noConsultancy: true,
-  noEmployment: true,
-  noManagementInvolvement: true,
-  confidentiality: true,
+  noConsultancy: 'confirmed',
+  noEmployment: 'confirmed',
+  noManagementInvolvement: 'confirmed',
+  confidentiality: 'confirmed',
 };
 
 function member(overrides: Record<string, unknown> = {}) {
@@ -52,7 +52,7 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
       `/certification-cases/${caseId}/team-decision`,
       {
         method: 'POST',
-        body,
+        body: { independenceAttested: true, ...body },
       },
     );
   }
@@ -168,7 +168,11 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
         'CERTIFICATION_TEAM_CATEGORY',
       ],
       [
-        [member({ declarations: { ...NO_CONFLICT, noConsultancy: false } })],
+        [
+          member({
+            declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
+          }),
+        ],
         'CERTIFICATION_TEAM_CONFLICT_NOTE',
       ],
       [
@@ -259,7 +263,7 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
         expectedRevision: 6,
         members: [
           member({
-            declarations: { ...NO_CONFLICT, noConsultancy: false },
+            declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
             conflictNote: 'Delivered a training to the client last year.',
           }),
         ],
@@ -291,7 +295,7 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
           reason: 'The training ended more than two years ago.',
           members: [
             member({
-              declarations: { ...NO_CONFLICT, noConsultancy: false },
+              declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
               conflictNote: 'Delivered a training to the client last year.',
             }),
           ],

@@ -1,4 +1,9 @@
 import {
+  actingDraftFor,
+  actingFromDraft,
+  type ActingDraft,
+} from './certification-attribution';
+import {
   CERTIFICATION_LIMITS,
   isCalendarDate,
   type CertificationAttachment,
@@ -39,6 +44,8 @@ export interface Stage1ReportDraft {
   reportAttachmentId: string;
   /** Empty when no participant list is attached to the report. */
   participantListAttachmentId: string;
+  /** The certification body's approval, when recorded on its behalf. */
+  certificationBodyApproval: ActingDraft;
   reason: string;
 }
 
@@ -49,6 +56,7 @@ export interface Stage2ReportDraft {
   reportAttachmentId: string;
   participantListAttachmentId: string;
   annexAttachmentId: string;
+  certificationBodyApproval: ActingDraft;
   reason: string;
 }
 
@@ -76,7 +84,12 @@ export type StageReportCheck<Report> =
       reason: string | null;
     }
   | {
-      status: 'incomplete' | 'documentReview' | 'beforePlan' | 'reasonRequired';
+      status:
+        | 'incomplete'
+        | 'documentReview'
+        | 'beforePlan'
+        | 'acting'
+        | 'reasonRequired';
     };
 
 /** A first plan starts empty; a correction from the latest plan's exact values. */
@@ -120,6 +133,9 @@ export function stage1ReportDraftFor(
         conclusionNote: current.conclusionNote,
         reportAttachmentId: current.reportAttachmentId,
         participantListAttachmentId: current.participantListAttachmentId ?? '',
+        certificationBodyApproval: actingDraftFor(
+          current.certificationBodyApproval,
+        ),
         reason: '',
       }
     : {
@@ -129,6 +145,7 @@ export function stage1ReportDraftFor(
         conclusionNote: '',
         reportAttachmentId: '',
         participantListAttachmentId: '',
+        certificationBodyApproval: actingDraftFor(null),
         reason: '',
       };
 }
@@ -142,6 +159,9 @@ export function stage2ReportDraftFor(
     reportAttachmentId: current?.reportAttachmentId ?? '',
     participantListAttachmentId: current?.participantListAttachmentId ?? '',
     annexAttachmentId: current?.annexAttachmentId ?? '',
+    certificationBodyApproval: actingDraftFor(
+      current?.certificationBodyApproval ?? null,
+    ),
     reason: '',
   };
 }
@@ -268,6 +288,11 @@ export function stage1ReportFromDraft(
     return { status: 'incomplete' };
   if (!draft.documentReviewCompleted) return { status: 'documentReview' };
   if (reportDate < context.planStart) return { status: 'beforePlan' };
+  const approval = actingFromDraft(
+    draft.certificationBodyApproval,
+    context.register,
+  );
+  if (approval === undefined) return { status: 'acting' };
   const stated = statedReason(draft.reason, context.correcting);
   if (!stated) return { status: 'reasonRequired' };
   return {
@@ -279,6 +304,7 @@ export function stage1ReportFromDraft(
       conclusionNote,
       reportAttachmentId: draft.reportAttachmentId,
       participantListAttachmentId: participantList,
+      certificationBodyApproval: approval,
     },
     reason: stated.reason,
   };
@@ -314,6 +340,11 @@ export function stage2ReportFromDraft(
   )
     return { status: 'incomplete' };
   if (reportDate < context.planStart) return { status: 'beforePlan' };
+  const approval = actingFromDraft(
+    draft.certificationBodyApproval,
+    context.register,
+  );
+  if (approval === undefined) return { status: 'acting' };
   const stated = statedReason(draft.reason, context.correcting);
   if (!stated) return { status: 'reasonRequired' };
   return {
@@ -324,6 +355,7 @@ export function stage2ReportFromDraft(
       reportAttachmentId: draft.reportAttachmentId,
       participantListAttachmentId: participantList,
       annexAttachmentId: annex,
+      certificationBodyApproval: approval,
     },
     reason: stated.reason,
   };

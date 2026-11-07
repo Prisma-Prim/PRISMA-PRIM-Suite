@@ -1,4 +1,9 @@
 import {
+  actingDraftFor,
+  actingFromDraft,
+  type ActingDraft,
+} from './certification-attribution';
+import {
   DECISION_LIMITS,
   DOSSIER_ITEMS,
   type Certificate,
@@ -16,14 +21,18 @@ import {
 import {
   CERTIFICATION_LIMITS,
   isCalendarDate,
+  type CaseTimeline,
   type CertificationAttachment,
   type CertificationDocumentRole,
 } from './certification-response';
+import { namedOnAnyTeamVersion } from './certification-team-draft';
 
 /** A recommendation as typed: no outcome preselected; a reason to correct. */
 export interface RecommendationDraft {
   recommendation: RecommendationOutcome | null;
   basis: string;
+  /** Empty when the paper dossier gives no date. */
+  recommendedOn: string;
   reason: string;
 }
 
@@ -36,6 +45,11 @@ export interface DossierItemDraft {
 export interface DossierReviewDraft {
   items: Record<DossierItem, DossierItemDraft>;
   conclusion: string;
+  /** The certification body's dossier reviewer and approver, each optional. */
+  reviewedBy: ActingDraft;
+  approvedBy: ActingDraft;
+  /** Unchecked until the approver attests it. */
+  independenceAttested: boolean;
   reason: string;
 }
 
@@ -59,6 +73,8 @@ export interface CertificationDecisionDraft {
   rationale: string;
   additionalInformation: string;
   independenceAttested: boolean;
+  /** Stated only by a correction, which keeps the decided outcome. */
+  reason: string;
 }
 
 export interface CertificateDataDraft {
@@ -85,6 +101,16 @@ export type VersionCheck<Value> =
 export type AttestedCheck<Value> =
   { status: 'valid'; value: Value } | { status: 'incomplete' | 'attestation' };
 
+/** A dossier review, or why it is refused before it is sent. */
+export type DossierReviewCheck =
+  | VersionCheck<DossierReview>
+  | { status: 'acting' | 'actingOnTeam' | 'attestation' };
+
+/** A decision or its correction, or why it is refused before it is sent. */
+export type DecisionCheck =
+  | { status: 'valid'; value: CertificationDecision; reason: string | null }
+  | { status: 'incomplete' | 'attestation' | 'reasonRequired' };
+
 /** The command the Certificate records; the server computes its validity. */
 export type CertificateCommand = Pick<
   Certificate,
@@ -98,6 +124,7 @@ export function recommendationDraftFor(
   return {
     recommendation: current?.recommendation ?? null,
     basis: current?.basis ?? '',
+    recommendedOn: current?.recommendedOn ?? '',
     reason: '',
   };
 }
@@ -128,6 +155,9 @@ export function dossierReviewDraftFor(
       certificate_data: item('certificate_data'),
     },
     conclusion: current?.conclusion ?? '',
+    reviewedBy: actingDraftFor(current?.reviewedBy ?? null),
+    approvedBy: actingDraftFor(current?.approvedBy ?? null),
+    independenceAttested: false,
     reason: '',
   };
 }
@@ -147,6 +177,31 @@ export function emptyCertificationDecisionDraft(): CertificationDecisionDraft {
     rationale: '',
     additionalInformation: '',
     independenceAttested: false,
+    reason: '',
+  };
+}
+
+/**
+ * A correction starts from the latest decision's values, the attestation
+ * unchecked and its reason empty; its outcome stays the recorded one.
+ */
+export function certificationDecisionDraftFor(
+  current: CertificationDecision,
+): CertificationDecisionDraft {
+  return {
+    decision: current.decision,
+    grantedTexts:
+      current.decision === 'granted'
+        ? current.grantedTexts.map((text) => ({ ...text }))
+        : [emptyCertificateText()],
+    decidedOn: current.decidedOn,
+    decidedBy: current.decidedBy,
+    decidedByFunction: current.decidedByFunction ?? '',
+    decisionFormAttachmentId: current.decisionFormAttachmentId ?? '',
+    rationale: current.rationale,
+    additionalInformation: current.additionalInformation ?? '',
+    independenceAttested: false,
+    reason: '',
   };
 }
 
@@ -186,16 +241,28 @@ export function attachmentsWithRole(
   return register.filter((item) => item.role === role);
 }
 
-/** Mirrors the server: an explicit outcome, its basis and a correction's reason. */
+/**
+ * Mirrors the server: an explicit outcome, its basis, an optional real
+ * business date and a correction's reason.
+ */
 export function recommendationFromDraft(
   draft: RecommendationDraft,
   correcting: boolean,
 ): VersionCheck<Recommendation> {
   const basis = required(draft.basis, DECISION_LIMITS.basis);
-  if (draft.recommendation === null || basis === undefined)
+  const recommendedOn = draft.recommendedOn.trim();
+  if (
+    draft.recommendation === null ||
+    basis === undefined ||
+    (recommendedOn !== '' && !isCalendarDate(recommendedOn))
+  )
     return { status: 'incomplete' };
   return withReason(
-    { recommendation: draft.recommendation, basis },
+    {
+      recommendation: draft.recommendation,
+      basis,
+      recommendedOn: recommendedOn || null,
+    },
     draft.reason,
     correcting,
   );
@@ -203,13 +270,23 @@ export function recommendationFromDraft(
 
 /**
  * Mirrors the server: every item answered explicitly, a note within its
- * limit and stated for each missing item, the conclusion, and a
- * correction's reason.
+ * limit and stated for each missing item, the conclusion; a complete act
+ * of the dossier reviewer and of the approver when recorded on behalf of
+ * the certification body, each by a person named on no team version; the
+ * explicit attestation of independence; and a correction's reason.
  */
 export function dossierReviewFromDraft(
   draft: DossierReviewDraft,
-  correcting: boolean,
-): VersionCheck<DossierReview> {
+  {
+    correcting,
+    register,
+    timeline,
+  }: {
+    correcting: boolean;
+    register: readonly CertificationAttachment[];
+    timeline: CaseTimeline;
+  },
+): DossierReviewCheck {
   const conclusion = required(draft.conclusion, DECISION_LIMITS.conclusion);
   const answers = DOSSIER_ITEMS.map((item) => answerFrom(draft.items[item]));
   if (
@@ -217,6 +294,17 @@ export function dossierReviewFromDraft(
     answers.some((answer) => answer === undefined)
   )
     return { status: 'incomplete' };
+  const reviewedBy = actingFromDraft(draft.reviewedBy, register);
+  const approvedBy = actingFromDraft(draft.approvedBy, register);
+  if (reviewedBy === undefined || approvedBy === undefined)
+    return { status: 'acting' };
+  if (
+    [reviewedBy, approvedBy].some(
+      (act) => act !== null && namedOnAnyTeamVersion(timeline, act.actedBy),
+    )
+  )
+    return { status: 'actingOnTeam' };
+  if (!draft.independenceAttested) return { status: 'attestation' };
   const answer = (item: DossierItem): DossierAnswer =>
     answerFrom(draft.items[item]) ?? unexpectedIncomplete();
   return withReason(
@@ -237,6 +325,9 @@ export function dossierReviewFromDraft(
         certificate_data: answer('certificate_data'),
       },
       conclusion,
+      reviewedBy,
+      approvedBy,
+      independenceAttested: true,
     },
     draft.reason,
     correcting,
@@ -272,12 +363,22 @@ export function certificateTextsFromDraft(
  * Mirrors the server: an explicit outcome, the texts a grant fixes, the
  * decision date and maker, an optional function and signed form of this
  * Case with the decision-form role, the rationale and optional additional
- * information; then the explicit attestation of independence.
+ * information; then the explicit attestation of independence. A correction
+ * keeps the recorded outcome, whatever the draft holds, and states its
+ * reason.
  */
 export function certificationDecisionFromDraft(
   draft: CertificationDecisionDraft,
-  register: readonly CertificationAttachment[],
-): AttestedCheck<CertificationDecision> {
+  {
+    register,
+    correcting,
+  }: {
+    register: readonly CertificationAttachment[];
+    /** The recorded decision's outcome when this draft corrects it. */
+    correcting: CertificationOutcome | null;
+  },
+): DecisionCheck {
+  const outcome = correcting ?? draft.decision;
   const decidedOn = draft.decidedOn.trim();
   const decidedBy = required(draft.decidedBy, DECISION_LIMITS.person);
   const decidedByFunction = optional(
@@ -296,7 +397,7 @@ export function certificationDecisionFromDraft(
       (item) => item.id === form,
     );
   if (
-    draft.decision === null ||
+    outcome === null ||
     !isCalendarDate(decidedOn) ||
     decidedBy === undefined ||
     decidedByFunction === undefined ||
@@ -315,13 +416,16 @@ export function certificationDecisionFromDraft(
     additionalInformation,
   } satisfies Omit<CertificationDecision, 'decision' | 'grantedTexts'>;
   let decision: CertificationDecision;
-  if (draft.decision === 'granted') {
+  if (outcome === 'granted') {
     const grantedTexts = certificateTextsFromDraft(draft.grantedTexts);
     if (!grantedTexts) return { status: 'incomplete' };
     decision = { ...facts, decision: 'granted', grantedTexts };
   } else decision = { ...facts, decision: 'refused', grantedTexts: null };
   if (!draft.independenceAttested) return { status: 'attestation' };
-  return { status: 'valid', value: decision };
+  const reason = withReason(decision, draft.reason, correcting !== null);
+  return reason.status === 'valid'
+    ? { status: 'valid', value: decision, reason: reason.reason }
+    : { status: 'reasonRequired' };
 }
 
 /**

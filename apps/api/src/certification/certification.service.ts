@@ -51,6 +51,11 @@ import {
   durationFactorInputs,
 } from './certification-duration.validation.js';
 import {
+  latestBusinessDate,
+  requireIndependenceAttestation,
+  sameName,
+} from './certification-attribution.js';
+import {
   auditTeam,
   teamCommand,
   teamDecision,
@@ -331,6 +336,12 @@ export class CertificationService {
             'CERTIFICATION_APPLICATION_ALREADY_REVIEWED',
             'The application has already been reviewed.',
           );
+        await this.requireActForm(
+          actor,
+          companyId,
+          targetId,
+          input.review.onBehalf,
+        );
         return this.appendStep({
           actor,
           companyId,
@@ -404,6 +415,7 @@ export class CertificationService {
             'CERTIFICATION_CORRECTION_REASON',
             'A correction states its reason; a first determination has none.',
           );
+        await this.requireActForm(actor, companyId, targetId, input.onBehalf);
         const result = computeDuration(facts, input.inputs);
         if (result.kind === 'refused')
           throw new BadRequestException({
@@ -433,6 +445,7 @@ export class CertificationService {
           computation: result,
           confirmed: input.confirmed,
           justification: input.justification,
+          onBehalf: input.onBehalf,
         };
         return this.appendStep({
           actor,
@@ -679,9 +692,7 @@ export class CertificationService {
             'CERTIFICATION_CORRECTION_REASON',
             'A correction states its reason; a first agreement has none.',
           );
-        if (
-          input.agreement.signedOn > this.clock.now().toISOString().slice(0, 10)
-        )
+        if (input.agreement.signedOn > latestBusinessDate(this.clock.now()))
           throw stepConflict(
             'CERTIFICATION_AGREEMENT_IN_FUTURE',
             'The agreement cannot be signed after today.',
@@ -781,6 +792,30 @@ export class CertificationService {
             'CERTIFICATION_INDEPENDENCE',
             'A member who decided on the team, reviewed the dossier or recorded the decision cannot join the audit team.',
           );
+        // So does a person who did so on behalf of the certification body.
+        const actedFor = namedActingPersons(steps);
+        if (
+          input.team.members.some((member) =>
+            actedFor.some((name) => sameName(member.name, name)),
+          )
+        )
+          throw stepConflict(
+            'CERTIFICATION_INDEPENDENCE',
+            'A person who decided on the team or reviewed the dossier on behalf of the certification body cannot join the audit team.',
+          );
+        const facts = this.acceptedApplication(steps);
+        if (facts.consultant.used && input.team.impartialityAnalysis === null)
+          throw new BadRequestException({
+            code: 'CERTIFICATION_TEAM_ANALYSIS_REQUIRED',
+            message:
+              'The applicant declared a consultant: document the impartiality analysis of the team.',
+          });
+        await this.requireAttachments(
+          actor,
+          companyId,
+          targetId,
+          input.team.impartialityAnalysis?.evidenceAttachmentIds ?? [],
+        );
         for (const membershipId of teamMembershipIds(input.team)) {
           const [member] = await this.database.connection
             .select({ id: workspaceMemberships.id })
@@ -864,6 +899,13 @@ export class CertificationService {
             'CERTIFICATION_INDEPENDENCE',
             'A member of the audit team cannot approve it.',
           );
+        this.requireNotNamedOnTeam(steps, input.decision.onBehalf?.actedBy);
+        await this.requireActForm(
+          actor,
+          companyId,
+          targetId,
+          input.decision.onBehalf,
+        );
         if (
           input.decision.decision === 'approved' &&
           !teamWithoutConflict(team)
@@ -1070,6 +1112,12 @@ export class CertificationService {
             input.payload.participantListAttachmentId,
             ['participant_list'],
           );
+        await this.requireActForm(
+          actor,
+          companyId,
+          targetId,
+          input.payload.certificationBodyApproval,
+        );
         if (
           'annexAttachmentId' in input.payload &&
           input.payload.annexAttachmentId
@@ -1508,8 +1556,18 @@ export class CertificationService {
       step: 'dossier_review',
       parse: dossierReview,
       action: 'certification_case.dossier_reviewed',
-      check: ({ steps, payload }) => {
+      check: async ({ steps, companyId, payload }) => {
         this.requireIndependent(input.actor, steps);
+        requireIndependenceAttestation(payload.independenceAttested);
+        for (const act of [payload.reviewedBy, payload.approvedBy]) {
+          this.requireNotNamedOnTeam(steps, act?.actedBy);
+          await this.requireActForm(
+            input.actor,
+            companyId,
+            requireUuid(input.caseId),
+            act,
+          );
+        }
         if (!latest(steps, 'recommendation'))
           throw stepConflict(
             'CERTIFICATION_RECOMMENDATION_MISSING',
@@ -1520,7 +1578,7 @@ export class CertificationService {
             'CERTIFICATION_DECIDED',
             'The Case is already decided.',
           );
-        return Promise.resolve({ complete: dossierComplete(payload) ? 1 : 0 });
+        return { complete: dossierComplete(payload) ? 1 : 0 };
       },
     });
   }
@@ -1536,10 +1594,16 @@ export class CertificationService {
       action: 'certification_case.decision_recorded',
       check: async ({ steps, companyId, payload }) => {
         this.requireIndependent(input.actor, steps);
-        if (latest(steps, 'decision'))
+        // A later version corrects the texts or references of the same
+        // outcome, with its reason, until the Certificate is recorded.
+        const previous = latest(steps, 'decision');
+        if (
+          previous &&
+          decisionVersion(previous).value.decision !== payload.decision
+        )
           throw stepConflict(
-            'CERTIFICATION_DECIDED',
-            'The Certification Decision is recorded once.',
+            'CERTIFICATION_DECISION_OUTCOME_FIXED',
+            'A correction keeps the decided outcome; only its texts and references change.',
           );
         this.requireNotNamedOnTeam(steps, payload.decidedBy);
         if (payload.decisionFormAttachmentId)
@@ -1799,13 +1863,12 @@ export class CertificationService {
     const reviewed = latest(steps, 'dossier_review');
     if (!reviewed || !dossierComplete(dossierReviewVersion(reviewed).value))
       failures.push('DOSSIER_REVIEW_INCOMPLETE');
-    if (decision.decidedOn > this.clock.now().toISOString().slice(0, 10))
+    if (decision.decidedOn > latestBusinessDate(this.clock.now()))
       failures.push('DECISION_IN_FUTURE');
     return failures;
   }
 
-  /** Refuses an actor linked to any member of any team version. */
-  /** Refuses a named person who is on any team version. */
+  /** Refuses a person named like a member of any team version. */
   private requireNotNamedOnTeam(
     steps: readonly StepRow[],
     name: string | undefined,
@@ -1826,6 +1889,20 @@ export class CertificationService {
       );
   }
 
+  /** The signed form of an act on behalf of the certification body belongs to the Case. */
+  private async requireActForm(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    act: { formAttachmentId: string | null } | null,
+  ): Promise<void> {
+    if (act?.formAttachmentId)
+      await this.requireAttachments(actor, companyId, caseId, [
+        act.formAttachmentId,
+      ]);
+  }
+
+  /** Refuses an actor linked to any member of any team version. */
   private requireIndependent(actor: ActorContext, steps: readonly StepRow[]) {
     if (this.onTeam(actor, steps))
       throw stepConflict(
@@ -2060,7 +2137,7 @@ export class CertificationService {
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
     const { actor, companyId, current } = input;
-    if (input.replaces && sameValue(input.replaces.payload, input.payload))
+    if (input.replaces && sameStepValue(input.replaces, input.payload))
       throw unchangedCorrection();
     const now = this.clock.now();
     const revision = current.revision + 1;
@@ -2656,6 +2733,19 @@ function sameValue(stored: unknown, value: object): boolean {
   );
 }
 
+/**
+ * Equal recorded step values, whatever the release that stored the earlier
+ * version: both go through the step's own stored decoder, so a field added
+ * later compares with its default and a converted value with its new form.
+ */
+function sameStepValue(stored: StepRow, payload: object): boolean {
+  const json: unknown = JSON.parse(JSON.stringify(payload));
+  const earlier: unknown = JSON.parse(
+    JSON.stringify(stepVersion(stored).value),
+  );
+  return sameValue(earlier, stepVersion({ ...stored, payload: json }).value);
+}
+
 function base(row: StepRow) {
   return {
     id: row.id,
@@ -2684,18 +2774,6 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
   };
-}
-
-/** Names compared without case, accents or repeated spaces. */
-function sameName(left: string, right: string): boolean {
-  const normal = (value: string) =>
-    value
-      .normalize('NFKD')
-      .replace(/\p{M}/gu, '')
-      .replace(/\s+/gu, ' ')
-      .trim()
-      .toLocaleLowerCase('en');
-  return normal(left) === normal(right);
 }
 
 type CaseCommandInput = {
@@ -2752,6 +2830,26 @@ function optionalVersion<T>(
 ): T | null {
   const row = latest(steps, step);
   return row ? present(row) : null;
+}
+
+/**
+ * The persons named as acting for the certification body on a team decision
+ * or a dossier review, in every recorded version.
+ */
+function namedActingPersons(steps: readonly StepRow[]): string[] {
+  return steps.flatMap((row) => {
+    if (row.step === 'team_decision') {
+      const act = teamDecisionVersion(row).value.onBehalf;
+      return act ? [act.actedBy] : [];
+    }
+    if (row.step === 'dossier_review') {
+      const { reviewedBy, approvedBy } = dossierReviewVersion(row).value;
+      return [reviewedBy, approvedBy].flatMap((act) =>
+        act ? [act.actedBy] : [],
+      );
+    }
+    return [];
+  });
 }
 
 /** The latest team version when its latest decision approves it. */

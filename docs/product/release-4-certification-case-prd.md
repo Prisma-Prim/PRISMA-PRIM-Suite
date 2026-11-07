@@ -65,6 +65,10 @@ A Certification Case belongs to exactly one Workspace and one certifying Company
 
 Audit team members are recorded as durable persons with a role. A member may be linked to a Workspace Membership; external auditors and technical experts may be recorded by name without an account.
 
+### 5.1 Representative Companies and acts on behalf of the certification body
+
+A certifying Company can be the representative of a certification body whose own staff review applications, approve durations and teams, review dossiers, decide and sign Certificates. The representative records those acts: each one stores who acted on behalf of the certification body (name, function), the business date and, when attached to the Case, the signed form, while the recording member stays attributed in the history. Every act that must come from outside the audit team (team approval, dossier review, decision, Certificate) also carries the recording member's explicit attestation that the acting person is not a team member; the system additionally refuses a recording member linked to the team and an acting person named like a team member. Names alone never prove identity; a person register is a later contract.
+
 ## 6. Numbered user stories
 
 1. As a programme manager, I open a Certification Case from a Project of my Company, for one Client Legal Entity, for ISO 22000:2018 initial certification, with the certification order reference.
@@ -104,15 +108,15 @@ Deferred, each requiring its own inventory and contract: surveillance and recert
 | Application Review         | Versioned explicit answers to the four review criteria with notes, and the outcome accepted or rejected with the reason communicated to the applicant                                                                                         |
 | Duration Determination     | Rule version, input snapshot, computed components, proposed and confirmed auditor-days per Stage and for surveillance and recertification, adjustment and justification                                                                       |
 | Certification Agreement    | Signature date and the exact signed Document Version                                                                                                                                                                                          |
-| Audit Team                 | Versioned members: person, role, linked membership if any, competence for the category, impartiality declarations; approval outcome                                                                                                           |
+| Audit Team                 | Versioned members: person, role, linked membership if any, competence for the category, impartiality declarations each confirmed, conflict or to verify, documented impartiality analysis; approval outcome                                   |
 | Audit                      | One Stage of the Case: plan (dates, auditor-days on site and remote, objectives, scope, plan Document Version, date sent), report (date, document review completed, conclusion, report and participant-list Document Versions)                |
 | Finding                    | A formal statement in one Audit: sequence, requirement clause, process or area, statement, classification, evidence references, classification history                                                                                        |
 | Nonconformity Response     | For a nonconformity: correction, cause, corrective action and dates received, the team leader's adequacy judgment, verification outcome, method and date                                                                                      |
 | Team Recommendation        | The team leader's recommendation (grant, do not grant, additional audit needed) and its basis                                                                                                                                                 |
 | Dossier Review             | Versioned item answers present, missing or not applicable, with notes, and reclassifications with reasons                                                                                                                                     |
-| Certification Decision     | Immutable decision granted or refused, rationale, additional information used, decision date, the decider and the exact versions reviewed                                                                                                     |
+| Certification Decision     | Immutable decision granted or refused, rationale, additional information used, decision date, the decider and function, the signed form, the holder/address/scope texts it grants per language                                                |
 | Certificate Data Agreement | Holder name, address and scope wording per Certificate language, as agreed with the client, with the exact signed form                                                                                                                        |
-| Certificate                | Number unique within the Company, validity from the decision date to three years minus one day later, the agreed data, exact Certificate Document Version                                                                                     |
+| Certificate                | Number unique within the Company, validity from the decision date to three years minus one day later, holder/address/scope per language equal to the decision, signatory, exact Certificate Document Version                                  |
 
 Finding classifications for this journey: **major nonconformity**, **minor nonconformity**, **opportunity for improvement**, and, in Stage 1 only, **area of concern** (a problem area recorded at Stage 1). Classification is the team leader's judgment; the certification approver may reclassify with a reason. Every classification remains in the history.
 
@@ -145,11 +149,12 @@ Every step record is an immutable version with actor, time and, from the second 
 - An application is accepted only when every review criterion is answered positively.
 - A team has exactly one team leader; at least one team leader, auditor or technical expert holds the client's food chain category; when the team leader does not hold it, a technical expert who holds it is a member. A team is approved only when every member declares no conflict. Technical experts and observers never reduce the confirmed duration.
 - A Finding classified as a nonconformity has at least one evidence reference; every reference resolves to an exact preserved Document Version associated with the Case's Project.
-- The team approver, the dossier reviewer and the decision maker are not linked to any member of the Case's audit team, in any version.
+- The team approver, the dossier reviewer and the decision maker are not linked to any member of the Case's audit team, in any version; acts recorded on behalf of the certification body carry the recording member's independence attestation.
+- A team is approved only when every impartiality declaration is confirmed; a declaration "to verify" blocks approval; when the application declares a consultant, the team carries a documented impartiality analysis.
 - Stage 2 is not planned while Stage 1 is "not ready" or a Stage 1 nonconformity is unverified; a Stage 1 nonconformity unverified six months after Stage 1 stops the journey.
 - The team leader cannot recommend "grant" while a major nonconformity is unverified; a major nonconformity unverified six months after the last Stage 2 day stops the journey.
 - The Certification Decision is refused unless: application accepted, duration confirmed, agreement recorded, team approved, Stage 1 ready, Stage 2 reported, every major nonconformity verified, every minor nonconformity with a plan judged adequate, recommendation recorded, dossier review complete with no item missing. A grant contrary to the recommendation is refused in this journey.
-- A Certificate is recorded only after a granting decision; it is valid from the decision date until three years minus one day later, computed and not editable; its holder, address and scope equal the agreed Certificate data; its number is unique within the Company.
+- A Certificate is recorded only after a granting decision; it is valid from the decision date until three years minus one day later, computed and not editable; its holder, address and scope per language equal both the agreed Certificate data and the texts the decision granted; its number is unique within the Company.
 - No automation records a review answer, classification, adequacy judgment, verification, recommendation, approval or decision.
 
 ## 11. Permission matrix
@@ -219,7 +224,7 @@ The team is refused without the category or with a declared conflict; the decisi
 
 ### 20.3 Private pilot verification
 
-A replay tool in the repository reads a private JSON dataset from a path outside Git and drives the public API of a private environment. The first tenant's real dossier is replayed there, and a private report compares each recorded fact with its signed source. Neither the dataset nor the report enters Git, issues or CI.
+The first tenant's real dossier is replayed through the public API in an isolated, disposable local database by a private test that Git ignores, reading a private dataset outside the repository; a private report compares each recorded fact with its signed source. Neither the test, the dataset nor the report enters Git, issues or CI. The first replay (2026-11-07) ran from application to Certificate without any rule blocking a step that really happened, reproduced the duration and validity exactly, and led to the representative and impartiality rules of §5.1 and §10.
 
 ## 21. Business evidence
 

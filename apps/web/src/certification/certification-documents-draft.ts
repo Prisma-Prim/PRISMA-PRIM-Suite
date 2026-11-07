@@ -108,8 +108,9 @@ export function agreementAttachments(
 }
 
 /**
- * Mirrors the server: a real date not after today (the server's UTC day),
- * an attachment with the agreement role and, for a correction, a reason.
+ * Mirrors the server: a real date not after `today`, the latest calendar
+ * date already reached somewhere, an attachment with the agreement role
+ * and, for a correction, a reason.
  */
 export function agreementFromDraft(
   draft: AgreementDraft,
@@ -139,9 +140,4 @@ export function agreementFromDraft(
   return reason && reason.length <= CERTIFICATION_LIMITS.reason
     ? { status: 'valid', agreement, reason }
     : { status: 'reasonRequired' };
-}
-
-/** Today in UTC, the calendar the server checks signature dates against. */
-export function utcToday(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10);
 }

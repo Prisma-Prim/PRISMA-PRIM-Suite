@@ -47,6 +47,8 @@ const DOSSIER_ITEMS = [
   'Certificate data agreed with the client',
 ];
 const DECISION_FORM = 'Decision form — version 1 (decision-form.pdf)';
+const DOSSIER_ATTESTATION =
+  'I attest that the dossier reviewer and the approver are not members of the audit team.';
 const DATA_FORM =
   'Certificate data form — version 1 (certificate-data-form.pdf)';
 const CERTIFICATE_PDF =
@@ -326,6 +328,7 @@ describe('Certification recommendation, decision and Certificate', () => {
           expectedRevision: 16,
           recommendation: 'grant',
           basis: 'No nonconformity; system effectively implemented.',
+          recommendedOn: null,
         },
       }),
     ]);
@@ -379,6 +382,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       recommendation: 'grant',
       basis:
         'No nonconformity; the system is effectively implemented on both shifts.',
+      recommendedOn: null,
     });
     expect(
       within(region(RECOMMENDATION)).getByText(
@@ -410,7 +414,11 @@ describe('Certification recommendation, decision and Certificate', () => {
       within(reviewForm)
         .getAllByRole('group')
         .map((group) => group.querySelector('legend')?.textContent),
-    ).toEqual(DOSSIER_ITEMS);
+    ).toEqual([
+      ...DOSSIER_ITEMS,
+      'Dossier reviewer for the certification body',
+      'Approver for the certification body',
+    ]);
     expect(
       within(reviewForm).queryAllByRole('radio', { checked: true }),
     ).toEqual([]);
@@ -433,6 +441,9 @@ describe('Certification recommendation, decision and Certificate', () => {
     ).toBeVisible();
     expect(server.mutations()).toEqual([]);
     choose(reviewForm, 'Participant lists', 'Present');
+    fireEvent.click(
+      within(reviewForm).getByRole('checkbox', { name: DOSSIER_ATTESTATION }),
+    );
     click(reviewForm, 'Record the review');
     await waitFor(() =>
       expect(definition(region(DOSSIER), 'Result')).toBe(
@@ -515,9 +526,13 @@ describe('Certification recommendation, decision and Certificate', () => {
         .getAllByText('Language', { selector: 'dt' })
         .map((term) => term.nextElementSibling?.textContent),
     ).toEqual(['ro', 'en']);
-    // The decision is recorded once and is never corrected.
+    // While the Case is open, only its texts and references may be corrected.
     expect(within(decided).queryByRole('form')).not.toBeInTheDocument();
-    expect(within(decided).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      within(decided)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Correct the decision texts']);
     expect(caseDefinition('Status')).toBe('Open');
     expect(caseDefinition('Next step')).toBe(DATA);
     expect(timelineTitles().slice(-3)).toEqual([
@@ -808,6 +823,13 @@ describe('Certification recommendation, decision and Certificate', () => {
     );
     choose(correction, 'Participant lists', 'Present');
     change(within(participants).getByLabelText('Note'), '');
+    // The attestation is given again for every version.
+    expect(
+      within(correction).getByRole('checkbox', { name: DOSSIER_ATTESTATION }),
+    ).not.toBeChecked();
+    fireEvent.click(
+      within(correction).getByRole('checkbox', { name: DOSSIER_ATTESTATION }),
+    );
     click(correction, 'Record the review');
     expect(
       await within(region(DOSSIER)).findByText(REASON_REQUIRED),

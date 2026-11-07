@@ -1,4 +1,11 @@
 import {
+  actingFromDraft,
+  emptyActingDraft,
+  sameName,
+  type ActAttribution,
+  type ActingDraft,
+} from './certification-attribution';
+import {
   IMPARTIALITY_DECLARATIONS,
   TEAM_LIMITS,
   declaresConflict,
@@ -6,6 +13,8 @@ import {
   teamMembershipIds,
   teamWithoutConflict,
   type AuditTeam,
+  type DeclarationState,
+  type ImpartialityAnalysis,
   type ImpartialityDeclaration,
   type TeamMember,
   type TeamRole,
@@ -14,6 +23,7 @@ import {
 import {
   CERTIFICATION_LIMITS,
   type CaseTimeline,
+  type CertificationAttachment,
   type TeamVersion,
 } from './certification-response';
 
@@ -26,14 +36,18 @@ export interface TeamMemberDraft {
   workspaceMembershipId: string;
   holdsCategory: boolean;
   competenceNote: string;
-  /** No default: each declaration is answered yes or no explicitly. */
-  declarations: Record<ImpartialityDeclaration, 'yes' | 'no' | null>;
-  /** Asked only while a declaration is answered no. */
+  /** No default: each declaration is answered explicitly. */
+  declarations: Record<ImpartialityDeclaration, DeclarationState | null>;
+  /** Asked only while a declaration is a conflict or still to verify. */
   conflictNote: string;
 }
 
 export interface TeamDraft {
   members: TeamMemberDraft[];
+  /** The documented impartiality analysis; blank when none is documented. */
+  analysisNote: string;
+  /** Attachments of the Case cited by the analysis, in register order. */
+  analysisEvidence: string[];
   reason: string;
 }
 
@@ -51,19 +65,32 @@ export type TeamCheck =
         | 'link'
         | 'leader'
         | 'category'
+        | 'analysisRequired'
         | 'reasonRequired';
     };
 
-/** The decision form as typed; no decision is preselected. */
+/** The decision form as typed; no decision and no attestation is preselected. */
 export interface DecisionDraft {
   decision: 'approved' | 'returned' | null;
   reason: string;
+  /** The certification body's decision maker, when recorded on their behalf. */
+  onBehalf: ActingDraft;
+  independenceAttested: boolean;
 }
 
 export type DecisionCheck =
-  | { status: 'valid'; decision: 'approved'; reason: null }
-  | { status: 'valid'; decision: 'returned'; reason: string }
-  | { status: 'incomplete' | 'conflictDeclared' };
+  | ({ status: 'valid'; onBehalf: ActAttribution | null } & (
+      | { decision: 'approved'; reason: null }
+      | { decision: 'returned'; reason: string }
+    ))
+  | {
+      status:
+        | 'incomplete'
+        | 'acting'
+        | 'actingOnTeam'
+        | 'conflictDeclared'
+        | 'attestation';
+    };
 
 export function emptyTeamMember(): TeamMemberDraft {
   return {
@@ -82,8 +109,12 @@ export function emptyTeamMember(): TeamMemberDraft {
   };
 }
 
-/** A first proposal starts with one empty member; a new version from the latest. */
+/**
+ * A first proposal starts with one empty member and no analysis; a new
+ * version from the latest, its analysis included.
+ */
 export function teamDraftFor(current: TeamVersion | null): TeamDraft {
+  const analysis = current?.value.impartialityAnalysis ?? null;
   return {
     members: current
       ? current.value.members.map((member) => ({
@@ -92,36 +123,39 @@ export function teamDraftFor(current: TeamVersion | null): TeamDraft {
           workspaceMembershipId: member.workspaceMembershipId ?? '',
           holdsCategory: member.holdsCategory,
           competenceNote: member.competenceNote,
-          declarations: {
-            noConsultancy: answer(member.declarations.noConsultancy),
-            noEmployment: answer(member.declarations.noEmployment),
-            noManagementInvolvement: answer(
-              member.declarations.noManagementInvolvement,
-            ),
-            confidentiality: answer(member.declarations.confidentiality),
-          },
+          declarations: { ...member.declarations },
           conflictNote: member.conflictNote ?? '',
         }))
       : [emptyTeamMember()],
+    analysisNote: analysis?.note ?? '',
+    analysisEvidence: [...(analysis?.evidenceAttachmentIds ?? [])],
     reason: '',
   };
 }
 
 export function emptyDecisionDraft(): DecisionDraft {
-  return { decision: null, reason: '' };
+  return {
+    decision: null,
+    reason: '',
+    onBehalf: emptyActingDraft(),
+    independenceAttested: false,
+  };
 }
 
-/** Some declaration of this draft member is answered no. */
+/** Some declaration of this draft member is a conflict or still to verify. */
 export function draftDeclaresConflict(member: TeamMemberDraft): boolean {
-  return IMPARTIALITY_DECLARATIONS.some(
-    (declaration) => member.declarations[declaration] === 'no',
-  );
+  return IMPARTIALITY_DECLARATIONS.some((declaration) => {
+    const state = member.declarations[declaration];
+    return state !== null && state !== 'confirmed';
+  });
 }
 
 /**
  * Mirrors the server: every member complete with explicit declarations, a
- * conflict note exactly when one is answered no, links only to the offered
- * memberships and each at most once, then the composition rules and, for a
+ * conflict note exactly when one is not confirmed, links only to the
+ * offered memberships and each at most once, then the composition rules;
+ * an impartiality analysis within its limits citing attachments of the
+ * Case, required when the application declared a consultant; and, for a
  * new version, its reason.
  */
 export function teamFromDraft(
@@ -129,7 +163,14 @@ export function teamFromDraft(
   {
     correcting,
     linkable,
-  }: { correcting: boolean; linkable: ReadonlySet<string> },
+    consultantDeclared,
+    register,
+  }: {
+    correcting: boolean;
+    linkable: ReadonlySet<string>;
+    consultantDeclared: boolean;
+    register: readonly CertificationAttachment[];
+  },
 ): TeamCheck {
   if (draft.members.length < 1 || draft.members.length > TEAM_LIMITS.members)
     return { status: 'incomplete' };
@@ -147,7 +188,13 @@ export function teamFromDraft(
   }
   const refusal = teamCompositionRefusal(members);
   if (refusal !== null) return { status: compositionStatus(refusal) };
-  const team = { members };
+  const impartialityAnalysis = analysisFromDraft(draft, register);
+  if (
+    impartialityAnalysis === undefined ||
+    (consultantDeclared && impartialityAnalysis === null)
+  )
+    return { status: 'analysisRequired' };
+  const team = { members, impartialityAnalysis };
   if (!correcting) return { status: 'valid', team, reason: null };
   const reason = required(draft.reason, CERTIFICATION_LIMITS.reason);
   return reason === undefined
@@ -155,20 +202,56 @@ export function teamFromDraft(
     : { status: 'valid', team, reason };
 }
 
-/** Mirrors the server: an explicit decision, a reason to return, no approval of a declared conflict. */
+/**
+ * Mirrors the server: an explicit decision, a reason to return, a complete
+ * act on behalf of the certification body by a person named on no team
+ * version, no approval unless every declaration is confirmed, then the
+ * explicit attestation of independence.
+ */
 export function decisionFromDraft(
   draft: DecisionDraft,
-  team: AuditTeam,
+  {
+    team,
+    timeline,
+    register,
+  }: {
+    team: AuditTeam;
+    timeline: CaseTimeline;
+    register: readonly CertificationAttachment[];
+  },
 ): DecisionCheck {
   if (draft.decision === null) return { status: 'incomplete' };
-  if (draft.decision === 'approved')
-    return teamWithoutConflict(team)
-      ? { status: 'valid', decision: 'approved', reason: null }
-      : { status: 'conflictDeclared' };
-  const reason = required(draft.reason, CERTIFICATION_LIMITS.reason);
-  return reason === undefined
-    ? { status: 'incomplete' }
-    : { status: 'valid', decision: 'returned', reason };
+  const reason =
+    draft.decision === 'returned'
+      ? required(draft.reason, CERTIFICATION_LIMITS.reason)
+      : null;
+  if (reason === undefined) return { status: 'incomplete' };
+  const onBehalf = actingFromDraft(draft.onBehalf, register);
+  if (onBehalf === undefined) return { status: 'acting' };
+  if (onBehalf && namedOnAnyTeamVersion(timeline, onBehalf.actedBy))
+    return { status: 'actingOnTeam' };
+  if (draft.decision === 'approved' && !teamWithoutConflict(team))
+    return { status: 'conflictDeclared' };
+  if (!draft.independenceAttested) return { status: 'attestation' };
+  return reason === null
+    ? { status: 'valid', onBehalf, decision: 'approved', reason }
+    : { status: 'valid', onBehalf, decision: 'returned', reason };
+}
+
+/**
+ * Whether a person is named like a member of any proposed team version, as
+ * the server compares names: such a person cannot act for the
+ * certification body where independence from the team is required.
+ */
+export function namedOnAnyTeamVersion(
+  timeline: CaseTimeline,
+  name: string,
+): boolean {
+  return timeline.entries.some(
+    (entry) =>
+      entry.step === 'team' &&
+      entry.value.members.some((member) => sameName(member.name, name)),
+  );
 }
 
 /**
@@ -211,10 +294,10 @@ function memberFromDraft(
   )
     return 'incomplete';
   const declarations = {
-    noConsultancy: noConsultancy === 'yes',
-    noEmployment: noEmployment === 'yes',
-    noManagementInvolvement: noManagementInvolvement === 'yes',
-    confidentiality: confidentiality === 'yes',
+    noConsultancy,
+    noEmployment,
+    noManagementInvolvement,
+    confidentiality,
   };
   // The note is asked only for a declared conflict; a hidden note is not sent.
   const conflict = declaresConflict({ declarations });
@@ -254,8 +337,26 @@ function unexpected(value: never): never {
   throw new Error(`Unexpected team rule: ${String(value)}`);
 }
 
-function answer(confirmed: boolean): 'yes' | 'no' {
-  return confirmed ? 'yes' : 'no';
+/**
+ * No analysis when nothing is typed or cited; otherwise its note within its
+ * limit and at most ten attachments of the Case. Undefined when incomplete.
+ */
+function analysisFromDraft(
+  draft: TeamDraft,
+  register: readonly CertificationAttachment[],
+): ImpartialityAnalysis | null | undefined {
+  const note = draft.analysisNote.trim();
+  const evidence = draft.analysisEvidence;
+  if (!note && evidence.length === 0) return null;
+  if (
+    !note ||
+    note.length > TEAM_LIMITS.analysisNote ||
+    evidence.length > TEAM_LIMITS.analysisEvidence ||
+    new Set(evidence).size !== evidence.length ||
+    evidence.some((id) => !register.some((item) => item.id === id))
+  )
+    return undefined;
+  return { note, evidenceAttachmentIds: [...evidence] };
 }
 
 function required(value: string, limit: number): string | undefined {

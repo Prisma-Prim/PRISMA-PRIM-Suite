@@ -1,6 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import { inputObject } from './certification.validation.js';
+import {
+  optionalAttribution,
+  requireIndependenceAttestation,
+  type ActAttribution,
+} from './certification-attribution.js';
 
 export const TEAM_ROLES = [
   'team_leader',
@@ -10,11 +15,20 @@ export const TEAM_ROLES = [
 ] as const;
 export type TeamRole = (typeof TEAM_ROLES)[number];
 
+/** A declaration is confirmed, a declared conflict, or still to verify. */
+export type DeclarationState = 'confirmed' | 'conflict' | 'to_verify';
+
 export interface ImpartialityDeclarations {
-  noConsultancy: boolean;
-  noEmployment: boolean;
-  noManagementInvolvement: boolean;
-  confidentiality: boolean;
+  noConsultancy: DeclarationState;
+  noEmployment: DeclarationState;
+  noManagementInvolvement: DeclarationState;
+  confidentiality: DeclarationState;
+}
+
+/** A documented impartiality analysis, kept even when every declaration is confirmed. */
+export interface ImpartialityAnalysis {
+  note: string;
+  evidenceAttachmentIds: string[];
 }
 
 export interface TeamMember {
@@ -29,9 +43,15 @@ export interface TeamMember {
 
 export interface AuditTeam {
   members: TeamMember[];
+  impartialityAnalysis: ImpartialityAnalysis | null;
 }
 
-export type TeamDecision = { teamVersion: number } & (
+export type TeamDecision = {
+  teamVersion: number;
+  onBehalf: ActAttribution | null;
+  /** False only in decisions recorded before the attestation existed. */
+  independenceAttested: boolean;
+} & (
   | { decision: 'approved'; reason: null }
   | { decision: 'returned'; reason: string }
 );
@@ -45,7 +65,7 @@ const DECLARATIONS = [
 
 /** Validates both submitted and persisted teams against the composition rules. */
 export function auditTeam(value: unknown): AuditTeam {
-  const body = inputObject(value, ['members']);
+  const body = inputObject(value, ['members', 'impartialityAnalysis']);
   if (
     !Array.isArray(body.members) ||
     body.members.length < 1 ||
@@ -75,7 +95,21 @@ export function auditTeam(value: unknown): AuditTeam {
       'CERTIFICATION_TEAM_CATEGORY',
       'The team must hold the client category; without a team leader holding it, a technical expert who holds it is required.',
     );
-  return { members };
+  return {
+    members,
+    impartialityAnalysis: analysis(body.impartialityAnalysis),
+  };
+}
+
+function analysis(value: unknown): ImpartialityAnalysis | null {
+  if (value === undefined || value === null) return null;
+  const body = inputObject(value, ['note', 'evidenceAttachmentIds']);
+  const ids = body.evidenceAttachmentIds ?? [];
+  if (!Array.isArray(ids) || ids.length > 10) return invalid();
+  const evidenceAttachmentIds = ids.map(requireUuid);
+  if (new Set(evidenceAttachmentIds).size !== evidenceAttachmentIds.length)
+    return invalid();
+  return { note: text(body.note, 4000), evidenceAttachmentIds };
 }
 
 export function teamCommand(value: unknown): {
@@ -83,11 +117,19 @@ export function teamCommand(value: unknown): {
   reason: string | null;
   team: AuditTeam;
 } {
-  const body = inputObject(value, ['expectedRevision', 'reason', 'members']);
+  const body = inputObject(value, [
+    'expectedRevision',
+    'reason',
+    'members',
+    'impartialityAnalysis',
+  ]);
   return {
     expectedRevision: revision(body.expectedRevision),
     reason: optionalText(body.reason, 2000),
-    team: auditTeam({ members: body.members }),
+    team: auditTeam({
+      members: body.members,
+      impartialityAnalysis: body.impartialityAnalysis,
+    }),
   };
 }
 
@@ -100,6 +142,8 @@ export function teamDecisionCommand(value: unknown): {
     'teamVersion',
     'decision',
     'reason',
+    'onBehalf',
+    'independenceAttested',
   ]);
   return {
     expectedRevision: revision(body.expectedRevision),
@@ -107,26 +151,42 @@ export function teamDecisionCommand(value: unknown): {
       teamVersion: body.teamVersion,
       decision: body.decision,
       reason: body.reason,
+      onBehalf: body.onBehalf,
+      independenceAttested: requireIndependenceAttestation(
+        body.independenceAttested,
+      ),
     }),
   };
 }
 
 /** Validates both submitted and persisted team decisions. */
 export function teamDecision(value: unknown): TeamDecision {
-  const body = inputObject(value, ['teamVersion', 'decision', 'reason']);
-  const teamVersion = revision(body.teamVersion);
+  const body = inputObject(value, [
+    'teamVersion',
+    'decision',
+    'reason',
+    'onBehalf',
+    'independenceAttested',
+  ]);
+  const common = {
+    teamVersion: revision(body.teamVersion),
+    onBehalf: optionalAttribution(body.onBehalf),
+    independenceAttested: body.independenceAttested === true,
+  };
   if (body.decision === 'approved') {
     if (body.reason !== undefined && body.reason !== null) return invalid();
-    return { teamVersion, decision: 'approved', reason: null };
+    return { ...common, decision: 'approved', reason: null };
   }
   if (body.decision !== 'returned') return invalid();
-  return { teamVersion, decision: 'returned', reason: text(body.reason, 2000) };
+  return { ...common, decision: 'returned', reason: text(body.reason, 2000) };
 }
 
 /** Every declaration of every member confirms the absence of conflict. */
 export function teamWithoutConflict(team: AuditTeam): boolean {
   return team.members.every((entry) =>
-    DECLARATIONS.every((declaration) => entry.declarations[declaration]),
+    DECLARATIONS.every(
+      (declaration) => entry.declarations[declaration] === 'confirmed',
+    ),
   );
 }
 
@@ -155,12 +215,14 @@ function member(value: unknown): TeamMember {
     noManagementInvolvement: flag(declarationsBody.noManagementInvolvement),
     confidentiality: flag(declarationsBody.confidentiality),
   };
-  const conflict = DECLARATIONS.some((name) => !declarations[name]);
+  const conflict = DECLARATIONS.some(
+    (name) => declarations[name] !== 'confirmed',
+  );
   const conflictNote = optionalText(body.conflictNote, 1000);
   if (conflict !== (conflictNote !== null))
     throw rule(
       'CERTIFICATION_TEAM_CONFLICT_NOTE',
-      'Describe the conflict when a declaration is not confirmed, and only then.',
+      'Describe the conflict or what remains to verify when a declaration is not confirmed, and only then.',
     );
   return {
     name: text(body.name, 200),
@@ -177,10 +239,12 @@ function member(value: unknown): TeamMember {
   };
 }
 
-/** An explicit boolean: a declaration never defaults. */
-function flag(value: unknown): boolean {
-  if (typeof value !== 'boolean') return invalid();
-  return value;
+/** An explicit state: a declaration never defaults. Booleans are the first format. */
+function flag(value: unknown): DeclarationState {
+  if (value === true || value === 'confirmed') return 'confirmed';
+  if (value === false || value === 'conflict') return 'conflict';
+  if (value === 'to_verify') return 'to_verify';
+  return invalid();
 }
 
 function revision(value: unknown): number {

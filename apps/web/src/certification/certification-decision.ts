@@ -1,3 +1,4 @@
+import type { ActAttribution } from './certification-attribution';
 import { findingBlocks, type Finding } from './certification-findings';
 import type { CertificationActorReference } from './certification-response';
 import { approvedTeam } from './certification-stages';
@@ -5,8 +6,9 @@ import type { AuditTeam } from './certification-team';
 
 /**
  * The server's contract for the end of the journey: the team leader's
- * recommendation, an approver's dossier review and immutable Certification
- * Decision, the Certificate data agreed with the client and the recorded
+ * recommendation, an approver's dossier review and Certification Decision
+ * (whose outcome a correction keeps), the Certificate data agreed with the
+ * client and the recorded
  * Certificate. The server stays authoritative; this module only mirrors its
  * rules and never recomputes the Certificate's validity.
  */
@@ -20,6 +22,8 @@ export type RecommendationOutcome = (typeof RECOMMENDATIONS)[number];
 export interface Recommendation {
   recommendation: RecommendationOutcome;
   basis: string;
+  /** The business date of the recommendation, when the paper dossier has it. */
+  recommendedOn: string | null;
 }
 
 /** The dossier items an approver answers, in the server's display order. */
@@ -55,6 +59,11 @@ export type DossierAnswer =
 export interface DossierReview {
   items: Record<DossierItem, DossierAnswer>;
   conclusion: string;
+  /** The certification body's dossier reviewer and approver, when recorded on their behalf. */
+  reviewedBy: ActAttribution | null;
+  approvedBy: ActAttribution | null;
+  /** False only in reviews recorded before the attestation existed. */
+  independenceAttested: boolean;
 }
 
 /** What one Certificate language states: holder, address and scope. */
@@ -67,7 +76,10 @@ export interface CertificateText {
 
 export type CertificationOutcome = 'granted' | 'refused';
 
-/** The immutable decision; only a grant fixes the Certificate texts. */
+/**
+ * The decision; only a grant fixes the Certificate texts. A later version
+ * corrects its texts and references, never its outcome.
+ */
 export type CertificationDecision = {
   decidedOn: string;
   /** The certification body's decision maker. */

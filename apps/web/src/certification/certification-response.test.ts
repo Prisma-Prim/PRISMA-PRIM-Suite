@@ -11,6 +11,7 @@ import { parseDecisionFailures } from './certification-decision';
 import {
   CERTIFICATE_TEXTS,
   NO_CONFLICT,
+  actedFor,
   certificationDecision,
   certificationIds,
   dossierReview,
@@ -216,7 +217,11 @@ describe('Certification response parsers', () => {
   it('reads a confirmed duration with its exact amounts, and the agreement next', () => {
     const parsed = parseCaseDetail(durationDetail(), { ...scope, caseId });
     expect(parsed.nextStep).toBe('agreement');
-    expect(parsed.duration?.value).toEqual(determination);
+    // A record made before acts on behalf existed reads without one.
+    expect(parsed.duration?.value).toEqual({
+      ...determination,
+      onBehalf: null,
+    });
     expect(
       parseTimeline(
         { caseId, entries: [application, review, duration] },
@@ -783,6 +788,9 @@ describe('Certification audit team and decision parsers', () => {
       teamVersion: 1,
       decision: 'returned',
       reason: 'Add an auditor for the second shift.',
+      // Recorded before the attestation and acts on behalf existed.
+      onBehalf: null,
+      independenceAttested: false,
     });
     const pending = parseCaseDetail(
       teamedDetail({ revision: 9, team: corrected, teamDecision: returned }),
@@ -807,6 +815,8 @@ describe('Certification audit team and decision parsers', () => {
       teamVersion: 2,
       decision: 'approved',
       reason: null,
+      onBehalf: null,
+      independenceAttested: false,
     });
     expect(
       parseTimeline(
@@ -1161,6 +1171,7 @@ describe('Certification Stage plan and report parsers', () => {
       reportAttachmentId: 'report-2',
       participantListAttachmentId: 'participants-2',
       annexAttachmentId: 'annex-2',
+      certificationBodyApproval: null,
     });
   });
 
@@ -2459,6 +2470,7 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
     expect(parsed.recommendation?.value).toEqual({
       recommendation: 'grant',
       basis: 'No nonconformity; system effectively implemented.',
+      recommendedOn: null,
     });
     expect(parsed.dossierReview?.value).toEqual(dossierReview());
     expect(parsed.decision?.value).toEqual(
@@ -2810,5 +2822,326 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
       parseDecisionFailures(['FINDINGS_OPEN', 'FINDINGS_OPEN']),
     ).toBeUndefined();
     expect(parseDecisionFailures(undefined)).toBeUndefined();
+  });
+});
+
+const act = actedFor({ formAttachmentId: 'signed-form' });
+const toVerify = teamMember({
+  declarations: { ...NO_CONFLICT, noConsultancy: 'to_verify' },
+  conflictNote: 'Possible link with the named consultant.',
+});
+const analysis = {
+  note: 'Links between Advisory Demo and the team were checked.',
+  evidenceAttachmentIds: ['evidence-1'],
+};
+const approvedToVerify = teamedDetail({
+  revision: 8,
+  nextStep: 'stage_1_plan',
+  team: { ...team, value: { members: [toVerify] } },
+  teamDecision: approvedFirst,
+});
+const correctedDecision = stageVersion(
+  'decision',
+  22,
+  certificationDecision({ grantedTexts: [CERTIFICATE_TEXTS[0]] }),
+  { version: 2, reason: 'The English text is not part of the decision.' },
+);
+function withAct(value: unknown) {
+  return durationDetail({ onBehalf: value });
+}
+function withAnalysis(value: unknown) {
+  return teamedDetail({
+    team: {
+      ...team,
+      value: { members: [toVerify], impartialityAnalysis: value },
+    },
+  });
+}
+
+describe('Certification acts on behalf and impartiality parsers', () => {
+  it('reads acts on behalf, attestations, business dates and the impartiality analysis', () => {
+    const facts = lactisFacts({
+      haccpStudyCount: 3,
+      totalHeadcount: 125,
+      effectiveFte: 120,
+      submittedOn: '2026-10-01',
+    });
+    const actedCase = parseCaseDetail(
+      durationDetail(
+        { onBehalf: act },
+        {
+          application: { ...application, value: facts },
+          applicationReview: {
+            ...review,
+            value: { ...review.value, onBehalf: act },
+          },
+        },
+      ),
+      { ...scope, caseId },
+    );
+    expect(actedCase.application?.value.submittedOn).toBe('2026-10-01');
+    expect(actedCase.applicationReview?.value.onBehalf).toEqual(act);
+    expect(actedCase.duration?.value.onBehalf).toEqual(act);
+
+    const decidedOnTeam = parseCaseDetail(
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        team: {
+          ...team,
+          value: { members: [toVerify], impartialityAnalysis: analysis },
+        },
+        teamDecision: {
+          ...returned,
+          value: {
+            ...returned.value,
+            onBehalf: act,
+            independenceAttested: true,
+          },
+        },
+      }),
+      { ...scope, caseId },
+    );
+    expect(decidedOnTeam.team?.value).toEqual({
+      members: [toVerify],
+      impartialityAnalysis: analysis,
+    });
+    expect(decidedOnTeam.teamDecision?.value).toEqual({
+      ...returned.value,
+      onBehalf: act,
+      independenceAttested: true,
+    });
+
+    const approver = actedFor({ actedBy: 'Approver Demo' });
+    const closing = parseCaseDetail(
+      decidedDetail({
+        stages: [
+          stage1Planned,
+          stage1Ready,
+          stage2Planned,
+          {
+            ...stage2Reported,
+            value: { ...stage2Reported.value, certificationBodyApproval: act },
+          },
+        ],
+        recommendation: {
+          ...recommended,
+          value: { ...recommended.value, recommendedOn: '2026-11-22' },
+        },
+        dossierReview: {
+          ...reviewed,
+          value: { ...reviewed.value, reviewedBy: act, approvedBy: approver },
+        },
+      }),
+      { ...scope, caseId },
+    );
+    expect(closing.stage2Report?.value.certificationBodyApproval).toEqual(act);
+    expect(closing.recommendation?.value.recommendedOn).toBe('2026-11-22');
+    expect(closing.dossierReview?.value).toMatchObject({
+      reviewedBy: act,
+      approvedBy: approver,
+      independenceAttested: true,
+    });
+  });
+
+  it('reads first-format boolean declarations and records made before the new fields', () => {
+    const parsed = parseCaseDetail(
+      withMembers([
+        teamMember({
+          declarations: {
+            noConsultancy: false,
+            noEmployment: true,
+            noManagementInvolvement: true,
+            confidentiality: true,
+          },
+          conflictNote: 'Delivered a training to the client last year.',
+        }),
+      ]),
+      { ...scope, caseId },
+    );
+    expect(parsed.team?.value).toEqual({
+      members: [
+        teamMember({
+          declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
+          conflictNote: 'Delivered a training to the client last year.',
+        }),
+      ],
+      impartialityAnalysis: null,
+    });
+    const legacy = parseCaseDetail(
+      decidedDetail({
+        dossierReview: {
+          ...reviewed,
+          value: { items: reviewItems, conclusion: 'Complete.' },
+        },
+      }),
+      { ...scope, caseId },
+    );
+    expect(legacy.dossierReview?.value).toMatchObject({
+      reviewedBy: null,
+      approvedBy: null,
+      independenceAttested: false,
+    });
+    expect(legacy.application?.value.submittedOn).toBeNull();
+    expect(legacy.applicationReview?.value.onBehalf).toBeNull();
+  });
+
+  it('reads a decision correction that keeps the outcome, with its reason and its versions', () => {
+    const parsed = parseCaseDetail(
+      decidedDetail({ revision: 22, decision: correctedDecision }),
+      { ...scope, caseId },
+    );
+    expect(parsed.decision).toMatchObject({
+      version: 2,
+      reason: 'The English text is not part of the decision.',
+      value: { decision: 'granted', grantedTexts: [CERTIFICATE_TEXTS[0]] },
+    });
+    expect(
+      parseTimeline(
+        { caseId, entries: [decided, agreedData, correctedDecision] },
+        caseId,
+      ).entries.map((entry) => [entry.step, entry.version]),
+    ).toEqual([
+      ['decision', 1],
+      ['certificate_data', 1],
+      ['decision', 2],
+    ]);
+  });
+
+  it('fails closed on a timeline whose correction changes the decided outcome', () => {
+    expect(() =>
+      parseTimeline(
+        {
+          caseId,
+          entries: [
+            decided,
+            {
+              ...correctedDecision,
+              value: certificationDecision({
+                decision: 'refused',
+                grantedTexts: null,
+              }),
+            },
+          ],
+        },
+        caseId,
+      ),
+    ).toThrow();
+  });
+
+  it.each([
+    [
+      'an act with an impossible date',
+      withAct(actedFor({ actedOn: '2026-02-30' })),
+    ],
+    [
+      'an act without the function',
+      withAct(actedFor({ actedByFunction: ' ' })),
+    ],
+    [
+      'an act with a name beyond its limit',
+      withAct(actedFor({ actedBy: 'x'.repeat(201) })),
+    ],
+    [
+      'an act without its date',
+      withAct({ actedBy: 'Head of Body Demo', actedByFunction: 'Head' }),
+    ],
+    ['an act that is a name only', withAct('Head of Body Demo')],
+    [
+      'an act citing a blank form',
+      withAct(actedFor({ formAttachmentId: ' ' })),
+    ],
+    [
+      'an attestation that is not a boolean',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: {
+          ...returned,
+          value: { ...returned.value, independenceAttested: 'yes' },
+        },
+      }),
+    ],
+    [
+      'an unknown declaration state',
+      withMembers([
+        teamMember({
+          declarations: { ...NO_CONFLICT, noConsultancy: 'maybe' },
+        }),
+      ]),
+    ],
+    [
+      'a declaration to verify without its description',
+      withMembers([{ ...toVerify, conflictNote: null }]),
+    ],
+    ['an approval of a team with a declaration to verify', approvedToVerify],
+    [
+      'an analysis without its note',
+      withAnalysis({ note: ' ', evidenceAttachmentIds: [] }),
+    ],
+    [
+      'an analysis citing one attachment twice',
+      withAnalysis({
+        ...analysis,
+        evidenceAttachmentIds: ['evidence-1', 'evidence-1'],
+      }),
+    ],
+    [
+      'an analysis citing more than ten attachments',
+      withAnalysis({
+        ...analysis,
+        evidenceAttachmentIds: Array.from(
+          { length: 11 },
+          (_, index) => 'evidence-' + String(index),
+        ),
+      }),
+    ],
+    [
+      'an analysis without its evidence list',
+      withAnalysis({ note: 'Checked.' }),
+    ],
+    [
+      'an application date that is not a calendar date',
+      detail({
+        application: {
+          ...application,
+          value: lactisFacts({ submittedOn: '2026-13-01' }),
+        },
+      }),
+    ],
+    [
+      'a recommendation date that is not a calendar date',
+      decidedDetail({
+        recommendation: {
+          ...recommended,
+          value: { ...recommended.value, recommendedOn: 'yesterday' },
+        },
+      }),
+    ],
+    [
+      'a dossier review with a malformed approver',
+      decidedDetail({
+        dossierReview: {
+          ...reviewed,
+          value: {
+            ...reviewed.value,
+            approvedBy: { actedBy: 'Approver Demo' },
+          },
+        },
+      }),
+    ],
+    [
+      'a decision correction without its reason',
+      decidedDetail({
+        revision: 22,
+        decision: { ...correctedDecision, reason: null },
+      }),
+    ],
+    [
+      'a first decision with a reason',
+      decidedDetail({ decision: { ...decided, reason: 'Not a correction.' } }),
+    ],
+  ])('fails closed on %s', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
   });
 });

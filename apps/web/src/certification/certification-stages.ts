@@ -1,3 +1,4 @@
+import type { ActAttribution } from './certification-attribution';
 import type { CertificationDocumentRole } from './certification-response';
 import type { AuditTeam } from './certification-team';
 
@@ -44,6 +45,8 @@ export interface Stage1Report {
   conclusionNote: string;
   reportAttachmentId: string;
   participantListAttachmentId: string | null;
+  /** The certification body's approval of the report, when recorded on its behalf. */
+  certificationBodyApproval: ActAttribution | null;
 }
 
 export interface Stage2Report {
@@ -52,6 +55,7 @@ export interface Stage2Report {
   reportAttachmentId: string;
   participantListAttachmentId: string | null;
   annexAttachmentId: string | null;
+  certificationBodyApproval: ActAttribution | null;
 }
 
 /** The attachment a Stage record refers to, by the role it must carry. */

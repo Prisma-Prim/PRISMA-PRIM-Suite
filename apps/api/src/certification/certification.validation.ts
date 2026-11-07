@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
+import { optionalAttribution } from './certification-attribution.js';
 import {
   FOOD_CHAIN_SUBCATEGORIES,
   REVIEW_CRITERIA,
@@ -51,6 +52,7 @@ export function reviewCommand(value: unknown): {
     'criteria',
     'outcome',
     'rejectionReason',
+    'onBehalf',
   ]);
   return {
     expectedRevision: revision(body.expectedRevision),
@@ -58,6 +60,7 @@ export function reviewCommand(value: unknown): {
       criteria: body.criteria,
       outcome: body.outcome,
       rejectionReason: body.rejectionReason,
+      onBehalf: body.onBehalf,
     }),
   };
 }
@@ -151,6 +154,7 @@ export function calendarDate(value: unknown): value is string {
 /** Validates both submitted and persisted application facts. */
 export function applicationFacts(value: unknown): ApplicationFacts {
   const body = inputObject(value, [
+    'submittedOn',
     'declaredLegalName',
     'declaredAddress',
     'sites',
@@ -191,7 +195,17 @@ export function applicationFacts(value: unknown): ApplicationFacts {
   const languages = list(body.auditLanguages, 1, 5).map((language) =>
     text(language, 40),
   );
+  if (
+    body.submittedOn !== undefined &&
+    body.submittedOn !== null &&
+    !calendarDate(body.submittedOn)
+  )
+    return invalid();
   return {
+    submittedOn:
+      body.submittedOn === undefined || body.submittedOn === null
+        ? null
+        : body.submittedOn,
     declaredLegalName: text(body.declaredLegalName, 300),
     declaredAddress: text(body.declaredAddress, 500),
     sites,
@@ -212,7 +226,13 @@ export function applicationFacts(value: unknown): ApplicationFacts {
 
 /** Validates both submitted and persisted reviews; no answer has a default. */
 export function applicationReview(value: unknown): ApplicationReview {
-  const body = inputObject(value, ['criteria', 'outcome', 'rejectionReason']);
+  const body = inputObject(value, [
+    'criteria',
+    'outcome',
+    'rejectionReason',
+    'onBehalf',
+  ]);
+  const onBehalf = optionalAttribution(body.onBehalf);
   const criteriaBody = inputObject(body.criteria, REVIEW_CRITERIA);
   const criteria = Object.fromEntries(
     REVIEW_CRITERIA.map((criterion) => [
@@ -231,11 +251,12 @@ export function applicationReview(value: unknown): ApplicationReview {
         code: 'CERTIFICATION_REVIEW_CRITERIA_NOT_MET',
         message: 'An application is accepted only when every criterion is met.',
       });
-    return { criteria, outcome: 'accepted', rejectionReason: null };
+    return { criteria, onBehalf, outcome: 'accepted', rejectionReason: null };
   }
   if (body.outcome !== 'rejected') invalid();
   return {
     criteria,
+    onBehalf,
     outcome: 'rejected',
     rejectionReason: text(body.rejectionReason, 2000),
   };

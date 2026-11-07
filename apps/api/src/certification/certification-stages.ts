@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import { calendarDate, inputObject } from './certification.validation.js';
+import {
+  optionalAttribution,
+  type ActAttribution,
+} from './certification-attribution.js';
 
 export type AuditStage = 'stage_1' | 'stage_2';
 
@@ -23,6 +27,8 @@ export interface Stage1Report {
   conclusionNote: string;
   reportAttachmentId: string;
   participantListAttachmentId: string | null;
+  /** The certification body's approval of the report, when recorded on its behalf. */
+  certificationBodyApproval: ActAttribution | null;
 }
 
 export interface Stage2Report {
@@ -31,6 +37,7 @@ export interface Stage2Report {
   reportAttachmentId: string;
   participantListAttachmentId: string | null;
   annexAttachmentId: string | null;
+  certificationBodyApproval: ActAttribution | null;
 }
 
 const PLAN_FIELDS = [
@@ -79,6 +86,7 @@ export function stage1Report(value: unknown): Stage1Report {
     'conclusionNote',
     'reportAttachmentId',
     'participantListAttachmentId',
+    'certificationBodyApproval',
   ]);
   if (body.documentReviewCompleted !== true)
     throw rule(
@@ -94,6 +102,9 @@ export function stage1Report(value: unknown): Stage1Report {
     conclusionNote: text(body.conclusionNote, 4000),
     reportAttachmentId: requireUuid(body.reportAttachmentId),
     participantListAttachmentId: optionalUuid(body.participantListAttachmentId),
+    certificationBodyApproval: optionalAttribution(
+      body.certificationBodyApproval,
+    ),
   };
 }
 
@@ -105,6 +116,7 @@ export function stage2Report(value: unknown): Stage2Report {
     'reportAttachmentId',
     'participantListAttachmentId',
     'annexAttachmentId',
+    'certificationBodyApproval',
   ]);
   return {
     reportDate: date(body.reportDate),
@@ -112,6 +124,9 @@ export function stage2Report(value: unknown): Stage2Report {
     reportAttachmentId: requireUuid(body.reportAttachmentId),
     participantListAttachmentId: optionalUuid(body.participantListAttachmentId),
     annexAttachmentId: optionalUuid(body.annexAttachmentId),
+    certificationBodyApproval: optionalAttribution(
+      body.certificationBodyApproval,
+    ),
   };
 }
 
