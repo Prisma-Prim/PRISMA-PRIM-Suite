@@ -336,6 +336,33 @@ withPostgres(
           }),
         ]),
       });
+      const sameClassification = await post(
+        CERTIFICATION_APPROVER,
+        `${path}/reclassification`,
+        {
+          expectedRevision: 12,
+          reason: 'Same classification',
+          classification: 'area_of_concern',
+        },
+      );
+      expect(record(await sameClassification.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
+      const sameStatement = await post(
+        CERTIFICATION_AUDITOR,
+        `${path}/correction`,
+        {
+          expectedRevision: 12,
+          reason: 'Same statement',
+          clause: '8.2',
+          area: 'Prerequisite programmes',
+          statement: 'Cleaning records missing.',
+          evidenceAttachmentIds: [],
+        },
+      );
+      expect(record(await sameStatement.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
       const unknownUpdate = await post(
         CERTIFICATION_AUDITOR,
         `${path}/deletion`,

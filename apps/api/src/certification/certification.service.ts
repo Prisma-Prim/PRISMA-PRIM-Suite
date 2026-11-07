@@ -1288,6 +1288,8 @@ export class CertificationService {
                 'CERTIFICATION_CORRECTION_REASON',
                 'A correction states its reason.',
               );
+            if (sameValue(view.statement, input.payload))
+              throw unchangedCorrection();
             this.requireClassification(
               view.classification,
               view.stage,
@@ -1317,6 +1319,8 @@ export class CertificationService {
                 'CERTIFICATION_CORRECTION_REASON',
                 'A classification change states its reason.',
               );
+            if (input.payload === view.classification)
+              throw unchangedCorrection();
             this.requireClassification(
               input.payload,
               view.stage,
@@ -1615,10 +1619,7 @@ export class CertificationService {
   }): Promise<{ caseId: string; at: Date }> {
     const { actor, companyId, current } = input;
     if (input.replaces && sameValue(input.replaces.payload, input.payload))
-      throw stepConflict(
-        'CERTIFICATION_CORRECTION_UNCHANGED',
-        'The correction changes no recorded value.',
-      );
+      throw unchangedCorrection();
     const now = this.clock.now();
     const revision = current.revision + 1;
     await this.database.connection.insert(certificationStepVersions).values({
@@ -2155,6 +2156,14 @@ function nextStep(
 
 function stepConflict(code: string, message: string): ConflictException {
   return new ConflictException({ code, message });
+}
+
+/** A correction that changes nothing would only add false history. */
+function unchangedCorrection(): ConflictException {
+  return stepConflict(
+    'CERTIFICATION_CORRECTION_UNCHANGED',
+    'The correction changes no recorded value.',
+  );
 }
 
 /**
