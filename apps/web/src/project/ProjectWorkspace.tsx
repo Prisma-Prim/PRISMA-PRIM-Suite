@@ -1,6 +1,9 @@
 import { WorkingEvidenceWorkspace } from '../working-evidence/WorkingEvidenceWorkspace';
 import { workingEvidenceAuthority } from '../working-evidence/working-evidence-access';
 import { useWorkingEvidenceCopy } from '../working-evidence/working-evidence.copy';
+import { CertificationWorkspace } from '../certification/CertificationWorkspace';
+import { certificationAuthority } from '../certification/certification-access';
+import { useCertificationCopy } from '../certification/certification.copy';
 import { ProjectPdfBundle } from './ProjectPdfBundle';
 import { ProjectNextAction } from './ProjectNextAction';
 import { MissionPlanCurrentWork } from '../mission-plan/MissionPlanCurrentWork';
@@ -50,7 +53,7 @@ import { useProjectDirectory } from './use-project-directory';
 import type { ProjectNavigationRequest } from './use-project-navigation';
 import './project.css';
 
-type DetailPanel = 'tasks' | 'documents' | 'working-evidence';
+type DetailPanel = 'tasks' | 'documents' | 'working-evidence' | 'certification';
 /** Either the free-text search or one exact dossier identity is active. */
 type ProjectFilter =
   | { kind: 'text'; query: string }
@@ -144,6 +147,8 @@ export function ProjectWorkspace({
   const copy = useProjectCopy();
   const evidenceCopy = useWorkingEvidenceCopy();
   const evidenceAuthority = workingEvidenceAuthority(actor);
+  const certificationCopy = useCertificationCopy();
+  const certificationReader = certificationAuthority(actor).read;
   const documentsCopy = useProjectDocumentsCopy();
   const templateCopy = useProjectTemplateCopy();
   const planTaskRequestId = useRef(0);
@@ -157,7 +162,10 @@ export function ProjectWorkspace({
     useState<TemplateSelection | null>(null);
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
-  if (!evidenceAuthority && detailPanel === 'working-evidence')
+  if (
+    (!evidenceAuthority && detailPanel === 'working-evidence') ||
+    (!certificationReader && detailPanel === 'certification')
+  )
     setDetailPanel('tasks');
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<SelectedProject | null>(null);
@@ -650,9 +658,9 @@ export function ProjectWorkspace({
     event: KeyboardEvent<HTMLButtonElement>,
     panel: DetailPanel,
   ) {
-    const panels: DetailPanel[] = evidenceAuthority
-      ? ['tasks', 'documents', 'working-evidence']
-      : ['tasks', 'documents'];
+    const panels: DetailPanel[] = ['tasks', 'documents'];
+    if (evidenceAuthority) panels.push('working-evidence');
+    if (certificationReader) panels.push('certification');
     const index = panels.indexOf(panel);
     const next =
       event.key === 'ArrowRight'
@@ -1120,6 +1128,20 @@ export function ProjectWorkspace({
                   {evidenceCopy('title')}
                 </button>
               )}
+              {certificationReader && (
+                <button
+                  id="project-certification-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={detailPanel === 'certification'}
+                  aria-controls="project-certification-panel"
+                  tabIndex={detailPanel === 'certification' ? 0 : -1}
+                  onClick={() => setDetailPanel('certification')}
+                  onKeyDown={(event) => moveDetailTab(event, 'certification')}
+                >
+                  {certificationCopy('title')}
+                </button>
+              )}
             </div>
           )}
           <MissionPlanProjectCopy
@@ -1219,6 +1241,26 @@ export function ProjectWorkspace({
               onActivityRecorded={onActivityRecorded}
             />
           </div>
+          {certificationReader && (
+            <div
+              className="project-detail-panel"
+              id="project-certification-panel"
+              role={isPrisme ? 'tabpanel' : undefined}
+              aria-labelledby={
+                isPrisme ? 'project-certification-tab' : undefined
+              }
+              hidden={isPrisme && detailPanel !== 'certification'}
+            >
+              <CertificationWorkspace
+                actor={actor}
+                identity={identity}
+                projectId={selected.project.id}
+                onActorRevalidated={onActorRevalidated}
+                onCompanyContextRejected={onCompanyContextRejected}
+                onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              />
+            </div>
+          )}
           <div
             className="project-detail-panel"
             id="project-documents-panel"

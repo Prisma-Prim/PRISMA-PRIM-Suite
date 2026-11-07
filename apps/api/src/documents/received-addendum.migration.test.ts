@@ -1,3 +1,4 @@
+import { certificationTables } from '../certification/certification-schema.test-support.js';
 import { workingEvidenceTables } from '../working-evidence/working-evidence-schema.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -218,6 +219,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each(inherited)(
           (table) => !tables.includes(table),
         ),
       ).toEqual([
+        ...certificationTables,
         'received_addendum_document_relations',
         ...workingEvidenceTables,
       ]);

@@ -44,6 +44,8 @@ import {
   COMPANY_IDEAS_READER_BUNDLE,
   COMPANY_IDEAS_RECORDER_BUNDLE,
   COMPANY_IDEAS_REVIEWER_BUNDLE,
+  COMPANY_CERTIFICATION_READER_BUNDLE,
+  COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
 } from './company-permissions.js';
 import {
   COMPANY_CONTRACT_PREPARER_BUNDLE,
@@ -166,6 +168,11 @@ import {
   projectIdeasAssignment,
   requireIdeasCapturedGrant,
 } from './ideas-captured-grants.js';
+import {
+  projectCertificationAssignment,
+  requireCertificationCapturedGrant,
+  type CertificationRole,
+} from './certification-captured-grants.js';
 import { captureContractModelGrant } from './contract-model-captured-grants.js';
 import { captureOfferModelGrant } from './offer-model-captured-grants.js';
 
@@ -805,6 +812,38 @@ export class CompanyContextAuthorization {
         lock,
       );
     }
+    return company.id;
+  }
+
+  /**
+   * Certification authority: the reader assignment always, plus the requested
+   * mutation role, each rechecked live under the caller's lock choice.
+   */
+  async requireCertificationAccess(
+    actor: ActorContext,
+    role: CertificationRole,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (!company) throw new ForbiddenException();
+    const grants = [requireCertificationCapturedGrant(company, 'reader')];
+    if (role !== 'reader')
+      grants.push(requireCertificationCapturedGrant(company, role));
+    for (const grant of grants)
+      await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        and(
+          eq(companyRoleAssignments.bundle, grant.bundle),
+          eq(
+            companyRoleAssignments.permissionSetVersion,
+            grant.permissionSetVersion,
+          ),
+          eq(companyRoleAssignments.id, grant.assignmentId),
+        ) ?? sql`false`,
+        lock,
+      );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
     return company.id;
   }
 
@@ -2845,6 +2884,8 @@ export class CompanyContextAuthorization {
         COMPANY_IDEAS_READER_BUNDLE,
         COMPANY_IDEAS_RECORDER_BUNDLE,
         COMPANY_IDEAS_REVIEWER_BUNDLE,
+        COMPANY_CERTIFICATION_READER_BUNDLE,
+        COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
@@ -2944,6 +2985,7 @@ export class CompanyContextAuthorization {
           knowledgeGrant,
         ];
       Object.assign(company, projectIdeasAssignment(row));
+      Object.assign(company, projectCertificationAssignment(row));
       const planGrant = captureMissionPlanGrant(row);
       if (planGrant)
         company.missionPlanGrants = [

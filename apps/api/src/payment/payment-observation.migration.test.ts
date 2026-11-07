@@ -1,3 +1,4 @@
+import { certificationTables } from '../certification/certification-schema.test-support.js';
 import {
   workingEvidenceExistingTableTriggers,
   workingEvidenceTables,
@@ -255,6 +256,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
         currentTables = await committedMigrationTables(entries);
       expect(actualTables).toEqual(currentTables);
       expect(actualTables.filter((table) => !tables.includes(table))).toEqual([
+        ...certificationTables,
         'payment_commands',
         'payment_cursor_keys',
         'payment_events',

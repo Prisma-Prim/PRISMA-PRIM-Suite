@@ -94,6 +94,12 @@ const targetTypes = {
   'company_ideas_recorder_assignment.revoked': 'company_role_assignment',
   'company_ideas_reviewer_assignment.granted': 'company_role_assignment',
   'company_ideas_reviewer_assignment.revoked': 'company_role_assignment',
+  'company_certification_reader_assignment.granted': 'company_role_assignment',
+  'company_certification_reader_assignment.revoked': 'company_role_assignment',
+  'company_certification_programme_manager_assignment.granted':
+    'company_role_assignment',
+  'company_certification_programme_manager_assignment.revoked':
+    'company_role_assignment',
 
   'workspace_invitation.issued': 'workspace_invitation',
   'workspace_invitation.revoked': 'workspace_invitation',

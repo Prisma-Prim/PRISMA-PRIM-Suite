@@ -12,6 +12,7 @@ import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy
 import { useMissionReviewCopy } from '../project/mission-result-review.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
+import { useCertificationCopy } from '../certification/certification.copy';
 import { useContractModelCopy } from '../contract-model/contract-model.copy';
 import { useOfferModelCopy } from '../offer-model/offer-model.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
@@ -108,6 +109,8 @@ type AssignmentBundle =
   | 'ideas-reader'
   | 'ideas-recorder'
   | 'ideas-reviewer'
+  | 'certification-reader'
+  | 'certification-programme-manager'
   | 'profitability-contributor'
   | 'profitability-director'
   | 'operational-risk-reader'
@@ -143,6 +146,9 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'ideas-reader': '/company-ideas-reader-assignments',
   'ideas-recorder': '/company-ideas-recorder-assignments',
   'ideas-reviewer': '/company-ideas-reviewer-assignments',
+  'certification-reader': '/company-certification-reader-assignments',
+  'certification-programme-manager':
+    '/company-certification-programme-manager-assignments',
   'operational-risk-reader': '/company-operational-risk-reader-assignments',
   'operational-risk-recorder': '/company-operational-risk-recorder-assignments',
   'profitability-contributor': '/company-profitability-contributor-assignments',
@@ -226,6 +232,7 @@ export function CompanyContextAccess({
   const externalInvoiceCopy = useExternalInvoiceAssignmentCopy();
   const paymentCopy = usePaymentAssignmentCopy();
   const ideasCopy = useIdeasCopy();
+  const certificationCopy = useCertificationCopy();
   const missionPlanCopy = useMissionPlanCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
@@ -650,6 +657,14 @@ export function CompanyContextAccess({
               { value: 'ideas-reader', label: ideasCopy('reader') },
               { value: 'ideas-recorder', label: ideasCopy('recorder') },
               { value: 'ideas-reviewer', label: ideasCopy('reviewer') },
+              {
+                value: 'certification-reader',
+                label: certificationCopy('readerBundle'),
+              },
+              {
+                value: 'certification-programme-manager',
+                label: certificationCopy('managerBundle'),
+              },
               { value: 'company-context', label: copy('companyContextBundle') },
               {
                 value: 'commercial-intake',
@@ -865,6 +880,8 @@ export function CompanyContextAccess({
                 value === 'ideas-reader' ||
                 value === 'ideas-recorder' ||
                 value === 'ideas-reviewer' ||
+                value === 'certification-reader' ||
+                value === 'certification-programme-manager' ||
                 value === 'profitability-contributor' ||
                 value === 'profitability-director' ||
                 value === 'operational-risk-reader' ||
@@ -919,6 +936,12 @@ export function CompanyContextAccess({
             }}
           />
 
+          {bundle === 'certification-reader' && (
+            <p>{certificationCopy('readerPrerequisites')}</p>
+          )}
+          {bundle === 'certification-programme-manager' && (
+            <p>{certificationCopy('managerPrerequisites')}</p>
+          )}
           {bundle === 'profitability-contributor' && (
             <p>{profitabilityCopy('contributorPrerequisites')}</p>
           )}
@@ -1155,6 +1178,9 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'ideas-reader': 'Company Ideas Reader',
     'ideas-recorder': 'Company Ideas Recorder',
     'ideas-reviewer': 'Company Ideas Reviewer',
+    'certification-reader': 'Company Certification Reader',
+    'certification-programme-manager':
+      'Company Certification Programme Manager',
     'operational-risk-reader': 'Company Operational Risk Reader',
     'operational-risk-recorder': 'Company Operational Risk Recorder',
     'profitability-contributor': 'Company Profitability Contributor',

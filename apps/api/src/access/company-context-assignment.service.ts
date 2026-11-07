@@ -22,6 +22,8 @@ import {
   COMPANY_IDEAS_READER_BUNDLE,
   COMPANY_IDEAS_RECORDER_BUNDLE,
   COMPANY_IDEAS_REVIEWER_BUNDLE,
+  COMPANY_CERTIFICATION_READER_BUNDLE,
+  COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
 } from './company-permissions.js';
 import {
   BadRequestException,
@@ -114,6 +116,14 @@ type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
 export const INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION = Symbol(
   'INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION',
 );
+const CERTIFICATION_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_CERTIFICATION_READER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const CERTIFICATION_PROGRAMME_MANAGER_BUNDLE: BundleDefinition = {
+  value: COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
 const IDEAS_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_IDEAS_READER_BUNDLE,
   permissionSetVersion: 'v1',
@@ -393,6 +403,8 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
+  COMPANY_CERTIFICATION_READER_BUNDLE,
+  COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
   COMPANY_IDEAS_READER_BUNDLE,
   COMPANY_IDEAS_RECORDER_BUNDLE,
   COMPANY_IDEAS_REVIEWER_BUNDLE,
@@ -1115,6 +1127,66 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantCertificationReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CERTIFICATION_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeCertificationReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CERTIFICATION_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantCertificationProgrammeManager(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeCertificationProgrammeManager(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2766,6 +2838,14 @@ function assignmentAction(
       return granted
         ? 'company_received_contract_access_assignment.granted'
         : 'company_received_contract_access_assignment.revoked';
+    case COMPANY_CERTIFICATION_READER_BUNDLE:
+      return granted
+        ? 'company_certification_reader_assignment.granted'
+        : 'company_certification_reader_assignment.revoked';
+    case COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE:
+      return granted
+        ? 'company_certification_programme_manager_assignment.granted'
+        : 'company_certification_programme_manager_assignment.revoked';
     case COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE:
       return granted
         ? 'company_working_evidence_case_reader_assignment.granted'

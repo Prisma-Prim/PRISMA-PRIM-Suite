@@ -315,6 +315,18 @@ const isActorContext = object({
       ),
       ideasReviewerPermissionAssignmentId: optional(isString),
       ideasReviewerPermissionSetVersion: optional(literal('v1')),
+      certificationReaderPermissions: optional(
+        array(literal('certification.read')),
+      ),
+      certificationReaderAssignmentId: optional(isString),
+      certificationReaderPermissionSetVersion: optional(literal('v1')),
+      certificationProgrammeManagerPermissions: optional(
+        array(literal('certification.programme.manage')),
+      ),
+      certificationProgrammeManagerAssignmentId: optional(isString),
+      certificationProgrammeManagerPermissionSetVersion: optional(
+        literal('v1'),
+      ),
       clientPermissions: optional(
         array(
           literal(

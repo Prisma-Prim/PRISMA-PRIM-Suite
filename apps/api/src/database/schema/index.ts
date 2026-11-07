@@ -58,3 +58,4 @@ export * from './payment.js';
 
 export * from './received-addendum-documents.js';
 export * from './working-evidence.js';
+export * from './certification.js';
