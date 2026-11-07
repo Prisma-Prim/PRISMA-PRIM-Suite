@@ -246,6 +246,76 @@ withPostgres(
       expect(await fixture.eventCount(caseId)).toBe(29);
     });
 
+    it('refuses an unchanged response and a verification after the six-month limit', async () => {
+      // Stage 1 on 2026-04-01: its limit, 2026-10-01, is before the server date.
+      const caseId = await fixture.approvedTeamCase();
+      const plan1 = await fixture.attach(caseId, 'plan', 8);
+      await ok(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/stages/stage-1/plan`,
+        { expectedRevision: 9, ...plan(plan1, '2026-04-01', '1') },
+      );
+      const evidence = await fixture.attach(caseId, 'evidence', 10);
+      const [late] = findings(
+        await ok(
+          CERTIFICATION_AUDITOR,
+          `/certification-cases/${caseId}/findings`,
+          {
+            expectedRevision: 11,
+            stage: 'stage_1',
+            classification: 'minor_nonconformity',
+            clause: '8.5.1',
+            area: 'Receiving of raw milk',
+            statement: 'Hazard analysis does not cover allergens at receiving.',
+            evidenceAttachmentIds: [evidence],
+          },
+        ),
+      );
+      expect(late).toMatchObject({ limitOn: '2026-10-01', overdue: true });
+      const path = `/certification-cases/${caseId}/findings/${text(late?.id)}`;
+      const response = {
+        correction: 'Allergen added to the receiving hazard analysis.',
+        cause: 'Template omitted allergens.',
+        correctiveAction: 'Template revised and staff trained.',
+        receivedOn: '2026-04-10',
+        plannedCompletionOn: null,
+        evidenceAttachmentIds: [],
+      };
+      await ok(CERTIFICATION_AUDITOR, `${path}/response`, {
+        expectedRevision: 12,
+        ...response,
+      });
+      const again = await post(CERTIFICATION_AUDITOR, `${path}/response`, {
+        expectedRevision: 13,
+        ...response,
+      });
+      expect(record(await again.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
+      await ok(CERTIFICATION_AUDITOR, `${path}/plan-judgment`, {
+        expectedRevision: 13,
+        outcome: 'adequate',
+        note: 'Plan adequate.',
+      });
+      const verification = await post(
+        CERTIFICATION_AUDITOR,
+        `${path}/verification`,
+        {
+          expectedRevision: 14,
+          verifiedOn: '2026-11-06',
+          method: 'document_review',
+          outcome: 'effective',
+          note: 'Too late for this journey.',
+          evidenceAttachmentIds: [],
+        },
+      );
+      expect(verification.status).toBe(409);
+      expect(record(await verification.json()).code).toBe(
+        'CERTIFICATION_FINDING_LIMIT_PASSED',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(14);
+    });
+
     it('refuses unsupported classifications, missing or foreign evidence and out-of-order follow-up, and lets the approver reclassify', async () => {
       const caseId = await stage1Planned();
       const finding = {

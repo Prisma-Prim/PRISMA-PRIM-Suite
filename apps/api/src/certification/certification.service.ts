@@ -1348,6 +1348,17 @@ export class CertificationService {
                 'CERTIFICATION_FINDING_NOT_OPEN',
                 'Only an open nonconformity receives a response.',
               );
+            // A response that awaits its judgment is only replaced by a
+            // different one; the same response again changes nothing.
+            const pending = view.records
+              .filter((record) => record.kind === 'response')
+              .at(-1);
+            if (
+              view.status === 'awaiting_plan_judgment' &&
+              pending &&
+              sameValue(pending.value, input.payload)
+            )
+              throw unchangedCorrection();
             await this.requireAttachments(
               actor,
               companyId,
@@ -1380,6 +1391,12 @@ export class CertificationService {
               throw stepConflict(
                 'CERTIFICATION_FINDING_PLAN_NOT_ADEQUATE',
                 'Verify a nonconformity once its plan is adequate.',
+              );
+            // Past its six-month limit the journey stops (PRD sections 9-10).
+            if (view.overdue)
+              throw stepConflict(
+                'CERTIFICATION_FINDING_LIMIT_PASSED',
+                'The six-month limit of this nonconformity has passed; this journey cannot continue.',
               );
             await this.requireAttachments(
               actor,

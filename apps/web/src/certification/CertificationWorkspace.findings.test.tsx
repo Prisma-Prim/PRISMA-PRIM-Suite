@@ -1127,6 +1127,37 @@ describe('Certification Findings and nonconformity follow-up', () => {
       submit: 'Record the verification',
     },
     {
+      update: 'verification',
+      code: 'CERTIFICATION_FINDING_LIMIT_PASSED',
+      message:
+        'The six-month limit of this nonconformity has passed without an effective verification: this certification journey cannot continue. A repeated Stage or an additional audit is outside this version.',
+      prepare: (server, caseId, findingId) => {
+        server.recordFindingUpdateAsColleague(
+          caseId,
+          findingId,
+          'response',
+          nonconformityResponse(),
+        );
+        server.recordFindingUpdateAsColleague(
+          caseId,
+          findingId,
+          'plan_judgment',
+          { outcome: 'adequate', note: 'Plan adequate.' },
+        );
+      },
+      open: 'Verify the implementation of Finding 1',
+      fill: (container) => {
+        change(within(container).getByLabelText('Verified on'), '2026-11-14');
+        choose(container, 'Verification method', 'On site');
+        choose(container, 'Effectiveness', 'Effective');
+        change(
+          within(container).getByLabelText('Verification note'),
+          'Effective, but too late.',
+        );
+      },
+      submit: 'Record the verification',
+    },
+    {
       update: 'correction',
       code: 'CERTIFICATION_CORRECTION_UNCHANGED',
       message:

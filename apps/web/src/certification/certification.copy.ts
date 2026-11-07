@@ -557,6 +557,7 @@ const keys = [
   'findingNotOpen',
   'findingNoResponse',
   'findingPlanNotAdequate',
+  'findingLimitPassed',
   'findingIndependence',
   'findingEvidenceUnavailable',
   'blockedFindingCorrectionReason',
@@ -1298,6 +1299,8 @@ export const certificationMessages = defineMessages(keys, {
       'The plan is judged once the client’s response is recorded. Reload the Case.',
     findingPlanNotAdequate:
       'The implementation is verified once the plan is judged adequate. Reload the Case.',
+    findingLimitPassed:
+      'The six-month limit of this nonconformity has passed without an effective verification: this certification journey cannot continue. A repeated Stage or an additional audit is outside this version.',
     findingIndependence:
       'You cannot reclassify Findings: you are linked to a member of the audit team. An approver who is not on the team reclassifies.',
     findingEvidenceUnavailable:
@@ -2065,6 +2068,8 @@ export const certificationMessages = defineMessages(keys, {
       'Le plan est jugé une fois la réponse du client enregistrée. Rechargez le dossier.',
     findingPlanNotAdequate:
       'La mise en œuvre est vérifiée une fois le plan jugé adéquat. Rechargez le dossier.',
+    findingLimitPassed:
+      'Le délai de six mois de cette non-conformité est dépassé sans vérification efficace : ce parcours de certification ne peut pas continuer. Une étape répétée ou un audit complémentaire sort de cette version.',
     findingIndependence:
       'Vous ne pouvez pas reclasser les constats : vous êtes lié à un membre de l’équipe d’audit. Un approbateur qui ne fait pas partie de l’équipe reclasse.',
     findingEvidenceUnavailable:
@@ -2827,6 +2832,8 @@ export const certificationMessages = defineMessages(keys, {
       'Planul se apreciază după ce răspunsul clientului este înregistrat. Reîncărcați dosarul.',
     findingPlanNotAdequate:
       'Implementarea se verifică după ce planul este apreciat ca adecvat. Reîncărcați dosarul.',
+    findingLimitPassed:
+      'Termenul de șase luni al acestei neconformități a fost depășit fără o verificare eficace: acest parcurs de certificare nu poate continua. O etapă repetată sau un audit suplimentar nu fac parte din această versiune.',
     findingIndependence:
       'Nu puteți reclasifica constatări: sunteți legat de un membru al echipei de audit. Reclasifică un aprobator care nu face parte din echipă.',
     findingEvidenceUnavailable:
@@ -3578,6 +3585,8 @@ export const certificationMessages = defineMessages(keys, {
       'План оценивается после того, как записан ответ клиента. Загрузите дело заново.',
     findingPlanNotAdequate:
       'Выполнение проверяется после того, как план признан адекватным. Загрузите дело заново.',
+    findingLimitPassed:
+      'Шестимесячный срок по этому несоответствию истёк без подтверждённой эффективности: этот процесс сертификации не может продолжаться. Повторный этап или дополнительный аудит выходят за рамки этой версии.',
     findingIndependence:
       'Вы не можете переклассифицировать наблюдения: вы связаны с участником аудиторской группы. Переклассифицирует утверждающий, не входящий в группу.',
     findingEvidenceUnavailable:

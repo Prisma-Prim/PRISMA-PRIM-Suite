@@ -3635,6 +3635,8 @@ function commandFeedback(
           return refusedWith('findingNoResponse', true);
         case 'CERTIFICATION_FINDING_PLAN_NOT_ADEQUATE':
           return refusedWith('findingPlanNotAdequate', true);
+        case 'CERTIFICATION_FINDING_LIMIT_PASSED':
+          return refusedWith('findingLimitPassed', true);
         case 'CERTIFICATION_STAGE_DATES':
           // A Stage 2 start, or a report date, against the read Case.
           return refusedWith(
