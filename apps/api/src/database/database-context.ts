@@ -19,8 +19,7 @@ export class DatabaseContext {
     config?: PgTransactionConfig,
   ): Promise<T> {
     return this.database.transaction(
-      (transaction) =>
-        this.transactions.run(transaction as NodePgDatabase, work),
+      (transaction) => this.transactions.run(transaction, work),
       config,
     );
   }

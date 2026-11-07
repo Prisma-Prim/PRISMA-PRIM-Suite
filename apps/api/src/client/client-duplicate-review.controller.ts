@@ -11,6 +11,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ClientDuplicateReviewService } from './client-duplicate-review.service.js';
 import type {
@@ -36,7 +37,7 @@ export class ClientDuplicateReviewController {
     @Query('cursor') cursor: unknown,
   ): Promise<ClientDuplicateReviewPage> {
     return this.reviews.list(
-      request.actorContext!,
+      requireActorContext(request),
       duplicateReviewPageRequest({ pageSize, cursor }),
     );
   }
@@ -46,7 +47,7 @@ export class ClientDuplicateReviewController {
     @Req() request: ActorContextRequest,
     @Param('duplicateReviewReference', new ParseUUIDPipe()) reference: string,
   ): Promise<ClientDuplicateReviewDetail> {
-    return this.reviews.read(request.actorContext!, reference);
+    return this.reviews.read(requireActorContext(request), reference);
   }
 }
 

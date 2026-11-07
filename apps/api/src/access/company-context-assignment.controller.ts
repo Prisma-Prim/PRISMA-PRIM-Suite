@@ -12,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from './actor-context.adapter.js';
 import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
 import type {
@@ -28,7 +29,9 @@ export class CompanyContextAssignmentController {
   readAdministrationState(
     @Req() request: ActorContextRequest,
   ): Promise<CompanyAccessAdministrationState> {
-    return this.assignments.readAdministrationState(request.actorContext!);
+    return this.assignments.readAdministrationState(
+      requireActorContext(request),
+    );
   }
 
   @Post()
@@ -37,7 +40,7 @@ export class CompanyContextAssignmentController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: { workspaceMembershipId?: unknown; companyId?: unknown },
   ): Promise<CompanyContextAssignmentRecord> {
-    return this.assignments.grant(request.actorContext!, {
+    return this.assignments.grant(requireActorContext(request), {
       workspaceMembershipId: body?.workspaceMembershipId,
       companyId: body?.companyId,
       idempotencyKey,
@@ -52,7 +55,7 @@ export class CompanyContextAssignmentController {
     @Param('companyId') companyId: string,
   ): Promise<CompanyContextAssignmentRecord> {
     return this.assignments.revoke(
-      request.actorContext!,
+      requireActorContext(request),
       workspaceMembershipId,
       companyId,
       idempotencyKey,

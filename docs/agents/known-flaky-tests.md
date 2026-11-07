@@ -12,9 +12,4 @@ New and changed tests are repeated three times on every pull request by the `fla
 
 ## Entries
 
-Seeded from CI runs between 2026-10-23 and 2026-11-06.
-
-- `apps/web/src/contract/ModelContractPanel.test.tsx` (Vitest, `web_unit`): "retires a held preparation command and literal draft when its consumed offer capture changes" and "... client capture changes".
-  - Symptom: `expect(element).toBeEnabled()` on a disabled submit button, or `Expected both Contract source reads to begin.` at line 126.
-  - Evidence: runs 41147372708 and 41159307591 failed on attempt 1 and passed on attempt 2 of the same commit; run 42299422160 (job 128174422713, pull request #1076, which changes only documentation and a script).
-  - Owner: #1081.
+None open. The two entries seeded from CI runs between 2026-10-23 and 2026-11-06 were fixed by #1095 (#1081) and this pull request (#1082).

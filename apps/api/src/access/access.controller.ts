@@ -3,6 +3,7 @@ import type { ActorContext } from './access.types.js';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from './actor-context.adapter.js';
 
 @Controller('access')
@@ -10,6 +11,6 @@ export class AccessController {
   @Get('current-actor')
   @UseGuards(ActorContextAdapter)
   currentActor(@Req() request: ActorContextRequest): ActorContext {
-    return request.actorContext!;
+    return requireActorContext(request);
   }
 }
