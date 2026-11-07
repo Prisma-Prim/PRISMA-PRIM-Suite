@@ -116,7 +116,26 @@ OpenAI runs two kinds of Cloud environment. A task started from the ChatGPT Code
 
 ### Current environment
 
-The published `PRISMA-PRIM-Suite` current environment has its own Install script and Start skill, kept in the Codex settings rather than in this repository. The Install script works without root:
+The published `PRISMA-PRIM-Suite` current environment keeps its Install script and Start skill in this repository (#1164); the Codex settings hold only these two entries:
+
+| Setting        | Value                                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Install script | `bash /workspace/PRISMA-PRIM-Suite/scripts/codex-cloud-current-install.sh`                                                                                   |
+| Start skill    | `Before any command, read /workspace/PRISMA-PRIM-Suite/docs/agents/codex-cloud-current-start-skill.txt and follow it: it is this environment's start skill.` |
+
+Change either file through an ordinary pull request; `scripts/codex-cloud-current-install.test.mjs` guards their shared pins. A change takes effect when Codex rebuilds the environment: to apply it at once, edit the environment and publish it again. Keep "Enable all public internet access" off and the package-manager domains on. The settings also allow these 21 additional domains, recorded on 2026-11-07:
+
+| Domains                                                                                                              | Purpose                                                      |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `api.github.com`, `uploads.github.com`, `results-receiver.actions.githubusercontent.com`                             | GitHub CLI, release uploads (#750), GitHub Actions results   |
+| `productionresultssa{0,1,2,8,9,10,11,13,15,19}.blob.core.windows.net`                                                | GitHub Actions log and artifact downloads (#601, #618, #775) |
+| `cdn.playwright.dev`, `playwright.download.prss.microsoft.com`                                                       | Playwright Chromium                                          |
+| `public.ecr.aws`                                                                                                     | Docker Official Images from Amazon ECR Public                |
+| `boss-tarpon-28.clerk.accounts.dev`                                                                                  | Clerk development instance (#652)                            |
+| `sdmntprdenmarkeast.oaiusercontent.com`, `sdmntpritalynorth.oaiusercontent.com`, `sdmntprnortheu.oaiusercontent.com` | ChatGPT connector file hosts (#775)                          |
+| `d2qlxqk2uabbnd.cloudfront.net`                                                                                      | Not recorded; keep until a task proves it unused             |
+
+GitHub redirects each log or artifact download to one of many numbered `productionresultssaN` storage hosts, so a task occasionally meets a new number. Do not add another one, and do not allow `*.blob.core.windows.net`, which would open every Azure storage account: read a failed job through its check-run annotations and step summary on `api.github.com`, as [issue execution](issue-execution.md#ci-and-merge) prescribes, and download complete logs from a local harness. The Install script works without root:
 
 - it keeps private caches under `/workspace/prisma-cloud-tools`, pins the GitHub CLI and pnpm 11.20.0, and installs the frozen dependencies and Playwright Chromium;
 - it pulls a pinned `postgres:17-alpine` image for the Docker daemon the environment provides, and leaves no service running.
@@ -131,7 +150,7 @@ node scripts/managed-postgres.mjs -- corepack pnpm --filter @prisma-prim/api exe
 
 On 2026-11-07 an environment-check task in that environment ran these three commands with exit code 0: every doctor check passed, the migrations applied, and the 16 Company REST tests passed. The `ERROR … forced Company Activity Log failure` that the last command prints comes from a test that forces that failure on purpose.
 
-Do not replace this Install script with the repository setup script below without first proving the replacement in an unpublished draft: the repository script installs PostgreSQL with `apt-get`, which needs root.
+Prove any change to the Install script in an unpublished draft before publishing it. Do not replace it with the legacy setup script below: that script installs PostgreSQL with `apt-get`, which needs root.
 
 ### Legacy environment
 
