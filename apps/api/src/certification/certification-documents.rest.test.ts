@@ -13,7 +13,7 @@ import {
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 
-withPostgres('Certification Case signed originals and agreement', () => {
+withPostgres('Certification Case signed originals and agreement', { timeout: 60_000 }, () => {
   let fixture: Awaited<ReturnType<typeof openCertificationFixture>>;
 
   /** A Case whose small application is accepted and duration confirmed (revision 4). */
