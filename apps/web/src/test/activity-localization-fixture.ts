@@ -472,6 +472,18 @@ export const activityEventsByAction = {
     action: 'company_certification_programme_manager_assignment.revoked',
     target: targets.company_role_assignment,
   },
+  'company_certification_approver_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_certification_approver_assignment.granted',
+    action: 'company_certification_approver_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_certification_approver_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_certification_approver_assignment.revoked',
+    action: 'company_certification_approver_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_task_manager_assignment.revoked': {
     ...ordinary,
     id: 'event-company_task_manager_assignment.revoked',

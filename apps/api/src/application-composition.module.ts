@@ -50,6 +50,7 @@ import { CompanyIdeasReviewerAssignmentController } from './access/company-ideas
 import { IdeasController } from './ideas/ideas.controller.js';
 import { IdeasModule } from './ideas/ideas.module.js';
 import {
+  CompanyCertificationApproverAssignmentController,
   CompanyCertificationProgrammeManagerAssignmentController,
   CompanyCertificationReaderAssignmentController,
 } from './access/company-certification-assignment.controller.js';
@@ -254,6 +255,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     IdeasController,
     CompanyCertificationReaderAssignmentController,
     CompanyCertificationProgrammeManagerAssignmentController,
+    CompanyCertificationApproverAssignmentController,
     CertificationController,
     OperationalRiskController,
     ProjectTemplateController,

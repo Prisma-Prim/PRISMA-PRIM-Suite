@@ -5,6 +5,12 @@ import { useCertificationCopy } from './certification.copy';
 import { AgreementView } from './CertificationDocumentViews';
 import { DurationView } from './CertificationDurationViews';
 import {
+  DecisionView,
+  TeamView,
+  decisionLabel,
+  type KnownPeople,
+} from './CertificationTeamViews';
+import {
   REVIEW_CRITERIA,
   type ApplicationFacts,
   type ApplicationReview,
@@ -162,6 +168,13 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       : detail.duration
         ? copy('stepToRecord')
         : copy('stepWaitingDuration');
+  const team = closed
+    ? copy('stepClosed')
+    : detail.team
+      ? formatMessage(copy('stepRecorded'), { version: detail.team.version })
+      : detail.agreement
+        ? copy('stepToRecord')
+        : copy('stepWaitingAgreement');
   return (
     <ol className="certification-steps" aria-label={copy('steps')}>
       <li data-current={detail.nextStep === 'application'}>
@@ -176,8 +189,30 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       <li data-current={detail.nextStep === 'agreement'}>
         <strong>{copy('stepAgreement')}</strong> {agreement}
       </li>
+      <li data-current={detail.nextStep === 'team'}>
+        <strong>{copy('stepTeam')}</strong> {team}
+      </li>
+      <li data-current={detail.nextStep === 'team_decision'}>
+        <strong>{copy('stepTeamDecision')}</strong> {teamDecisionState(detail)}
+      </li>
     </ol>
   );
+
+  /** The decision on the latest team version, or what it waits for. */
+  function teamDecisionState(current: CaseDetail): string {
+    if (closed) return copy('stepClosed');
+    const { team: proposed, teamDecision: decided } = current;
+    if (!proposed) return copy('stepWaitingTeam');
+    const version = { version: proposed.version };
+    if (decided?.value.teamVersion !== proposed.version)
+      return formatMessage(copy('stepToDecide'), version);
+    return formatMessage(
+      copy(
+        decided.value.decision === 'approved' ? 'stepApproved' : 'stepReturned',
+      ),
+      version,
+    );
+  }
 }
 
 export function NextStepLabel({ step }: { step: CertificationNextStep }) {
@@ -193,6 +228,10 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
       return <>{copy('nextAgreement')}</>;
     case 'team':
       return <>{copy('nextTeam')}</>;
+    case 'team_decision':
+      return <>{copy('nextTeamDecision')}</>;
+    case 'stage_1_plan':
+      return <>{copy('nextStage1Plan')}</>;
     case null:
       return <>{copy('nextNone')}</>;
   }
@@ -201,14 +240,17 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
 
 /**
  * Every recorded version in server order, each with its exact values; an
- * agreement names its signed original from the Case's register.
+ * agreement names its signed original from the Case's register and a team
+ * names the linked Workspace members known in the Case.
  */
 export function TimelineView({
   timeline,
   register,
+  people,
 }: {
   timeline: CaseTimeline;
   register: DocumentRegister;
+  people: KnownPeople;
 }) {
   const copy = useCertificationCopy();
   if (timeline.entries.length === 0) return <p>{copy('timelineEmpty')}</p>;
@@ -216,7 +258,7 @@ export function TimelineView({
     <ol className="certification-timeline">
       {timeline.entries.map((entry) => (
         <li key={entry.id}>
-          <TimelineEntry entry={entry} register={register} />
+          <TimelineEntry entry={entry} register={register} people={people} />
         </li>
       ))}
     </ol>
@@ -226,9 +268,11 @@ export function TimelineView({
 function TimelineEntry({
   entry,
   register,
+  people,
 }: {
   entry: StepVersion;
   register: DocumentRegister;
+  people: KnownPeople;
 }) {
   const copy = useCertificationCopy();
   const values = (title: string, recorded: ReactNode) => (
@@ -263,6 +307,19 @@ function TimelineEntry({
       return values(
         formatMessage(copy('timelineAgreement'), { version: entry.version }),
         <AgreementView agreement={entry.value} register={register} />,
+      );
+    case 'team':
+      return values(
+        formatMessage(copy('timelineTeam'), { version: entry.version }),
+        <TeamView team={entry.value} people={people} />,
+      );
+    case 'team_decision':
+      return values(
+        formatMessage(copy('timelineTeamDecision'), {
+          decision: copy(decisionLabel(entry.value.decision)),
+          version: entry.value.teamVersion,
+        }),
+        <DecisionView decision={entry.value} />,
       );
   }
   return unexpected(entry);

@@ -16,6 +16,7 @@ export const certificationTables = [
 const roles = [
   'company_certification_reader',
   'company_certification_programme_manager',
+  'company_certification_approver',
 ];
 const additions: Readonly<Record<string, readonly string[]>> = {
   company_role_bundle: roles,

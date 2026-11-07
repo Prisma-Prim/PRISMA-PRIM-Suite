@@ -5,12 +5,14 @@ import type { ActorContext } from '../access-types';
  * rechecks every grant live; this projection only decides what to offer.
  */
 export type CertificationAuthority =
-  { read: false; manage: false } | { read: true; manage: boolean };
+  | { read: false; manage: false; approve: false }
+  | { read: true; manage: boolean; approve: boolean };
 
 /**
- * Readers consult Cases; a programme manager also records steps. Like the
- * server, the programme manager role counts only alongside the reader grant.
- * An unrecognized permission, assignment or version fails closed.
+ * Readers consult Cases; a programme manager also records steps and an
+ * approver decides on the proposed audit team. Like the server, both roles
+ * count only alongside the reader grant. An unrecognized permission,
+ * assignment or version fails closed.
  */
 export function certificationAuthority(
   actor: ActorContext,
@@ -29,7 +31,7 @@ export function certificationAuthority(
       company?.certificationReaderAssignmentId,
       company?.certificationReaderPermissionSetVersion,
     );
-  if (!read) return { read: false, manage: false };
+  if (!read) return { read: false, manage: false, approve: false };
   return {
     read: true,
     manage: grant(
@@ -37,6 +39,12 @@ export function certificationAuthority(
       'certification.programme.manage',
       company?.certificationProgrammeManagerAssignmentId,
       company?.certificationProgrammeManagerPermissionSetVersion,
+    ),
+    approve: grant(
+      company?.certificationApproverPermissions,
+      'certification.approve',
+      company?.certificationApproverAssignmentId,
+      company?.certificationApproverPermissionSetVersion,
     ),
   };
 }
@@ -57,6 +65,9 @@ export function certificationContextKey(actor: ActorContext): string {
     company?.certificationProgrammeManagerAssignmentId,
     company?.certificationProgrammeManagerPermissionSetVersion,
     company?.certificationProgrammeManagerPermissions,
+    company?.certificationApproverAssignmentId,
+    company?.certificationApproverPermissionSetVersion,
+    company?.certificationApproverPermissions,
   ]);
 }
 

@@ -200,12 +200,10 @@ describe('Certification signed originals and agreement', () => {
     ).toBeVisible();
     expect(definition(agreement, 'Signed on')).toBe('Nov 2, 2026');
     expect(definition(agreement, 'Signed original')).toBe(SIGNED_REFERENCE);
+    // The audit team follows the agreement; a reader sees no form there.
     expect(
-      screen.getByText(
-        'The certification agreement is recorded. The next step, the audit team, is not available in this version yet.',
-      ),
+      within(region('Audit team')).getByText('No audit team is proposed yet.'),
     ).toBeVisible();
-    expect(screen.getAllByText('Audit team').length).toBeGreaterThanOrEqual(1);
     expect(timelineTitles().at(-1)).toBe('Certification agreement — version 1');
 
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
@@ -532,9 +530,9 @@ describe('Certification signed originals and agreement', () => {
       SIGNED_REFERENCE,
     );
     expect(
-      screen.getByText(
-        'The certification agreement is recorded. The next step, the audit team, is not available in this version yet.',
-      ),
+      within(region('Audit team')).getByRole('form', {
+        name: 'Propose the team',
+      }),
     ).toBeVisible();
 
     fireEvent.click(

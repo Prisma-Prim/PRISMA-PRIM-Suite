@@ -1,3 +1,4 @@
+import type { AuditTeam, TeamDecision } from './certification-team.js';
 import type {
   DURATION_RULE_VERSION,
   DurationProposal,
@@ -138,7 +139,9 @@ export type CertificationStepVersion =
       value: ApplicationReview;
     })
   | (StepVersionBase & { step: 'duration'; value: DurationDetermination })
-  | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement });
+  | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement })
+  | (StepVersionBase & { step: 'team'; value: AuditTeam })
+  | (StepVersionBase & { step: 'team_decision'; value: TeamDecision });
 
 export type ApplicationVersion = Extract<
   CertificationStepVersion,
@@ -155,6 +158,11 @@ export type DurationVersion = Extract<
 export type AgreementVersion = Extract<
   CertificationStepVersion,
   { step: 'agreement' }
+>;
+export type TeamVersion = Extract<CertificationStepVersion, { step: 'team' }>;
+export type TeamDecisionVersion = Extract<
+  CertificationStepVersion,
+  { step: 'team_decision' }
 >;
 
 export interface CertificationAttachment {
@@ -198,6 +206,8 @@ export type CertificationNextStep =
   | 'duration'
   | 'agreement'
   | 'team'
+  | 'team_decision'
+  | 'stage_1_plan'
   | null;
 
 export interface CertificationCaseSummary {
@@ -221,6 +231,8 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   applicationReview: ApplicationReviewVersion | null;
   duration: DurationVersion | null;
   agreement: AgreementVersion | null;
+  team: TeamVersion | null;
+  teamDecision: TeamDecisionVersion | null;
 }
 
 export interface CertificationCaseList {
