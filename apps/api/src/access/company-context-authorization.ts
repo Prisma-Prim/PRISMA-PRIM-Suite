@@ -66,7 +66,7 @@ import {
 } from '../database/schema/index.js';
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
-  COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_CONTEXT_CONFERRING_BUNDLES,
   COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
   COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
   COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
@@ -175,11 +175,6 @@ import {
 } from './certification-captured-grants.js';
 import { captureContractModelGrant } from './contract-model-captured-grants.js';
 import { captureOfferModelGrant } from './offer-model-captured-grants.js';
-
-const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
-  ...COMPANY_CONTEXT_USE_BUNDLES,
-  COMPANY_PROJECT_ACCESS_BUNDLE,
-] as const;
 
 // Every captured Registrar version carries Document metadata and
 // Representation read; null or unknown versions fail closed.
@@ -570,7 +565,7 @@ export class CompanyContextAuthorization {
           eq(companyRoleAssignments.companyId, companyId),
           inArray(
             companyRoleAssignments.bundle,
-            COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
+            COMPANY_CONTEXT_CONFERRING_BUNDLES,
           ),
           isNull(companyRoleAssignments.revokedAt),
         ),
@@ -2808,7 +2803,7 @@ export class CompanyContextAuthorization {
           eq(companyRoleAssignments.companyId, companyId),
           inArray(
             companyRoleAssignments.bundle,
-            COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
+            COMPANY_CONTEXT_CONFERRING_BUNDLES,
           ),
           isNull(companyRoleAssignments.revokedAt),
         ),
@@ -2848,7 +2843,7 @@ export class CompanyContextAuthorization {
         actor.workspaceMembershipId,
       ),
       inArray(sql`${companyRoleAssignments.bundle}::text`, [
-        ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
+        ...COMPANY_CONTEXT_CONFERRING_BUNDLES,
         COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
         COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
         COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
@@ -3456,7 +3451,7 @@ export class CompanyContextAuthorization {
         company.offerApproverPermissionSetVersion = row.permissionSetVersion;
       }
       if (
-        COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
+        COMPANY_CONTEXT_CONFERRING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
         )
       ) {

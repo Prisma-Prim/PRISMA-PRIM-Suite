@@ -20,6 +20,27 @@ withPostgres('Company mission plans through public REST', () => {
   });
   beforeEach(async () => f.reset());
   afterAll(async () => f?.close());
+  it('lists live Mission Plan grants in the access administration state', async () => {
+    const who = { subject: 'pilot-colleague', workspaceId: f.workspaceId };
+    const member = text(
+      (await f.read('/access/current-actor', { ...who, companyId: '' }))
+        .workspaceMembershipId,
+    );
+    await f.grant('/company-context-assignments', member);
+    const configuration = await f.grant(
+      '/company-mission-plan-configuration-assignments',
+      member,
+    );
+    const user = await f.grant(
+      '/company-mission-plan-user-assignments',
+      member,
+    );
+    const administration = await f.read(
+      '/company-context-assignments/administration',
+    );
+    expect(administration.assignments).toContainEqual(configuration);
+    expect(administration.assignments).toContainEqual(user);
+  });
   it('publishes and reopens an immutable plan through a dedicated configurator without Project, Task or Client read', async () => {
     const subject = 'pilot-colleague';
     const who = { subject, workspaceId: f.workspaceId };

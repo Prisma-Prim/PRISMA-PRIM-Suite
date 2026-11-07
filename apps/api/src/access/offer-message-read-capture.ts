@@ -10,11 +10,10 @@ import {
 } from '../database/schema/index.js';
 import type { ActorContext } from './access.types.js';
 import {
-  type CompanyRoleBundle,
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
-  COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_CONTEXT_CONFERRING_BUNDLES,
   COMPANY_OFFER_APPROVER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
@@ -22,11 +21,6 @@ import {
   offerApproverPermissionsFor,
   offerPreparerPermissionsFor,
 } from './company-permissions.js';
-
-const contextBundles: CompanyRoleBundle[] = [
-  ...COMPANY_CONTEXT_USE_BUNDLES,
-  COMPANY_PROJECT_ACCESS_BUNDLE,
-];
 
 /** Access-internal selection shared by projection and protected observation.
  * Only one native Intake, Offer reader and independent context are consumed.
@@ -92,7 +86,7 @@ export async function readOfferMessageReadCapture(input: {
       and(
         scope,
         inArray(companyRoleAssignments.bundle, [
-          ...contextBundles,
+          ...COMPANY_CONTEXT_CONFERRING_BUNDLES,
           COMPANY_COMMERCIAL_INTAKE_BUNDLE,
           COMPANY_OFFER_PREPARER_BUNDLE,
           COMPANY_OFFER_APPROVER_BUNDLE,
@@ -142,7 +136,11 @@ export async function readOfferMessageReadCapture(input: {
     ? (await managerQuery)[0]
     : undefined;
   const context = rows
-    .filter((row) => contextBundles.some((bundle) => bundle === row.bundle))
+    .filter((row) =>
+      COMPANY_CONTEXT_CONFERRING_BUNDLES.some(
+        (bundle) => bundle === row.bundle,
+      ),
+    )
     .sort((left, right) => {
       const rank = (bundle: string) =>
         bundle === COMPANY_CONTEXT_ACCESS_BUNDLE

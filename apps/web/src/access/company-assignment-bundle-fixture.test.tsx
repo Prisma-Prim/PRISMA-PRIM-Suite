@@ -6,6 +6,7 @@ import {
 } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { CompanyContextAccess } from './CompanyContextAccess';
+import { companyAccessAdministrationResponse } from './company-access-administration-response';
 import {
   assignmentAdministration,
   assignmentAdministrator,
@@ -23,6 +24,13 @@ import {
 const fixtureFile =
   'apps/web/src/access/company-assignment-localization.test-fixtures.ts';
 const registryFile = 'apps/api/src/access/company-permissions.ts';
+
+// Registry bundles this screen deliberately does not offer: Knowledge
+// assignments are granted through the Knowledge module's own routes.
+const NOT_OFFERED_ON_THE_SCREEN: ReadonlySet<string> = new Set([
+  'Company Knowledge Source Administrator',
+  'Company Knowledge Evidence Reader',
+]);
 
 interface OfferedBundle {
   value: string;
@@ -134,6 +142,12 @@ function bundleFixtureDivergences({
         `Bundle "${bundle.value}" uses version ${JSON.stringify(bundle.version)}, but COMPANY_ROLE_BUNDLES captures ${captured.length === 0 ? 'no version (use null)' : captured.join(', ')} for "${bundle.canonical}".`,
       );
   }
+  const fixtureCanonicals = new Set(fixture.map((bundle) => bundle.canonical));
+  for (const label of registry.keys())
+    if (!fixtureCanonicals.has(label) && !NOT_OFFERED_ON_THE_SCREEN.has(label))
+      problems.push(
+        `COMPANY_ROLE_BUNDLES has "${label}" but the Company access screen does not offer it. Add its option, route and assignmentBundleCases entry, or list it in NOT_OFFERED_ON_THE_SCREEN with the reason.`,
+      );
   return problems;
 }
 
@@ -233,6 +247,9 @@ it('names a bundle the screen offers but the fixture lacks, where to add it and 
     expect.stringContaining(
       'The screen offers bundle "beta" (shown as "Beta label")',
     ),
+    expect.stringContaining(
+      'COMPANY_ROLE_BUNDLES has "Company Beta" but the Company access screen does not offer it',
+    ),
   ]);
   expect(problems[0]).toContain('right after "alpha"');
   const message = outOfSyncMessage(problems);
@@ -282,5 +299,59 @@ it('names a fixture label or version the registry does not capture', () => {
     expect.stringContaining(
       'Bundle "gamma" uses version "v9", but COMPANY_ROLE_BUNDLES captures v1, v2',
     ),
+    expect.stringContaining(
+      'COMPANY_ROLE_BUNDLES has "Company Alpha" but the Company access screen does not offer it',
+    ),
   ]);
+});
+
+it('names a registry bundle the screen does not offer unless it is deliberately left out', () => {
+  const withNewBundle: RegistryVersions = new Map([
+    ...registry,
+    ['Company Delta', ['v1']],
+    ['Company Knowledge Evidence Reader', ['v1']],
+  ]);
+  expect(
+    bundleFixtureDivergences({ offered, fixture, registry: withNewBundle }),
+  ).toEqual([
+    expect.stringContaining(
+      'COMPANY_ROLE_BUNDLES has "Company Delta" but the Company access screen does not offer it',
+    ),
+  ]);
+});
+
+it('reads every registry label and captured version in the administration state, and no other version', () => {
+  const registryVersions = registryVersionsOf(
+    Object.values(registryModules)[0],
+  );
+  const base = assignmentAdministration();
+  const assignmentsOf = (
+    bundle: string,
+    versions: readonly (string | null)[],
+  ) =>
+    versions.map((permissionSetVersion, index) => ({
+      id: `44444444-4444-4444-8444-${String(index + 1).padStart(12, '0')}`,
+      workspaceMembershipId: base.members[0]?.workspaceMembershipId,
+      companyId: base.companies[0]?.id,
+      bundle,
+      permissionSetVersion,
+      active: true,
+    }));
+  for (const [bundle, versions] of registryVersions) {
+    const captured = versions.length === 0 ? [null] : versions;
+    expect(
+      companyAccessAdministrationResponse({
+        ...base,
+        assignments: assignmentsOf(bundle, captured),
+      }).assignments.map((assignment) => assignment.permissionSetVersion),
+    ).toEqual(captured);
+    expect(() =>
+      companyAccessAdministrationResponse({
+        ...base,
+        assignments: assignmentsOf(bundle, [
+          versions.length === 0 ? 'v1' : 'v99',
+        ]),
+      }),
+    ).toThrow();
+  }
 });
