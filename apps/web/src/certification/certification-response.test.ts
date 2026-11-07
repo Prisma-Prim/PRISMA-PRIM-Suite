@@ -8,9 +8,11 @@ import {
   parseTimeline,
 } from './certification-response';
 import {
+  NO_CONFLICT,
   certificationIds,
   lactisFacts,
   reviewCriteria,
+  teamMember,
 } from './certification.test-fixture';
 
 const scope = {
@@ -62,6 +64,8 @@ function detail(overrides: Record<string, unknown> = {}) {
     applicationReview: review,
     duration: null,
     agreement: null,
+    team: null,
+    teamDecision: null,
     ...overrides,
   };
 }
@@ -668,5 +672,361 @@ describe('Certification signed originals and agreement parsers', () => {
     ],
   ])('fails closed on eligible PDFs with %s', (_name, value) => {
     expect(() => parseEligibleDocuments(value, caseId)).toThrow();
+  });
+});
+
+const auditor = teamMember({
+  name: 'Ion Demo',
+  role: 'auditor',
+  holdsCategory: false,
+  competenceNote: 'ISO 22000 auditor',
+  workspaceMembershipId: 'member-2',
+});
+const team = {
+  id: 'step-5',
+  step: 'team',
+  version: 1,
+  caseRevision: 7,
+  reason: null,
+  recordedBy: by,
+  recordedAt: '2026-11-07T08:06:00.000Z',
+  value: { members: [teamMember(), auditor] },
+};
+const returned = {
+  id: 'step-6',
+  step: 'team_decision',
+  version: 1,
+  caseRevision: 8,
+  reason: null,
+  recordedBy: by,
+  recordedAt: '2026-11-07T08:07:00.000Z',
+  value: {
+    teamVersion: 1,
+    decision: 'returned',
+    reason: 'Add an auditor for the second shift.',
+  },
+};
+const corrected = {
+  ...team,
+  id: 'step-7',
+  version: 2,
+  caseRevision: 9,
+  reason: 'Auditor added as requested.',
+  recordedAt: '2026-11-07T08:08:00.000Z',
+};
+const approved = {
+  ...returned,
+  id: 'step-8',
+  version: 2,
+  caseRevision: 10,
+  recordedAt: '2026-11-07T08:09:00.000Z',
+  value: { teamVersion: 2, decision: 'approved', reason: null },
+};
+/** Agreement at revision 6, the team proposed at 7 and awaiting its decision. */
+function teamedDetail(overrides: Record<string, unknown> = {}) {
+  return agreedDetail({
+    revision: 7,
+    nextStep: 'team_decision',
+    team,
+    teamDecision: null,
+    ...overrides,
+  });
+}
+function withMembers(members: unknown[]) {
+  return teamedDetail({ team: { ...team, value: { members } } });
+}
+const conflicted = teamMember({
+  declarations: { ...NO_CONFLICT, noConsultancy: false },
+  conflictNote: 'Delivered a training to the client last year.',
+});
+
+describe('Certification audit team and decision parsers', () => {
+  it('reads a proposed team awaiting its decision with every exact member value', () => {
+    const parsed = parseCaseDetail(teamedDetail(), { ...scope, caseId });
+    expect(parsed.nextStep).toBe('team_decision');
+    expect(parsed.team?.value.members).toEqual([teamMember(), auditor]);
+    expect(parsed.teamDecision).toBeNull();
+    expect(
+      parseCaseDetail(
+        teamedDetail({ team: { ...team, value: { members: [conflicted] } } }),
+        {
+          ...scope,
+          caseId,
+        },
+      ).team?.value.members[0]?.conflictNote,
+    ).toBe('Delivered a training to the client last year.');
+  });
+
+  it('reads a return, a new version with its reason, then the approval', () => {
+    expect(
+      parseCaseDetail(
+        teamedDetail({ revision: 8, nextStep: 'team', teamDecision: returned }),
+        { ...scope, caseId },
+      ).teamDecision?.value,
+    ).toEqual({
+      teamVersion: 1,
+      decision: 'returned',
+      reason: 'Add an auditor for the second shift.',
+    });
+    const pending = parseCaseDetail(
+      teamedDetail({ revision: 9, team: corrected, teamDecision: returned }),
+      { ...scope, caseId },
+    );
+    expect(pending).toMatchObject({
+      nextStep: 'team_decision',
+      team: { version: 2, reason: 'Auditor added as requested.' },
+      teamDecision: { value: { teamVersion: 1 } },
+    });
+    const plan = parseCaseDetail(
+      teamedDetail({
+        revision: 10,
+        nextStep: 'stage_1_plan',
+        team: corrected,
+        teamDecision: approved,
+      }),
+      { ...scope, caseId },
+    );
+    expect(plan.nextStep).toBe('stage_1_plan');
+    expect(plan.teamDecision?.value).toEqual({
+      teamVersion: 2,
+      decision: 'approved',
+      reason: null,
+    });
+    expect(
+      parseTimeline(
+        {
+          caseId,
+          entries: [
+            application,
+            review,
+            duration,
+            agreement,
+            team,
+            returned,
+            corrected,
+            approved,
+          ],
+        },
+        caseId,
+      ).entries.map((entry) => entry.step),
+    ).toEqual([
+      'application',
+      'application_review',
+      'duration',
+      'agreement',
+      'team',
+      'team_decision',
+      'team',
+      'team_decision',
+    ]);
+  });
+
+  it.each([
+    [
+      'a Case read without the team fields',
+      Object.fromEntries(
+        Object.entries(teamedDetail()).filter(
+          ([key]) => key !== 'team' && key !== 'teamDecision',
+        ),
+      ),
+    ],
+    [
+      'a team without an agreement',
+      durationDetail({}, { revision: 7, nextStep: 'team_decision', team }),
+    ],
+    [
+      'a team at the agreement revision',
+      teamedDetail({ team: { ...team, caseRevision: 6 } }),
+    ],
+    [
+      'a team before the first agreement',
+      teamedDetail({
+        agreement: { ...agreement, caseRevision: 7 },
+        team: { ...team, caseRevision: 6 },
+      }),
+    ],
+    ['a team beyond the Case revision', teamedDetail({ revision: 6 })],
+    ['the team still next once proposed', teamedDetail({ nextStep: 'team' })],
+    [
+      'the decision still next after a decision on the latest version',
+      teamedDetail({ revision: 8, teamDecision: returned }),
+    ],
+    [
+      'the Stage 1 plan next without an approval',
+      teamedDetail({ nextStep: 'stage_1_plan' }),
+    ],
+    [
+      'the Stage 1 plan next after a return',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'stage_1_plan',
+        teamDecision: returned,
+      }),
+    ],
+    [
+      'a decision on a team version that does not exist',
+      teamedDetail({
+        revision: 8,
+        teamDecision: {
+          ...returned,
+          value: { ...returned.value, teamVersion: 2 },
+        },
+      }),
+    ],
+    [
+      'a decision recorded before its team version',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        team: { ...team, caseRevision: 8 },
+        teamDecision: { ...returned, caseRevision: 7 },
+      }),
+    ],
+    [
+      'an earlier version decision at the revision of the latest team',
+      teamedDetail({
+        revision: 9,
+        nextStep: 'team_decision',
+        team: corrected,
+        teamDecision: { ...returned, caseRevision: 9 },
+      }),
+    ],
+    [
+      'a second decision on the first team version',
+      teamedDetail({
+        revision: 9,
+        nextStep: 'team_decision',
+        team: corrected,
+        teamDecision: { ...returned, version: 2 },
+      }),
+    ],
+    [
+      'an approval of a team with a declared conflict',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'stage_1_plan',
+        team: { ...team, value: { members: [conflicted] } },
+        teamDecision: {
+          ...returned,
+          value: { teamVersion: 1, decision: 'approved', reason: null },
+        },
+      }),
+    ],
+    [
+      'a first team with a reason',
+      teamedDetail({ team: { ...team, reason: 'Not a correction' } }),
+    ],
+    [
+      'a new team version without a reason',
+      teamedDetail({ team: { ...team, version: 2 } }),
+    ],
+    [
+      'a decision with a correction reason',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: { ...returned, reason: 'Not a correction' },
+      }),
+    ],
+    [
+      'a return without its reason',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: {
+          ...returned,
+          value: { ...returned.value, reason: null },
+        },
+      }),
+    ],
+    [
+      'an approval with a reason',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'stage_1_plan',
+        teamDecision: {
+          ...returned,
+          value: { teamVersion: 1, decision: 'approved', reason: 'Fine.' },
+        },
+      }),
+    ],
+    [
+      'two team leaders',
+      withMembers([teamMember(), teamMember({ name: 'Second leader' })]),
+    ],
+    ['a team without a leader', withMembers([auditor])],
+    [
+      'a category held only by an auditor',
+      withMembers([
+        teamMember({ holdsCategory: false }),
+        { ...auditor, holdsCategory: true },
+      ]),
+    ],
+    [
+      'a category held only by an observer',
+      withMembers([
+        teamMember({ holdsCategory: false }),
+        { ...auditor, role: 'observer', holdsCategory: true },
+      ]),
+    ],
+    [
+      'a declared conflict without its description',
+      withMembers([{ ...conflicted, conflictNote: null }]),
+    ],
+    [
+      'a conflict description without a declared conflict',
+      withMembers([teamMember({ conflictNote: 'Nothing to declare.' })]),
+    ],
+    [
+      'an unanswered declaration',
+      withMembers([
+        teamMember({
+          declarations: {
+            noConsultancy: true,
+            noEmployment: true,
+            noManagementInvolvement: true,
+          },
+        }),
+      ]),
+    ],
+    [
+      'an unknown declaration',
+      withMembers([
+        teamMember({ declarations: { ...NO_CONFLICT, noFamilyTies: true } }),
+      ]),
+    ],
+    [
+      'one membership linked to two members',
+      withMembers([teamMember({ workspaceMembershipId: 'member-2' }), auditor]),
+    ],
+    [
+      'eleven members',
+      withMembers([
+        teamMember(),
+        ...Array.from({ length: 10 }, (_, index) => ({
+          ...auditor,
+          name: `Auditor ${index}`,
+          workspaceMembershipId: null,
+        })),
+      ]),
+    ],
+    [
+      'an unknown role',
+      withMembers([teamMember(), { ...auditor, role: 'trainee' }]),
+    ],
+    [
+      'a category flag that is not a boolean',
+      withMembers([teamMember({ holdsCategory: 'yes' })]),
+    ],
+    [
+      'a team in the decision field',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: { ...team, caseRevision: 8 },
+      }),
+    ],
+  ])('fails closed on %s', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
   });
 });

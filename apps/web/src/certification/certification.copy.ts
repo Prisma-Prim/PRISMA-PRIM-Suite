@@ -9,6 +9,10 @@ const keys = [
   'readerRevoked',
   'managerGranted',
   'managerRevoked',
+  'approverBundle',
+  'approverPrerequisites',
+  'approverGranted',
+  'approverRevoked',
 
   'title',
   'introduction',
@@ -47,6 +51,8 @@ const keys = [
   'nextDuration',
   'nextAgreement',
   'nextTeam',
+  'nextTeamDecision',
+  'nextStage1Plan',
   'nextNone',
   'openedBy',
   'openedAt',
@@ -83,6 +89,13 @@ const keys = [
   'stepAccepted',
   'stepRejected',
   'stepClosed',
+  'stepTeam',
+  'stepTeamDecision',
+  'stepWaitingAgreement',
+  'stepWaitingTeam',
+  'stepToDecide',
+  'stepApproved',
+  'stepReturned',
 
   'applicationTitle',
   'applicationMissing',
@@ -149,7 +162,7 @@ const keys = [
   'blockedClosed',
   'blockedCorrectionReason',
   'blockedCorrectionUnchanged',
-  'nextTeamPending',
+  'nextStagePlanPending',
 
   'durationTitle',
   'durationMissing',
@@ -289,12 +302,76 @@ const keys = [
   'blockedAgreementBeforeDuration',
   'blockedAgreementCorrectionReason',
 
+  'teamTitle',
+  'teamMissing',
+  'teamHelp',
+  'teamMember',
+  'teamMemberName',
+  'teamMemberRole',
+  'selectTeamRole',
+  'teamRoleLeader',
+  'teamRoleAuditor',
+  'teamRoleTechnicalExpert',
+  'teamRoleObserver',
+  'teamMemberLink',
+  'teamMemberNotLinked',
+  'teamMemberLinkHelp',
+  'teamMemberLinkedUnknown',
+  'teamMemberYou',
+  'holdsCategory',
+  'competenceNote',
+  'declarations',
+  'declarationNoConsultancy',
+  'declarationNoEmployment',
+  'declarationNoManagementInvolvement',
+  'declarationConfidentiality',
+  'conflictNote',
+  'conflictNoteHelp',
+  'conflictDeclared',
+  'addTeamMember',
+  'removeTeamMember',
+  'proposeTeam',
+  'correctTeam',
+  'teamCorrectionHelp',
+  'teamValidation',
+  'teamConflictNoteRequired',
+  'teamLinkInvalid',
+  'teamLeaderRule',
+  'teamCategoryRule',
+  'teamMemberUnknown',
+  'blockedTeamBeforeAgreement',
+  'blockedTeamCorrectionReason',
+  'teamStatusPending',
+  'teamStatusApproved',
+  'teamStatusReturned',
+  'teamReturnedNote',
+  'teamAwaitingApprover',
+  'decisionTitle',
+  'decisionMissing',
+  'decisionHelp',
+  'decisionChoice',
+  'decisionApprove',
+  'decisionReturn',
+  'decisionReason',
+  'recordDecision',
+  'decisionTeamVersion',
+  'decisionApproved',
+  'decisionReturned',
+  'decisionEarlierVersion',
+  'decisionValidation',
+  'decisionConflictOnly',
+  'teamConflictDeclared',
+  'teamIndependence',
+  'blockedTeamNotPending',
+
   'timelineTitle',
   'timelineEmpty',
   'timelineApplication',
   'timelineReview',
   'timelineDuration',
   'timelineAgreement',
+  'timelineTeam',
+  'timelineTeamDecision',
   'showValues',
 ] as const;
 
@@ -312,10 +389,15 @@ export const certificationMessages = defineMessages(keys, {
     readerRevoked: 'revoked Certification Reader',
     managerGranted: 'granted Certification Programme Manager',
     managerRevoked: 'revoked Certification Programme Manager',
+    approverBundle: 'Company Certification Approver',
+    approverPrerequisites:
+      'A Certification Approver acts only while also holding Company Certification Reader in the same Company. An approver linked to a member of a proposed team cannot decide on that team.',
+    approverGranted: 'granted Certification Approver',
+    approverRevoked: 'revoked Certification Approver',
 
     title: 'Certification',
     introduction:
-      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals and the certification agreement, with every recorded version.',
+      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals, the certification agreement and the audit team with its approval, with every recorded version.',
     refresh: 'Refresh Certification Cases',
     loading: 'Loading Certification Cases…',
     caseLoading: 'Loading the Certification Case…',
@@ -358,6 +440,8 @@ export const certificationMessages = defineMessages(keys, {
     nextDuration: 'Audit duration',
     nextAgreement: 'Certification agreement',
     nextTeam: 'Audit team',
+    nextTeamDecision: 'Team decision',
+    nextStage1Plan: 'Stage 1 audit plan',
     nextNone: 'None',
     openedBy: 'Opened by',
     openedAt: 'Opened on',
@@ -400,6 +484,13 @@ export const certificationMessages = defineMessages(keys, {
     stepAccepted: 'Accepted',
     stepRejected: 'Rejected',
     stepClosed: 'Not applicable: the Case is closed',
+    stepTeam: 'Audit team',
+    stepTeamDecision: 'Team decision',
+    stepWaitingAgreement: 'Waits for the agreement',
+    stepWaitingTeam: 'Waits for a proposed team',
+    stepToDecide: 'To decide — version {version}',
+    stepApproved: 'Approved — version {version}',
+    stepReturned: 'Returned — version {version}',
 
     applicationTitle: 'Application',
     applicationMissing: 'No application recorded yet.',
@@ -480,8 +571,8 @@ export const certificationMessages = defineMessages(keys, {
       'A correction needs a reason and a first application has none. Reload the Case before saving again.',
     blockedCorrectionUnchanged:
       'The correction changes no value. Change at least one value or cancel the correction.',
-    nextTeamPending:
-      'The certification agreement is recorded. The next step, the audit team, is not available in this version yet.',
+    nextStagePlanPending:
+      'The audit team is approved. The next step, the Stage 1 audit plan, is not available in this version yet.',
 
     durationTitle: 'Audit duration',
     durationMissing: 'No audit duration is confirmed yet.',
@@ -663,12 +754,97 @@ export const certificationMessages = defineMessages(keys, {
     blockedAgreementCorrectionReason:
       'A correction needs a reason and a first agreement has none. Reload the Case before saving again.',
 
+    teamTitle: 'Audit team',
+    teamMissing: 'No audit team is proposed yet.',
+    teamHelp:
+      'Propose the members who will audit this Case. The team has exactly one team leader, and the client’s food chain category is held by the team leader or, failing that, by a technical expert. Each member answers the four impartiality declarations explicitly; a “no” needs a description of the conflict.',
+    teamMember: 'Member {number}',
+    teamMemberName: 'Name',
+    teamMemberRole: 'Role in the team',
+    selectTeamRole: 'Select a role',
+    teamRoleLeader: 'Team leader',
+    teamRoleAuditor: 'Auditor',
+    teamRoleTechnicalExpert: 'Technical expert',
+    teamRoleObserver: 'Observer',
+    teamMemberLink: 'Workspace member',
+    teamMemberNotLinked: 'Not linked',
+    teamMemberLinkHelp:
+      'Optional. Only people already known in this Case can be linked: you and those who recorded a step or attached a document. A link lets the server keep that person from approving the team.',
+    teamMemberLinkedUnknown: 'Linked to a Workspace member',
+    teamMemberYou: '{name} (you)',
+    holdsCategory: 'Holds the client’s food chain category',
+    competenceNote: 'Competence',
+    declarations: 'Impartiality declarations',
+    declarationNoConsultancy: 'Provided no consultancy to the client',
+    declarationNoEmployment: 'Was not employed by the client',
+    declarationNoManagementInvolvement:
+      'Has no involvement in the client’s management',
+    declarationConfidentiality: 'Committed to confidentiality',
+    conflictNote: 'Description of the conflict',
+    conflictNoteHelp:
+      'Required because a declaration is answered no. A team with a declared conflict can be proposed, but it can only be returned, not approved.',
+    conflictDeclared: 'Conflict declared',
+    addTeamMember: 'Add a member',
+    removeTeamMember: 'Remove member {number}',
+    proposeTeam: 'Propose the team',
+    correctTeam: 'Propose a new team version',
+    teamCorrectionHelp:
+      'A new version replaces the current proposal, states its reason and needs a new decision by an approver. Earlier versions stay in the timeline.',
+    teamValidation:
+      'Complete every member: a name (at most 200 characters), a role, a competence note (at most 1,000 characters) and a yes or no answer to each declaration. A team has one to ten members.',
+    teamConflictNoteRequired:
+      'Describe the conflict (at most 1,000 characters) for every member with a declaration answered no.',
+    teamLinkInvalid:
+      'A Workspace member can be linked to one team member only. Choose another person or leave the link empty.',
+    teamLeaderRule: 'A team has exactly one team leader. Check the roles.',
+    teamCategoryRule:
+      'The team must hold the client’s category: the team leader holds it or, failing that, a technical expert who holds it joins the team. Observers do not count.',
+    teamMemberUnknown:
+      'A linked Workspace member is no longer active. Change that link or leave it empty.',
+    blockedTeamBeforeAgreement:
+      'The audit team is proposed once the certification agreement is recorded. Reload the Case.',
+    blockedTeamCorrectionReason:
+      'A new team version needs a reason and a first proposal has none. Reload the Case before saving again.',
+    teamStatusPending: 'Awaiting a decision',
+    teamStatusApproved: 'Approved',
+    teamStatusReturned: 'Returned',
+    teamReturnedNote:
+      'An approver returned this team. Propose a new version that answers the reason given.',
+    teamAwaitingApprover:
+      'An approver who is not on the team decides on this proposal.',
+    decisionTitle: 'Team decision',
+    decisionMissing: 'No decision is recorded yet.',
+    decisionHelp:
+      'Decide on team version {version}: approve it, or return it to the programme manager with a reason.',
+    decisionChoice: 'Decision',
+    decisionApprove: 'Approve the team',
+    decisionReturn: 'Return the team',
+    decisionReason: 'Reason for returning',
+    recordDecision: 'Record the decision',
+    decisionTeamVersion: 'Team version',
+    decisionApproved: 'Approved',
+    decisionReturned: 'Returned',
+    decisionEarlierVersion:
+      'This decision concerns team version {decided}. Version {current} awaits a decision.',
+    decisionValidation:
+      'Choose a decision. Returning the team needs a reason (at most 2,000 characters).',
+    decisionConflictOnly:
+      'A member of this team declared a conflict of interest, so the team cannot be approved. Return it with a reason.',
+    teamConflictDeclared:
+      'A team with a declared conflict of interest cannot be approved. Return it with a reason.',
+    teamIndependence:
+      'You cannot decide on this team: you are linked to a member of one of its versions. An approver who is not on the team must decide.',
+    blockedTeamNotPending:
+      'No proposed team awaits a decision any more. Reload the Case.',
+
     timelineTitle: 'Timeline',
     timelineEmpty: 'No step recorded yet.',
     timelineApplication: 'Application — version {version}',
     timelineReview: 'Application review — {outcome}',
     timelineDuration: 'Audit duration — version {version}',
     timelineAgreement: 'Certification agreement — version {version}',
+    timelineTeam: 'Audit team — version {version}',
+    timelineTeamDecision: 'Team decision — {decision} (team version {version})',
     showValues: 'Show the recorded values',
   },
   fr: {
@@ -684,10 +860,15 @@ export const certificationMessages = defineMessages(keys, {
       'a accordé le droit de responsable de programme de certification',
     managerRevoked:
       'a révoqué le droit de responsable de programme de certification',
+    approverBundle: 'Approbateur de certification de la société',
+    approverPrerequisites:
+      'Un approbateur de certification n’agit que s’il détient aussi le droit de lecteur de certification dans la même Société. Un approbateur lié à un membre d’une équipe proposée ne peut pas statuer sur cette équipe.',
+    approverGranted: 'a accordé le droit d’approbateur de certification',
+    approverRevoked: 'a révoqué le droit d’approbateur de certification',
 
     title: 'Certification',
     introduction:
-      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints et le contrat de certification, avec chaque version enregistrée.',
+      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints, le contrat de certification et l’équipe d’audit avec son approbation, avec chaque version enregistrée.',
     refresh: 'Actualiser les dossiers de certification',
     loading: 'Chargement des dossiers de certification…',
     caseLoading: 'Chargement du dossier de certification…',
@@ -732,6 +913,8 @@ export const certificationMessages = defineMessages(keys, {
     nextDuration: 'Durée d’audit',
     nextAgreement: 'Contrat de certification',
     nextTeam: 'Équipe d’audit',
+    nextTeamDecision: 'Décision sur l’équipe',
+    nextStage1Plan: 'Plan d’audit de l’étape 1',
     nextNone: 'Aucune',
     openedBy: 'Ouvert par',
     openedAt: 'Ouvert le',
@@ -774,6 +957,13 @@ export const certificationMessages = defineMessages(keys, {
     stepAccepted: 'Acceptée',
     stepRejected: 'Rejetée',
     stepClosed: 'Sans objet : le dossier est clos',
+    stepTeam: 'Équipe d’audit',
+    stepTeamDecision: 'Décision sur l’équipe',
+    stepWaitingAgreement: 'Attend le contrat',
+    stepWaitingTeam: 'Attend une équipe proposée',
+    stepToDecide: 'À décider — version {version}',
+    stepApproved: 'Approuvée — version {version}',
+    stepReturned: 'Renvoyée — version {version}',
 
     applicationTitle: 'Demande',
     applicationMissing: 'Aucune demande enregistrée pour l’instant.',
@@ -856,8 +1046,8 @@ export const certificationMessages = defineMessages(keys, {
       'Une correction exige un motif et une première demande n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
     blockedCorrectionUnchanged:
       'La correction ne change aucune valeur. Modifiez au moins une valeur ou annulez la correction.',
-    nextTeamPending:
-      'Le contrat de certification est enregistré. L’étape suivante, l’équipe d’audit, n’est pas encore disponible dans cette version.',
+    nextStagePlanPending:
+      'L’équipe d’audit est approuvée. L’étape suivante, le plan d’audit de l’étape 1, n’est pas encore disponible dans cette version.',
 
     durationTitle: 'Durée d’audit',
     durationMissing: 'Aucune durée d’audit n’est encore confirmée.',
@@ -1043,12 +1233,99 @@ export const certificationMessages = defineMessages(keys, {
     blockedAgreementCorrectionReason:
       'Une correction exige un motif et un premier contrat n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
 
+    teamTitle: 'Équipe d’audit',
+    teamMissing: 'Aucune équipe d’audit n’est encore proposée.',
+    teamHelp:
+      'Proposez les membres qui auditeront ce dossier. L’équipe compte exactement un responsable d’équipe, et la catégorie de la chaîne alimentaire du client est détenue par le responsable d’équipe ou, à défaut, par un expert technique. Chaque membre répond explicitement aux quatre déclarations d’impartialité ; un « non » exige une description du conflit.',
+    teamMember: 'Membre {number}',
+    teamMemberName: 'Nom',
+    teamMemberRole: 'Rôle dans l’équipe',
+    selectTeamRole: 'Sélectionnez un rôle',
+    teamRoleLeader: 'Responsable d’équipe',
+    teamRoleAuditor: 'Auditeur',
+    teamRoleTechnicalExpert: 'Expert technique',
+    teamRoleObserver: 'Observateur',
+    teamMemberLink: 'Membre de l’espace de travail',
+    teamMemberNotLinked: 'Non lié',
+    teamMemberLinkHelp:
+      'Facultatif. Seules les personnes déjà connues dans ce dossier peuvent être liées : vous et celles qui ont enregistré une étape ou joint un document. Un lien permet au serveur d’empêcher cette personne d’approuver l’équipe.',
+    teamMemberLinkedUnknown: 'Lié à un membre de l’espace de travail',
+    teamMemberYou: '{name} (vous)',
+    holdsCategory: 'Détient la catégorie de la chaîne alimentaire du client',
+    competenceNote: 'Compétence',
+    declarations: 'Déclarations d’impartialité',
+    declarationNoConsultancy: 'N’a fourni aucun conseil au client',
+    declarationNoEmployment: 'N’a pas été employé par le client',
+    declarationNoManagementInvolvement:
+      'N’intervient pas dans la direction du client',
+    declarationConfidentiality: 'S’est engagé à la confidentialité',
+    conflictNote: 'Description du conflit',
+    conflictNoteHelp:
+      'Obligatoire, car une déclaration a pour réponse non. Une équipe avec un conflit déclaré peut être proposée, mais elle ne peut qu’être renvoyée, pas approuvée.',
+    conflictDeclared: 'Conflit déclaré',
+    addTeamMember: 'Ajouter un membre',
+    removeTeamMember: 'Retirer le membre {number}',
+    proposeTeam: 'Proposer l’équipe',
+    correctTeam: 'Proposer une nouvelle version de l’équipe',
+    teamCorrectionHelp:
+      'Une nouvelle version remplace la proposition actuelle, indique son motif et exige une nouvelle décision d’un approbateur. Les versions antérieures restent dans la chronologie.',
+    teamValidation:
+      'Complétez chaque membre : un nom (200 caractères au plus), un rôle, une note de compétence (1 000 caractères au plus) et une réponse oui ou non à chaque déclaration. Une équipe compte un à dix membres.',
+    teamConflictNoteRequired:
+      'Décrivez le conflit (1 000 caractères au plus) pour chaque membre ayant répondu non à une déclaration.',
+    teamLinkInvalid:
+      'Un membre de l’espace de travail ne peut être lié qu’à un seul membre de l’équipe. Choisissez une autre personne ou laissez le lien vide.',
+    teamLeaderRule:
+      'Une équipe compte exactement un responsable d’équipe. Vérifiez les rôles.',
+    teamCategoryRule:
+      'L’équipe doit détenir la catégorie du client : le responsable d’équipe la détient ou, à défaut, un expert technique qui la détient rejoint l’équipe. Les observateurs ne comptent pas.',
+    teamMemberUnknown:
+      'Un membre lié de l’espace de travail n’est plus actif. Modifiez ce lien ou laissez-le vide.',
+    blockedTeamBeforeAgreement:
+      'L’équipe d’audit se propose une fois le contrat de certification enregistré. Rechargez le dossier.',
+    blockedTeamCorrectionReason:
+      'Une nouvelle version de l’équipe exige un motif et une première proposition n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+    teamStatusPending: 'En attente de décision',
+    teamStatusApproved: 'Approuvée',
+    teamStatusReturned: 'Renvoyée',
+    teamReturnedNote:
+      'Un approbateur a renvoyé cette équipe. Proposez une nouvelle version qui répond au motif donné.',
+    teamAwaitingApprover:
+      'Un approbateur qui ne fait pas partie de l’équipe statue sur cette proposition.',
+    decisionTitle: 'Décision sur l’équipe',
+    decisionMissing: 'Aucune décision n’est encore enregistrée.',
+    decisionHelp:
+      'Statuez sur la version {version} de l’équipe : approuvez-la, ou renvoyez-la au responsable de programme avec un motif.',
+    decisionChoice: 'Décision',
+    decisionApprove: 'Approuver l’équipe',
+    decisionReturn: 'Renvoyer l’équipe',
+    decisionReason: 'Motif du renvoi',
+    recordDecision: 'Enregistrer la décision',
+    decisionTeamVersion: 'Version de l’équipe',
+    decisionApproved: 'Approuvée',
+    decisionReturned: 'Renvoyée',
+    decisionEarlierVersion:
+      'Cette décision concerne la version {decided} de l’équipe. La version {current} attend une décision.',
+    decisionValidation:
+      'Choisissez une décision. Le renvoi de l’équipe exige un motif (2 000 caractères au plus).',
+    decisionConflictOnly:
+      'Un membre de cette équipe a déclaré un conflit d’intérêts : l’équipe ne peut pas être approuvée. Renvoyez-la avec un motif.',
+    teamConflictDeclared:
+      'Une équipe avec un conflit d’intérêts déclaré ne peut pas être approuvée. Renvoyez-la avec un motif.',
+    teamIndependence:
+      'Vous ne pouvez pas statuer sur cette équipe : vous êtes lié à un membre de l’une de ses versions. Un approbateur qui ne fait pas partie de l’équipe doit statuer.',
+    blockedTeamNotPending:
+      'Aucune équipe proposée n’attend plus de décision. Rechargez le dossier.',
+
     timelineTitle: 'Chronologie',
     timelineEmpty: 'Aucune étape enregistrée pour l’instant.',
     timelineApplication: 'Demande — version {version}',
     timelineReview: 'Revue de la demande — {outcome}',
     timelineDuration: 'Durée d’audit — version {version}',
     timelineAgreement: 'Contrat de certification — version {version}',
+    timelineTeam: 'Équipe d’audit — version {version}',
+    timelineTeamDecision:
+      'Décision sur l’équipe — {decision} (version {version} de l’équipe)',
     showValues: 'Afficher les valeurs enregistrées',
   },
   ro: {
@@ -1062,10 +1339,15 @@ export const certificationMessages = defineMessages(keys, {
     readerRevoked: 'a revocat dreptul de cititor de certificare',
     managerGranted: 'a acordat dreptul de manager de program de certificare',
     managerRevoked: 'a revocat dreptul de manager de program de certificare',
+    approverBundle: 'Aprobator de certificare al companiei',
+    approverPrerequisites:
+      'Un aprobator de certificare acționează doar dacă deține și dreptul de cititor de certificare în aceeași Companie. Un aprobator legat de un membru al unei echipe propuse nu poate decide asupra acelei echipe.',
+    approverGranted: 'a acordat dreptul de aprobator de certificare',
+    approverRevoked: 'a revocat dreptul de aprobator de certificare',
 
     title: 'Certificare',
     introduction:
-      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate și contractul de certificare, cu fiecare versiune înregistrată.',
+      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate, contractul de certificare și echipa de audit cu aprobarea ei, cu fiecare versiune înregistrată.',
     refresh: 'Actualizați dosarele de certificare',
     loading: 'Se încarcă dosarele de certificare…',
     caseLoading: 'Se încarcă dosarul de certificare…',
@@ -1110,6 +1392,8 @@ export const certificationMessages = defineMessages(keys, {
     nextDuration: 'Durata auditului',
     nextAgreement: 'Contractul de certificare',
     nextTeam: 'Echipa de audit',
+    nextTeamDecision: 'Decizia privind echipa',
+    nextStage1Plan: 'Planul auditului de etapa 1',
     nextNone: 'Niciuna',
     openedBy: 'Deschis de',
     openedAt: 'Deschis la',
@@ -1152,6 +1436,13 @@ export const certificationMessages = defineMessages(keys, {
     stepAccepted: 'Acceptată',
     stepRejected: 'Respinsă',
     stepClosed: 'Nu se aplică: dosarul este închis',
+    stepTeam: 'Echipa de audit',
+    stepTeamDecision: 'Decizia privind echipa',
+    stepWaitingAgreement: 'Așteaptă contractul',
+    stepWaitingTeam: 'Așteaptă o echipă propusă',
+    stepToDecide: 'De decis — versiunea {version}',
+    stepApproved: 'Aprobată — versiunea {version}',
+    stepReturned: 'Returnată — versiunea {version}',
 
     applicationTitle: 'Cerere',
     applicationMissing: 'Nicio cerere înregistrată încă.',
@@ -1233,8 +1524,8 @@ export const certificationMessages = defineMessages(keys, {
       'O corectare necesită un motiv, iar prima cerere nu are. Reîncărcați dosarul înainte de o nouă salvare.',
     blockedCorrectionUnchanged:
       'Corectarea nu schimbă nicio valoare. Modificați cel puțin o valoare sau anulați corectarea.',
-    nextTeamPending:
-      'Contractul de certificare este înregistrat. Etapa următoare, echipa de audit, nu este încă disponibilă în această versiune.',
+    nextStagePlanPending:
+      'Echipa de audit este aprobată. Etapa următoare, planul auditului de etapa 1, nu este încă disponibilă în această versiune.',
 
     durationTitle: 'Durata auditului',
     durationMissing: 'Nicio durată a auditului nu este încă confirmată.',
@@ -1418,12 +1709,98 @@ export const certificationMessages = defineMessages(keys, {
     blockedAgreementCorrectionReason:
       'O corectare necesită un motiv, iar primul contract nu are. Reîncărcați dosarul înainte de o nouă salvare.',
 
+    teamTitle: 'Echipa de audit',
+    teamMissing: 'Nicio echipă de audit nu este încă propusă.',
+    teamHelp:
+      'Propuneți membrii care vor audita acest dosar. Echipa are exact un șef de echipă, iar categoria lanțului alimentar a clientului este deținută de șeful de echipă sau, în lipsă, de un expert tehnic. Fiecare membru răspunde explicit la cele patru declarații de imparțialitate; un „nu” necesită descrierea conflictului.',
+    teamMember: 'Membrul {number}',
+    teamMemberName: 'Nume',
+    teamMemberRole: 'Rolul în echipă',
+    selectTeamRole: 'Selectați un rol',
+    teamRoleLeader: 'Șef de echipă',
+    teamRoleAuditor: 'Auditor',
+    teamRoleTechnicalExpert: 'Expert tehnic',
+    teamRoleObserver: 'Observator',
+    teamMemberLink: 'Membru al spațiului de lucru',
+    teamMemberNotLinked: 'Nelegat',
+    teamMemberLinkHelp:
+      'Opțional. Pot fi legate doar persoanele deja cunoscute în acest dosar: dvs. și cei care au înregistrat o etapă sau au atașat un document. Legătura permite serverului să împiedice acea persoană să aprobe echipa.',
+    teamMemberLinkedUnknown: 'Legat de un membru al spațiului de lucru',
+    teamMemberYou: '{name} (dvs.)',
+    holdsCategory: 'Deține categoria lanțului alimentar a clientului',
+    competenceNote: 'Competență',
+    declarations: 'Declarații de imparțialitate',
+    declarationNoConsultancy: 'Nu a oferit consultanță clientului',
+    declarationNoEmployment: 'Nu a fost angajat al clientului',
+    declarationNoManagementInvolvement:
+      'Nu este implicat în conducerea clientului',
+    declarationConfidentiality: 'S-a angajat să păstreze confidențialitatea',
+    conflictNote: 'Descrierea conflictului',
+    conflictNoteHelp:
+      'Obligatorie, deoarece o declarație are răspunsul nu. O echipă cu un conflict declarat poate fi propusă, dar poate fi doar returnată, nu aprobată.',
+    conflictDeclared: 'Conflict declarat',
+    addTeamMember: 'Adăugați un membru',
+    removeTeamMember: 'Eliminați membrul {number}',
+    proposeTeam: 'Propuneți echipa',
+    correctTeam: 'Propuneți o nouă versiune a echipei',
+    teamCorrectionHelp:
+      'O nouă versiune înlocuiește propunerea curentă, își declară motivul și necesită o nouă decizie a unui aprobator. Versiunile anterioare rămân în cronologie.',
+    teamValidation:
+      'Completați fiecare membru: un nume (cel mult 200 de caractere), un rol, o notă de competență (cel mult 1.000 de caractere) și un răspuns da sau nu la fiecare declarație. O echipă are între unu și zece membri.',
+    teamConflictNoteRequired:
+      'Descrieți conflictul (cel mult 1.000 de caractere) pentru fiecare membru cu o declarație cu răspunsul nu.',
+    teamLinkInvalid:
+      'Un membru al spațiului de lucru poate fi legat de un singur membru al echipei. Alegeți altă persoană sau lăsați legătura goală.',
+    teamLeaderRule: 'O echipă are exact un șef de echipă. Verificați rolurile.',
+    teamCategoryRule:
+      'Echipa trebuie să dețină categoria clientului: o deține șeful de echipă sau, în lipsă, se alătură echipei un expert tehnic care o deține. Observatorii nu se iau în calcul.',
+    teamMemberUnknown:
+      'Un membru legat al spațiului de lucru nu mai este activ. Schimbați acea legătură sau lăsați-o goală.',
+    blockedTeamBeforeAgreement:
+      'Echipa de audit se propune după înregistrarea contractului de certificare. Reîncărcați dosarul.',
+    blockedTeamCorrectionReason:
+      'O nouă versiune a echipei necesită un motiv, iar prima propunere nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+    teamStatusPending: 'Așteaptă o decizie',
+    teamStatusApproved: 'Aprobată',
+    teamStatusReturned: 'Returnată',
+    teamReturnedNote:
+      'Un aprobator a returnat această echipă. Propuneți o nouă versiune care răspunde motivului dat.',
+    teamAwaitingApprover:
+      'Un aprobator care nu face parte din echipă decide asupra acestei propuneri.',
+    decisionTitle: 'Decizia privind echipa',
+    decisionMissing: 'Nicio decizie nu este încă înregistrată.',
+    decisionHelp:
+      'Decideți asupra versiunii {version} a echipei: aprobați-o sau returnați-o managerului de program cu un motiv.',
+    decisionChoice: 'Decizie',
+    decisionApprove: 'Aprobați echipa',
+    decisionReturn: 'Returnați echipa',
+    decisionReason: 'Motivul returnării',
+    recordDecision: 'Înregistrați decizia',
+    decisionTeamVersion: 'Versiunea echipei',
+    decisionApproved: 'Aprobată',
+    decisionReturned: 'Returnată',
+    decisionEarlierVersion:
+      'Această decizie privește versiunea {decided} a echipei. Versiunea {current} așteaptă o decizie.',
+    decisionValidation:
+      'Alegeți o decizie. Returnarea echipei necesită un motiv (cel mult 2.000 de caractere).',
+    decisionConflictOnly:
+      'Un membru al acestei echipe a declarat un conflict de interese, deci echipa nu poate fi aprobată. Returnați-o cu un motiv.',
+    teamConflictDeclared:
+      'O echipă cu un conflict de interese declarat nu poate fi aprobată. Returnați-o cu un motiv.',
+    teamIndependence:
+      'Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă.',
+    blockedTeamNotPending:
+      'Nicio echipă propusă nu mai așteaptă o decizie. Reîncărcați dosarul.',
+
     timelineTitle: 'Cronologie',
     timelineEmpty: 'Nicio etapă înregistrată încă.',
     timelineApplication: 'Cerere — versiunea {version}',
     timelineReview: 'Analiza cererii — {outcome}',
     timelineDuration: 'Durata auditului — versiunea {version}',
     timelineAgreement: 'Contractul de certificare — versiunea {version}',
+    timelineTeam: 'Echipa de audit — versiunea {version}',
+    timelineTeamDecision:
+      'Decizia privind echipa — {decision} (versiunea {version} a echipei)',
     showValues: 'Afișați valorile înregistrate',
   },
   ru: {
@@ -1438,10 +1815,15 @@ export const certificationMessages = defineMessages(keys, {
     managerGranted:
       '— предоставление права руководителя программы сертификации',
     managerRevoked: '— отзыв права руководителя программы сертификации',
+    approverBundle: 'Утверждающий по сертификации компании',
+    approverPrerequisites:
+      'Утверждающий по сертификации действует, только если в той же Компании у него есть и право читателя сертификации. Утверждающий, связанный с участником предложенной группы, не может принимать решение по этой группе.',
+    approverGranted: '— предоставление права утверждающего по сертификации',
+    approverRevoked: '— отзыв права утверждающего по сертификации',
 
     title: 'Сертификация',
     introduction:
-      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы и договор о сертификации со всеми записанными версиями.',
+      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы, договор о сертификации и аудиторская группа с её утверждением со всеми записанными версиями.',
     refresh: 'Обновить дела по сертификации',
     loading: 'Загрузка дел по сертификации…',
     caseLoading: 'Загрузка дела по сертификации…',
@@ -1484,6 +1866,8 @@ export const certificationMessages = defineMessages(keys, {
     nextDuration: 'Продолжительность аудита',
     nextAgreement: 'Договор о сертификации',
     nextTeam: 'Аудиторская группа',
+    nextTeamDecision: 'Решение по группе',
+    nextStage1Plan: 'План аудита этапа 1',
     nextNone: 'Нет',
     openedBy: 'Открыл(а)',
     openedAt: 'Дата открытия',
@@ -1526,6 +1910,13 @@ export const certificationMessages = defineMessages(keys, {
     stepAccepted: 'Принята',
     stepRejected: 'Отклонена',
     stepClosed: 'Не применяется: дело закрыто',
+    stepTeam: 'Аудиторская группа',
+    stepTeamDecision: 'Решение по группе',
+    stepWaitingAgreement: 'Ожидает договора',
+    stepWaitingTeam: 'Ожидает предложенной группы',
+    stepToDecide: 'Требует решения — версия {version}',
+    stepApproved: 'Утверждена — версия {version}',
+    stepReturned: 'Возвращена — версия {version}',
 
     applicationTitle: 'Заявка',
     applicationMissing: 'Заявка ещё не записана.',
@@ -1606,8 +1997,8 @@ export const certificationMessages = defineMessages(keys, {
       'Исправлению нужна причина, а у первой заявки её нет. Загрузите дело заново перед новым сохранением.',
     blockedCorrectionUnchanged:
       'Исправление не меняет ни одного значения. Измените хотя бы одно значение или отмените исправление.',
-    nextTeamPending:
-      'Договор о сертификации записан. Следующий этап, аудиторская группа, в этой версии пока недоступен.',
+    nextStagePlanPending:
+      'Аудиторская группа утверждена. Следующий этап, план аудита этапа 1, в этой версии пока недоступен.',
 
     durationTitle: 'Продолжительность аудита',
     durationMissing: 'Продолжительность аудита ещё не подтверждена.',
@@ -1790,12 +2181,97 @@ export const certificationMessages = defineMessages(keys, {
     blockedAgreementCorrectionReason:
       'Исправлению нужна причина, а у первого договора её нет. Загрузите дело заново перед новым сохранением.',
 
+    teamTitle: 'Аудиторская группа',
+    teamMissing: 'Аудиторская группа пока не предложена.',
+    teamHelp:
+      'Предложите участников, которые будут проводить аудит по этому делу. В группе ровно один руководитель группы, а категорией пищевой цепи клиента владеет руководитель группы или, если нет, технический эксперт. Каждый участник явно отвечает на четыре заявления о беспристрастности; ответ «нет» требует описания конфликта.',
+    teamMember: 'Участник {number}',
+    teamMemberName: 'Имя',
+    teamMemberRole: 'Роль в группе',
+    selectTeamRole: 'Выберите роль',
+    teamRoleLeader: 'Руководитель группы',
+    teamRoleAuditor: 'Аудитор',
+    teamRoleTechnicalExpert: 'Технический эксперт',
+    teamRoleObserver: 'Наблюдатель',
+    teamMemberLink: 'Участник рабочего пространства',
+    teamMemberNotLinked: 'Не связан',
+    teamMemberLinkHelp:
+      'Необязательно. Связать можно только людей, уже известных в этом деле: вас и тех, кто записал этап или приложил документ. Связь позволяет серверу не допустить, чтобы этот человек утвердил группу.',
+    teamMemberLinkedUnknown: 'Связан с участником рабочего пространства',
+    teamMemberYou: '{name} (вы)',
+    holdsCategory: 'Владеет категорией пищевой цепи клиента',
+    competenceNote: 'Компетентность',
+    declarations: 'Заявления о беспристрастности',
+    declarationNoConsultancy: 'Не оказывал(а) клиенту консультационных услуг',
+    declarationNoEmployment: 'Не работал(а) у клиента',
+    declarationNoManagementInvolvement: 'Не участвует в управлении клиентом',
+    declarationConfidentiality: 'Обязался(ась) соблюдать конфиденциальность',
+    conflictNote: 'Описание конфликта',
+    conflictNoteHelp:
+      'Обязательно, так как на одно из заявлений дан ответ «нет». Группу с заявленным конфликтом можно предложить, но её можно только вернуть, а не утвердить.',
+    conflictDeclared: 'Заявлен конфликт',
+    addTeamMember: 'Добавить участника',
+    removeTeamMember: 'Удалить участника {number}',
+    proposeTeam: 'Предложить группу',
+    correctTeam: 'Предложить новую версию группы',
+    teamCorrectionHelp:
+      'Новая версия заменяет текущее предложение, указывает причину и требует нового решения утверждающего. Прежние версии остаются в хронологии.',
+    teamValidation:
+      'Заполните данные каждого участника: имя (не более 200 символов), роль, сведения о компетентности (не более 1 000 символов) и ответ «да» или «нет» на каждое заявление. В группе от одного до десяти участников.',
+    teamConflictNoteRequired:
+      'Опишите конфликт (не более 1 000 символов) для каждого участника, ответившего «нет» на заявление.',
+    teamLinkInvalid:
+      'Участника рабочего пространства можно связать только с одним участником группы. Выберите другого человека или оставьте связь пустой.',
+    teamLeaderRule: 'В группе ровно один руководитель группы. Проверьте роли.',
+    teamCategoryRule:
+      'Группа должна владеть категорией клиента: ею владеет руководитель группы или, если нет, в группу входит владеющий ею технический эксперт. Наблюдатели не учитываются.',
+    teamMemberUnknown:
+      'Связанный участник рабочего пространства больше не активен. Измените эту связь или оставьте её пустой.',
+    blockedTeamBeforeAgreement:
+      'Аудиторская группа предлагается после записи договора о сертификации. Загрузите дело заново.',
+    blockedTeamCorrectionReason:
+      'Новой версии группы нужна причина, а у первого предложения её нет. Загрузите дело заново перед новым сохранением.',
+    teamStatusPending: 'Ожидает решения',
+    teamStatusApproved: 'Утверждена',
+    teamStatusReturned: 'Возвращена',
+    teamReturnedNote:
+      'Утверждающий вернул эту группу. Предложите новую версию с учётом указанной причины.',
+    teamAwaitingApprover:
+      'Решение по этому предложению принимает утверждающий, не входящий в группу.',
+    decisionTitle: 'Решение по группе',
+    decisionMissing: 'Решение пока не записано.',
+    decisionHelp:
+      'Примите решение по версии {version} группы: утвердите её или верните руководителю программы с указанием причины.',
+    decisionChoice: 'Решение',
+    decisionApprove: 'Утвердить группу',
+    decisionReturn: 'Вернуть группу',
+    decisionReason: 'Причина возврата',
+    recordDecision: 'Записать решение',
+    decisionTeamVersion: 'Версия группы',
+    decisionApproved: 'Утверждена',
+    decisionReturned: 'Возвращена',
+    decisionEarlierVersion:
+      'Это решение относится к версии {decided} группы. Версия {current} ожидает решения.',
+    decisionValidation:
+      'Выберите решение. Для возврата группы нужна причина (не более 2 000 символов).',
+    decisionConflictOnly:
+      'Участник этой группы заявил о конфликте интересов, поэтому группу нельзя утвердить. Верните её с указанием причины.',
+    teamConflictDeclared:
+      'Группу с заявленным конфликтом интересов нельзя утвердить. Верните её с указанием причины.',
+    teamIndependence:
+      'Вы не можете принимать решение по этой группе: вы связаны с участником одной из её версий. Решение должен принять утверждающий, не входящий в группу.',
+    blockedTeamNotPending:
+      'Ни одна предложенная группа больше не ожидает решения. Загрузите дело заново.',
+
     timelineTitle: 'Хронология',
     timelineEmpty: 'Этапы ещё не записаны.',
     timelineApplication: 'Заявка — версия {version}',
     timelineReview: 'Анализ заявки — {outcome}',
     timelineDuration: 'Продолжительность аудита — версия {version}',
     timelineAgreement: 'Договор о сертификации — версия {version}',
+    timelineTeam: 'Аудиторская группа — версия {version}',
+    timelineTeamDecision:
+      'Решение по группе — {decision} (версия группы {version})',
     showValues: 'Показать записанные значения',
   },
 });

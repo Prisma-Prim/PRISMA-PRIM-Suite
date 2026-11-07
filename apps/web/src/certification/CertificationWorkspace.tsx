@@ -61,6 +61,17 @@ import {
   type DurationDraft,
 } from './certification-duration-draft';
 import {
+  decisionFromDraft,
+  emptyDecisionDraft,
+  linkedToAnyTeamVersion,
+  teamDraftFor,
+  teamFromDraft,
+  type DecisionDraft,
+  type TeamCheck,
+  type TeamDraft,
+} from './certification-team-draft';
+import { teamWithoutConflict } from './certification-team';
+import {
   CERTIFICATION_LIMITS,
   parseCaseDetail,
   parseCaseList,
@@ -72,6 +83,7 @@ import {
   type CaseDetail,
   type CaseList,
   type CaseTimeline,
+  type CertificationActorReference,
   type CertificationAttachment,
   type DocumentRegister,
   type EligibleDocuments,
@@ -82,6 +94,12 @@ import { AgreementView, DossierRegister } from './CertificationDocumentViews';
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
+import { DecisionForm, TeamForm } from './CertificationTeamForms';
+import {
+  DecisionView,
+  TeamView,
+  type KnownPeople,
+} from './CertificationTeamViews';
 import {
   FactsView,
   NextStepLabel,
@@ -122,7 +140,16 @@ type Feedback =
   /** `reload`: the shown Case is outdated; saving waits for a reload. */
   | { status: 'refused'; message: CertificationMessageKey; reload: boolean };
 type MutationKind =
-  'open' | 'application' | 'review' | 'duration' | 'attach' | 'agreement';
+  | 'open'
+  | 'application'
+  | 'review'
+  | 'duration'
+  | 'attach'
+  | 'agreement'
+  | 'team'
+  | 'decision';
+/** A Workspace member the read Case names, offered as a team member link. */
+type CasePerson = CertificationActorReference & { self: boolean };
 /**
  * Whose authority a call needs. Reading the Case needs none of the Document
  * rights, so a refused Document call leaves the Case to the authority recheck.
@@ -237,6 +264,14 @@ function CertificationRegistry(
   /** The user is editing the agreement (a first record or a correction). */
   const [agreementOpen, setAgreementOpen] = useState(false);
   const [agreementFeedback, setAgreementFeedback] = useState<Feedback>(IDLE);
+  /** Null until edited: a first team starts with one empty member. */
+  const [teamDraft, setTeamDraft] = useState<TeamDraft | null>(null);
+  /** The user is editing a new team version. */
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [teamFeedback, setTeamFeedback] = useState<Feedback>(IDLE);
+  const [decisionDraft, setDecisionDraft] =
+    useState<DecisionDraft>(emptyDecisionDraft);
+  const [decisionFeedback, setDecisionFeedback] = useState<Feedback>(IDLE);
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -250,6 +285,8 @@ function CertificationRegistry(
       durationFeedback,
       attachFeedback,
       agreementFeedback,
+      teamFeedback,
+      decisionFeedback,
     ].some((feedback) => feedback.status === 'saving');
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
@@ -267,6 +304,10 @@ function CertificationRegistry(
         return setAttachFeedback;
       case 'agreement':
         return setAgreementFeedback;
+      case 'team':
+        return setTeamFeedback;
+      case 'decision':
+        return setDecisionFeedback;
     }
     return unexpected(kind);
   }
@@ -290,6 +331,11 @@ function CertificationRegistry(
     setAgreementOpen(false);
   }
 
+  function resetTeamDraft() {
+    setTeamDraft(null);
+    setTeamOpen(false);
+  }
+
   function resetCaseDrafts() {
     setApplicationDraft(emptyApplicationDraft());
     setApplicationOpen(false);
@@ -302,6 +348,10 @@ function CertificationRegistry(
     setAttachFeedback(IDLE);
     resetAgreementDraft();
     setAgreementFeedback(IDLE);
+    resetTeamDraft();
+    setTeamFeedback(IDLE);
+    setDecisionDraft(emptyDecisionDraft());
+    setDecisionFeedback(IDLE);
     contentOperation.retire();
     setDownload(NO_DOWNLOAD);
   }
@@ -452,6 +502,8 @@ function CertificationRegistry(
       setDurationFeedback(clear);
       setAttachFeedback(clear);
       setAgreementFeedback(clear);
+      setTeamFeedback(clear);
+      setDecisionFeedback(clear);
     }
     selected.current = caseId;
     setSelectedId(caseId);
@@ -589,6 +641,12 @@ function CertificationRegistry(
         break;
       case 'agreement':
         resetAgreementDraft();
+        break;
+      case 'team':
+        resetTeamDraft();
+        break;
+      case 'decision':
+        setDecisionDraft(emptyDecisionDraft());
         break;
       default:
         unexpected(kind);
@@ -785,6 +843,149 @@ function CertificationRegistry(
         caseId: current.id,
       }),
     );
+  }
+
+  function submitTeam(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      !authority.manage ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(teamFeedback)
+    )
+      return;
+    const current = detail.value.caseDetail;
+    const check = teamFromDraft(teamDraft ?? teamDraftFor(null), {
+      correcting: current.team !== null,
+      linkable: new Set(
+        linkOptions(detail.value).map((option) => option.value),
+      ),
+    });
+    if (check.status !== 'valid') {
+      setTeamFeedback(refusedWith(teamMessage(check)));
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      members: check.team.members,
+    });
+    void execute(
+      'team',
+      reuse(teamFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/team`,
+        body,
+        caseId: current.id,
+      }),
+    );
+  }
+
+  function submitDecision(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      !authority.approve ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(decisionFeedback)
+    )
+      return;
+    const current = detail.value.caseDetail;
+    const team = current.team;
+    if (!team || current.nextStep !== 'team_decision') return;
+    const check = decisionFromDraft(decisionDraft, team.value);
+    if (check.status !== 'valid') {
+      setDecisionFeedback(
+        refusedWith(
+          check.status === 'conflictDeclared'
+            ? 'decisionConflictOnly'
+            : 'decisionValidation',
+        ),
+      );
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      teamVersion: team.version,
+      decision: check.decision,
+      ...(check.decision === 'returned' ? { reason: check.reason } : {}),
+    });
+    void execute(
+      'decision',
+      reuse(decisionFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/team-decision`,
+        body,
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /**
+   * The Workspace members the read Case names, the actor first. No member
+   * directory is readable under the Certification grants, so a team member
+   * can be linked only to a person the Case already shows.
+   */
+  function casePeople(view: CaseView): CasePerson[] {
+    const named = new Map<string, string>();
+    const add = (reference: CertificationActorReference) => {
+      if (!named.has(reference.workspaceMembershipId))
+        named.set(reference.workspaceMembershipId, reference.displayName);
+    };
+    add(view.caseDetail.openedBy);
+    for (const entry of view.timeline.entries) add(entry.recordedBy);
+    for (const item of view.register.items) add(item.attachedBy);
+    named.delete(actor.workspaceMembershipId);
+    return [
+      {
+        workspaceMembershipId: actor.workspaceMembershipId,
+        displayName: actor.displayName,
+        self: true,
+      },
+      ...[...named]
+        .map(([workspaceMembershipId, displayName]) => ({
+          workspaceMembershipId,
+          displayName,
+          self: false,
+        }))
+        .sort((left, right) =>
+          left.displayName.localeCompare(right.displayName),
+        ),
+    ];
+  }
+
+  function knownPeople(view: CaseView): KnownPeople {
+    return new Map(
+      casePeople(view).map((person) => [
+        person.workspaceMembershipId,
+        person.displayName,
+      ]),
+    );
+  }
+
+  /**
+   * The links a team member may carry: the people the Case names, and any
+   * link the latest team keeps so that a new version can preserve it.
+   */
+  function linkOptions(view: CaseView): { value: string; label: string }[] {
+    const people = casePeople(view).map((person) => ({
+      value: person.workspaceMembershipId,
+      label: person.self
+        ? formatMessage(copy('teamMemberYou'), { name: person.displayName })
+        : person.displayName,
+    }));
+    const known = new Set(people.map((option) => option.value));
+    const kept = (view.caseDetail.team?.value.members ?? []).flatMap(
+      (member) =>
+        member.workspaceMembershipId === null ||
+        known.has(member.workspaceMembershipId)
+          ? []
+          : [
+              {
+                value: member.workspaceMembershipId,
+                label: `${copy('teamMemberLinkedUnknown')} — ${member.name}`,
+              },
+            ],
+    );
+    return [...people, ...kept];
   }
 
   function submitOpen(event: FormEvent) {
@@ -1008,6 +1209,8 @@ function CertificationRegistry(
     duration: `${prefix}-duration-feedback`,
     attach: `${prefix}-attach-feedback`,
     agreement: `${prefix}-agreement-feedback`,
+    team: `${prefix}-team-feedback`,
+    decision: `${prefix}-decision-feedback`,
   };
 
   /** A step's confirmation is shown above the Case and survives its reload. */
@@ -1234,6 +1437,8 @@ function CertificationRegistry(
             durationFeedback,
             attachFeedback,
             agreementFeedback,
+            teamFeedback,
+            decisionFeedback,
           ].some((feedback) => feedback.status === 'saved') && (
             <p role="status">{copy('saveConfirmed')}</p>
           )}
@@ -1311,8 +1516,10 @@ function CertificationRegistry(
               {caseView.caseDetail.status === 'rejected' && (
                 <p className="certification-blocked">{copy('blockedClosed')}</p>
               )}
-              {caseView.caseDetail.nextStep === 'team' && (
-                <p className="certification-note">{copy('nextTeamPending')}</p>
+              {caseView.caseDetail.nextStep === 'stage_1_plan' && (
+                <p className="certification-note">
+                  {copy('nextStagePlanPending')}
+                </p>
               )}
               <section aria-labelledby={`${prefix}-application-title`}>
                 <h5 id={`${prefix}-application-title`}>
@@ -1446,11 +1653,69 @@ function CertificationRegistry(
                   )}
                 </section>
               )}
+              {caseView.caseDetail.agreement && (
+                <section aria-labelledby={`${prefix}-team-title`}>
+                  <h5 id={`${prefix}-team-title`}>{copy('teamTitle')}</h5>
+                  {caseView.caseDetail.team ? (
+                    <>
+                      <VersionAttribution version={caseView.caseDetail.team} />
+                      <p>
+                        {copy('status')}: {teamStatus(caseView.caseDetail)}
+                      </p>
+                      <TeamView
+                        team={caseView.caseDetail.team.value}
+                        people={knownPeople(caseView)}
+                      />
+                    </>
+                  ) : (
+                    <p>{copy('teamMissing')}</p>
+                  )}
+                  {authority.manage && (
+                    <>
+                      {feedbackMessage('team', teamFeedback)}
+                      {teamStep(caseView)}
+                    </>
+                  )}
+                </section>
+              )}
+              {caseView.caseDetail.team && (
+                <section aria-labelledby={`${prefix}-decision-title`}>
+                  <h5 id={`${prefix}-decision-title`}>
+                    {copy('decisionTitle')}
+                  </h5>
+                  {caseView.caseDetail.teamDecision ? (
+                    <>
+                      <VersionAttribution
+                        version={caseView.caseDetail.teamDecision}
+                      />
+                      <DecisionView
+                        decision={caseView.caseDetail.teamDecision.value}
+                      />
+                    </>
+                  ) : (
+                    <p>{copy('decisionMissing')}</p>
+                  )}
+                  {caseView.caseDetail.teamDecision &&
+                    caseView.caseDetail.teamDecision.value.teamVersion !==
+                      caseView.caseDetail.team.version && (
+                      <p className="certification-note">
+                        {formatMessage(copy('decisionEarlierVersion'), {
+                          decided:
+                            caseView.caseDetail.teamDecision.value.teamVersion,
+                          current: caseView.caseDetail.team.version,
+                        })}
+                      </p>
+                    )}
+                  {feedbackMessage('decision', decisionFeedback)}
+                  {decisionStep(caseView)}
+                </section>
+              )}
               <section aria-labelledby={`${prefix}-timeline-title`}>
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
                 <TimelineView
                   timeline={caseView.timeline}
                   register={caseView.register}
+                  people={knownPeople(caseView)}
                 />
               </section>
             </>
@@ -1692,6 +1957,125 @@ function CertificationRegistry(
     );
   }
 
+  /** The latest team's state: awaiting a decision, approved or returned. */
+  function teamStatus(current: CaseDetail) {
+    const { team, teamDecision } = current;
+    const decided =
+      team && teamDecision?.value.teamVersion === team.version
+        ? teamDecision.value.decision
+        : undefined;
+    return (
+      <span
+        className={`certification-status certification-status-${decided === 'returned' ? 'rejected' : 'open'}`}
+      >
+        {copy(
+          decided === undefined
+            ? 'teamStatusPending'
+            : decided === 'approved'
+              ? 'teamStatusApproved'
+              : 'teamStatusReturned',
+        )}
+      </span>
+    );
+  }
+
+  /** The team form, the entry to a new version or why it is unavailable. */
+  function teamStep(view: CaseView) {
+    const current = view.caseDetail;
+    const proposed = current.team;
+    if (current.status !== 'open' || !current.agreement) return null;
+    if (proposed && !teamOpen)
+      return (
+        <>
+          {current.nextStep === 'team' && (
+            <p className="certification-blocked">{copy('teamReturnedNote')}</p>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setTeamDraft(teamDraftFor(proposed));
+              setTeamOpen(true);
+              setTeamFeedback(IDLE);
+            }}
+          >
+            {copy('correctTeam')}
+          </button>
+        </>
+      );
+    return (
+      <TeamForm
+        idPrefix={`${prefix}-team`}
+        draft={teamDraft ?? teamDraftFor(null)}
+        correcting={proposed !== null}
+        linkOptions={linkOptions(view)}
+        disabled={busy}
+        submitting={teamFeedback.status === 'saving'}
+        submitBlocked={blockedUntilReload(teamFeedback)}
+        feedbackId={describedFeedback('team', teamFeedback)}
+        onChange={(draft) => {
+          setTeamDraft(draft);
+          setTeamOpen(true);
+          if (
+            teamFeedback.status === 'saved' ||
+            (teamFeedback.status === 'refused' && !teamFeedback.reload)
+          )
+            setTeamFeedback(IDLE);
+        }}
+        onSubmit={submitTeam}
+        onCancel={
+          proposed
+            ? () => {
+                resetTeamDraft();
+                setTeamFeedback(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  /**
+   * The decision form for an approver who is not on the team, the plain
+   * reason an approver cannot decide, or who decides for everyone else.
+   */
+  function decisionStep(view: CaseView) {
+    const current = view.caseDetail;
+    const team = current.team;
+    if (current.status !== 'open' || !team) return null;
+    if (current.nextStep !== 'team_decision') return null;
+    if (!authority.approve)
+      return (
+        <p className="certification-note">{copy('teamAwaitingApprover')}</p>
+      );
+    // The server refuses a decision by anyone linked to any team version.
+    if (linkedToAnyTeamVersion(view.timeline, actor.workspaceMembershipId))
+      return (
+        <p className="certification-blocked">{copy('teamIndependence')}</p>
+      );
+    return (
+      <DecisionForm
+        idPrefix={`${prefix}-decision`}
+        draft={decisionDraft}
+        teamVersion={team.version}
+        conflictDeclared={!teamWithoutConflict(team.value)}
+        disabled={busy}
+        submitting={decisionFeedback.status === 'saving'}
+        submitBlocked={blockedUntilReload(decisionFeedback)}
+        feedbackId={describedFeedback('decision', decisionFeedback)}
+        onChange={(draft) => {
+          setDecisionDraft(draft);
+          if (
+            decisionFeedback.status === 'saved' ||
+            (decisionFeedback.status === 'refused' && !decisionFeedback.reload)
+          )
+            setDecisionFeedback(IDLE);
+        }}
+        onSubmit={submitDecision}
+      />
+    );
+  }
+
   /** The agreement form, the correction entry or why it is unavailable. */
   function agreementStep(current: CaseDetail, register: DocumentRegister) {
     const recorded = current.agreement;
@@ -1764,6 +2148,26 @@ function agreementMessage(
   return unexpected(check.status);
 }
 
+function teamMessage(
+  check: Exclude<TeamCheck, { status: 'valid' }>,
+): CertificationMessageKey {
+  switch (check.status) {
+    case 'incomplete':
+      return 'teamValidation';
+    case 'conflictNote':
+      return 'teamConflictNoteRequired';
+    case 'link':
+      return 'teamLinkInvalid';
+    case 'leader':
+      return 'teamLeaderRule';
+    case 'category':
+      return 'teamCategoryRule';
+    case 'reasonRequired':
+      return 'reasonRequired';
+  }
+  return unexpected(check.status);
+}
+
 /** A correction without a reason, or a first record with one, per step. */
 function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
   switch (kind) {
@@ -1771,10 +2175,13 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
       return 'blockedDurationCorrectionReason';
     case 'agreement':
       return 'blockedAgreementCorrectionReason';
+    case 'team':
+      return 'blockedTeamCorrectionReason';
     case 'open':
     case 'application':
     case 'review':
     case 'attach':
+    case 'decision':
       return 'blockedCorrectionReason';
   }
   return unexpected(kind);
@@ -1842,7 +2249,22 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
     (detail.duration === null ||
       recorded(detail.duration.id, detail.duration.version)) &&
     (detail.agreement === null ||
-      recorded(detail.agreement.id, detail.agreement.version))
+      recorded(detail.agreement.id, detail.agreement.version)) &&
+    (detail.team === null || recorded(detail.team.id, detail.team.version)) &&
+    (detail.teamDecision === null ||
+      recorded(detail.teamDecision.id, detail.teamDecision.version)) &&
+    // Each decision concerns a team version the timeline records before it.
+    timeline.entries.every(
+      (entry, index) =>
+        entry.step !== 'team_decision' ||
+        timeline.entries
+          .slice(0, index)
+          .some(
+            (earlier) =>
+              earlier.step === 'team' &&
+              earlier.version === entry.value.teamVersion,
+          ),
+    )
   );
 }
 
@@ -1924,6 +2346,14 @@ function commandFeedback(
           return refusedWith('durationStagesMismatch');
         case 'CERTIFICATION_DURATION_REFUSED':
           return refusedWith('durationRefused');
+        case 'CERTIFICATION_TEAM_LEADER':
+          return refusedWith('teamLeaderRule');
+        case 'CERTIFICATION_TEAM_CATEGORY':
+          return refusedWith('teamCategoryRule');
+        case 'CERTIFICATION_TEAM_CONFLICT_NOTE':
+          return refusedWith('teamConflictNoteRequired');
+        case 'CERTIFICATION_TEAM_MEMBER_UNKNOWN':
+          return refusedWith('teamMemberUnknown');
         default:
           return refusedWith('invalid');
       }
@@ -1953,6 +2383,14 @@ function commandFeedback(
           return refusedWith('agreementDocumentRole', true);
         case 'CERTIFICATION_AGREEMENT_IN_FUTURE':
           return refusedWith('agreementInFuture');
+        case 'CERTIFICATION_AGREEMENT_MISSING':
+          return refusedWith('blockedTeamBeforeAgreement', true);
+        case 'CERTIFICATION_TEAM_NOT_PENDING':
+          return refusedWith('blockedTeamNotPending', true);
+        case 'CERTIFICATION_INDEPENDENCE':
+          return refusedWith('teamIndependence', true);
+        case 'CERTIFICATION_TEAM_CONFLICT_DECLARED':
+          return refusedWith('teamConflictDeclared');
         case 'CERTIFICATION_CORRECTION_UNCHANGED':
           return refusedWith('blockedCorrectionUnchanged');
         default:

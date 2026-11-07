@@ -19,6 +19,17 @@ import {
   type DurationResult,
   type DurationWarning,
 } from './certification-duration';
+import {
+  IMPARTIALITY_DECLARATIONS,
+  TEAM_LIMITS,
+  TEAM_ROLES,
+  teamCompositionRefusal,
+  teamWithoutConflict,
+  type AuditTeam,
+  type ImpartialityDeclaration,
+  type TeamDecision,
+  type TeamMember,
+} from './certification-team';
 
 /** ISO 22003-1 food chain subcategories used by ISO 22000 certification. */
 export const FOOD_CHAIN_SUBCATEGORIES = [
@@ -157,7 +168,9 @@ export type StepVersion =
       value: ApplicationReview;
     })
   | (StepVersionBase & { step: 'duration'; value: DurationDetermination })
-  | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement });
+  | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement })
+  | (StepVersionBase & { step: 'team'; value: AuditTeam })
+  | (StepVersionBase & { step: 'team_decision'; value: TeamDecision });
 export type ApplicationVersion = Extract<StepVersion, { step: 'application' }>;
 export type ApplicationReviewVersion = Extract<
   StepVersion,
@@ -165,6 +178,11 @@ export type ApplicationReviewVersion = Extract<
 >;
 export type DurationVersion = Extract<StepVersion, { step: 'duration' }>;
 export type AgreementVersion = Extract<StepVersion, { step: 'agreement' }>;
+export type TeamVersion = Extract<StepVersion, { step: 'team' }>;
+export type TeamDecisionVersion = Extract<
+  StepVersion,
+  { step: 'team_decision' }
+>;
 
 export type CertificationNextStep =
   | 'application'
@@ -172,6 +190,8 @@ export type CertificationNextStep =
   | 'duration'
   | 'agreement'
   | 'team'
+  | 'team_decision'
+  | 'stage_1_plan'
   | null;
 
 export interface CaseSummary {
@@ -195,6 +215,10 @@ export interface CaseDetail extends CaseSummary {
   applicationReview: ApplicationReviewVersion | null;
   duration: DurationVersion | null;
   agreement: AgreementVersion | null;
+  /** The latest proposed audit team. */
+  team: TeamVersion | null;
+  /** The latest decision, which may concern an earlier team version. */
+  teamDecision: TeamDecisionVersion | null;
 }
 
 /** One exact frozen PDF of the Case's Client, attached with its role. */
@@ -302,6 +326,11 @@ export function parseCaseDetail(
     duration: body.duration === null ? null : durationVersion(body.duration),
     agreement:
       body.agreement === null ? null : agreementVersion(body.agreement),
+    team: body.team === null ? null : teamVersion(body.team),
+    teamDecision:
+      body.teamDecision === null
+        ? null
+        : teamDecisionVersion(body.teamDecision),
   };
   if (!consistent(detail)) invalid();
   return detail;
@@ -336,6 +365,16 @@ function durationVersion(value: unknown): DurationVersion {
 function agreementVersion(value: unknown): AgreementVersion {
   const version = parseStepVersion(value);
   return version.step === 'agreement' ? version : invalid();
+}
+
+function teamVersion(value: unknown): TeamVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'team' ? version : invalid();
+}
+
+function teamDecisionVersion(value: unknown): TeamDecisionVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'team_decision' ? version : invalid();
 }
 
 /** The Case's attachments, each at its own revision, in attachment order. */
@@ -504,6 +543,8 @@ function parseNextStep(value: unknown): CertificationNextStep {
     case 'duration':
     case 'agreement':
     case 'team':
+    case 'team_decision':
+    case 'stage_1_plan':
       return value;
     default:
       return invalid();
@@ -517,6 +558,8 @@ function consistent(detail: CaseDetail): boolean {
     applicationReview: review,
     duration,
     agreement,
+    team,
+    teamDecision: decision,
   } = detail;
   if (review && !application) return false;
   // A duration is determined only once the review accepted the application.
@@ -546,19 +589,55 @@ function consistent(detail: CaseDetail): boolean {
     )
       return false;
   }
+  if (team) {
+    // A team is proposed once the agreement is recorded. A later correction
+    // may replace that agreement, but the first record precedes every team.
+    if (
+      !agreement ||
+      !review ||
+      team.caseRevision > detail.revision ||
+      team.caseRevision <= review.caseRevision ||
+      team.caseRevision === agreement.caseRevision ||
+      (agreement.version === 1 && agreement.caseRevision > team.caseRevision)
+    )
+      return false;
+  }
+  if (decision) {
+    // A decision concerns the team version then latest, each version at most
+    // once and in order: it follows its own team version and precedes any
+    // later one. An approval needs a team without a declared conflict.
+    const decided = decision.value;
+    if (
+      !team ||
+      decision.caseRevision > detail.revision ||
+      decision.caseRevision === team.caseRevision ||
+      decided.teamVersion > team.version ||
+      decision.version > decided.teamVersion ||
+      (decided.teamVersion === team.version) !==
+        decision.caseRevision > team.caseRevision ||
+      (decided.teamVersion === team.version &&
+        decided.decision === 'approved' &&
+        !teamWithoutConflict(team.value))
+    )
+      return false;
+  }
   if (detail.status === 'rejected')
     return review?.value.outcome === 'rejected' && detail.nextStep === null;
   if (review?.value.outcome === 'rejected') return false;
-  const expected: CertificationNextStep = !application
-    ? 'application'
-    : !review
-      ? 'application_review'
-      : !duration
-        ? 'duration'
-        : !agreement
-          ? 'agreement'
-          : 'team';
-  return detail.nextStep === expected;
+  return detail.nextStep === expectedNextStep(detail);
+}
+
+/** The server's derivation of the next step of an open Case. */
+function expectedNextStep(detail: CaseDetail): CertificationNextStep {
+  if (!detail.application) return 'application';
+  if (!detail.applicationReview) return 'application_review';
+  if (!detail.duration) return 'duration';
+  if (!detail.agreement) return 'agreement';
+  const { team, teamDecision: decision } = detail;
+  if (!team) return 'team';
+  if (!decision || decision.value.teamVersion !== team.version)
+    return 'team_decision';
+  return decision.value.decision === 'returned' ? 'team' : 'stage_1_plan';
 }
 
 function parseStepVersion(value: unknown): StepVersion {
@@ -601,7 +680,79 @@ function parseStepVersion(value: unknown): StepVersion {
     if ((base.version === 1) !== (base.reason === null)) invalid();
     return { ...base, step: 'agreement', value: agreementValue(row.value) };
   }
+  if (row.step === 'team') {
+    // A new team version states why it replaces the earlier one.
+    if ((base.version === 1) !== (base.reason === null)) invalid();
+    return { ...base, step: 'team', value: auditTeam(row.value) };
+  }
+  if (row.step === 'team_decision') {
+    // A decision is not a correction: its own reason lives in its value.
+    if (base.reason !== null) invalid();
+    return {
+      ...base,
+      step: 'team_decision',
+      value: teamDecisionValue(row.value),
+    };
+  }
   return invalid();
+}
+
+/** A proposed team, held to the server's composition rules. */
+function auditTeam(value: unknown): AuditTeam {
+  const body = object(value);
+  const members = list(body.members, 1, TEAM_LIMITS.members).map(teamMember);
+  if (teamCompositionRefusal(members) !== null) invalid();
+  return { members };
+}
+
+function teamMember(value: unknown): TeamMember {
+  const row = object(value);
+  const declarationsBody = object(row.declarations);
+  if (
+    Object.keys(declarationsBody).some(
+      (key) => !IMPARTIALITY_DECLARATIONS.some((known) => known === key),
+    )
+  )
+    invalid();
+  const declarations: Record<ImpartialityDeclaration, boolean> = {
+    noConsultancy: flag(declarationsBody.noConsultancy),
+    noEmployment: flag(declarationsBody.noEmployment),
+    noManagementInvolvement: flag(declarationsBody.noManagementInvolvement),
+    confidentiality: flag(declarationsBody.confidentiality),
+  };
+  return {
+    name: text(row.name, TEAM_LIMITS.name),
+    role: TEAM_ROLES.find((role) => role === row.role) ?? invalid(),
+    workspaceMembershipId:
+      row.workspaceMembershipId === null
+        ? null
+        : text(row.workspaceMembershipId),
+    holdsCategory: flag(row.holdsCategory),
+    competenceNote: text(row.competenceNote, TEAM_LIMITS.competenceNote),
+    declarations,
+    conflictNote: optionalText(row.conflictNote, TEAM_LIMITS.conflictNote),
+  };
+}
+
+function teamDecisionValue(value: unknown): TeamDecision {
+  const body = object(value);
+  const teamVersion = positive(body.teamVersion);
+  if (body.decision === 'approved') {
+    if (body.reason !== null) invalid();
+    return { teamVersion, decision: 'approved', reason: null };
+  }
+  if (body.decision === 'returned')
+    return {
+      teamVersion,
+      decision: 'returned',
+      reason: text(body.reason, CERTIFICATION_LIMITS.reason),
+    };
+  return invalid();
+}
+
+/** An explicit boolean: a declaration never defaults. */
+function flag(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : invalid();
 }
 
 function agreementValue(value: unknown): CertificationAgreement {

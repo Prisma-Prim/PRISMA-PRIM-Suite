@@ -168,12 +168,14 @@
 .certification-workspace .certification-timeline > li {
   display: grid;
 }
-.certification-workspace .certification-documents {
+.certification-workspace .certification-documents,
+.certification-workspace .certification-team {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.certification-workspace .certification-documents > li {
+.certification-workspace .certification-documents > li,
+.certification-workspace .certification-team > li {
   display: grid;
   gap: 0.4rem;
   padding-block: 0.9rem;

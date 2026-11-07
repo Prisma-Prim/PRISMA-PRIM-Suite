@@ -111,6 +111,7 @@ type AssignmentBundle =
   | 'ideas-reviewer'
   | 'certification-reader'
   | 'certification-programme-manager'
+  | 'certification-approver'
   | 'profitability-contributor'
   | 'profitability-director'
   | 'operational-risk-reader'
@@ -149,6 +150,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'certification-reader': '/company-certification-reader-assignments',
   'certification-programme-manager':
     '/company-certification-programme-manager-assignments',
+  'certification-approver': '/company-certification-approver-assignments',
   'operational-risk-reader': '/company-operational-risk-reader-assignments',
   'operational-risk-recorder': '/company-operational-risk-recorder-assignments',
   'profitability-contributor': '/company-profitability-contributor-assignments',
@@ -665,6 +667,10 @@ export function CompanyContextAccess({
                 value: 'certification-programme-manager',
                 label: certificationCopy('managerBundle'),
               },
+              {
+                value: 'certification-approver',
+                label: certificationCopy('approverBundle'),
+              },
               { value: 'company-context', label: copy('companyContextBundle') },
               {
                 value: 'commercial-intake',
@@ -882,6 +888,7 @@ export function CompanyContextAccess({
                 value === 'ideas-reviewer' ||
                 value === 'certification-reader' ||
                 value === 'certification-programme-manager' ||
+                value === 'certification-approver' ||
                 value === 'profitability-contributor' ||
                 value === 'profitability-director' ||
                 value === 'operational-risk-reader' ||
@@ -941,6 +948,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'certification-programme-manager' && (
             <p>{certificationCopy('managerPrerequisites')}</p>
+          )}
+          {bundle === 'certification-approver' && (
+            <p>{certificationCopy('approverPrerequisites')}</p>
           )}
           {bundle === 'profitability-contributor' && (
             <p>{profitabilityCopy('contributorPrerequisites')}</p>
@@ -1181,6 +1191,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'certification-reader': 'Company Certification Reader',
     'certification-programme-manager':
       'Company Certification Programme Manager',
+    'certification-approver': 'Company Certification Approver',
     'operational-risk-reader': 'Company Operational Risk Reader',
     'operational-risk-recorder': 'Company Operational Risk Recorder',
     'profitability-contributor': 'Company Profitability Contributor',

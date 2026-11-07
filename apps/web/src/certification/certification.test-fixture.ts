@@ -19,18 +19,23 @@ export const certificationIds = {
   otherEntity: '11310000-0000-4000-8000-000000000006',
   member: '11310000-0000-4000-8000-000000000007',
   colleague: '11310000-0000-4000-8000-000000000008',
+  /** A membership that is not active in the Workspace. */
+  formerMember: '11310000-0000-4000-8000-000000000010',
 };
 
 /**
- * A Certification Reader, optionally Programme Manager, optionally with the
- * Document rights to read this Client's received audit source content.
+ * A Certification Reader, optionally Programme Manager and Approver,
+ * optionally with the Document rights to read this Client's received audit
+ * source content.
  */
 export function certificationActor({
   manager,
   documents = false,
+  approver = false,
 }: {
   manager: boolean;
   documents?: boolean;
+  approver?: boolean;
 }): ActorContext {
   return {
     internalUserId: 'certification-person',
@@ -61,6 +66,13 @@ export function certificationActor({
             certificationProgrammeManagerAssignmentId:
               'certification-manager-grant',
             certificationProgrammeManagerPermissionSetVersion: 'v1',
+          }
+        : {}),
+      ...(approver
+        ? {
+            certificationApproverPermissions: ['certification.approve'],
+            certificationApproverAssignmentId: 'certification-approver-grant',
+            certificationApproverPermissionSetVersion: 'v1',
           }
         : {}),
       ...(documents
@@ -126,10 +138,38 @@ export function reviewCriteria(answer: 'yes' | 'no' = 'yes') {
   };
 }
 
+/** All four impartiality declarations confirmed. */
+export const NO_CONFLICT = {
+  noConsultancy: true,
+  noEmployment: true,
+  noManagementInvolvement: true,
+  confidentiality: true,
+};
+
+/** One team member as the server records it: a leader holding the category. */
+export function teamMember(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'Elena Demo',
+    role: 'team_leader',
+    workspaceMembershipId: null,
+    holdsCategory: true,
+    competenceNote: 'ISO 22000 lead auditor, category C',
+    declarations: NO_CONFLICT,
+    conflictNote: null,
+    ...overrides,
+  };
+}
+
 type Actor = { workspaceMembershipId: string; displayName: string };
 type Step = {
   id: string;
-  step: 'application' | 'application_review' | 'duration' | 'agreement';
+  step:
+    | 'application'
+    | 'application_review'
+    | 'duration'
+    | 'agreement'
+    | 'team'
+    | 'team_decision';
   version: number;
   caseRevision: number;
   reason: string | null;
@@ -309,8 +349,8 @@ export class FakeCertificationServer {
 
   /**
    * Seeds a Case, optionally with a colleague's application (with `facts`
-   * overriding the fictional dairy's), its accepted review and a duration
-   * confirmed as proposed.
+   * overriding the fictional dairy's), its accepted review, a duration
+   * confirmed as proposed and an agreement on an attached signed original.
    */
   seed({
     orderReference = 'CERT-SEED',
@@ -318,17 +358,19 @@ export class FakeCertificationServer {
     facts = {},
     accepted = false,
     duration = false,
+    agreement = false,
   }: {
     orderReference?: string;
     application?: boolean;
     facts?: Record<string, unknown>;
     accepted?: boolean;
     duration?: boolean;
+    agreement?: boolean;
   } = {}): string {
     const stored = this.create(orderReference, colleague);
-    if (application || accepted || duration)
+    if (application || accepted || duration || agreement)
       this.append(stored, 'application', lactisFacts(facts), null, colleague);
-    if (accepted || duration)
+    if (accepted || duration || agreement)
       this.append(
         stored,
         'application_review',
@@ -340,8 +382,54 @@ export class FakeCertificationServer {
         null,
         colleague,
       );
-    if (duration) this.confirmDurationAsColleague(stored.id);
+    if (duration || agreement) this.confirmDurationAsColleague(stored.id);
+    if (agreement) {
+      const signed = this.addSource(`Signed agreement ${orderReference}`);
+      const attached = this.attach(
+        stored,
+        signed,
+        'agreement',
+        null,
+        colleague,
+      );
+      this.append(
+        stored,
+        'agreement',
+        { signedOn: '2026-11-02', attachmentId: attached.id },
+        null,
+        colleague,
+      );
+    }
     return stored.id;
+  }
+
+  /** A colleague proposes a team version, making earlier revisions stale. */
+  proposeTeamAsColleague(
+    caseId: string,
+    members: Record<string, unknown>[],
+    reason: string | null = null,
+  ) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case');
+    this.append(stored, 'team', { members }, reason, colleague);
+  }
+
+  /** A colleague approver decides on the latest team version. */
+  decideTeamAsColleague(
+    caseId: string,
+    decision: 'approved' | 'returned',
+    reason: string | null = null,
+  ) {
+    const stored = this.cases.get(caseId);
+    const team = stored && latestStep(stored, 'team');
+    if (!stored || !team) throw new Error('Unknown team');
+    this.append(
+      stored,
+      'team_decision',
+      { teamVersion: team.version, decision, reason },
+      null,
+      colleague,
+    );
   }
 
   /**
@@ -469,7 +557,7 @@ export class FakeCertificationServer {
       );
     if (content) return this.content(content[1], content[2]);
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
@@ -506,6 +594,10 @@ export class FakeCertificationServer {
         });
       case '/agreement':
         return this.recordAgreement(stored, request.body);
+      case '/team':
+        return this.proposeTeam(stored, request.body);
+      case '/team-decision':
+        return this.decideTeam(stored, request.body);
       default:
         return new Response(null, { status: 404 });
     }
@@ -586,6 +678,91 @@ export class FakeCertificationServer {
       'agreement',
       { signedOn, attachmentId: attached.id },
       reason,
+      me,
+    );
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** The server's checks, in its order: composition, revision, agreement, reason, links. */
+  private proposeTeam(stored: StoredCase, body: unknown): Response {
+    const input = record(body);
+    const composition = teamComposition(input.members);
+    if (composition !== null) return refusal(400, composition);
+    const reason = input.reason === undefined ? null : input.reason;
+    if (reason !== null && !nonblank(reason))
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (!latestStep(stored, 'agreement'))
+      return refusal(409, 'CERTIFICATION_AGREEMENT_MISSING');
+    const first = !latestStep(stored, 'team');
+    if (first !== (reason === null))
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    const members = list(input.members).map(record);
+    if (
+      members.some(
+        (member) =>
+          member.workspaceMembershipId !== null &&
+          member.workspaceMembershipId !== me.workspaceMembershipId &&
+          member.workspaceMembershipId !== colleague.workspaceMembershipId,
+      )
+    )
+      return refusal(400, 'CERTIFICATION_TEAM_MEMBER_UNKNOWN');
+    this.append(stored, 'team', { members }, reason, me);
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /**
+   * The server's checks, in its order: the approver grant, the input, the
+   * revision, a pending team of that version, independence, then conflicts.
+   */
+  private decideTeam(stored: StoredCase, body: unknown): Response {
+    if (!holdsApprover(this.actor()))
+      return new Response(null, { status: 403 });
+    const input = record(body);
+    const approved =
+      input.decision === 'approved' &&
+      (input.reason === undefined || input.reason === null);
+    if (
+      typeof input.teamVersion !== 'number' ||
+      !(approved || (input.decision === 'returned' && nonblank(input.reason)))
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    const team = latestStep(stored, 'team');
+    const decided = latestStep(stored, 'team_decision');
+    if (!team || decided?.value.teamVersion === team.version)
+      return refusal(409, 'CERTIFICATION_TEAM_NOT_PENDING');
+    if (input.teamVersion !== team.version)
+      return refusal(409, 'STALE_VERSION');
+    const onTeam = stored.steps.some(
+      (step) =>
+        step.step === 'team' &&
+        list(step.value.members).some(
+          (member) =>
+            record(member).workspaceMembershipId === me.workspaceMembershipId,
+        ),
+    );
+    if (onTeam) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (
+      approved &&
+      list(team.value.members).some((member) => declaresConflict(member))
+    )
+      return refusal(409, 'CERTIFICATION_TEAM_CONFLICT_DECLARED');
+    this.append(
+      stored,
+      'team_decision',
+      {
+        teamVersion: team.version,
+        decision: input.decision,
+        reason: approved ? null : input.reason,
+      },
+      null,
       me,
     );
     return Response.json(this.detail(stored), { status: 201 });
@@ -817,6 +994,8 @@ export class FakeCertificationServer {
     const review = latest('application_review');
     const duration = latest('duration');
     const agreement = latest('agreement');
+    const team = latest('team');
+    const decided = latest('team_decision');
     return {
       id: stored.id,
       projectId: this.projectId,
@@ -837,7 +1016,13 @@ export class FakeCertificationServer {
                 ? 'duration'
                 : !agreement
                   ? 'agreement'
-                  : 'team',
+                  : !team
+                    ? 'team'
+                    : decided?.value.teamVersion !== team.version
+                      ? 'team_decision'
+                      : decided.value.decision === 'returned'
+                        ? 'team'
+                        : 'stage_1_plan',
       openedBy: stored.openedBy,
       openedAt: stored.openedAt,
     };
@@ -853,6 +1038,8 @@ export class FakeCertificationServer {
       applicationReview: latest('application_review'),
       duration: latest('duration'),
       agreement: latest('agreement'),
+      team: latest('team'),
+      teamDecision: latest('team_decision'),
     };
   }
 
@@ -866,6 +1053,89 @@ function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Expected a request record.');
   return Object.fromEntries(Object.entries(value));
+}
+
+function list(value: unknown): unknown[] {
+  if (!Array.isArray(value)) throw new Error('Expected a list.');
+  return value;
+}
+
+function nonblank(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+const TEAM_ROLE_VALUES = [
+  'team_leader',
+  'auditor',
+  'technical_expert',
+  'observer',
+];
+const DECLARATION_NAMES = [
+  'noConsultancy',
+  'noEmployment',
+  'noManagementInvolvement',
+  'confidentiality',
+];
+
+function declaresConflict(member: unknown): boolean {
+  const declarations = record(record(member).declarations);
+  return DECLARATION_NAMES.some((name) => declarations[name] !== true);
+}
+
+/** The server's composition refusal code for submitted members, if any. */
+function teamComposition(value: unknown): string | null {
+  const invalidInput = 'INVALID_CERTIFICATION_INPUT';
+  if (!Array.isArray(value) || value.length < 1 || value.length > 10)
+    return invalidInput;
+  const members = value.map(record);
+  for (const member of members) {
+    const declarations = record(member.declarations);
+    if (
+      !TEAM_ROLE_VALUES.includes(String(member.role)) ||
+      typeof member.holdsCategory !== 'boolean' ||
+      DECLARATION_NAMES.some((name) => typeof declarations[name] !== 'boolean')
+    )
+      return invalidInput;
+    const note = member.conflictNote === undefined ? null : member.conflictNote;
+    if (declaresConflict(member) !== (note !== null))
+      return 'CERTIFICATION_TEAM_CONFLICT_NOTE';
+    if (
+      !nonblank(member.name) ||
+      !nonblank(member.competenceNote) ||
+      (note !== null && !nonblank(note)) ||
+      (member.workspaceMembershipId !== null &&
+        typeof member.workspaceMembershipId !== 'string')
+    )
+      return invalidInput;
+  }
+  const links = members.flatMap((member) =>
+    typeof member.workspaceMembershipId === 'string'
+      ? [member.workspaceMembershipId]
+      : [],
+  );
+  if (new Set(links).size !== links.length) return invalidInput;
+  const leaders = members.filter((member) => member.role === 'team_leader');
+  const [leader] = leaders;
+  if (leaders.length !== 1 || !leader) return 'CERTIFICATION_TEAM_LEADER';
+  const competent = members.some(
+    (member) => member.role !== 'observer' && member.holdsCategory === true,
+  );
+  const expert = members.some(
+    (member) =>
+      member.role === 'technical_expert' && member.holdsCategory === true,
+  );
+  if (!competent || (leader.holdsCategory !== true && !expert))
+    return 'CERTIFICATION_TEAM_CATEGORY';
+  return null;
+}
+
+/** Whether the current actor captures the Certification Approver grant. */
+function holdsApprover(actor: unknown): boolean {
+  const company = record(record(actor).activeCompany);
+  const permissions = company.certificationApproverPermissions;
+  return (
+    Array.isArray(permissions) && permissions.includes('certification.approve')
+  );
 }
 
 function latestStep(stored: StoredCase, step: Step['step']) {

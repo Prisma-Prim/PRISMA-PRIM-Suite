@@ -85,6 +85,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_certification_reader_assignment.revoked'
     | 'company_certification_programme_manager_assignment.granted'
     | 'company_certification_programme_manager_assignment.revoked'
+    | 'company_certification_approver_assignment.granted'
+    | 'company_certification_approver_assignment.revoked'
     | 'company_internal_task_manager_assignment.granted'
     | 'company_internal_task_manager_assignment.revoked'
     | 'company_task_manager_assignment.granted'

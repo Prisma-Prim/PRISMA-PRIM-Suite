@@ -327,6 +327,11 @@ const isActorContext = object({
       certificationProgrammeManagerPermissionSetVersion: optional(
         literal('v1'),
       ),
+      certificationApproverPermissions: optional(
+        array(literal('certification.approve')),
+      ),
+      certificationApproverAssignmentId: optional(isString),
+      certificationApproverPermissionSetVersion: optional(literal('v1')),
       clientPermissions: optional(
         array(
           literal(

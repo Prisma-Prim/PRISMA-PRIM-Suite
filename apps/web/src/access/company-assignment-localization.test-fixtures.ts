@@ -198,6 +198,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'certification-approver',
+    canonical: 'Company Certification Approver',
+    version: 'v1',
+    labels: {
+      ro: 'Aprobator de certificare al companiei',
+      ru: 'Утверждающий по сертификации компании',
+      fr: 'Approbateur de certification de la société',
+      en: 'Company Certification Approver',
+    },
+  },
+  {
     value: 'company-context',
     canonical: 'Company Context Access',
     version: null,
