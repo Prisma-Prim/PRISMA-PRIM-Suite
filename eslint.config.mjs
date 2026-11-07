@@ -49,7 +49,13 @@ export default tseslint.config(
     // offending import line with an `-- reason`. Extend this block rather
     // than configuring the rule again: a later block replaces its options.
     files: ['apps/api/**/*.ts'],
-    ignores: ['apps/api/src/access/**', 'apps/api/src/database/schema/**'],
+    // The tenancy schema test inspects every Drizzle table, Access tables
+    // included, without querying them (#1103).
+    ignores: [
+      'apps/api/src/access/**',
+      'apps/api/src/database/schema/**',
+      'apps/api/src/database/tenancy-schema.test.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
