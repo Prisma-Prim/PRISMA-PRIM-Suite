@@ -256,14 +256,16 @@ test('independent test families and packaging share only the fast prerequisite a
   assert.doesNotMatch(await readWorkflow(), /continue-on-error/);
 });
 
-test('CI runs on pull requests and the merge queue, preserves read-only proof access and cancels obsolete runs', async () => {
+test('CI runs on pull requests, the merge queue and the nightly main call, preserves read-only proof access and cancels obsolete runs', async () => {
   const workflow = await readWorkflow();
+  // The bare call has no inputs: the nightly run cannot narrow the suite.
   assert.match(
     workflow,
-    /on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review\]\n {2}merge_group:\n {4}types: \[checks_requested\]\n {2}workflow_dispatch:\n/,
+    /on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review\]\n {2}merge_group:\n {4}types: \[checks_requested\]\n {2}workflow_dispatch:\n(?: {2}#[^\n]*\n)* {2}workflow_call:\n\npermissions:/,
   );
   assert.doesNotMatch(workflow, /^ {2}(?:push|schedule|pull_request_target):/m);
   assert.match(workflow, /permissions:\n {2}contents: read\n/);
+  assert.doesNotMatch(workflow, /\bissues:|: write\b/);
   const concurrencyStart = workflow.indexOf('\nconcurrency:\n');
   const jobsStart = workflow.indexOf('\njobs:\n');
   assert.notEqual(concurrencyStart, -1);
@@ -271,12 +273,103 @@ test('CI runs on pull requests and the merge queue, preserves read-only proof ac
   const concurrency = workflow
     .slice(concurrencyStart, jobsStart)
     .replaceAll(/\s+/g, ' ');
+  // A nightly main run has a group of its own, so nothing cancels it.
   assert.match(
     concurrency,
-    /group: ci-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}/,
+    /group: ci-\$\{\{ github\.event\.pull_request\.number \|\| \(github\.event_name == 'schedule' && format\('nightly-\{0\}', github\.run_id\)\) \|\| github\.ref \}\}/,
   );
   assert.match(concurrency, /cancel-in-progress: true/);
-  assert.doesNotMatch(workflow, /workflow_call|checkout_ref|preflight/);
+  assert.doesNotMatch(workflow, /checkout_ref|preflight|\binputs\b/);
+});
+
+async function readMainHealth() {
+  return (
+    await readFile(
+      new URL('../.github/workflows/main-health.yml', import.meta.url),
+      'utf8',
+    )
+  ).replaceAll('\r\n', '\n');
+}
+
+function stepsOf(job) {
+  const start = job.indexOf('\n    steps:\n');
+  assert.notEqual(start, -1, 'missing steps');
+  return job.slice(start).trimEnd();
+}
+
+test('main health reruns the CI fast checks on every main push and the complete CI nightly', async () => {
+  const health = await readMainHealth();
+  assert.match(
+    health,
+    /\non:\n {2}push:\n {4}branches: \[main\]\n {2}schedule:\n {4}- cron: '17 2 \* \* \*'\n\n/,
+  );
+  // Only main runs report: no pull request, queue, dispatched or chained run.
+  assert.doesNotMatch(
+    health,
+    /^ {2}(?:pull_request|pull_request_target|merge_group|workflow_dispatch|workflow_run|workflow_call):/m,
+  );
+  const jobs = jobsIn(health);
+  assert.deepEqual(Object.keys(jobs), ['checks', 'ci', 'report']);
+  assert.match(
+    jobs.checks,
+    /^ {4}if: \$\{\{ github\.event_name == 'push' \}\}$/m,
+  );
+  for (const job of [jobs.checks, jobs.report])
+    assert.deepEqual(
+      [...job.matchAll(/^ {4}runs-on: (.+)$/gm)].map((match) => match[1]),
+      ['ubuntu-24.04'],
+    );
+  // The push run executes exactly the steps of the CI `checks` job.
+  assert.equal(
+    stepsOf(jobs.checks),
+    stepsOf(jobsIn(await readWorkflow()).checks),
+  );
+  // The nightly run is the complete CI itself, unnarrowed.
+  assert.equal(
+    jobs.ci.trimEnd(),
+    "  ci:\n    if: ${{ github.event_name == 'schedule' }}\n    uses: ./.github/workflows/ci.yml",
+  );
+});
+
+test('nothing cancels a main health run, and its reports run one at a time', async () => {
+  const health = await readMainHealth();
+  assert.doesNotMatch(health, /^concurrency:/m);
+  assert.doesNotMatch(health, /cancel-in-progress: true/);
+  const { checks, ci, report } = jobsIn(health);
+  for (const job of [checks, ci]) assert.doesNotMatch(job, /concurrency:/);
+  assert.match(
+    report,
+    /\n {4}concurrency:\n {6}group: main-red-report\n {6}cancel-in-progress: false\n/,
+  );
+});
+
+test('only the main health report job writes issues, after every finished main run', async () => {
+  const health = await readMainHealth();
+  assert.match(
+    health,
+    /\npermissions:\n {2}contents: read\n {2}actions: read\n\n/,
+  );
+  const { checks, ci, report } = jobsIn(health);
+  for (const job of [checks, ci]) assert.doesNotMatch(job, /permissions:/);
+  assert.match(
+    report,
+    /\n {4}permissions:\n {6}contents: read\n {6}actions: read\n {6}issues: write\n {6}pull-requests: read\n/,
+  );
+  assert.equal([...health.matchAll(/: write\b/g)].length, 1);
+  assert.match(report, /^ {4}needs: \[checks, ci\]$/m);
+  // A failed job never skips the report; a cancelled run proves nothing.
+  assert.match(report, /^ {4}if: \$\{\{ !cancelled\(\) \}\}$/m);
+  const step = stepBody(report, 'Open, update or close the main-red issue');
+  assert.match(step, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(step, /MAIN_RESULTS: \$\{\{ toJSON\(needs\) \}\}/);
+  assert.match(
+    step.trimEnd(),
+    /\n {8}run: node scripts\/main-health-report\.mjs$/,
+  );
+  assert.doesNotMatch(health, /continue-on-error/);
+  for (const line of health.split('\n'))
+    if (/^\s*(?:- )?run:/.test(line))
+      assert.doesNotMatch(line, /\$\{\{/, 'no expression inside a command');
 });
 
 test('a controlled failing dependency prevents the workflow aggregate command from succeeding', async () => {
