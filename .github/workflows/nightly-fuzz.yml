@@ -1,0 +1,92 @@
+name: Nightly fuzz
+
+# Seeded model-based fuzzing of Company isolation, access revocation and
+# Activity Log invariants through the real API on PostgreSQL (#1156). It runs
+# on main every night with a random seed and never gates a pull request; the
+# regular API CI runs the same test file as a fixed-seed smoke. `report`
+# keeps one open `fuzz-found` issue, which the owner closes after triage.
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# No workflow concurrency: nothing cancels a run and hides its failure.
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
+      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          chromium: 'false'
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor:postgres
+
+      # The test logs its random seed. The size aims at about 15 minutes; its
+      # own 20-minute limit ends a slow night cleanly, before the job
+      # timeout, as a pass of the runs done.
+      - name: Fuzz the API invariants
+        env:
+          FUZZ_SEED: random
+          FUZZ_RUNS: '250'
+          FUZZ_STEPS: '40'
+          FUZZ_REPORT: ${{ runner.temp }}/fuzz-report.json
+        run: pnpm --filter @prisma-prim/api exec vitest run src/internal-task/internal-task.fuzz.rest.test.ts
+
+      - name: Upload the failure report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-fuzz-report
+          path: ${{ runner.temp }}/fuzz-report.json
+          if-no-files-found: ignore
+
+  report:
+    needs: fuzz
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    # One report at a time, so two failing nights never open two issues.
+    concurrency:
+      group: fuzz-found-report
+      cancel-in-progress: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Download the failure report
+        if: ${{ needs.fuzz.result == 'failure' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-fuzz-report
+          path: ${{ runner.temp }}/fuzz-report
+
+      - name: Open, update or comment on the fuzz-found issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FUZZ_RESULT: ${{ needs.fuzz.result }}
+          FUZZ_REPORT: ${{ runner.temp }}/fuzz-report/fuzz-report.json
+        run: node scripts/nightly-fuzz-report.mjs
