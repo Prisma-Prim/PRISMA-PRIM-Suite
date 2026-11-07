@@ -63,7 +63,13 @@ export class DocumentReadBoundary {
     );
     return { companyId, document, client };
   }
-  /** Fence the scoped family before receipt inspection, retaining native mismatch semantics. */
+  /**
+   * Fence the scoped family before receipt inspection, retaining native
+   * mismatch semantics. A Document whose family is hidden from the actor is
+   * answered exactly like a missing one: no family is returned, so the
+   * command's own validation, receipt and visibility checks decide, and a
+   * command cannot reveal that a hidden Document exists.
+   */
   async lockFamilyForCommand(actor: ActorContext, documentId: string) {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor, true);
@@ -77,8 +83,14 @@ export class DocumentReadBoundary {
           eq(workingDocuments.id, documentId),
         ),
       );
-    if (document) await this.requireFamily(actor, document.type, true);
-    return document?.type;
+    if (!document) return undefined;
+    try {
+      await this.requireFamily(actor, document.type, true);
+    } catch (error) {
+      if (error instanceof NotFoundException) return undefined;
+      throw error;
+    }
+    return document.type;
   }
 
   private async requireFamily(
