@@ -34,6 +34,10 @@ export function documentRoleLabel(
       return 'roleEvidence';
     case 'certificate':
       return 'roleCertificate';
+    case 'certificate_data':
+      return 'roleCertificateData';
+    case 'decision_form':
+      return 'roleDecisionForm';
     case 'other':
       return 'roleOther';
   }

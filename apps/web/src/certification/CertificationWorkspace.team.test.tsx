@@ -454,7 +454,7 @@ describe('Certification audit team and its approval', () => {
     [
       409,
       'CERTIFICATION_INDEPENDENCE',
-      'A member who decided on a version of this team cannot join it. Remove that link, reload the Case and propose again.',
+      'A member who approved this team, reviewed the dossier or recorded the decision cannot join the team. Remove that link, reload the Case and propose again.',
       true,
     ],
   ] as const)(

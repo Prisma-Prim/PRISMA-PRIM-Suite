@@ -28,11 +28,37 @@ import {
   type ApplicationFacts,
   type ApplicationReview,
   type CaseDetail,
+  type CaseStatus,
   type CaseTimeline,
   type CertificationNextStep,
   type DocumentRegister,
   type StepVersion,
 } from './certification-response';
+import {
+  CertificateDataView,
+  CertificationDecisionView,
+  DossierReviewView,
+  RecommendationView,
+  outcomeLabel,
+  recommendationLabel,
+} from './CertificationDecisionViews';
+import { dossierComplete, type Certificate } from './certification-decision';
+import type { CertificationMessageKey } from './certification.copy';
+
+/** The label of a Case status: open, or how it was closed. */
+export function statusLabel(status: CaseStatus): CertificationMessageKey {
+  switch (status) {
+    case 'open':
+      return 'statusOpen';
+    case 'rejected':
+      return 'statusRejected';
+    case 'refused':
+      return 'statusRefused';
+    case 'certified':
+      return 'statusCertified';
+  }
+  return unexpected(status);
+}
 
 /** Every recorded application fact, missing optional values stated as such. */
 export function FactsView({ facts }: { facts: ApplicationFacts }) {
@@ -205,8 +231,97 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       <li data-current={detail.nextStep === 'findings_follow_up'}>
         <strong>{copy('stepFindings')}</strong> {findingsState(detail)}
       </li>
+      <li data-current={detail.nextStep === 'recommendation'}>
+        <strong>{copy('stepRecommendation')}</strong>{' '}
+        {recommendationState(detail)}
+      </li>
+      <li data-current={detail.nextStep === 'dossier_review'}>
+        <strong>{copy('stepDossierReview')}</strong>{' '}
+        {dossierReviewState(detail)}
+      </li>
+      <li data-current={detail.nextStep === 'decision'}>
+        <strong>{copy('stepCertificationDecision')}</strong>{' '}
+        {decisionState(detail)}
+      </li>
+      <li data-current={detail.nextStep === 'certificate_data'}>
+        <strong>{copy('stepCertificateData')}</strong>{' '}
+        {certificateDataState(detail)}
+      </li>
+      <li data-current={detail.nextStep === 'certificate'}>
+        <strong>{copy('stepCertificate')}</strong> {certificateState(detail)}
+      </li>
     </ol>
   );
+
+  /** The latest recommendation, or what it waits for. */
+  function recommendationState(current: CaseDetail): string {
+    if (current.recommendation)
+      return formatMessage(copy('stepRecommended'), {
+        recommendation: copy(
+          recommendationLabel(current.recommendation.value.recommendation),
+        ),
+        version: current.recommendation.version,
+      });
+    if (closed) return copy('stepClosed');
+    if (!current.stage2Report) return copy('stepWaitingStage2Report');
+    return current.findings.some(findingBlocks)
+      ? copy('stepWaitingFollowUp')
+      : copy('stepToRecord');
+  }
+
+  /** The latest review, complete or not, or what it waits for. */
+  function dossierReviewState(current: CaseDetail): string {
+    const review = current.dossierReview;
+    if (review)
+      return formatMessage(
+        copy(
+          dossierComplete(review.value)
+            ? 'stepDossierComplete'
+            : 'stepDossierIncomplete',
+        ),
+        { version: review.version },
+      );
+    if (closed) return copy('stepClosed');
+    return current.recommendation
+      ? copy('stepToRecord')
+      : copy('stepWaitingRecommendation');
+  }
+
+  /** The immutable decision, or what it waits for. */
+  function decisionState(current: CaseDetail): string {
+    if (current.decision)
+      return copy(outcomeLabel(current.decision.value.decision));
+    if (closed) return copy('stepClosed');
+    return current.dossierReview
+      ? copy('stepToRecord')
+      : copy('stepWaitingDossierReview');
+  }
+
+  /** The latest agreed data; a closed Case without them needs none. */
+  function certificateDataState(current: CaseDetail): string {
+    if (current.certificateData)
+      return formatMessage(copy('stepRecorded'), {
+        version: current.certificateData.version,
+      });
+    if (closed || current.status === 'refused') return copy('stepClosed');
+    return current.stage2Report
+      ? copy('stepToRecord')
+      : copy('stepWaitingStage2Report');
+  }
+
+  /** The recorded Certificate, or the grant and data it waits for. */
+  function certificateState(current: CaseDetail): string {
+    if (current.certificate)
+      return formatMessage(copy('stepCertificateRecorded'), {
+        number: current.certificate.number,
+      });
+    if (closed || current.status === 'refused') return copy('stepClosed');
+    if (current.decision?.value.decision !== 'granted')
+      return copy('stepWaitingGrant');
+    return current.certificateData
+      ? copy('stepToRecord')
+      : copy('stepWaitingCertificateData');
+  }
 
   /**
    * Once Stage 2 is reported: the nonconformities that still hold the
@@ -298,6 +413,14 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
       return <>{copy('nextFindingsFollowUp')}</>;
     case 'recommendation':
       return <>{copy('nextRecommendation')}</>;
+    case 'dossier_review':
+      return <>{copy('nextDossierReview')}</>;
+    case 'decision':
+      return <>{copy('nextCertificationDecision')}</>;
+    case 'certificate_data':
+      return <>{copy('nextCertificateData')}</>;
+    case 'certificate':
+      return <>{copy('nextCertificate')}</>;
     case null:
       return <>{copy('nextNone')}</>;
   }
@@ -307,22 +430,26 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
 /**
  * Every recorded version in Case order, each with its exact values: the step
  * versions of the timeline and the Finding records of the Case read, one
- * line per command. Agreements, Stage records and Findings name their PDFs
+ * line per command, and the recorded Certificate last, which closes the
+ * Case. Agreements, Stage records, Findings and the decision name their PDFs
  * from the Case's register; a team names the Workspace members known in the
  * Case.
  */
 export function TimelineView({
   timeline,
   findings,
+  certificate,
   register,
   people,
 }: {
   timeline: CaseTimeline;
   findings: readonly Finding[];
+  certificate: Certificate | null;
   register: DocumentRegister;
   people: KnownPeople;
 }) {
   const copy = useCertificationCopy();
+  const { formatDateTime } = useInterfaceLocale();
   const lines = [
     ...timeline.entries.map((entry) => ({
       key: entry.id,
@@ -341,6 +468,22 @@ export function TimelineView({
       {lines.map(({ key, line }) => (
         <li key={key}>{line}</li>
       ))}
+      {certificate && (
+        <li>
+          <strong>
+            {formatMessage(copy('timelineCertificate'), {
+              number: certificate.number,
+            })}
+          </strong>
+          <p className="certification-attribution">
+            {copy('recordedBy')}: {certificate.recordedBy.displayName} ·{' '}
+            {copy('recordedAt')}:{' '}
+            <time dateTime={certificate.recordedAt}>
+              {formatDateTime(certificate.recordedAt)}
+            </time>
+          </p>
+        </li>
+      )}
     </ol>
   );
 }
@@ -425,6 +568,38 @@ function TimelineEntry({
           version: entry.version,
         }),
         <Stage2ReportView report={entry.value} register={register} />,
+      );
+    case 'recommendation':
+      return values(
+        formatMessage(copy('timelineRecommendation'), {
+          recommendation: copy(recommendationLabel(entry.value.recommendation)),
+          version: entry.version,
+        }),
+        <RecommendationView recommendation={entry.value} />,
+      );
+    case 'dossier_review':
+      return values(
+        formatMessage(copy('timelineDossierReview'), {
+          version: entry.version,
+        }),
+        <DossierReviewView review={entry.value} />,
+      );
+    case 'decision':
+      return values(
+        formatMessage(copy('timelineCertificationDecision'), {
+          decision: copy(outcomeLabel(entry.value.decision)),
+        }),
+        <CertificationDecisionView
+          decision={entry.value}
+          register={register}
+        />,
+      );
+    case 'certificate_data':
+      return values(
+        formatMessage(copy('timelineCertificateData'), {
+          version: entry.version,
+        }),
+        <CertificateDataView data={entry.value} register={register} />,
       );
   }
   return unexpected(entry);

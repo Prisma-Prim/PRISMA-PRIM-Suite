@@ -10,6 +10,7 @@ import {
 export const certificationTables = [
   'certification_case_documents',
   'certification_cases',
+  'certification_certificates',
   'certification_events',
   'certification_finding_records',
   'certification_findings',

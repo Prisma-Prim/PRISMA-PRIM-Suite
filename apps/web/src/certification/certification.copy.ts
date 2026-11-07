@@ -583,6 +583,182 @@ const keys = [
   'timelineStage2Plan',
   'timelineStage2Report',
   'showValues',
+  'recommendationTitle',
+  'recommendationMissing',
+  'recordRecommendation',
+  'correctRecommendation',
+  'recommendationHelp',
+  'recommendationOutcome',
+  'recommendationGrant',
+  'recommendationDoNotGrant',
+  'recommendationAdditionalAudit',
+  'recommendationBasis',
+  'recommendationSubmit',
+  'recommendationValidation',
+  'recommendationAwaitingLeader',
+  'blockedRecommendationNotTeamLeader',
+  'blockedRecommendationFindingsOpen',
+  'blockedRecommendationBeforeStage2',
+  'dossierReviewTitle',
+  'dossierReviewMissing',
+  'recordDossierReview',
+  'correctDossierReview',
+  'dossierReviewHelp',
+  'dossierAnswerPresent',
+  'dossierAnswerMissing',
+  'dossierAnswerNotApplicable',
+  'dossierItemNote',
+  'dossierConclusion',
+  'dossierReviewSubmit',
+  'dossierReviewValidation',
+  'dossierReviewResult',
+  'dossierComplete',
+  'dossierIncomplete',
+  'dossierItemApplication',
+  'dossierItemApplicationReview',
+  'dossierItemDuration',
+  'dossierItemAgreement',
+  'dossierItemTeamApproval',
+  'dossierItemStage1Plan',
+  'dossierItemStage1Report',
+  'dossierItemStage2Plan',
+  'dossierItemStage2Report',
+  'dossierItemParticipantLists',
+  'dossierItemFindingsFollowUp',
+  'dossierItemRecommendation',
+  'dossierItemCertificateData',
+  'dossierAwaitingApprover',
+  'dossierIndependence',
+  'blockedDossierBeforeRecommendation',
+  'blockedDecided',
+  'certificationDecisionTitle',
+  'certificationDecisionMissing',
+  'recordCertificationDecision',
+  'certificationDecisionHelp',
+  'decisionOutcome',
+  'decisionGranted',
+  'decisionRefused',
+  'grantedTexts',
+  'certificateTextsAgreed',
+  'certificateTextHeading',
+  'certificateLanguage',
+  'certificateLanguageHelp',
+  'certificateHolderName',
+  'certificateAddress',
+  'certificateScope',
+  'addCertificateLanguage',
+  'removeCertificateText',
+  'decidedOn',
+  'decidedBy',
+  'decidedByFunction',
+  'decisionForm',
+  'decisionFormNone',
+  'decisionRationale',
+  'decisionAdditionalInformation',
+  'decisionIndependenceAttestation',
+  'decisionIndependenceLabel',
+  'decisionIndependenceAttested',
+  'certificationDecisionSubmit',
+  'certificationDecisionValidation',
+  'decisionAttestationRequired',
+  'decisionPreconditionsTitle',
+  'decisionPreconditionsList',
+  'decisionPreconditionsRefused',
+  'decisionPreconditionsUnknown',
+  'preconditionApplicationNotAccepted',
+  'preconditionDurationMissing',
+  'preconditionAgreementMissing',
+  'preconditionTeamNotApproved',
+  'preconditionStage1NotReady',
+  'preconditionStage2NotReported',
+  'preconditionFindingsOpen',
+  'preconditionFindingsOverdue',
+  'preconditionRecommendationMissing',
+  'preconditionGrantAgainstRecommendation',
+  'preconditionDossierReviewIncomplete',
+  'preconditionDecisionInFuture',
+  'decisionMakerIndependence',
+  'certificationDecisionAwaitingApprover',
+  'certificationDecisionIndependence',
+  'decisionFormRole',
+  'certificateDataTitle',
+  'certificateDataMissing',
+  'recordCertificateData',
+  'correctCertificateData',
+  'certificateDataHelp',
+  'certificateDataAgreedOn',
+  'certificateDataDocument',
+  'selectCertificateDataDocument',
+  'certificateDataSubmit',
+  'certificateDataValidation',
+  'certificateDataNoDocument',
+  'certificateDataAwaitingManager',
+  'certificateDataDocumentRole',
+  'blockedCertificateDataBeforeStage2',
+  'certificateTextsDiffer',
+  'certificateDifferencesList',
+  'differenceNotAgreed',
+  'differenceNotGranted',
+  'differenceField',
+  'certificateTitle',
+  'certificateMissing',
+  'recordCertificate',
+  'certificateHelp',
+  'certificateNumber',
+  'certificatePdf',
+  'selectCertificatePdf',
+  'certificateSignedBy',
+  'certificateSignedByFunction',
+  'certificateIndependenceAttestation',
+  'certificateSubmit',
+  'certificateValidation',
+  'certificateAttestationRequired',
+  'certificateNoPdf',
+  'certificateAwaitingApprover',
+  'certificateApproverIndependence',
+  'certificateIndependence',
+  'certificateNumberTaken',
+  'certificateDataDiffers',
+  'blockedCertificateDataDiffers',
+  'blockedCertificateNotGranted',
+  'blockedCertificateDataMissing',
+  'certificatePdfRole',
+  'certificateValidFrom',
+  'certificateValidUntil',
+  'certificateFirstSurveillanceBy',
+  'certificateValidityNote',
+  'certificateTexts',
+  'statusRefused',
+  'statusCertified',
+  'caseCertifiedNote',
+  'caseRefusedNote',
+  'caseClosedRefusal',
+  'nextDossierReview',
+  'nextCertificationDecision',
+  'nextCertificateData',
+  'nextCertificate',
+  'stepRecommendation',
+  'stepDossierReview',
+  'stepCertificationDecision',
+  'stepCertificateData',
+  'stepCertificate',
+  'stepRecommended',
+  'stepWaitingFollowUp',
+  'stepWaitingRecommendation',
+  'stepDossierComplete',
+  'stepDossierIncomplete',
+  'stepWaitingDossierReview',
+  'stepWaitingGrant',
+  'stepWaitingCertificateData',
+  'stepCertificateRecorded',
+  'timelineRecommendation',
+  'timelineDossierReview',
+  'timelineCertificationDecision',
+  'timelineCertificateData',
+  'timelineCertificate',
+  'roleCertificateData',
+  'roleDecisionForm',
+  'blockedVersionCorrectionReason',
 ] as const;
 
 export type CertificationMessageKey = (typeof keys)[number];
@@ -612,7 +788,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certification',
     introduction:
-      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals, the certification agreement, the audit team with its approval, and the Stage 1 and Stage 2 audits with their plans and reports, with every recorded version.',
+      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals, the certification agreement, the audit team with its approval, the Stage 1 and Stage 2 audits with their plans, reports and Findings, the team recommendation, the dossier review, the Certification Decision and the Certificate, with every recorded version.',
     refresh: 'Refresh Certification Cases',
     loading: 'Loading Certification Cases…',
     caseLoading: 'Loading the Certification Case…',
@@ -1060,12 +1236,12 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'You cannot decide on this team: you are linked to a member of one of its versions. An approver who is not on the team must decide.',
     teamMemberDecided:
-      'A member who decided on a version of this team cannot join it. Remove that link, reload the Case and propose again.',
+      'A member who approved this team, reviewed the dossier or recorded the decision cannot join the team. Remove that link, reload the Case and propose again.',
     blockedTeamNotPending:
       'No proposed team awaits a decision any more. Reload the Case.',
 
     nextRecommendationPending:
-      'Both Stages are reported. The next step, the team recommendation, is not available in this version yet.',
+      'Both Stages are reported and no nonconformity holds the Case. The leader of the approved audit team records the team recommendation.',
     stage1Title: 'Stage 1 audit',
     stage2Title: 'Stage 2 audit',
     stagePlanTitle: 'Audit plan',
@@ -1335,6 +1511,243 @@ export const certificationMessages = defineMessages(keys, {
     timelineStage2Plan: 'Stage 2 plan — version {version}',
     timelineStage2Report: 'Stage 2 report — version {version}',
     showValues: 'Show the recorded values',
+    recommendationTitle: 'Team recommendation',
+    recommendationMissing: 'No team recommendation is recorded yet.',
+    recordRecommendation: 'Record the team recommendation',
+    correctRecommendation: 'Correct the team recommendation',
+    recommendationHelp:
+      'The leader of the approved audit team recommends granting certification, not granting it, or an additional audit, and states the basis. Nothing is preselected. An additional audit is not part of this journey: with that recommendation, the Case can only be refused.',
+    recommendationOutcome: 'Recommendation',
+    recommendationGrant: 'Grant certification',
+    recommendationDoNotGrant: 'Do not grant certification',
+    recommendationAdditionalAudit: 'Additional audit needed',
+    recommendationBasis: 'Basis of the recommendation',
+    recommendationSubmit: 'Record the recommendation',
+    recommendationValidation:
+      'Choose a recommendation and state its basis (at most 4,000 characters).',
+    recommendationAwaitingLeader:
+      'The leader of the approved audit team records the team recommendation while holding Company Certification Auditor.',
+    blockedRecommendationNotTeamLeader:
+      'Only the leader of the approved audit team records the team recommendation. You are not linked to that team leader.',
+    blockedRecommendationFindingsOpen:
+      'The team recommendation is recorded once no nonconformity holds the Case. Reload the Case.',
+    blockedRecommendationBeforeStage2:
+      'The team recommendation is recorded after the Stage 2 report. Reload the Case.',
+    dossierReviewTitle: 'Dossier review',
+    dossierReviewMissing: 'No dossier review is recorded yet.',
+    recordDossierReview: 'Record the dossier review',
+    correctDossierReview: 'Correct the dossier review',
+    dossierReviewHelp:
+      'An approver who is not on the audit team answers every dossier item: present, missing or not applicable. Nothing is preselected; a missing item needs a note. This review is distinct from the document register.',
+    dossierAnswerPresent: 'Present',
+    dossierAnswerMissing: 'Missing',
+    dossierAnswerNotApplicable: 'Not applicable',
+    dossierItemNote: 'Note',
+    dossierConclusion: 'Conclusion of the review',
+    dossierReviewSubmit: 'Record the review',
+    dossierReviewValidation:
+      'Answer every dossier item, write a note for each missing item (at most 1,000 characters per note) and the conclusion (at most 4,000 characters).',
+    dossierReviewResult: 'Result',
+    dossierComplete: 'Complete — no item missing',
+    dossierIncomplete: 'Incomplete — missing items: {count}',
+    dossierItemApplication: 'Application',
+    dossierItemApplicationReview: 'Application review',
+    dossierItemDuration: 'Audit duration',
+    dossierItemAgreement: 'Certification agreement',
+    dossierItemTeamApproval: 'Audit team approval',
+    dossierItemStage1Plan: 'Stage 1 audit plan',
+    dossierItemStage1Report: 'Stage 1 audit report',
+    dossierItemStage2Plan: 'Stage 2 audit plan',
+    dossierItemStage2Report: 'Stage 2 audit report',
+    dossierItemParticipantLists: 'Participant lists',
+    dossierItemFindingsFollowUp: 'Nonconformity follow-up',
+    dossierItemRecommendation: 'Team recommendation',
+    dossierItemCertificateData: 'Certificate data agreed with the client',
+    dossierAwaitingApprover:
+      'An approver who is not on the audit team reviews the dossier.',
+    dossierIndependence:
+      'You cannot review this dossier: you are linked to a member of the audit team. An approver who is not on the team reviews it.',
+    blockedDossierBeforeRecommendation:
+      'The dossier is reviewed after the team recommendation. Reload the Case.',
+    blockedDecided:
+      'The Certification Decision is recorded: what it relied on (duration, agreement, team, Stages, Findings, recommendation, dossier review) no longer changes; only the Certificate data and the Certificate remain. Reload the Case.',
+    certificationDecisionTitle: 'Certification Decision',
+    certificationDecisionMissing: 'No Certification Decision is recorded yet.',
+    recordCertificationDecision: 'Record the Certification Decision',
+    certificationDecisionHelp:
+      'An approver who is not on the audit team records the certification body’s decision once; it cannot be corrected. Nothing is preselected. A grant states the Certificate text granted for each Certificate language.',
+    decisionOutcome: 'Decision',
+    decisionGranted: 'Certification granted',
+    decisionRefused: 'Certification refused',
+    grantedTexts: 'Certificate texts granted',
+    certificateTextsAgreed: 'Certificate texts agreed',
+    certificateTextHeading: 'Certificate text {position}',
+    certificateLanguage: 'Language',
+    certificateLanguageHelp:
+      'The language code of this Certificate text, for example ro or en; each language once.',
+    certificateHolderName: 'Holder name',
+    certificateAddress: 'Address',
+    certificateScope: 'Scope',
+    addCertificateLanguage: 'Add a Certificate language',
+    removeCertificateText: 'Remove Certificate text {position}',
+    decidedOn: 'Decision date',
+    decidedBy: 'Decision maker',
+    decidedByFunction: 'Function of the decision maker',
+    decisionForm: 'Signed decision form',
+    decisionFormNone: 'No signed decision form',
+    decisionRationale: 'Rationale',
+    decisionAdditionalInformation: 'Additional information used',
+    decisionIndependenceAttestation:
+      'I attest that the decision maker is not a member of the audit team.',
+    decisionIndependenceLabel: 'Independence',
+    decisionIndependenceAttested:
+      'Attested: the decision maker is not a member of the audit team.',
+    certificationDecisionSubmit: 'Record the decision',
+    certificationDecisionValidation:
+      'Complete the decision: choose the outcome and state the decision date, the decision maker and function (at most 200 characters each) and the rationale (at most 4,000 characters). A grant states one to four Certificate texts, one per language, each with the holder name, address and scope.',
+    decisionAttestationRequired:
+      'Confirm that the decision maker is not a member of the audit team.',
+    decisionPreconditionsTitle:
+      'The Certification Decision cannot be recorded until these preconditions hold:',
+    decisionPreconditionsList: 'Unmet decision preconditions',
+    decisionPreconditionsRefused:
+      'The server refused the decision: these preconditions do not hold.',
+    decisionPreconditionsUnknown:
+      'The server refused the decision because a precondition does not hold. Reload the Case and check each step.',
+    preconditionApplicationNotAccepted:
+      'The application review has not accepted the application.',
+    preconditionDurationMissing: 'No audit duration is confirmed.',
+    preconditionAgreementMissing: 'No certification agreement is recorded.',
+    preconditionTeamNotApproved:
+      'The latest audit team version is not approved.',
+    preconditionStage1NotReady:
+      'No Stage 1 report concludes that the client is ready.',
+    preconditionStage2NotReported: 'The Stage 2 report is not recorded.',
+    preconditionFindingsOpen:
+      'A nonconformity still holds the Case: it is verified effective, or its plan judged adequate for a minor Stage 2 nonconformity.',
+    preconditionFindingsOverdue:
+      'A nonconformity has passed its six-month limit.',
+    preconditionRecommendationMissing: 'No team recommendation is recorded.',
+    preconditionGrantAgainstRecommendation:
+      'Certification cannot be granted against a team recommendation that is not to grant.',
+    preconditionDossierReviewIncomplete:
+      'The dossier review is not recorded, or it lists a missing item.',
+    preconditionDecisionInFuture: 'The decision date is in the future.',
+    decisionMakerIndependence:
+      'The decision maker cannot be a member of the audit team: you are linked to a member of one of its versions, or the decision maker named is on the approved team.',
+    certificationDecisionAwaitingApprover:
+      'An approver who is not on the audit team records the Certification Decision.',
+    certificationDecisionIndependence:
+      'You cannot record the Certification Decision: you are linked to a member of the audit team. An approver who is not on the team decides.',
+    decisionFormRole:
+      'The signed decision form must be a PDF of this Case attached as a decision form. Reload the Case and choose again.',
+    certificateDataTitle: 'Certificate data agreed with the client',
+    certificateDataMissing: 'No Certificate data are agreed yet.',
+    recordCertificateData: 'Record the Certificate data',
+    correctCertificateData: 'Correct the Certificate data',
+    certificateDataHelp:
+      'A programme manager records, for each Certificate language, the holder name, address and scope agreed with the client, with the signed form. The Certificate is recorded once they state exactly what the decision grants.',
+    certificateDataAgreedOn: 'Agreed on',
+    certificateDataDocument: 'Signed Certificate data form',
+    selectCertificateDataDocument: 'Choose the signed form',
+    certificateDataSubmit: 'Record the Certificate data',
+    certificateDataValidation:
+      'Complete the Certificate data: one to four texts, one per language, each with the language (at most 10 characters), the holder name (at most 300), the address (at most 500) and the scope (at most 2,000); the date agreed and the signed form.',
+    certificateDataNoDocument:
+      'Attach the signed Certificate data form to this Case with the role “Certificate data form” first.',
+    certificateDataAwaitingManager:
+      'A programme manager records the Certificate data agreed with the client.',
+    certificateDataDocumentRole:
+      'The signed form must be a PDF of this Case attached as a Certificate data form. Reload the Case and choose again.',
+    blockedCertificateDataBeforeStage2:
+      'The Certificate data are agreed after the Stage 2 report. Reload the Case.',
+    certificateTextsDiffer:
+      'The agreed Certificate data differ from what the decision grants:',
+    certificateDifferencesList: 'Differences from the decision',
+    differenceNotAgreed:
+      '{language}: granted by the decision, missing from the agreed data.',
+    differenceNotGranted:
+      '{language}: in the agreed data, not granted by the decision.',
+    differenceField:
+      '{language} — {field}: granted “{granted}”, agreed “{agreed}”.',
+    certificateTitle: 'Certificate',
+    certificateMissing: 'No Certificate is recorded yet.',
+    recordCertificate: 'Record the issued Certificate',
+    certificateHelp:
+      'An approver who is not on the audit team records the issued Certificate once: its number, unique in the Company, the exact Certificate PDF and its signatory. The server computes the validity from the decision date.',
+    certificateNumber: 'Certificate number',
+    certificatePdf: 'Certificate PDF',
+    selectCertificatePdf: 'Choose the Certificate PDF',
+    certificateSignedBy: 'Signed by',
+    certificateSignedByFunction: 'Function of the signatory',
+    certificateIndependenceAttestation:
+      'I attest that the signatory is not a member of the audit team.',
+    certificateSubmit: 'Record the Certificate',
+    certificateValidation:
+      'Complete the Certificate: its number (at most 64 characters) and the Certificate PDF of this Case; the signatory and the function take at most 200 characters each.',
+    certificateAttestationRequired:
+      'Confirm that the signatory is not a member of the audit team.',
+    certificateNoPdf:
+      'Attach the issued Certificate PDF to this Case with the role “Certificate” first.',
+    certificateAwaitingApprover:
+      'An approver who is not on the audit team records the Certificate.',
+    certificateApproverIndependence:
+      'You cannot record the Certificate: you are linked to a member of the audit team. An approver who is not on the team records it.',
+    certificateIndependence:
+      'A member of the audit team cannot record or sign the Certificate: you are linked to one, or the signatory named is on the approved team.',
+    certificateNumberTaken:
+      'This Certificate number is already used in the Company. Check the number on the issued Certificate.',
+    certificateDataDiffers:
+      'The agreed Certificate data must state exactly what the decision grants. Reload the Case and correct the Certificate data first.',
+    blockedCertificateDataDiffers:
+      'The Certificate is recorded once the agreed Certificate data state exactly what the decision grants. Correct the Certificate data first.',
+    blockedCertificateNotGranted:
+      'A Certificate follows a granting Certification Decision. Reload the Case.',
+    blockedCertificateDataMissing:
+      'The Certificate is recorded once the Certificate data are agreed with the client.',
+    certificatePdfRole:
+      'The Certificate PDF must be attached to this Case as a Certificate. Reload the Case and choose again.',
+    certificateValidFrom: 'Valid from',
+    certificateValidUntil: 'Valid until',
+    certificateFirstSurveillanceBy: 'First surveillance to start by',
+    certificateValidityNote:
+      'Computed by the server from the decision date: valid three years minus one day; the first surveillance starts within twelve months.',
+    certificateTexts: 'Certificate texts',
+    statusRefused: 'Closed — certification refused',
+    statusCertified: 'Certified',
+    caseCertifiedNote:
+      'This Case is certified: its Certificate is recorded. Every record is now read-only.',
+    caseRefusedNote:
+      'This Case is closed: certification was refused. Every record is now read-only; a new application needs a new Case.',
+    caseClosedRefusal: 'This Case is closed. Reload it to see its final state.',
+    nextDossierReview: 'Dossier review',
+    nextCertificationDecision: 'Certification Decision',
+    nextCertificateData: 'Certificate data agreed with the client',
+    nextCertificate: 'Certificate',
+    stepRecommendation: 'Team recommendation',
+    stepDossierReview: 'Dossier review',
+    stepCertificationDecision: 'Certification Decision',
+    stepCertificateData: 'Certificate data',
+    stepCertificate: 'Certificate',
+    stepRecommended: '{recommendation} — version {version}',
+    stepWaitingFollowUp: 'Waits for the nonconformity follow-up',
+    stepWaitingRecommendation: 'Waits for the team recommendation',
+    stepDossierComplete: 'Complete — version {version}',
+    stepDossierIncomplete: 'Item missing — version {version}',
+    stepWaitingDossierReview: 'Waits for the dossier review',
+    stepWaitingGrant: 'Waits for a granting decision',
+    stepWaitingCertificateData: 'Waits for the agreed Certificate data',
+    stepCertificateRecorded: 'Recorded — {number}',
+    timelineRecommendation:
+      'Team recommendation — {recommendation} (version {version})',
+    timelineDossierReview: 'Dossier review — version {version}',
+    timelineCertificationDecision: 'Certification Decision — {decision}',
+    timelineCertificateData: 'Certificate data — version {version}',
+    timelineCertificate: 'Certificate {number} recorded',
+    roleCertificateData: 'Certificate data form',
+    roleDecisionForm: 'Decision form',
+    blockedVersionCorrectionReason:
+      'A new version needs a reason and a first record has none. Reload the Case before saving again.',
   },
   fr: {
     readerBundle: 'Lecteur de certification de la société',
@@ -1362,7 +1775,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certification',
     introduction:
-      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints, le contrat de certification, l’équipe d’audit avec son approbation et les audits des étapes 1 et 2 avec leurs plans et rapports, avec chaque version enregistrée.',
+      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints, le contrat de certification, l’équipe d’audit avec son approbation, les audits des étapes 1 et 2 avec leurs plans, rapports et constats, la recommandation de l’équipe, la revue du dossier, la décision de certification et le certificat, avec chaque version enregistrée.',
     refresh: 'Actualiser les dossiers de certification',
     loading: 'Chargement des dossiers de certification…',
     caseLoading: 'Chargement du dossier de certification…',
@@ -1820,12 +2233,12 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Vous ne pouvez pas statuer sur cette équipe : vous êtes lié à un membre de l’une de ses versions. Un approbateur qui ne fait pas partie de l’équipe doit statuer.',
     teamMemberDecided:
-      'Un membre qui a statué sur une version de cette équipe ne peut pas en faire partie. Retirez ce lien, rechargez le dossier et proposez à nouveau.',
+      'Un membre qui a approuvé cette équipe, revu le dossier ou enregistré la décision ne peut pas en faire partie. Retirez ce lien, rechargez le dossier et proposez à nouveau.',
     blockedTeamNotPending:
       'Aucune équipe proposée n’attend plus de décision. Rechargez le dossier.',
 
     nextRecommendationPending:
-      'Les deux étapes sont rapportées. L’étape suivante, la recommandation de l’équipe, n’est pas encore disponible dans cette version.',
+      'Les deux étapes sont rapportées et aucune non-conformité ne retient le dossier. Le responsable de l’équipe d’audit approuvée enregistre la recommandation de l’équipe.',
     stage1Title: 'Audit de l’étape 1',
     stage2Title: 'Audit de l’étape 2',
     stagePlanTitle: 'Plan d’audit',
@@ -2106,6 +2519,252 @@ export const certificationMessages = defineMessages(keys, {
     timelineStage2Plan: 'Plan de l’étape 2 — version {version}',
     timelineStage2Report: 'Rapport de l’étape 2 — version {version}',
     showValues: 'Afficher les valeurs enregistrées',
+    recommendationTitle: 'Recommandation de l’équipe',
+    recommendationMissing:
+      'Aucune recommandation de l’équipe n’est encore enregistrée.',
+    recordRecommendation: 'Enregistrer la recommandation de l’équipe',
+    correctRecommendation: 'Corriger la recommandation de l’équipe',
+    recommendationHelp:
+      'Le responsable de l’équipe d’audit approuvée recommande d’accorder la certification, de ne pas l’accorder ou un audit complémentaire, et en indique le fondement. Rien n’est présélectionné. Un audit complémentaire ne fait pas partie de ce parcours : avec cette recommandation, le dossier ne peut qu’être refusé.',
+    recommendationOutcome: 'Recommandation',
+    recommendationGrant: 'Accorder la certification',
+    recommendationDoNotGrant: 'Ne pas accorder la certification',
+    recommendationAdditionalAudit: 'Audit complémentaire nécessaire',
+    recommendationBasis: 'Fondement de la recommandation',
+    recommendationSubmit: 'Enregistrer la recommandation',
+    recommendationValidation:
+      'Choisissez une recommandation et indiquez son fondement (4 000 caractères au plus).',
+    recommendationAwaitingLeader:
+      'Le responsable de l’équipe d’audit approuvée enregistre la recommandation de l’équipe en détenant le droit d’auditeur de certification.',
+    blockedRecommendationNotTeamLeader:
+      'Seul le responsable de l’équipe d’audit approuvée enregistre la recommandation de l’équipe. Vous n’êtes pas lié à ce responsable d’équipe.',
+    blockedRecommendationFindingsOpen:
+      'La recommandation de l’équipe est enregistrée une fois qu’aucune non-conformité ne retient le dossier. Rechargez le dossier.',
+    blockedRecommendationBeforeStage2:
+      'La recommandation de l’équipe est enregistrée après le rapport de l’étape 2. Rechargez le dossier.',
+    dossierReviewTitle: 'Revue du dossier',
+    dossierReviewMissing: 'Aucune revue du dossier n’est encore enregistrée.',
+    recordDossierReview: 'Enregistrer la revue du dossier',
+    correctDossierReview: 'Corriger la revue du dossier',
+    dossierReviewHelp:
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit répond pour chaque élément du dossier : présent, manquant ou sans objet. Rien n’est présélectionné ; un élément manquant exige une note. Cette revue est distincte du registre des pièces.',
+    dossierAnswerPresent: 'Présent',
+    dossierAnswerMissing: 'Manquant',
+    dossierAnswerNotApplicable: 'Sans objet',
+    dossierItemNote: 'Note',
+    dossierConclusion: 'Conclusion de la revue',
+    dossierReviewSubmit: 'Enregistrer la revue',
+    dossierReviewValidation:
+      'Répondez pour chaque élément du dossier, rédigez une note pour chaque élément manquant (1 000 caractères au plus par note) et la conclusion (4 000 caractères au plus).',
+    dossierReviewResult: 'Résultat',
+    dossierComplete: 'Complet — aucun élément manquant',
+    dossierIncomplete: 'Incomplet — éléments manquants : {count}',
+    dossierItemApplication: 'Demande',
+    dossierItemApplicationReview: 'Revue de la demande',
+    dossierItemDuration: 'Durée d’audit',
+    dossierItemAgreement: 'Contrat de certification',
+    dossierItemTeamApproval: 'Approbation de l’équipe d’audit',
+    dossierItemStage1Plan: 'Plan d’audit de l’étape 1',
+    dossierItemStage1Report: 'Rapport d’audit de l’étape 1',
+    dossierItemStage2Plan: 'Plan d’audit de l’étape 2',
+    dossierItemStage2Report: 'Rapport d’audit de l’étape 2',
+    dossierItemParticipantLists: 'Listes des participants',
+    dossierItemFindingsFollowUp: 'Suivi des non-conformités',
+    dossierItemRecommendation: 'Recommandation de l’équipe',
+    dossierItemCertificateData:
+      'Données du certificat convenues avec le client',
+    dossierAwaitingApprover:
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit revoit le dossier.',
+    dossierIndependence:
+      'Vous ne pouvez pas revoir ce dossier : vous êtes lié à un membre de l’équipe d’audit. Un approbateur qui ne fait pas partie de l’équipe le revoit.',
+    blockedDossierBeforeRecommendation:
+      'Le dossier est revu après la recommandation de l’équipe. Rechargez le dossier.',
+    blockedDecided:
+      'La décision de certification est enregistrée : ce sur quoi elle repose (durée, contrat, équipe, étapes, constats, recommandation, revue du dossier) ne change plus ; il ne reste que les données du certificat et le certificat. Rechargez le dossier.',
+    certificationDecisionTitle: 'Décision de certification',
+    certificationDecisionMissing:
+      'Aucune décision de certification n’est encore enregistrée.',
+    recordCertificationDecision: 'Enregistrer la décision de certification',
+    certificationDecisionHelp:
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre une seule fois la décision de l’organisme de certification ; elle ne peut pas être corrigée. Rien n’est présélectionné. Un octroi indique le texte du certificat accordé pour chaque langue du certificat.',
+    decisionOutcome: 'Décision',
+    decisionGranted: 'Certification accordée',
+    decisionRefused: 'Certification refusée',
+    grantedTexts: 'Textes du certificat accordés',
+    certificateTextsAgreed: 'Textes du certificat convenus',
+    certificateTextHeading: 'Texte du certificat {position}',
+    certificateLanguage: 'Langue',
+    certificateLanguageHelp:
+      'Le code de langue de ce texte du certificat, par exemple ro ou en ; chaque langue une seule fois.',
+    certificateHolderName: 'Nom du titulaire',
+    certificateAddress: 'Adresse',
+    certificateScope: 'Périmètre',
+    addCertificateLanguage: 'Ajouter une langue du certificat',
+    removeCertificateText: 'Retirer le texte du certificat {position}',
+    decidedOn: 'Date de la décision',
+    decidedBy: 'Décideur',
+    decidedByFunction: 'Fonction du décideur',
+    decisionForm: 'Formulaire de décision signé',
+    decisionFormNone: 'Aucun formulaire de décision signé',
+    decisionRationale: 'Justification',
+    decisionAdditionalInformation: 'Informations complémentaires utilisées',
+    decisionIndependenceAttestation:
+      'J’atteste que le décideur n’est pas membre de l’équipe d’audit.',
+    decisionIndependenceLabel: 'Indépendance',
+    decisionIndependenceAttested:
+      'Attestée : le décideur n’est pas membre de l’équipe d’audit.',
+    certificationDecisionSubmit: 'Enregistrer la décision',
+    certificationDecisionValidation:
+      'Complétez la décision : choisissez l’issue et indiquez la date de la décision, le décideur et sa fonction (200 caractères au plus chacun) et la justification (4 000 caractères au plus). Un octroi indique un à quatre textes du certificat, un par langue, chacun avec le nom du titulaire, l’adresse et le périmètre.',
+    decisionAttestationRequired:
+      'Confirmez que le décideur n’est pas membre de l’équipe d’audit.',
+    decisionPreconditionsTitle:
+      'La décision de certification ne peut pas être enregistrée tant que ces conditions préalables ne sont pas réunies :',
+    decisionPreconditionsList: 'Conditions préalables non réunies',
+    decisionPreconditionsRefused:
+      'Le serveur a refusé la décision : ces conditions préalables ne sont pas réunies.',
+    decisionPreconditionsUnknown:
+      'Le serveur a refusé la décision car une condition préalable n’est pas réunie. Rechargez le dossier et vérifiez chaque étape.',
+    preconditionApplicationNotAccepted:
+      'La revue de la demande n’a pas accepté la demande.',
+    preconditionDurationMissing: 'Aucune durée d’audit n’est confirmée.',
+    preconditionAgreementMissing:
+      'Aucun contrat de certification n’est enregistré.',
+    preconditionTeamNotApproved:
+      'La dernière version de l’équipe d’audit n’est pas approuvée.',
+    preconditionStage1NotReady:
+      'Aucun rapport de l’étape 1 ne conclut que le client est prêt.',
+    preconditionStage2NotReported:
+      'Le rapport de l’étape 2 n’est pas enregistré.',
+    preconditionFindingsOpen:
+      'Une non-conformité retient encore le dossier : elle doit être vérifiée efficace, ou son plan jugé adéquat pour une non-conformité mineure de l’étape 2.',
+    preconditionFindingsOverdue:
+      'Une non-conformité a dépassé sa limite de six mois.',
+    preconditionRecommendationMissing:
+      'Aucune recommandation de l’équipe n’est enregistrée.',
+    preconditionGrantAgainstRecommendation:
+      'La certification ne peut pas être accordée contre une recommandation de l’équipe qui n’est pas d’accorder.',
+    preconditionDossierReviewIncomplete:
+      'La revue du dossier n’est pas enregistrée, ou elle indique un élément manquant.',
+    preconditionDecisionInFuture: 'La date de la décision est dans le futur.',
+    decisionMakerIndependence:
+      'Le décideur ne peut pas être membre de l’équipe d’audit : vous êtes lié à un membre de l’une de ses versions, ou le décideur indiqué fait partie de l’équipe approuvée.',
+    certificationDecisionAwaitingApprover:
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre la décision de certification.',
+    certificationDecisionIndependence:
+      'Vous ne pouvez pas enregistrer la décision de certification : vous êtes lié à un membre de l’équipe d’audit. Un approbateur qui ne fait pas partie de l’équipe décide.',
+    decisionFormRole:
+      'Le formulaire de décision signé doit être un PDF de ce dossier joint comme formulaire de décision. Rechargez le dossier et choisissez à nouveau.',
+    certificateDataTitle: 'Données du certificat convenues avec le client',
+    certificateDataMissing:
+      'Aucune donnée du certificat n’est encore convenue.',
+    recordCertificateData: 'Enregistrer les données du certificat',
+    correctCertificateData: 'Corriger les données du certificat',
+    certificateDataHelp:
+      'Un responsable de programme enregistre, pour chaque langue du certificat, le nom du titulaire, l’adresse et le périmètre convenus avec le client, avec le formulaire signé. Le certificat est enregistré une fois qu’ils indiquent exactement ce que la décision accorde.',
+    certificateDataAgreedOn: 'Convenu le',
+    certificateDataDocument: 'Formulaire signé des données du certificat',
+    selectCertificateDataDocument: 'Sélectionnez le formulaire signé',
+    certificateDataSubmit: 'Enregistrer les données du certificat',
+    certificateDataValidation:
+      'Complétez les données du certificat : un à quatre textes, un par langue, chacun avec la langue (10 caractères au plus), le nom du titulaire (300 au plus), l’adresse (500 au plus) et le périmètre (2 000 au plus) ; la date convenue et le formulaire signé.',
+    certificateDataNoDocument:
+      'Joignez d’abord à ce dossier le formulaire signé des données du certificat avec le rôle « Formulaire des données du certificat ».',
+    certificateDataAwaitingManager:
+      'Un responsable de programme enregistre les données du certificat convenues avec le client.',
+    certificateDataDocumentRole:
+      'Le formulaire signé doit être un PDF de ce dossier joint comme formulaire des données du certificat. Rechargez le dossier et choisissez à nouveau.',
+    blockedCertificateDataBeforeStage2:
+      'Les données du certificat sont convenues après le rapport de l’étape 2. Rechargez le dossier.',
+    certificateTextsDiffer:
+      'Les données du certificat convenues diffèrent de ce que la décision accorde :',
+    certificateDifferencesList: 'Écarts par rapport à la décision',
+    differenceNotAgreed:
+      '{language} : accordé par la décision, absent des données convenues.',
+    differenceNotGranted:
+      '{language} : présent dans les données convenues, non accordé par la décision.',
+    differenceField:
+      '{language} — {field} : accordé « {granted} », convenu « {agreed} ».',
+    certificateTitle: 'Certificat',
+    certificateMissing: 'Aucun certificat n’est encore enregistré.',
+    recordCertificate: 'Enregistrer le certificat émis',
+    certificateHelp:
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre une seule fois le certificat émis : son numéro, unique dans la Société, le PDF exact du certificat et son signataire. Le serveur calcule la validité à partir de la date de la décision.',
+    certificateNumber: 'Numéro du certificat',
+    certificatePdf: 'PDF du certificat',
+    selectCertificatePdf: 'Sélectionnez le PDF du certificat',
+    certificateSignedBy: 'Signé par',
+    certificateSignedByFunction: 'Fonction du signataire',
+    certificateIndependenceAttestation:
+      'J’atteste que le signataire n’est pas membre de l’équipe d’audit.',
+    certificateSubmit: 'Enregistrer le certificat',
+    certificateValidation:
+      'Complétez le certificat : son numéro (64 caractères au plus) et le PDF du certificat de ce dossier ; le signataire et la fonction prennent 200 caractères au plus chacun.',
+    certificateAttestationRequired:
+      'Confirmez que le signataire n’est pas membre de l’équipe d’audit.',
+    certificateNoPdf:
+      'Joignez d’abord à ce dossier le PDF du certificat émis avec le rôle « Certificat ».',
+    certificateAwaitingApprover:
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre le certificat.',
+    certificateApproverIndependence:
+      'Vous ne pouvez pas enregistrer le certificat : vous êtes lié à un membre de l’équipe d’audit. Un approbateur qui ne fait pas partie de l’équipe l’enregistre.',
+    certificateIndependence:
+      'Un membre de l’équipe d’audit ne peut ni enregistrer ni signer le certificat : vous êtes lié à l’un d’eux, ou le signataire indiqué fait partie de l’équipe approuvée.',
+    certificateNumberTaken:
+      'Ce numéro de certificat est déjà utilisé dans la Société. Vérifiez le numéro du certificat émis.',
+    certificateDataDiffers:
+      'Les données du certificat convenues doivent indiquer exactement ce que la décision accorde. Rechargez le dossier et corrigez d’abord les données du certificat.',
+    blockedCertificateDataDiffers:
+      'Le certificat est enregistré une fois que les données du certificat convenues indiquent exactement ce que la décision accorde. Corrigez d’abord les données du certificat.',
+    blockedCertificateNotGranted:
+      'Un certificat suit une décision de certification qui l’accorde. Rechargez le dossier.',
+    blockedCertificateDataMissing:
+      'Le certificat est enregistré une fois les données du certificat convenues avec le client.',
+    certificatePdfRole:
+      'Le PDF du certificat doit être joint à ce dossier comme certificat. Rechargez le dossier et choisissez à nouveau.',
+    certificateValidFrom: 'Valable à partir du',
+    certificateValidUntil: 'Valable jusqu’au',
+    certificateFirstSurveillanceBy:
+      'Début de la première surveillance au plus tard le',
+    certificateValidityNote:
+      'Calculé par le serveur à partir de la date de la décision : valable trois ans moins un jour ; la première surveillance commence dans les douze mois.',
+    certificateTexts: 'Textes du certificat',
+    statusRefused: 'Clos — certification refusée',
+    statusCertified: 'Certifié',
+    caseCertifiedNote:
+      'Ce dossier est certifié : son certificat est enregistré. Chaque enregistrement est désormais en lecture seule.',
+    caseRefusedNote:
+      'Ce dossier est clos : la certification a été refusée. Chaque enregistrement est désormais en lecture seule ; une nouvelle demande exige un nouveau dossier.',
+    caseClosedRefusal:
+      'Ce dossier est clos. Rechargez-le pour voir son état final.',
+    nextDossierReview: 'Revue du dossier',
+    nextCertificationDecision: 'Décision de certification',
+    nextCertificateData: 'Données du certificat convenues avec le client',
+    nextCertificate: 'Certificat',
+    stepRecommendation: 'Recommandation de l’équipe',
+    stepDossierReview: 'Revue du dossier',
+    stepCertificationDecision: 'Décision de certification',
+    stepCertificateData: 'Données du certificat',
+    stepCertificate: 'Certificat',
+    stepRecommended: '{recommendation} — version {version}',
+    stepWaitingFollowUp: 'Attend le suivi des non-conformités',
+    stepWaitingRecommendation: 'Attend la recommandation de l’équipe',
+    stepDossierComplete: 'Complète — version {version}',
+    stepDossierIncomplete: 'Élément manquant — version {version}',
+    stepWaitingDossierReview: 'Attend la revue du dossier',
+    stepWaitingGrant: 'Attend une décision d’octroi',
+    stepWaitingCertificateData: 'Attend les données du certificat convenues',
+    stepCertificateRecorded: 'Enregistré — {number}',
+    timelineRecommendation:
+      'Recommandation de l’équipe — {recommendation} (version {version})',
+    timelineDossierReview: 'Revue du dossier — version {version}',
+    timelineCertificationDecision: 'Décision de certification — {decision}',
+    timelineCertificateData: 'Données du certificat — version {version}',
+    timelineCertificate: 'Certificat {number} enregistré',
+    roleCertificateData: 'Formulaire des données du certificat',
+    roleDecisionForm: 'Formulaire de décision',
+    blockedVersionCorrectionReason:
+      'Une nouvelle version exige un motif, et un premier enregistrement n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
   },
   ro: {
     readerBundle: 'Cititor de certificare al companiei',
@@ -2131,7 +2790,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certificare',
     introduction:
-      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate, contractul de certificare, echipa de audit cu aprobarea ei și auditurile de etapa 1 și 2 cu planurile și rapoartele lor, cu fiecare versiune înregistrată.',
+      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate, contractul de certificare, echipa de audit cu aprobarea ei, auditurile de etapa 1 și 2 cu planurile, rapoartele și constatările lor, recomandarea echipei, analiza dosarului, decizia de certificare și certificatul, cu fiecare versiune înregistrată.',
     refresh: 'Actualizați dosarele de certificare',
     loading: 'Se încarcă dosarele de certificare…',
     caseLoading: 'Se încarcă dosarul de certificare…',
@@ -2585,12 +3244,12 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă.',
     teamMemberDecided:
-      'Un membru care a decis asupra unei versiuni a acestei echipe nu poate face parte din ea. Eliminați această legătură, reîncărcați dosarul și propuneți din nou.',
+      'Un membru care a aprobat această echipă, a analizat dosarul sau a înregistrat decizia nu poate face parte din echipă. Eliminați această legătură, reîncărcați dosarul și propuneți din nou.',
     blockedTeamNotPending:
       'Nicio echipă propusă nu mai așteaptă o decizie. Reîncărcați dosarul.',
 
     nextRecommendationPending:
-      'Ambele etape au rapoarte. Etapa următoare, recomandarea echipei, nu este încă disponibilă în această versiune.',
+      'Ambele etape au rapoarte și nicio neconformitate nu reține dosarul. Șeful echipei de audit aprobate înregistrează recomandarea echipei.',
     stage1Title: 'Auditul de etapa 1',
     stage2Title: 'Auditul de etapa 2',
     stagePlanTitle: 'Plan de audit',
@@ -2870,6 +3529,251 @@ export const certificationMessages = defineMessages(keys, {
     timelineStage2Plan: 'Planul etapei 2 — versiunea {version}',
     timelineStage2Report: 'Raportul etapei 2 — versiunea {version}',
     showValues: 'Afișați valorile înregistrate',
+    recommendationTitle: 'Recomandarea echipei',
+    recommendationMissing:
+      'Nicio recomandare a echipei nu este încă înregistrată.',
+    recordRecommendation: 'Înregistrați recomandarea echipei',
+    correctRecommendation: 'Corectați recomandarea echipei',
+    recommendationHelp:
+      'Șeful echipei de audit aprobate recomandă acordarea certificării, neacordarea ei sau un audit suplimentar și indică temeiul. Nimic nu este preselectat. Un audit suplimentar nu face parte din acest parcurs: cu această recomandare, dosarul poate fi doar refuzat.',
+    recommendationOutcome: 'Recomandare',
+    recommendationGrant: 'Acordarea certificării',
+    recommendationDoNotGrant: 'Neacordarea certificării',
+    recommendationAdditionalAudit: 'Este necesar un audit suplimentar',
+    recommendationBasis: 'Temeiul recomandării',
+    recommendationSubmit: 'Înregistrați recomandarea',
+    recommendationValidation:
+      'Alegeți o recomandare și indicați temeiul ei (cel mult 4.000 de caractere).',
+    recommendationAwaitingLeader:
+      'Șeful echipei de audit aprobate înregistrează recomandarea echipei, deținând dreptul de auditor de certificare.',
+    blockedRecommendationNotTeamLeader:
+      'Doar șeful echipei de audit aprobate înregistrează recomandarea echipei. Nu sunteți legat de acel șef de echipă.',
+    blockedRecommendationFindingsOpen:
+      'Recomandarea echipei se înregistrează după ce nicio neconformitate nu mai reține dosarul. Reîncărcați dosarul.',
+    blockedRecommendationBeforeStage2:
+      'Recomandarea echipei se înregistrează după raportul etapei 2. Reîncărcați dosarul.',
+    dossierReviewTitle: 'Analiza dosarului',
+    dossierReviewMissing:
+      'Nicio analiză a dosarului nu este încă înregistrată.',
+    recordDossierReview: 'Înregistrați analiza dosarului',
+    correctDossierReview: 'Corectați analiza dosarului',
+    dossierReviewHelp:
+      'Un aprobator care nu face parte din echipa de audit răspunde pentru fiecare element al dosarului: prezent, lipsă sau nu se aplică. Nimic nu este preselectat; un element lipsă necesită o notă. Această analiză este distinctă de registrul documentelor.',
+    dossierAnswerPresent: 'Prezent',
+    dossierAnswerMissing: 'Lipsă',
+    dossierAnswerNotApplicable: 'Nu se aplică',
+    dossierItemNote: 'Notă',
+    dossierConclusion: 'Concluzia analizei',
+    dossierReviewSubmit: 'Înregistrați analiza',
+    dossierReviewValidation:
+      'Răspundeți pentru fiecare element al dosarului, scrieți o notă pentru fiecare element lipsă (cel mult 1.000 de caractere pe notă) și concluzia (cel mult 4.000 de caractere).',
+    dossierReviewResult: 'Rezultat',
+    dossierComplete: 'Complet — niciun element lipsă',
+    dossierIncomplete: 'Incomplet — elemente lipsă: {count}',
+    dossierItemApplication: 'Cerere',
+    dossierItemApplicationReview: 'Analiza cererii',
+    dossierItemDuration: 'Durata auditului',
+    dossierItemAgreement: 'Contract de certificare',
+    dossierItemTeamApproval: 'Aprobarea echipei de audit',
+    dossierItemStage1Plan: 'Planul de audit al etapei 1',
+    dossierItemStage1Report: 'Raportul de audit al etapei 1',
+    dossierItemStage2Plan: 'Planul de audit al etapei 2',
+    dossierItemStage2Report: 'Raportul de audit al etapei 2',
+    dossierItemParticipantLists: 'Listele participanților',
+    dossierItemFindingsFollowUp: 'Urmărirea neconformităților',
+    dossierItemRecommendation: 'Recomandarea echipei',
+    dossierItemCertificateData: 'Datele certificatului convenite cu clientul',
+    dossierAwaitingApprover:
+      'Un aprobator care nu face parte din echipa de audit analizează dosarul.',
+    dossierIndependence:
+      'Nu puteți analiza acest dosar: sunteți legat de un membru al echipei de audit. Îl analizează un aprobator care nu face parte din echipă.',
+    blockedDossierBeforeRecommendation:
+      'Dosarul se analizează după recomandarea echipei. Reîncărcați dosarul.',
+    blockedDecided:
+      'Decizia de certificare este înregistrată: elementele pe care se bazează (durata, contractul, echipa, etapele, constatările, recomandarea, analiza dosarului) nu se mai modifică; rămân doar datele certificatului și certificatul. Reîncărcați dosarul.',
+    certificationDecisionTitle: 'Decizia de certificare',
+    certificationDecisionMissing:
+      'Nicio decizie de certificare nu este încă înregistrată.',
+    recordCertificationDecision: 'Înregistrați decizia de certificare',
+    certificationDecisionHelp:
+      'Un aprobator care nu face parte din echipa de audit înregistrează o singură dată decizia organismului de certificare; ea nu poate fi corectată. Nimic nu este preselectat. O acordare indică textul certificatului acordat pentru fiecare limbă a certificatului.',
+    decisionOutcome: 'Decizie',
+    decisionGranted: 'Certificare acordată',
+    decisionRefused: 'Certificare refuzată',
+    grantedTexts: 'Textele certificatului acordate',
+    certificateTextsAgreed: 'Textele certificatului convenite',
+    certificateTextHeading: 'Textul certificatului {position}',
+    certificateLanguage: 'Limba',
+    certificateLanguageHelp:
+      'Codul limbii acestui text al certificatului, de exemplu ro sau en; fiecare limbă o singură dată.',
+    certificateHolderName: 'Numele titularului',
+    certificateAddress: 'Adresa',
+    certificateScope: 'Domeniul',
+    addCertificateLanguage: 'Adăugați o limbă a certificatului',
+    removeCertificateText: 'Eliminați textul certificatului {position}',
+    decidedOn: 'Data deciziei',
+    decidedBy: 'Decident',
+    decidedByFunction: 'Funcția decidentului',
+    decisionForm: 'Formularul de decizie semnat',
+    decisionFormNone: 'Niciun formular de decizie semnat',
+    decisionRationale: 'Motivare',
+    decisionAdditionalInformation: 'Informații suplimentare folosite',
+    decisionIndependenceAttestation:
+      'Atest că decidentul nu este membru al echipei de audit.',
+    decisionIndependenceLabel: 'Independență',
+    decisionIndependenceAttested:
+      'Atestată: decidentul nu este membru al echipei de audit.',
+    certificationDecisionSubmit: 'Înregistrați decizia',
+    certificationDecisionValidation:
+      'Completați decizia: alegeți rezultatul și indicați data deciziei, decidentul și funcția sa (cel mult 200 de caractere fiecare) și motivarea (cel mult 4.000 de caractere). O acordare indică între unul și patru texte ale certificatului, câte unul pe limbă, fiecare cu numele titularului, adresa și domeniul.',
+    decisionAttestationRequired:
+      'Confirmați că decidentul nu este membru al echipei de audit.',
+    decisionPreconditionsTitle:
+      'Decizia de certificare nu poate fi înregistrată până când nu sunt îndeplinite aceste condiții prealabile:',
+    decisionPreconditionsList: 'Condiții prealabile neîndeplinite',
+    decisionPreconditionsRefused:
+      'Serverul a refuzat decizia: aceste condiții prealabile nu sunt îndeplinite.',
+    decisionPreconditionsUnknown:
+      'Serverul a refuzat decizia deoarece o condiție prealabilă nu este îndeplinită. Reîncărcați dosarul și verificați fiecare etapă.',
+    preconditionApplicationNotAccepted:
+      'Analiza cererii nu a acceptat cererea.',
+    preconditionDurationMissing: 'Nicio durată a auditului nu este confirmată.',
+    preconditionAgreementMissing:
+      'Niciun contract de certificare nu este înregistrat.',
+    preconditionTeamNotApproved:
+      'Ultima versiune a echipei de audit nu este aprobată.',
+    preconditionStage1NotReady:
+      'Niciun raport al etapei 1 nu concluzionează că clientul este pregătit.',
+    preconditionStage2NotReported: 'Raportul etapei 2 nu este înregistrat.',
+    preconditionFindingsOpen:
+      'O neconformitate încă reține dosarul: trebuie verificată ca eficace sau, pentru o neconformitate minoră din etapa 2, planul ei apreciat ca adecvat.',
+    preconditionFindingsOverdue:
+      'O neconformitate și-a depășit termenul de șase luni.',
+    preconditionRecommendationMissing:
+      'Nicio recomandare a echipei nu este înregistrată.',
+    preconditionGrantAgainstRecommendation:
+      'Certificarea nu poate fi acordată împotriva unei recomandări a echipei care nu este de acordare.',
+    preconditionDossierReviewIncomplete:
+      'Analiza dosarului nu este înregistrată sau indică un element lipsă.',
+    preconditionDecisionInFuture: 'Data deciziei este în viitor.',
+    decisionMakerIndependence:
+      'Decidentul nu poate fi membru al echipei de audit: sunteți legat de un membru al uneia dintre versiunile ei sau decidentul indicat face parte din echipa aprobată.',
+    certificationDecisionAwaitingApprover:
+      'Un aprobator care nu face parte din echipa de audit înregistrează decizia de certificare.',
+    certificationDecisionIndependence:
+      'Nu puteți înregistra decizia de certificare: sunteți legat de un membru al echipei de audit. Decide un aprobator care nu face parte din echipă.',
+    decisionFormRole:
+      'Formularul de decizie semnat trebuie să fie un PDF al acestui dosar atașat ca formular de decizie. Reîncărcați dosarul și alegeți din nou.',
+    certificateDataTitle: 'Datele certificatului convenite cu clientul',
+    certificateDataMissing:
+      'Nicio dată a certificatului nu este încă convenită.',
+    recordCertificateData: 'Înregistrați datele certificatului',
+    correctCertificateData: 'Corectați datele certificatului',
+    certificateDataHelp:
+      'Un manager de program înregistrează, pentru fiecare limbă a certificatului, numele titularului, adresa și domeniul convenite cu clientul, împreună cu formularul semnat. Certificatul se înregistrează după ce acestea indică exact ce acordă decizia.',
+    certificateDataAgreedOn: 'Convenit la',
+    certificateDataDocument: 'Formularul semnat al datelor certificatului',
+    selectCertificateDataDocument: 'Selectați formularul semnat',
+    certificateDataSubmit: 'Înregistrați datele certificatului',
+    certificateDataValidation:
+      'Completați datele certificatului: între unul și patru texte, câte unul pe limbă, fiecare cu limba (cel mult 10 caractere), numele titularului (cel mult 300), adresa (cel mult 500) și domeniul (cel mult 2.000); data convenită și formularul semnat.',
+    certificateDataNoDocument:
+      'Atașați mai întâi la acest dosar formularul semnat al datelor certificatului, cu rolul „Formularul datelor certificatului”.',
+    certificateDataAwaitingManager:
+      'Un manager de program înregistrează datele certificatului convenite cu clientul.',
+    certificateDataDocumentRole:
+      'Formularul semnat trebuie să fie un PDF al acestui dosar atașat ca formular al datelor certificatului. Reîncărcați dosarul și alegeți din nou.',
+    blockedCertificateDataBeforeStage2:
+      'Datele certificatului se convin după raportul etapei 2. Reîncărcați dosarul.',
+    certificateTextsDiffer:
+      'Datele certificatului convenite diferă de ceea ce acordă decizia:',
+    certificateDifferencesList: 'Diferențe față de decizie',
+    differenceNotAgreed:
+      '{language}: acordat prin decizie, lipsește din datele convenite.',
+    differenceNotGranted:
+      '{language}: prezent în datele convenite, neacordat prin decizie.',
+    differenceField:
+      '{language} — {field}: acordat „{granted}”, convenit „{agreed}”.',
+    certificateTitle: 'Certificat',
+    certificateMissing: 'Niciun certificat nu este încă înregistrat.',
+    recordCertificate: 'Înregistrați certificatul emis',
+    certificateHelp:
+      'Un aprobator care nu face parte din echipa de audit înregistrează o singură dată certificatul emis: numărul lui, unic în Companie, PDF-ul exact al certificatului și semnatarul. Serverul calculează valabilitatea pornind de la data deciziei.',
+    certificateNumber: 'Numărul certificatului',
+    certificatePdf: 'PDF-ul certificatului',
+    selectCertificatePdf: 'Selectați PDF-ul certificatului',
+    certificateSignedBy: 'Semnat de',
+    certificateSignedByFunction: 'Funcția semnatarului',
+    certificateIndependenceAttestation:
+      'Atest că semnatarul nu este membru al echipei de audit.',
+    certificateSubmit: 'Înregistrați certificatul',
+    certificateValidation:
+      'Completați certificatul: numărul (cel mult 64 de caractere) și PDF-ul certificatului din acest dosar; semnatarul și funcția au cel mult 200 de caractere fiecare.',
+    certificateAttestationRequired:
+      'Confirmați că semnatarul nu este membru al echipei de audit.',
+    certificateNoPdf:
+      'Atașați mai întâi la acest dosar PDF-ul certificatului emis, cu rolul „Certificat”.',
+    certificateAwaitingApprover:
+      'Un aprobator care nu face parte din echipa de audit înregistrează certificatul.',
+    certificateApproverIndependence:
+      'Nu puteți înregistra certificatul: sunteți legat de un membru al echipei de audit. Îl înregistrează un aprobator care nu face parte din echipă.',
+    certificateIndependence:
+      'Un membru al echipei de audit nu poate înregistra și nici semna certificatul: sunteți legat de unul dintre ei sau semnatarul indicat face parte din echipa aprobată.',
+    certificateNumberTaken:
+      'Acest număr de certificat este deja folosit în Companie. Verificați numărul de pe certificatul emis.',
+    certificateDataDiffers:
+      'Datele certificatului convenite trebuie să indice exact ce acordă decizia. Reîncărcați dosarul și corectați mai întâi datele certificatului.',
+    blockedCertificateDataDiffers:
+      'Certificatul se înregistrează după ce datele certificatului convenite indică exact ce acordă decizia. Corectați mai întâi datele certificatului.',
+    blockedCertificateNotGranted:
+      'Un certificat urmează unei decizii de certificare de acordare. Reîncărcați dosarul.',
+    blockedCertificateDataMissing:
+      'Certificatul se înregistrează după ce datele certificatului sunt convenite cu clientul.',
+    certificatePdfRole:
+      'PDF-ul certificatului trebuie atașat la acest dosar ca certificat. Reîncărcați dosarul și alegeți din nou.',
+    certificateValidFrom: 'Valabil de la',
+    certificateValidUntil: 'Valabil până la',
+    certificateFirstSurveillanceBy:
+      'Începerea primei supravegheri cel târziu la',
+    certificateValidityNote:
+      'Calculat de server pornind de la data deciziei: valabil trei ani minus o zi; prima supraveghere începe în cel mult douăsprezece luni.',
+    certificateTexts: 'Textele certificatului',
+    statusRefused: 'Închis — certificare refuzată',
+    statusCertified: 'Certificat',
+    caseCertifiedNote:
+      'Acest dosar este certificat: certificatul lui este înregistrat. Fiecare înregistrare poate fi acum doar consultată.',
+    caseRefusedNote:
+      'Acest dosar este închis: certificarea a fost refuzată. Fiecare înregistrare poate fi acum doar consultată; o cerere nouă necesită un dosar nou.',
+    caseClosedRefusal:
+      'Acest dosar este închis. Reîncărcați-l pentru a vedea starea finală.',
+    nextDossierReview: 'Analiza dosarului',
+    nextCertificationDecision: 'Decizia de certificare',
+    nextCertificateData: 'Datele certificatului convenite cu clientul',
+    nextCertificate: 'Certificat',
+    stepRecommendation: 'Recomandarea echipei',
+    stepDossierReview: 'Analiza dosarului',
+    stepCertificationDecision: 'Decizia de certificare',
+    stepCertificateData: 'Datele certificatului',
+    stepCertificate: 'Certificat',
+    stepRecommended: '{recommendation} — versiunea {version}',
+    stepWaitingFollowUp: 'Așteaptă urmărirea neconformităților',
+    stepWaitingRecommendation: 'Așteaptă recomandarea echipei',
+    stepDossierComplete: 'Completă — versiunea {version}',
+    stepDossierIncomplete: 'Element lipsă — versiunea {version}',
+    stepWaitingDossierReview: 'Așteaptă analiza dosarului',
+    stepWaitingGrant: 'Așteaptă o decizie de acordare',
+    stepWaitingCertificateData: 'Așteaptă datele certificatului convenite',
+    stepCertificateRecorded: 'Înregistrat — {number}',
+    timelineRecommendation:
+      'Recomandarea echipei — {recommendation} (versiunea {version})',
+    timelineDossierReview: 'Analiza dosarului — versiunea {version}',
+    timelineCertificationDecision: 'Decizia de certificare — {decision}',
+    timelineCertificateData: 'Datele certificatului — versiunea {version}',
+    timelineCertificate: 'Certificatul {number} înregistrat',
+    roleCertificateData: 'Formularul datelor certificatului',
+    roleDecisionForm: 'Formular de decizie',
+    blockedVersionCorrectionReason:
+      'O nouă versiune necesită un motiv, iar prima înregistrare nu are. Reîncărcați dosarul înainte de o nouă salvare.',
   },
   ru: {
     readerBundle: 'Читатель сертификации компании',
@@ -2896,7 +3800,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Сертификация',
     introduction:
-      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы, договор о сертификации, аудиторская группа с её утверждением, а также аудиты этапов 1 и 2 с их планами и отчётами со всеми записанными версиями.',
+      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы, договор о сертификации, аудиторская группа с её утверждением, аудиты этапов 1 и 2 с их планами, отчётами и наблюдениями, рекомендация группы, анализ досье, решение о сертификации и сертификат со всеми записанными версиями.',
     refresh: 'Обновить дела по сертификации',
     loading: 'Загрузка дел по сертификации…',
     caseLoading: 'Загрузка дела по сертификации…',
@@ -3344,12 +4248,12 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Вы не можете принимать решение по этой группе: вы связаны с участником одной из её версий. Решение должен принять утверждающий, не входящий в группу.',
     teamMemberDecided:
-      'Участник, принявший решение по одной из версий этой группы, не может в неё входить. Удалите эту связь, загрузите дело заново и предложите снова.',
+      'Участник, утвердивший эту группу, проверивший досье или зарегистрировавший решение, не может входить в группу. Удалите эту связь, загрузите дело заново и предложите снова.',
     blockedTeamNotPending:
       'Ни одна предложенная группа больше не ожидает решения. Загрузите дело заново.',
 
     nextRecommendationPending:
-      'По обоим этапам записаны отчёты. Следующий этап, рекомендация группы, в этой версии пока недоступен.',
+      'По обоим этапам записаны отчёты, и ни одно несоответствие не задерживает дело. Рекомендацию группы записывает руководитель утверждённой аудиторской группы.',
     stage1Title: 'Аудит этапа 1',
     stage2Title: 'Аудит этапа 2',
     stagePlanTitle: 'План аудита',
@@ -3622,6 +4526,242 @@ export const certificationMessages = defineMessages(keys, {
     timelineStage2Plan: 'План этапа 2 — версия {version}',
     timelineStage2Report: 'Отчёт этапа 2 — версия {version}',
     showValues: 'Показать записанные значения',
+    recommendationTitle: 'Рекомендация группы',
+    recommendationMissing: 'Рекомендация группы ещё не записана.',
+    recordRecommendation: 'Записать рекомендацию группы',
+    correctRecommendation: 'Исправить рекомендацию группы',
+    recommendationHelp:
+      'Руководитель утверждённой аудиторской группы рекомендует выдать сертификацию, не выдавать её или провести дополнительный аудит и указывает основание. Ничего не выбрано заранее. Дополнительный аудит не входит в этот процесс: при такой рекомендации в сертификации можно только отказать.',
+    recommendationOutcome: 'Рекомендация',
+    recommendationGrant: 'Выдать сертификацию',
+    recommendationDoNotGrant: 'Не выдавать сертификацию',
+    recommendationAdditionalAudit: 'Нужен дополнительный аудит',
+    recommendationBasis: 'Основание рекомендации',
+    recommendationSubmit: 'Записать рекомендацию',
+    recommendationValidation:
+      'Выберите рекомендацию и укажите её основание (не более 4 000 символов).',
+    recommendationAwaitingLeader:
+      'Рекомендацию группы записывает руководитель утверждённой аудиторской группы, имеющий право аудитора по сертификации.',
+    blockedRecommendationNotTeamLeader:
+      'Рекомендацию группы записывает только руководитель утверждённой аудиторской группы. Вы не связаны с этим руководителем группы.',
+    blockedRecommendationFindingsOpen:
+      'Рекомендация группы записывается, когда ни одно несоответствие не задерживает дело. Загрузите дело заново.',
+    blockedRecommendationBeforeStage2:
+      'Рекомендация группы записывается после отчёта этапа 2. Загрузите дело заново.',
+    dossierReviewTitle: 'Анализ досье',
+    dossierReviewMissing: 'Анализ досье ещё не записан.',
+    recordDossierReview: 'Записать анализ досье',
+    correctDossierReview: 'Исправить анализ досье',
+    dossierReviewHelp:
+      'Утверждающий, не входящий в аудиторскую группу, отвечает по каждому элементу досье: есть, отсутствует или не применяется. Ничего не выбрано заранее; для отсутствующего элемента нужно примечание. Этот анализ отличается от реестра документов.',
+    dossierAnswerPresent: 'Есть',
+    dossierAnswerMissing: 'Отсутствует',
+    dossierAnswerNotApplicable: 'Не применяется',
+    dossierItemNote: 'Примечание',
+    dossierConclusion: 'Вывод анализа',
+    dossierReviewSubmit: 'Записать анализ',
+    dossierReviewValidation:
+      'Ответьте по каждому элементу досье, напишите примечание к каждому отсутствующему элементу (не более 1 000 символов) и вывод (не более 4 000 символов).',
+    dossierReviewResult: 'Итог',
+    dossierComplete: 'Полное — отсутствующих элементов нет',
+    dossierIncomplete: 'Неполное — отсутствующих элементов: {count}',
+    dossierItemApplication: 'Заявка',
+    dossierItemApplicationReview: 'Анализ заявки',
+    dossierItemDuration: 'Продолжительность аудита',
+    dossierItemAgreement: 'Договор о сертификации',
+    dossierItemTeamApproval: 'Утверждение аудиторской группы',
+    dossierItemStage1Plan: 'План аудита этапа 1',
+    dossierItemStage1Report: 'Отчёт об аудите этапа 1',
+    dossierItemStage2Plan: 'План аудита этапа 2',
+    dossierItemStage2Report: 'Отчёт об аудите этапа 2',
+    dossierItemParticipantLists: 'Списки участников',
+    dossierItemFindingsFollowUp: 'Работа с несоответствиями',
+    dossierItemRecommendation: 'Рекомендация группы',
+    dossierItemCertificateData: 'Данные сертификата, согласованные с клиентом',
+    dossierAwaitingApprover:
+      'Досье анализирует утверждающий, не входящий в аудиторскую группу.',
+    dossierIndependence:
+      'Вы не можете анализировать это досье: вы связаны с участником аудиторской группы. Его анализирует утверждающий, не входящий в группу.',
+    blockedDossierBeforeRecommendation:
+      'Досье анализируется после рекомендации группы. Загрузите дело заново.',
+    blockedDecided:
+      'Решение о сертификации записано: то, на чём оно основано (продолжительность, договор, группа, этапы, наблюдения, рекомендация, анализ досье), больше не меняется; остаются только данные сертификата и сам сертификат. Загрузите дело заново.',
+    certificationDecisionTitle: 'Решение о сертификации',
+    certificationDecisionMissing: 'Решение о сертификации ещё не записано.',
+    recordCertificationDecision: 'Записать решение о сертификации',
+    certificationDecisionHelp:
+      'Утверждающий, не входящий в аудиторскую группу, один раз записывает решение органа по сертификации; исправить его нельзя. Ничего не выбрано заранее. При выдаче указывается выданный текст сертификата для каждого языка сертификата.',
+    decisionOutcome: 'Решение',
+    decisionGranted: 'Сертификация выдана',
+    decisionRefused: 'В сертификации отказано',
+    grantedTexts: 'Выданные тексты сертификата',
+    certificateTextsAgreed: 'Согласованные тексты сертификата',
+    certificateTextHeading: 'Текст сертификата {position}',
+    certificateLanguage: 'Язык',
+    certificateLanguageHelp:
+      'Код языка этого текста сертификата, например ro или en; каждый язык один раз.',
+    certificateHolderName: 'Наименование держателя',
+    certificateAddress: 'Адрес',
+    certificateScope: 'Область',
+    addCertificateLanguage: 'Добавить язык сертификата',
+    removeCertificateText: 'Удалить текст сертификата {position}',
+    decidedOn: 'Дата решения',
+    decidedBy: 'Лицо, принявшее решение',
+    decidedByFunction: 'Должность лица, принявшего решение',
+    decisionForm: 'Подписанная форма решения',
+    decisionFormNone: 'Без подписанной формы решения',
+    decisionRationale: 'Обоснование',
+    decisionAdditionalInformation: 'Использованная дополнительная информация',
+    decisionIndependenceAttestation:
+      'Подтверждаю, что лицо, принявшее решение, не входит в аудиторскую группу.',
+    decisionIndependenceLabel: 'Независимость',
+    decisionIndependenceAttested:
+      'Подтверждено: лицо, принявшее решение, не входит в аудиторскую группу.',
+    certificationDecisionSubmit: 'Записать решение',
+    certificationDecisionValidation:
+      'Заполните решение: выберите исход и укажите дату решения, лицо, принявшее решение, и его должность (не более 200 символов каждое) и обоснование (не более 4 000 символов). При выдаче укажите от одного до четырёх текстов сертификата, по одному на язык, каждый с наименованием держателя, адресом и областью.',
+    decisionAttestationRequired:
+      'Подтвердите, что лицо, принявшее решение, не входит в аудиторскую группу.',
+    decisionPreconditionsTitle:
+      'Решение о сертификации нельзя записать, пока не выполнены эти предварительные условия:',
+    decisionPreconditionsList: 'Невыполненные предварительные условия',
+    decisionPreconditionsRefused:
+      'Сервер отклонил решение: эти предварительные условия не выполнены.',
+    decisionPreconditionsUnknown:
+      'Сервер отклонил решение, так как предварительное условие не выполнено. Загрузите дело заново и проверьте каждый этап.',
+    preconditionApplicationNotAccepted: 'Анализ заявки не принял заявку.',
+    preconditionDurationMissing: 'Продолжительность аудита не подтверждена.',
+    preconditionAgreementMissing: 'Договор о сертификации не записан.',
+    preconditionTeamNotApproved:
+      'Последняя версия аудиторской группы не утверждена.',
+    preconditionStage1NotReady:
+      'Нет отчёта этапа 1 с выводом о готовности клиента.',
+    preconditionStage2NotReported: 'Отчёт этапа 2 не записан.',
+    preconditionFindingsOpen:
+      'Несоответствие всё ещё задерживает дело: его нужно проверить как результативно устранённое, а для незначительного несоответствия этапа 2 — признать план адекватным.',
+    preconditionFindingsOverdue: 'У несоответствия истёк шестимесячный срок.',
+    preconditionRecommendationMissing: 'Рекомендация группы не записана.',
+    preconditionGrantAgainstRecommendation:
+      'Нельзя выдать сертификацию вопреки рекомендации группы, которая не рекомендует её выдавать.',
+    preconditionDossierReviewIncomplete:
+      'Анализ досье не записан или в нём указан отсутствующий элемент.',
+    preconditionDecisionInFuture: 'Дата решения находится в будущем.',
+    decisionMakerIndependence:
+      'Лицо, принявшее решение, не может входить в аудиторскую группу: вы связаны с участником одной из её версий или указанное лицо входит в утверждённую группу.',
+    certificationDecisionAwaitingApprover:
+      'Решение о сертификации записывает утверждающий, не входящий в аудиторскую группу.',
+    certificationDecisionIndependence:
+      'Вы не можете записать решение о сертификации: вы связаны с участником аудиторской группы. Решение принимает утверждающий, не входящий в группу.',
+    decisionFormRole:
+      'Подписанная форма решения должна быть PDF этого дела, приложенным как форма решения. Загрузите дело заново и выберите снова.',
+    certificateDataTitle: 'Данные сертификата, согласованные с клиентом',
+    certificateDataMissing: 'Данные сертификата ещё не согласованы.',
+    recordCertificateData: 'Записать данные сертификата',
+    correctCertificateData: 'Исправить данные сертификата',
+    certificateDataHelp:
+      'Руководитель программы записывает для каждого языка сертификата наименование держателя, адрес и область, согласованные с клиентом, с подписанной формой. Сертификат записывается, когда они точно совпадают с тем, что выдано решением.',
+    certificateDataAgreedOn: 'Дата согласования',
+    certificateDataDocument: 'Подписанная форма данных сертификата',
+    selectCertificateDataDocument: 'Выберите подписанную форму',
+    certificateDataSubmit: 'Записать данные сертификата',
+    certificateDataValidation:
+      'Заполните данные сертификата: от одного до четырёх текстов, по одному на язык, каждый с языком (не более 10 символов), наименованием держателя (не более 300), адресом (не более 500) и областью (не более 2 000); дату согласования и подписанную форму.',
+    certificateDataNoDocument:
+      'Сначала приложите к этому делу подписанную форму данных сертификата с ролью «Форма данных сертификата».',
+    certificateDataAwaitingManager:
+      'Данные сертификата, согласованные с клиентом, записывает руководитель программы.',
+    certificateDataDocumentRole:
+      'Подписанная форма должна быть PDF этого дела, приложенным как форма данных сертификата. Загрузите дело заново и выберите снова.',
+    blockedCertificateDataBeforeStage2:
+      'Данные сертификата согласуются после отчёта этапа 2. Загрузите дело заново.',
+    certificateTextsDiffer:
+      'Согласованные данные сертификата отличаются от выданного решением:',
+    certificateDifferencesList: 'Отличия от решения',
+    differenceNotAgreed:
+      '{language}: выдан решением, отсутствует в согласованных данных.',
+    differenceNotGranted:
+      '{language}: есть в согласованных данных, не выдан решением.',
+    differenceField:
+      '{language} — {field}: выдано «{granted}», согласовано «{agreed}».',
+    certificateTitle: 'Сертификат',
+    certificateMissing: 'Сертификат ещё не записан.',
+    recordCertificate: 'Записать выданный сертификат',
+    certificateHelp:
+      'Утверждающий, не входящий в аудиторскую группу, один раз записывает выданный сертификат: его номер, уникальный в Компании, точный PDF сертификата и подписанта. Срок действия сервер вычисляет от даты решения.',
+    certificateNumber: 'Номер сертификата',
+    certificatePdf: 'PDF сертификата',
+    selectCertificatePdf: 'Выберите PDF сертификата',
+    certificateSignedBy: 'Подписал(а)',
+    certificateSignedByFunction: 'Должность подписанта',
+    certificateIndependenceAttestation:
+      'Подтверждаю, что подписант не входит в аудиторскую группу.',
+    certificateSubmit: 'Записать сертификат',
+    certificateValidation:
+      'Заполните сертификат: его номер (не более 64 символов) и PDF сертификата этого дела; подписант и должность — не более 200 символов каждое.',
+    certificateAttestationRequired:
+      'Подтвердите, что подписант не входит в аудиторскую группу.',
+    certificateNoPdf:
+      'Сначала приложите к этому делу PDF выданного сертификата с ролью «Сертификат».',
+    certificateAwaitingApprover:
+      'Сертификат записывает утверждающий, не входящий в аудиторскую группу.',
+    certificateApproverIndependence:
+      'Вы не можете записать сертификат: вы связаны с участником аудиторской группы. Его записывает утверждающий, не входящий в группу.',
+    certificateIndependence:
+      'Участник аудиторской группы не может записать или подписать сертификат: вы связаны с одним из них или указанный подписант входит в утверждённую группу.',
+    certificateNumberTaken:
+      'Этот номер сертификата уже используется в Компании. Проверьте номер на выданном сертификате.',
+    certificateDataDiffers:
+      'Согласованные данные сертификата должны точно совпадать с выданным решением. Загрузите дело заново и сначала исправьте данные сертификата.',
+    blockedCertificateDataDiffers:
+      'Сертификат записывается, когда согласованные данные сертификата точно совпадают с выданным решением. Сначала исправьте данные сертификата.',
+    blockedCertificateNotGranted:
+      'Сертификат следует за решением о выдаче сертификации. Загрузите дело заново.',
+    blockedCertificateDataMissing:
+      'Сертификат записывается после согласования данных сертификата с клиентом.',
+    certificatePdfRole:
+      'PDF сертификата должен быть приложен к этому делу как сертификат. Загрузите дело заново и выберите снова.',
+    certificateValidFrom: 'Действителен с',
+    certificateValidUntil: 'Действителен до',
+    certificateFirstSurveillanceBy: 'Начало первого надзора не позднее',
+    certificateValidityNote:
+      'Вычислено сервером от даты решения: действителен три года минус один день; первый надзор начинается в течение двенадцати месяцев.',
+    certificateTexts: 'Тексты сертификата',
+    statusRefused: 'Закрыто — в сертификации отказано',
+    statusCertified: 'Сертифицировано',
+    caseCertifiedNote:
+      'Это дело сертифицировано: его сертификат записан. Теперь все записи доступны только для чтения.',
+    caseRefusedNote:
+      'Это дело закрыто: в сертификации отказано. Теперь все записи доступны только для чтения; для новой заявки нужно новое дело.',
+    caseClosedRefusal:
+      'Это дело закрыто. Загрузите его заново, чтобы увидеть итоговое состояние.',
+    nextDossierReview: 'Анализ досье',
+    nextCertificationDecision: 'Решение о сертификации',
+    nextCertificateData: 'Данные сертификата, согласованные с клиентом',
+    nextCertificate: 'Сертификат',
+    stepRecommendation: 'Рекомендация группы',
+    stepDossierReview: 'Анализ досье',
+    stepCertificationDecision: 'Решение о сертификации',
+    stepCertificateData: 'Данные сертификата',
+    stepCertificate: 'Сертификат',
+    stepRecommended: '{recommendation} — версия {version}',
+    stepWaitingFollowUp: 'Ожидает работы с несоответствиями',
+    stepWaitingRecommendation: 'Ожидает рекомендации группы',
+    stepDossierComplete: 'Полный — версия {version}',
+    stepDossierIncomplete: 'Есть отсутствующий элемент — версия {version}',
+    stepWaitingDossierReview: 'Ожидает анализа досье',
+    stepWaitingGrant: 'Ожидает решения о выдаче',
+    stepWaitingCertificateData: 'Ожидает согласованных данных сертификата',
+    stepCertificateRecorded: 'Записан — {number}',
+    timelineRecommendation:
+      'Рекомендация группы — {recommendation} (версия {version})',
+    timelineDossierReview: 'Анализ досье — версия {version}',
+    timelineCertificationDecision: 'Решение о сертификации — {decision}',
+    timelineCertificateData: 'Данные сертификата — версия {version}',
+    timelineCertificate: 'Сертификат {number} записан',
+    roleCertificateData: 'Форма данных сертификата',
+    roleDecisionForm: 'Форма решения',
+    blockedVersionCorrectionReason:
+      'Новой версии нужна причина, а у первой записи её нет. Загрузите дело заново перед новым сохранением.',
   },
 });
 
