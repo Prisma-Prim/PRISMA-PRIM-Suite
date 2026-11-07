@@ -44,7 +44,7 @@ Each fact has one normative owner. Tracker issues summarize status, dependencies
 - **Approved:** observable behaviour, scope, actors, permissions, lifecycle and acceptance are decided.
 - **Superseded:** a named successor owns the behaviour; historical rationale remains available.
 
-A Draft PRD may exist with open evidence. An unresolved point is labelled as a blocker, configuration dependency or deferred choice; it is never filled with an assumption.
+A Draft PRD may exist with open evidence. An unresolved point is labelled as a blocker, configuration dependency or deferred choice unless [section 9.1](#91-open-business-details) resolves it; it is never filled with an unsourced assumption.
 
 ### 3.2 Delivery states
 
@@ -179,7 +179,7 @@ An implementation issue is ready only when:
 11. the slice fits one fresh agent session;
 12. every blocker is closed.
 
-If any gate fails, keep the item as a PRD dependency, epic or draft ticket. Do not compensate with agent discretion.
+If any gate fails, keep the item as a PRD dependency, epic or draft ticket. Do not compensate with agent discretion beyond [section 9.1](#91-open-business-details).
 
 ## 9. Human and agent decision boundary
 
@@ -192,7 +192,27 @@ Dan and his agents own:
 - architecture, interfaces, test seams and ticket granularity;
 - implementation, verification and delivery.
 
-Routine technical validation does not return to Dan for approval. Escalate only a product ambiguity that materially changes observable behaviour, business authority, legal meaning, pricing, permissions or acceptance.
+Routine technical validation does not return to Dan for approval.
+
+### 9.1 Open business details
+
+When an issue and its linked PRD leave a business detail open, the agent resolves it from the cahier des charges before escalating (owner decision, 2026-11-07, [#1117](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1117)):
+
+1. Search the cahier des charges, Sarcina v1.0. Its 855 requirement texts, in Romanian, are in the `source_text` column of [the traceability CSV](sarcina-v1-traceability.csv); [the reconciliation](sarcina-v1-reconciliation.md) describes its relation to the PRDs.
+2. Adopt a provisional, reversible choice that cites the `source_id` and a short quote. Record it in the PR, and in the owning PRD when drafting product work.
+
+Canonical PRDs, the consolidated decision record and ADRs still win wherever they decide something.
+
+Escalate only what no source supports, even partially:
+
+- prices;
+- legal effect and legal clauses;
+- certification decisions;
+- signing authority and permissions;
+- workflow meaning;
+- changes to an issue's acceptance criteria.
+
+The escalation proposes the conservative MVP default.
 
 ## 10. Execution and completion
 
