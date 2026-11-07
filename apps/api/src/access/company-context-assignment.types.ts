@@ -1,31 +1,17 @@
 import type {
-  COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_ROLE_BUNDLES,
   CompanyRoleBundle,
-  CompanyRolePermissionSetVersion,
+  CompanyRoleCapturedVersion,
 } from './company-permissions.js';
-
-type CompanyAssignmentCaptureVersion<Bundle extends CompanyRoleBundle> =
-  Bundle extends typeof COMPANY_CONTEXT_ACCESS_BUNDLE
-    ? null
-    : CompanyRolePermissionSetVersion<Bundle>;
 
 export type CompanyAssignmentBundleLabel =
   (typeof COMPANY_ROLE_BUNDLES)[CompanyRoleBundle]['label'];
 
-// Fresh capture policy remains explicit in the named server-owned definitions.
-// Labels are registry metadata, so definitions cannot supply a competing label.
-export type CompanyAssignmentDefinition = {
-  [Bundle in CompanyRoleBundle]: {
-    value: Bundle;
-    permissionSetVersion: CompanyAssignmentCaptureVersion<Bundle>;
-  };
-}[CompanyRoleBundle];
-
+// Labels are registry metadata, so a record cannot carry a competing label.
 export type CompanyAssignmentRecordMetadata = {
   [Bundle in CompanyRoleBundle]: {
     bundle: (typeof COMPANY_ROLE_BUNDLES)[Bundle]['label'];
-    permissionSetVersion: CompanyAssignmentCaptureVersion<Bundle>;
+    permissionSetVersion: CompanyRoleCapturedVersion<Bundle>;
   };
 }[CompanyRoleBundle];
 

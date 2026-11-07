@@ -2,11 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { PgDialect, getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import {
+  activityLogAction,
   companyRoleAssignments,
   companyRoleBundle,
 } from '../database/schema/index.js';
 import {
+  COMPANY_CONTEXT_CONFERRING_BUNDLES,
   COMPANY_ROLE_BUNDLES,
+  companyRoleAssignmentAction,
+  companyRoleGrantVersion,
   companyRolePermissionsFor,
   companyRoleVersionsWith,
   isCompanyRolePermissionSetVersion,
@@ -388,6 +392,77 @@ const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
   company_document_content_uploader: 'Company Document Content Uploader',
 };
 
+// The version a fresh grant captures. Existing assignments keep the version
+// they captured; a new version is captured only when its bundle's entry here
+// and in the registry change together.
+const EXPECTED_GRANT_VERSIONS: Record<CompanyRoleBundle, string | null> = {
+  company_certification_programme_manager: 'v1',
+  company_certification_reader: 'v1',
+  company_context_access: null,
+  company_director_client_access: 'v2',
+  company_internal_task_manager: 'v1',
+  company_task_manager: 'v1',
+  company_document_project_organizer: 'v1',
+  company_document_registrar: 'v3',
+  company_document_approver: 'v1',
+  company_project_access: 'v2',
+  company_commercial_intake: 'v4',
+  company_service_catalogue: 'v1',
+  company_pricing_configuration: 'v1',
+  company_pricing_user: 'v1',
+  company_pricing_adjustment: 'v1',
+  company_offer_preparer: 'v3',
+  company_contract_preparer: 'v2',
+  company_contract_early_preparation: 'v1',
+  company_contract_approver: 'v2',
+  company_offer_approver: 'v2',
+  company_commercial_activity_reader: 'v1',
+  company_opportunity_manager: 'v2',
+  company_project_approver: 'v1',
+  company_profitability_contributor: 'v1',
+  company_profitability_director: 'v1',
+  company_sales_stage_configuration: 'v1',
+  company_document_content_reader: 'v1',
+  company_document_content_uploader: 'v1',
+  company_project_template_user: 'v2',
+  company_project_stage_advancer: 'v1',
+  company_project_template_configuration: 'v1',
+  company_ideas_reader: 'v1',
+  company_ideas_recorder: 'v1',
+  company_ideas_reviewer: 'v1',
+  company_operational_risk_reader: 'v1',
+  company_operational_risk_recorder: 'v1',
+  company_task_result_recorder: 'v1',
+  company_project_next_action_coordinator: 'v1',
+  company_mission_applicability_coordinator: 'v1',
+  company_mission_applicability_approver: 'v1',
+  company_mission_result_reviewer: 'v1',
+  company_mission_deliverable_access: 'v1',
+  company_contract_signature_declarer: 'v1',
+  company_received_contract_access: 'v1',
+  company_received_addendum_access: 'v1',
+  company_offer_model_editor: 'v1',
+  company_offer_model_approver: 'v1',
+  company_contract_model_editor: 'v1',
+  company_contract_model_approver: 'v1',
+  company_mission_plan_configuration: 'v1',
+  company_mission_plan_user: 'v1',
+  company_knowledge_source_administrator: 'v1',
+  company_knowledge_evidence_reader: 'v1',
+  company_payment_reader: 'v1',
+  company_payment_recorder: 'v1',
+  company_payment_confirmer: 'v1',
+  company_payment_reverser: 'v1',
+  company_payment_evidence_access: 'v1',
+  company_invoice_reader: 'v1',
+  company_invoice_recorder: 'v1',
+  company_external_invoice_access: 'v1',
+  company_opportunity_follow_up_coordinator: 'v1',
+  company_working_evidence_case_reader: 'v1',
+  company_working_evidence_case_recorder: 'v1',
+  company_received_audit_source_access: 'v1',
+};
+
 const BUNDLES = Object.keys(EXPECTED).filter(
   (bundle): bundle is CompanyRoleBundle => Object.hasOwn(EXPECTED, bundle),
 );
@@ -403,9 +478,49 @@ describe('Company role bundle registry', () => {
     );
   });
 
+  it('records exactly the persisted assignment actions, two per bundle', () => {
+    const derived = BUNDLES.flatMap((bundle) => [
+      companyRoleAssignmentAction(bundle, 'grant'),
+      companyRoleAssignmentAction(bundle, 'revoke'),
+    ]);
+    expect(new Set(derived).size).toBe(BUNDLES.length * 2);
+    expect(derived.sort()).toEqual(
+      activityLogAction.enumValues
+        .filter((action) => /_assignment\.(?:granted|revoked)$/u.test(action))
+        .sort(),
+    );
+  });
+
+  it('confers Company context through exactly four bundles', () => {
+    expect([...COMPANY_CONTEXT_CONFERRING_BUNDLES].sort()).toEqual([
+      'company_context_access',
+      'company_director_client_access',
+      'company_document_registrar',
+      'company_project_access',
+    ]);
+  });
+
+  it('keeps the three legacy assignment action names', () => {
+    expect(companyRoleAssignmentAction('company_context_access', 'grant')).toBe(
+      'company_context_assignment.granted',
+    );
+    expect(
+      companyRoleAssignmentAction('company_director_client_access', 'revoke'),
+    ).toBe('company_director_client_assignment.revoked');
+    expect(companyRoleAssignmentAction('company_project_access', 'grant')).toBe(
+      'company_project_assignment.granted',
+    );
+    expect(
+      companyRoleAssignmentAction('company_payment_reader', 'revoke'),
+    ).toBe('company_payment_reader_assignment.revoked');
+  });
+
   it.each(BUNDLES)('pins the label and captured versions of %s', (bundle) => {
     expect(COMPANY_ROLE_BUNDLES[bundle].label).toBe(EXPECTED_LABELS[bundle]);
     expect(COMPANY_ROLE_BUNDLES[bundle].versions).toEqual(EXPECTED[bundle]);
+    expect(companyRoleGrantVersion(bundle)).toBe(
+      EXPECTED_GRANT_VERSIONS[bundle],
+    );
     // Captured versions resolve in their capture order.
     expect(companyRoleVersionsWith(bundle, [])).toEqual(
       Object.keys(EXPECTED[bundle]),

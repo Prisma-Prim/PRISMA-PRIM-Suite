@@ -11,7 +11,7 @@ import {
 } from '../database/schema/index.js';
 import {
   COMPANY_CONTEXT_ACCESS_BUNDLE,
-  COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_CONTEXT_CONFERRING_BUNDLES,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
@@ -68,10 +68,10 @@ export async function readPaymentEvidenceCaptures(input: {
           actor.workspaceMembershipId,
         ),
         eq(companyRoleAssignments.companyId, companyId),
-        inArray(companyRoleAssignments.bundle, [
-          ...COMPANY_CONTEXT_USE_BUNDLES,
-          COMPANY_PROJECT_ACCESS_BUNDLE,
-        ]),
+        inArray(
+          companyRoleAssignments.bundle,
+          COMPANY_CONTEXT_CONFERRING_BUNDLES,
+        ),
         isNull(companyRoleAssignments.revokedAt),
       ),
     )

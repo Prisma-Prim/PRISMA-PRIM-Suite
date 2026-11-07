@@ -1,10 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { assignmentRecord } from './company-context-assignment-record.js';
-import type {
-  CompanyAssignmentDefinition,
-  CompanyContextAssignmentRecord,
-} from './company-context-assignment.types.js';
-import { COMPANY_ROLE_BUNDLES } from './company-permissions.js';
+import type { CompanyContextAssignmentRecord } from './company-context-assignment.types.js';
+import {
+  COMPANY_ROLE_BUNDLES,
+  companyRoleGrantVersion,
+  type CompanyRoleCapturedVersion,
+} from './company-permissions.js';
 
 const identifiers = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -104,23 +105,16 @@ describe('Company assignment record decoding', () => {
     });
   });
 
-  it('correlates definition captures and response labels at compile time', () => {
+  it('correlates grant captures and response labels at compile time', () => {
+    expectTypeOf(
+      companyRoleGrantVersion('company_offer_model_editor'),
+    ).toEqualTypeOf<'v1'>();
+    expectTypeOf(
+      companyRoleGrantVersion('company_context_access'),
+    ).toEqualTypeOf<null>();
     expectTypeOf<
-      Extract<
-        CompanyAssignmentDefinition,
-        { value: 'company_offer_model_editor' }
-      >
-    >().toEqualTypeOf<{
-      value: 'company_offer_model_editor';
-      permissionSetVersion: 'v1';
-    }>();
-    expectTypeOf<keyof CompanyAssignmentDefinition>().toEqualTypeOf<
-      'value' | 'permissionSetVersion'
-    >();
-    expectTypeOf<{
-      value: 'company_offer_model_editor';
-      permissionSetVersion: 'v4';
-    }>().not.toMatchTypeOf<CompanyAssignmentDefinition>();
+      CompanyRoleCapturedVersion<'company_offer_preparer'>
+    >().toEqualTypeOf<'v1' | 'v2' | 'v3'>();
     expectTypeOf<{
       bundle: 'Company Offer Model Editor';
       permissionSetVersion: 'v2';
@@ -148,13 +142,9 @@ describe('Company assignment record decoding', () => {
       >['permissionSetVersion']
     >().toEqualTypeOf<'v1' | 'v2'>();
     expectTypeOf<
-      Extract<
-        CompanyAssignmentDefinition,
-        {
-          value:
-            'company_contract_model_editor' | 'company_contract_model_approver';
-        }
-      >['permissionSetVersion']
+      CompanyRoleCapturedVersion<
+        'company_contract_model_editor' | 'company_contract_model_approver'
+      >
     >().toEqualTypeOf<'v1'>();
   });
 });

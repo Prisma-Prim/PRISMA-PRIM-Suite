@@ -13,6 +13,8 @@ import {
   COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+  companyRoleAssignmentAction,
+  companyRoleGrantVersion,
 } from './company-permissions.js';
 import {
   COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
@@ -31,15 +33,8 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { AccountabilityService } from '../accountability/accountability.service.js';
-import {
-  COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION,
-  COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION,
-  COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION,
-  COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
-  type CanonicalActivityEvent,
-} from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   companies,
@@ -103,7 +98,6 @@ import {
 } from './company-permissions.js';
 import { assignmentRecord } from './company-context-assignment-record.js';
 import type {
-  CompanyAssignmentDefinition as BundleDefinition,
   CompanyAccessAdministrationState,
   CompanyContextAssignmentRecord,
   GrantCompanyContextAssignmentCommand,
@@ -116,340 +110,18 @@ type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
 export const INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION = Symbol(
   'INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION',
 );
-const CERTIFICATION_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_CERTIFICATION_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const CERTIFICATION_PROGRAMME_MANAGER_BUNDLE: BundleDefinition = {
-  value: COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const IDEAS_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_IDEAS_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const IDEAS_RECORDER_BUNDLE: BundleDefinition = {
-  value: COMPANY_IDEAS_RECORDER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const IDEAS_REVIEWER_BUNDLE: BundleDefinition = {
-  value: COMPANY_IDEAS_REVIEWER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const OPERATIONAL_RISK_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const OPERATIONAL_RISK_RECORDER_BUNDLE: BundleDefinition = {
-  value: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
 const MISSION_PLAN_BUNDLES = {
-  configuration: {
-    value: COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
-    permissionSetVersion: 'v1',
-  },
-  user: { value: COMPANY_MISSION_PLAN_USER_BUNDLE, permissionSetVersion: 'v1' },
-} as const satisfies Record<string, BundleDefinition>;
-const INTERNAL_TASK_MANAGER_BUNDLE: BundleDefinition = {
-  value: COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const TASK_MANAGER_BUNDLE: BundleDefinition = {
-  value: COMPANY_TASK_MANAGER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const CONTEXT_BUNDLE: BundleDefinition = {
-  value: COMPANY_CONTEXT_ACCESS_BUNDLE,
-  permissionSetVersion: null,
-};
-const DIRECTOR_CLIENT_BUNDLE: BundleDefinition = {
-  value: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-const DOCUMENT_PROJECT_ORGANIZER_BUNDLE: BundleDefinition = {
-  value: COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-// A fresh grant captures v3; existing v1 and v2 assignments keep their
-// captured version until explicitly revoked and granted again.
-const DOCUMENT_REGISTRAR_BUNDLE: BundleDefinition = {
-  value: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-  permissionSetVersion: 'v3',
-};
-// The opt-in Approver exists only as captured v1.
-const DOCUMENT_APPROVER_BUNDLE: BundleDefinition = {
-  value: COMPANY_DOCUMENT_APPROVER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-// A fresh Content Reader grant captures v1.
-const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
-  value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const MISSION_APPLICABILITY_COORDINATOR_BUNDLE: BundleDefinition = {
-  value: COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const MISSION_APPLICABILITY_APPROVER_BUNDLE: BundleDefinition = {
-  value: COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const MISSION_RESULT_REVIEWER_BUNDLE: BundleDefinition = {
-  value: COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
-  value: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const CONTRACT_SIGNATURE_DECLARER_BUNDLE: BundleDefinition = {
-  value: COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const RECEIVED_CONTRACT_ACCESS_BUNDLE: BundleDefinition = {
-  value: COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const RECEIVED_ADDENDUM_ACCESS_BUNDLE: BundleDefinition = {
-  value: COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const DOCUMENT_CONTENT_UPLOADER_BUNDLE: BundleDefinition = {
-  value: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PROJECT_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROJECT_ACCESS_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-// A fresh grant captures v4; existing v1, v2 and v3 assignments keep their
-// captured version until explicitly revoked and granted again.
-const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
-  value: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
-  permissionSetVersion: 'v4',
-};
-const SERVICE_CATALOGUE_BUNDLE: BundleDefinition = {
-  value: COMPANY_SERVICE_CATALOGUE_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PRICING_CONFIGURATION_BUNDLE: BundleDefinition = {
-  value: COMPANY_PRICING_CONFIGURATION_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PRICING_USER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PRICING_USER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
+  configuration: COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
+  user: COMPANY_MISSION_PLAN_USER_BUNDLE,
+} as const;
 const OFFER_MODEL_BUNDLES = {
-  editor: {
-    value: COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
-    permissionSetVersion: 'v1',
-  },
-  approver: {
-    value: COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
-    permissionSetVersion: 'v1',
-  },
-} satisfies Record<'editor' | 'approver', BundleDefinition>;
+  editor: COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
+  approver: COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
+} as const;
 const CONTRACT_MODEL_BUNDLES = {
-  editor: {
-    value: COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
-    permissionSetVersion: 'v1',
-  },
-  approver: {
-    value: COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
-    permissionSetVersion: 'v1',
-  },
-} satisfies Record<'editor' | 'approver', BundleDefinition>;
-const OFFER_PREPARER_BUNDLE: BundleDefinition = {
-  value: COMPANY_OFFER_PREPARER_BUNDLE,
-  permissionSetVersion: 'v3',
-};
-const CONTRACT_PREPARER_BUNDLE: BundleDefinition = {
-  value: COMPANY_CONTRACT_PREPARER_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-const CONTRACT_EARLY_PREPARATION_BUNDLE: BundleDefinition = {
-  value: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const CONTRACT_APPROVER_BUNDLE: BundleDefinition = {
-  value: COMPANY_CONTRACT_APPROVER_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-const OFFER_APPROVER_BUNDLE: BundleDefinition = {
-  value: COMPANY_OFFER_APPROVER_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-const PRICING_ADJUSTMENT_BUNDLE: BundleDefinition = {
-  value: COMPANY_PRICING_ADJUSTMENT_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PROFITABILITY_CONTRIBUTOR_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PROFITABILITY_DIRECTOR_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-// A fresh grant captures v2; existing v1 assignments keep their captured
-// version until explicitly revoked and granted again.
-const OPPORTUNITY_MANAGER_BUNDLE: BundleDefinition = {
-  value: COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-// The opt-in Sales Stage configuration bundle exists only as captured v1.
-const SALES_STAGE_CONFIGURATION_BUNDLE: BundleDefinition = {
-  value: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-// The opt-in lifecycle approver exists only as captured v1.
-const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROJECT_APPROVER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PROJECT_TEMPLATE_USER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
-  permissionSetVersion: 'v2',
-};
-const PROJECT_TEMPLATE_CONFIGURATION_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PAYMENT_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PAYMENT_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PAYMENT_RECORDER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PAYMENT_RECORDER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PAYMENT_CONFIRMER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PAYMENT_CONFIRMER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PAYMENT_REVERSER_BUNDLE: BundleDefinition = {
-  value: COMPANY_PAYMENT_REVERSER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const PAYMENT_EVIDENCE_ACCESS_BUNDLE: BundleDefinition = {
-  value: COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const INVOICE_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_INVOICE_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const INVOICE_RECORDER_BUNDLE: BundleDefinition = {
-  value: COMPANY_INVOICE_RECORDER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const EXTERNAL_INVOICE_ACCESS_BUNDLE: BundleDefinition = {
-  value: COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE: BundleDefinition = {
-  value: COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const WORKING_EVIDENCE_CASE_READER_BUNDLE: BundleDefinition = {
-  value: COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const WORKING_EVIDENCE_CASE_RECORDER_BUNDLE: BundleDefinition = {
-  value: COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE: BundleDefinition = {
-  value: COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
-  permissionSetVersion: 'v1',
-};
-const ADMINISTRABLE_BUNDLES = [
-  COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
-  COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
-  COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
-
-  COMPANY_PAYMENT_READER_BUNDLE,
-  COMPANY_PAYMENT_RECORDER_BUNDLE,
-  COMPANY_PAYMENT_CONFIRMER_BUNDLE,
-  COMPANY_PAYMENT_REVERSER_BUNDLE,
-  COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
-
-  COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
-  COMPANY_INVOICE_READER_BUNDLE,
-  COMPANY_INVOICE_RECORDER_BUNDLE,
-  COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
-
-  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
-  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
-  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
-  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
-  COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
-  COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
-  COMPANY_CERTIFICATION_READER_BUNDLE,
-  COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
-  COMPANY_IDEAS_READER_BUNDLE,
-  COMPANY_IDEAS_RECORDER_BUNDLE,
-  COMPANY_IDEAS_REVIEWER_BUNDLE,
-  COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
-  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
-  COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
-  COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
-  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
-  COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
-  COMPANY_TASK_MANAGER_BUNDLE,
-  COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
-  COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-  COMPANY_DOCUMENT_APPROVER_BUNDLE,
-  COMPANY_PROJECT_ACCESS_BUNDLE,
-  COMPANY_CONTEXT_ACCESS_BUNDLE,
-  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-  COMPANY_COMMERCIAL_INTAKE_BUNDLE,
-  COMPANY_SERVICE_CATALOGUE_BUNDLE,
-  COMPANY_PRICING_CONFIGURATION_BUNDLE,
-  COMPANY_PRICING_USER_BUNDLE,
-  COMPANY_OFFER_PREPARER_BUNDLE,
-  COMPANY_CONTRACT_PREPARER_BUNDLE,
-  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
-  COMPANY_CONTRACT_APPROVER_BUNDLE,
-  COMPANY_OFFER_APPROVER_BUNDLE,
-  COMPANY_PRICING_ADJUSTMENT_BUNDLE,
-  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
-  COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
-  COMPANY_PROJECT_APPROVER_BUNDLE,
-  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
-  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
-  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
-  COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
-  COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
-  COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
-  COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
-  COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
-  COMPANY_TASK_RESULT_RECORDER_BUNDLE,
-  COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
-  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
-  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
-  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
-  COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
-] as const;
-
+  editor: COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+  approver: COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
+} as const;
 @Injectable()
 export class CompanyContextAssignmentService {
   constructor(
@@ -548,7 +220,6 @@ export class CompanyContextAssignmentService {
               this.includeRevokedAssignmentsInAdministration
                 ? undefined
                 : isNull(companyRoleAssignments.revokedAt),
-              inArray(companyRoleAssignments.bundle, ADMINISTRABLE_BUNDLES),
             ),
           )
           .orderBy(
@@ -578,10 +249,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      {
-        value: COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
-        permissionSetVersion: 'v1',
-      },
+      COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -596,10 +264,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      {
-        value: COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
-        permissionSetVersion: 'v1',
-      },
+      COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -612,10 +277,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      {
-        value: COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
-        permissionSetVersion: 'v1',
-      },
+      COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -630,10 +292,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      {
-        value: COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
-        permissionSetVersion: 'v1',
-      },
+      COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -647,7 +306,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTEXT_BUNDLE,
+      COMPANY_CONTEXT_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -661,7 +320,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DIRECTOR_CLIENT_BUNDLE,
+      COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -675,7 +334,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PROJECT_BUNDLE,
+      COMPANY_PROJECT_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -689,7 +348,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      COMMERCIAL_INTAKE_BUNDLE,
+      COMPANY_COMMERCIAL_INTAKE_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -705,7 +364,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      COMMERCIAL_INTAKE_BUNDLE,
+      COMPANY_COMMERCIAL_INTAKE_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -719,7 +378,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      SERVICE_CATALOGUE_BUNDLE,
+      COMPANY_SERVICE_CATALOGUE_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -735,7 +394,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      SERVICE_CATALOGUE_BUNDLE,
+      COMPANY_SERVICE_CATALOGUE_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -749,7 +408,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PRICING_CONFIGURATION_BUNDLE,
+      COMPANY_PRICING_CONFIGURATION_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -765,7 +424,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PRICING_CONFIGURATION_BUNDLE,
+      COMPANY_PRICING_CONFIGURATION_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -779,7 +438,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PRICING_USER_BUNDLE,
+      COMPANY_PRICING_USER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -795,7 +454,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PRICING_USER_BUNDLE,
+      COMPANY_PRICING_USER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -915,7 +574,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OFFER_PREPARER_BUNDLE,
+      COMPANY_OFFER_PREPARER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -931,7 +590,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OFFER_PREPARER_BUNDLE,
+      COMPANY_OFFER_PREPARER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -945,7 +604,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_PREPARER_BUNDLE,
+      COMPANY_CONTRACT_PREPARER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -966,7 +625,7 @@ export class CompanyContextAssignmentService {
   }): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_PREPARER_BUNDLE,
+      COMPANY_CONTRACT_PREPARER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -980,7 +639,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_EARLY_PREPARATION_BUNDLE,
+      COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1001,7 +660,7 @@ export class CompanyContextAssignmentService {
   }): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_EARLY_PREPARATION_BUNDLE,
+      COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1015,7 +674,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_APPROVER_BUNDLE,
+      COMPANY_CONTRACT_APPROVER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1036,7 +695,7 @@ export class CompanyContextAssignmentService {
   }): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_APPROVER_BUNDLE,
+      COMPANY_CONTRACT_APPROVER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1050,7 +709,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OFFER_APPROVER_BUNDLE,
+      COMPANY_OFFER_APPROVER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1066,7 +725,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OFFER_APPROVER_BUNDLE,
+      COMPANY_OFFER_APPROVER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1080,7 +739,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PRICING_ADJUSTMENT_BUNDLE,
+      COMPANY_PRICING_ADJUSTMENT_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1096,7 +755,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PRICING_ADJUSTMENT_BUNDLE,
+      COMPANY_PRICING_ADJUSTMENT_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1110,7 +769,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1126,7 +785,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1140,7 +799,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CERTIFICATION_READER_BUNDLE,
+      COMPANY_CERTIFICATION_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1156,7 +815,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CERTIFICATION_READER_BUNDLE,
+      COMPANY_CERTIFICATION_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1170,7 +829,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
+      COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1186,7 +845,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
+      COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1200,7 +859,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      IDEAS_READER_BUNDLE,
+      COMPANY_IDEAS_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1216,7 +875,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      IDEAS_READER_BUNDLE,
+      COMPANY_IDEAS_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1230,7 +889,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      IDEAS_RECORDER_BUNDLE,
+      COMPANY_IDEAS_RECORDER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1246,7 +905,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      IDEAS_RECORDER_BUNDLE,
+      COMPANY_IDEAS_RECORDER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1260,7 +919,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      IDEAS_REVIEWER_BUNDLE,
+      COMPANY_IDEAS_REVIEWER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1276,7 +935,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      IDEAS_REVIEWER_BUNDLE,
+      COMPANY_IDEAS_REVIEWER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1290,7 +949,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OPERATIONAL_RISK_READER_BUNDLE,
+      COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1310,7 +969,7 @@ export class CompanyContextAssignmentService {
   }): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OPERATIONAL_RISK_READER_BUNDLE,
+      COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1323,7 +982,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OPERATIONAL_RISK_RECORDER_BUNDLE,
+      COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1343,7 +1002,7 @@ export class CompanyContextAssignmentService {
   }): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OPERATIONAL_RISK_RECORDER_BUNDLE,
+      COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1356,7 +1015,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROFITABILITY_CONTRIBUTOR_BUNDLE,
+      COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1372,7 +1031,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROFITABILITY_CONTRIBUTOR_BUNDLE,
+      COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1386,7 +1045,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROFITABILITY_DIRECTOR_BUNDLE,
+      COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1402,7 +1061,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROFITABILITY_DIRECTOR_BUNDLE,
+      COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1416,7 +1075,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OPPORTUNITY_MANAGER_BUNDLE,
+      COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1430,7 +1089,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      SALES_STAGE_CONFIGURATION_BUNDLE,
+      COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1446,7 +1105,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      SALES_STAGE_CONFIGURATION_BUNDLE,
+      COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1460,7 +1119,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_STAGE_ADVANCER_BUNDLE,
+      COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1481,7 +1140,7 @@ export class CompanyContextAssignmentService {
   }): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_STAGE_ADVANCER_BUNDLE,
+      COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1495,7 +1154,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_TEMPLATE_USER_BUNDLE,
+      COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1511,7 +1170,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_TEMPLATE_USER_BUNDLE,
+      COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1525,7 +1184,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
+      COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1541,7 +1200,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
+      COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1555,7 +1214,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_APPROVER_BUNDLE,
+      COMPANY_PROJECT_APPROVER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1571,7 +1230,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      OPPORTUNITY_MANAGER_BUNDLE,
+      COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1587,7 +1246,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_APPROVER_BUNDLE,
+      COMPANY_PROJECT_APPROVER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1603,7 +1262,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PROJECT_BUNDLE,
+      COMPANY_PROJECT_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1619,7 +1278,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTEXT_BUNDLE,
+      COMPANY_CONTEXT_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipIdValue,
       companyIdValue,
@@ -1635,7 +1294,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DIRECTOR_CLIENT_BUNDLE,
+      COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipIdValue,
       companyIdValue,
@@ -1649,7 +1308,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
+      COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1664,7 +1323,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
+      COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1677,7 +1336,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      DOCUMENT_REGISTRAR_BUNDLE,
+      COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1692,7 +1351,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      DOCUMENT_REGISTRAR_BUNDLE,
+      COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1706,7 +1365,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DOCUMENT_CONTENT_READER_BUNDLE,
+      COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1721,7 +1380,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DOCUMENT_CONTENT_READER_BUNDLE,
+      COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1734,7 +1393,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      TASK_RESULT_RECORDER_BUNDLE,
+      COMPANY_TASK_RESULT_RECORDER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1747,7 +1406,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      TASK_RESULT_RECORDER_BUNDLE,
+      COMPANY_TASK_RESULT_RECORDER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -1760,7 +1419,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+      COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1773,7 +1432,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+      COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -1786,7 +1445,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+      COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1799,7 +1458,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+      COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -1812,7 +1471,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_APPLICABILITY_APPROVER_BUNDLE,
+      COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1825,7 +1484,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_APPLICABILITY_APPROVER_BUNDLE,
+      COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -1838,7 +1497,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_RESULT_REVIEWER_BUNDLE,
+      COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1851,7 +1510,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_RESULT_REVIEWER_BUNDLE,
+      COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -1864,7 +1523,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_DELIVERABLE_ACCESS_BUNDLE,
+      COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1879,7 +1538,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      MISSION_DELIVERABLE_ACCESS_BUNDLE,
+      COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1892,7 +1551,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_SIGNATURE_DECLARER_BUNDLE,
+      COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1907,7 +1566,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      CONTRACT_SIGNATURE_DECLARER_BUNDLE,
+      COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1920,7 +1579,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      RECEIVED_CONTRACT_ACCESS_BUNDLE,
+      COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1935,7 +1594,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      RECEIVED_CONTRACT_ACCESS_BUNDLE,
+      COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1948,7 +1607,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      WORKING_EVIDENCE_CASE_READER_BUNDLE,
+      COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1963,7 +1622,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      WORKING_EVIDENCE_CASE_READER_BUNDLE,
+      COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1976,7 +1635,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+      COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -1991,7 +1650,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
+      COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2004,7 +1663,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+      COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2019,7 +1678,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
+      COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2032,7 +1691,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      RECEIVED_ADDENDUM_ACCESS_BUNDLE,
+      COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2047,7 +1706,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      RECEIVED_ADDENDUM_ACCESS_BUNDLE,
+      COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2060,7 +1719,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DOCUMENT_CONTENT_UPLOADER_BUNDLE,
+      COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2075,7 +1734,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DOCUMENT_CONTENT_UPLOADER_BUNDLE,
+      COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2088,7 +1747,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DOCUMENT_APPROVER_BUNDLE,
+      COMPANY_DOCUMENT_APPROVER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2103,7 +1762,7 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
-      DOCUMENT_APPROVER_BUNDLE,
+      COMPANY_DOCUMENT_APPROVER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2117,7 +1776,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      INTERNAL_TASK_MANAGER_BUNDLE,
+      COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2130,7 +1789,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      INTERNAL_TASK_MANAGER_BUNDLE,
+      COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2144,7 +1803,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      TASK_MANAGER_BUNDLE,
+      COMPANY_TASK_MANAGER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2159,7 +1818,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      TASK_MANAGER_BUNDLE,
+      COMPANY_TASK_MANAGER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -2172,7 +1831,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_READER_BUNDLE,
+      COMPANY_PAYMENT_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2185,7 +1844,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_READER_BUNDLE,
+      COMPANY_PAYMENT_READER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2198,7 +1857,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_RECORDER_BUNDLE,
+      COMPANY_PAYMENT_RECORDER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2211,7 +1870,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_RECORDER_BUNDLE,
+      COMPANY_PAYMENT_RECORDER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2224,7 +1883,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_CONFIRMER_BUNDLE,
+      COMPANY_PAYMENT_CONFIRMER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2237,7 +1896,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_CONFIRMER_BUNDLE,
+      COMPANY_PAYMENT_CONFIRMER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2250,7 +1909,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_REVERSER_BUNDLE,
+      COMPANY_PAYMENT_REVERSER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2263,7 +1922,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_REVERSER_BUNDLE,
+      COMPANY_PAYMENT_REVERSER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2276,7 +1935,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_EVIDENCE_ACCESS_BUNDLE,
+      COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2289,7 +1948,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      PAYMENT_EVIDENCE_ACCESS_BUNDLE,
+      COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2302,7 +1961,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      INVOICE_READER_BUNDLE,
+      COMPANY_INVOICE_READER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2315,7 +1974,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      INVOICE_READER_BUNDLE,
+      COMPANY_INVOICE_READER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2328,7 +1987,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      INVOICE_RECORDER_BUNDLE,
+      COMPANY_INVOICE_RECORDER_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2341,7 +2000,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      INVOICE_RECORDER_BUNDLE,
+      COMPANY_INVOICE_RECORDER_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2354,7 +2013,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      EXTERNAL_INVOICE_ACCESS_BUNDLE,
+      COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2367,7 +2026,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      EXTERNAL_INVOICE_ACCESS_BUNDLE,
+      COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2380,7 +2039,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+      COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -2394,7 +2053,7 @@ export class CompanyContextAssignmentService {
   ) {
     return this.mutate(
       actor,
-      OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
+      COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2404,7 +2063,7 @@ export class CompanyContextAssignmentService {
 
   private async mutate(
     actor: ActorContext,
-    bundle: BundleDefinition,
+    bundle: Bundle,
     operation: Operation,
     workspaceMembershipIdValue: unknown,
     companyIdValue: unknown,
@@ -2419,7 +2078,7 @@ export class CompanyContextAssignmentService {
       if (replay) {
         assertSameCommand(
           replay,
-          bundle.value,
+          bundle,
           operation,
           workspaceMembershipId,
           companyId,
@@ -2449,7 +2108,7 @@ export class CompanyContextAssignmentService {
         .values({
           workspaceId: actor.workspaceId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          bundle: bundle.value,
+          bundle: bundle,
           idempotencyKey,
           operation,
           targetWorkspaceMembershipId: workspaceMembershipId,
@@ -2463,7 +2122,7 @@ export class CompanyContextAssignmentService {
           throw new Error('The idempotent command could not be resolved.');
         assertSameCommand(
           raced,
-          bundle.value,
+          bundle,
           operation,
           workspaceMembershipId,
           companyId,
@@ -2482,7 +2141,7 @@ export class CompanyContextAssignmentService {
               actor.workspaceId,
               workspaceMembershipId,
               companyId,
-              bundle.value,
+              bundle,
             );
       await this.databaseContext.connection
         .update(companyContextAssignmentCommands)
@@ -2491,7 +2150,7 @@ export class CompanyContextAssignmentService {
       if (assignment.changed) {
         await this.accountability.record({
           actor,
-          action: assignmentAction(bundle.value, operation),
+          action: companyRoleAssignmentAction(bundle, operation),
           target: {
             type: 'company_role_assignment',
             assignmentId: assignment.id,
@@ -2499,7 +2158,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
             internalUserId: target.internalUserId,
           },
-          metadata: { bundle: COMPANY_ROLE_BUNDLES[bundle.value].label },
+          metadata: { bundle: COMPANY_ROLE_BUNDLES[bundle].label },
           transitionId: reserved.id,
         });
       }
@@ -2547,13 +2206,13 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
-    definition: BundleDefinition,
+    bundle: Bundle,
   ) {
     const active = await this.findActiveAssignment(
       workspaceId,
       workspaceMembershipId,
       companyId,
-      definition.value,
+      bundle,
     );
     if (active) return { ...active, changed: false };
 
@@ -2563,8 +2222,8 @@ export class CompanyContextAssignmentService {
         workspaceId,
         workspaceMembershipId,
         companyId,
-        bundle: definition.value,
-        permissionSetVersion: definition.permissionSetVersion,
+        bundle: bundle,
+        permissionSetVersion: companyRoleGrantVersion(bundle),
       })
       .onConflictDoNothing({
         target: [
@@ -2581,7 +2240,7 @@ export class CompanyContextAssignmentService {
       workspaceId,
       workspaceMembershipId,
       companyId,
-      definition.value,
+      bundle,
     );
     if (!raced) throw new Error('The fresh assignment could not be resolved.');
     return { ...raced, changed: false };
@@ -2694,7 +2353,7 @@ export class CompanyContextAssignmentService {
 
   private async commandResult(
     command: CommandRow,
-    bundle: BundleDefinition,
+    bundle: Bundle,
   ): Promise<CompanyContextAssignmentRecord> {
     if (!command.resultAssignmentId)
       throw new Error('The idempotent command is incomplete.');
@@ -2705,291 +2364,13 @@ export class CompanyContextAssignmentService {
         and(
           eq(companyRoleAssignments.workspaceId, command.workspaceId),
           eq(companyRoleAssignments.id, command.resultAssignmentId),
-          eq(companyRoleAssignments.bundle, bundle.value),
+          eq(companyRoleAssignments.bundle, bundle),
         ),
       )
       .limit(1);
     if (!assignment)
       throw new Error('The idempotent assignment result is unavailable.');
     return assignmentRecord(assignment, command.operation === 'grant');
-  }
-}
-
-// Derived from the recording contract so a new assignment bundle cannot record
-// an action Accountability does not own.
-type CompanyAssignmentAction = Extract<
-  CanonicalActivityEvent,
-  { target: { type: 'company_role_assignment' } }
->['action'];
-
-function assignmentAction(
-  bundle: Bundle,
-  operation: Operation,
-): CompanyAssignmentAction {
-  const granted = operation === 'grant';
-  switch (bundle) {
-    case COMPANY_PAYMENT_READER_BUNDLE:
-      return granted
-        ? 'company_payment_reader_assignment.granted'
-        : 'company_payment_reader_assignment.revoked';
-    case COMPANY_PAYMENT_RECORDER_BUNDLE:
-      return granted
-        ? 'company_payment_recorder_assignment.granted'
-        : 'company_payment_recorder_assignment.revoked';
-    case COMPANY_PAYMENT_CONFIRMER_BUNDLE:
-      return granted
-        ? 'company_payment_confirmer_assignment.granted'
-        : 'company_payment_confirmer_assignment.revoked';
-    case COMPANY_PAYMENT_REVERSER_BUNDLE:
-      return granted
-        ? 'company_payment_reverser_assignment.granted'
-        : 'company_payment_reverser_assignment.revoked';
-    case COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE:
-      return granted
-        ? 'company_payment_evidence_access_assignment.granted'
-        : 'company_payment_evidence_access_assignment.revoked';
-
-    case COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE:
-      return granted
-        ? 'company_opportunity_follow_up_coordinator_assignment.granted'
-        : 'company_opportunity_follow_up_coordinator_assignment.revoked';
-    case COMPANY_INVOICE_READER_BUNDLE:
-      return granted
-        ? 'company_invoice_reader_assignment.granted'
-        : 'company_invoice_reader_assignment.revoked';
-    case COMPANY_INVOICE_RECORDER_BUNDLE:
-      return granted
-        ? 'company_invoice_recorder_assignment.granted'
-        : 'company_invoice_recorder_assignment.revoked';
-    case COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE:
-      return granted
-        ? 'company_external_invoice_access_assignment.granted'
-        : 'company_external_invoice_access_assignment.revoked';
-
-    case COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE:
-      return granted
-        ? 'company_knowledge_source_administrator_assignment.granted'
-        : 'company_knowledge_source_administrator_assignment.revoked';
-    case COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE:
-      return granted
-        ? 'company_knowledge_evidence_reader_assignment.granted'
-        : 'company_knowledge_evidence_reader_assignment.revoked';
-    case COMPANY_IDEAS_READER_BUNDLE:
-      return granted
-        ? 'company_ideas_reader_assignment.granted'
-        : 'company_ideas_reader_assignment.revoked';
-    case COMPANY_IDEAS_RECORDER_BUNDLE:
-      return granted
-        ? 'company_ideas_recorder_assignment.granted'
-        : 'company_ideas_recorder_assignment.revoked';
-    case COMPANY_IDEAS_REVIEWER_BUNDLE:
-      return granted
-        ? 'company_ideas_reviewer_assignment.granted'
-        : 'company_ideas_reviewer_assignment.revoked';
-    case COMPANY_INTERNAL_TASK_MANAGER_BUNDLE:
-      return granted
-        ? 'company_internal_task_manager_assignment.granted'
-        : 'company_internal_task_manager_assignment.revoked';
-    case COMPANY_TASK_MANAGER_BUNDLE:
-      return granted
-        ? 'company_task_manager_assignment.granted'
-        : 'company_task_manager_assignment.revoked';
-    case COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE:
-      return granted
-        ? 'company_document_project_organizer_assignment.granted'
-        : 'company_document_project_organizer_assignment.revoked';
-    case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
-      return granted
-        ? 'company_document_registrar_assignment.granted'
-        : 'company_document_registrar_assignment.revoked';
-    case COMPANY_DOCUMENT_CONTENT_READER_BUNDLE:
-      return granted
-        ? 'company_document_content_reader_assignment.granted'
-        : 'company_document_content_reader_assignment.revoked';
-    case COMPANY_TASK_RESULT_RECORDER_BUNDLE:
-      return granted
-        ? 'company_task_result_recorder_assignment.granted'
-        : 'company_task_result_recorder_assignment.revoked';
-    case COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE:
-      return granted
-        ? 'company_project_next_action_coordinator_assignment.granted'
-        : 'company_project_next_action_coordinator_assignment.revoked';
-    case COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE:
-      return granted
-        ? 'company_mission_applicability_coordinator_assignment.granted'
-        : 'company_mission_applicability_coordinator_assignment.revoked';
-    case COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE:
-      return granted
-        ? 'company_mission_applicability_approver_assignment.granted'
-        : 'company_mission_applicability_approver_assignment.revoked';
-    case COMPANY_MISSION_RESULT_REVIEWER_BUNDLE:
-      return granted
-        ? 'company_mission_result_reviewer_assignment.granted'
-        : 'company_mission_result_reviewer_assignment.revoked';
-    case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:
-      return granted
-        ? 'company_mission_deliverable_access_assignment.granted'
-        : 'company_mission_deliverable_access_assignment.revoked';
-    case COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE:
-      return granted
-        ? 'company_contract_signature_declarer_assignment.granted'
-        : 'company_contract_signature_declarer_assignment.revoked';
-    case COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE:
-      return granted
-        ? 'company_received_contract_access_assignment.granted'
-        : 'company_received_contract_access_assignment.revoked';
-    case COMPANY_CERTIFICATION_READER_BUNDLE:
-      return granted
-        ? 'company_certification_reader_assignment.granted'
-        : 'company_certification_reader_assignment.revoked';
-    case COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE:
-      return granted
-        ? 'company_certification_programme_manager_assignment.granted'
-        : 'company_certification_programme_manager_assignment.revoked';
-    case COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE:
-      return granted
-        ? 'company_working_evidence_case_reader_assignment.granted'
-        : 'company_working_evidence_case_reader_assignment.revoked';
-    case COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE:
-      return granted
-        ? 'company_working_evidence_case_recorder_assignment.granted'
-        : 'company_working_evidence_case_recorder_assignment.revoked';
-    case COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE:
-      return granted
-        ? 'company_received_audit_source_access_assignment.granted'
-        : 'company_received_audit_source_access_assignment.revoked';
-    case COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE:
-      return granted
-        ? 'company_received_addendum_access_assignment.granted'
-        : 'company_received_addendum_access_assignment.revoked';
-    case COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE:
-      return granted
-        ? 'company_document_content_uploader_assignment.granted'
-        : 'company_document_content_uploader_assignment.revoked';
-    case COMPANY_DOCUMENT_APPROVER_BUNDLE:
-      return granted
-        ? 'company_document_approver_assignment.granted'
-        : 'company_document_approver_assignment.revoked';
-    case COMPANY_PROJECT_ACCESS_BUNDLE:
-      return granted
-        ? 'company_project_assignment.granted'
-        : 'company_project_assignment.revoked';
-    case COMPANY_CONTEXT_ACCESS_BUNDLE:
-      return granted
-        ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-        : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION;
-    case COMPANY_COMMERCIAL_INTAKE_BUNDLE:
-      return granted
-        ? 'company_commercial_intake_assignment.granted'
-        : 'company_commercial_intake_assignment.revoked';
-    case COMPANY_SERVICE_CATALOGUE_BUNDLE:
-      return granted
-        ? 'company_service_catalogue_assignment.granted'
-        : 'company_service_catalogue_assignment.revoked';
-    case COMPANY_PRICING_CONFIGURATION_BUNDLE:
-      return granted
-        ? 'company_pricing_configuration_assignment.granted'
-        : 'company_pricing_configuration_assignment.revoked';
-    case COMPANY_PRICING_USER_BUNDLE:
-      return granted
-        ? 'company_pricing_user_assignment.granted'
-        : 'company_pricing_user_assignment.revoked';
-    case COMPANY_OFFER_PREPARER_BUNDLE:
-      return granted
-        ? 'company_offer_preparer_assignment.granted'
-        : 'company_offer_preparer_assignment.revoked';
-    case COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE:
-      return granted
-        ? 'company_mission_plan_configuration_assignment.granted'
-        : 'company_mission_plan_configuration_assignment.revoked';
-    case COMPANY_MISSION_PLAN_USER_BUNDLE:
-      return granted
-        ? 'company_mission_plan_user_assignment.granted'
-        : 'company_mission_plan_user_assignment.revoked';
-    case COMPANY_OFFER_MODEL_EDITOR_BUNDLE:
-      return granted
-        ? 'company_offer_model_editor_assignment.granted'
-        : 'company_offer_model_editor_assignment.revoked';
-    case COMPANY_OFFER_MODEL_APPROVER_BUNDLE:
-      return granted
-        ? 'company_offer_model_approver_assignment.granted'
-        : 'company_offer_model_approver_assignment.revoked';
-    case COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE:
-      return granted
-        ? 'company_contract_model_editor_assignment.granted'
-        : 'company_contract_model_editor_assignment.revoked';
-    case COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE:
-      return granted
-        ? 'company_contract_model_approver_assignment.granted'
-        : 'company_contract_model_approver_assignment.revoked';
-    case COMPANY_CONTRACT_PREPARER_BUNDLE:
-      return granted
-        ? 'company_contract_preparer_assignment.granted'
-        : 'company_contract_preparer_assignment.revoked';
-    case COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE:
-      return granted
-        ? 'company_contract_early_preparation_assignment.granted'
-        : 'company_contract_early_preparation_assignment.revoked';
-    case COMPANY_CONTRACT_APPROVER_BUNDLE:
-      return granted
-        ? 'company_contract_approver_assignment.granted'
-        : 'company_contract_approver_assignment.revoked';
-    case COMPANY_OFFER_APPROVER_BUNDLE:
-      return granted
-        ? 'company_offer_approver_assignment.granted'
-        : 'company_offer_approver_assignment.revoked';
-    case COMPANY_PRICING_ADJUSTMENT_BUNDLE:
-      return granted
-        ? 'company_pricing_adjustment_assignment.granted'
-        : 'company_pricing_adjustment_assignment.revoked';
-    case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
-      return granted
-        ? 'company_commercial_activity_reader_assignment.granted'
-        : 'company_commercial_activity_reader_assignment.revoked';
-    case COMPANY_OPERATIONAL_RISK_READER_BUNDLE:
-      return granted
-        ? 'company_operational_risk_reader_assignment.granted'
-        : 'company_operational_risk_reader_assignment.revoked';
-    case COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE:
-      return granted
-        ? 'company_operational_risk_recorder_assignment.granted'
-        : 'company_operational_risk_recorder_assignment.revoked';
-    case COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE:
-      return granted
-        ? 'company_profitability_contributor_assignment.granted'
-        : 'company_profitability_contributor_assignment.revoked';
-    case COMPANY_PROFITABILITY_DIRECTOR_BUNDLE:
-      return granted
-        ? 'company_profitability_director_assignment.granted'
-        : 'company_profitability_director_assignment.revoked';
-    case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
-      return granted
-        ? 'company_opportunity_manager_assignment.granted'
-        : 'company_opportunity_manager_assignment.revoked';
-    case COMPANY_PROJECT_APPROVER_BUNDLE:
-      return granted
-        ? 'company_project_approver_assignment.granted'
-        : 'company_project_approver_assignment.revoked';
-    case COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE:
-      return granted
-        ? 'company_sales_stage_configuration_assignment.granted'
-        : 'company_sales_stage_configuration_assignment.revoked';
-    case COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE:
-      return granted
-        ? 'company_project_stage_advancer_assignment.granted'
-        : 'company_project_stage_advancer_assignment.revoked';
-    case COMPANY_PROJECT_TEMPLATE_USER_BUNDLE:
-      return granted
-        ? 'company_project_template_user_assignment.granted'
-        : 'company_project_template_user_assignment.revoked';
-    case COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE:
-      return granted
-        ? 'company_project_template_configuration_assignment.granted'
-        : 'company_project_template_configuration_assignment.revoked';
-    case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
-      return granted
-        ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
-        : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION;
   }
 }
 

@@ -1,16 +1,30 @@
 /**
- * The single registry of Company role bundles: each bundle's label and the
- * exact permission set of every captured version. Permission resolution,
- * version guards, `…VersionsWith` helpers and the database CHECK on
+ * The single registry of Company role bundles: each bundle's label, the
+ * version a fresh grant captures, whether its assignment confers Company
+ * context and the exact permission set of every captured version. Permission
+ * resolution, version guards, `…VersionsWith` helpers, fresh grants, the
+ * administration state, the Company context bundles, the assignment Activity
+ * Log actions and the database CHECK on
  * `company_role_assignments.permission_set_version` are all derived from it.
  *
+ * To add a bundle:
+ * 1. Append its row with its label, explicit `grantVersion` and versions, and
+ *    `confersCompanyContext: true` only if its assignment confers Company
+ *    context. Its actions are `<bundle>_assignment.granted|revoked`; only the
+ *    three oldest bundles keep an earlier `assignmentNoun` in their names.
+ * 2. Add the bundle and those two actions to the database enums, then run
+ *    `pnpm --filter @prisma-prim/api db:generate` and review the migration.
+ * 3. Add its assignment controller, its web option, route and labels, and its
+ *    Activity entries. `company-role-bundle-registry.test.ts` and the web
+ *    fixture guard name anything still missing.
+ *
  * A captured version is immutable: an assignment keeps the permission set of
- * the version it captured, and a version never expands in place. To add a
- * version or a permission:
+ * the version it captured until it is revoked and granted again, and a
+ * version never expands in place. To add a version or a permission:
  * 1. Append a new version (`v{n+1}`) with its complete permission list to the
  *    bundle below; never edit an existing version.
- * 2. Make fresh grants capture it where the assignment service chooses the
- *    granted version, and widen the web mirror of captured versions.
+ * 2. Point the bundle's `grantVersion` at it so fresh grants capture it, and
+ *    widen the web mirror of captured versions.
  * 3. Run `pnpm --filter @prisma-prim/api db:generate` and review the
  *    migration that rewrites the version CHECK.
  * 4. Update the tests that pin the new behaviour, including
@@ -24,10 +38,16 @@ export const COMPANY_ROLE_BUNDLES = {
   // context only.
   company_context_access: {
     label: 'Company Context Access',
+    assignmentNoun: 'company_context',
+    grantVersion: null,
+    confersCompanyContext: true,
     versions: {},
   },
   company_director_client_access: {
     label: 'Company Director Client Access',
+    assignmentNoun: 'company_director_client',
+    grantVersion: 'v2',
+    confersCompanyContext: true,
     versions: {
       v1: ['client.read', 'client.create', 'client.update'],
       v2: [
@@ -40,18 +60,23 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_internal_task_manager: {
     label: 'Company Internal Task Manager',
+    grantVersion: 'v1',
     versions: { v1: ['internal_task.read', 'internal_task.manage'] },
   },
   company_task_manager: {
     label: 'Company Task Manager',
+    grantVersion: 'v1',
     versions: { v1: ['task.read', 'task.manage'] },
   },
   company_document_project_organizer: {
     label: 'Company Document Project Organizer',
+    grantVersion: 'v1',
     versions: { v1: ['document.project.manage'] },
   },
   company_document_registrar: {
     label: 'Company Document Registrar',
+    grantVersion: 'v3',
+    confersCompanyContext: true,
     versions: {
       v1: ['document.read', 'document.register', 'document.reference.read'],
       v2: [
@@ -76,10 +101,14 @@ export const COMPANY_ROLE_BUNDLES = {
   // Version management.
   company_document_approver: {
     label: 'Company Document Approver',
+    grantVersion: 'v1',
     versions: { v1: ['document.version.designate_official'] },
   },
   company_project_access: {
     label: 'Company Project Access',
+    assignmentNoun: 'company_project',
+    grantVersion: 'v2',
+    confersCompanyContext: true,
     versions: {
       v1: ['project.read', 'project.create'],
       // Captured v2 adds the responsible-member change. Existing v1
@@ -89,6 +118,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_commercial_intake: {
     label: 'Company Commercial Intake',
+    grantVersion: 'v4',
     versions: {
       v1: [
         'commercial.request.read',
@@ -130,6 +160,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_service_catalogue: {
     label: 'Company Service Catalogue',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'service.definition.read',
@@ -143,6 +174,7 @@ export const COMPANY_ROLE_BUNDLES = {
   // Service Definition permission and no offering management is included.
   company_pricing_configuration: {
     label: 'Company Pricing Configuration',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.offering.read',
@@ -157,6 +189,7 @@ export const COMPANY_ROLE_BUNDLES = {
   // and no endpoint consumes them before R3B3b.
   company_pricing_user: {
     label: 'Company Pricing User',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.offering.read',
@@ -169,10 +202,12 @@ export const COMPANY_ROLE_BUNDLES = {
   // The adjustment bundle is independent from calculation and Snapshot read.
   company_pricing_adjustment: {
     label: 'Company Pricing Adjustment',
+    grantVersion: 'v1',
     versions: { v1: ['commercial.pricing.adjustment.apply'] },
   },
   company_offer_preparer: {
     label: 'Company Offer Preparer',
+    grantVersion: 'v3',
     versions: {
       v1: [
         'commercial.offer.read',
@@ -201,6 +236,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_contract_preparer: {
     label: 'Company Contract Preparer',
+    grantVersion: 'v2',
     versions: {
       v1: [
         'commercial.contract.read',
@@ -218,10 +254,12 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_contract_early_preparation: {
     label: 'Company Contract Early Preparation',
+    grantVersion: 'v1',
     versions: { v1: ['commercial.contract.prepare_pending_offer'] },
   },
   company_contract_approver: {
     label: 'Company Contract Approver',
+    grantVersion: 'v2',
     versions: {
       v1: [
         'commercial.contract.read',
@@ -238,6 +276,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_offer_approver: {
     label: 'Company Offer Approver',
+    grantVersion: 'v2',
     versions: {
       v1: [
         'commercial.offer.read',
@@ -256,6 +295,7 @@ export const COMPANY_ROLE_BUNDLES = {
   // The opt-in reader bundle is never inherited.
   company_commercial_activity_reader: {
     label: 'Company Commercial Activity Reader',
+    grantVersion: 'v1',
     versions: { v1: ['commercial.activity.read'] },
   },
   // The opt-in manager bundle replaces an Opportunity's responsible actor.
@@ -263,6 +303,7 @@ export const COMPANY_ROLE_BUNDLES = {
   // grants.
   company_opportunity_manager: {
     label: 'Company Opportunity Manager',
+    grantVersion: 'v2',
     versions: {
       v1: ['commercial.opportunity.assign'],
       // Captured v2 adds the outcome status change. Existing v1 assignments
@@ -277,10 +318,12 @@ export const COMPANY_ROLE_BUNDLES = {
   // 23). It confers no Company context, Project read or any other authority.
   company_project_approver: {
     label: 'Company Project Approver',
+    grantVersion: 'v1',
     versions: { v1: ['project.lifecycle.transition', 'project.close'] },
   },
   company_profitability_contributor: {
     label: 'Company Profitability Contributor',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.profitability_estimate.read',
@@ -290,6 +333,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_profitability_director: {
     label: 'Company Profitability Director',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.profitability_estimate.read',
@@ -302,19 +346,23 @@ export const COMPANY_ROLE_BUNDLES = {
   // prerequisites it never grants.
   company_sales_stage_configuration: {
     label: 'Company Sales Stage Configuration',
+    grantVersion: 'v1',
     versions: { v1: ['commercial.sales_stage.configure'] },
   },
   company_document_content_reader: {
     label: 'Company Document Content Reader',
+    grantVersion: 'v1',
     versions: { v1: ['document.content.read'] },
   },
   company_document_content_uploader: {
     label: 'Company Document Content Uploader',
+    grantVersion: 'v1',
     versions: { v1: ['document.content.upload'] },
   },
   // Dedicated opt-in creation only; existing Project/Task assignments never expand.
   company_project_template_user: {
     label: 'Company Project Template User',
+    grantVersion: 'v2',
     versions: {
       v1: ['project.template.read', 'project.template.instantiate'],
       v2: [
@@ -328,46 +376,57 @@ export const COMPANY_ROLE_BUNDLES = {
   // Independent opt-in stage command only; all read prerequisites remain separate.
   company_project_stage_advancer: {
     label: 'Company Project Stage Advancer',
+    grantVersion: 'v1',
     versions: { v1: ['project.stage.advance'] },
   },
   company_project_template_configuration: {
     label: 'Company Project Template Configuration',
+    grantVersion: 'v1',
     versions: { v1: ['project.template.version.create'] },
   },
   company_ideas_reader: {
     label: 'Company Ideas Reader',
+    grantVersion: 'v1',
     versions: { v1: ['idea.read'] },
   },
   company_ideas_recorder: {
     label: 'Company Ideas Recorder',
+    grantVersion: 'v1',
     versions: { v1: ['idea.record'] },
   },
   company_ideas_reviewer: {
     label: 'Company Ideas Reviewer',
+    grantVersion: 'v1',
     versions: { v1: ['idea.disposition.record'] },
   },
   company_operational_risk_reader: {
     label: 'Company Operational Risk Reader',
+    grantVersion: 'v1',
     versions: { v1: ['risk.read'] },
   },
   company_operational_risk_recorder: {
     label: 'Company Operational Risk Recorder',
+    grantVersion: 'v1',
     versions: { v1: ['risk.record'] },
   },
   company_task_result_recorder: {
     label: 'Company Task Result Recorder',
+    grantVersion: 'v1',
     versions: { v1: ['task.result.record'] },
   },
   company_project_next_action_coordinator: {
     label: 'Company Project Next Action Coordinator',
+    grantVersion: 'v1',
     versions: { v1: ['project.next_action.update'] },
   },
   company_mission_applicability_coordinator: {
     label: 'Company Mission Applicability Coordinator',
+    grantVersion: 'v1',
     versions: { v1: ['project.mission_applicability.propose'] },
   },
   company_mission_applicability_approver: {
     label: 'Company Mission Applicability Approver',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'project.mission_applicability.decide',
@@ -377,26 +436,32 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_mission_result_reviewer: {
     label: 'Company Mission Result Reviewer',
+    grantVersion: 'v1',
     versions: { v1: ['project.mission_result.review'] },
   },
   company_mission_deliverable_access: {
     label: 'Company Mission Deliverable Access',
+    grantVersion: 'v1',
     versions: { v1: ['document.mission_deliverable.access'] },
   },
   company_contract_signature_declarer: {
     label: 'Company Contract Signature Declarer',
+    grantVersion: 'v1',
     versions: { v1: ['commercial.contract.signature.declare_external'] },
   },
   company_received_contract_access: {
     label: 'Company Received Contract Access',
+    grantVersion: 'v1',
     versions: { v1: ['document.received_contract.access'] },
   },
   company_received_addendum_access: {
     label: 'Company Received Addendum Access',
+    grantVersion: 'v1',
     versions: { v1: ['document.received_addendum.access'] },
   },
   company_offer_model_editor: {
     label: 'Company Offer Model Editor',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.offer.model.read',
@@ -406,6 +471,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_offer_model_approver: {
     label: 'Company Offer Model Approver',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.offer.model.read',
@@ -416,6 +482,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_contract_model_editor: {
     label: 'Company Contract Model Editor',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.contract.model.read',
@@ -425,6 +492,7 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_contract_model_approver: {
     label: 'Company Contract Model Approver',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.contract.model.read',
@@ -435,58 +503,71 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_mission_plan_configuration: {
     label: 'Company Mission Plan Configuration',
+    grantVersion: 'v1',
     versions: {
       v1: ['project.mission_plan.read', 'project.mission_plan.publish'],
     },
   },
   company_mission_plan_user: {
     label: 'Company Mission Plan User',
+    grantVersion: 'v1',
     versions: {
       v1: ['project.mission_plan.read', 'project.mission_plan.instantiate'],
     },
   },
   company_knowledge_source_administrator: {
     label: 'Company Knowledge Source Administrator',
+    grantVersion: 'v1',
     versions: { v1: ['knowledge.source.manage'] },
   },
   company_knowledge_evidence_reader: {
     label: 'Company Knowledge Evidence Reader',
+    grantVersion: 'v1',
     versions: { v1: ['knowledge.evidence.read'] },
   },
   company_payment_reader: {
     label: 'Company Payment Reader',
+    grantVersion: 'v1',
     versions: { v1: ['payment.read'] },
   },
   company_payment_recorder: {
     label: 'Company Payment Recorder',
+    grantVersion: 'v1',
     versions: { v1: ['payment.read', 'payment.record'] },
   },
   company_payment_confirmer: {
     label: 'Company Payment Confirmer',
+    grantVersion: 'v1',
     versions: { v1: ['payment.read', 'payment.confirm'] },
   },
   company_payment_reverser: {
     label: 'Company Payment Reverser',
+    grantVersion: 'v1',
     versions: { v1: ['payment.read', 'payment.reverse'] },
   },
   company_payment_evidence_access: {
     label: 'Company Payment Evidence Access',
+    grantVersion: 'v1',
     versions: { v1: ['document.payment_evidence.access'] },
   },
   company_invoice_reader: {
     label: 'Company Invoice Reader',
+    grantVersion: 'v1',
     versions: { v1: ['finance.read'] },
   },
   company_invoice_recorder: {
     label: 'Company Invoice Recorder',
+    grantVersion: 'v1',
     versions: { v1: ['finance.read', 'finance.manage'] },
   },
   company_external_invoice_access: {
     label: 'Company External Invoice Access',
+    grantVersion: 'v1',
     versions: { v1: ['document.external_invoice.access'] },
   },
   company_opportunity_follow_up_coordinator: {
     label: 'Company Opportunity Follow-up Coordinator',
+    grantVersion: 'v1',
     versions: {
       v1: [
         'commercial.opportunity.follow_up.read',
@@ -496,24 +577,29 @@ export const COMPANY_ROLE_BUNDLES = {
   },
   company_working_evidence_case_reader: {
     label: 'Company Working Evidence Case Reader',
+    grantVersion: 'v1',
     versions: { v1: ['working_evidence_case.read'] },
   },
   company_working_evidence_case_recorder: {
     label: 'Company Working Evidence Case Recorder',
+    grantVersion: 'v1',
     versions: {
       v1: ['working_evidence_case.read', 'working_evidence_case.record'],
     },
   },
   company_received_audit_source_access: {
     label: 'Company Received Audit Source Access',
+    grantVersion: 'v1',
     versions: { v1: ['document.received_audit_source.access'] },
   },
   company_certification_reader: {
     label: 'Company Certification Reader',
+    grantVersion: 'v1',
     versions: { v1: ['certification.read'] },
   },
   company_certification_programme_manager: {
     label: 'Company Certification Programme Manager',
+    grantVersion: 'v1',
     versions: { v1: ['certification.programme.manage'] },
   },
 } as const satisfies Readonly<
@@ -521,6 +607,9 @@ export const COMPANY_ROLE_BUNDLES = {
     string,
     {
       readonly label: string;
+      readonly assignmentNoun?: string;
+      readonly grantVersion: string | null;
+      readonly confersCompanyContext?: true;
       readonly versions: Readonly<Record<string, readonly string[]>>;
     }
   >
@@ -540,10 +629,20 @@ export type CompanyRolePermission<Bundle extends CompanyRoleBundle> = {
     : never;
 }[CompanyRolePermissionSetVersion<Bundle>];
 
+/** A version `Bundle` can capture: none for an unversioned bundle. */
+export type CompanyRoleCapturedVersion<Bundle extends CompanyRoleBundle> =
+  Bundle extends CompanyRoleBundle
+    ? keyof CapturedVersions<Bundle> extends never
+      ? null
+      : CompanyRolePermissionSetVersion<Bundle>
+    : never;
+
 // The registry viewed per bundle, so a generic bundle indexes its own
-// captured versions and permissions without a type assertion.
+// grant version, captured versions and permissions without a type assertion.
+// The view also proves every `grantVersion` names one of its bundle's versions.
 const CAPTURED_PERMISSION_SETS: {
   readonly [Bundle in CompanyRoleBundle]: {
+    readonly grantVersion: CompanyRoleCapturedVersion<Bundle>;
     readonly versions: {
       readonly [
         Version in CompanyRolePermissionSetVersion<Bundle>
@@ -551,6 +650,51 @@ const CAPTURED_PERMISSION_SETS: {
     };
   };
 } = COMPANY_ROLE_BUNDLES;
+
+/** The version a fresh grant of `bundle` captures. */
+export function companyRoleGrantVersion<Bundle extends CompanyRoleBundle>(
+  bundle: Bundle,
+): CompanyRoleCapturedVersion<Bundle> {
+  return CAPTURED_PERMISSION_SETS[bundle].grantVersion;
+}
+
+type LegacyAssignmentNounBundle = {
+  [Bundle in CompanyRoleBundle]: CompanyRoleBundleRegistry[Bundle] extends {
+    readonly assignmentNoun: string;
+  }
+    ? Bundle
+    : never;
+}[CompanyRoleBundle];
+
+/** The noun naming a bundle's assignment actions: its id unless it predates that convention. */
+export type CompanyRoleAssignmentNoun =
+  | Exclude<CompanyRoleBundle, LegacyAssignmentNounBundle>
+  | CompanyRoleBundleRegistry[LegacyAssignmentNounBundle]['assignmentNoun'];
+
+function hasLegacyAssignmentNoun(
+  bundle: CompanyRoleBundle,
+): bundle is LegacyAssignmentNounBundle {
+  return Object.hasOwn(COMPANY_ROLE_BUNDLES[bundle], 'assignmentNoun');
+}
+
+export function companyRoleAssignmentNoun(
+  bundle: CompanyRoleBundle,
+): CompanyRoleAssignmentNoun {
+  return hasLegacyAssignmentNoun(bundle)
+    ? COMPANY_ROLE_BUNDLES[bundle].assignmentNoun
+    : bundle;
+}
+
+/** The Activity Log action recording a grant or revoke of `bundle`. */
+export function companyRoleAssignmentAction(
+  bundle: CompanyRoleBundle,
+  operation: 'grant' | 'revoke',
+) {
+  const noun = companyRoleAssignmentNoun(bundle);
+  return operation === 'grant'
+    ? (`${noun}_assignment.granted` as const)
+    : (`${noun}_assignment.revoked` as const);
+}
 
 /** Whether `version` is a captured version of `bundle`; anything else is not. */
 export function isCompanyRolePermissionSetVersion<
@@ -929,11 +1073,16 @@ export function documentPermissionsFor(
 ): readonly DocumentPermission[] {
   return companyRolePermissionsFor(COMPANY_DOCUMENT_REGISTRAR_BUNDLE, version);
 }
-export const COMPANY_CONTEXT_USE_BUNDLES = [
-  COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-  COMPANY_CONTEXT_ACCESS_BUNDLE,
-  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-] as const;
+/** The bundles whose live assignment confers Company context. */
+export const COMPANY_CONTEXT_CONFERRING_BUNDLES = Object.keys(
+  COMPANY_ROLE_BUNDLES,
+)
+  .filter((bundle): bundle is CompanyRoleBundle =>
+    Object.hasOwn(COMPANY_ROLE_BUNDLES, bundle),
+  )
+  .filter((bundle) =>
+    Object.hasOwn(COMPANY_ROLE_BUNDLES[bundle], 'confersCompanyContext'),
+  );
 
 export const COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE =
   'company_opportunity_follow_up_coordinator' satisfies CompanyRoleBundle;
