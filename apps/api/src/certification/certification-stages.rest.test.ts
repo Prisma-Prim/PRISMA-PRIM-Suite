@@ -73,6 +73,19 @@ withPostgres(
           ),
         ),
       ).toMatchObject({ revision: 10, nextStep: 'stage_1_report' });
+      // The same amounts spelled differently change nothing.
+      const respelled = await post(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/stages/stage-1/plan`,
+        {
+          expectedRevision: 10,
+          reason: 'Same plan, other spelling',
+          ...plan(plan1, { onSiteDays: '1.0', remoteDays: '0.00' }),
+        },
+      );
+      expect(record(await respelled.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
       const report1 = await fixture.attach(caseId, 'report', 10);
       const participants1 = await fixture.attach(
         caseId,

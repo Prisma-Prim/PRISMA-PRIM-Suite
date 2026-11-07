@@ -144,6 +144,10 @@ export function dayCents(value: string): number {
   return Number(whole) * 100 + Number(fraction.padEnd(2, '0').slice(0, 2));
 }
 
+/**
+ * Auditor-days with at most two decimals, kept in one spelling ("1.0" and
+ * "1" are the same amount) so equal values compare equal.
+ */
 function days(value: unknown, zeroAllowed: boolean): string {
   if (
     typeof value !== 'string' ||
@@ -151,7 +155,9 @@ function days(value: unknown, zeroAllowed: boolean): string {
     (!zeroAllowed && dayCents(value) <= 0)
   )
     return invalid();
-  return value;
+  const [whole = '0', fraction = ''] = value.split('.');
+  const significant = fraction.replace(/0+$/u, '');
+  return significant ? `${whole}.${significant}` : whole;
 }
 
 function date(value: unknown): string {
