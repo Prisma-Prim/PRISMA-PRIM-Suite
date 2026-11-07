@@ -99,7 +99,9 @@ withPostgres(
       };
     }
     /** Both Stages reported without Findings (revision 16). */
-    async function reportedCase() {
+    async function reportedCase(
+      approval: Record<string, unknown> | null = null,
+    ) {
       const caseId = await fixture.approvedTeamCase();
       const base = `/certification-cases/${caseId}`;
       await ok(CERTIFICATION_OWNER, `${base}/stages/stage-1/plan`, {
@@ -123,6 +125,7 @@ withPostgres(
         reportDate: '2026-10-21',
         summary: 'Stage 2 completed.',
         reportAttachmentId: await fixture.attach(caseId, 'report', 14),
+        certificationBodyApproval: approval,
       });
       return caseId;
     }
@@ -389,6 +392,79 @@ withPostgres(
         'CERTIFICATION_INDEPENDENCE',
       );
       expect(await fixture.eventCount(caseId)).toBe(22);
+    });
+
+    it('keeps the Stage 2 report approval made on behalf of the certification body', async () => {
+      const approval = {
+        actedBy: 'Head of Body Demo',
+        actedByFunction: 'Head of the certification body',
+        actedOn: '2026-10-22',
+        formAttachmentId: null,
+      };
+      const caseId = await reportedCase(approval);
+      const view = record(
+        await (
+          await fixture.call(
+            CERTIFICATION_OWNER,
+            `/certification-cases/${caseId}`,
+            { method: 'GET' },
+          )
+        ).json(),
+      );
+      expect(view).toMatchObject({
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            step: 'stage_2_report',
+            value: expect.objectContaining({
+              certificationBodyApproval: approval,
+            }),
+          }),
+        ]),
+      });
+    });
+
+    it('corrects the decided texts with a reason and keeps the decided outcome', async () => {
+      const caseId = await recommendedCase();
+      const base = `/certification-cases/${caseId}`;
+      await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
+        expectedRevision: 17,
+        ...review(),
+      });
+      await ok(CERTIFICATION_APPROVER, `${base}/decision`, decision(18));
+      const corrected = decision(19, {
+        grantedTexts: [TEXTS[0]],
+        decidedOn: '2026-11-07',
+      });
+      const unexplained = await post(
+        CERTIFICATION_APPROVER,
+        `${base}/decision`,
+        corrected,
+      );
+      expect(record(await unexplained.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_REASON',
+      );
+      expect(
+        await ok(CERTIFICATION_APPROVER, `${base}/decision`, {
+          ...corrected,
+          reason: 'The English text is not part of the decision.',
+        }),
+      ).toMatchObject({
+        revision: 20,
+        nextStep: 'certificate_data',
+        decision: {
+          version: 2,
+          value: { decision: 'granted', grantedTexts: [TEXTS[0]] },
+        },
+      });
+      const reversed = await post(CERTIFICATION_APPROVER, `${base}/decision`, {
+        ...decision(20, { decision: 'refused', grantedTexts: null }),
+        reason: 'Outcome changed.',
+      });
+      expect(reversed.status).toBe(409);
+      expect(record(await reversed.json()).code).toBe(
+        'CERTIFICATION_DECISION_OUTCOME_FIXED',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(20);
     });
 
     it('refuses a decision with unmet preconditions, against the recommendation or by a team member', async () => {

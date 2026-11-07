@@ -46,6 +46,16 @@ export function requireIndependenceAttestation(value: unknown): true {
   return true;
 }
 
+/**
+ * The latest calendar date that is already today somewhere (UTC+14), so a
+ * date entered in the client's time zone is never refused as future.
+ */
+export function latestBusinessDate(now: Date): string {
+  return new Date(now.getTime() + 14 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 /** Names compared without case, accents or repeated spaces. */
 export function sameName(left: string, right: string): boolean {
   const normal = (value: string) =>

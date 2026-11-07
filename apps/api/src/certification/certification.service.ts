@@ -51,6 +51,7 @@ import {
   durationFactorInputs,
 } from './certification-duration.validation.js';
 import {
+  latestBusinessDate,
   requireIndependenceAttestation,
   sameName,
 } from './certification-attribution.js';
@@ -691,9 +692,7 @@ export class CertificationService {
             'CERTIFICATION_CORRECTION_REASON',
             'A correction states its reason; a first agreement has none.',
           );
-        if (
-          input.agreement.signedOn > this.clock.now().toISOString().slice(0, 10)
-        )
+        if (input.agreement.signedOn > latestBusinessDate(this.clock.now()))
           throw stepConflict(
             'CERTIFICATION_AGREEMENT_IN_FUTURE',
             'The agreement cannot be signed after today.',
@@ -1102,6 +1101,12 @@ export class CertificationService {
             input.payload.participantListAttachmentId,
             ['participant_list'],
           );
+        await this.requireActForm(
+          actor,
+          companyId,
+          targetId,
+          input.payload.certificationBodyApproval,
+        );
         if (
           'annexAttachmentId' in input.payload &&
           input.payload.annexAttachmentId
@@ -1578,10 +1583,16 @@ export class CertificationService {
       action: 'certification_case.decision_recorded',
       check: async ({ steps, companyId, payload }) => {
         this.requireIndependent(input.actor, steps);
-        if (latest(steps, 'decision'))
+        // A later version corrects the texts or references of the same
+        // outcome, with its reason, until the Certificate is recorded.
+        const previous = latest(steps, 'decision');
+        if (
+          previous &&
+          decisionVersion(previous).value.decision !== payload.decision
+        )
           throw stepConflict(
-            'CERTIFICATION_DECIDED',
-            'The Certification Decision is recorded once.',
+            'CERTIFICATION_DECISION_OUTCOME_FIXED',
+            'A correction keeps the decided outcome; only its texts and references change.',
           );
         this.requireNotNamedOnTeam(steps, payload.decidedBy);
         if (payload.decisionFormAttachmentId)
@@ -1841,7 +1852,7 @@ export class CertificationService {
     const reviewed = latest(steps, 'dossier_review');
     if (!reviewed || !dossierComplete(dossierReviewVersion(reviewed).value))
       failures.push('DOSSIER_REVIEW_INCOMPLETE');
-    if (decision.decidedOn > this.clock.now().toISOString().slice(0, 10))
+    if (decision.decidedOn > latestBusinessDate(this.clock.now()))
       failures.push('DECISION_IN_FUTURE');
     return failures;
   }
@@ -1881,27 +1892,6 @@ export class CertificationService {
   }
 
   /** Refuses an actor linked to any member of any team version. */
-  /** Refuses a named person who is on any team version. */
-  private requireNotNamedOnTeam(
-    steps: readonly StepRow[],
-    name: string | undefined,
-  ): void {
-    if (
-      name !== undefined &&
-      steps
-        .filter((row) => row.step === 'team')
-        .some((row) =>
-          teamVersion(row).value.members.some((member) =>
-            sameName(member.name, name),
-          ),
-        )
-    )
-      throw stepConflict(
-        'CERTIFICATION_INDEPENDENCE',
-        'A member of the audit team cannot perform this act.',
-      );
-  }
-
   private requireIndependent(actor: ActorContext, steps: readonly StepRow[]) {
     if (this.onTeam(actor, steps))
       throw stepConflict(
