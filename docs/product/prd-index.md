@@ -279,6 +279,14 @@ family, metadata/content and immutable-original meaning. These contracts approve
 only their named children; runtime delivery requires separate readiness and
 proof, without new governance rules or whole-MVP completion credit.
 
+## 6.1 Release 4 capability PRDs
+
+| Capability PRD                                            | Document status                          | Depends on                                                                                         |
+| --------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| [Certification Case](release-4-certification-case-prd.md) | Approved — bounded first journey (#1129) | Tenant/Company/Client Authorization; Activity Log; Governed Documents; Shared Client; Project/Task |
+
+The Certification Case PRD owns the first ISO 22000 initial certification journey of the BIC pilot ([Product Vision §11.1](product-vision-prd.md#111-first-working-version-priorities--2026-11-06)) and its ordered implementation slices. Surveillance, recertification and the rest of Release 4 remain unready.
+
 ## 7. Other later releases
 
 Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision until priority business evidence arrives. Their current order is:
