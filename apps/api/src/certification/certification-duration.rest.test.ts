@@ -198,6 +198,33 @@ withPostgres(
       expect(record(await unchanged.json()).code).toBe(
         'CERTIFICATION_CORRECTION_UNCHANGED',
       );
+      // Another spelling of the same values changes nothing either.
+      const respelled = await fixture.call(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/duration`,
+        {
+          method: 'POST',
+          body: {
+            ...body,
+            expectedRevision: 4,
+            reason: 'Same values, other spelling',
+            inputs: {
+              ...body.inputs,
+              increases: { productLines: 0 },
+              reductions: { systemMaturity: 0 },
+            },
+            confirmed: {
+              ...body.confirmed,
+              initialOnSite: '2.50',
+              stage1OnSite: '1.0',
+              stage2OnSite: '1.50',
+            },
+          },
+        },
+      );
+      expect(record(await respelled.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
       expect(await fixture.eventCount(caseId)).toBe(4);
     });
 

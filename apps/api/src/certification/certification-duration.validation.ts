@@ -52,8 +52,11 @@ export function durationFactorInputs(value: unknown): DurationFactorInputs {
   const studiesBody = inputObject(body.haccpStudies, FOOD_CHAIN_SUBCATEGORIES);
   const haccpStudies: Partial<Record<FoodChainSubcategory, number>> = {};
   for (const code of FOOD_CHAIN_SUBCATEGORIES)
-    if (studiesBody[code] !== undefined)
-      haccpStudies[code] = integer(studiesBody[code], 0, 999);
+    if (studiesBody[code] !== undefined) {
+      // Zero studies is the same input as none, so it is not kept.
+      const studies = integer(studiesBody[code], 0, 999);
+      if (studies > 0) haccpStudies[code] = studies;
+    }
   return {
     primary: subcategory(body.primary),
     haccpStudies,
@@ -208,8 +211,11 @@ function percents<T extends string>(
   const body = inputObject(value, factors);
   const result: Partial<Record<T, number>> = {};
   for (const factor of factors)
-    if (body[factor] !== undefined)
-      result[factor] = integer(body[factor], 0, maximum);
+    if (body[factor] !== undefined) {
+      // A zero factor is the same input as an omitted one, so it is not kept.
+      const percent = integer(body[factor], 0, maximum);
+      if (percent > 0) result[factor] = percent;
+    }
   return result;
 }
 
@@ -219,7 +225,11 @@ function subcategory(value: unknown): FoodChainSubcategory {
   return match;
 }
 
-/** A positive amount of days with at most two decimals, e.g. "2.25". */
+/**
+ * A positive amount of days with at most two decimals, e.g. "2.25", kept in
+ * one spelling ("2.50" and "2.5" are the same amount) so equal values compare
+ * equal.
+ */
 function hundredths(value: unknown): string {
   if (
     typeof value !== 'string' ||
@@ -227,7 +237,9 @@ function hundredths(value: unknown): string {
     cents(value) <= 0
   )
     return invalid();
-  return value;
+  const [whole = '0', fraction = ''] = value.split('.');
+  const significant = fraction.replace(/0+$/u, '');
+  return significant ? `${whole}.${significant}` : whole;
 }
 
 function amount(value: unknown): string {
