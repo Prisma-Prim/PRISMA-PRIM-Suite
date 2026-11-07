@@ -15,8 +15,9 @@ const WORKSPACE_ID = '00000000-0000-4000-8000-000000001131';
 const OWNER = 'certification-owner';
 const READER = 'certification-reader';
 const OUTSIDER = 'certification-outsider';
+const MANAGER = 'certification-manager';
 
-type Subject = typeof OWNER | typeof READER | typeof OUTSIDER;
+type Subject = typeof OWNER | typeof READER | typeof OUTSIDER | typeof MANAGER;
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -147,7 +148,7 @@ withPostgres('Certification Case public REST boundary', () => {
         ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Certification Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify(
-          [READER, OUTSIDER].map((subject) => ({
+          [READER, OUTSIDER, MANAGER].map((subject) => ({
             provider: 'deterministic-test',
             subject,
             workspaceId: WORKSPACE_ID,
@@ -155,7 +156,7 @@ withPostgres('Certification Case public REST boundary', () => {
         ),
       },
     });
-    for (const subject of [OWNER, READER, OUTSIDER] as const) {
+    for (const subject of [OWNER, READER, OUTSIDER, MANAGER] as const) {
       const actor = await call(subject, '/access/current-actor', {
         company: null,
       });
@@ -206,6 +207,12 @@ withPostgres('Certification Case public REST boundary', () => {
     ])
       await grant(READER, path);
     for (const path of projectReader) await grant(OUTSIDER, path);
+    for (const path of [
+      ...projectReader,
+      '/company-certification-reader-assignments',
+      '/company-certification-programme-manager-assignments',
+    ])
+      await grant(MANAGER, path);
     for (const path of [
       '/company-project-assignments',
       '/company-certification-reader-assignments',
@@ -643,5 +650,71 @@ withPostgres('Certification Case public REST boundary', () => {
       200,
     );
     await grant(OWNER, '/company-certification-programme-manager-assignments');
+  });
+
+  it('stops replaying and answers hidden and missing Cases alike once Project access is revoked', async () => {
+    const caseId = text(
+      (
+        await created(
+          await call(MANAGER, `/projects/${projectId}/certification-cases`, {
+            method: 'POST',
+            body: {
+              clientLegalEntityId: entityId,
+              orderReference: `CERT-${randomUUID().slice(0, 8)}`,
+            },
+          }),
+        )
+      ).id,
+    );
+    const key = randomUUID();
+    const body = { expectedRevision: 1, facts: facts() };
+    await created(
+      await call(MANAGER, `/certification-cases/${caseId}/application`, {
+        method: 'POST',
+        body,
+        key,
+      }),
+    );
+    const revoked = await call(
+      OWNER,
+      `/company-project-assignments/${String(memberships.get(MANAGER))}/${companyId}`,
+      { method: 'DELETE', company: null },
+    );
+    expect(revoked.status).toBe(200);
+    const replay = await call(
+      MANAGER,
+      `/certification-cases/${caseId}/application`,
+      { method: 'POST', body, key },
+    );
+    expect(replay.status).toBe(403);
+    for (const suffix of ['', '/timeline']) {
+      const hidden = await call(
+        MANAGER,
+        `/certification-cases/${caseId}${suffix}`,
+      );
+      const missing = await call(
+        MANAGER,
+        `/certification-cases/${randomUUID()}${suffix}`,
+      );
+      expect(hidden.status).toBe(missing.status);
+      expect(await hidden.json()).toEqual(await missing.json());
+    }
+    const hiddenMutation = await call(
+      MANAGER,
+      `/certification-cases/${caseId}/application`,
+      {
+        method: 'POST',
+        body: { expectedRevision: 2, reason: 'x', facts: facts() },
+      },
+    );
+    const missingMutation = await call(
+      MANAGER,
+      `/certification-cases/${randomUUID()}/application`,
+      {
+        method: 'POST',
+        body: { expectedRevision: 2, reason: 'x', facts: facts() },
+      },
+    );
+    expect(hiddenMutation.status).toBe(missingMutation.status);
   });
 });

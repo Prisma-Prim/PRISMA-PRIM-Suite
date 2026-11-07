@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpException,
   Inject,
   Injectable,
@@ -395,12 +396,7 @@ export class CertificationService {
     return this.protect(() =>
       runIdempotentCommand(this.database, {
         fingerprint,
-        authorize: () =>
-          this.authorization.requireCertificationAccess(
-            actor,
-            'programme_manager',
-            true,
-          ),
+        authorize: () => this.authorize(actor, 'programme_manager'),
         lockParts: (companyId) => [
           'certification',
           actor.workspaceId,
@@ -654,15 +650,31 @@ export class CertificationService {
   ): Promise<T> {
     return this.protect(() =>
       this.database.transaction(async () =>
-        work(
-          await this.authorization.requireCertificationAccess(
-            actor,
-            role,
-            true,
-          ),
-        ),
+        work(await this.authorize(actor, role)),
       ),
     );
+  }
+
+  /**
+   * Certification grants, then the Project access every Case lives under,
+   * both rechecked inside the transaction. Checking Project access before any
+   * Case or receipt lookup keeps hidden and missing Cases indistinguishable
+   * and stops a replay once that access is revoked.
+   */
+  private async authorize(
+    actor: ActorContext,
+    role: CertificationRole,
+  ): Promise<string> {
+    const companyId = await this.authorization.requireCertificationAccess(
+      actor,
+      role,
+      true,
+    );
+    if (
+      (await this.authorization.requireProjectAccess(actor, true)) !== companyId
+    )
+      throw new ForbiddenException();
+    return companyId;
   }
 
   private async protect<T>(work: () => Promise<T>): Promise<T> {
