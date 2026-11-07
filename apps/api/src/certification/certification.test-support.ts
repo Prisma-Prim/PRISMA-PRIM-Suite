@@ -142,6 +142,44 @@ export async function openCertificationFixture(input: {
     );
     return Number(result.rows[0]?.total);
   }
+  /**
+   * Rewrites the latest recorded version of a step into the shape an earlier
+   * release stored, bypassing the immutability trigger in this isolated
+   * database only.
+   */
+  async function storeAsEarlierRelease(
+    caseId: string,
+    step: string,
+    earlier: (payload: Record<string, unknown>) => Record<string, unknown>,
+  ): Promise<void> {
+    if (!harness) throw new Error('Fixture is closed.');
+    const client = await harness.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<{ id: string; payload: unknown }>(
+        'SELECT id, payload FROM certification_step_versions WHERE case_id = $1 AND step = $2 ORDER BY version DESC LIMIT 1',
+        [caseId, step],
+      );
+      const row = result.rows[0];
+      if (!row) throw new Error(`No recorded ${step} version.`);
+      await client.query(
+        'ALTER TABLE certification_step_versions DISABLE TRIGGER certification_step_version_immutable',
+      );
+      await client.query(
+        'UPDATE certification_step_versions SET payload = $2::jsonb WHERE id = $1',
+        [row.id, JSON.stringify(earlier(record(row.payload)))],
+      );
+      await client.query(
+        'ALTER TABLE certification_step_versions ENABLE TRIGGER certification_step_version_immutable',
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
   /** Registers, uploads and designates one received audit source PDF of the Client. */
   async function receivedSource(title = 'Fictional signed original') {
     const document = await created(
@@ -522,6 +560,7 @@ export async function openCertificationFixture(input: {
     created,
     grant,
     eventCount,
+    storeAsEarlierRelease,
     caseWithApplication,
     acceptedCase,
     agreedCase,

@@ -4,6 +4,7 @@ import {
   CERTIFICATION_AUDITOR,
   CERTIFICATION_OWNER,
   allCriteria,
+  applicationFacts,
   openCertificationFixture,
   record,
 } from './certification.test-support.js';
@@ -246,6 +247,63 @@ withPostgres(
       expect(confirmed).toMatchObject({
         duration: { value: { onBehalf: onBehalf('Head of Body Demo') } },
       });
+    });
+
+    it('refuses an identical correction of a version recorded before the newer fields existed', async () => {
+      const caseId = await fixture.caseWithApplication();
+      await fixture.storeAsEarlierRelease(caseId, 'application', (payload) => {
+        const earlier = { ...payload };
+        delete earlier.submittedOn;
+        return earlier;
+      });
+      const events = await fixture.eventCount(caseId);
+      const sameFacts = await post(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/application`,
+        {
+          expectedRevision: 2,
+          reason: 'Same facts',
+          facts: applicationFacts(),
+        },
+      );
+      expect(record(await sameFacts.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(events);
+
+      const teamCase = await fixture.agreedCase();
+      const base = `/certification-cases/${teamCase}`;
+      await ok(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 6,
+        members: [leader()],
+      });
+      await fixture.storeAsEarlierRelease(teamCase, 'team', (payload) => {
+        const earlier = { ...payload };
+        delete earlier.impartialityAnalysis;
+        const members = Array.isArray(payload.members) ? payload.members : [];
+        return {
+          ...earlier,
+          members: members.map((member) => ({
+            ...record(member),
+            declarations: {
+              noConsultancy: true,
+              noEmployment: true,
+              noManagementInvolvement: true,
+              confidentiality: true,
+            },
+          })),
+        };
+      });
+      const teamEvents = await fixture.eventCount(teamCase);
+      const sameTeam = await post(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 7,
+        reason: 'Same team',
+        members: [leader()],
+      });
+      expect(record(await sameTeam.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
+      expect(await fixture.eventCount(teamCase)).toBe(teamEvents);
     });
   },
 );

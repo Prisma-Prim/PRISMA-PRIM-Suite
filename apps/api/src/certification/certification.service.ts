@@ -2126,7 +2126,7 @@ export class CertificationService {
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
     const { actor, companyId, current } = input;
-    if (input.replaces && sameValue(input.replaces.payload, input.payload))
+    if (input.replaces && sameStepValue(input.replaces, input.payload))
       throw unchangedCorrection();
     const now = this.clock.now();
     const revision = current.revision + 1;
@@ -2720,6 +2720,19 @@ function sameValue(stored: unknown, value: object): boolean {
     commandFingerprint({ value: stored }) ===
     commandFingerprint({ value: json })
   );
+}
+
+/**
+ * Equal recorded step values, whatever the release that stored the earlier
+ * version: both go through the step's own stored decoder, so a field added
+ * later compares with its default and a converted value with its new form.
+ */
+function sameStepValue(stored: StepRow, payload: object): boolean {
+  const json: unknown = JSON.parse(JSON.stringify(payload));
+  const earlier: unknown = JSON.parse(
+    JSON.stringify(stepVersion(stored).value),
+  );
+  return sameValue(earlier, stepVersion({ ...stored, payload: json }).value);
 }
 
 function base(row: StepRow) {
