@@ -209,6 +209,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'certification-auditor',
+    canonical: 'Company Certification Auditor',
+    version: 'v1',
+    labels: {
+      ro: 'Auditor de certificare al companiei',
+      ru: 'Аудитор по сертификации компании',
+      fr: 'Auditeur de certification de la société',
+      en: 'Company Certification Auditor',
+    },
+  },
+  {
     value: 'company-context',
     canonical: 'Company Context Access',
     version: null,

@@ -612,10 +612,13 @@ describe('Certification audit team and its approval', () => {
     expect(server.mutations()).toEqual([]);
 
     decide('Approve the team');
+    // The approved team opens Stage 1, which a programme manager plans.
+    const stage1 = await screen.findByRole('region', { name: 'Stage 1 audit' });
     expect(
-      await screen.findByText(
-        'The audit team is approved. The next step, the Stage 1 audit plan, is not available in this version yet.',
-      ),
+      within(stage1).getByText('No plan is recorded for this Stage yet.'),
+    ).toBeVisible();
+    expect(
+      within(stage1).getByText('A programme manager plans this Stage.'),
     ).toBeVisible();
     expect(server.mutations()).toEqual([
       expect.objectContaining({

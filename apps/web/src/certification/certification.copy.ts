@@ -13,6 +13,10 @@ const keys = [
   'approverPrerequisites',
   'approverGranted',
   'approverRevoked',
+  'auditorBundle',
+  'auditorPrerequisites',
+  'auditorGranted',
+  'auditorRevoked',
 
   'title',
   'introduction',
@@ -53,6 +57,10 @@ const keys = [
   'nextTeam',
   'nextTeamDecision',
   'nextStage1Plan',
+  'nextStage1Report',
+  'nextStage2Plan',
+  'nextStage2Report',
+  'nextRecommendation',
   'nextNone',
   'openedBy',
   'openedAt',
@@ -96,6 +104,14 @@ const keys = [
   'stepToDecide',
   'stepApproved',
   'stepReturned',
+  'stepStage1',
+  'stepStage2',
+  'stepWaitingTeamApproval',
+  'stepWaitingStage1Ready',
+  'stepPlanned',
+  'stepStageReady',
+  'stepStageNotReady',
+  'stepReported',
 
   'applicationTitle',
   'applicationMissing',
@@ -162,7 +178,6 @@ const keys = [
   'blockedClosed',
   'blockedCorrectionReason',
   'blockedCorrectionUnchanged',
-  'nextStagePlanPending',
 
   'durationTitle',
   'durationMissing',
@@ -365,6 +380,79 @@ const keys = [
   'teamMemberDecided',
   'blockedTeamNotPending',
 
+  'nextRecommendationPending',
+  'stage1Title',
+  'stage2Title',
+  'stagePlanTitle',
+  'stageReportTitle',
+  'stagePlanMissing',
+  'stageReportMissing',
+  'stageStartDate',
+  'stageEndDate',
+  'stageOnSiteDays',
+  'stageRemoteDays',
+  'stageOnSiteDaysHelp',
+  'stageDaysFormatHelp',
+  'stageObjectives',
+  'stageScope',
+  'stagePlanDocument',
+  'selectStagePlanDocument',
+  'stageSentToClientOn',
+  'stageSentToClientOnHelp',
+  'stageNotSent',
+  'stageDeviationNote',
+  'stageDeviationNoteHelp',
+  'stageNoDeviation',
+  'stageReportDate',
+  'stageDocumentReview',
+  'stageDocumentReviewCompleted',
+  'stageDocumentReviewConfirm',
+  'stageConclusion',
+  'stageConclusionReady',
+  'stageConclusionNotReady',
+  'stageConclusionNote',
+  'stageSummary',
+  'stageReportDocument',
+  'selectStageReportDocument',
+  'stageParticipantList',
+  'stageNoParticipantList',
+  'stageAnnex',
+  'stageNoAnnex',
+  'stageNoAttachment',
+  'recordStage1Plan',
+  'correctStage1Plan',
+  'recordStage2Plan',
+  'correctStage2Plan',
+  'recordStage1Report',
+  'correctStage1Report',
+  'recordStage2Report',
+  'correctStage2Report',
+  'stagePlanHelp',
+  'stage1ReportHelp',
+  'stage2ReportHelp',
+  'stageNoPlanDocument',
+  'stageNoReportDocument',
+  'stagePlanValidation',
+  'stageDatesRule',
+  'stageDeviationNoteRequired',
+  'stageDeviationNoteRule',
+  'stage2StartRule',
+  'stage1ReportValidation',
+  'stage2ReportValidation',
+  'stageDocumentReviewRequired',
+  'stageReportDateRule',
+  'stageAttachmentRole',
+  'blockedStagePlanTeamNotApproved',
+  'blockedStage2BeforeStage1Report',
+  'blockedStage2NotReady',
+  'blockedStageReportBeforePlan',
+  'blockedStageReportTeamNotApproved',
+  'blockedNotTeamLeader',
+  'stageReportAwaitingLeader',
+  'stagePlanAwaitingManager',
+  'blockedStagePlanCorrectionReason',
+  'blockedStageReportCorrectionReason',
+
   'timelineTitle',
   'timelineEmpty',
   'timelineApplication',
@@ -373,6 +461,10 @@ const keys = [
   'timelineAgreement',
   'timelineTeam',
   'timelineTeamDecision',
+  'timelineStage1Plan',
+  'timelineStage1Report',
+  'timelineStage2Plan',
+  'timelineStage2Report',
   'showValues',
 ] as const;
 
@@ -395,10 +487,15 @@ export const certificationMessages = defineMessages(keys, {
       'A Certification Approver acts only while also holding Company Certification Reader in the same Company. An approver linked to a member of a proposed team cannot decide on that team.',
     approverGranted: 'granted Certification Approver',
     approverRevoked: 'revoked Certification Approver',
+    auditorBundle: 'Company Certification Auditor',
+    auditorPrerequisites:
+      'A Certification Auditor acts only while also holding Company Certification Reader in the same Company. Only the auditor linked to the leader of the approved audit team records the Stage reports.',
+    auditorGranted: 'granted Certification Auditor',
+    auditorRevoked: 'revoked Certification Auditor',
 
     title: 'Certification',
     introduction:
-      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals, the certification agreement and the audit team with its approval, with every recorded version.',
+      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals, the certification agreement, the audit team with its approval, and the Stage 1 and Stage 2 audits with their plans and reports, with every recorded version.',
     refresh: 'Refresh Certification Cases',
     loading: 'Loading Certification Cases…',
     caseLoading: 'Loading the Certification Case…',
@@ -443,6 +540,10 @@ export const certificationMessages = defineMessages(keys, {
     nextTeam: 'Audit team',
     nextTeamDecision: 'Team decision',
     nextStage1Plan: 'Stage 1 audit plan',
+    nextStage1Report: 'Stage 1 audit report',
+    nextStage2Plan: 'Stage 2 audit plan',
+    nextStage2Report: 'Stage 2 audit report',
+    nextRecommendation: 'Team recommendation',
     nextNone: 'None',
     openedBy: 'Opened by',
     openedAt: 'Opened on',
@@ -492,6 +593,14 @@ export const certificationMessages = defineMessages(keys, {
     stepToDecide: 'To decide — version {version}',
     stepApproved: 'Approved — version {version}',
     stepReturned: 'Returned — version {version}',
+    stepStage1: 'Stage 1 audit',
+    stepStage2: 'Stage 2 audit',
+    stepWaitingTeamApproval: 'Waits for the approved team',
+    stepWaitingStage1Ready: 'Waits for a Stage 1 report concluding ready',
+    stepPlanned: 'Planned — version {version}',
+    stepStageReady: 'Ready — report version {version}',
+    stepStageNotReady: 'Not ready — report version {version}',
+    stepReported: 'Reported — version {version}',
 
     applicationTitle: 'Application',
     applicationMissing: 'No application recorded yet.',
@@ -572,8 +681,6 @@ export const certificationMessages = defineMessages(keys, {
       'A correction needs a reason and a first application has none. Reload the Case before saving again.',
     blockedCorrectionUnchanged:
       'The correction changes no value. Change at least one value or cancel the correction.',
-    nextStagePlanPending:
-      'The audit team is approved. The next step, the Stage 1 audit plan, is not available in this version yet.',
 
     durationTitle: 'Audit duration',
     durationMissing: 'No audit duration is confirmed yet.',
@@ -840,6 +947,106 @@ export const certificationMessages = defineMessages(keys, {
     blockedTeamNotPending:
       'No proposed team awaits a decision any more. Reload the Case.',
 
+    nextRecommendationPending:
+      'Both Stages are reported. The next step, the team recommendation, is not available in this version yet.',
+    stage1Title: 'Stage 1 audit',
+    stage2Title: 'Stage 2 audit',
+    stagePlanTitle: 'Audit plan',
+    stageReportTitle: 'Audit report',
+    stagePlanMissing: 'No plan is recorded for this Stage yet.',
+    stageReportMissing: 'No report is recorded for this Stage yet.',
+    stageStartDate: 'Start date',
+    stageEndDate: 'End date',
+    stageOnSiteDays: 'On-site auditor-days',
+    stageRemoteDays: 'Remote auditor-days',
+    stageOnSiteDaysHelp:
+      'Confirmed duration on site for this Stage, in auditor-days: {days}. Other on-site days need a note explaining the deviation.',
+    stageDaysFormatHelp: 'At most two decimals, for example 0.5.',
+    stageObjectives: 'Objectives',
+    stageScope: 'Audit scope',
+    stagePlanDocument: 'Audit plan PDF',
+    selectStagePlanDocument: 'Select the attached audit plan',
+    stageSentToClientOn: 'Sent to the client on',
+    stageSentToClientOnHelp:
+      'Leave empty while the plan has not been sent to the client.',
+    stageNotSent: 'Not sent yet',
+    stageDeviationNote: 'Deviation from the confirmed duration',
+    stageDeviationNoteHelp:
+      'Required because the on-site days differ from the confirmed duration.',
+    stageNoDeviation: 'No deviation stated',
+    stageReportDate: 'Report date',
+    stageDocumentReview: 'Document review',
+    stageDocumentReviewCompleted: 'Completed',
+    stageDocumentReviewConfirm: 'The document review is completed',
+    stageConclusion: 'Readiness for Stage 2',
+    stageConclusionReady: 'Ready for Stage 2',
+    stageConclusionNotReady: 'Not ready for Stage 2',
+    stageConclusionNote: 'Basis of the conclusion',
+    stageSummary: 'Summary of the Stage 2 audit',
+    stageReportDocument: 'Audit report PDF',
+    selectStageReportDocument: 'Select the attached audit report',
+    stageParticipantList: 'Participant list PDF',
+    stageNoParticipantList: 'No participant list',
+    stageAnnex: 'Annex PDF',
+    stageNoAnnex: 'No annex',
+    stageNoAttachment: 'None attached',
+    recordStage1Plan: 'Record the Stage 1 plan',
+    correctStage1Plan: 'Correct the Stage 1 plan',
+    recordStage2Plan: 'Record the Stage 2 plan',
+    correctStage2Plan: 'Correct the Stage 2 plan',
+    recordStage1Report: 'Record the Stage 1 report',
+    correctStage1Report: 'Correct the Stage 1 report',
+    recordStage2Report: 'Record the Stage 2 report',
+    correctStage2Report: 'Correct the Stage 2 report',
+    stagePlanHelp:
+      'Plan this Stage: its dates, the auditor-days on site and remote, the objectives and scope, and the attached plan PDF with the date it was sent to the client.',
+    stage1ReportHelp:
+      'Record the Stage 1 conclusion: the completed document review, whether the client is ready for Stage 2 and on what basis, with the attached report and participant list.',
+    stage2ReportHelp:
+      'Record the completion of the Stage 2 audit with the attached report, the participant list and an optional annex.',
+    stageNoPlanDocument:
+      'No document is attached with the role Audit plan yet. Attach the plan PDF in the dossier register first.',
+    stageNoReportDocument:
+      'No document is attached with the role Audit report yet. Attach the report PDF in the dossier register first.',
+    stagePlanValidation:
+      'Complete the plan: start and end dates, on-site auditor-days above zero and remote auditor-days with at most two decimals, the objectives and scope (at most 2,000 characters each) and the attached audit plan. The date sent to the client is optional.',
+    stageDatesRule: 'A Stage ends on or after its start date. Check the dates.',
+    stageDeviationNoteRequired:
+      'The on-site days differ from the confirmed duration: explain the deviation (at most 2,000 characters).',
+    stageDeviationNoteRule:
+      'The on-site days and the deviation note no longer match the confirmed duration. Reload the Case and check them.',
+    stage2StartRule:
+      'Stage 2 starts after the date of the Stage 1 report. Choose a later start date.',
+    stage1ReportValidation:
+      'Complete the report: the report date, the conclusion and its basis (at most 4,000 characters) and the attached audit report. The participant list is optional.',
+    stage2ReportValidation:
+      'Complete the report: the report date, the summary (at most 4,000 characters) and the attached audit report. The participant list and the annex are optional.',
+    stageDocumentReviewRequired:
+      'Stage 1 includes the document review: confirm that it is completed before recording the report.',
+    stageReportDateRule:
+      'A report is dated on or after the start of its Stage. Check the report date.',
+    stageAttachmentRole:
+      'A chosen PDF is not attached with the expected role. Reload the Case and choose again.',
+    blockedStagePlanTeamNotApproved:
+      'The audit is planned once the latest audit team version is approved.',
+    blockedStage2BeforeStage1Report:
+      'Stage 2 is planned after a Stage 1 report concluding that the client is ready.',
+    blockedStage2NotReady:
+      'The Stage 1 report concludes that the client is not ready. Stage 2 can be planned once a corrected Stage 1 report concludes that the client is ready.',
+    blockedStageReportBeforePlan:
+      'The report is recorded once this Stage is planned.',
+    blockedStageReportTeamNotApproved:
+      'The leader of the approved audit team records the reports; the latest team version is not approved.',
+    blockedNotTeamLeader:
+      'Only the leader of the approved audit team records this report. You are not linked to that team leader.',
+    stageReportAwaitingLeader:
+      'The leader of the approved audit team records this report while holding Company Certification Auditor.',
+    stagePlanAwaitingManager: 'A programme manager plans this Stage.',
+    blockedStagePlanCorrectionReason:
+      'A new plan version needs a reason and a first plan has none. Reload the Case before saving again.',
+    blockedStageReportCorrectionReason:
+      'A new report version needs a reason and a first report has none. Reload the Case before saving again.',
+
     timelineTitle: 'Timeline',
     timelineEmpty: 'No step recorded yet.',
     timelineApplication: 'Application — version {version}',
@@ -848,6 +1055,10 @@ export const certificationMessages = defineMessages(keys, {
     timelineAgreement: 'Certification agreement — version {version}',
     timelineTeam: 'Audit team — version {version}',
     timelineTeamDecision: 'Team decision — {decision} (team version {version})',
+    timelineStage1Plan: 'Stage 1 plan — version {version}',
+    timelineStage1Report: 'Stage 1 report — {conclusion} (version {version})',
+    timelineStage2Plan: 'Stage 2 plan — version {version}',
+    timelineStage2Report: 'Stage 2 report — version {version}',
     showValues: 'Show the recorded values',
   },
   fr: {
@@ -868,10 +1079,15 @@ export const certificationMessages = defineMessages(keys, {
       'Un approbateur de certification n’agit que s’il détient aussi le droit de lecteur de certification dans la même Société. Un approbateur lié à un membre d’une équipe proposée ne peut pas statuer sur cette équipe.',
     approverGranted: 'a accordé le droit d’approbateur de certification',
     approverRevoked: 'a révoqué le droit d’approbateur de certification',
+    auditorBundle: 'Auditeur de certification de la société',
+    auditorPrerequisites:
+      'Un auditeur de certification n’agit que s’il détient aussi le droit de lecteur de certification dans la même Société. Seul l’auditeur lié au responsable de l’équipe d’audit approuvée enregistre les rapports d’étape.',
+    auditorGranted: 'a accordé le droit d’auditeur de certification',
+    auditorRevoked: 'a révoqué le droit d’auditeur de certification',
 
     title: 'Certification',
     introduction:
-      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints, le contrat de certification et l’équipe d’audit avec son approbation, avec chaque version enregistrée.',
+      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints, le contrat de certification, l’équipe d’audit avec son approbation et les audits des étapes 1 et 2 avec leurs plans et rapports, avec chaque version enregistrée.',
     refresh: 'Actualiser les dossiers de certification',
     loading: 'Chargement des dossiers de certification…',
     caseLoading: 'Chargement du dossier de certification…',
@@ -918,6 +1134,10 @@ export const certificationMessages = defineMessages(keys, {
     nextTeam: 'Équipe d’audit',
     nextTeamDecision: 'Décision sur l’équipe',
     nextStage1Plan: 'Plan d’audit de l’étape 1',
+    nextStage1Report: 'Rapport d’audit de l’étape 1',
+    nextStage2Plan: 'Plan d’audit de l’étape 2',
+    nextStage2Report: 'Rapport d’audit de l’étape 2',
+    nextRecommendation: 'Recommandation de l’équipe',
     nextNone: 'Aucune',
     openedBy: 'Ouvert par',
     openedAt: 'Ouvert le',
@@ -967,6 +1187,15 @@ export const certificationMessages = defineMessages(keys, {
     stepToDecide: 'À décider — version {version}',
     stepApproved: 'Approuvée — version {version}',
     stepReturned: 'Renvoyée — version {version}',
+    stepStage1: 'Audit de l’étape 1',
+    stepStage2: 'Audit de l’étape 2',
+    stepWaitingTeamApproval: 'Attend l’équipe approuvée',
+    stepWaitingStage1Ready:
+      'Attend un rapport de l’étape 1 concluant que le client est prêt',
+    stepPlanned: 'Planifié — version {version}',
+    stepStageReady: 'Prêt — rapport version {version}',
+    stepStageNotReady: 'Pas prêt — rapport version {version}',
+    stepReported: 'Rapporté — version {version}',
 
     applicationTitle: 'Demande',
     applicationMissing: 'Aucune demande enregistrée pour l’instant.',
@@ -1049,8 +1278,6 @@ export const certificationMessages = defineMessages(keys, {
       'Une correction exige un motif et une première demande n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
     blockedCorrectionUnchanged:
       'La correction ne change aucune valeur. Modifiez au moins une valeur ou annulez la correction.',
-    nextStagePlanPending:
-      'L’équipe d’audit est approuvée. L’étape suivante, le plan d’audit de l’étape 1, n’est pas encore disponible dans cette version.',
 
     durationTitle: 'Durée d’audit',
     durationMissing: 'Aucune durée d’audit n’est encore confirmée.',
@@ -1322,6 +1549,110 @@ export const certificationMessages = defineMessages(keys, {
     blockedTeamNotPending:
       'Aucune équipe proposée n’attend plus de décision. Rechargez le dossier.',
 
+    nextRecommendationPending:
+      'Les deux étapes sont rapportées. L’étape suivante, la recommandation de l’équipe, n’est pas encore disponible dans cette version.',
+    stage1Title: 'Audit de l’étape 1',
+    stage2Title: 'Audit de l’étape 2',
+    stagePlanTitle: 'Plan d’audit',
+    stageReportTitle: 'Rapport d’audit',
+    stagePlanMissing: 'Aucun plan n’est encore enregistré pour cette étape.',
+    stageReportMissing:
+      'Aucun rapport n’est encore enregistré pour cette étape.',
+    stageStartDate: 'Date de début',
+    stageEndDate: 'Date de fin',
+    stageOnSiteDays: 'Jours-auditeur sur site',
+    stageRemoteDays: 'Jours-auditeur à distance',
+    stageOnSiteDaysHelp:
+      'Durée confirmée sur site pour cette étape, en jours-auditeur : {days}. Un autre nombre de jours sur site exige une note expliquant l’écart.',
+    stageDaysFormatHelp:
+      'Au plus deux décimales, avec un point, par exemple 0.5.',
+    stageObjectives: 'Objectifs',
+    stageScope: 'Périmètre de l’audit',
+    stagePlanDocument: 'PDF du plan d’audit',
+    selectStagePlanDocument: 'Sélectionnez le plan d’audit joint',
+    stageSentToClientOn: 'Envoyé au client le',
+    stageSentToClientOnHelp:
+      'Laissez vide tant que le plan n’a pas été envoyé au client.',
+    stageNotSent: 'Pas encore envoyé',
+    stageDeviationNote: 'Écart par rapport à la durée confirmée',
+    stageDeviationNoteHelp:
+      'Obligatoire, car les jours sur site diffèrent de la durée confirmée.',
+    stageNoDeviation: 'Aucun écart déclaré',
+    stageReportDate: 'Date du rapport',
+    stageDocumentReview: 'Revue documentaire',
+    stageDocumentReviewCompleted: 'Terminée',
+    stageDocumentReviewConfirm: 'La revue documentaire est terminée',
+    stageConclusion: 'Aptitude pour l’étape 2',
+    stageConclusionReady: 'Prêt pour l’étape 2',
+    stageConclusionNotReady: 'Pas prêt pour l’étape 2',
+    stageConclusionNote: 'Fondement de la conclusion',
+    stageSummary: 'Synthèse de l’audit de l’étape 2',
+    stageReportDocument: 'PDF du rapport d’audit',
+    selectStageReportDocument: 'Sélectionnez le rapport d’audit joint',
+    stageParticipantList: 'PDF de la liste des participants',
+    stageNoParticipantList: 'Aucune liste des participants',
+    stageAnnex: 'PDF de l’annexe',
+    stageNoAnnex: 'Aucune annexe',
+    stageNoAttachment: 'Aucune pièce jointe',
+    recordStage1Plan: 'Enregistrer le plan de l’étape 1',
+    correctStage1Plan: 'Corriger le plan de l’étape 1',
+    recordStage2Plan: 'Enregistrer le plan de l’étape 2',
+    correctStage2Plan: 'Corriger le plan de l’étape 2',
+    recordStage1Report: 'Enregistrer le rapport de l’étape 1',
+    correctStage1Report: 'Corriger le rapport de l’étape 1',
+    recordStage2Report: 'Enregistrer le rapport de l’étape 2',
+    correctStage2Report: 'Corriger le rapport de l’étape 2',
+    stagePlanHelp:
+      'Planifiez cette étape : ses dates, les jours-auditeur sur site et à distance, les objectifs et le périmètre, ainsi que le PDF du plan joint avec la date de son envoi au client.',
+    stage1ReportHelp:
+      'Enregistrez la conclusion de l’étape 1 : la revue documentaire terminée, l’aptitude du client pour l’étape 2 et son fondement, avec le rapport et la liste des participants joints.',
+    stage2ReportHelp:
+      'Enregistrez la réalisation de l’audit de l’étape 2 avec le rapport joint, la liste des participants et une annexe facultative.',
+    stageNoPlanDocument:
+      'Aucun document n’est encore joint avec le rôle Plan d’audit. Joignez d’abord le PDF du plan au registre des pièces.',
+    stageNoReportDocument:
+      'Aucun document n’est encore joint avec le rôle Rapport d’audit. Joignez d’abord le PDF du rapport au registre des pièces.',
+    stagePlanValidation:
+      'Complétez le plan : dates de début et de fin, jours-auditeur sur site supérieurs à zéro et jours-auditeur à distance avec au plus deux décimales, objectifs et périmètre (2 000 caractères au plus chacun) et plan d’audit joint. La date d’envoi au client est facultative.',
+    stageDatesRule:
+      'Une étape se termine à sa date de début ou après. Vérifiez les dates.',
+    stageDeviationNoteRequired:
+      'Les jours sur site diffèrent de la durée confirmée : expliquez l’écart (2 000 caractères au plus).',
+    stageDeviationNoteRule:
+      'Les jours sur site et la note d’écart ne correspondent plus à la durée confirmée. Rechargez le dossier et vérifiez-les.',
+    stage2StartRule:
+      'L’étape 2 commence après la date du rapport de l’étape 1. Choisissez une date de début ultérieure.',
+    stage1ReportValidation:
+      'Complétez le rapport : la date du rapport, la conclusion et son fondement (4 000 caractères au plus) et le rapport d’audit joint. La liste des participants est facultative.',
+    stage2ReportValidation:
+      'Complétez le rapport : la date du rapport, la synthèse (4 000 caractères au plus) et le rapport d’audit joint. La liste des participants et l’annexe sont facultatives.',
+    stageDocumentReviewRequired:
+      'L’étape 1 comprend la revue documentaire : confirmez qu’elle est terminée avant d’enregistrer le rapport.',
+    stageReportDateRule:
+      'Un rapport est daté du début de son étape ou après. Vérifiez la date du rapport.',
+    stageAttachmentRole:
+      'Un PDF choisi n’est pas joint avec le rôle attendu. Rechargez le dossier et choisissez à nouveau.',
+    blockedStagePlanTeamNotApproved:
+      'L’audit se planifie une fois la dernière version de l’équipe d’audit approuvée.',
+    blockedStage2BeforeStage1Report:
+      'L’étape 2 se planifie après un rapport de l’étape 1 concluant que le client est prêt.',
+    blockedStage2NotReady:
+      'Le rapport de l’étape 1 conclut que le client n’est pas prêt. L’étape 2 pourra être planifiée dès qu’un rapport corrigé de l’étape 1 conclura que le client est prêt.',
+    blockedStageReportBeforePlan:
+      'Le rapport s’enregistre une fois cette étape planifiée.',
+    blockedStageReportTeamNotApproved:
+      'Le responsable de l’équipe d’audit approuvée enregistre les rapports ; la dernière version de l’équipe n’est pas approuvée.',
+    blockedNotTeamLeader:
+      'Seul le responsable de l’équipe d’audit approuvée enregistre ce rapport. Vous n’êtes pas lié à ce responsable d’équipe.',
+    stageReportAwaitingLeader:
+      'Le responsable de l’équipe d’audit approuvée enregistre ce rapport en détenant le droit d’auditeur de certification.',
+    stagePlanAwaitingManager:
+      'Un responsable de programme planifie cette étape.',
+    blockedStagePlanCorrectionReason:
+      'Une nouvelle version du plan exige un motif et un premier plan n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+    blockedStageReportCorrectionReason:
+      'Une nouvelle version du rapport exige un motif et un premier rapport n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+
     timelineTitle: 'Chronologie',
     timelineEmpty: 'Aucune étape enregistrée pour l’instant.',
     timelineApplication: 'Demande — version {version}',
@@ -1331,6 +1662,11 @@ export const certificationMessages = defineMessages(keys, {
     timelineTeam: 'Équipe d’audit — version {version}',
     timelineTeamDecision:
       'Décision sur l’équipe — {decision} (version {version} de l’équipe)',
+    timelineStage1Plan: 'Plan de l’étape 1 — version {version}',
+    timelineStage1Report:
+      'Rapport de l’étape 1 — {conclusion} (version {version})',
+    timelineStage2Plan: 'Plan de l’étape 2 — version {version}',
+    timelineStage2Report: 'Rapport de l’étape 2 — version {version}',
     showValues: 'Afficher les valeurs enregistrées',
   },
   ro: {
@@ -1349,10 +1685,15 @@ export const certificationMessages = defineMessages(keys, {
       'Un aprobator de certificare acționează doar dacă deține și dreptul de cititor de certificare în aceeași Companie. Un aprobator legat de un membru al unei echipe propuse nu poate decide asupra acelei echipe.',
     approverGranted: 'a acordat dreptul de aprobator de certificare',
     approverRevoked: 'a revocat dreptul de aprobator de certificare',
+    auditorBundle: 'Auditor de certificare al companiei',
+    auditorPrerequisites:
+      'Un auditor de certificare acționează doar dacă deține și dreptul de cititor de certificare în aceeași Companie. Doar auditorul legat de șeful echipei de audit aprobate înregistrează rapoartele etapelor.',
+    auditorGranted: 'a acordat dreptul de auditor de certificare',
+    auditorRevoked: 'a revocat dreptul de auditor de certificare',
 
     title: 'Certificare',
     introduction:
-      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate, contractul de certificare și echipa de audit cu aprobarea ei, cu fiecare versiune înregistrată.',
+      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate, contractul de certificare, echipa de audit cu aprobarea ei și auditurile de etapa 1 și 2 cu planurile și rapoartele lor, cu fiecare versiune înregistrată.',
     refresh: 'Actualizați dosarele de certificare',
     loading: 'Se încarcă dosarele de certificare…',
     caseLoading: 'Se încarcă dosarul de certificare…',
@@ -1399,6 +1740,10 @@ export const certificationMessages = defineMessages(keys, {
     nextTeam: 'Echipa de audit',
     nextTeamDecision: 'Decizia privind echipa',
     nextStage1Plan: 'Planul auditului de etapa 1',
+    nextStage1Report: 'Raportul auditului de etapa 1',
+    nextStage2Plan: 'Planul auditului de etapa 2',
+    nextStage2Report: 'Raportul auditului de etapa 2',
+    nextRecommendation: 'Recomandarea echipei',
     nextNone: 'Niciuna',
     openedBy: 'Deschis de',
     openedAt: 'Deschis la',
@@ -1448,6 +1793,15 @@ export const certificationMessages = defineMessages(keys, {
     stepToDecide: 'De decis — versiunea {version}',
     stepApproved: 'Aprobată — versiunea {version}',
     stepReturned: 'Returnată — versiunea {version}',
+    stepStage1: 'Auditul de etapa 1',
+    stepStage2: 'Auditul de etapa 2',
+    stepWaitingTeamApproval: 'Așteaptă echipa aprobată',
+    stepWaitingStage1Ready:
+      'Așteaptă un raport al etapei 1 care concluzionează că clientul este pregătit',
+    stepPlanned: 'Planificat — versiunea {version}',
+    stepStageReady: 'Pregătit — raportul versiunea {version}',
+    stepStageNotReady: 'Nepregătit — raportul versiunea {version}',
+    stepReported: 'Raportat — versiunea {version}',
 
     applicationTitle: 'Cerere',
     applicationMissing: 'Nicio cerere înregistrată încă.',
@@ -1529,8 +1883,6 @@ export const certificationMessages = defineMessages(keys, {
       'O corectare necesită un motiv, iar prima cerere nu are. Reîncărcați dosarul înainte de o nouă salvare.',
     blockedCorrectionUnchanged:
       'Corectarea nu schimbă nicio valoare. Modificați cel puțin o valoare sau anulați corectarea.',
-    nextStagePlanPending:
-      'Echipa de audit este aprobată. Etapa următoare, planul auditului de etapa 1, nu este încă disponibilă în această versiune.',
 
     durationTitle: 'Durata auditului',
     durationMissing: 'Nicio durată a auditului nu este încă confirmată.',
@@ -1799,6 +2151,109 @@ export const certificationMessages = defineMessages(keys, {
     blockedTeamNotPending:
       'Nicio echipă propusă nu mai așteaptă o decizie. Reîncărcați dosarul.',
 
+    nextRecommendationPending:
+      'Ambele etape au rapoarte. Etapa următoare, recomandarea echipei, nu este încă disponibilă în această versiune.',
+    stage1Title: 'Auditul de etapa 1',
+    stage2Title: 'Auditul de etapa 2',
+    stagePlanTitle: 'Plan de audit',
+    stageReportTitle: 'Raport de audit',
+    stagePlanMissing:
+      'Niciun plan nu este încă înregistrat pentru această etapă.',
+    stageReportMissing:
+      'Niciun raport nu este încă înregistrat pentru această etapă.',
+    stageStartDate: 'Data de început',
+    stageEndDate: 'Data de sfârșit',
+    stageOnSiteDays: 'Zile-auditor pe amplasament',
+    stageRemoteDays: 'Zile-auditor la distanță',
+    stageOnSiteDaysHelp:
+      'Durata confirmată pe amplasament pentru această etapă, în zile-auditor: {days}. Alt număr de zile pe amplasament necesită o notă care explică abaterea.',
+    stageDaysFormatHelp: 'Cel mult două zecimale, cu punct, de exemplu 0.5.',
+    stageObjectives: 'Obiective',
+    stageScope: 'Domeniul auditului',
+    stagePlanDocument: 'PDF-ul planului de audit',
+    selectStagePlanDocument: 'Selectați planul de audit atașat',
+    stageSentToClientOn: 'Trimis clientului la',
+    stageSentToClientOnHelp:
+      'Lăsați gol cât timp planul nu a fost trimis clientului.',
+    stageNotSent: 'Netrimis încă',
+    stageDeviationNote: 'Abaterea de la durata confirmată',
+    stageDeviationNoteHelp:
+      'Obligatoriu, deoarece zilele pe amplasament diferă de durata confirmată.',
+    stageNoDeviation: 'Nicio abatere declarată',
+    stageReportDate: 'Data raportului',
+    stageDocumentReview: 'Analiza documentației',
+    stageDocumentReviewCompleted: 'Finalizată',
+    stageDocumentReviewConfirm: 'Analiza documentației este finalizată',
+    stageConclusion: 'Pregătirea pentru etapa 2',
+    stageConclusionReady: 'Pregătit pentru etapa 2',
+    stageConclusionNotReady: 'Nepregătit pentru etapa 2',
+    stageConclusionNote: 'Temeiul concluziei',
+    stageSummary: 'Sinteza auditului de etapa 2',
+    stageReportDocument: 'PDF-ul raportului de audit',
+    selectStageReportDocument: 'Selectați raportul de audit atașat',
+    stageParticipantList: 'PDF-ul listei participanților',
+    stageNoParticipantList: 'Fără listă a participanților',
+    stageAnnex: 'PDF-ul anexei',
+    stageNoAnnex: 'Fără anexă',
+    stageNoAttachment: 'Niciun document atașat',
+    recordStage1Plan: 'Înregistrați planul etapei 1',
+    correctStage1Plan: 'Corectați planul etapei 1',
+    recordStage2Plan: 'Înregistrați planul etapei 2',
+    correctStage2Plan: 'Corectați planul etapei 2',
+    recordStage1Report: 'Înregistrați raportul etapei 1',
+    correctStage1Report: 'Corectați raportul etapei 1',
+    recordStage2Report: 'Înregistrați raportul etapei 2',
+    correctStage2Report: 'Corectați raportul etapei 2',
+    stagePlanHelp:
+      'Planificați această etapă: datele, zilele-auditor pe amplasament și la distanță, obiectivele și domeniul, precum și PDF-ul planului atașat cu data trimiterii lui către client.',
+    stage1ReportHelp:
+      'Înregistrați concluzia etapei 1: analiza documentației finalizată, dacă clientul este pregătit pentru etapa 2 și pe ce temei, cu raportul și lista participanților atașate.',
+    stage2ReportHelp:
+      'Înregistrați finalizarea auditului de etapa 2 cu raportul atașat, lista participanților și o anexă opțională.',
+    stageNoPlanDocument:
+      'Niciun document nu este încă atașat cu rolul Plan de audit. Atașați mai întâi PDF-ul planului în registrul documentelor.',
+    stageNoReportDocument:
+      'Niciun document nu este încă atașat cu rolul Raport de audit. Atașați mai întâi PDF-ul raportului în registrul documentelor.',
+    stagePlanValidation:
+      'Completați planul: datele de început și de sfârșit, zilele-auditor pe amplasament peste zero și zilele-auditor la distanță cu cel mult două zecimale, obiectivele și domeniul (cel mult 2.000 de caractere fiecare) și planul de audit atașat. Data trimiterii către client este opțională.',
+    stageDatesRule:
+      'O etapă se încheie la data de început sau după aceasta. Verificați datele.',
+    stageDeviationNoteRequired:
+      'Zilele pe amplasament diferă de durata confirmată: explicați abaterea (cel mult 2.000 de caractere).',
+    stageDeviationNoteRule:
+      'Zilele pe amplasament și nota privind abaterea nu mai corespund duratei confirmate. Reîncărcați dosarul și verificați-le.',
+    stage2StartRule:
+      'Etapa 2 începe după data raportului etapei 1. Alegeți o dată de început ulterioară.',
+    stage1ReportValidation:
+      'Completați raportul: data raportului, concluzia și temeiul ei (cel mult 4.000 de caractere) și raportul de audit atașat. Lista participanților este opțională.',
+    stage2ReportValidation:
+      'Completați raportul: data raportului, sinteza (cel mult 4.000 de caractere) și raportul de audit atașat. Lista participanților și anexa sunt opționale.',
+    stageDocumentReviewRequired:
+      'Etapa 1 include analiza documentației: confirmați că este finalizată înainte de a înregistra raportul.',
+    stageReportDateRule:
+      'Un raport este datat la începutul etapei sale sau după acesta. Verificați data raportului.',
+    stageAttachmentRole:
+      'Un PDF ales nu este atașat cu rolul așteptat. Reîncărcați dosarul și alegeți din nou.',
+    blockedStagePlanTeamNotApproved:
+      'Auditul se planifică după aprobarea ultimei versiuni a echipei de audit.',
+    blockedStage2BeforeStage1Report:
+      'Etapa 2 se planifică după un raport al etapei 1 care concluzionează că clientul este pregătit.',
+    blockedStage2NotReady:
+      'Raportul etapei 1 concluzionează că clientul nu este pregătit. Etapa 2 poate fi planificată după ce un raport corectat al etapei 1 concluzionează că clientul este pregătit.',
+    blockedStageReportBeforePlan:
+      'Raportul se înregistrează după planificarea acestei etape.',
+    blockedStageReportTeamNotApproved:
+      'Șeful echipei de audit aprobate înregistrează rapoartele; ultima versiune a echipei nu este aprobată.',
+    blockedNotTeamLeader:
+      'Doar șeful echipei de audit aprobate înregistrează acest raport. Nu sunteți legat de acel șef de echipă.',
+    stageReportAwaitingLeader:
+      'Șeful echipei de audit aprobate înregistrează acest raport, deținând dreptul de auditor de certificare.',
+    stagePlanAwaitingManager: 'Un manager de program planifică această etapă.',
+    blockedStagePlanCorrectionReason:
+      'O nouă versiune a planului necesită un motiv, iar primul plan nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+    blockedStageReportCorrectionReason:
+      'O nouă versiune a raportului necesită un motiv, iar primul raport nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+
     timelineTitle: 'Cronologie',
     timelineEmpty: 'Nicio etapă înregistrată încă.',
     timelineApplication: 'Cerere — versiunea {version}',
@@ -1808,6 +2263,11 @@ export const certificationMessages = defineMessages(keys, {
     timelineTeam: 'Echipa de audit — versiunea {version}',
     timelineTeamDecision:
       'Decizia privind echipa — {decision} (versiunea {version} a echipei)',
+    timelineStage1Plan: 'Planul etapei 1 — versiunea {version}',
+    timelineStage1Report:
+      'Raportul etapei 1 — {conclusion} (versiunea {version})',
+    timelineStage2Plan: 'Planul etapei 2 — versiunea {version}',
+    timelineStage2Report: 'Raportul etapei 2 — versiunea {version}',
     showValues: 'Afișați valorile înregistrate',
   },
   ru: {
@@ -1827,10 +2287,15 @@ export const certificationMessages = defineMessages(keys, {
       'Утверждающий по сертификации действует, только если в той же Компании у него есть и право читателя сертификации. Утверждающий, связанный с участником предложенной группы, не может принимать решение по этой группе.',
     approverGranted: '— предоставление права утверждающего по сертификации',
     approverRevoked: '— отзыв права утверждающего по сертификации',
+    auditorBundle: 'Аудитор по сертификации компании',
+    auditorPrerequisites:
+      'Аудитор по сертификации действует, только если в той же Компании у него есть и право читателя сертификации. Отчёты по этапам записывает только аудитор, связанный с руководителем утверждённой аудиторской группы.',
+    auditorGranted: '— предоставление права аудитора по сертификации',
+    auditorRevoked: '— отзыв права аудитора по сертификации',
 
     title: 'Сертификация',
     introduction:
-      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы, договор о сертификации и аудиторская группа с её утверждением со всеми записанными версиями.',
+      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы, договор о сертификации, аудиторская группа с её утверждением, а также аудиты этапов 1 и 2 с их планами и отчётами со всеми записанными версиями.',
     refresh: 'Обновить дела по сертификации',
     loading: 'Загрузка дел по сертификации…',
     caseLoading: 'Загрузка дела по сертификации…',
@@ -1875,6 +2340,10 @@ export const certificationMessages = defineMessages(keys, {
     nextTeam: 'Аудиторская группа',
     nextTeamDecision: 'Решение по группе',
     nextStage1Plan: 'План аудита этапа 1',
+    nextStage1Report: 'Отчёт об аудите этапа 1',
+    nextStage2Plan: 'План аудита этапа 2',
+    nextStage2Report: 'Отчёт об аудите этапа 2',
+    nextRecommendation: 'Рекомендация группы',
     nextNone: 'Нет',
     openedBy: 'Открыл(а)',
     openedAt: 'Дата открытия',
@@ -1924,6 +2393,14 @@ export const certificationMessages = defineMessages(keys, {
     stepToDecide: 'Требует решения — версия {version}',
     stepApproved: 'Утверждена — версия {version}',
     stepReturned: 'Возвращена — версия {version}',
+    stepStage1: 'Аудит этапа 1',
+    stepStage2: 'Аудит этапа 2',
+    stepWaitingTeamApproval: 'Ожидает утверждённой группы',
+    stepWaitingStage1Ready: 'Ожидает отчёта этапа 1 с выводом о готовности',
+    stepPlanned: 'Запланирован — версия {version}',
+    stepStageReady: 'Готов — версия отчёта {version}',
+    stepStageNotReady: 'Не готов — версия отчёта {version}',
+    stepReported: 'Отчёт записан — версия {version}',
 
     applicationTitle: 'Заявка',
     applicationMissing: 'Заявка ещё не записана.',
@@ -2004,8 +2481,6 @@ export const certificationMessages = defineMessages(keys, {
       'Исправлению нужна причина, а у первой заявки её нет. Загрузите дело заново перед новым сохранением.',
     blockedCorrectionUnchanged:
       'Исправление не меняет ни одного значения. Измените хотя бы одно значение или отмените исправление.',
-    nextStagePlanPending:
-      'Аудиторская группа утверждена. Следующий этап, план аудита этапа 1, в этой версии пока недоступен.',
 
     durationTitle: 'Продолжительность аудита',
     durationMissing: 'Продолжительность аудита ещё не подтверждена.',
@@ -2272,6 +2747,106 @@ export const certificationMessages = defineMessages(keys, {
     blockedTeamNotPending:
       'Ни одна предложенная группа больше не ожидает решения. Загрузите дело заново.',
 
+    nextRecommendationPending:
+      'По обоим этапам записаны отчёты. Следующий этап, рекомендация группы, в этой версии пока недоступен.',
+    stage1Title: 'Аудит этапа 1',
+    stage2Title: 'Аудит этапа 2',
+    stagePlanTitle: 'План аудита',
+    stageReportTitle: 'Отчёт об аудите',
+    stagePlanMissing: 'План для этого этапа пока не записан.',
+    stageReportMissing: 'Отчёт для этого этапа пока не записан.',
+    stageStartDate: 'Дата начала',
+    stageEndDate: 'Дата окончания',
+    stageOnSiteDays: 'Аудитор-дни на площадке',
+    stageRemoteDays: 'Аудитор-дни дистанционно',
+    stageOnSiteDaysHelp:
+      'Подтверждённая продолжительность на площадке для этого этапа, в аудитор-днях: {days}. Другое число дней на площадке требует примечания с объяснением отклонения.',
+    stageDaysFormatHelp: 'Не более двух знаков после точки, например 0.5.',
+    stageObjectives: 'Цели',
+    stageScope: 'Область аудита',
+    stagePlanDocument: 'PDF плана аудита',
+    selectStagePlanDocument: 'Выберите приложенный план аудита',
+    stageSentToClientOn: 'Отправлен клиенту',
+    stageSentToClientOnHelp: 'Оставьте пустым, пока план не отправлен клиенту.',
+    stageNotSent: 'Ещё не отправлен',
+    stageDeviationNote: 'Отклонение от подтверждённой продолжительности',
+    stageDeviationNoteHelp:
+      'Обязательно, так как дни на площадке отличаются от подтверждённой продолжительности.',
+    stageNoDeviation: 'Отклонение не указано',
+    stageReportDate: 'Дата отчёта',
+    stageDocumentReview: 'Анализ документации',
+    stageDocumentReviewCompleted: 'Завершён',
+    stageDocumentReviewConfirm: 'Анализ документации завершён',
+    stageConclusion: 'Готовность к этапу 2',
+    stageConclusionReady: 'Готов к этапу 2',
+    stageConclusionNotReady: 'Не готов к этапу 2',
+    stageConclusionNote: 'Обоснование вывода',
+    stageSummary: 'Итоги аудита этапа 2',
+    stageReportDocument: 'PDF отчёта об аудите',
+    selectStageReportDocument: 'Выберите приложенный отчёт об аудите',
+    stageParticipantList: 'PDF списка участников',
+    stageNoParticipantList: 'Без списка участников',
+    stageAnnex: 'PDF приложения',
+    stageNoAnnex: 'Без приложения',
+    stageNoAttachment: 'Не приложен',
+    recordStage1Plan: 'Записать план этапа 1',
+    correctStage1Plan: 'Исправить план этапа 1',
+    recordStage2Plan: 'Записать план этапа 2',
+    correctStage2Plan: 'Исправить план этапа 2',
+    recordStage1Report: 'Записать отчёт этапа 1',
+    correctStage1Report: 'Исправить отчёт этапа 1',
+    recordStage2Report: 'Записать отчёт этапа 2',
+    correctStage2Report: 'Исправить отчёт этапа 2',
+    stagePlanHelp:
+      'Запланируйте этот этап: даты, аудитор-дни на площадке и дистанционно, цели и область, а также приложенный PDF плана с датой его отправки клиенту.',
+    stage1ReportHelp:
+      'Запишите вывод по этапу 1: завершённый анализ документации, готов ли клиент к этапу 2 и на каком основании, с приложенными отчётом и списком участников.',
+    stage2ReportHelp:
+      'Запишите завершение аудита этапа 2 с приложенным отчётом, списком участников и необязательным приложением.',
+    stageNoPlanDocument:
+      'Пока не приложен ни один документ с ролью «План аудита». Сначала приложите PDF плана в реестре документов.',
+    stageNoReportDocument:
+      'Пока не приложен ни один документ с ролью «Отчёт об аудите». Сначала приложите PDF отчёта в реестре документов.',
+    stagePlanValidation:
+      'Заполните план: даты начала и окончания, аудитор-дни на площадке больше нуля и дистанционные аудитор-дни не более чем с двумя знаками после точки, цели и область (не более 2 000 символов каждая) и приложенный план аудита. Дата отправки клиенту необязательна.',
+    stageDatesRule:
+      'Этап заканчивается в дату начала или позже. Проверьте даты.',
+    stageDeviationNoteRequired:
+      'Дни на площадке отличаются от подтверждённой продолжительности: объясните отклонение (не более 2 000 символов).',
+    stageDeviationNoteRule:
+      'Дни на площадке и примечание об отклонении больше не соответствуют подтверждённой продолжительности. Загрузите дело заново и проверьте их.',
+    stage2StartRule:
+      'Этап 2 начинается после даты отчёта этапа 1. Выберите более позднюю дату начала.',
+    stage1ReportValidation:
+      'Заполните отчёт: дату отчёта, вывод и его обоснование (не более 4 000 символов) и приложенный отчёт об аудите. Список участников необязателен.',
+    stage2ReportValidation:
+      'Заполните отчёт: дату отчёта, итоги (не более 4 000 символов) и приложенный отчёт об аудите. Список участников и приложение необязательны.',
+    stageDocumentReviewRequired:
+      'Этап 1 включает анализ документации: подтвердите, что он завершён, прежде чем записывать отчёт.',
+    stageReportDateRule:
+      'Отчёт датируется датой начала своего этапа или более поздней датой. Проверьте дату отчёта.',
+    stageAttachmentRole:
+      'Выбранный PDF приложен не с ожидаемой ролью. Загрузите дело заново и выберите снова.',
+    blockedStagePlanTeamNotApproved:
+      'Аудит планируется после утверждения последней версии аудиторской группы.',
+    blockedStage2BeforeStage1Report:
+      'Этап 2 планируется после отчёта этапа 1 с выводом о готовности клиента.',
+    blockedStage2NotReady:
+      'Отчёт этапа 1 делает вывод, что клиент не готов. Этап 2 можно будет запланировать, когда исправленный отчёт этапа 1 сделает вывод о готовности клиента.',
+    blockedStageReportBeforePlan:
+      'Отчёт записывается после того, как этот этап запланирован.',
+    blockedStageReportTeamNotApproved:
+      'Отчёты записывает руководитель утверждённой аудиторской группы; последняя версия группы не утверждена.',
+    blockedNotTeamLeader:
+      'Этот отчёт записывает только руководитель утверждённой аудиторской группы. Вы не связаны с этим руководителем группы.',
+    stageReportAwaitingLeader:
+      'Этот отчёт записывает руководитель утверждённой аудиторской группы, имеющий право аудитора по сертификации.',
+    stagePlanAwaitingManager: 'Этот этап планирует руководитель программы.',
+    blockedStagePlanCorrectionReason:
+      'Новой версии плана нужна причина, а у первого плана её нет. Загрузите дело заново перед новым сохранением.',
+    blockedStageReportCorrectionReason:
+      'Новой версии отчёта нужна причина, а у первого отчёта её нет. Загрузите дело заново перед новым сохранением.',
+
     timelineTitle: 'Хронология',
     timelineEmpty: 'Этапы ещё не записаны.',
     timelineApplication: 'Заявка — версия {version}',
@@ -2281,6 +2856,10 @@ export const certificationMessages = defineMessages(keys, {
     timelineTeam: 'Аудиторская группа — версия {version}',
     timelineTeamDecision:
       'Решение по группе — {decision} (версия группы {version})',
+    timelineStage1Plan: 'План этапа 1 — версия {version}',
+    timelineStage1Report: 'Отчёт этапа 1 — {conclusion} (версия {version})',
+    timelineStage2Plan: 'План этапа 2 — версия {version}',
+    timelineStage2Report: 'Отчёт этапа 2 — версия {version}',
     showValues: 'Показать записанные значения',
   },
 });

@@ -24,18 +24,20 @@ export const certificationIds = {
 };
 
 /**
- * A Certification Reader, optionally Programme Manager and Approver,
- * optionally with the Document rights to read this Client's received audit
- * source content.
+ * A Certification Reader, optionally Programme Manager, Approver and
+ * Auditor, optionally with the Document rights to read this Client's received
+ * audit source content.
  */
 export function certificationActor({
   manager,
   documents = false,
   approver = false,
+  auditor = false,
 }: {
   manager: boolean;
   documents?: boolean;
   approver?: boolean;
+  auditor?: boolean;
 }): ActorContext {
   return {
     internalUserId: 'certification-person',
@@ -73,6 +75,13 @@ export function certificationActor({
             certificationApproverPermissions: ['certification.approve'],
             certificationApproverAssignmentId: 'certification-approver-grant',
             certificationApproverPermissionSetVersion: 'v1',
+          }
+        : {}),
+      ...(auditor
+        ? {
+            certificationAuditorPermissions: ['certification.audit.record'],
+            certificationAuditorAssignmentId: 'certification-auditor-grant',
+            certificationAuditorPermissionSetVersion: 'v1',
           }
         : {}),
       ...(documents
@@ -160,7 +169,63 @@ export function teamMember(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** A Stage plan as the server records it: one on-site day, as confirmed. */
+export function stagePlan(
+  planAttachmentId: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    startDate: '2026-11-10',
+    endDate: '2026-11-10',
+    onSiteDays: '1',
+    remoteDays: '0',
+    objectives: 'Evaluate readiness of the food safety management system',
+    scope: 'Production of pasteurised milk and yoghurt',
+    planAttachmentId,
+    sentToClientOn: '2026-11-03',
+    deviationNote: null,
+    ...overrides,
+  };
+}
+
+/** A Stage 1 report as the server records it, concluding ready. */
+export function stage1Report(
+  reportAttachmentId: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    reportDate: '2026-11-10',
+    documentReviewCompleted: true,
+    conclusion: 'ready',
+    conclusionNote: 'Documented system implemented; ready for Stage 2.',
+    reportAttachmentId,
+    participantListAttachmentId: null,
+    ...overrides,
+  };
+}
+
+/** A Stage 2 report as the server records it. */
+export function stage2Report(
+  reportAttachmentId: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    reportDate: '2026-11-21',
+    summary: 'Stage 2 completed as planned.',
+    reportAttachmentId,
+    participantListAttachmentId: null,
+    annexAttachmentId: null,
+    ...overrides,
+  };
+}
+
 type Actor = { workspaceMembershipId: string; displayName: string };
+const STAGE_STEPS = [
+  'stage_1_plan',
+  'stage_1_report',
+  'stage_2_plan',
+  'stage_2_report',
+] as const;
 type Step = {
   id: string;
   step:
@@ -169,7 +234,8 @@ type Step = {
     | 'duration'
     | 'agreement'
     | 'team'
-    | 'team_decision';
+    | 'team_decision'
+    | (typeof STAGE_STEPS)[number];
   version: number;
   caseRevision: number;
   reason: string | null;
@@ -433,6 +499,44 @@ export class FakeCertificationServer {
   }
 
   /**
+   * Seeds an agreed Case whose team, led by the given membership (or by an
+   * unlinked person), a colleague approver approved: Stage 1 is next, at
+   * revision 8.
+   */
+  seedApprovedTeam({
+    orderReference,
+    leader = null,
+  }: {
+    orderReference: string;
+    leader?: string | null;
+  }): string {
+    const caseId = this.seed({ orderReference, agreement: true });
+    this.proposeTeamAsColleague(caseId, [
+      teamMember({ workspaceMembershipId: leader }),
+      teamMember({
+        name: 'Ion Demo',
+        role: 'auditor',
+        holdsCategory: false,
+        competenceNote: 'ISO 22000 auditor',
+      }),
+    ]);
+    this.decideTeamAsColleague(caseId, 'approved');
+    return caseId;
+  }
+
+  /** A colleague records a Stage plan or report version. */
+  recordStageAsColleague(
+    caseId: string,
+    step: (typeof STAGE_STEPS)[number],
+    value: Record<string, unknown>,
+    reason: string | null = null,
+  ) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case');
+    this.append(stored, step, value, reason, colleague);
+  }
+
+  /**
    * A colleague confirms the proposal for CI with every declared study and no
    * factor, making any earlier expected revision stale.
    */
@@ -556,6 +660,24 @@ export class FakeCertificationServer {
         request.path,
       );
     if (content) return this.content(content[1], content[2]);
+    const stage =
+      /^\/api\/certification-cases\/([^/]+)\/stages\/([^/]+)\/(plan|report)$/u.exec(
+        request.path,
+      );
+    if (stage) {
+      const staged = stage[1] ? this.cases.get(stage[1]) : undefined;
+      const which =
+        stage[2] === 'stage-1'
+          ? 'stage_1'
+          : stage[2] === 'stage-2'
+            ? 'stage_2'
+            : undefined;
+      if (!staged || !which || request.method !== 'POST')
+        return new Response(null, { status: 404 });
+      return stage[3] === 'plan'
+        ? this.planStage(staged, which, request.body)
+        : this.reportStage(staged, which, request.body);
+    }
     const match =
       /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision)?$/u.exec(
         request.path,
@@ -766,6 +888,237 @@ export class FakeCertificationServer {
       me,
     );
     return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /**
+   * The server's checks, in its order: the input and its dates, the
+   * revision, an approved team, a ready Stage 1 before Stage 2, the deviation
+   * note, the plan role, the reason, then an unchanged correction.
+   */
+  private planStage(
+    stored: StoredCase,
+    stage: 'stage_1' | 'stage_2',
+    body: unknown,
+  ): Response {
+    const { expectedRevision, reason, ...input } = record(body);
+    const fields = [
+      'startDate',
+      'endDate',
+      'onSiteDays',
+      'remoteDays',
+      'objectives',
+      'scope',
+      'planAttachmentId',
+      'sentToClientOn',
+      'deviationNote',
+    ];
+    const {
+      startDate,
+      endDate,
+      onSiteDays,
+      remoteDays,
+      objectives,
+      scope,
+      planAttachmentId,
+      sentToClientOn,
+      deviationNote,
+    } = input;
+    if (
+      Object.keys(input).some((key) => !fields.includes(key)) ||
+      !calendarDate(startDate) ||
+      !calendarDate(endDate) ||
+      dayCents(onSiteDays, false) === undefined ||
+      dayCents(remoteDays, true) === undefined ||
+      !nonblank(objectives) ||
+      !nonblank(scope) ||
+      !nonblank(planAttachmentId) ||
+      !(sentToClientOn === null || calendarDate(sentToClientOn)) ||
+      !(deviationNote === null || nonblank(deviationNote)) ||
+      !optionalText(reason)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (startDate > endDate) return refusal(400, 'CERTIFICATION_STAGE_DATES');
+    if (expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (!approvedTeamOf(stored))
+      return refusal(409, 'CERTIFICATION_TEAM_NOT_APPROVED');
+    if (stage === 'stage_2') {
+      const report = latestStep(stored, 'stage_1_report')?.value;
+      if (report?.conclusion !== 'ready')
+        return refusal(409, 'CERTIFICATION_STAGE_1_NOT_READY');
+      if (startDate <= String(report.reportDate))
+        return refusal(409, 'CERTIFICATION_STAGE_DATES');
+    }
+    const confirmed = record(latestStep(stored, 'duration')?.value.confirmed);
+    const expected = dayCents(
+      stage === 'stage_1' ? confirmed.stage1OnSite : confirmed.stage2OnSite,
+      false,
+    );
+    if ((dayCents(onSiteDays, false) !== expected) !== (deviationNote !== null))
+      return refusal(400, 'CERTIFICATION_STAGE_DEVIATION_NOTE');
+    if (!this.hasAttachment(stored, planAttachmentId, ['plan']))
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    return this.appendStage(
+      stored,
+      stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan',
+      {
+        startDate,
+        endDate,
+        onSiteDays,
+        remoteDays,
+        objectives,
+        scope,
+        planAttachmentId,
+        sentToClientOn,
+        deviationNote,
+      },
+      reason,
+    );
+  }
+
+  /**
+   * The server's checks, in its order: the auditor grant, the input, the
+   * revision, the leader of the approved team, the plan and its start, the
+   * attachment roles, the reason, then an unchanged correction.
+   */
+  private reportStage(
+    stored: StoredCase,
+    stage: 'stage_1' | 'stage_2',
+    body: unknown,
+  ): Response {
+    if (!holdsAuditor(this.actor())) return new Response(null, { status: 403 });
+    const { expectedRevision, reason, ...input } = record(body);
+    const fields =
+      stage === 'stage_1'
+        ? [
+            'reportDate',
+            'documentReviewCompleted',
+            'conclusion',
+            'conclusionNote',
+            'reportAttachmentId',
+            'participantListAttachmentId',
+          ]
+        : [
+            'reportDate',
+            'summary',
+            'reportAttachmentId',
+            'participantListAttachmentId',
+            'annexAttachmentId',
+          ];
+    if (Object.keys(input).some((key) => !fields.includes(key)))
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (stage === 'stage_1' && input.documentReviewCompleted !== true)
+      return refusal(400, 'CERTIFICATION_DOCUMENT_REVIEW_INCOMPLETE');
+    const {
+      reportDate,
+      reportAttachmentId,
+      participantListAttachmentId = null,
+      annexAttachmentId = null,
+    } = input;
+    const value =
+      stage === 'stage_1'
+        ? {
+            reportDate,
+            documentReviewCompleted: true,
+            conclusion: input.conclusion,
+            conclusionNote: input.conclusionNote,
+            reportAttachmentId,
+            participantListAttachmentId,
+          }
+        : {
+            reportDate,
+            summary: input.summary,
+            reportAttachmentId,
+            participantListAttachmentId,
+            annexAttachmentId,
+          };
+    if (
+      !calendarDate(reportDate) ||
+      !nonblank(reportAttachmentId) ||
+      !(
+        participantListAttachmentId === null ||
+        nonblank(participantListAttachmentId)
+      ) ||
+      !(annexAttachmentId === null || nonblank(annexAttachmentId)) ||
+      (stage === 'stage_1'
+        ? (input.conclusion !== 'ready' && input.conclusion !== 'not_ready') ||
+          !nonblank(input.conclusionNote)
+        : !nonblank(input.summary)) ||
+      !optionalText(reason)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    const team = approvedTeamOf(stored);
+    if (
+      !team ||
+      !list(team.value.members)
+        .map(record)
+        .some(
+          (member) =>
+            member.role === 'team_leader' &&
+            member.workspaceMembershipId === me.workspaceMembershipId,
+        )
+    )
+      return refusal(409, 'CERTIFICATION_NOT_TEAM_LEADER');
+    const plan = latestStep(
+      stored,
+      stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan',
+    );
+    if (!plan) return refusal(409, 'CERTIFICATION_STAGE_NOT_PLANNED');
+    if (reportDate < String(plan.value.startDate))
+      return refusal(409, 'CERTIFICATION_STAGE_DATES');
+    if (
+      !this.hasAttachment(stored, reportAttachmentId, ['report']) ||
+      (participantListAttachmentId !== null &&
+        !this.hasAttachment(stored, participantListAttachmentId, [
+          'participant_list',
+        ])) ||
+      (annexAttachmentId !== null &&
+        !this.hasAttachment(stored, annexAttachmentId, [
+          'report',
+          'evidence',
+          'iso22000_annex',
+        ]))
+    )
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    return this.appendStage(
+      stored,
+      stage === 'stage_1' ? 'stage_1_report' : 'stage_2_report',
+      value,
+      reason,
+    );
+  }
+
+  /** A first version has no reason; a correction states one and changes a value. */
+  private appendStage(
+    stored: StoredCase,
+    step: (typeof STAGE_STEPS)[number],
+    value: Record<string, unknown>,
+    reason: unknown,
+  ): Response {
+    const previous = latestStep(stored, step);
+    const stated = nonblank(reason) ? reason : null;
+    if (!previous !== (stated === null))
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    if (previous && sameValue(previous.value, value))
+      return refusal(409, 'CERTIFICATION_CORRECTION_UNCHANGED');
+    this.append(stored, step, value, stated, me);
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  private hasAttachment(
+    stored: StoredCase,
+    attachmentId: unknown,
+    roles: readonly string[],
+  ): boolean {
+    return stored.attachments.some(
+      (item) => item.id === attachmentId && roles.includes(item.role),
+    );
   }
 
   private attach(
@@ -996,6 +1349,16 @@ export class FakeCertificationServer {
     const agreement = latest('agreement');
     const team = latest('team');
     const decided = latest('team_decision');
+    const stagesNext = () =>
+      !latest('stage_1_plan')
+        ? 'stage_1_plan'
+        : latest('stage_1_report')?.value.conclusion !== 'ready'
+          ? 'stage_1_report'
+          : !latest('stage_2_plan')
+            ? 'stage_2_plan'
+            : !latest('stage_2_report')
+              ? 'stage_2_report'
+              : 'recommendation';
     return {
       id: stored.id,
       projectId: this.projectId,
@@ -1022,7 +1385,7 @@ export class FakeCertificationServer {
                       ? 'team_decision'
                       : decided.value.decision === 'returned'
                         ? 'team'
-                        : 'stage_1_plan',
+                        : stagesNext(),
       openedBy: stored.openedBy,
       openedAt: stored.openedAt,
     };
@@ -1040,6 +1403,10 @@ export class FakeCertificationServer {
       agreement: latest('agreement'),
       team: latest('team'),
       teamDecision: latest('team_decision'),
+      stages: STAGE_STEPS.flatMap((step) => {
+        const version = latestStep(stored, step);
+        return version ? [version] : [];
+      }),
     };
   }
 
@@ -1138,8 +1505,65 @@ function holdsApprover(actor: unknown): boolean {
   );
 }
 
+/** Whether the current actor captures the Certification Auditor grant. */
+function holdsAuditor(actor: unknown): boolean {
+  const company = record(record(actor).activeCompany);
+  const permissions = company.certificationAuditorPermissions;
+  return (
+    Array.isArray(permissions) &&
+    permissions.includes('certification.audit.record')
+  );
+}
+
 function latestStep(stored: StoredCase, step: Step['step']) {
   return stored.steps.filter((entry) => entry.step === step).at(-1);
+}
+
+/** The latest team version when the latest decision approves it. */
+function approvedTeamOf(stored: StoredCase) {
+  const team = latestStep(stored, 'team');
+  const decided = latestStep(stored, 'team_decision');
+  return team &&
+    decided?.value.decision === 'approved' &&
+    decided.value.teamVersion === team.version
+    ? team
+    : undefined;
+}
+
+function calendarDate(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
+    new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value
+  );
+}
+
+/** Whole hundredths of a day amount the server accepts, else undefined. */
+function dayCents(value: unknown, zeroAllowed: boolean): number | undefined {
+  if (
+    typeof value !== 'string' ||
+    !/^(0|[1-9]\d{0,2})(\.\d{1,2})?$/u.test(value)
+  )
+    return undefined;
+  const [whole = '0', fraction = ''] = value.split('.');
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+  return cents > 0 || zeroAllowed ? cents : undefined;
+}
+
+/** Absent, null or a non-blank text, as an optional reason. */
+function optionalText(value: unknown): boolean {
+  return value === undefined || value === null || nonblank(value);
+}
+
+/** The same recorded value, whatever the order of its keys. */
+function sameValue(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+): boolean {
+  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])];
+  return keys.every(
+    (key) => JSON.stringify(left[key]) === JSON.stringify(right[key]),
+  );
 }
 
 type DurationFacts = {

@@ -15,34 +15,88 @@ function withCompany(actor: ActorContext, patch: CompanyPatch): ActorContext {
   return { ...actor, activeCompany: { ...company, ...patch } };
 }
 
+const NONE = { read: false, manage: false, approve: false, audit: false };
+
 describe('Certification authority projection', () => {
-  it('offers reading, managing and approving from their captured grants', () => {
+  it('offers reading, managing, approving and auditing from their captured grants', () => {
     expect(
       certificationAuthority(certificationActor({ manager: false })),
-    ).toEqual({ read: true, manage: false, approve: false });
+    ).toEqual({ read: true, manage: false, approve: false, audit: false });
     expect(
       certificationAuthority(
-        certificationActor({ manager: true, approver: true }),
+        certificationActor({ manager: true, approver: true, auditor: true }),
       ),
-    ).toEqual({ read: true, manage: true, approve: true });
+    ).toEqual({ read: true, manage: true, approve: true, audit: true });
     expect(
       certificationAuthority(
         certificationActor({ manager: false, approver: true }),
       ),
-    ).toEqual({ read: true, manage: false, approve: true });
-  });
-
-  it('counts the approver grant only alongside the reader grant', () => {
-    const approver = certificationActor({ manager: false, approver: true });
+    ).toEqual({ read: true, manage: false, approve: true, audit: false });
     expect(
       certificationAuthority(
-        withCompany(approver, {
+        certificationActor({ manager: false, auditor: true }),
+      ),
+    ).toEqual({ read: true, manage: false, approve: false, audit: true });
+  });
+
+  it.each([
+    ['approver', certificationActor({ manager: false, approver: true })],
+    ['auditor', certificationActor({ manager: false, auditor: true })],
+  ])('counts the %s grant only alongside the reader grant', (_name, actor) => {
+    expect(
+      certificationAuthority(
+        withCompany(actor, {
           certificationReaderPermissions: undefined,
           certificationReaderAssignmentId: undefined,
           certificationReaderPermissionSetVersion: undefined,
         }),
       ),
-    ).toEqual({ read: false, manage: false, approve: false });
+    ).toEqual(NONE);
+  });
+
+  const brokenAuditorGrants: [string, CompanyPatch][] = [
+    ['no assignment', { certificationAuditorAssignmentId: undefined }],
+    ['a blank assignment', { certificationAuditorAssignmentId: ' ' }],
+    ['no version', { certificationAuditorPermissionSetVersion: undefined }],
+    ['no permission', { certificationAuditorPermissions: [] }],
+    [
+      'a duplicated permission',
+      {
+        certificationAuditorPermissions: [
+          'certification.audit.record',
+          'certification.audit.record',
+        ],
+      },
+    ],
+  ];
+  it.each(brokenAuditorGrants)(
+    'fails closed on an auditor grant with %s',
+    (_name, patch) => {
+      const actor = withCompany(
+        certificationActor({ manager: false, auditor: true }),
+        patch,
+      );
+      expect(certificationAuthority(actor)).toEqual({
+        read: true,
+        manage: false,
+        approve: false,
+        audit: false,
+      });
+    },
+  );
+
+  it('changes the context key when the auditor grant changes', () => {
+    const auditor = certificationActor({ manager: false, auditor: true });
+    expect(certificationContextKey(auditor)).not.toBe(
+      certificationContextKey(certificationActor({ manager: false })),
+    );
+    expect(certificationContextKey(auditor)).not.toBe(
+      certificationContextKey(
+        withCompany(auditor, {
+          certificationAuditorAssignmentId: 'another-auditor-grant',
+        }),
+      ),
+    );
   });
 
   const brokenApproverGrants: [string, CompanyPatch][] = [
@@ -71,6 +125,7 @@ describe('Certification authority projection', () => {
         read: true,
         manage: false,
         approve: false,
+        audit: false,
       });
     },
   );

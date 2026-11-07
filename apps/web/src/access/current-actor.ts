@@ -332,6 +332,11 @@ const isActorContext = object({
       ),
       certificationApproverAssignmentId: optional(isString),
       certificationApproverPermissionSetVersion: optional(literal('v1')),
+      certificationAuditorPermissions: optional(
+        array(literal('certification.audit.record')),
+      ),
+      certificationAuditorAssignmentId: optional(isString),
+      certificationAuditorPermissionSetVersion: optional(literal('v1')),
       clientPermissions: optional(
         array(
           literal(

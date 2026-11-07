@@ -20,6 +20,13 @@ import {
   type DurationWarning,
 } from './certification-duration';
 import {
+  STAGE_LIMITS,
+  stageDayCents,
+  type Stage1Report,
+  type Stage2Report,
+  type StagePlan,
+} from './certification-stages';
+import {
   IMPARTIALITY_DECLARATIONS,
   TEAM_LIMITS,
   TEAM_ROLES,
@@ -170,7 +177,11 @@ export type StepVersion =
   | (StepVersionBase & { step: 'duration'; value: DurationDetermination })
   | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement })
   | (StepVersionBase & { step: 'team'; value: AuditTeam })
-  | (StepVersionBase & { step: 'team_decision'; value: TeamDecision });
+  | (StepVersionBase & { step: 'team_decision'; value: TeamDecision })
+  | (StepVersionBase & { step: 'stage_1_plan'; value: StagePlan })
+  | (StepVersionBase & { step: 'stage_1_report'; value: Stage1Report })
+  | (StepVersionBase & { step: 'stage_2_plan'; value: StagePlan })
+  | (StepVersionBase & { step: 'stage_2_report'; value: Stage2Report });
 export type ApplicationVersion = Extract<StepVersion, { step: 'application' }>;
 export type ApplicationReviewVersion = Extract<
   StepVersion,
@@ -183,6 +194,29 @@ export type TeamDecisionVersion = Extract<
   StepVersion,
   { step: 'team_decision' }
 >;
+export type Stage1PlanVersion = Extract<StepVersion, { step: 'stage_1_plan' }>;
+export type Stage1ReportVersion = Extract<
+  StepVersion,
+  { step: 'stage_1_report' }
+>;
+export type Stage2PlanVersion = Extract<StepVersion, { step: 'stage_2_plan' }>;
+export type Stage2ReportVersion = Extract<
+  StepVersion,
+  { step: 'stage_2_report' }
+>;
+export type StageStepVersion =
+  | Stage1PlanVersion
+  | Stage1ReportVersion
+  | Stage2PlanVersion
+  | Stage2ReportVersion;
+
+/** The Stage steps in the order the server lists their latest versions. */
+const STAGE_STEPS = [
+  'stage_1_plan',
+  'stage_1_report',
+  'stage_2_plan',
+  'stage_2_report',
+] as const;
 
 export type CertificationNextStep =
   | 'application'
@@ -192,6 +226,10 @@ export type CertificationNextStep =
   | 'team'
   | 'team_decision'
   | 'stage_1_plan'
+  | 'stage_1_report'
+  | 'stage_2_plan'
+  | 'stage_2_report'
+  | 'recommendation'
   | null;
 
 export interface CaseSummary {
@@ -219,6 +257,11 @@ export interface CaseDetail extends CaseSummary {
   team: TeamVersion | null;
   /** The latest decision, which may concern an earlier team version. */
   teamDecision: TeamDecisionVersion | null;
+  /** The latest version of each Stage plan and report, when recorded. */
+  stage1Plan: Stage1PlanVersion | null;
+  stage1Report: Stage1ReportVersion | null;
+  stage2Plan: Stage2PlanVersion | null;
+  stage2Report: Stage2ReportVersion | null;
 }
 
 /** One exact frozen PDF of the Case's Client, attached with its role. */
@@ -331,9 +374,62 @@ export function parseCaseDetail(
       body.teamDecision === null
         ? null
         : teamDecisionVersion(body.teamDecision),
+    ...stageVersions(body.stages),
   };
   if (!consistent(detail)) invalid();
   return detail;
+}
+
+/**
+ * The latest version of each recorded Stage step, each step at most once
+ * and in the server's order.
+ */
+function stageVersions(
+  value: unknown,
+): Pick<
+  CaseDetail,
+  'stage1Plan' | 'stage1Report' | 'stage2Plan' | 'stage2Report'
+> {
+  const versions = list(value, 0, STAGE_STEPS.length).map(parseStepVersion);
+  const order = versions.map((version) =>
+    STAGE_STEPS.findIndex((step) => step === version.step),
+  );
+  // Each Stage step at most once, in the server's order.
+  if (
+    order.some(
+      (position, index) =>
+        position <= (order[index - 1] ?? Number.NEGATIVE_INFINITY),
+    )
+  )
+    invalid();
+  const stages: Pick<
+    CaseDetail,
+    'stage1Plan' | 'stage1Report' | 'stage2Plan' | 'stage2Report'
+  > = {
+    stage1Plan: null,
+    stage1Report: null,
+    stage2Plan: null,
+    stage2Report: null,
+  };
+  for (const version of versions)
+    switch (version.step) {
+      case 'stage_1_plan':
+        stages.stage1Plan = version;
+        break;
+      case 'stage_1_report':
+        stages.stage1Report = version;
+        break;
+      case 'stage_2_plan':
+        stages.stage2Plan = version;
+        break;
+      case 'stage_2_report':
+        stages.stage2Report = version;
+        break;
+      default:
+        // Another step listed among the Stage records.
+        invalid();
+    }
+  return stages;
 }
 
 /** The duration-proposal read: a proposal, a manual case or its refusals. */
@@ -545,6 +641,10 @@ function parseNextStep(value: unknown): CertificationNextStep {
     case 'team':
     case 'team_decision':
     case 'stage_1_plan':
+    case 'stage_1_report':
+    case 'stage_2_plan':
+    case 'stage_2_report':
+    case 'recommendation':
       return value;
     default:
       return invalid();
@@ -621,10 +721,66 @@ function consistent(detail: CaseDetail): boolean {
     )
       return false;
   }
+  if (!stagesConsistent(detail)) return false;
   if (detail.status === 'rejected')
     return review?.value.outcome === 'rejected' && detail.nextStep === null;
   if (review?.value.outcome === 'rejected') return false;
   return detail.nextStep === expectedNextStep(detail);
+}
+
+/**
+ * Stage records follow an approved team: the first decision approves the
+ * first team and precedes the first plan, since a later team version may
+ * await its own decision while the plans stay. Each report follows its plan
+ * and Stage 2 follows a Stage 1 report; a correction may come later, but a
+ * first version precedes what depends on it. Every step version is recorded
+ * at its own revision, which the Case has reached.
+ */
+function stagesConsistent(detail: CaseDetail): boolean {
+  const {
+    teamDecision: decision,
+    stage1Plan,
+    stage1Report,
+    stage2Plan,
+    stage2Report,
+  } = detail;
+  const versions = [
+    detail.application,
+    detail.applicationReview,
+    detail.duration,
+    detail.agreement,
+    detail.team,
+    decision,
+    stage1Plan,
+    stage1Report,
+    stage2Plan,
+    stage2Report,
+  ].flatMap((version) => (version ? [version.caseRevision] : []));
+  if (
+    new Set(versions).size !== versions.length ||
+    versions.some((revision) => revision > detail.revision)
+  )
+    return false;
+  if (!stage1Plan) return !stage1Report && !stage2Plan && !stage2Report;
+  if (
+    !decision ||
+    (decision.version === 1 &&
+      (decision.value.decision !== 'approved' ||
+        decision.caseRevision > stage1Plan.caseRevision))
+  )
+    return false;
+  const follows = (
+    later: { caseRevision: number } | null,
+    earlier: { version: number; caseRevision: number } | null,
+  ) =>
+    later === null ||
+    (earlier !== null &&
+      !(earlier.version === 1 && earlier.caseRevision > later.caseRevision));
+  return (
+    follows(stage1Report, stage1Plan) &&
+    follows(stage2Plan, stage1Report) &&
+    follows(stage2Report, stage2Plan)
+  );
 }
 
 /** The server's derivation of the next step of an open Case. */
@@ -637,7 +793,13 @@ function expectedNextStep(detail: CaseDetail): CertificationNextStep {
   if (!team) return 'team';
   if (!decision || decision.value.teamVersion !== team.version)
     return 'team_decision';
-  return decision.value.decision === 'returned' ? 'team' : 'stage_1_plan';
+  if (decision.value.decision === 'returned') return 'team';
+  if (!detail.stage1Plan) return 'stage_1_plan';
+  if (detail.stage1Report?.value.conclusion !== 'ready')
+    return 'stage_1_report';
+  if (!detail.stage2Plan) return 'stage_2_plan';
+  if (!detail.stage2Report) return 'stage_2_report';
+  return 'recommendation';
 }
 
 function parseStepVersion(value: unknown): StepVersion {
@@ -694,7 +856,113 @@ function parseStepVersion(value: unknown): StepVersion {
       value: teamDecisionValue(row.value),
     };
   }
-  return invalid();
+  // A new Stage plan or report version states why it replaces the latest.
+  const stage = { ...base, reason: correctionReasonOf(base) };
+  switch (row.step) {
+    case 'stage_1_plan':
+      return {
+        ...stage,
+        step: 'stage_1_plan',
+        value: stagePlanValue(row.value),
+      };
+    case 'stage_2_plan':
+      return {
+        ...stage,
+        step: 'stage_2_plan',
+        value: stagePlanValue(row.value),
+      };
+    case 'stage_1_report':
+      return {
+        ...stage,
+        step: 'stage_1_report',
+        value: stage1ReportValue(row.value),
+      };
+    case 'stage_2_report':
+      return {
+        ...stage,
+        step: 'stage_2_report',
+        value: stage2ReportValue(row.value),
+      };
+    default:
+      return invalid();
+  }
+}
+
+/** Only a correction states a reason; the first version never does. */
+function correctionReasonOf(base: {
+  version: number;
+  reason: string | null;
+}): string | null {
+  if ((base.version === 1) !== (base.reason === null)) invalid();
+  return base.reason;
+}
+
+function stagePlanValue(value: unknown): StagePlan {
+  const body = object(value);
+  const plan: StagePlan = {
+    startDate: calendarDate(body.startDate),
+    endDate: calendarDate(body.endDate),
+    onSiteDays: dayAmount(body.onSiteDays, false),
+    remoteDays: dayAmount(body.remoteDays, true),
+    objectives: text(body.objectives, STAGE_LIMITS.objectives),
+    scope: text(body.scope, STAGE_LIMITS.scope),
+    planAttachmentId: text(body.planAttachmentId),
+    sentToClientOn:
+      body.sentToClientOn === null ? null : calendarDate(body.sentToClientOn),
+    deviationNote: optionalText(body.deviationNote, STAGE_LIMITS.deviationNote),
+  };
+  // ISO calendar dates compare in calendar order.
+  if (plan.startDate > plan.endDate) invalid();
+  return plan;
+}
+
+function stage1ReportValue(value: unknown): Stage1Report {
+  const body = object(value);
+  if (body.documentReviewCompleted !== true) invalid();
+  const conclusion =
+    body.conclusion === 'ready' || body.conclusion === 'not_ready'
+      ? body.conclusion
+      : invalid();
+  return {
+    reportDate: calendarDate(body.reportDate),
+    documentReviewCompleted: true,
+    conclusion,
+    conclusionNote: text(body.conclusionNote, STAGE_LIMITS.conclusionNote),
+    reportAttachmentId: text(body.reportAttachmentId),
+    participantListAttachmentId: optionalText(
+      body.participantListAttachmentId,
+      Number.MAX_SAFE_INTEGER,
+    ),
+  };
+}
+
+function stage2ReportValue(value: unknown): Stage2Report {
+  const body = object(value);
+  return {
+    reportDate: calendarDate(body.reportDate),
+    summary: text(body.summary, STAGE_LIMITS.summary),
+    reportAttachmentId: text(body.reportAttachmentId),
+    participantListAttachmentId: optionalText(
+      body.participantListAttachmentId,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    annexAttachmentId: optionalText(
+      body.annexAttachmentId,
+      Number.MAX_SAFE_INTEGER,
+    ),
+  };
+}
+
+function calendarDate(value: unknown): string {
+  return typeof value === 'string' && isCalendarDate(value) ? value : invalid();
+}
+
+/** Auditor-days as the server accepts them; zero only where allowed. */
+function dayAmount(value: unknown, zeroAllowed: boolean): string {
+  return typeof value === 'string' &&
+    stageDayCents(value, { zeroAllowed }) !== undefined
+    ? value
+    : invalid();
 }
 
 /** A proposed team, held to the server's composition rules. */
