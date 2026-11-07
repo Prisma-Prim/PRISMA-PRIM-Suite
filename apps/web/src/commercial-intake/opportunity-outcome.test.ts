@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   continuesOutcomeHistory,
   isConsistentOutcomeSnapshot,
+  isOpportunityOutcomeStatus,
   isOutcomeHistoryPage,
+  MAXIMUM_OPPORTUNITY_VERSION,
+  OPPORTUNITY_OUTCOME_STATUSES,
   type OutcomeHistoryEntry,
 } from './opportunity-outcome';
 
@@ -24,6 +27,32 @@ function entry(overrides: Record<string, unknown>) {
   };
 }
 const page = (entries: unknown[]) => ({ entries });
+// A page with older entries to follow.
+const continued = (entries: unknown[]) => ({
+  entries,
+  nextCursor: 'opaque-1',
+});
+
+// The valid fields of each kind of transition, from OPEN unless stated.
+const valid = {
+  win: {},
+  loss: { newStatus: 'LOST', lossReasonCode: 'PRICE' },
+  otherLoss: { newStatus: 'LOST', lossReasonCode: 'OTHER', note: 'Merged' },
+  hold: { newStatus: 'ON_HOLD', reason: 'Waiting' },
+  resume: { previousStatus: 'ON_HOLD', newStatus: 'OPEN' },
+  reopen: { previousStatus: 'WON', newStatus: 'OPEN', reason: 'Again' },
+};
+// The section 16.3 bound.
+const longestText = 'x'.repeat(500);
+
+describe('outcome statuses', () => {
+  it('recognises exactly the section 23 statuses', () => {
+    for (const status of OPPORTUNITY_OUTCOME_STATUSES)
+      expect(isOpportunityOutcomeStatus(status)).toBe(true);
+    for (const value of ['PENDING', 'open', '', null, undefined])
+      expect(isOpportunityOutcomeStatus(value)).toBe(false);
+  });
+});
 
 describe('outcome history boundary', () => {
   it('accepts every permitted transition with exactly its recorded fields', () => {
@@ -65,45 +94,117 @@ describe('outcome history boundary', () => {
     ).toBe(true);
   });
 
-  it.each<[string, Record<string, unknown>]>([
-    ['the same status', { previousStatus: 'OPEN', newStatus: 'OPEN' }],
-    ['a pair outside the table', { previousStatus: 'WON', newStatus: 'LOST' }],
-    ['a loss without its code', { newStatus: 'LOST' }],
+  // Each case starts from a valid entry and breaks one rule. The page has a
+  // cursor, so it need not start at OPEN and only the entry rules apply.
+  it.each<[string, Record<string, unknown>, Record<string, unknown>]>([
+    ['the same status', valid.win, { newStatus: 'OPEN' }],
+    ['a pair outside the table', valid.loss, { previousStatus: 'WON' }],
+    ['an unknown previous status', valid.win, { previousStatus: 'PENDING' }],
+    ['an unknown new status', valid.win, { newStatus: 'PENDING' }],
+    ['a loss without its code', valid.loss, { lossReasonCode: null }],
+    ['an unknown loss code', valid.loss, { lossReasonCode: 'EXPENSIVE' }],
+    ['an Other loss without a note', valid.otherLoss, { note: null }],
+    ['a loss with a reason', valid.loss, { reason: 'Too expensive' }],
+    ['a loss with a blank note', valid.loss, { note: ' ' }],
     [
-      'an Other loss without a note',
-      { newStatus: 'LOST', lossReasonCode: 'OTHER' },
+      'a loss note over 500 characters',
+      { ...valid.loss, note: longestText },
+      { note: `${longestText}x` },
     ],
-    ['a hold without a reason', { newStatus: 'ON_HOLD' }],
-    ['a hold with a blank reason', { newStatus: 'ON_HOLD', reason: '  ' }],
-    ['a win with a reason', { reason: 'Signed' }],
-    ['a reopen without a reason', { previousStatus: 'WON', newStatus: 'OPEN' }],
+    ['a hold without a reason', valid.hold, { reason: null }],
+    ['a hold with a blank reason', valid.hold, { reason: '  ' }],
     [
-      'a resume with a reason',
-      { previousStatus: 'ON_HOLD', newStatus: 'OPEN', reason: 'Back' },
+      'a hold reason over 500 characters',
+      { ...valid.hold, reason: longestText },
+      { reason: `${longestText}x` },
+    ],
+    ['a hold with a note', valid.hold, { note: 'Until January' }],
+    ['a loss code on a hold', valid.hold, { lossReasonCode: 'PRICE' }],
+    ['a win with a reason', valid.win, { reason: 'Signed' }],
+    ['a win with a loss code', valid.win, { lossReasonCode: 'PRICE' }],
+    ['a win with a note', valid.win, { note: 'Signed' }],
+    ['a reopen without a reason', valid.reopen, { reason: null }],
+    ['a resume with a reason', valid.resume, { reason: 'Back' }],
+    ['the initial version', valid.win, { version: 1 }],
+    ['a fractional version', valid.win, { version: 2.5 }],
+    [
+      'a version above the database integer',
+      { version: MAXIMUM_OPPORTUNITY_VERSION },
+      { version: MAXIMUM_OPPORTUNITY_VERSION + 1 },
+    ],
+    ['an extra field', valid.win, { extra: true }],
+    ['a null actor', valid.win, { actor: null }],
+    ['an actor that is not an object', valid.win, { actor: 'Ada' }],
+    [
+      'an actor with an extra field',
+      valid.win,
+      { actor: { ...actor, role: 'owner' } },
     ],
     [
-      'a loss code on a hold',
-      { newStatus: 'ON_HOLD', reason: 'Wait', lossReasonCode: 'PRICE' },
+      'an actor with a numeric membership',
+      valid.win,
+      { actor: { ...actor, workspaceMembershipId: 7 } },
     ],
-    ['the initial version', { version: 1 }],
-    ['a version above the database integer', { version: 2_147_483_648 }],
-    ['an extra field', { extra: true }],
-    ['a blank actor label', { actor: { ...actor, displayLabel: ' ' } }],
-  ])('rejects %s', (_case, overrides) => {
-    expect(isOutcomeHistoryPage(page([entry(overrides)]), isTimestamp)).toBe(
-      false,
+    [
+      'an actor with a numeric label',
+      valid.win,
+      { actor: { ...actor, displayLabel: 7 } },
+    ],
+    [
+      'a blank actor label',
+      valid.win,
+      { actor: { ...actor, displayLabel: ' ' } },
+    ],
+  ])('rejects %s', (_case, fields, broken) => {
+    expect(isOutcomeHistoryPage(continued([entry(fields)]), isTimestamp)).toBe(
+      true,
     );
+    expect(
+      isOutcomeHistoryPage(
+        continued([entry({ ...fields, ...broken })]),
+        isTimestamp,
+      ),
+    ).toBe(false);
+  });
+
+  // Each case breaks one rule of the valid page, a complete one-entry history.
+  it.each<[string, unknown]>([
+    ['a null page', null],
+    ['a page that is not an object', 'page'],
+    ['a list instead of a page', [entry(valid.win)]],
+    ['null entries', { entries: null }],
+    ['entries that are not a list', { entries: 'entries' }],
+    ['a null entry', { entries: [null] }],
+    ['a null cursor', { entries: [entry(valid.win)], nextCursor: null }],
+    ['a numeric cursor', { entries: [entry(valid.win)], nextCursor: 1 }],
+    [
+      'a cursor that is not text',
+      { entries: [entry(valid.win)], nextCursor: ['opaque-1'] },
+    ],
+  ])('rejects %s', (_case, value) => {
+    expect(isOutcomeHistoryPage(page([entry(valid.win)]), isTimestamp)).toBe(
+      true,
+    );
+    expect(isOutcomeHistoryPage(value, isTimestamp)).toBe(false);
   });
 
   it('rejects pages that are too long, out of order or with duplicate versions', () => {
+    const hold = (version: number) => entry({ ...valid.hold, version });
+    const resume = (version: number) => entry({ ...valid.resume, version });
+    // Hold then resume is connected and starts at OPEN, so only the version
+    // order can reject these pages.
+    expect(isOutcomeHistoryPage(page([resume(3), hold(2)]), isTimestamp)).toBe(
+      true,
+    );
+    expect(isOutcomeHistoryPage(page([resume(2), hold(3)]), isTimestamp)).toBe(
+      false,
+    );
+    expect(isOutcomeHistoryPage(page([resume(2), hold(2)]), isTimestamp)).toBe(
+      false,
+    );
     // Alternating hold and resume keeps a connected chain at any length.
     const at = (version: number) =>
-      version % 2 === 0
-        ? entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version })
-        : entry({ previousStatus: 'ON_HOLD', newStatus: 'OPEN', version });
-    expect(isOutcomeHistoryPage(page([at(3), at(2)]), isTimestamp)).toBe(true);
-    expect(isOutcomeHistoryPage(page([at(2), at(3)]), isTimestamp)).toBe(false);
-    expect(isOutcomeHistoryPage(page([at(2), at(2)]), isTimestamp)).toBe(false);
+      version % 2 === 0 ? hold(version) : resume(version);
     const fiftyOne = Array.from({ length: 51 }, (_, index) => at(60 - index));
     expect(
       isOutcomeHistoryPage(
@@ -147,6 +248,8 @@ describe('outcome history boundary', () => {
       outcomeHistory: { entries: [lost] },
     };
     expect(isConsistentOutcomeSnapshot(snapshot)).toBe(true);
+    // Right after the change, the Opportunity has the entry's version.
+    expect(isConsistentOutcomeSnapshot({ ...snapshot, version: 3 })).toBe(true);
     expect(isConsistentOutcomeSnapshot({ ...snapshot, status: 'WON' })).toBe(
       false,
     );
