@@ -923,7 +923,8 @@ export class CertificationService {
           input.payload.planAttachmentId,
           ['plan'],
         );
-        const version = (latest(steps, step)?.version ?? 0) + 1;
+        const previous = latest(steps, step);
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
@@ -935,6 +936,7 @@ export class CertificationService {
           current,
           step,
           version,
+          replaces: previous,
           payload: input.payload,
           reason: input.reason,
           action: 'certification_case.stage_planned',
@@ -1019,7 +1021,8 @@ export class CertificationService {
             input.payload.annexAttachmentId,
             ['report', 'evidence', 'iso22000_annex'],
           );
-        const version = (latest(steps, step)?.version ?? 0) + 1;
+        const previous = latest(steps, step);
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
@@ -1031,6 +1034,7 @@ export class CertificationService {
           current,
           step,
           version,
+          replaces: previous,
           payload: input.payload,
           reason: input.reason,
           action: 'certification_case.stage_reported',
