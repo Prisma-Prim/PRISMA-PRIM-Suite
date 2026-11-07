@@ -1,0 +1,122 @@
+name: Weekly mutation
+
+# Weekly, non-blocking mutation testing of the allowlisted sensitive modules
+# (scripts/mutation/modules.mjs) that changed on main in the last 7 days,
+# after the weekly report. It posts one comment on the open
+# `weekly-inspection` issue and never gates a pull request.
+on:
+  schedule:
+    - cron: '30 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# No workflow concurrency: nothing cancels a run.
+
+jobs:
+  select:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      modules: ${{ steps.select.outputs.modules }}
+      since: ${{ steps.select.outputs.since }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Select the allowlisted modules changed on main this week
+        id: select
+        run: node scripts/weekly-mutation.mjs select
+
+  mutate:
+    needs: select
+    if: ${{ needs.select.outputs.modules != '[]' }}
+    name: mutate (${{ matrix.id }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select.outputs.modules) }}
+    env:
+      STRYKER_VERSION: 10.1.1
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: 'false'
+          chromium: 'false'
+
+      # Never a repository dependency. Stryker rewrites the copied tsconfig
+      # with TypeScript, so it gets the repository's exact version.
+      - name: Install StrykerJS outside the workspace
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/stryker" --no-save
+          --no-package-lock --no-audit --no-fund --ignore-scripts
+          "@stryker-mutator/core@$STRYKER_VERSION"
+          "typescript@$(node -p "require('./package.json').devDependencies.typescript")"
+
+      - name: Mutate the module
+        working-directory: ${{ matrix.project }}
+        env:
+          MUTATION_MODULE: ${{ matrix.id }}
+        run: node "$RUNNER_TEMP/stryker/node_modules/@stryker-mutator/core/bin/stryker.js" run "$GITHUB_WORKSPACE/scripts/mutation/stryker.config.mjs"
+
+      - name: Upload the mutation report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-mutation-${{ matrix.id }}
+          path: ${{ matrix.report }}
+          if-no-files-found: warn
+
+  report:
+    needs: [select, mutate]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    # One post at a time, so two runs never open two weekly-inspection issues.
+    concurrency:
+      group: weekly-inspection-issue
+      cancel-in-progress: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Download the mutation reports
+        if: ${{ needs.mutate.result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: weekly-mutation-*
+          path: ${{ runner.temp }}/mutation-reports
+          merge-multiple: true
+
+      - name: Post the weekly mutation comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MUTATION_MODULES: ${{ needs.select.outputs.modules }}
+          MUTATION_SINCE: ${{ needs.select.outputs.since }}
+          MUTATION_REPORTS: ${{ runner.temp }}/mutation-reports
+        run: node scripts/weekly-mutation.mjs report
