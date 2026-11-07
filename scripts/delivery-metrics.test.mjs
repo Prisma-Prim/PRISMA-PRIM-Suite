@@ -544,6 +544,110 @@ test('commit file lists are fetched once per commit and only when needed', async
   );
 });
 
+test('a revert is counted even when its target merged before the window', async () => {
+  const merged = [
+    pullRequest({
+      number: 201,
+      title: 'fix: roll back broken setting',
+      body: 'Reverts #100 because it broke the import.',
+      at: '2026-11-04T12:00:00Z',
+      commits: [commit('r1', '2026-11-04T11:00:00Z')],
+    }),
+    // Advice on how to undo a change is not a revert.
+    pullRequest({
+      number: 202,
+      title: 'feat: new setting',
+      body: 'How to revert: revert #202, or revert #150 first.',
+      at: '2026-11-04T13:00:00Z',
+      commits: [commit('r2', '2026-11-04T12:30:00Z')],
+    }),
+  ];
+  const { out } = await run(
+    ['--since', '2026-11-01'],
+    stubGh({ merged, closed: [], commits: [] }),
+  );
+  const reverts = section(out, 'Reverts');
+
+  // #100 is only annotated, and not as merged in the window.
+  assert.match(reverts, /\[#201\][^\n]*: reverts #100$/mu);
+  assert.doesNotMatch(reverts, /#202/u);
+});
+
+test('finding outcomes use only the evidence that existed at merge', async () => {
+  const finding = (path, { resolved = false, replies = [] } = {}) =>
+    thread({
+      path,
+      resolved,
+      comments: [
+        comment(
+          'chatgpt-codex-connector[bot]',
+          '2026-11-04T09:00:00Z',
+          codexBody('P2', `Finding in ${path}`),
+        ),
+        ...replies,
+      ],
+    });
+  const merged = [
+    pullRequest({
+      number: 301,
+      title: 'fix: delta',
+      at: '2026-11-04T12:00:00Z',
+      commits: [
+        commit('k1', '2026-11-04T08:00:00Z'),
+        // Authored after the merge: it cannot have fixed anything at merge.
+        commit('k2', '2026-11-04T13:00:00Z'),
+      ],
+      reviews: [codexReview('2026-11-04T09:00:00Z')],
+      threads: [
+        // A fix claimed only after the merge.
+        finding('src/a.ts', {
+          replies: [
+            comment('Dan-Popescu', '2026-11-05T09:00:00Z', 'Fixed in k1.'),
+          ],
+        }),
+        // A follow-up recorded only after the merge.
+        finding('src/b.ts', {
+          replies: [
+            comment(
+              'Dan-Popescu',
+              '2026-11-05T09:00:00Z',
+              'Recorded as a follow-up.',
+            ),
+          ],
+        }),
+        // The same fix reply, but before the merge: the control.
+        finding('src/c.ts', {
+          replies: [
+            comment('Dan-Popescu', '2026-11-04T11:00:00Z', 'Fixed in k1.'),
+          ],
+        }),
+        // Resolved, and touched by a commit that postdates the merge.
+        finding('src/d.ts', { resolved: true }),
+      ],
+    }),
+  ];
+  const { out } = await run(
+    ['--since', '2026-11-01'],
+    stubGh({
+      merged,
+      closed: [],
+      commits: [],
+      files: { k2: ['src/d.ts'] },
+    }),
+  );
+  const findings = section(out, 'Automated reviewer findings');
+
+  assert.match(findings, /\| P2 \| 4 \| 1 \| 0 \| 3 \|/u);
+  for (const path of ['a', 'b', 'd']) {
+    assert.match(findings, new RegExp(`\\(\`src/${path}\\.ts\`\\)`, 'u'));
+  }
+  assert.doesNotMatch(findings, /src\/c\.ts/u);
+  // GitHub dates neither resolution nor the body, and the report says so.
+  assert.match(findings, /read as of this report/u);
+  // The post-merge commit is not a review round either.
+  assert.match(section(out, 'Review rounds'), /every one had 0/u);
+});
+
 test('arguments are validated', async () => {
   assert.throws(
     () => parseArguments(['--since', 'last week'], NOW),

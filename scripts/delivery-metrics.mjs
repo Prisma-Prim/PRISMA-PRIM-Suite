@@ -20,7 +20,10 @@
 //   commented file; otherwise `follow-up` when a reply or the follow-up part
 //   of the pull request body (from a line mentioning follow-up to the next
 //   heading) mentions follow-up or names the commented file; otherwise `open`
-//   (this includes a finding answered without a fix or a follow-up).
+//   (this includes a finding answered without a fix or a follow-up). Replies
+//   and commits count only up to the pull request's merge, so "open" means
+//   open at merge; GitHub does not date a thread's resolution, so the resolved
+//   flag and the pull request body are read as they stand at report time.
 // - CI: the earliest `quality` check run of a pull request event that was not
 //   cancelled or skipped, across the commits left in the pull request.
 //   Commits dropped by a force-push are not seen. A cancelled workflow run ends
@@ -261,6 +264,7 @@ function normalizePullRequest(node) {
     body: node.body ?? '',
     url: node.url,
     merged: node.merged,
+    mergedAt: node.mergedAt,
     mergeCommit: node.mergeCommit?.oid ?? null,
     commits: commits.map((commit) => ({
       oid: commit.oid,
@@ -286,9 +290,13 @@ function normalizePullRequest(node) {
 
 // ---- Metrics ----------------------------------------------------------------
 
+/** Non-merge commits authored after `moment` and no later than the merge. */
 function commitsAfter(pullRequest, moment) {
   return pullRequest.commits.filter(
-    (commit) => !commit.isMerge && commit.authoredDate > moment,
+    (commit) =>
+      !commit.isMerge &&
+      commit.authoredDate > moment &&
+      commit.authoredDate <= pullRequest.mergedAt,
   );
 }
 
@@ -352,9 +360,15 @@ function followUpText(body) {
   return collected.join('\n');
 }
 
+// Evidence is limited to what existed when the pull request merged: replies and
+// commits up to `mergedAt`. GitHub does not date a thread's resolution, so the
+// resolved flag (and the pull request body) is read as it stands at report time.
 async function classifyFinding(pullRequest, thread, filesOf) {
   const [finding, ...replies] = thread.comments;
-  const answers = replies.filter((reply) => !isAutomated(reply.author));
+  const answers = replies.filter(
+    (reply) =>
+      !isAutomated(reply.author) && reply.createdAt <= pullRequest.mergedAt,
+  );
   if (answers.some((reply) => FIXED_REPLY.test(reply.body))) return 'fixed';
 
   if (thread.resolved) {
@@ -450,10 +464,12 @@ function findReverts(merged, branchCommits) {
     const numbers = new Set(
       REVERT_TITLE.test(title) ? pullRequestNumbers(title, own) : [],
     );
+    // Third person only: "revert #12" in a how-to-revert note is advice, not a
+    // revert. The target need not have merged in the window.
     for (const match of body.matchAll(
-      /\breverts?\s+(?:PR\s+|pull request\s+)?#(\d+)/giu,
+      /\breverts\s+(?:PR\s+|pull request\s+)?#(\d+)/giu,
     )) {
-      numbers.add(Number(match[1]));
+      if (Number(match[1]) !== own) numbers.add(Number(match[1]));
     }
     for (const match of body.matchAll(
       /\breverts commit ([0-9a-f]{7,40})\b/giu,
@@ -476,10 +492,9 @@ function findReverts(merged, branchCommits) {
       pullRequest.body,
       pullRequest.number,
     );
-    const isRevert =
-      REVERT_TITLE.test(pullRequest.title) ||
-      reverted.some(({ inWindow }) => inWindow);
-    if (isRevert) {
+    // `inWindow` only annotates a target in the report; it never decides
+    // whether this pull request is a revert.
+    if (REVERT_TITLE.test(pullRequest.title) || reverted.length > 0) {
       reverts.push({
         label: `#${pullRequest.number}`,
         url: pullRequest.url,
@@ -613,6 +628,10 @@ export function renderReport(metrics) {
         `| ${severity} | ${entries.length} | ${count('fixed')} | ${count('follow-up')} | ${count('open')} |`,
       );
     }
+    lines.push(
+      '',
+      "Outcomes use replies and commits up to each pull request's merge. The resolved flag and the pull request body are read as of this report (GitHub does not date them).",
+    );
     const open = findings.findings.filter(({ outcome }) => outcome === 'open');
     if (open.length > 0) {
       lines.push('', 'Open at merge:');
