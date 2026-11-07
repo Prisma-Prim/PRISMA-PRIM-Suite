@@ -764,9 +764,16 @@ describe('Certification Case workspace', () => {
     expect(definition(durationRegion(), 'Computation')).toBe(
       'Computed proposal',
     );
+    // The confirmed duration opens the agreement step.
+    await expectInRegion(
+      'Certification agreement',
+      'No certification agreement is recorded yet.',
+    );
     expect(
-      screen.getByText(
-        'The audit duration is confirmed. The next step, the certification agreement, is not available in this version yet.',
+      within(
+        screen.getByRole('region', { name: 'Certification agreement' }),
+      ).getByText(
+        'No document is attached with the role Certification agreement yet. Attach the signed original in the dossier register first.',
       ),
     ).toBeVisible();
     expect(timelineTitles()).toEqual([

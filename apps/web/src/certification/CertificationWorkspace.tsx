@@ -19,6 +19,7 @@ import {
   useScopedOperation,
   type ScopedOperation,
 } from '../api/use-scoped-operation';
+import { receivedAuditSourceNativeAuthority } from '../documents/received-audit-source-access';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { Select } from '../presentation/Select';
@@ -26,6 +27,16 @@ import {
   certificationAuthority,
   certificationContextKey,
 } from './certification-access';
+import {
+  agreementAttachments,
+  agreementDraftFor,
+  agreementFromDraft,
+  attachFromDraft,
+  emptyAttachDraft,
+  utcToday,
+  type AgreementCheck,
+  type AgreementDraft,
+} from './certification-documents-draft';
 import {
   useCertificationCopy,
   type CertificationMessageKey,
@@ -53,14 +64,21 @@ import {
   CERTIFICATION_LIMITS,
   parseCaseDetail,
   parseCaseList,
+  parseDocumentRegister,
   parseDurationResult,
+  parseEligibleDocuments,
   parseLegalEntityOptions,
   parseTimeline,
   type CaseDetail,
   type CaseList,
   type CaseTimeline,
+  type CertificationAttachment,
+  type DocumentRegister,
+  type EligibleDocuments,
   type LegalEntityOption,
 } from './certification-response';
+import { AgreementForm, AttachForm } from './CertificationDocumentForms';
+import { AgreementView, DossierRegister } from './CertificationDocumentViews';
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
@@ -86,7 +104,11 @@ type View<T> =
   | { status: 'loading' }
   | { status: 'ready'; value: T }
   | { status: 'error' | 'denied' | 'unavailable' };
-type CaseView = { caseDetail: CaseDetail; timeline: CaseTimeline };
+type CaseView = {
+  caseDetail: CaseDetail;
+  timeline: CaseTimeline;
+  register: DocumentRegister;
+};
 /** One serialized command and its key, retried unchanged when uncertain. */
 type Intent = {
   path: string;
@@ -99,7 +121,27 @@ type Feedback =
   | { status: 'saving' | 'uncertain'; intent: Intent }
   /** `reload`: the shown Case is outdated; saving waits for a reload. */
   | { status: 'refused'; message: CertificationMessageKey; reload: boolean };
-type MutationKind = 'open' | 'application' | 'review' | 'duration';
+type MutationKind =
+  'open' | 'application' | 'review' | 'duration' | 'attach' | 'agreement';
+/**
+ * Whose authority a call needs. Reading the Case needs none of the Document
+ * rights, so a refused Document call leaves the Case to the authority recheck.
+ */
+type Access = 'certification' | 'documents';
+/** The eligible PDFs of one Case, read under the Document rights captured. */
+type Eligible = {
+  caseId: string;
+  rights: string;
+  view: View<EligibleDocuments>;
+};
+/** The download of one attachment, under the Document rights it began with. */
+type Download =
+  | { status: 'idle' }
+  | {
+      status: 'pending' | 'failed' | 'denied' | 'unavailable';
+      attachmentId: string;
+      rights: string;
+    };
 /**
  * The duration-proposal read, keyed by the serialized inputs it computed so a
  * later edit of the inputs makes it outdated instead of confirmable.
@@ -112,6 +154,7 @@ type Proposal =
 
 const IDLE: Feedback = { status: 'idle' };
 const NO_PROPOSAL: Proposal = { status: 'idle' };
+const NO_DOWNLOAD: Download = { status: 'idle' };
 const ABANDONED: ApiResult<unknown> = { status: 'error' };
 
 /**
@@ -146,6 +189,16 @@ function CertificationRegistry(
   const entitiesOperation = useScopedOperation(props.scope);
   const mutationOperation = useScopedOperation(props.scope);
   const proposalOperation = useScopedOperation(props.scope);
+  /**
+   * The captured right to read received-source content, which reading,
+   * listing and attaching the Client's PDFs need. Its change retires their
+   * work without retiring the Case, which needs no Document right.
+   */
+  const documentRights =
+    receivedAuditSourceNativeAuthority(actor)?.content ?? null;
+  const documentScope = JSON.stringify([props.scope, documentRights]);
+  const eligibleOperation = useScopedOperation(documentScope);
+  const contentOperation = useScopedOperation(documentScope);
   const [list, setList] = useState<View<CaseList>>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<string>();
   const selected = useRef<string | undefined>(undefined);
@@ -172,14 +225,32 @@ function CertificationRegistry(
   const [durationOpen, setDurationOpen] = useState(false);
   const [durationFeedback, setDurationFeedback] = useState<Feedback>(IDLE);
   const [proposal, setProposal] = useState<Proposal>(NO_PROPOSAL);
+  /** The attach form is open; it reads the eligible PDFs when opened. */
+  const [attaching, setAttaching] = useState(false);
+  const [attachDraft, setAttachDraft] = useState(emptyAttachDraft);
+  const [attachFeedback, setAttachFeedback] = useState<Feedback>(IDLE);
+  const [eligible, setEligible] = useState<Eligible>();
+  /** Null until edited: a first agreement starts empty. */
+  const [agreementDraft, setAgreementDraft] = useState<AgreementDraft | null>(
+    null,
+  );
+  /** The user is editing the agreement (a first record or a correction). */
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [agreementFeedback, setAgreementFeedback] = useState<Feedback>(IDLE);
+  const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const openingTrigger = useRef<Element | null>(null);
   const busy =
     proposal.status === 'computing' ||
-    [openFeedback, applicationFeedback, reviewFeedback, durationFeedback].some(
-      (feedback) => feedback.status === 'saving',
-    );
+    [
+      openFeedback,
+      applicationFeedback,
+      reviewFeedback,
+      durationFeedback,
+      attachFeedback,
+      agreementFeedback,
+    ].some((feedback) => feedback.status === 'saving');
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
   function feedbackSetter(kind: MutationKind) {
@@ -192,6 +263,10 @@ function CertificationRegistry(
         return setReviewFeedback;
       case 'duration':
         return setDurationFeedback;
+      case 'attach':
+        return setAttachFeedback;
+      case 'agreement':
+        return setAgreementFeedback;
     }
     return unexpected(kind);
   }
@@ -203,6 +278,18 @@ function CertificationRegistry(
     setProposal(NO_PROPOSAL);
   }
 
+  function resetAttachDraft() {
+    eligibleOperation.retire();
+    setEligible(undefined);
+    setAttaching(false);
+    setAttachDraft(emptyAttachDraft());
+  }
+
+  function resetAgreementDraft() {
+    setAgreementDraft(null);
+    setAgreementOpen(false);
+  }
+
   function resetCaseDrafts() {
     setApplicationDraft(emptyApplicationDraft());
     setApplicationOpen(false);
@@ -211,6 +298,12 @@ function CertificationRegistry(
     setReviewFeedback(IDLE);
     resetDurationDraft();
     setDurationFeedback(IDLE);
+    resetAttachDraft();
+    setAttachFeedback(IDLE);
+    resetAgreementDraft();
+    setAgreementFeedback(IDLE);
+    contentOperation.retire();
+    setDownload(NO_DOWNLOAD);
   }
 
   /** Access loss retires every private value before authority is rechecked. */
@@ -237,6 +330,7 @@ function CertificationRegistry(
     signal: AbortSignal,
     path: string,
     post?: { body: string; key?: string },
+    access: Access = 'certification',
   ): Promise<ApiResult<unknown>> {
     const api = await createAuthenticatedApiClient(identity);
     if (signal.aborted) return ABANDONED;
@@ -258,31 +352,49 @@ function CertificationRegistry(
         : { companyContextId: companyId, signal, cache: 'no-store' },
     );
     if (signal.aborted) return ABANDONED;
-    if (result.status === 'unauthorized' || result.status === 'forbidden') {
+    rejectAccess(slot, signal, result, access);
+    return result;
+  }
+
+  /**
+   * A 401 or 403 rechecks authority. A lost session or a refused Certification
+   * call first retires every private value; a refused Document call keeps the
+   * Case, which needs no Document right, and lets the recheck decide.
+   */
+  function rejectAccess(
+    slot: ScopedOperation,
+    signal: AbortSignal,
+    result: ApiResult<unknown>,
+    access: Access,
+  ) {
+    if (result.status !== 'unauthorized' && result.status !== 'forbidden')
+      return;
+    if (result.status === 'unauthorized' || access === 'certification') {
       for (const other of [
         listOperation,
         detailOperation,
         entitiesOperation,
         mutationOperation,
         proposalOperation,
+        eligibleOperation,
+        contentOperation,
       ])
         if (other !== slot) other.retire();
       retirePrivateState();
-      // Settle local state first; session and actor recovery have their own owner.
-      void handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId: companyId || undefined,
-        signal,
-        onActorRevalidated: (next) =>
-          callbacks.current.onActorRevalidated?.(next),
-        onCompanyContextRejected: (id) =>
-          callbacks.current.onCompanyContextRejected?.(id),
-        onWorkspaceAccessRejected: () =>
-          callbacks.current.onWorkspaceAccessRejected?.(),
-      }).catch(() => undefined);
     }
-    return result;
+    // Settle local state first; session and actor recovery have their own owner.
+    void handleAuthenticatedAccessRejection({
+      result,
+      identity,
+      companyContextId: companyId || undefined,
+      signal,
+      onActorRevalidated: (next) =>
+        callbacks.current.onActorRevalidated?.(next),
+      onCompanyContextRejected: (id) =>
+        callbacks.current.onCompanyContextRejected?.(id),
+      onWorkspaceAccessRejected: () =>
+        callbacks.current.onWorkspaceAccessRejected?.(),
+    }).catch(() => undefined);
   }
 
   async function loadList() {
@@ -338,6 +450,8 @@ function CertificationRegistry(
       setApplicationFeedback(clear);
       setReviewFeedback(clear);
       setDurationFeedback(clear);
+      setAttachFeedback(clear);
+      setAgreementFeedback(clear);
     }
     selected.current = caseId;
     setSelectedId(caseId);
@@ -345,24 +459,42 @@ function CertificationRegistry(
     setDetail({ status: 'loading' });
     const casePath = `/certification-cases/${encodeURIComponent(caseId)}`;
     try {
-      const [record, history] = await Promise.all([
+      const [record, history, documents] = await Promise.all([
         query(detailOperation, signal, casePath),
         query(detailOperation, signal, `${casePath}/timeline`),
+        query(detailOperation, signal, `${casePath}/documents`),
       ]);
       if (signal.aborted) return;
-      if (record.status === 'ok' && history.status === 'ok') {
+      if (
+        record.status === 'ok' &&
+        history.status === 'ok' &&
+        documents.status === 'ok'
+      ) {
         const caseDetail = parseCaseDetail(record.value, {
           companyId,
           projectId,
           caseId,
         });
         const timeline = parseTimeline(history.value, caseId);
-        if (!timelineMatches(caseDetail, timeline))
+        const register = parseDocumentRegister(documents.value, caseId);
+        if (
+          !timelineMatches(caseDetail, timeline) ||
+          !registerMatches(caseDetail, timeline, register)
+        )
           throw new Error('The Certification Case changed during the read.');
-        setDetail({ status: 'ready', value: { caseDetail, timeline } });
+        setDetail({
+          status: 'ready',
+          value: { caseDetail, timeline, register },
+        });
         return;
       }
-      const status = refusal(record.status === 'ok' ? history : record);
+      const status = refusal(
+        record.status !== 'ok'
+          ? record
+          : history.status !== 'ok'
+            ? history
+            : documents,
+      );
       if (status !== 'denied') setDetail({ status });
     } catch {
       if (!signal.aborted) setDetail({ status: 'error' });
@@ -417,6 +549,8 @@ function CertificationRegistry(
         signal,
         intent.path,
         intent,
+        // Attaching qualifies the PDF under the Document rights.
+        kind === 'attach' ? 'documents' : 'certification',
       );
       if (signal.aborted) return;
       if (result.status === 'ok') {
@@ -450,11 +584,207 @@ function CertificationRegistry(
       case 'duration':
         resetDurationDraft();
         break;
+      case 'attach':
+        resetAttachDraft();
+        break;
+      case 'agreement':
+        resetAgreementDraft();
+        break;
       default:
         unexpected(kind);
     }
     void loadList();
     void openCase(confirmed.id, { reload: true });
+  }
+
+  /** The Client's frozen received PDFs, read under the current Document rights. */
+  async function loadEligible(caseId: string) {
+    if (!documentRights) return;
+    const rights = documentRights;
+    const signal = eligibleOperation.begin();
+    if (!signal) return;
+    setEligible({ caseId, rights, view: { status: 'loading' } });
+    try {
+      const result = await query(
+        eligibleOperation,
+        signal,
+        `/certification-cases/${encodeURIComponent(caseId)}/eligible-documents`,
+        undefined,
+        'documents',
+      );
+      if (signal.aborted) return;
+      setEligible({
+        caseId,
+        rights,
+        view:
+          result.status === 'ok'
+            ? {
+                status: 'ready',
+                value: parseEligibleDocuments(result.value, caseId),
+              }
+            : { status: refusal(result) },
+      });
+    } catch {
+      if (!signal.aborted)
+        setEligible({ caseId, rights, view: { status: 'error' } });
+    }
+  }
+
+  /** The eligible read of this Case under the current rights, if any. */
+  function eligibleFor(caseId: string): View<EligibleDocuments> | undefined {
+    return eligible?.caseId === caseId && eligible.rights === documentRights
+      ? eligible.view
+      : undefined;
+  }
+
+  /**
+   * Saves the exact attached PDF, released only once its type, size and
+   * SHA-256 match the register, under the Document rights it began with.
+   */
+  async function downloadAttachment(
+    caseId: string,
+    attachment: CertificationAttachment,
+  ) {
+    if (!documentRights) return;
+    const rights = documentRights;
+    const signal = contentOperation.begin();
+    if (!signal) return;
+    const settle = (status: 'failed' | 'denied' | 'unavailable') =>
+      setDownload({ status, attachmentId: attachment.id, rights });
+    setDownload({ status: 'pending', attachmentId: attachment.id, rights });
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (signal.aborted) return;
+      const result = await api.download(
+        `/certification-cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(attachment.id)}/content`,
+        {
+          companyContextId: companyId,
+          signal,
+          cache: 'no-store',
+          maximumBytes: CERTIFICATION_LIMITS.pdfBytes,
+        },
+      );
+      if (signal.aborted) return;
+      if (result.status !== 'ok') {
+        rejectAccess(contentOperation, signal, result, 'documents');
+        if (result.status === 'unauthorized') return;
+        settle(
+          result.status === 'forbidden'
+            ? 'denied'
+            : result.status === 'notFound'
+              ? 'unavailable'
+              : 'failed',
+        );
+        return;
+      }
+      const pdf = result.value;
+      if (
+        pdf.type.split(';')[0] !== 'application/pdf' ||
+        pdf.size !== attachment.sizeBytes
+      ) {
+        settle('failed');
+        return;
+      }
+      const bytes = await pdf.arrayBuffer();
+      if (signal.aborted) return;
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      if (signal.aborted) return;
+      if (hexadecimal(digest) !== attachment.sha256) {
+        settle('failed');
+        return;
+      }
+      const url = URL.createObjectURL(pdf);
+      try {
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = attachment.fileName;
+        anchor.click();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+      setDownload(NO_DOWNLOAD);
+    } catch {
+      if (!signal.aborted) settle('failed');
+    }
+  }
+
+  function submitAttach(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      !authority.manage ||
+      !documentRights ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(attachFeedback)
+    )
+      return;
+    const { caseDetail: current, register } = detail.value;
+    const listed = eligibleFor(current.id);
+    const input =
+      listed?.status === 'ready'
+        ? attachFromDraft(attachDraft, {
+            eligible: listed.value.items,
+            register: register.items,
+          })
+        : undefined;
+    if (!input) {
+      setAttachFeedback(refusedWith('attachValidation'));
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      role: input.role,
+      documentId: input.documentId,
+      versionId: input.versionId,
+      representationId: input.representationId,
+      ...(input.note === null ? {} : { note: input.note }),
+    });
+    void execute(
+      'attach',
+      reuse(attachFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/documents`,
+        body,
+        caseId: current.id,
+      }),
+    );
+  }
+
+  function submitAgreement(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      !authority.manage ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(agreementFeedback)
+    )
+      return;
+    const { caseDetail: current, register } = detail.value;
+    const check = agreementFromDraft(
+      agreementDraft ?? agreementDraftFor(null),
+      {
+        register: register.items,
+        correcting: current.agreement !== null,
+        today: utcToday(),
+      },
+    );
+    if (check.status !== 'valid') {
+      setAgreementFeedback(refusedWith(agreementMessage(check)));
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      signedOn: check.agreement.signedOn,
+      attachmentId: check.agreement.attachmentId,
+    });
+    void execute(
+      'agreement',
+      reuse(agreementFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/agreement`,
+        body,
+        caseId: current.id,
+      }),
+    );
   }
 
   function submitOpen(event: FormEvent) {
@@ -676,6 +1006,8 @@ function CertificationRegistry(
     application: `${prefix}-application-feedback`,
     review: `${prefix}-review-feedback`,
     duration: `${prefix}-duration-feedback`,
+    attach: `${prefix}-attach-feedback`,
+    agreement: `${prefix}-agreement-feedback`,
   };
 
   /** A step's confirmation is shown above the Case and survives its reload. */
@@ -896,9 +1228,13 @@ function CertificationRegistry(
               {copy('back')}
             </button>
           </div>
-          {(applicationFeedback.status === 'saved' ||
-            reviewFeedback.status === 'saved' ||
-            durationFeedback.status === 'saved') && (
+          {[
+            applicationFeedback,
+            reviewFeedback,
+            durationFeedback,
+            attachFeedback,
+            agreementFeedback,
+          ].some((feedback) => feedback.status === 'saved') && (
             <p role="status">{copy('saveConfirmed')}</p>
           )}
           {detail?.status === 'loading' && (
@@ -975,10 +1311,8 @@ function CertificationRegistry(
               {caseView.caseDetail.status === 'rejected' && (
                 <p className="certification-blocked">{copy('blockedClosed')}</p>
               )}
-              {caseView.caseDetail.nextStep === 'agreement' && (
-                <p className="certification-note">
-                  {copy('nextAgreementPending')}
-                </p>
+              {caseView.caseDetail.nextStep === 'team' && (
+                <p className="certification-note">{copy('nextTeamPending')}</p>
               )}
               <section aria-labelledby={`${prefix}-application-title`}>
                 <h5 id={`${prefix}-application-title`}>
@@ -1048,9 +1382,76 @@ function CertificationRegistry(
                   )}
                 </section>
               )}
+              <section aria-labelledby={`${prefix}-documents-title`}>
+                <h5 id={`${prefix}-documents-title`}>
+                  {copy('documentsTitle')}
+                </h5>
+                <p>{copy('documentsHelp')}</p>
+                <DossierRegister
+                  register={caseView.register}
+                  download={
+                    documentRights
+                      ? {
+                          pendingId:
+                            download.status === 'pending' &&
+                            download.rights === documentRights
+                              ? download.attachmentId
+                              : undefined,
+                          disabled: busy,
+                          onDownload: (attachment) =>
+                            void downloadAttachment(
+                              caseView.caseDetail.id,
+                              attachment,
+                            ),
+                        }
+                      : undefined
+                  }
+                />
+                {!documentRights && (
+                  <p className="certification-note">
+                    {copy('documentsNoContentRights')}
+                  </p>
+                )}
+                {downloadMessage()}
+                {authority.manage && (
+                  <>
+                    {feedbackMessage('attach', attachFeedback)}
+                    {attachStep(caseView.caseDetail, caseView.register)}
+                  </>
+                )}
+              </section>
+              {caseView.caseDetail.duration && (
+                <section aria-labelledby={`${prefix}-agreement-title`}>
+                  <h5 id={`${prefix}-agreement-title`}>
+                    {copy('agreementTitle')}
+                  </h5>
+                  {caseView.caseDetail.agreement ? (
+                    <>
+                      <VersionAttribution
+                        version={caseView.caseDetail.agreement}
+                      />
+                      <AgreementView
+                        agreement={caseView.caseDetail.agreement.value}
+                        register={caseView.register}
+                      />
+                    </>
+                  ) : (
+                    <p>{copy('agreementMissing')}</p>
+                  )}
+                  {authority.manage && (
+                    <>
+                      {feedbackMessage('agreement', agreementFeedback)}
+                      {agreementStep(caseView.caseDetail, caseView.register)}
+                    </>
+                  )}
+                </section>
+              )}
               <section aria-labelledby={`${prefix}-timeline-title`}>
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
-                <TimelineView timeline={caseView.timeline} />
+                <TimelineView
+                  timeline={caseView.timeline}
+                  register={caseView.register}
+                />
               </section>
             </>
           )}
@@ -1225,6 +1626,164 @@ function CertificationRegistry(
       />
     );
   }
+
+  /** The state of the last download, under the Document rights it began with. */
+  function downloadMessage() {
+    if (download.status === 'idle' || download.rights !== documentRights)
+      return null;
+    switch (download.status) {
+      case 'pending':
+        return <p role="status">{copy('documentDownloading')}</p>;
+      case 'failed':
+        return <p role="alert">{copy('documentDownloadFailed')}</p>;
+      case 'denied':
+        return <p role="alert">{copy('documentsDenied')}</p>;
+      case 'unavailable':
+        return <p role="alert">{copy('documentDownloadUnavailable')}</p>;
+    }
+    return unexpected(download);
+  }
+
+  /** The attach form, or the plain-language reason it is unavailable. */
+  function attachStep(current: CaseDetail, register: DocumentRegister) {
+    if (current.status !== 'open') return null;
+    if (!documentRights)
+      return <p className="certification-note">{copy('attachNoRights')}</p>;
+    const listed = eligibleFor(current.id);
+    if (!attaching || !listed)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setAttaching(true);
+            if (attachFeedback.status === 'saved') setAttachFeedback(IDLE);
+            void loadEligible(current.id);
+          }}
+        >
+          {copy('attachToggle')}
+        </button>
+      );
+    return (
+      <AttachForm
+        idPrefix={`${prefix}-attach`}
+        eligible={listed}
+        register={register.items}
+        draft={attachDraft}
+        disabled={busy}
+        submitting={attachFeedback.status === 'saving'}
+        submitBlocked={blockedUntilReload(attachFeedback)}
+        feedbackId={describedFeedback('attach', attachFeedback)}
+        onChange={(draft) => {
+          setAttachDraft(draft);
+          if (
+            attachFeedback.status === 'saved' ||
+            (attachFeedback.status === 'refused' && !attachFeedback.reload)
+          )
+            setAttachFeedback(IDLE);
+        }}
+        onSubmit={submitAttach}
+        onCancel={() => {
+          resetAttachDraft();
+          setAttachFeedback(IDLE);
+        }}
+        onReloadEligible={() => void loadEligible(current.id)}
+      />
+    );
+  }
+
+  /** The agreement form, the correction entry or why it is unavailable. */
+  function agreementStep(current: CaseDetail, register: DocumentRegister) {
+    const recorded = current.agreement;
+    if (current.status !== 'open' || !current.duration) return null;
+    if (recorded && !agreementOpen)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setAgreementDraft(agreementDraftFor(recorded));
+            setAgreementOpen(true);
+            setAgreementFeedback(IDLE);
+          }}
+        >
+          {copy('correctAgreement')}
+        </button>
+      );
+    const attachments = agreementAttachments(register.items);
+    if (attachments.length === 0)
+      return (
+        <p className="certification-blocked">{copy('agreementNoDocument')}</p>
+      );
+    return (
+      <AgreementForm
+        idPrefix={`${prefix}-agreement`}
+        draft={agreementDraft ?? agreementDraftFor(null)}
+        attachments={attachments}
+        correcting={recorded !== null}
+        today={utcToday()}
+        disabled={busy}
+        submitting={agreementFeedback.status === 'saving'}
+        submitBlocked={blockedUntilReload(agreementFeedback)}
+        feedbackId={describedFeedback('agreement', agreementFeedback)}
+        onChange={(draft) => {
+          setAgreementDraft(draft);
+          setAgreementOpen(true);
+          if (
+            agreementFeedback.status === 'saved' ||
+            (agreementFeedback.status === 'refused' &&
+              !agreementFeedback.reload)
+          )
+            setAgreementFeedback(IDLE);
+        }}
+        onSubmit={submitAgreement}
+        onCancel={
+          recorded
+            ? () => {
+                resetAgreementDraft();
+                setAgreementFeedback(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+}
+
+function agreementMessage(
+  check: Exclude<AgreementCheck, { status: 'valid' }>,
+): CertificationMessageKey {
+  switch (check.status) {
+    case 'incomplete':
+      return 'agreementValidation';
+    case 'future':
+      return 'agreementInFuture';
+    case 'reasonRequired':
+      return 'reasonRequired';
+  }
+  return unexpected(check.status);
+}
+
+/** A correction without a reason, or a first record with one, per step. */
+function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
+  switch (kind) {
+    case 'duration':
+      return 'blockedDurationCorrectionReason';
+    case 'agreement':
+      return 'blockedAgreementCorrectionReason';
+    case 'open':
+    case 'application':
+    case 'review':
+    case 'attach':
+      return 'blockedCorrectionReason';
+  }
+  return unexpected(kind);
+}
+
+function hexadecimal(digest: ArrayBuffer): string {
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
 }
 
 /** Why the proposal read gave no proposal, in plain language. */
@@ -1281,7 +1840,38 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
         detail.applicationReview.version,
       )) &&
     (detail.duration === null ||
-      recorded(detail.duration.id, detail.duration.version))
+      recorded(detail.duration.id, detail.duration.version)) &&
+    (detail.agreement === null ||
+      recorded(detail.agreement.id, detail.agreement.version))
+  );
+}
+
+/**
+ * The register belongs to the same Case read: no attachment beyond the Case
+ * revision or at a step's revision, and every recorded agreement refers to
+ * an attachment with the agreement role attached before it.
+ */
+function registerMatches(
+  detail: CaseDetail,
+  timeline: CaseTimeline,
+  register: DocumentRegister,
+) {
+  const steps = new Set(timeline.entries.map((entry) => entry.caseRevision));
+  return (
+    register.items.every(
+      (item) =>
+        item.caseRevision <= detail.revision && !steps.has(item.caseRevision),
+    ) &&
+    timeline.entries.every(
+      (entry) =>
+        entry.step !== 'agreement' ||
+        register.items.some(
+          (item) =>
+            item.id === entry.value.attachmentId &&
+            item.role === 'agreement' &&
+            item.caseRevision < entry.caseRevision,
+        ),
+    )
   );
 }
 
@@ -1312,10 +1902,18 @@ function commandFeedback(
 ): Feedback {
   switch (result.status) {
     case 'forbidden':
+      // Attaching also needs the Document rights; the Case stays readable.
+      return refusedWith(kind === 'attach' ? 'documentsDenied' : 'denied');
     case 'unauthorized':
       return refusedWith('denied');
     case 'notFound':
-      return refusedWith(kind === 'open' ? 'entityUnavailable' : 'unavailable');
+      return refusedWith(
+        kind === 'open'
+          ? 'entityUnavailable'
+          : kind === 'attach'
+            ? 'attachUnavailable'
+            : 'unavailable',
+      );
     case 'validation':
       switch (result.code) {
         case 'CERTIFICATION_REVIEW_CRITERIA_NOT_MET':
@@ -1346,12 +1944,15 @@ function commandFeedback(
         case 'CERTIFICATION_CASE_CLOSED':
           return refusedWith('blockedClosed', true);
         case 'CERTIFICATION_CORRECTION_REASON':
-          return refusedWith(
-            kind === 'duration'
-              ? 'blockedDurationCorrectionReason'
-              : 'blockedCorrectionReason',
-            true,
-          );
+          return refusedWith(correctionReasonRefusal(kind), true);
+        case 'CERTIFICATION_DOCUMENT_ALREADY_ATTACHED':
+          return refusedWith('attachDuplicate', true);
+        case 'CERTIFICATION_DURATION_MISSING':
+          return refusedWith('blockedAgreementBeforeDuration', true);
+        case 'CERTIFICATION_AGREEMENT_DOCUMENT':
+          return refusedWith('agreementDocumentRole', true);
+        case 'CERTIFICATION_AGREEMENT_IN_FUTURE':
+          return refusedWith('agreementInFuture');
         case 'CERTIFICATION_CORRECTION_UNCHANGED':
           return refusedWith('blockedCorrectionUnchanged');
         default:

@@ -52,6 +52,21 @@ export const REVIEW_CRITERIA = [
 ] as const;
 export type ReviewCriterion = (typeof REVIEW_CRITERIA)[number];
 
+/** The role an attached signed original plays in the Case dossier. */
+export const CERTIFICATION_DOCUMENT_ROLES = [
+  'questionnaire',
+  'iso22000_annex',
+  'agreement',
+  'plan',
+  'participant_list',
+  'report',
+  'evidence',
+  'certificate',
+  'other',
+] as const;
+export type CertificationDocumentRole =
+  (typeof CERTIFICATION_DOCUMENT_ROLES)[number];
+
 /** The server's bounds for application facts and review text. */
 export const CERTIFICATION_LIMITS = {
   orderReference: 64,
@@ -74,6 +89,9 @@ export const CERTIFICATION_LIMITS = {
   justification: 4000,
   haccpStudiesPerSubcategory: 999,
   factorPercent: 100,
+  attachmentNote: 1000,
+  sourceTitle: 200,
+  pdfBytes: 5 * 1024 * 1024,
 } as const;
 
 export interface CertificationSite {
@@ -111,6 +129,13 @@ export type ApplicationReview = {
   | { outcome: 'rejected'; rejectionReason: string }
 );
 
+/** The signature date of the agreement and its attached signed original. */
+export interface CertificationAgreement {
+  /** A calendar date, `YYYY-MM-DD`. */
+  signedOn: string;
+  attachmentId: string;
+}
+
 export interface CertificationActorReference {
   workspaceMembershipId: string;
   displayName: string;
@@ -131,16 +156,23 @@ export type StepVersion =
       step: 'application_review';
       value: ApplicationReview;
     })
-  | (StepVersionBase & { step: 'duration'; value: DurationDetermination });
+  | (StepVersionBase & { step: 'duration'; value: DurationDetermination })
+  | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement });
 export type ApplicationVersion = Extract<StepVersion, { step: 'application' }>;
 export type ApplicationReviewVersion = Extract<
   StepVersion,
   { step: 'application_review' }
 >;
 export type DurationVersion = Extract<StepVersion, { step: 'duration' }>;
+export type AgreementVersion = Extract<StepVersion, { step: 'agreement' }>;
 
 export type CertificationNextStep =
-  'application' | 'application_review' | 'duration' | 'agreement' | null;
+  | 'application'
+  | 'application_review'
+  | 'duration'
+  | 'agreement'
+  | 'team'
+  | null;
 
 export interface CaseSummary {
   id: string;
@@ -162,6 +194,47 @@ export interface CaseDetail extends CaseSummary {
   application: ApplicationVersion | null;
   applicationReview: ApplicationReviewVersion | null;
   duration: DurationVersion | null;
+  agreement: AgreementVersion | null;
+}
+
+/** One exact frozen PDF of the Case's Client, attached with its role. */
+export interface CertificationAttachment {
+  id: string;
+  caseRevision: number;
+  role: CertificationDocumentRole;
+  documentId: string;
+  versionId: string;
+  representationId: string;
+  versionNumber: number;
+  sourceTitle: string;
+  fileName: string;
+  sizeBytes: number;
+  sha256: string;
+  note: string | null;
+  attachedBy: CertificationActorReference;
+  attachedAt: string;
+}
+
+/** The Case's attachments in the order they were attached. */
+export interface DocumentRegister {
+  caseId: string;
+  items: CertificationAttachment[];
+}
+
+/** A frozen received PDF of the Case's Client that may be attached. */
+export interface EligibleDocument {
+  documentId: string;
+  versionId: string;
+  versionNumber: number;
+  representationId: string;
+  sourceTitle: string;
+}
+
+export interface EligibleDocuments {
+  caseId: string;
+  items: EligibleDocument[];
+  /** More PDFs exist than the server lists. */
+  truncated: boolean;
 }
 
 export interface CaseList {
@@ -183,6 +256,7 @@ export interface LegalEntityOption {
 
 const MAX_LISTED = 100;
 const MAX_TIMELINE = 500;
+const MAX_ELIGIBLE = 25;
 
 export function parseCaseList(value: unknown, projectId: string): CaseList {
   const body = object(value);
@@ -226,6 +300,8 @@ export function parseCaseDetail(
         ? null
         : reviewVersion(body.applicationReview),
     duration: body.duration === null ? null : durationVersion(body.duration),
+    agreement:
+      body.agreement === null ? null : agreementVersion(body.agreement),
   };
   if (!consistent(detail)) invalid();
   return detail;
@@ -255,6 +331,93 @@ function reviewVersion(value: unknown): ApplicationReviewVersion {
 function durationVersion(value: unknown): DurationVersion {
   const version = parseStepVersion(value);
   return version.step === 'duration' ? version : invalid();
+}
+
+function agreementVersion(value: unknown): AgreementVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'agreement' ? version : invalid();
+}
+
+/** The Case's attachments, each at its own revision, in attachment order. */
+export function parseDocumentRegister(
+  value: unknown,
+  caseId: string,
+): DocumentRegister {
+  const body = object(value);
+  if (
+    body.caseId !== caseId ||
+    !Array.isArray(body.items) ||
+    body.items.length > MAX_TIMELINE
+  )
+    invalid();
+  const items = body.items.map(attachment);
+  for (let index = 1; index < items.length; index++) {
+    const previous = items[index - 1],
+      current = items[index];
+    if (!previous || !current || previous.caseRevision >= current.caseRevision)
+      invalid();
+  }
+  if (
+    new Set(items.map((item) => item.id)).size !== items.length ||
+    new Set(items.map(sourceKey)).size !== items.length
+  )
+    invalid();
+  return { caseId, items };
+}
+
+/** The frozen received PDFs of the Case's Client, at most one page. */
+export function parseEligibleDocuments(
+  value: unknown,
+  caseId: string,
+): EligibleDocuments {
+  const body = object(value);
+  if (
+    body.caseId !== caseId ||
+    !Array.isArray(body.items) ||
+    body.items.length > MAX_ELIGIBLE ||
+    typeof body.truncated !== 'boolean'
+  )
+    invalid();
+  const items = body.items.map((item): EligibleDocument => {
+    const row = object(item);
+    return {
+      documentId: text(row.documentId),
+      versionId: text(row.versionId),
+      versionNumber: positive(row.versionNumber),
+      representationId: text(row.representationId),
+      sourceTitle: text(row.sourceTitle, CERTIFICATION_LIMITS.sourceTitle),
+    };
+  });
+  // The server reads one item beyond the page only to report truncation.
+  if (
+    (body.truncated && items.length !== MAX_ELIGIBLE) ||
+    new Set(items.map(sourceKey)).size !== items.length
+  )
+    invalid();
+  return { caseId, items, truncated: body.truncated };
+}
+
+/** The exact source of a PDF: its Document, Version and Representation. */
+export function sourceKey(source: {
+  documentId: string;
+  versionId: string;
+  representationId: string;
+}): string {
+  return JSON.stringify([
+    source.documentId,
+    source.versionId,
+    source.representationId,
+  ]);
+}
+
+/** A real calendar date written `YYYY-MM-DD`, as the server accepts it. */
+export function isCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(value) || value.startsWith('0000-'))
+    return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
 }
 
 export function parseTimeline(value: unknown, caseId: string): CaseTimeline {
@@ -340,6 +503,7 @@ function parseNextStep(value: unknown): CertificationNextStep {
     case 'application_review':
     case 'duration':
     case 'agreement':
+    case 'team':
       return value;
     default:
       return invalid();
@@ -348,7 +512,12 @@ function parseNextStep(value: unknown): CertificationNextStep {
 
 /** The server derives status and next step from the recorded steps. */
 function consistent(detail: CaseDetail): boolean {
-  const { application, applicationReview: review, duration } = detail;
+  const {
+    application,
+    applicationReview: review,
+    duration,
+    agreement,
+  } = detail;
   if (review && !application) return false;
   // A duration is determined only once the review accepted the application.
   if (duration && review?.value.outcome !== 'accepted') return false;
@@ -364,6 +533,19 @@ function consistent(detail: CaseDetail): boolean {
     )
   )
     return false;
+  if (agreement) {
+    // An agreement needs a confirmed duration. A later correction may replace
+    // that duration, but the first determination precedes the agreement.
+    if (
+      !review ||
+      !duration ||
+      agreement.caseRevision > detail.revision ||
+      agreement.caseRevision <= review.caseRevision ||
+      agreement.caseRevision === duration.caseRevision ||
+      (duration.version === 1 && duration.caseRevision > agreement.caseRevision)
+    )
+      return false;
+  }
   if (detail.status === 'rejected')
     return review?.value.outcome === 'rejected' && detail.nextStep === null;
   if (review?.value.outcome === 'rejected') return false;
@@ -373,7 +555,9 @@ function consistent(detail: CaseDetail): boolean {
       ? 'application_review'
       : !duration
         ? 'duration'
-        : 'agreement';
+        : !agreement
+          ? 'agreement'
+          : 'team';
   return detail.nextStep === expected;
 }
 
@@ -412,7 +596,67 @@ function parseStepVersion(value: unknown): StepVersion {
       value: durationDetermination(row.value),
     };
   }
+  if (row.step === 'agreement') {
+    // A correction of a recorded agreement states its reason.
+    if ((base.version === 1) !== (base.reason === null)) invalid();
+    return { ...base, step: 'agreement', value: agreementValue(row.value) };
+  }
   return invalid();
+}
+
+function agreementValue(value: unknown): CertificationAgreement {
+  const body = object(value);
+  return {
+    signedOn:
+      typeof body.signedOn === 'string' && isCalendarDate(body.signedOn)
+        ? body.signedOn
+        : invalid(),
+    attachmentId: text(body.attachmentId),
+  };
+}
+
+function attachment(value: unknown): CertificationAttachment {
+  const row = object(value);
+  const sha256 = text(row.sha256);
+  if (!/^[a-f0-9]{64}$/u.test(sha256)) invalid();
+  const caseRevision = positive(row.caseRevision);
+  // A Case opens at revision 1; every attachment advances it.
+  if (caseRevision < 2) invalid();
+  return {
+    id: text(row.id),
+    caseRevision,
+    role: documentRole(row.role),
+    documentId: text(row.documentId),
+    versionId: text(row.versionId),
+    representationId: text(row.representationId),
+    versionNumber: positive(row.versionNumber),
+    sourceTitle: text(row.sourceTitle, CERTIFICATION_LIMITS.sourceTitle),
+    fileName: pdfFileName(row.fileName),
+    sizeBytes: whole(row.sizeBytes, 1, CERTIFICATION_LIMITS.pdfBytes),
+    sha256,
+    note: optionalText(row.note, CERTIFICATION_LIMITS.attachmentNote),
+    attachedBy: actorReference(row.attachedBy),
+    attachedAt: instant(row.attachedAt),
+  };
+}
+
+function documentRole(value: unknown): CertificationDocumentRole {
+  return (
+    CERTIFICATION_DOCUMENT_ROLES.find((role) => role === value) ?? invalid()
+  );
+}
+
+/** A file name safe to offer for saving, as Documents preserves it. */
+function pdfFileName(value: unknown): string {
+  const name = text(value, 120);
+  if (
+    name.length < 5 ||
+    name !== name.trim() ||
+    !/\.pdf$/iu.test(name) ||
+    /[\p{Cc}\p{Cf}/\\]/u.test(name)
+  )
+    invalid();
+  return name;
 }
 
 function applicationFacts(value: unknown): ApplicationFacts {
