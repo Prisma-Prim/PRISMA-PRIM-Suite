@@ -28,6 +28,19 @@
 //   cancelled or skipped, across the commits left in the pull request.
 //   Commits dropped by a force-push are not seen. A cancelled workflow run ends
 //   its `quality` job as failed, so cancellation is read from the workflow run.
+// - To inspect, a short list for the weekly-inspection issue:
+//   - Sensitive merges: merged pull requests changing a SENSITIVE_PATHS file.
+//   - Resolved review threads on merged pull requests where no reply from
+//     anyone but the automated reviewer says "fixed", "not valid", or names a
+//     follow-up issue (`#N`), the dispositions issue-execution.md requires.
+//   - Follow-ups: the items of a pull request body's Follow-ups entry (a line
+//     or heading starting with "Follow-up", its text after the colon and its
+//     list), except "none", grouped by the top-level folder (each `apps/<app>`
+//     apart) holding most of the pull request's changed files.
+//   - CI critical path: over the not-cancelled pull request CI runs (the check
+//     suites holding `quality`) of the pull requests counted under CI, the
+//     longest job, and the queue from the run's creation to its first job.
+//   - `main-red` issues created in the window.
 
 import { execFile as execFileCallback } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -40,11 +53,21 @@ const AUTOMATED_REVIEWER = 'chatgpt-codex-connector';
 const WINDOW_DAYS = 7;
 const SEARCH_PAGE_SIZE = 10;
 const COMMITS_PAGE_SIZE = 100;
-const OPEN_FINDINGS_SHOWN = 20;
+const FILES_PAGE_SIZE = 100;
+const SHOWN_PER_LIST = 20;
 const TITLE_LENGTH = 90;
 const REQUIRED_CHECK = 'quality';
 const ALWAYS_LISTED_SEVERITIES = ['P0', 'P1', 'P2'];
 const UNRATED = 'Unrated';
+const MAIN_RED_LABEL = 'main-red';
+/** Access, migrations, schema, Activity Log (accountability) and workflows. */
+const SENSITIVE_PATHS = [
+  'apps/api/src/access/',
+  'apps/api/drizzle/',
+  'apps/api/src/database/schema/',
+  'apps/api/src/accountability/',
+  '.github/workflows/',
+];
 
 /** One correction commit plus at most one confirmation (issue-execution.md). */
 export const MAXIMUM_COMMITS_AFTER_REVIEW = 2;
@@ -118,6 +141,10 @@ const instant = (date) => date.toISOString().replace(/\.\d{3}Z$/u, 'Z');
 
 // ---- GitHub access ----------------------------------------------------------
 
+// GITHUB_TOKEN allows 1,000 GraphQL points an hour. Each pull request costs
+// about 7 points (connections resolved, over 100); most of it is one
+// checkRuns connection per check suite, hence at most 5 suites per commit
+// (2026-11 weeks had at most 3).
 const SEARCH_QUERY = `query($q: String!, $after: String) {
   search(query: $q, type: ISSUE, first: ${SEARCH_PAGE_SIZE}, after: $after) {
     pageInfo { hasNextPage endCursor }
@@ -125,18 +152,19 @@ const SEARCH_QUERY = `query($q: String!, $after: String) {
       ... on PullRequest {
         number title body url merged mergedAt closedAt
         mergeCommit { oid }
+        files(first: ${FILES_PAGE_SIZE}) { totalCount nodes { path } }
         commits(first: 100) {
           nodes {
             commit {
               oid
               authoredDate
               parents { totalCount }
-              checkSuites(first: 10) {
+              checkSuites(first: 5) {
                 nodes {
                   conclusion
-                  workflowRun { event }
-                  checkRuns(first: 5, filterBy: { checkName: "${REQUIRED_CHECK}" }) {
-                    nodes { conclusion status startedAt }
+                  workflowRun { event createdAt }
+                  checkRuns(first: 50) {
+                    nodes { name conclusion status startedAt completedAt }
                   }
                 }
               }
@@ -154,6 +182,13 @@ const SEARCH_QUERY = `query($q: String!, $after: String) {
         }
       }
     }
+  }
+}`;
+
+const ISSUE_SEARCH_QUERY = `query($q: String!, $after: String) {
+  search(query: $q, type: ISSUE, first: 100, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { ... on Issue { number title url createdAt closed } }
   }
 }`;
 
@@ -182,27 +217,54 @@ function createGithubClient(execFile) {
     }
   }
 
+  async function search(query, q) {
+    const nodes = [];
+    let after = null;
+    do {
+      const data = await request([
+        'api',
+        'graphql',
+        '-f',
+        `query=${query}`,
+        '-f',
+        `q=${q}`,
+        ...(after === null ? [] : ['-f', `after=${after}`]),
+      ]);
+      const found = data?.data?.search;
+      if (!found) throw new Error('Unexpected GitHub search response.');
+      nodes.push(...found.nodes.filter((node) => node?.number));
+      after = found.pageInfo.hasNextPage ? found.pageInfo.endCursor : null;
+    } while (after !== null);
+    return nodes;
+  }
+
   return {
     async searchPullRequests(qualifiers) {
-      const q = `repo:${REPOSITORY} is:pr ${qualifiers}`;
-      const nodes = [];
-      let after = null;
-      do {
-        const data = await request([
-          'api',
-          'graphql',
-          '-f',
-          `query=${SEARCH_QUERY}`,
-          '-f',
-          `q=${q}`,
-          ...(after === null ? [] : ['-f', `after=${after}`]),
-        ]);
-        const search = data?.data?.search;
-        if (!search) throw new Error('Unexpected GitHub search response.');
-        nodes.push(...search.nodes.filter((node) => node?.number));
-        after = search.pageInfo.hasNextPage ? search.pageInfo.endCursor : null;
-      } while (after !== null);
+      const nodes = await search(
+        SEARCH_QUERY,
+        `repo:${REPOSITORY} is:pr ${qualifiers}`,
+      );
       return nodes.map(normalizePullRequest);
+    },
+
+    async searchIssues(qualifiers) {
+      return search(
+        ISSUE_SEARCH_QUERY,
+        `repo:${REPOSITORY} is:issue ${qualifiers}`,
+      );
+    },
+
+    /** Every changed file, for a pull request past GraphQL's first page. */
+    async pullRequestFiles(number) {
+      const files = [];
+      for (let page = 1; ; page += 1) {
+        const batch = await request([
+          'api',
+          `repos/${REPOSITORY}/pulls/${number}/files?per_page=${FILES_PAGE_SIZE}&page=${page}`,
+        ]);
+        files.push(...batch.map((file) => file.filename));
+        if (batch.length < FILES_PAGE_SIZE) return files;
+      }
     },
 
     async listBranchCommits({ since, until }) {
@@ -257,6 +319,14 @@ function normalizePullRequest(node) {
         .map((comment) => comment.createdAt),
     ),
   ].filter(Boolean);
+  // One check suite per workflow run; a CI run is one holding `quality`.
+  const ciSuites = commits
+    .flatMap((commit) => commit.checkSuites.nodes)
+    .filter(
+      (suite) =>
+        suite.workflowRun?.event === 'pull_request' &&
+        suite.checkRuns.nodes.some((run) => run.name === REQUIRED_CHECK),
+    );
 
   return {
     number: node.number,
@@ -266,6 +336,8 @@ function normalizePullRequest(node) {
     merged: node.merged,
     mergedAt: node.mergedAt,
     mergeCommit: node.mergeCommit?.oid ?? null,
+    files: node.files.nodes.map((file) => file.path),
+    fileCount: node.files.totalCount,
     commits: commits.map((commit) => ({
       oid: commit.oid,
       authoredDate: commit.authoredDate,
@@ -273,18 +345,27 @@ function normalizePullRequest(node) {
     })),
     firstAutomatedReview: automatedMoments.sort()[0] ?? null,
     threads,
-    qualityRuns: commits.flatMap((commit) =>
-      commit.checkSuites.nodes
-        .filter((suite) => suite.workflowRun?.event === 'pull_request')
-        .flatMap((suite) =>
-          suite.checkRuns.nodes.map((run) => ({
-            ...run,
-            // A cancelled workflow run still ends its quality job as failed.
-            conclusion:
-              suite.conclusion === 'CANCELLED' ? 'CANCELLED' : run.conclusion,
-          })),
-        ),
+    qualityRuns: ciSuites.flatMap((suite) =>
+      suite.checkRuns.nodes
+        .filter((run) => run.name === REQUIRED_CHECK)
+        .map((run) => ({
+          ...run,
+          // A cancelled workflow run still ends its quality job as failed.
+          conclusion:
+            suite.conclusion === 'CANCELLED' ? 'CANCELLED' : run.conclusion,
+        })),
     ),
+    ciRuns: ciSuites.map((suite) => ({
+      conclusion: suite.conclusion,
+      createdAt: suite.workflowRun.createdAt,
+      jobs: suite.checkRuns.nodes.filter(
+        (run) =>
+          run.status === 'COMPLETED' &&
+          run.conclusion !== 'SKIPPED' &&
+          run.startedAt &&
+          run.completedAt,
+      ),
+    })),
   };
 }
 
@@ -517,13 +598,185 @@ function findReverts(merged, branchCommits) {
   return reverts;
 }
 
+// ---- To inspect -------------------------------------------------------------
+
+function sensitiveMerges(merged) {
+  return merged
+    .map((pullRequest) => ({
+      pullRequest,
+      paths: SENSITIVE_PATHS.filter((prefix) =>
+        pullRequest.files.some((file) => file.startsWith(prefix)),
+      ),
+    }))
+    .filter(({ paths }) => paths.length > 0);
+}
+
+/** A disposition issue-execution.md accepts: fixed, follow-up #N, not valid. */
+const answersThread = (body) =>
+  /\bfixed\b/iu.test(body) ||
+  /\bnot valid\b/iu.test(body) ||
+  (FOLLOW_UP.test(body) && /#\d+|\/issues\/\d+/u.test(body));
+
+function unansweredThreads(merged) {
+  return merged.flatMap((pullRequest) =>
+    pullRequest.threads
+      .filter(
+        (thread) =>
+          thread.resolved &&
+          thread.comments.length > 0 &&
+          !thread.comments
+            .slice(1)
+            .some(
+              (reply) =>
+                !isAutomated(reply.author) && answersThread(reply.body),
+            ),
+      )
+      .map((thread) => ({ pullRequest, thread })),
+  );
+}
+
+const FOLLOW_UP_ENTRY =
+  /^(?<indent>\s*)(?:(?<heading>#{1,6})\s+|[-*+]\s+)?follow[- ]?ups?\b[^:]*?(?::(?<text>.*))?$/iu;
+const LIST_ITEM = /^(?<indent>\s*)[-*+]\s+(?<text>.*)$/u;
+const HEADING = /^\s*#{1,6}\s/u;
+const indentOf = (line) => line.length - line.trimStart().length;
+
+/**
+ * The items of each Follow-ups entry in a pull request body: its text after
+ * the colon, then its list (nested under a list entry, up to the next heading
+ * under a heading entry), except "none".
+ */
+function followUpItems(body) {
+  const lines = body.replaceAll('\r\n', '\n').replaceAll('**', '').split('\n');
+  const items = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const entry = FOLLOW_UP_ENTRY.exec(lines[index]);
+    if (entry === null) continue;
+    const { indent, heading, text } = entry.groups;
+    // A line without a colon ("Follow-up work will...") is a sentence.
+    if (heading === undefined && text === undefined) continue;
+    const entryItems = text?.trim() ? [text.trim()] : [];
+    let itemIndent = null;
+    let next = index + 1;
+    for (; next < lines.length; next += 1) {
+      const line = lines[next];
+      if (line.trim() === '') continue;
+      if (HEADING.test(line)) break;
+      if (!heading && indentOf(line) <= indent.length) break;
+      const item = LIST_ITEM.exec(line);
+      if (
+        item &&
+        (itemIndent === null || item.groups.indent.length <= itemIndent)
+      ) {
+        itemIndent = item.groups.indent.length;
+        entryItems.push(item.groups.text.trim());
+      } else if (entryItems.length > 0) {
+        entryItems.push(`${entryItems.pop()} ${line.trim()}`);
+      } else {
+        entryItems.push(line.trim());
+      }
+    }
+    items.push(...entryItems);
+    index = next - 1;
+  }
+  return items.filter((item) => !/^(?:none|n\/a)\b/iu.test(item));
+}
+
+/** The top-level folder, with each `apps/<app>` apart. */
+function folderOf(path) {
+  const parts = path.split('/');
+  if (parts.length === 1) return '(root)';
+  return parts[0] === 'apps' && parts.length > 2
+    ? `apps/${parts[1]}`
+    : parts[0];
+}
+
+function mainFolder(files) {
+  const counts = new Map();
+  for (const folder of files.map(folderOf)) {
+    counts.set(folder, (counts.get(folder) ?? 0) + 1);
+  }
+  const [main] = [...counts].sort(
+    ([left, leftCount], [right, rightCount]) =>
+      rightCount - leftCount || left.localeCompare(right),
+  );
+  return main?.[0] ?? '(no files)';
+}
+
+function followUpsByFolder(merged) {
+  const groups = new Map();
+  for (const pullRequest of [...merged].sort((a, b) => a.number - b.number)) {
+    const items = followUpItems(pullRequest.body);
+    if (items.length === 0) continue;
+    const folder = mainFolder(pullRequest.files);
+    groups.set(folder, [
+      ...(groups.get(folder) ?? []),
+      ...items.map((text) => ({ pullRequest, text })),
+    ]);
+  }
+  return [...groups].sort(
+    ([left, leftItems], [right, rightItems]) =>
+      rightItems.length - leftItems.length || left.localeCompare(right),
+  );
+}
+
+const secondsBetween = (from, to) => (Date.parse(to) - Date.parse(from)) / 1000;
+const spread = (values) =>
+  values.length === 0
+    ? null
+    : { median: median(values), max: Math.max(...values) };
+
+function summarizeCriticalPath(pullRequests) {
+  const runs = pullRequests
+    .flatMap((pullRequest) => pullRequest.ciRuns)
+    .filter(
+      (run) =>
+        run.jobs.length > 0 &&
+        ![null, 'CANCELLED', 'SKIPPED', 'STALE'].includes(run.conclusion),
+    );
+  return {
+    runs: runs.length,
+    longestJob: spread(
+      runs.map((run) =>
+        Math.max(
+          ...run.jobs.map((job) =>
+            secondsBetween(job.startedAt, job.completedAt),
+          ),
+        ),
+      ),
+    ),
+    queue: spread(
+      runs.map((run) =>
+        Math.max(
+          0,
+          secondsBetween(
+            run.createdAt,
+            run.jobs.map((job) => job.startedAt).sort()[0],
+          ),
+        ),
+      ),
+    ),
+  };
+}
+
 export async function collectMetrics(github, { since, until }) {
   const range = `${instant(since)}..${instant(until)}`;
-  const [merged, closed, branchCommits] = await Promise.all([
+  const [found, closed, branchCommits, mainRed] = await Promise.all([
     github.searchPullRequests(`is:merged merged:${range}`),
     github.searchPullRequests(`is:closed is:unmerged closed:${range}`),
     github.listBranchCommits({ since, until }),
+    github.searchIssues(`label:${MAIN_RED_LABEL} created:${range}`),
   ]);
+  const merged = await Promise.all(
+    found.map(async (pullRequest) =>
+      pullRequest.files.length < pullRequest.fileCount
+        ? {
+            ...pullRequest,
+            files: await github.pullRequestFiles(pullRequest.number),
+          }
+        : pullRequest,
+    ),
+  );
   return {
     since,
     until,
@@ -533,13 +786,27 @@ export async function collectMetrics(github, { since, until }) {
     rounds: summarizeReviewRounds(merged),
     findings: await summarizeFindings(merged, github.commitFiles),
     quality: summarizeQuality([...merged, ...closed]),
+    inspect: {
+      sensitive: sensitiveMerges(merged),
+      unanswered: unansweredThreads(merged),
+      followUps: followUpsByFolder(merged),
+      criticalPath: summarizeCriticalPath([...merged, ...closed]),
+      mainRed: [...mainRed].sort((left, right) => left.number - right.number),
+    },
   };
 }
 
 // ---- Report -----------------------------------------------------------------
 
+// The report is posted as an issue comment, where an @name notifies someone
+// and `@codex` starts a Codex task. A zero-width space after the @ keeps the
+// text readable and inert; e-mail addresses are left alone.
+const ZERO_WIDTH_SPACE = String.fromCodePoint(0x200b);
 const oneLine = (text) => {
-  const flat = text.replaceAll(/\s+/gu, ' ').trim();
+  const flat = text
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+    .replaceAll(/(^|[^\w`])@(?=\w)/gu, `$1@${ZERO_WIDTH_SPACE}`);
   return flat.length > TITLE_LENGTH
     ? `${flat.slice(0, TITLE_LENGTH - 1)}…`
     : flat;
@@ -550,6 +817,84 @@ const pullRequestLink = (pullRequest) =>
 const plural = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 const figure = (value) =>
   Number.isInteger(value) ? String(value) : value.toFixed(1);
+const minutes = (seconds) => `${(seconds / 60).toFixed(1)} min`;
+
+/** Up to SHOWN_PER_LIST rendered entries, or "none". */
+function listed(entries, render, prefix = '') {
+  if (entries.length === 0) return [`${prefix}- none`];
+  return [
+    ...entries.slice(0, SHOWN_PER_LIST).map(render),
+    ...(entries.length > SHOWN_PER_LIST
+      ? [`${prefix}- …and ${entries.length - SHOWN_PER_LIST} more.`]
+      : []),
+  ];
+}
+
+function renderInspection({
+  sensitive,
+  unanswered,
+  followUps,
+  criticalPath,
+  mainRed,
+}) {
+  const lines = [
+    '## To inspect',
+    '',
+    '### Sensitive merges',
+    '',
+    ...listed(
+      sensitive,
+      ({ pullRequest, paths }) =>
+        `- ${pullRequestLink(pullRequest)} (${paths.map((path) => `\`${path}\``).join(', ')})`,
+    ),
+    '',
+    '### Review threads resolved without an answer',
+    '',
+    ...listed(unanswered, ({ pullRequest, thread }) => {
+      const [first] = thread.comments;
+      return `- ${link(`#${pullRequest.number}`, first.url)} \`${thread.path}\`: ${oneLine(titleOf(first.body))}`;
+    }),
+    '',
+    '### Follow-ups recorded in pull request bodies',
+    '',
+  ];
+  if (followUps.length === 0) lines.push('- none');
+  for (const [folder, items] of followUps) {
+    lines.push(
+      `- \`${folder}\` (${items.length})`,
+      ...listed(
+        items,
+        ({ pullRequest, text }) =>
+          `  - ${link(`#${pullRequest.number}`, pullRequest.url)}: ${oneLine(text)}`,
+        '  ',
+      ),
+    );
+  }
+
+  lines.push('', '### CI critical path', '');
+  if (criticalPath.runs === 0) {
+    lines.push('- no completed CI run.');
+  } else {
+    const { longestJob, queue } = criticalPath;
+    lines.push(
+      `- ${plural(criticalPath.runs, 'CI run')} of pull requests merged or closed in the window, cancelled runs excluded.`,
+      `- Longest job: median ${minutes(longestJob.median)}, max ${minutes(longestJob.max)}.`,
+      `- Queue before the first job: median ${minutes(queue.median)}, max ${minutes(queue.max)}.`,
+    );
+  }
+
+  lines.push(
+    '',
+    `### \`${MAIN_RED_LABEL}\` issues opened`,
+    '',
+    ...listed(
+      mainRed,
+      (issue) =>
+        `- ${link(`#${issue.number}`, issue.url)} ${oneLine(issue.title)} (${issue.closed ? 'closed' : 'open'})`,
+    ),
+  );
+  return lines;
+}
 
 export function renderReport(metrics) {
   const { merged, closed, reverts, rounds, findings, quality } = metrics;
@@ -635,14 +980,13 @@ export function renderReport(metrics) {
     const open = findings.findings.filter(({ outcome }) => outcome === 'open');
     if (open.length > 0) {
       lines.push('', 'Open at merge:');
-      for (const finding of open.slice(0, OPEN_FINDINGS_SHOWN)) {
-        lines.push(
-          `- ${finding.severity} ${link(`#${finding.pullRequest.number}`, finding.url)}: ${oneLine(finding.title)} (\`${finding.path}\`)`,
-        );
-      }
-      if (open.length > OPEN_FINDINGS_SHOWN) {
-        lines.push(`- …and ${open.length - OPEN_FINDINGS_SHOWN} more.`);
-      }
+      lines.push(
+        ...listed(
+          open,
+          (finding) =>
+            `- ${finding.severity} ${link(`#${finding.pullRequest.number}`, finding.url)}: ${oneLine(finding.title)} (\`${finding.path}\`)`,
+        ),
+      );
     }
   }
 
@@ -657,11 +1001,14 @@ export function renderReport(metrics) {
     `- \`${REQUIRED_CHECK}\` first-run pass rate: ${rate}`,
     `- Cancelled \`${REQUIRED_CHECK}\` runs: ${quality.cancelled}`,
     '',
+    ...renderInspection(metrics.inspect),
+    '',
     '## Method',
     '',
     `- Review rounds: non-merge commits authored after the first review, summary or inline comment by ${AUTOMATED_REVIEWER}. The bounded rule is one correction commit plus at most one confirmation.`,
     '- Finding outcome: fixed when a reply says "fixed" or "addressed", or the thread is resolved and a later commit touched its file; follow-up when a reply or the pull request body follow-up part mentions follow-up or names its file; otherwise open (including a finding answered without either).',
     `- CI: the first non-cancelled \`${REQUIRED_CHECK}\` run of a pull request event, over pull requests merged or closed in the window; cancelled runs are counted apart and never as failures.`,
+    `- To inspect: sensitive merges change a file under ${SENSITIVE_PATHS.map((path) => `\`${path}\``).join(', ')}. A resolved thread counts when no reply says "fixed", "not valid" or names a follow-up \`#N\`. Follow-ups are grouped by the top-level folder (each \`apps/<app>\` apart) holding most of the pull request's files. The CI critical path covers the CI runs counted above: the longest job, and the queue from the run's creation to its first job.`,
     '',
   );
   return lines.join('\n');
