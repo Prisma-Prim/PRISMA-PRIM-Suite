@@ -4,8 +4,8 @@ One session owns one issue and delivers it as one focused pull request. One Code
 
 ## Harness
 
-- Launch Codex Cloud from an `@codex` comment on the originating issue so the task inherits the complete issue body and comments. A manual task needs a prompt or repository files holding the complete contract; an issue URL alone is insufficient.
-- Codex Cloud runs targeted checks only: its standard environment has no Chromium and cannot run the [PostgreSQL profile](environment.md#postgresql-profile). GitHub CI runs the heavy verification: the complete suites, the `pnpm verify` families, browser and acceptance journeys, and production image packaging.
+- Launch Codex Cloud from ChatGPT Codex, with a prompt or repository files holding the complete issue contract; an issue URL alone is insufficient. A GitHub comment mention starts an unverified legacy environment instead.
+- [Codex Cloud](environment.md#codex-cloud-environment) has Chromium and Docker PostgreSQL: use the `web` doctor and `node scripts/managed-postgres.mjs -- <command>`. GitHub CI runs the heavy verification: the complete suites, the `pnpm verify` families, browser and acceptance journeys, and production image packaging.
 - A local harness with a shell, such as Codex CLI or Claude Code, is equivalent and can also run affected PostgreSQL or browser suites.
 
 ## Before changing anything

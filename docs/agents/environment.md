@@ -112,17 +112,40 @@ pnpm test:preflight:playwright     # one production-shell journey on desktop and
 
 Configure the repository environment in [Codex settings](https://chatgpt.com/codex/settings/environments).
 
-OpenAI runs two kinds of Cloud environment. A task started by an `@codex` comment on GitHub starts a [legacy cloud chat](https://learn.chatgpt.com/docs/third-party/github), which uses a legacy environment's setup and maintenance scripts. A task started from the ChatGPT Codex composer uses a [current environment](https://learn.chatgpt.com/docs/environments/cloud-environments): its Install script runs the setup command below and its Start skill runs the start command. Both use the same repository scripts.
+OpenAI runs two kinds of Cloud environment. A task started from the ChatGPT Codex composer uses a [current environment](https://learn.chatgpt.com/docs/environments/cloud-environments); the owner launches tasks this way. A task started by an `@codex` comment on GitHub starts a [legacy cloud chat](https://learn.chatgpt.com/docs/third-party/github), which uses a legacy environment's setup and maintenance scripts; the owner no longer launches tasks this way, and Codex's automated pull request reviews, which read code without running it, also use the legacy environment.
 
-### Package version
+### Current environment
+
+The published `PRISMA-PRIM-Suite` current environment has its own Install script and Start skill, kept in the Codex settings rather than in this repository. The Install script works without root:
+
+- it keeps private caches under `/workspace/prisma-cloud-tools`, pins the GitHub CLI and pnpm 11.20.0, and installs the frozen dependencies and Playwright Chromium;
+- it pulls a pinned `postgres:17-alpine` image for the Docker daemon the environment provides, and leaves no service running.
+
+A task therefore runs browser work with the `web` doctor profile and PostgreSQL work through the [managed-harness PostgreSQL runner](#managed-harness-postgresql-fallback), which creates and removes a disposable database around one command:
+
+```bash
+node scripts/agent-doctor.mjs --profile web --readiness-profile cloud
+node scripts/managed-postgres.mjs -- node scripts/agent-doctor.mjs --profile web-postgres --readiness-profile cloud
+node scripts/managed-postgres.mjs -- corepack pnpm --filter @prisma-prim/api exec vitest run src/company/company.rest.test.ts
+```
+
+On 2026-11-07 an environment-check task in that environment ran these three commands with exit code 0: every doctor check passed, the migrations applied, and the 16 Company REST tests passed. The `ERROR … forced Company Activity Log failure` that the last command prints comes from a test that forces that failure on purpose.
+
+Do not replace this Install script with the repository setup script below without first proving the replacement in an unpublished draft: the repository script installs PostgreSQL with `apt-get`, which needs root.
+
+### Legacy environment
+
+The repository lifecycle scripts below configure a legacy environment for tasks started from a GitHub comment.
+
+#### Package version
 
 Keep the `universal` image. The repository pins Node 24 through `.node-version` and `package.json`, and the setup doctor rejects runtime drift. If the package-version selector exposes Node 24, selecting it is valid but not required; do not choose a different major or add an inline runtime bootstrap.
 
-### Standard environment variables
+#### Standard environment variables
 
 No profile requires Codex environment variables. Do not configure `DATABASE_URL` or `TEST_DATABASE_URL` in the environment settings; the PostgreSQL profile below provides them. If they remain from an earlier configuration, remove them.
 
-### Setup script
+#### Setup script
 
 ```bash
 bash scripts/codex-cloud-setup.sh --profile web-postgres
@@ -130,7 +153,7 @@ bash scripts/codex-cloud-setup.sh --profile web-postgres
 
 Setup activates the exact repository pnpm version, installs the frozen dependency graph with the local package cache preferred, installs Playwright Chromium with the CI command, installs and provisions PostgreSQL 17 as described in the PostgreSQL profile below, runs the `web-postgres` doctor, then stops PostgreSQL. It reports each phase duration. Without `--profile`, setup prepares only the base profile and installs neither PostgreSQL nor Chromium.
 
-### Maintenance script
+#### Maintenance script
 
 ```bash
 bash scripts/codex-cloud-maintenance.sh --profile web-postgres
@@ -138,15 +161,15 @@ bash scripts/codex-cloud-maintenance.sh --profile web-postgres
 
 Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, reruns the Chromium install (a no-op when the browser is present), restarts PostgreSQL without installing packages, reruns the doctor and stops PostgreSQL again. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
 
-### Start command
+#### Start command
 
 ```bash
 bash scripts/codex-cloud-start.sh
 ```
 
-No PostgreSQL server outlives setup or maintenance: #216 measured `Startup script timed out after 3600 seconds` only when one did. The start command starts PostgreSQL without network access, exports `DATABASE_URL` and `TEST_DATABASE_URL` for agent shells, and runs `node scripts/agent-doctor.mjs --profile web-postgres --readiness-profile cloud` through the pinned pnpm. A current environment runs it as its Start skill. A legacy environment has no start step, so the task runs it as its first command.
+No PostgreSQL server outlives setup or maintenance: #216 measured `Startup script timed out after 3600 seconds` only when one did. The start command starts PostgreSQL without network access, exports `DATABASE_URL` and `TEST_DATABASE_URL` for agent shells, and runs `node scripts/agent-doctor.mjs --profile web-postgres --readiness-profile cloud` through the pinned pnpm. A legacy environment has no start step, so the task runs it as its first command.
 
-This lifecycle has not yet passed in an actual Codex Cloud task; the owner's acceptance task in #1067 is that proof. If setup still ends with the 3600-second timeout, configure the base lifecycle scripts again and record the result in #216.
+This lifecycle has not yet passed in an actual Codex Cloud task, and the owner no longer launches legacy tasks. If setup still ends with the 3600-second timeout, configure the base lifecycle scripts again and record the result in #216.
 
 ### pnpm launcher
 
