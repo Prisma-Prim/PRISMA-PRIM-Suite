@@ -1,17 +1,7 @@
 {
-  "apps/api/src/access/access.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    }
-  },
   "apps/api/src/access/access.rest.test.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 5
-    }
-  },
-  "apps/api/src/access/company-context-assignment.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 3
     }
   },
   "apps/api/src/access/company-context-assignment.rest.test.ts": {
@@ -22,16 +12,6 @@
   "apps/api/src/access/company-context-assignment.service.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 4
-    }
-  },
-  "apps/api/src/access/company-director-client-assignment.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 2
-    }
-  },
-  "apps/api/src/access/workspace-membership-suspension.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
     }
   },
   "apps/api/src/access/workspace-membership-suspension.rest.test.ts": {
@@ -52,27 +32,7 @@
       "count": 2
     }
   },
-  "apps/api/src/accountability/activity-log.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    }
-  },
-  "apps/api/src/client/client-duplicate-review.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 2
-    }
-  },
-  "apps/api/src/client/client.controller.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 10
-    }
-  },
   "apps/api/src/client/client.rest.test.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 3
-    }
-  },
-  "apps/api/src/company/company.controller.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 3
     }
@@ -80,11 +40,6 @@
   "apps/api/src/company/company.rest.test.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 7
-    }
-  },
-  "apps/api/src/database/database-context.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
     }
   },
   "apps/api/src/database/previous-schema-test-lifecycle.test.ts": {
@@ -138,11 +93,6 @@
       "count": 1
     }
   },
-  "apps/web/src/api/authenticated-api-client.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
-    }
-  },
   "apps/web/src/api/latest-authenticated-request.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
@@ -166,11 +116,6 @@
       "count": 1
     }
   },
-  "apps/web/src/presentation/Select.tsx": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
-    }
-  },
   "apps/web/src/production-build.test.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 1
@@ -184,11 +129,6 @@
   "apps/web/src/production-shell/company-context-transitions.test.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 1
-    }
-  },
-  "apps/web/src/production-shell/company-context-transitions.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 3
     }
   },
   "apps/web/src/production-shell/production-shell-session.test.ts": {

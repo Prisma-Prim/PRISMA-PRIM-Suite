@@ -2,6 +2,7 @@ import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { AccountabilityService } from './accountability.service.js';
 import type { ActivityLogPage } from './accountability.types.js';
@@ -13,6 +14,6 @@ export class ActivityLogController {
   @Get()
   @UseGuards(ActorContextAdapter)
   list(@Req() request: ActorContextRequest): Promise<ActivityLogPage> {
-    return this.accountability.listForActor(request.actorContext!);
+    return this.accountability.listForActor(requireActorContext(request));
   }
 }

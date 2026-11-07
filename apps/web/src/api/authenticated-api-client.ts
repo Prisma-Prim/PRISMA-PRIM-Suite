@@ -163,6 +163,7 @@ export async function createAuthenticatedApiClient(
         if (!response.ok) return { status: 'error' };
         return {
           status: 'ok',
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Transport boundary: `T` is the caller's declared API response contract, not runtime proof. Callers that rely on the shape request `unknown` and parse it.
           value: (await response.json()) as T,
         };
       } catch (error: unknown) {

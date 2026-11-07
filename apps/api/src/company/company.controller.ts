@@ -12,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { CompanyService } from './company.service.js';
 import type { CompanyRecord } from './company.types.js';
@@ -23,7 +24,7 @@ export class CompanyController {
 
   @Get()
   list(@Req() request: ActorContextRequest): Promise<CompanyRecord[]> {
-    return this.companies.listVisible(request.actorContext!);
+    return this.companies.listVisible(requireActorContext(request));
   }
 
   @Post()
@@ -32,7 +33,7 @@ export class CompanyController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: { displayName?: unknown },
   ): Promise<CompanyRecord> {
-    return this.companies.register(request.actorContext!, {
+    return this.companies.register(requireActorContext(request), {
       displayName: body?.displayName,
       idempotencyKey,
     });
@@ -43,6 +44,6 @@ export class CompanyController {
     @Req() request: ActorContextRequest,
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<CompanyRecord> {
-    return this.companies.get(request.actorContext!, companyId);
+    return this.companies.get(requireActorContext(request), companyId);
   }
 }
