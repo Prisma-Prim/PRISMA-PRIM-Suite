@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   StreamableFile,
   UseGuards,
@@ -214,6 +215,27 @@ export class CertificationController {
       type: 'application/pdf',
       length: content.bytes.length,
       disposition: `attachment; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,
+    });
+  }
+
+  /** The generated, non-official dossier register of the Case, as a PDF. */
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Get('certification-cases/:caseId/register')
+  async register(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Query() query: unknown,
+  ) {
+    const register = await this.certification.register({
+      actor: requireActorContext(request),
+      caseId,
+      query,
+    });
+    return new StreamableFile(register.bytes, {
+      type: 'application/pdf',
+      length: register.bytes.length,
+      disposition: `attachment; filename="${register.fileName}"`,
     });
   }
 

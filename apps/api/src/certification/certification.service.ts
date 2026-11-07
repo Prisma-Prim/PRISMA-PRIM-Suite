@@ -26,7 +26,9 @@ import {
 } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  CERTIFICATION_STEPS,
   certificationCertificates,
+  certificationEvents,
   certificationFindingRecords,
   certificationFindings,
   certificationCaseDocuments,
@@ -35,6 +37,7 @@ import {
   certificationStepVersions,
   type CERTIFICATION_COMMAND_KINDS,
 } from '../database/schema/certification.js';
+import { pdfRefusal } from '../commercial-pdf/commercial-pdf-source.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
 import { workspaceMemberships } from '../database/schema/core.js';
 import { ProjectService } from '../project/project.service.js';
@@ -75,6 +78,7 @@ import {
   recommendation,
 } from './certification-decision.js';
 import {
+  FINDING_RECORD_KINDS,
   allowedInStage,
   classification as findingClassificationValue,
   findingBlocks,
@@ -98,6 +102,13 @@ import {
   stagePlan,
   type AuditStage,
 } from './certification-stages.js';
+import {
+  certificationRegister,
+  registerLanguage,
+  type CertificationRegisterEntry,
+  type CertificationRegisterSource,
+} from './certification-register.js';
+import { renderCertificationRegister } from './certification-register-pdf.js';
 import type {
   CertificateRecord,
   StageStepVersion,
@@ -146,6 +157,8 @@ const STAGE_STEPS: readonly StepRow['step'][] = [
   'stage_2_report',
 ];
 const TIMELINE_LIMIT = 500;
+/** The register lists every referenced Document Version or refuses; it never truncates. */
+const REGISTER_DOCUMENT_LIMIT = 1000;
 
 @Injectable()
 export class CertificationService {
@@ -2033,6 +2046,33 @@ export class CertificationService {
     });
   }
 
+  /**
+   * The generated, non-official dossier register of one Case, as a PDF. A
+   * read under the Case view's authority, so it records no Activity; the PDF
+   * is rendered after the read transaction ends.
+   */
+  async register({
+    actor,
+    caseId,
+    query,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    query: unknown;
+  }): Promise<{ bytes: Uint8Array; fileName: string }> {
+    const targetId = requireUuid(caseId);
+    const language = registerLanguage(query);
+    const source = await this.read(actor, 'reader', (companyId) =>
+      this.registerSource(actor, companyId, targetId),
+    );
+    return {
+      bytes: await renderCertificationRegister(
+        certificationRegister(source, language),
+      ),
+      fileName: `certification-case-register-${source.caseId.slice(0, 8)}.pdf`,
+    };
+  }
+
   legalEntities({
     actor,
     projectId,
@@ -2316,6 +2356,117 @@ export class CertificationService {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
       }),
+    };
+  }
+
+  /** Every recorded version and referenced Document Version of a visible Case. */
+  private async registerSource(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<CertificationRegisterSource> {
+    const row = await this.visibleCase(actor, companyId, caseId);
+    const steps = await this.steps(actor, companyId, caseId);
+    const findings = await this.database.connection
+      .select({
+        id: certificationFindings.id,
+        stage: certificationFindings.stage,
+        sequence: certificationFindings.sequence,
+      })
+      .from(certificationFindings)
+      .where(
+        and(
+          eq(certificationFindings.workspaceId, actor.workspaceId),
+          eq(certificationFindings.companyId, companyId),
+          eq(certificationFindings.caseId, caseId),
+        ),
+      );
+    const records = findings.length
+      ? await this.database.connection
+          .select()
+          .from(certificationFindingRecords)
+          .where(
+            and(
+              eq(certificationFindingRecords.workspaceId, actor.workspaceId),
+              eq(certificationFindingRecords.companyId, companyId),
+              eq(certificationFindingRecords.caseId, caseId),
+            ),
+          )
+      : [];
+    const documents = await this.database.connection
+      .select()
+      .from(certificationCaseDocuments)
+      .where(
+        and(
+          eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+          eq(certificationCaseDocuments.companyId, companyId),
+          eq(certificationCaseDocuments.caseId, caseId),
+        ),
+      )
+      .orderBy(asc(certificationCaseDocuments.caseRevision))
+      .limit(REGISTER_DOCUMENT_LIMIT + 1);
+    if (documents.length > REGISTER_DOCUMENT_LIMIT)
+      pdfRefusal('PDF_CONTENT_LIMIT');
+    const [revised] = await this.database.connection
+      .select({ occurredAt: certificationEvents.occurredAt })
+      .from(certificationEvents)
+      .where(
+        and(
+          eq(certificationEvents.workspaceId, actor.workspaceId),
+          eq(certificationEvents.companyId, companyId),
+          eq(certificationEvents.caseId, caseId),
+        ),
+      )
+      .orderBy(desc(certificationEvents.revision))
+      .limit(1);
+    const ordered: { order: number[]; entry: CertificationRegisterEntry }[] = [
+      ...steps.map((step) => ({
+        order: [step.caseRevision, 0, 0, step.version],
+        entry: registerStep(step),
+      })),
+      ...records.map((record) => {
+        const finding = findings.find((entry) => entry.id === record.findingId);
+        if (!finding) throw new InternalServerErrorException();
+        return {
+          order: [
+            record.caseRevision,
+            finding.sequence,
+            FINDING_RECORD_KINDS.indexOf(record.kind),
+            record.version,
+          ],
+          entry: {
+            kind: 'finding_record' as const,
+            stage: finding.stage,
+            sequence: finding.sequence,
+            record: persisted(() => findingRecordView(record)),
+          },
+        };
+      }),
+    ];
+    ordered.sort((left, right) => {
+      for (const [index, value] of left.order.entries()) {
+        const difference = value - (right.order[index] ?? 0);
+        if (difference !== 0) return difference;
+      }
+      return 0;
+    });
+    const certificate = await this.certificate(actor, companyId, caseId);
+    return {
+      caseId: row.id,
+      orderReference: row.orderReference,
+      status: row.status,
+      standard: row.standard,
+      auditType: row.auditType,
+      clientLegalName: await this.legalName(actor, row),
+      revision: row.revision,
+      openedAt: row.openedAt.toISOString(),
+      revisedAt: (revised?.occurredAt ?? row.openedAt).toISOString(),
+      entries: [
+        ...ordered.map((item) => item.entry),
+        // The Certificate closes the Case, so it is always its last record.
+        ...(certificate ? [{ kind: 'certificate' as const, certificate }] : []),
+      ],
+      documents: documents.map(attachment),
     };
   }
 
@@ -3030,6 +3181,21 @@ function stepVersion(row: StepRow): CertificationStepVersion {
       return certificateDataVersion(row);
   }
   return unexpectedStep(row.step);
+}
+
+/** A stored step version for the register; a step this release does not know is shown, not interpreted. */
+function registerStep(row: StepRow): CertificationRegisterEntry {
+  const known = CERTIFICATION_STEPS.find((step) => step === row.step);
+  if (known === undefined)
+    return {
+      kind: 'unrecognized_step',
+      code: row.step,
+      version: row.version,
+      reason: row.reason,
+      recordedBy: { displayName: row.actorDisplayName },
+      recordedAt: row.recordedAt.toISOString(),
+    };
+  return { kind: 'step', version: stepVersion(row) };
 }
 
 function unexpectedStep(value: never): never {

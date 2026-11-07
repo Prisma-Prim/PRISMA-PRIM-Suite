@@ -575,6 +575,9 @@ export async function openCertificationFixture(input: {
     get projectId() {
       return projectId;
     },
+    get companyId() {
+      return companyId;
+    },
     async close() {
       await harness?.close();
       await database?.close();
