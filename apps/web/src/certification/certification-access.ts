@@ -5,14 +5,15 @@ import type { ActorContext } from '../access-types';
  * rechecks every grant live; this projection only decides what to offer.
  */
 export type CertificationAuthority =
-  | { read: false; manage: false; approve: false }
-  | { read: true; manage: boolean; approve: boolean };
+  | { read: false; manage: false; approve: false; audit: false }
+  | { read: true; manage: boolean; approve: boolean; audit: boolean };
 
 /**
- * Readers consult Cases; a programme manager also records steps and an
- * approver decides on the proposed audit team. Like the server, both roles
- * count only alongside the reader grant. An unrecognized permission,
- * assignment or version fails closed.
+ * Readers consult Cases; a programme manager also records steps, an approver
+ * decides on the proposed audit team and an auditor records audit results
+ * when the Case links them to the approved team's leader. Like the server,
+ * each role counts only alongside the reader grant. An unrecognized
+ * permission, assignment or version fails closed.
  */
 export function certificationAuthority(
   actor: ActorContext,
@@ -31,7 +32,8 @@ export function certificationAuthority(
       company?.certificationReaderAssignmentId,
       company?.certificationReaderPermissionSetVersion,
     );
-  if (!read) return { read: false, manage: false, approve: false };
+  if (!read)
+    return { read: false, manage: false, approve: false, audit: false };
   return {
     read: true,
     manage: grant(
@@ -45,6 +47,12 @@ export function certificationAuthority(
       'certification.approve',
       company?.certificationApproverAssignmentId,
       company?.certificationApproverPermissionSetVersion,
+    ),
+    audit: grant(
+      company?.certificationAuditorPermissions,
+      'certification.audit.record',
+      company?.certificationAuditorAssignmentId,
+      company?.certificationAuditorPermissionSetVersion,
     ),
   };
 }
@@ -68,6 +76,9 @@ export function certificationContextKey(actor: ActorContext): string {
     company?.certificationApproverAssignmentId,
     company?.certificationApproverPermissionSetVersion,
     company?.certificationApproverPermissions,
+    company?.certificationAuditorAssignmentId,
+    company?.certificationAuditorPermissionSetVersion,
+    company?.certificationAuditorPermissions,
   ]);
 }
 

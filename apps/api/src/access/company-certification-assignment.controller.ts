@@ -123,6 +123,41 @@ export class CompanyCertificationApproverAssignmentController {
   }
 }
 
+@Controller('company-certification-auditor-assignments')
+@UseGuards(ActorContextAdapter)
+export class CompanyCertificationAuditorAssignmentController {
+  constructor(private readonly assignments: CompanyContextAssignmentService) {}
+
+  @Post()
+  grant(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const command = record(body);
+    return this.assignments.grantCertificationAuditor(actorFrom(request), {
+      workspaceMembershipId: command.workspaceMembershipId,
+      companyId: command.companyId,
+      idempotencyKey,
+    });
+  }
+
+  @Delete(':workspaceMembershipId/:companyId')
+  revoke(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('workspaceMembershipId') workspaceMembershipId: string,
+    @Param('companyId') companyId: string,
+  ) {
+    return this.assignments.revokeCertificationAuditor(
+      actorFrom(request),
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+}
+
 function actorFrom(request: ActorContextRequest) {
   if (!request.actorContext) throw new ForbiddenException();
   return request.actorContext;

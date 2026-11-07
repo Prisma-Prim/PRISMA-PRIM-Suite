@@ -192,6 +192,10 @@ export function useActivityLogDisplay() {
       certification('approverGranted'),
     'company_certification_approver_assignment.revoked':
       certification('approverRevoked'),
+    'company_certification_auditor_assignment.granted':
+      certification('auditorGranted'),
+    'company_certification_auditor_assignment.revoked':
+      certification('auditorRevoked'),
 
     'company_operational_risk_reader_assignment.granted': risk('readerGranted'),
     'company_operational_risk_reader_assignment.revoked': risk('readerRevoked'),

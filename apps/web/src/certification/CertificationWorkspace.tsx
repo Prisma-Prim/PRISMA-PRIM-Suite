@@ -72,6 +72,27 @@ import {
 } from './certification-team-draft';
 import { teamWithoutConflict } from './certification-team';
 import {
+  approvedTeam,
+  leadsTeam,
+  slotRoles,
+  stageAttachmentReferences,
+  type AuditStage,
+} from './certification-stages';
+import {
+  slotAttachments,
+  stage1ReportDraftFor,
+  stage1ReportFromDraft,
+  stage2ReportDraftFor,
+  stage2ReportFromDraft,
+  stagePlanDraftFor,
+  stagePlanFromDraft,
+  type Stage1ReportDraft,
+  type Stage2ReportDraft,
+  type StagePlanCheck,
+  type StagePlanDraft,
+  type StageReportCheck,
+} from './certification-stages-draft';
+import {
   CERTIFICATION_LIMITS,
   parseCaseDetail,
   parseCaseList,
@@ -94,6 +115,17 @@ import { AgreementView, DossierRegister } from './CertificationDocumentViews';
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
+import {
+  Stage1ReportForm,
+  Stage2ReportForm,
+  StagePlanForm,
+  stageFormTitle,
+} from './CertificationStageForms';
+import {
+  Stage1ReportView,
+  Stage2ReportView,
+  StagePlanView,
+} from './CertificationStageViews';
 import { DecisionForm, TeamForm } from './CertificationTeamForms';
 import {
   DecisionView,
@@ -147,7 +179,10 @@ type MutationKind =
   | 'attach'
   | 'agreement'
   | 'team'
-  | 'decision';
+  | 'decision'
+  | StageKind;
+/** The Stage records, each with its own form and feedback. */
+type StageKind = 'stage1Plan' | 'stage2Plan' | 'stage1Report' | 'stage2Report';
 /** A Workspace member the read Case names, offered as a team member link. */
 type CasePerson = CertificationActorReference & { self: boolean };
 /**
@@ -180,6 +215,12 @@ type Proposal =
   | { status: 'refused'; message: CertificationMessageKey };
 
 const IDLE: Feedback = { status: 'idle' };
+const STAGE_KINDS: readonly StageKind[] = [
+  'stage1Plan',
+  'stage2Plan',
+  'stage1Report',
+  'stage2Report',
+];
 const NO_PROPOSAL: Proposal = { status: 'idle' };
 const NO_DOWNLOAD: Download = { status: 'idle' };
 const ABANDONED: ApiResult<unknown> = { status: 'error' };
@@ -272,6 +313,32 @@ function CertificationRegistry(
   const [decisionDraft, setDecisionDraft] =
     useState<DecisionDraft>(emptyDecisionDraft);
   const [decisionFeedback, setDecisionFeedback] = useState<Feedback>(IDLE);
+  /**
+   * Null until edited or opened for a correction: a first record then starts
+   * empty. Kept through a reload, like the other drafts.
+   */
+  const [stage1PlanDraft, setStage1PlanDraft] = useState<StagePlanDraft | null>(
+    null,
+  );
+  const [stage2PlanDraft, setStage2PlanDraft] = useState<StagePlanDraft | null>(
+    null,
+  );
+  const [stage1ReportDraft, setStage1ReportDraft] =
+    useState<Stage1ReportDraft | null>(null);
+  const [stage2ReportDraft, setStage2ReportDraft] =
+    useState<Stage2ReportDraft | null>(null);
+  const [stage1PlanFeedback, setStage1PlanFeedback] = useState<Feedback>(IDLE);
+  const [stage2PlanFeedback, setStage2PlanFeedback] = useState<Feedback>(IDLE);
+  const [stage1ReportFeedback, setStage1ReportFeedback] =
+    useState<Feedback>(IDLE);
+  const [stage2ReportFeedback, setStage2ReportFeedback] =
+    useState<Feedback>(IDLE);
+  const stageFeedback: Record<StageKind, Feedback> = {
+    stage1Plan: stage1PlanFeedback,
+    stage2Plan: stage2PlanFeedback,
+    stage1Report: stage1ReportFeedback,
+    stage2Report: stage2ReportFeedback,
+  };
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -287,6 +354,7 @@ function CertificationRegistry(
       agreementFeedback,
       teamFeedback,
       decisionFeedback,
+      ...Object.values(stageFeedback),
     ].some((feedback) => feedback.status === 'saving');
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
@@ -308,6 +376,29 @@ function CertificationRegistry(
         return setTeamFeedback;
       case 'decision':
         return setDecisionFeedback;
+      case 'stage1Plan':
+        return setStage1PlanFeedback;
+      case 'stage2Plan':
+        return setStage2PlanFeedback;
+      case 'stage1Report':
+        return setStage1ReportFeedback;
+      case 'stage2Report':
+        return setStage2ReportFeedback;
+    }
+    return unexpected(kind);
+  }
+
+  /** Closes a Stage form: its draft is dropped, a first record starts empty. */
+  function resetStageDraft(kind: StageKind) {
+    switch (kind) {
+      case 'stage1Plan':
+        return setStage1PlanDraft(null);
+      case 'stage2Plan':
+        return setStage2PlanDraft(null);
+      case 'stage1Report':
+        return setStage1ReportDraft(null);
+      case 'stage2Report':
+        return setStage2ReportDraft(null);
     }
     return unexpected(kind);
   }
@@ -352,6 +443,10 @@ function CertificationRegistry(
     setTeamFeedback(IDLE);
     setDecisionDraft(emptyDecisionDraft());
     setDecisionFeedback(IDLE);
+    for (const kind of STAGE_KINDS) {
+      resetStageDraft(kind);
+      feedbackSetter(kind)(IDLE);
+    }
     contentOperation.retire();
     setDownload(NO_DOWNLOAD);
   }
@@ -504,6 +599,7 @@ function CertificationRegistry(
       setAgreementFeedback(clear);
       setTeamFeedback(clear);
       setDecisionFeedback(clear);
+      for (const kind of STAGE_KINDS) feedbackSetter(kind)(clear);
     }
     selected.current = caseId;
     setSelectedId(caseId);
@@ -647,6 +743,12 @@ function CertificationRegistry(
         break;
       case 'decision':
         setDecisionDraft(emptyDecisionDraft());
+        break;
+      case 'stage1Plan':
+      case 'stage2Plan':
+      case 'stage1Report':
+      case 'stage2Report':
+        resetStageDraft(kind);
         break;
       default:
         unexpected(kind);
@@ -913,6 +1015,112 @@ function CertificationRegistry(
       'decision',
       reuse(decisionFeedback, {
         path: `/certification-cases/${encodeURIComponent(current.id)}/team-decision`,
+        body,
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** The draft of a Stage plan, null until edited or opened. */
+  function planDraftOf(stage: AuditStage): StagePlanDraft | null {
+    return stage === 'stage_1' ? stage1PlanDraft : stage2PlanDraft;
+  }
+
+  function setPlanDraft(stage: AuditStage, draft: StagePlanDraft) {
+    if (stage === 'stage_1') setStage1PlanDraft(draft);
+    else setStage2PlanDraft(draft);
+  }
+
+  /** The programme manager plans a Stage; the server rechecks every rule. */
+  function submitStagePlan(stage: AuditStage, event: FormEvent) {
+    event.preventDefault();
+    const kind = planKind(stage);
+    const feedback = stageFeedback[kind];
+    if (
+      busy ||
+      !authority.manage ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(feedback)
+    )
+      return;
+    const { caseDetail: current, register } = detail.value;
+    const duration = current.duration;
+    if (!duration || planBlocked(current, stage) !== null) return;
+    const recorded = stagePlanOf(current, stage);
+    const check = stagePlanFromDraft(
+      planDraftOf(stage) ?? stagePlanDraftFor(null),
+      {
+        register: register.items,
+        confirmedOnSite: confirmedOnSite(duration.value.confirmed, stage),
+        startsAfter:
+          stage === 'stage_2'
+            ? (current.stage1Report?.value.reportDate ?? null)
+            : null,
+        correcting: recorded !== null,
+      },
+    );
+    if (check.status !== 'valid') {
+      feedbackSetter(kind)(refusedWith(planMessage(check)));
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      ...check.plan,
+    });
+    void execute(
+      kind,
+      reuse(feedback, {
+        path: stagePath(current.id, stage, 'plan'),
+        body,
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** The leader of the approved team reports a Stage; the server rechecks. */
+  function submitStageReport(stage: AuditStage, event: FormEvent) {
+    event.preventDefault();
+    const kind = reportKind(stage);
+    const feedback = stageFeedback[kind];
+    if (
+      busy ||
+      !authority.audit ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(feedback)
+    )
+      return;
+    const { caseDetail: current, register } = detail.value;
+    const plan = stagePlanOf(current, stage);
+    const team = approvedTeam(current);
+    if (!plan || !team || !leadsTeam(team, actor.workspaceMembershipId)) return;
+    const context = {
+      register: register.items,
+      planStart: plan.value.startDate,
+    };
+    const check =
+      stage === 'stage_1'
+        ? stage1ReportFromDraft(
+            stage1ReportDraft ?? stage1ReportDraftFor(null),
+            { ...context, correcting: current.stage1Report !== null },
+          )
+        : stage2ReportFromDraft(
+            stage2ReportDraft ?? stage2ReportDraftFor(null),
+            { ...context, correcting: current.stage2Report !== null },
+          );
+    if (check.status !== 'valid') {
+      feedbackSetter(kind)(refusedWith(reportMessage(check, stage)));
+      return;
+    }
+    const body = JSON.stringify({
+      expectedRevision: current.revision,
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      ...check.report,
+    });
+    void execute(
+      kind,
+      reuse(feedback, {
+        path: stagePath(current.id, stage, 'report'),
         body,
         caseId: current.id,
       }),
@@ -1211,6 +1419,10 @@ function CertificationRegistry(
     agreement: `${prefix}-agreement-feedback`,
     team: `${prefix}-team-feedback`,
     decision: `${prefix}-decision-feedback`,
+    stage1Plan: `${prefix}-stage-1-plan-feedback`,
+    stage2Plan: `${prefix}-stage-2-plan-feedback`,
+    stage1Report: `${prefix}-stage-1-report-feedback`,
+    stage2Report: `${prefix}-stage-2-report-feedback`,
   };
 
   /** A step's confirmation is shown above the Case and survives its reload. */
@@ -1439,6 +1651,7 @@ function CertificationRegistry(
             agreementFeedback,
             teamFeedback,
             decisionFeedback,
+            ...Object.values(stageFeedback),
           ].some((feedback) => feedback.status === 'saved') && (
             <p role="status">{copy('saveConfirmed')}</p>
           )}
@@ -1516,9 +1729,9 @@ function CertificationRegistry(
               {caseView.caseDetail.status === 'rejected' && (
                 <p className="certification-blocked">{copy('blockedClosed')}</p>
               )}
-              {caseView.caseDetail.nextStep === 'stage_1_plan' && (
+              {caseView.caseDetail.nextStep === 'recommendation' && (
                 <p className="certification-note">
-                  {copy('nextStagePlanPending')}
+                  {copy('nextRecommendationPending')}
                 </p>
               )}
               <section aria-labelledby={`${prefix}-application-title`}>
@@ -1710,6 +1923,11 @@ function CertificationRegistry(
                   {decisionStep(caseView)}
                 </section>
               )}
+              {(caseView.caseDetail.stage1Plan !== null ||
+                approvedTeam(caseView.caseDetail) !== undefined) &&
+                stageSection(caseView, 'stage_1')}
+              {caseView.caseDetail.stage1Plan !== null &&
+                stageSection(caseView, 'stage_2')}
               <section aria-labelledby={`${prefix}-timeline-title`}>
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
                 <TimelineView
@@ -2076,6 +2294,244 @@ function CertificationRegistry(
     );
   }
 
+  /** One Stage: its latest plan and report, their forms or why they wait. */
+  function stageSection(view: CaseView, stage: AuditStage) {
+    const current = view.caseDetail;
+    const titleId = `${prefix}-${stage}-title`;
+    const plan = stagePlanOf(current, stage);
+    return (
+      <section aria-labelledby={titleId}>
+        <h5 id={titleId}>
+          {copy(stage === 'stage_1' ? 'stage1Title' : 'stage2Title')}
+        </h5>
+        <h6>{copy('stagePlanTitle')}</h6>
+        {plan ? (
+          <>
+            <VersionAttribution version={plan} />
+            <StagePlanView plan={plan.value} register={view.register} />
+          </>
+        ) : (
+          <p>{copy('stagePlanMissing')}</p>
+        )}
+        {feedbackMessage(planKind(stage), stageFeedback[planKind(stage)])}
+        {stagePlanStep(view, stage)}
+        <h6>{copy('stageReportTitle')}</h6>
+        {stageReportView(view, stage)}
+        {feedbackMessage(reportKind(stage), stageFeedback[reportKind(stage)])}
+        {stageReportStep(view, stage)}
+      </section>
+    );
+  }
+
+  function stageReportView(view: CaseView, stage: AuditStage) {
+    const { stage1Report, stage2Report } = view.caseDetail;
+    if (stage === 'stage_1' && stage1Report)
+      return (
+        <>
+          <VersionAttribution version={stage1Report} />
+          <Stage1ReportView
+            report={stage1Report.value}
+            register={view.register}
+          />
+        </>
+      );
+    if (stage === 'stage_2' && stage2Report)
+      return (
+        <>
+          <VersionAttribution version={stage2Report} />
+          <Stage2ReportView
+            report={stage2Report.value}
+            register={view.register}
+          />
+        </>
+      );
+    return <p>{copy('stageReportMissing')}</p>;
+  }
+
+  /**
+   * The plan form for a programme manager, the entry to a new version, or
+   * the plain reason the Stage cannot be planned yet.
+   */
+  function stagePlanStep(view: CaseView, stage: AuditStage) {
+    const current = view.caseDetail;
+    const duration = current.duration;
+    if (current.status !== 'open' || !duration) return null;
+    const kind = planKind(stage);
+    const feedback = stageFeedback[kind];
+    const recorded = stagePlanOf(current, stage);
+    const blocked = planBlocked(current, stage);
+    if (blocked !== null)
+      return recorded && !authority.manage ? null : (
+        <p className="certification-blocked">{copy(blocked)}</p>
+      );
+    if (!authority.manage)
+      return recorded ? null : (
+        <p className="certification-note">{copy('stagePlanAwaitingManager')}</p>
+      );
+    const draft = planDraftOf(stage);
+    if (recorded && !draft)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setPlanDraft(stage, stagePlanDraftFor(recorded.value));
+            feedbackSetter(kind)(IDLE);
+          }}
+        >
+          {copy(stageFormTitle({ stage, record: 'plan', correcting: true }))}
+        </button>
+      );
+    const attachments = slotAttachments(view.register.items, 'plan');
+    if (attachments.length === 0)
+      return (
+        <p className="certification-blocked">{copy('stageNoPlanDocument')}</p>
+      );
+    return (
+      <StagePlanForm
+        idPrefix={`${prefix}-${stage}-plan`}
+        stage={stage}
+        draft={draft ?? stagePlanDraftFor(null)}
+        correcting={recorded !== null}
+        confirmedOnSite={confirmedOnSite(duration.value.confirmed, stage)}
+        attachments={attachments}
+        disabled={busy}
+        submitting={feedback.status === 'saving'}
+        submitBlocked={blockedUntilReload(feedback)}
+        feedbackId={describedFeedback(kind, feedback)}
+        onChange={(next) => {
+          setPlanDraft(stage, next);
+          if (
+            feedback.status === 'saved' ||
+            (feedback.status === 'refused' && !feedback.reload)
+          )
+            feedbackSetter(kind)(IDLE);
+        }}
+        onSubmit={(event) => submitStagePlan(stage, event)}
+        onCancel={
+          recorded
+            ? () => {
+                resetStageDraft(kind);
+                feedbackSetter(kind)(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  /**
+   * The report form for the leader of the approved team holding the auditor
+   * role, the entry to a new version, or the plain reason it is not offered.
+   */
+  function stageReportStep(view: CaseView, stage: AuditStage) {
+    const current = view.caseDetail;
+    if (current.status !== 'open') return null;
+    const plan = stagePlanOf(current, stage);
+    const reported =
+      stage === 'stage_1'
+        ? current.stage1Report !== null
+        : current.stage2Report !== null;
+    if (!plan)
+      return (
+        <p className="certification-blocked">
+          {copy('blockedStageReportBeforePlan')}
+        </p>
+      );
+    const team = approvedTeam(current);
+    if (!team)
+      return reported && !authority.audit ? null : (
+        <p className="certification-blocked">
+          {copy('blockedStageReportTeamNotApproved')}
+        </p>
+      );
+    if (!authority.audit)
+      return current.nextStep ===
+        (stage === 'stage_1' ? 'stage_1_report' : 'stage_2_report') ? (
+        <p className="certification-note">
+          {copy('stageReportAwaitingLeader')}
+        </p>
+      ) : null;
+    // The server refuses a report by anyone but the approved team's leader.
+    if (!leadsTeam(team, actor.workspaceMembershipId))
+      return (
+        <p className="certification-blocked">{copy('blockedNotTeamLeader')}</p>
+      );
+    const kind = reportKind(stage);
+    const feedback = stageFeedback[kind];
+    const reports = slotAttachments(view.register.items, 'report');
+    const open = stage === 'stage_1' ? stage1ReportDraft : stage2ReportDraft;
+    if (reported && !open)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (stage === 'stage_1')
+              setStage1ReportDraft(
+                stage1ReportDraftFor(current.stage1Report?.value ?? null),
+              );
+            else
+              setStage2ReportDraft(
+                stage2ReportDraftFor(current.stage2Report?.value ?? null),
+              );
+            feedbackSetter(kind)(IDLE);
+          }}
+        >
+          {copy(stageFormTitle({ stage, record: 'report', correcting: true }))}
+        </button>
+      );
+    if (reports.length === 0)
+      return (
+        <p className="certification-blocked">{copy('stageNoReportDocument')}</p>
+      );
+    const shared = {
+      idPrefix: `${prefix}-${stage}-report`,
+      stage,
+      correcting: reported,
+      disabled: busy,
+      submitting: feedback.status === 'saving',
+      submitBlocked: blockedUntilReload(feedback),
+      feedbackId: describedFeedback(kind, feedback),
+      reports,
+      participantLists: slotAttachments(view.register.items, 'participantList'),
+      onSubmit: (event: FormEvent) => submitStageReport(stage, event),
+      onCancel: reported
+        ? () => {
+            resetStageDraft(kind);
+            feedbackSetter(kind)(IDLE);
+          }
+        : undefined,
+    };
+    const edited = () => {
+      if (
+        feedback.status === 'saved' ||
+        (feedback.status === 'refused' && !feedback.reload)
+      )
+        feedbackSetter(kind)(IDLE);
+    };
+    return stage === 'stage_1' ? (
+      <Stage1ReportForm
+        {...shared}
+        draft={stage1ReportDraft ?? stage1ReportDraftFor(null)}
+        onChange={(next) => {
+          setStage1ReportDraft(next);
+          edited();
+        }}
+      />
+    ) : (
+      <Stage2ReportForm
+        {...shared}
+        draft={stage2ReportDraft ?? stage2ReportDraftFor(null)}
+        annexes={slotAttachments(view.register.items, 'annex')}
+        onChange={(next) => {
+          setStage2ReportDraft(next);
+          edited();
+        }}
+      />
+    );
+  }
+
   /** The agreement form, the correction entry or why it is unavailable. */
   function agreementStep(current: CaseDetail, register: DocumentRegister) {
     const recorded = current.agreement;
@@ -2134,6 +2590,87 @@ function CertificationRegistry(
   }
 }
 
+function planKind(stage: AuditStage): StageKind {
+  return stage === 'stage_1' ? 'stage1Plan' : 'stage2Plan';
+}
+
+function reportKind(stage: AuditStage): StageKind {
+  return stage === 'stage_1' ? 'stage1Report' : 'stage2Report';
+}
+
+function stagePath(
+  caseId: string,
+  stage: AuditStage,
+  record: 'plan' | 'report',
+): string {
+  return `/certification-cases/${encodeURIComponent(caseId)}/stages/${stage === 'stage_1' ? 'stage-1' : 'stage-2'}/${record}`;
+}
+
+function stagePlanOf(current: CaseDetail, stage: AuditStage) {
+  return stage === 'stage_1' ? current.stage1Plan : current.stage2Plan;
+}
+
+function confirmedOnSite(
+  confirmed: { stage1OnSite: string; stage2OnSite: string },
+  stage: AuditStage,
+): string {
+  return stage === 'stage_1' ? confirmed.stage1OnSite : confirmed.stage2OnSite;
+}
+
+/**
+ * Why a Stage cannot be planned now, as the server would refuse it: the
+ * latest team version is not approved, or Stage 2 lacks a Stage 1 report
+ * concluding that the client is ready.
+ */
+function planBlocked(
+  current: CaseDetail,
+  stage: AuditStage,
+): CertificationMessageKey | null {
+  if (!approvedTeam(current)) return 'blockedStagePlanTeamNotApproved';
+  if (stage === 'stage_1') return null;
+  if (!current.stage1Report) return 'blockedStage2BeforeStage1Report';
+  return current.stage1Report.value.conclusion === 'ready'
+    ? null
+    : 'blockedStage2NotReady';
+}
+
+function planMessage(
+  check: Exclude<StagePlanCheck, { status: 'valid' }>,
+): CertificationMessageKey {
+  switch (check.status) {
+    case 'incomplete':
+      return 'stagePlanValidation';
+    case 'dates':
+      return 'stageDatesRule';
+    case 'stage2Start':
+      return 'stage2StartRule';
+    case 'deviationNote':
+      return 'stageDeviationNoteRequired';
+    case 'reasonRequired':
+      return 'reasonRequired';
+  }
+  return unexpected(check.status);
+}
+
+function reportMessage(
+  check: Exclude<StageReportCheck<unknown>, { status: 'valid' }>,
+  stage: AuditStage,
+): CertificationMessageKey {
+  switch (check.status) {
+    case 'incomplete':
+      return stage === 'stage_1'
+        ? 'stage1ReportValidation'
+        : 'stage2ReportValidation';
+    case 'documentReview':
+      return 'stageDocumentReviewRequired';
+    case 'beforePlan':
+      return 'stageReportDateRule';
+    case 'reasonRequired':
+      return 'reasonRequired';
+  }
+  return unexpected(check.status);
+}
+
 function agreementMessage(
   check: Exclude<AgreementCheck, { status: 'valid' }>,
 ): CertificationMessageKey {
@@ -2177,6 +2714,12 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
       return 'blockedAgreementCorrectionReason';
     case 'team':
       return 'blockedTeamCorrectionReason';
+    case 'stage1Plan':
+    case 'stage2Plan':
+      return 'blockedStagePlanCorrectionReason';
+    case 'stage1Report':
+    case 'stage2Report':
+      return 'blockedStageReportCorrectionReason';
     case 'open':
     case 'application':
     case 'review':
@@ -2253,6 +2796,14 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
     (detail.team === null || recorded(detail.team.id, detail.team.version)) &&
     (detail.teamDecision === null ||
       recorded(detail.teamDecision.id, detail.teamDecision.version)) &&
+    [
+      detail.stage1Plan,
+      detail.stage1Report,
+      detail.stage2Plan,
+      detail.stage2Report,
+    ].every(
+      (version) => version === null || recorded(version.id, version.version),
+    ) &&
     // Each decision concerns a team version the timeline records before it.
     timeline.entries.every(
       (entry, index) =>
@@ -2270,8 +2821,9 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
 
 /**
  * The register belongs to the same Case read: no attachment beyond the Case
- * revision or at a step's revision, and every recorded agreement refers to
- * an attachment with the agreement role attached before it.
+ * revision or at a step's revision, every recorded agreement refers to an
+ * attachment with the agreement role attached before it, and every Stage
+ * record to attachments with the roles of their slots attached before it.
  */
 function registerMatches(
   detail: CaseDetail,
@@ -2293,8 +2845,37 @@ function registerMatches(
             item.role === 'agreement' &&
             item.caseRevision < entry.caseRevision,
         ),
+    ) &&
+    timeline.entries.every((entry) =>
+      stageAttachmentsOf(entry).every(({ slot, attachmentId }) =>
+        register.items.some(
+          (item) =>
+            item.id === attachmentId &&
+            slotRoles(slot).includes(item.role) &&
+            item.caseRevision < entry.caseRevision,
+        ),
+      ),
     )
   );
+}
+
+/** The attachments a timeline entry refers to by slot; none outside Stages. */
+function stageAttachmentsOf(entry: CaseTimeline['entries'][number]) {
+  switch (entry.step) {
+    case 'stage_1_plan':
+    case 'stage_1_report':
+    case 'stage_2_plan':
+    case 'stage_2_report':
+      return stageAttachmentReferences(entry.value);
+    case 'application':
+    case 'application_review':
+    case 'duration':
+    case 'agreement':
+    case 'team':
+    case 'team_decision':
+      return [];
+  }
+  return unexpected(entry);
 }
 
 function reuse(feedback: Feedback, next: Omit<Intent, 'key'>): Intent {
@@ -2354,6 +2935,13 @@ function commandFeedback(
           return refusedWith('teamConflictNoteRequired');
         case 'CERTIFICATION_TEAM_MEMBER_UNKNOWN':
           return refusedWith('teamMemberUnknown');
+        case 'CERTIFICATION_STAGE_DATES':
+          return refusedWith('stageDatesRule');
+        case 'CERTIFICATION_STAGE_DEVIATION_NOTE':
+          // The client mirrors the rule: the confirmed duration has changed.
+          return refusedWith('stageDeviationNoteRule', true);
+        case 'CERTIFICATION_DOCUMENT_REVIEW_INCOMPLETE':
+          return refusedWith('stageDocumentReviewRequired');
         default:
           return refusedWith('invalid');
       }
@@ -2396,6 +2984,23 @@ function commandFeedback(
           return refusedWith('teamConflictDeclared');
         case 'CERTIFICATION_CORRECTION_UNCHANGED':
           return refusedWith('blockedCorrectionUnchanged');
+        case 'CERTIFICATION_TEAM_NOT_APPROVED':
+          return refusedWith('blockedStagePlanTeamNotApproved', true);
+        case 'CERTIFICATION_STAGE_1_NOT_READY':
+          return refusedWith('blockedStage2NotReady', true);
+        case 'CERTIFICATION_STAGE_DATES':
+          // A Stage 2 start, or a report date, against the read Case.
+          return refusedWith(
+            kind === 'stage1Plan' || kind === 'stage2Plan'
+              ? 'stage2StartRule'
+              : 'stageReportDateRule',
+          );
+        case 'CERTIFICATION_STAGE_NOT_PLANNED':
+          return refusedWith('blockedStageReportBeforePlan', true);
+        case 'CERTIFICATION_NOT_TEAM_LEADER':
+          return refusedWith('blockedNotTeamLeader', true);
+        case 'CERTIFICATION_ATTACHMENT_ROLE':
+          return refusedWith('stageAttachmentRole', true);
         default:
           return refusedWith('conflict', kind !== 'open');
       }

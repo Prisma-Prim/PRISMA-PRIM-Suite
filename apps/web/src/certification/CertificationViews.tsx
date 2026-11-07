@@ -5,6 +5,13 @@ import { useCertificationCopy } from './certification.copy';
 import { AgreementView } from './CertificationDocumentViews';
 import { DurationView } from './CertificationDurationViews';
 import {
+  Stage1ReportView,
+  Stage2ReportView,
+  StagePlanView,
+  conclusionLabel,
+} from './CertificationStageViews';
+import { approvedTeam } from './certification-stages';
+import {
   DecisionView,
   TeamView,
   decisionLabel,
@@ -195,8 +202,57 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       <li data-current={detail.nextStep === 'team_decision'}>
         <strong>{copy('stepTeamDecision')}</strong> {teamDecisionState(detail)}
       </li>
+      <li
+        data-current={
+          detail.nextStep === 'stage_1_plan' ||
+          detail.nextStep === 'stage_1_report'
+        }
+      >
+        <strong>{copy('stepStage1')}</strong> {stage1State(detail)}
+      </li>
+      <li
+        data-current={
+          detail.nextStep === 'stage_2_plan' ||
+          detail.nextStep === 'stage_2_report'
+        }
+      >
+        <strong>{copy('stepStage2')}</strong> {stage2State(detail)}
+      </li>
     </ol>
   );
+
+  /** The latest Stage 1 report's conclusion, its plan, or what it waits for. */
+  function stage1State(current: CaseDetail): string {
+    if (closed) return copy('stepClosed');
+    const { stage1Plan: plan, stage1Report: report } = current;
+    if (report)
+      return formatMessage(
+        copy(
+          report.value.conclusion === 'ready'
+            ? 'stepStageReady'
+            : 'stepStageNotReady',
+        ),
+        { version: report.version },
+      );
+    if (plan)
+      return formatMessage(copy('stepPlanned'), { version: plan.version });
+    return approvedTeam(current)
+      ? copy('stepToRecord')
+      : copy('stepWaitingTeamApproval');
+  }
+
+  /** The latest Stage 2 report, its plan, or what it waits for. */
+  function stage2State(current: CaseDetail): string {
+    if (closed) return copy('stepClosed');
+    const { stage2Plan: plan, stage2Report: report } = current;
+    if (report)
+      return formatMessage(copy('stepReported'), { version: report.version });
+    if (plan)
+      return formatMessage(copy('stepPlanned'), { version: plan.version });
+    return current.stage1Report?.value.conclusion === 'ready'
+      ? copy('stepToRecord')
+      : copy('stepWaitingStage1Ready');
+  }
 
   /** The decision on the latest team version, or what it waits for. */
   function teamDecisionState(current: CaseDetail): string {
@@ -232,6 +288,14 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
       return <>{copy('nextTeamDecision')}</>;
     case 'stage_1_plan':
       return <>{copy('nextStage1Plan')}</>;
+    case 'stage_1_report':
+      return <>{copy('nextStage1Report')}</>;
+    case 'stage_2_plan':
+      return <>{copy('nextStage2Plan')}</>;
+    case 'stage_2_report':
+      return <>{copy('nextStage2Report')}</>;
+    case 'recommendation':
+      return <>{copy('nextRecommendation')}</>;
     case null:
       return <>{copy('nextNone')}</>;
   }
@@ -240,8 +304,8 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
 
 /**
  * Every recorded version in server order, each with its exact values; an
- * agreement names its signed original from the Case's register and a team
- * names the linked Workspace members known in the Case.
+ * agreement and a Stage record name their PDFs from the Case's register and
+ * a team names the linked Workspace members known in the Case.
  */
 export function TimelineView({
   timeline,
@@ -320,6 +384,31 @@ function TimelineEntry({
           version: entry.value.teamVersion,
         }),
         <DecisionView decision={entry.value} />,
+      );
+    case 'stage_1_plan':
+      return values(
+        formatMessage(copy('timelineStage1Plan'), { version: entry.version }),
+        <StagePlanView plan={entry.value} register={register} />,
+      );
+    case 'stage_1_report':
+      return values(
+        formatMessage(copy('timelineStage1Report'), {
+          conclusion: copy(conclusionLabel(entry.value.conclusion)),
+          version: entry.version,
+        }),
+        <Stage1ReportView report={entry.value} register={register} />,
+      );
+    case 'stage_2_plan':
+      return values(
+        formatMessage(copy('timelineStage2Plan'), { version: entry.version }),
+        <StagePlanView plan={entry.value} register={register} />,
+      );
+    case 'stage_2_report':
+      return values(
+        formatMessage(copy('timelineStage2Report'), {
+          version: entry.version,
+        }),
+        <Stage2ReportView report={entry.value} register={register} />,
       );
   }
   return unexpected(entry);

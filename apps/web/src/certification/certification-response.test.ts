@@ -12,6 +12,9 @@ import {
   certificationIds,
   lactisFacts,
   reviewCriteria,
+  stage1Report,
+  stage2Report,
+  stagePlan,
   teamMember,
 } from './certification.test-fixture';
 
@@ -66,6 +69,7 @@ function detail(overrides: Record<string, unknown> = {}) {
     agreement: null,
     team: null,
     teamDecision: null,
+    stages: [],
     ...overrides,
   };
 }
@@ -1028,5 +1032,464 @@ describe('Certification audit team and decision parsers', () => {
     ],
   ])('fails closed on %s', (_name, value) => {
     expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
+  });
+});
+
+const approvedFirst = {
+  ...returned,
+  value: { teamVersion: 1, decision: 'approved', reason: null },
+};
+function stageVersion(
+  step: string,
+  caseRevision: number,
+  value: Record<string, unknown>,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: `step-${step}-${String(caseRevision)}`,
+    step,
+    version: 1,
+    caseRevision,
+    reason: null,
+    recordedBy: by,
+    recordedAt: `2026-11-07T09:${String(caseRevision).padStart(2, '0')}:00.000Z`,
+    value,
+    ...overrides,
+  };
+}
+/** The team approved at 8; each Stage record follows its attachments. */
+const stage1Planned = stageVersion('stage_1_plan', 10, stagePlan('plan-1'));
+const stage1NotReady = stageVersion(
+  'stage_1_report',
+  12,
+  stage1Report('report-1', {
+    conclusion: 'not_ready',
+    conclusionNote: 'Hazard analysis incomplete.',
+    participantListAttachmentId: 'participants-1',
+  }),
+);
+const stage1Ready = stageVersion(
+  'stage_1_report',
+  13,
+  stage1Report('report-1', { reportDate: '2026-11-14' }),
+  { version: 2, reason: 'Hazard analysis completed and verified.' },
+);
+const stage2Planned = stageVersion(
+  'stage_2_plan',
+  15,
+  stagePlan('plan-2', {
+    startDate: '2026-11-20',
+    endDate: '2026-11-21',
+    onSiteDays: '2.5',
+    remoteDays: '0.25',
+    sentToClientOn: null,
+    deviationNote: 'One production line idle during the audit.',
+  }),
+);
+const stage2Reported = stageVersion(
+  'stage_2_report',
+  17,
+  stage2Report('report-2', {
+    participantListAttachmentId: 'participants-2',
+    annexAttachmentId: 'annex-2',
+  }),
+);
+/** The approved team with the given Stage records, the Case at their revision. */
+function stagedDetail(
+  stages: unknown,
+  overrides: Record<string, unknown> = {},
+) {
+  return teamedDetail({
+    revision: 17,
+    nextStep: 'recommendation',
+    teamDecision: approvedFirst,
+    stages,
+    ...overrides,
+  });
+}
+const allStages = [stage1Planned, stage1Ready, stage2Planned, stage2Reported];
+
+describe('Certification Stage plan and report parsers', () => {
+  it('reads the latest plan and report of both Stages with every exact value', () => {
+    const parsed = parseCaseDetail(stagedDetail(allStages), {
+      ...scope,
+      caseId,
+    });
+    expect(parsed.nextStep).toBe('recommendation');
+    expect(parsed.stage1Plan?.value).toEqual({
+      startDate: '2026-11-10',
+      endDate: '2026-11-10',
+      onSiteDays: '1',
+      remoteDays: '0',
+      objectives: 'Evaluate readiness of the food safety management system',
+      scope: 'Production of pasteurised milk and yoghurt',
+      planAttachmentId: 'plan-1',
+      sentToClientOn: '2026-11-03',
+      deviationNote: null,
+    });
+    expect(parsed.stage1Report).toMatchObject({
+      version: 2,
+      reason: 'Hazard analysis completed and verified.',
+      value: {
+        reportDate: '2026-11-14',
+        documentReviewCompleted: true,
+        conclusion: 'ready',
+        participantListAttachmentId: null,
+      },
+    });
+    expect(parsed.stage2Plan?.value).toMatchObject({
+      onSiteDays: '2.5',
+      remoteDays: '0.25',
+      sentToClientOn: null,
+      deviationNote: 'One production line idle during the audit.',
+    });
+    expect(parsed.stage2Report?.value).toEqual({
+      reportDate: '2026-11-21',
+      summary: 'Stage 2 completed as planned.',
+      reportAttachmentId: 'report-2',
+      participantListAttachmentId: 'participants-2',
+      annexAttachmentId: 'annex-2',
+    });
+  });
+
+  it.each([
+    ['the Stage 1 plan', [], 'stage_1_plan', 8],
+    ['the Stage 1 report', [stage1Planned], 'stage_1_report', 10],
+    [
+      'the Stage 1 report again after a not-ready conclusion',
+      [stage1Planned, stage1NotReady],
+      'stage_1_report',
+      12,
+    ],
+    ['the Stage 2 plan', [stage1Planned, stage1Ready], 'stage_2_plan', 13],
+    [
+      'the Stage 2 report',
+      [stage1Planned, stage1Ready, stage2Planned],
+      'stage_2_report',
+      15,
+    ],
+  ])('reads %s as the next step', (_name, stages, nextStep, revision) => {
+    const parsed = parseCaseDetail(
+      stagedDetail(stages, { revision, nextStep }),
+      { ...scope, caseId },
+    );
+    expect(parsed.nextStep).toBe(nextStep);
+    expect(
+      parseCaseList(
+        {
+          projectId: certificationIds.project,
+          cases: [stagedDetail(stages, { revision, nextStep })],
+          total: 1,
+        },
+        certificationIds.project,
+      ).cases[0]?.nextStep,
+    ).toBe(nextStep);
+  });
+
+  it('reads Stage records kept while a new team version awaits its decision', () => {
+    const parsed = parseCaseDetail(
+      stagedDetail([stage1Planned], {
+        revision: 11,
+        nextStep: 'team_decision',
+        team: { ...corrected, caseRevision: 11, reason: 'Auditor replaced.' },
+      }),
+      { ...scope, caseId },
+    );
+    expect(parsed.nextStep).toBe('team_decision');
+    expect(parsed.stage1Plan?.version).toBe(1);
+  });
+
+  it('reads every Stage version of the timeline in order', () => {
+    expect(
+      parseTimeline(
+        {
+          caseId,
+          entries: [
+            application,
+            review,
+            duration,
+            agreement,
+            team,
+            approvedFirst,
+            stage1Planned,
+            stage1NotReady,
+            stage1Ready,
+            stage2Planned,
+            stage2Reported,
+          ],
+        },
+        caseId,
+      ).entries.slice(-5),
+    ).toMatchObject([
+      { step: 'stage_1_plan', version: 1 },
+      { step: 'stage_1_report', value: { conclusion: 'not_ready' } },
+      { step: 'stage_1_report', version: 2 },
+      { step: 'stage_2_plan', version: 1 },
+      { step: 'stage_2_report', version: 1 },
+    ]);
+  });
+
+  const withPlan = (value: Record<string, unknown>) =>
+    stagedDetail(
+      [{ ...stage1Planned, value: { ...stage1Planned.value, ...value } }],
+      {
+        revision: 10,
+        nextStep: 'stage_1_report',
+      },
+    );
+  const withReport = (value: Record<string, unknown>) =>
+    stagedDetail(
+      [
+        stage1Planned,
+        { ...stage1Ready, value: { ...stage1Ready.value, ...value } },
+      ],
+      { revision: 13, nextStep: 'stage_2_plan' },
+    );
+  const withoutKey = (value: Record<string, unknown>, key: string) =>
+    Object.fromEntries(Object.entries(value).filter(([name]) => name !== key));
+
+  it.each([
+    [
+      'a Case read without the Stage records',
+      withoutKey(
+        stagedDetail([], { revision: 8, nextStep: 'stage_1_plan' }),
+        'stages',
+      ),
+    ],
+    [
+      'Stage records that are not a list',
+      stagedDetail({}, { revision: 8, nextStep: 'stage_1_plan' }),
+    ],
+    [
+      'a Stage step listed twice',
+      stagedDetail([stage1Planned, { ...stage1Planned, id: 'other' }], {
+        revision: 10,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'Stage records out of order',
+      stagedDetail([stage1Ready, stage1Planned], {
+        revision: 13,
+        nextStep: 'stage_2_plan',
+      }),
+    ],
+    [
+      'another step among the Stage records',
+      stagedDetail([team], { revision: 8, nextStep: 'stage_1_plan' }),
+    ],
+    [
+      'an unknown Stage step',
+      stagedDetail([{ ...stage1Planned, step: 'stage_3_plan' }], {
+        revision: 10,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'a plan without any team decision',
+      stagedDetail([stage1Planned], {
+        revision: 10,
+        nextStep: 'team_decision',
+        teamDecision: null,
+      }),
+    ],
+    [
+      'a plan when the only decision returned the team',
+      stagedDetail([stage1Planned], {
+        revision: 10,
+        nextStep: 'team',
+        teamDecision: returned,
+      }),
+    ],
+    [
+      'a plan before the first approval',
+      stagedDetail([stage1Planned], {
+        revision: 11,
+        nextStep: 'stage_1_report',
+        teamDecision: { ...approvedFirst, caseRevision: 11 },
+      }),
+    ],
+    [
+      'a report without its plan',
+      stagedDetail([stage1Ready], { revision: 13, nextStep: 'stage_1_plan' }),
+    ],
+    [
+      'a first report before its first plan',
+      stagedDetail([{ ...stage1Planned, caseRevision: 14 }, stage1NotReady], {
+        revision: 14,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'a Stage 2 plan without a Stage 1 report',
+      stagedDetail([stage1Planned, stage2Planned], {
+        revision: 15,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'a Stage 2 report without its plan',
+      stagedDetail([stage1Planned, stage1Ready, stage2Reported], {
+        revision: 17,
+        nextStep: 'stage_2_plan',
+      }),
+    ],
+    [
+      'a Stage record beyond the Case revision',
+      stagedDetail([stage1Planned], {
+        revision: 9,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'a Stage record at the revision of another step',
+      stagedDetail([{ ...stage1Planned, caseRevision: 8 }], {
+        revision: 10,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'the Stage 1 plan still next once planned',
+      stagedDetail([stage1Planned], { revision: 10, nextStep: 'stage_1_plan' }),
+    ],
+    [
+      'the Stage 2 plan next after a not-ready conclusion',
+      stagedDetail([stage1Planned, stage1NotReady], {
+        revision: 12,
+        nextStep: 'stage_2_plan',
+      }),
+    ],
+    [
+      'the recommendation next before the Stage 2 report',
+      stagedDetail([stage1Planned, stage1Ready, stage2Planned], {
+        revision: 15,
+      }),
+    ],
+    [
+      'an unknown next step',
+      stagedDetail(allStages, { nextStep: 'stage_3_plan' }),
+    ],
+    [
+      'a first plan with a reason',
+      stagedDetail([{ ...stage1Planned, reason: 'Not a correction' }], {
+        revision: 10,
+        nextStep: 'stage_1_report',
+      }),
+    ],
+    [
+      'a corrected report without its reason',
+      stagedDetail([stage1Planned, { ...stage1Ready, reason: null }], {
+        revision: 13,
+        nextStep: 'stage_2_plan',
+      }),
+    ],
+    ['a plan ending before it starts', withPlan({ endDate: '2026-11-09' })],
+    ['a plan date that does not exist', withPlan({ startDate: '2026-02-30' })],
+    ['no on-site days', withPlan({ onSiteDays: '0' })],
+    ['on-site days with three decimals', withPlan({ onSiteDays: '1.255' })],
+    ['on-site days as a number', withPlan({ onSiteDays: 1 })],
+    ['negative remote days', withPlan({ remoteDays: '-1' })],
+    ['missing remote days', withPlan({ remoteDays: undefined })],
+    ['blank objectives', withPlan({ objectives: '  ' })],
+    ['a scope beyond its limit', withPlan({ scope: 'x'.repeat(2001) })],
+    ['a plan without its attachment', withPlan({ planAttachmentId: null })],
+    ['an invalid sending date', withPlan({ sentToClientOn: '03/11/2026' })],
+    ['a blank deviation note', withPlan({ deviationNote: '' })],
+    [
+      'an incomplete document review',
+      withReport({ documentReviewCompleted: false }),
+    ],
+    [
+      'an unknown conclusion',
+      // Not ready by its next step: only the closed conclusion refuses it.
+      stagedDetail(
+        [
+          stage1Planned,
+          {
+            ...stage1NotReady,
+            value: { ...stage1NotReady.value, conclusion: 'maybe' },
+          },
+        ],
+        { revision: 12, nextStep: 'stage_1_report' },
+      ),
+    ],
+    ['a missing conclusion basis', withReport({ conclusionNote: null })],
+    [
+      'a conclusion basis beyond its limit',
+      withReport({ conclusionNote: 'x'.repeat(4001) }),
+    ],
+    ['an invalid report date', withReport({ reportDate: '2026-13-01' })],
+    ['a report without its attachment', withReport({ reportAttachmentId: '' })],
+    [
+      'a participant list that is not an attachment',
+      withReport({ participantListAttachmentId: 7 }),
+    ],
+    [
+      'a Stage 2 report without its summary',
+      stagedDetail([
+        stage1Planned,
+        stage1Ready,
+        stage2Planned,
+        { ...stage2Reported, value: { ...stage2Reported.value, summary: ' ' } },
+      ]),
+    ],
+    [
+      'a Stage 2 report with an invalid annex',
+      stagedDetail([
+        stage1Planned,
+        stage1Ready,
+        stage2Planned,
+        {
+          ...stage2Reported,
+          value: { ...stage2Reported.value, annexAttachmentId: false },
+        },
+      ]),
+    ],
+    [
+      'a Stage 1 report in the Stage 2 report place',
+      stagedDetail([
+        stage1Planned,
+        stage1Ready,
+        stage2Planned,
+        { ...stage2Reported, value: stage1Ready.value },
+      ]),
+    ],
+  ])('fails closed on %s', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
+  });
+
+  it('fails closed on a timeline with an unknown or malformed Stage version', () => {
+    const entries = [
+      application,
+      review,
+      duration,
+      agreement,
+      team,
+      approvedFirst,
+    ];
+    expect(() =>
+      parseTimeline(
+        {
+          caseId,
+          entries: [...entries, { ...stage1Planned, step: 'stage_plan' }],
+        },
+        caseId,
+      ),
+    ).toThrow();
+    expect(() =>
+      parseTimeline(
+        {
+          caseId,
+          entries: [
+            ...entries,
+            {
+              ...stage1Planned,
+              value: { ...stage1Planned.value, onSiteDays: '' },
+            },
+          ],
+        },
+        caseId,
+      ),
+    ).toThrow();
   });
 });

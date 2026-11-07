@@ -1,5 +1,10 @@
 import type { AuditTeam, TeamDecision } from './certification-team.js';
 import type {
+  Stage1Report,
+  Stage2Report,
+  StagePlan,
+} from './certification-stages.js';
+import type {
   DURATION_RULE_VERSION,
   DurationProposal,
   IncreaseFactor,
@@ -141,7 +146,11 @@ export type CertificationStepVersion =
   | (StepVersionBase & { step: 'duration'; value: DurationDetermination })
   | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement })
   | (StepVersionBase & { step: 'team'; value: AuditTeam })
-  | (StepVersionBase & { step: 'team_decision'; value: TeamDecision });
+  | (StepVersionBase & { step: 'team_decision'; value: TeamDecision })
+  | (StepVersionBase & { step: 'stage_1_plan'; value: StagePlan })
+  | (StepVersionBase & { step: 'stage_1_report'; value: Stage1Report })
+  | (StepVersionBase & { step: 'stage_2_plan'; value: StagePlan })
+  | (StepVersionBase & { step: 'stage_2_report'; value: Stage2Report });
 
 export type ApplicationVersion = Extract<
   CertificationStepVersion,
@@ -163,6 +172,12 @@ export type TeamVersion = Extract<CertificationStepVersion, { step: 'team' }>;
 export type TeamDecisionVersion = Extract<
   CertificationStepVersion,
   { step: 'team_decision' }
+>;
+export type StageStepVersion = Extract<
+  CertificationStepVersion,
+  {
+    step: 'stage_1_plan' | 'stage_1_report' | 'stage_2_plan' | 'stage_2_report';
+  }
 >;
 
 export interface CertificationAttachment {
@@ -208,6 +223,10 @@ export type CertificationNextStep =
   | 'team'
   | 'team_decision'
   | 'stage_1_plan'
+  | 'stage_1_report'
+  | 'stage_2_plan'
+  | 'stage_2_report'
+  | 'recommendation'
   | null;
 
 export interface CertificationCaseSummary {
@@ -233,6 +252,7 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   agreement: AgreementVersion | null;
   team: TeamVersion | null;
   teamDecision: TeamDecisionVersion | null;
+  stages: StageStepVersion[];
 }
 
 export interface CertificationCaseList {

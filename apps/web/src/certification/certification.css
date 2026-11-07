@@ -184,6 +184,11 @@
 .certification-workspace .certification-digest summary {
   cursor: pointer;
 }
+.certification-workspace .certification-case h6 {
+  margin: 1.25rem 0 0.5rem;
+  color: #49317f;
+  font-size: 0.95rem;
+}
 .certification-workspace code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   overflow-wrap: anywhere;

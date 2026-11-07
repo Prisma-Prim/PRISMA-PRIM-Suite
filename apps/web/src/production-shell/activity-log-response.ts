@@ -104,6 +104,8 @@ const targetTypes = {
     'company_role_assignment',
   'company_certification_approver_assignment.revoked':
     'company_role_assignment',
+  'company_certification_auditor_assignment.granted': 'company_role_assignment',
+  'company_certification_auditor_assignment.revoked': 'company_role_assignment',
 
   'workspace_invitation.issued': 'workspace_invitation',
   'workspace_invitation.revoked': 'workspace_invitation',

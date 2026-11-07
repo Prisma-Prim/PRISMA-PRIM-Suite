@@ -729,6 +729,13 @@
       "when": 1794028077733,
       "tag": "0103_certification_team",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1794028488084,
+      "tag": "0104_certification_stages",
+      "breakpoints": true
     }
   ]
 }
