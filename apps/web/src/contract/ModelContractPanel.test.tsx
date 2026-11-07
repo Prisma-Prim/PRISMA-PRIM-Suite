@@ -203,6 +203,43 @@ describe('Corresponding Contract component command ownership', () => {
     },
   );
 
+  it('keeps the copied successor and both source reads when Copy is used on the first displayed frame', async () => {
+    const source = modelContractFixture();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = input.toString();
+      if (path.endsWith('/model-selection'))
+        return response({ selection: selectedContractModelFixture });
+      if (path.includes('/offers/'))
+        return response({ offer: modelContractSourceOfferFixture() });
+      return response({ contract: source, precontract: null });
+    });
+    render(panel());
+    // React yields for paint between committing the panel and running its
+    // effects; a click in that frame must not be retired as stale work.
+    await waitFor(() =>
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Copy this Version into a successor draft',
+        }),
+      ),
+    );
+    const form = await screen.findByRole('form', {
+      name: 'Prepare a complete successor',
+    });
+    await waitFor(() =>
+      expect(
+        within(form).getByRole('button', {
+          name: 'Prepare full non-official Contract',
+        }),
+      ).toBeEnabled(),
+    );
+    expect(
+      within(form).getByLabelText(
+        'Case Client requisites and representative wording',
+      ),
+    ).toHaveValue(source.version.modelGeneration.caseDetails.clientDetails);
+  });
+
   it('retires a successor draft when its independent Workspace Client authority is lost and does not restore it after a new grant', async () => {
     const source = modelContractFixture();
     const privileged: typeof modelContractActor = {
