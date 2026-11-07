@@ -6,11 +6,13 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
   conflictCode,
+  conflictFailures,
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
@@ -72,6 +74,7 @@ import {
 } from './certification-team-draft';
 import { teamWithoutConflict } from './certification-team';
 import {
+  findingBlocks,
   findingCommands,
   isNonconformity,
   recordEvidence,
@@ -134,6 +137,7 @@ import {
   type CaseTimeline,
   type CertificationActorReference,
   type CertificationAttachment,
+  type CertificationDocumentRole,
   type DocumentRegister,
   type EligibleDocuments,
   type LegalEntityOption,
@@ -185,7 +189,48 @@ import {
   ReviewView,
   StepRail,
   TimelineView,
+  statusLabel,
 } from './CertificationViews';
+import {
+  certificateTextDifferences,
+  decisionPreconditions,
+  parseDecisionFailures,
+  type DecisionPrecondition,
+} from './certification-decision';
+import {
+  attachmentsWithRole,
+  certificateDataDraftFor,
+  certificateDataFromDraft,
+  certificateFromDraft,
+  certificationDecisionFromDraft,
+  dossierReviewDraftFor,
+  dossierReviewFromDraft,
+  emptyCertificateDraft,
+  emptyCertificationDecisionDraft,
+  recommendationDraftFor,
+  recommendationFromDraft,
+  type CertificateDataDraft,
+  type CertificateDraft,
+  type CertificationDecisionDraft,
+  type DossierReviewDraft,
+  type RecommendationDraft,
+} from './certification-decision-draft';
+import {
+  CertificateDataForm,
+  CertificateForm,
+  CertificationDecisionForm,
+  DossierReviewForm,
+  RecommendationForm,
+} from './CertificationDecisionForms';
+import {
+  CertificateDataView,
+  CertificateTextDifferences,
+  CertificateView,
+  CertificationDecisionView,
+  DossierReviewView,
+  PreconditionList,
+  RecommendationView,
+} from './CertificationDecisionViews';
 
 export interface CertificationWorkspaceProps {
   actor: ActorContext;
@@ -216,7 +261,16 @@ type Feedback =
   | { status: 'idle' | 'saved' }
   | { status: 'saving' | 'uncertain'; intent: Intent }
   /** `reload`: the shown Case is outdated; saving waits for a reload. */
-  | { status: 'refused'; message: CertificationMessageKey; reload: boolean };
+  | { status: 'refused'; message: CertificationMessageKey; reload: boolean }
+  /**
+   * The decision's unmet preconditions, as the read Case shows them before
+   * sending or as the server listed them when it refused the decision.
+   */
+  | {
+      status: 'unmet';
+      source: 'case' | 'server';
+      failures: DecisionPrecondition[];
+    };
 type MutationKind =
   | 'open'
   | 'application'
@@ -227,7 +281,15 @@ type MutationKind =
   | 'team'
   | 'decision'
   | 'finding'
-  | StageKind;
+  | StageKind
+  | ClosingKind;
+/** The closing steps, each with its own form and feedback. */
+type ClosingKind =
+  | 'recommendation'
+  | 'dossierReview'
+  | 'certificationDecision'
+  | 'certificateData'
+  | 'certificate';
 /** The Stage records, each with its own form and feedback. */
 type StageKind = 'stage1Plan' | 'stage2Plan' | 'stage1Report' | 'stage2Report';
 /**
@@ -290,6 +352,13 @@ const STAGE_KINDS: readonly StageKind[] = [
   'stage2Plan',
   'stage1Report',
   'stage2Report',
+];
+const CLOSING_KINDS: readonly ClosingKind[] = [
+  'recommendation',
+  'dossierReview',
+  'certificationDecision',
+  'certificateData',
+  'certificate',
 ];
 const NO_PROPOSAL: Proposal = { status: 'idle' };
 const NO_DOWNLOAD: Download = { status: 'idle' };
@@ -413,6 +482,39 @@ function CertificationRegistry(
   const [findingForm, setFindingForm] = useState<FindingForm | null>(null);
   const [findingFeedback, setFindingFeedback] = useState<Feedback>(IDLE);
   const findingHeading = useFindingHeading();
+  /**
+   * Null until opened for a correction or edited: a first record then
+   * starts empty. Kept through a reload, like the other drafts.
+   */
+  const [recommendationDraft, setRecommendationDraft] =
+    useState<RecommendationDraft | null>(null);
+  const [recommendationFeedback, setRecommendationFeedback] =
+    useState<Feedback>(IDLE);
+  const [dossierDraft, setDossierDraft] = useState<DossierReviewDraft | null>(
+    null,
+  );
+  const [dossierFeedback, setDossierFeedback] = useState<Feedback>(IDLE);
+  /** The decision is recorded once: its draft always starts empty. */
+  const [certificationDecisionDraft, setCertificationDecisionDraft] =
+    useState<CertificationDecisionDraft>(emptyCertificationDecisionDraft);
+  const [certificationDecisionFeedback, setCertificationDecisionFeedback] =
+    useState<Feedback>(IDLE);
+  const [certificateDataDraft, setCertificateDataDraft] =
+    useState<CertificateDataDraft | null>(null);
+  const [certificateDataFeedback, setCertificateDataFeedback] =
+    useState<Feedback>(IDLE);
+  const [certificateDraft, setCertificateDraft] = useState<CertificateDraft>(
+    emptyCertificateDraft,
+  );
+  const [certificateFeedback, setCertificateFeedback] =
+    useState<Feedback>(IDLE);
+  const closingFeedback: Record<ClosingKind, Feedback> = {
+    recommendation: recommendationFeedback,
+    dossierReview: dossierFeedback,
+    certificationDecision: certificationDecisionFeedback,
+    certificateData: certificateDataFeedback,
+    certificate: certificateFeedback,
+  };
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -430,6 +532,7 @@ function CertificationRegistry(
       decisionFeedback,
       findingFeedback,
       ...Object.values(stageFeedback),
+      ...Object.values(closingFeedback),
     ].some((feedback) => feedback.status === 'saving');
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
@@ -461,6 +564,33 @@ function CertificationRegistry(
         return setStage1ReportFeedback;
       case 'stage2Report':
         return setStage2ReportFeedback;
+      case 'recommendation':
+        return setRecommendationFeedback;
+      case 'dossierReview':
+        return setDossierFeedback;
+      case 'certificationDecision':
+        return setCertificationDecisionFeedback;
+      case 'certificateData':
+        return setCertificateDataFeedback;
+      case 'certificate':
+        return setCertificateFeedback;
+    }
+    return unexpected(kind);
+  }
+
+  /** Closes a closing-step form: a first record starts empty again. */
+  function resetClosingDraft(kind: ClosingKind) {
+    switch (kind) {
+      case 'recommendation':
+        return setRecommendationDraft(null);
+      case 'dossierReview':
+        return setDossierDraft(null);
+      case 'certificationDecision':
+        return setCertificationDecisionDraft(emptyCertificationDecisionDraft());
+      case 'certificateData':
+        return setCertificateDataDraft(null);
+      case 'certificate':
+        return setCertificateDraft(emptyCertificateDraft());
     }
     return unexpected(kind);
   }
@@ -526,6 +656,10 @@ function CertificationRegistry(
     }
     setFindingForm(null);
     setFindingFeedback(IDLE);
+    for (const kind of CLOSING_KINDS) {
+      resetClosingDraft(kind);
+      feedbackSetter(kind)(IDLE);
+    }
     contentOperation.retire();
     setDownload(NO_DOWNLOAD);
   }
@@ -670,7 +804,9 @@ function CertificationRegistry(
     else if (options.reload) {
       // A reload keeps drafts and an uncertain intent; it resolves refusals.
       const clear = (feedback: Feedback) =>
-        feedback.status === 'refused' ? IDLE : feedback;
+        feedback.status === 'refused' || feedback.status === 'unmet'
+          ? IDLE
+          : feedback;
       setApplicationFeedback(clear);
       setReviewFeedback(clear);
       setDurationFeedback(clear);
@@ -680,6 +816,7 @@ function CertificationRegistry(
       setDecisionFeedback(clear);
       setFindingFeedback(clear);
       for (const kind of STAGE_KINDS) feedbackSetter(kind)(clear);
+      for (const kind of CLOSING_KINDS) feedbackSetter(kind)(clear);
     }
     selected.current = caseId;
     setSelectedId(caseId);
@@ -832,6 +969,13 @@ function CertificationRegistry(
       case 'stage1Report':
       case 'stage2Report':
         resetStageDraft(kind);
+        break;
+      case 'recommendation':
+      case 'dossierReview':
+      case 'certificationDecision':
+      case 'certificateData':
+      case 'certificate':
+        resetClosingDraft(kind);
         break;
       default:
         unexpected(kind);
@@ -1312,6 +1456,240 @@ function CertificationRegistry(
     setFindingFeedback(IDLE);
   }
 
+  /** Sends one closing-step command for the read Case, reusing an uncertain key. */
+  function sendClosing(
+    kind: ClosingKind,
+    current: CaseDetail,
+    path: string,
+    body: object,
+  ) {
+    void execute(
+      kind,
+      reuse(closingFeedback[kind], {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/${path}`,
+        body: JSON.stringify({ expectedRevision: current.revision, ...body }),
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** The view of the read Case while a closing-step command may be sent. */
+  function closingView(kind: ClosingKind): CaseView | undefined {
+    return !busy &&
+      detail?.status === 'ready' &&
+      !blockedUntilReload(closingFeedback[kind])
+      ? detail.value
+      : undefined;
+  }
+
+  /** The leader of the approved team recommends until the decision. */
+  function submitRecommendation(event: FormEvent) {
+    event.preventDefault();
+    const view = closingView('recommendation');
+    if (!view || !recommendationOffered(view)) return;
+    const recorded = view.caseDetail.recommendation;
+    const check = recommendationFromDraft(
+      recommendationDraft ?? recommendationDraftFor(null),
+      recorded !== null,
+    );
+    if (check.status !== 'valid') {
+      setRecommendationFeedback(
+        refusedWith(
+          check.status === 'reasonRequired'
+            ? 'reasonRequired'
+            : 'recommendationValidation',
+        ),
+      );
+      return;
+    }
+    sendClosing('recommendation', view.caseDetail, 'recommendation', {
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      ...check.value,
+    });
+  }
+
+  /** An approver outside the team reviews the dossier until the decision. */
+  function submitDossierReview(event: FormEvent) {
+    event.preventDefault();
+    const view = closingView('dossierReview');
+    if (!view || !undecidedApprover(view)) return;
+    const current = view.caseDetail;
+    if (!current.recommendation) return;
+    const check = dossierReviewFromDraft(
+      dossierDraft ?? dossierReviewDraftFor(null),
+      current.dossierReview !== null,
+    );
+    if (check.status !== 'valid') {
+      setDossierFeedback(
+        refusedWith(
+          check.status === 'reasonRequired'
+            ? 'reasonRequired'
+            : 'dossierReviewValidation',
+        ),
+      );
+      return;
+    }
+    sendClosing('dossierReview', current, 'dossier-review', {
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      ...check.value,
+    });
+  }
+
+  /**
+   * An approver outside the team records the decision once, after the
+   * draft is complete and attested and the read Case meets every
+   * precondition the web can mirror; the server rechecks them all.
+   */
+  function submitCertificationDecision(event: FormEvent) {
+    event.preventDefault();
+    const view = closingView('certificationDecision');
+    if (!view || !undecidedApprover(view)) return;
+    const check = certificationDecisionFromDraft(
+      certificationDecisionDraft,
+      view.register.items,
+    );
+    if (check.status !== 'valid') {
+      setCertificationDecisionFeedback(
+        refusedWith(
+          check.status === 'attestation'
+            ? 'decisionAttestationRequired'
+            : 'certificationDecisionValidation',
+        ),
+      );
+      return;
+    }
+    const failures = decisionPreconditions(
+      view.caseDetail,
+      check.value.decision,
+    );
+    if (failures.length > 0) {
+      setCertificationDecisionFeedback({
+        status: 'unmet',
+        source: 'case',
+        failures,
+      });
+      return;
+    }
+    sendClosing('certificationDecision', view.caseDetail, 'decision', {
+      ...check.value,
+    });
+  }
+
+  /** A programme manager agrees the Certificate data while the Case is open. */
+  function submitCertificateData(event: FormEvent) {
+    event.preventDefault();
+    const view = closingView('certificateData');
+    const current = view?.caseDetail;
+    if (
+      !view ||
+      !current ||
+      !authority.manage ||
+      current.status !== 'open' ||
+      !current.stage2Report
+    )
+      return;
+    const check = certificateDataFromDraft(
+      certificateDataDraft ?? certificateDataDraftFor(null),
+      {
+        register: view.register.items,
+        correcting: current.certificateData !== null,
+      },
+    );
+    if (check.status !== 'valid') {
+      setCertificateDataFeedback(
+        refusedWith(
+          check.status === 'reasonRequired'
+            ? 'reasonRequired'
+            : 'certificateDataValidation',
+        ),
+      );
+      return;
+    }
+    sendClosing('certificateData', current, 'certificate-data', {
+      ...(check.reason === null ? {} : { reason: check.reason }),
+      ...check.value,
+    });
+  }
+
+  /** An approver outside the team records the Certificate of a grant. */
+  function submitCertificate(event: FormEvent) {
+    event.preventDefault();
+    const view = closingView('certificate');
+    if (!view || certificateHold(view) !== null) return;
+    const check = certificateFromDraft(certificateDraft, view.register.items);
+    if (check.status !== 'valid') {
+      setCertificateFeedback(
+        refusedWith(
+          check.status === 'attestation'
+            ? 'certificateAttestationRequired'
+            : 'certificateValidation',
+        ),
+      );
+      return;
+    }
+    sendClosing('certificate', view.caseDetail, 'certificate', {
+      ...check.value,
+      independenceAttested: true,
+    });
+  }
+
+  /**
+   * The server's rule: the leader of the approved team recommends once
+   * Stage 2 is reported and no Finding holds the Case, until the decision.
+   */
+  function recommendationOffered(view: CaseView): boolean {
+    const current = view.caseDetail;
+    return (
+      findingRoles(view).leader &&
+      current.stage2Report !== null &&
+      current.decision === null &&
+      !current.findings.some(findingBlocks)
+    );
+  }
+
+  /** An approver linked to no team version, while the Case is undecided. */
+  function undecidedApprover(view: CaseView): boolean {
+    return (
+      findingRoles(view).independentApprover &&
+      view.caseDetail.decision === null
+    );
+  }
+
+  /**
+   * Why this actor cannot record the Certificate now, in the server's
+   * order, or null: an approver outside the team, a granting decision, the
+   * agreed data stating exactly what it grants, and a Certificate PDF.
+   */
+  function certificateHold(view: CaseView): CertificationMessageKey | null {
+    const current = view.caseDetail;
+    const decided = current.decision?.value;
+    if (current.status !== 'open' || decided?.decision !== 'granted')
+      return 'blockedCertificateNotGranted';
+    if (!authority.approve) return 'certificateAwaitingApprover';
+    if (!findingRoles(view).independentApprover)
+      return 'certificateApproverIndependence';
+    const data = current.certificateData;
+    if (!data) return 'blockedCertificateDataMissing';
+    if (
+      certificateTextDifferences(decided.grantedTexts, data.value.texts).length
+    )
+      return 'blockedCertificateDataDiffers';
+    if (attachmentsWithRole(view.register.items, 'certificate').length === 0)
+      return 'certificateNoPdf';
+    return null;
+  }
+
+  /** Keeps an edited closing-step draft; an edit clears a refusal it may answer. */
+  function edited(kind: ClosingKind) {
+    const feedback = closingFeedback[kind];
+    if (
+      feedback.status === 'saved' ||
+      feedback.status === 'unmet' ||
+      (feedback.status === 'refused' && !feedback.reload)
+    )
+      feedbackSetter(kind)(IDLE);
+  }
+
   /** The exact attachments open through the register's download, if allowed. */
   function registerDownload(view: CaseView): RegisterDownload | undefined {
     return documentRights
@@ -1626,7 +2004,12 @@ function CertificationRegistry(
     stage2Plan: `${prefix}-stage-2-plan-feedback`,
     stage1Report: `${prefix}-stage-1-report-feedback`,
     stage2Report: `${prefix}-stage-2-report-feedback`,
-  };
+    recommendation: `${prefix}-recommendation-feedback`,
+    dossierReview: `${prefix}-dossier-review-feedback`,
+    certificationDecision: `${prefix}-certification-decision-feedback`,
+    certificateData: `${prefix}-certificate-data-feedback`,
+    certificate: `${prefix}-certificate-feedback`,
+  } satisfies Record<MutationKind, string>;
 
   /** A step's confirmation is shown above the Case and survives its reload. */
   function feedbackMessage(kind: MutationKind, feedback: Feedback) {
@@ -1657,12 +2040,27 @@ function CertificationRegistry(
             {copy(feedback.message)}
           </p>
         );
+      case 'unmet':
+        return (
+          <div role="alert" id={feedbackIds[kind]}>
+            <p>
+              {copy(
+                feedback.source === 'server'
+                  ? 'decisionPreconditionsRefused'
+                  : 'decisionPreconditionsTitle',
+              )}
+            </p>
+            <PreconditionList failures={feedback.failures} />
+          </div>
+        );
     }
     return unexpected(feedback);
   }
 
   function describedFeedback(kind: MutationKind, feedback: Feedback) {
-    return feedback.status === 'refused' || feedback.status === 'uncertain'
+    return feedback.status === 'refused' ||
+      feedback.status === 'uncertain' ||
+      feedback.status === 'unmet'
       ? feedbackIds[kind]
       : undefined;
   }
@@ -1816,9 +2214,7 @@ function CertificationRegistry(
                 <span
                   className={`certification-status certification-status-${item.status}`}
                 >
-                  {copy(
-                    item.status === 'open' ? 'statusOpen' : 'statusRejected',
-                  )}
+                  {copy(statusLabel(item.status))}
                 </span>
                 <span>
                   {copy('nextStep')}: <NextStepLabel step={item.nextStep} />
@@ -1856,6 +2252,7 @@ function CertificationRegistry(
             decisionFeedback,
             findingFeedback,
             ...Object.values(stageFeedback),
+            ...Object.values(closingFeedback),
           ].some((feedback) => feedback.status === 'saved') && (
             <p role="status">{copy('saveConfirmed')}</p>
           )}
@@ -1895,11 +2292,7 @@ function CertificationRegistry(
                     <span
                       className={`certification-status certification-status-${caseView.caseDetail.status}`}
                     >
-                      {copy(
-                        caseView.caseDetail.status === 'open'
-                          ? 'statusOpen'
-                          : 'statusRejected',
-                      )}
+                      {copy(statusLabel(caseView.caseDetail.status))}
                     </span>
                   </dd>
                 </div>
@@ -1932,6 +2325,16 @@ function CertificationRegistry(
               )}
               {caseView.caseDetail.status === 'rejected' && (
                 <p className="certification-blocked">{copy('blockedClosed')}</p>
+              )}
+              {caseView.caseDetail.status === 'refused' && (
+                <p className="certification-blocked">
+                  {copy('caseRefusedNote')}
+                </p>
+              )}
+              {caseView.caseDetail.status === 'certified' && (
+                <p className="certification-note">
+                  {copy('caseCertifiedNote')}
+                </p>
               )}
               {caseView.caseDetail.nextStep === 'recommendation' && (
                 <p className="certification-note">
@@ -2121,11 +2524,26 @@ function CertificationRegistry(
                 stageSection(caseView, 'stage_1')}
               {caseView.caseDetail.stage1Plan !== null &&
                 stageSection(caseView, 'stage_2')}
+              {caseView.caseDetail.stage2Report !== null &&
+                recommendationSection(caseView)}
+              {caseView.caseDetail.recommendation !== null && (
+                <>
+                  {dossierSection(caseView)}
+                  {decisionSection(caseView)}
+                </>
+              )}
+              {(caseView.caseDetail.certificateData !== null ||
+                (caseView.caseDetail.stage2Report !== null &&
+                  caseView.caseDetail.status === 'open')) &&
+                certificateDataSection(caseView)}
+              {caseView.caseDetail.decision?.value.decision === 'granted' &&
+                certificateSection(caseView)}
               <section aria-labelledby={`${prefix}-timeline-title`}>
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
                 <TimelineView
                   timeline={caseView.timeline}
                   findings={caseView.caseDetail.findings}
+                  certificate={caseView.caseDetail.certificate}
                   register={caseView.register}
                   people={knownPeople(caseView)}
                 />
@@ -3052,6 +3470,366 @@ function CertificationRegistry(
       />
     );
   }
+
+  /** The shared props of an open closing-step form. */
+  function closingForm(kind: ClosingKind, idPrefix: string) {
+    const feedback = closingFeedback[kind];
+    return {
+      idPrefix: `${prefix}-${idPrefix}`,
+      disabled: busy,
+      submitting: feedback.status === 'saving',
+      submitBlocked: blockedUntilReload(feedback),
+      feedbackId: describedFeedback(kind, feedback),
+    };
+  }
+
+  /** A closing-step panel: its title, latest record and the step below. */
+  function closingSection(
+    kind: ClosingKind,
+    title: CertificationMessageKey,
+    record: ReactNode,
+    step: ReactNode,
+  ) {
+    const titleId = `${prefix}-${kind}-title`;
+    return (
+      <section aria-labelledby={titleId}>
+        <h5 id={titleId}>{copy(title)}</h5>
+        {record}
+        {feedbackMessage(kind, closingFeedback[kind])}
+        {step}
+      </section>
+    );
+  }
+
+  /** The latest recommendation, then its form, correction or who records it. */
+  function recommendationSection(view: CaseView) {
+    const recorded = view.caseDetail.recommendation;
+    return closingSection(
+      'recommendation',
+      'recommendationTitle',
+      recorded ? (
+        <>
+          <VersionAttribution version={recorded} />
+          <RecommendationView recommendation={recorded.value} />
+        </>
+      ) : (
+        <p>{copy('recommendationMissing')}</p>
+      ),
+      recommendationStep(view),
+    );
+  }
+
+  function recommendationStep(view: CaseView) {
+    const current = view.caseDetail;
+    const recorded = current.recommendation;
+    if (current.status !== 'open' || current.decision) return null;
+    if (!recommendationOffered(view)) {
+      // Nonconformities still holding the Case are explained above it.
+      if (recorded || current.findings.some(findingBlocks)) return null;
+      return authority.audit && approvedTeam(current) ? (
+        <p className="certification-blocked">
+          {copy('blockedRecommendationNotTeamLeader')}
+        </p>
+      ) : (
+        <p className="certification-note">
+          {copy('recommendationAwaitingLeader')}
+        </p>
+      );
+    }
+    if (recorded && !recommendationDraft)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setRecommendationDraft(recommendationDraftFor(recorded.value));
+            setRecommendationFeedback(IDLE);
+          }}
+        >
+          {copy('correctRecommendation')}
+        </button>
+      );
+    return (
+      <RecommendationForm
+        {...closingForm('recommendation', 'recommendation')}
+        draft={recommendationDraft ?? recommendationDraftFor(null)}
+        correcting={recorded !== null}
+        onChange={(draft) => {
+          setRecommendationDraft(draft);
+          edited('recommendation');
+        }}
+        onSubmit={submitRecommendation}
+        onCancel={
+          recorded
+            ? () => {
+                resetClosingDraft('recommendation');
+                setRecommendationFeedback(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  /** The latest dossier review, then its form or who reviews the dossier. */
+  function dossierSection(view: CaseView) {
+    const recorded = view.caseDetail.dossierReview;
+    return closingSection(
+      'dossierReview',
+      'dossierReviewTitle',
+      recorded ? (
+        <>
+          <VersionAttribution version={recorded} />
+          <DossierReviewView review={recorded.value} />
+        </>
+      ) : (
+        <p>{copy('dossierReviewMissing')}</p>
+      ),
+      dossierStep(view),
+    );
+  }
+
+  function dossierStep(view: CaseView) {
+    const current = view.caseDetail;
+    const recorded = current.dossierReview;
+    if (current.status !== 'open' || current.decision) return null;
+    if (!authority.approve)
+      return recorded ? null : (
+        <p className="certification-note">{copy('dossierAwaitingApprover')}</p>
+      );
+    // The server refuses a review by anyone linked to any team version.
+    if (!undecidedApprover(view))
+      return (
+        <p className="certification-blocked">{copy('dossierIndependence')}</p>
+      );
+    if (recorded && !dossierDraft)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setDossierDraft(dossierReviewDraftFor(recorded.value));
+            setDossierFeedback(IDLE);
+          }}
+        >
+          {copy('correctDossierReview')}
+        </button>
+      );
+    return (
+      <DossierReviewForm
+        {...closingForm('dossierReview', 'dossier-review')}
+        draft={dossierDraft ?? dossierReviewDraftFor(null)}
+        correcting={recorded !== null}
+        onChange={(draft) => {
+          setDossierDraft(draft);
+          edited('dossierReview');
+        }}
+        onSubmit={submitDossierReview}
+        onCancel={
+          recorded
+            ? () => {
+                resetClosingDraft('dossierReview');
+                setDossierFeedback(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  /**
+   * The immutable decision once recorded; before it, the preconditions the
+   * read Case shows unmet and the decision form for an approver outside the
+   * team, or who decides.
+   */
+  function decisionSection(view: CaseView) {
+    const recorded = view.caseDetail.decision;
+    return closingSection(
+      'certificationDecision',
+      'certificationDecisionTitle',
+      recorded ? (
+        <>
+          <VersionAttribution version={recorded} />
+          <CertificationDecisionView
+            decision={recorded.value}
+            register={view.register}
+          />
+        </>
+      ) : (
+        <p>{copy('certificationDecisionMissing')}</p>
+      ),
+      certificationDecisionStep(view),
+    );
+  }
+
+  function certificationDecisionStep(view: CaseView) {
+    const current = view.caseDetail;
+    if (current.status !== 'open' || current.decision) return null;
+    if (!authority.approve)
+      return (
+        <p className="certification-note">
+          {copy('certificationDecisionAwaitingApprover')}
+        </p>
+      );
+    // The server refuses a decision by anyone linked to any team version.
+    if (!undecidedApprover(view))
+      return (
+        <p className="certification-blocked">
+          {copy('certificationDecisionIndependence')}
+        </p>
+      );
+    const unmet = decisionPreconditions(
+      current,
+      certificationDecisionDraft.decision,
+    );
+    return (
+      <>
+        {unmet.length > 0 && (
+          <div className="certification-blocked">
+            <p>{copy('decisionPreconditionsTitle')}</p>
+            <PreconditionList failures={unmet} />
+          </div>
+        )}
+        <CertificationDecisionForm
+          {...closingForm('certificationDecision', 'certification-decision')}
+          draft={certificationDecisionDraft}
+          forms={attachmentsWithRole(view.register.items, 'decision_form')}
+          today={utcToday()}
+          onChange={(draft) => {
+            setCertificationDecisionDraft(draft);
+            edited('certificationDecision');
+          }}
+          onSubmit={submitCertificationDecision}
+        />
+      </>
+    );
+  }
+
+  /**
+   * The latest agreed data, how they differ from a grant, then their form,
+   * correction or who agrees them.
+   */
+  function certificateDataSection(view: CaseView) {
+    const current = view.caseDetail;
+    const recorded = current.certificateData;
+    const granted = current.decision?.value;
+    const differences =
+      recorded && granted?.decision === 'granted'
+        ? certificateTextDifferences(granted.grantedTexts, recorded.value.texts)
+        : [];
+    return closingSection(
+      'certificateData',
+      'certificateDataTitle',
+      recorded ? (
+        <>
+          <VersionAttribution version={recorded} />
+          <CertificateDataView data={recorded.value} register={view.register} />
+          {differences.length > 0 && (
+            <CertificateTextDifferences differences={differences} />
+          )}
+        </>
+      ) : (
+        <p>{copy('certificateDataMissing')}</p>
+      ),
+      certificateDataStep(view),
+    );
+  }
+
+  function certificateDataStep(view: CaseView) {
+    const current = view.caseDetail;
+    const recorded = current.certificateData;
+    if (current.status !== 'open') return null;
+    if (!authority.manage)
+      return recorded ? null : (
+        <p className="certification-note">
+          {copy('certificateDataAwaitingManager')}
+        </p>
+      );
+    if (recorded && !certificateDataDraft)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setCertificateDataDraft(certificateDataDraftFor(recorded.value));
+            setCertificateDataFeedback(IDLE);
+          }}
+        >
+          {copy('correctCertificateData')}
+        </button>
+      );
+    const forms = attachmentsWithRole(view.register.items, 'certificate_data');
+    if (forms.length === 0)
+      return (
+        <p className="certification-blocked">
+          {copy('certificateDataNoDocument')}
+        </p>
+      );
+    return (
+      <CertificateDataForm
+        {...closingForm('certificateData', 'certificate-data')}
+        draft={certificateDataDraft ?? certificateDataDraftFor(null)}
+        correcting={recorded !== null}
+        forms={forms}
+        onChange={(draft) => {
+          setCertificateDataDraft(draft);
+          edited('certificateData');
+        }}
+        onSubmit={submitCertificateData}
+        onCancel={
+          recorded
+            ? () => {
+                resetClosingDraft('certificateData');
+                setCertificateDataFeedback(IDLE);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  /**
+   * The recorded Certificate with its server-computed validity; before it,
+   * the form for an approver outside the team or why it waits.
+   */
+  function certificateSection(view: CaseView) {
+    const recorded = view.caseDetail.certificate;
+    return closingSection(
+      'certificate',
+      'certificateTitle',
+      recorded ? (
+        <CertificateView
+          certificate={recorded}
+          register={view.register}
+          download={registerDownload(view)}
+        />
+      ) : (
+        <p>{copy('certificateMissing')}</p>
+      ),
+      certificateStep(view),
+    );
+  }
+
+  function certificateStep(view: CaseView) {
+    if (view.caseDetail.status !== 'open') return null;
+    const hold = certificateHold(view);
+    if (hold === 'certificateAwaitingApprover')
+      return <p className="certification-note">{copy(hold)}</p>;
+    if (hold !== null)
+      return <p className="certification-blocked">{copy(hold)}</p>;
+    return (
+      <CertificateForm
+        {...closingForm('certificate', 'certificate')}
+        draft={certificateDraft}
+        pdfs={attachmentsWithRole(view.register.items, 'certificate')}
+        onChange={(draft) => {
+          setCertificateDraft(draft);
+          edited('certificate');
+        }}
+        onSubmit={submitCertificate}
+      />
+    );
+  }
 }
 
 function planKind(stage: AuditStage): StageKind {
@@ -3326,6 +4104,12 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
       return 'blockedStageReportCorrectionReason';
     case 'finding':
       return 'blockedFindingCorrectionReason';
+    case 'recommendation':
+    case 'dossierReview':
+    case 'certificationDecision':
+    case 'certificateData':
+    case 'certificate':
+      return 'blockedVersionCorrectionReason';
     case 'open':
     case 'application':
     case 'review':
@@ -3334,6 +4118,84 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
       return 'blockedCorrectionReason';
   }
   return unexpected(kind);
+}
+
+/** Whether a command records one of the closing steps. */
+function closing(kind: MutationKind): boolean {
+  return CLOSING_KINDS.some((entry) => entry === kind);
+}
+
+/** Who the server found on the audit team, in the words of each command. */
+function independenceRefusal(kind: MutationKind): Feedback {
+  switch (kind) {
+    case 'finding':
+      return refusedWith('findingIndependence', true);
+    case 'team':
+      return refusedWith('teamMemberDecided', true);
+    case 'dossierReview':
+      return refusedWith('dossierIndependence', true);
+    // The named decision maker or signatory may be corrected in the draft.
+    case 'certificationDecision':
+      return refusedWith('decisionMakerIndependence');
+    case 'certificate':
+      return refusedWith('certificateIndependence');
+    case 'decision':
+    case 'open':
+    case 'application':
+    case 'review':
+    case 'duration':
+    case 'attach':
+    case 'agreement':
+    case 'stage1Plan':
+    case 'stage2Plan':
+    case 'stage1Report':
+    case 'stage2Report':
+    case 'recommendation':
+    case 'certificateData':
+      return refusedWith('teamIndependence', true);
+  }
+  return unexpected(kind);
+}
+
+/** A chosen attachment without its role, in the words of each command. */
+function attachmentRoleRefusal(kind: MutationKind): CertificationMessageKey {
+  switch (kind) {
+    case 'finding':
+      return 'findingEvidenceUnavailable';
+    case 'certificationDecision':
+      return 'decisionFormRole';
+    case 'certificateData':
+      return 'certificateDataDocumentRole';
+    case 'certificate':
+      return 'certificatePdfRole';
+    case 'open':
+    case 'application':
+    case 'review':
+    case 'duration':
+    case 'attach':
+    case 'agreement':
+    case 'team':
+    case 'decision':
+    case 'stage1Plan':
+    case 'stage2Plan':
+    case 'stage1Report':
+    case 'stage2Report':
+    case 'recommendation':
+    case 'dossierReview':
+      return 'stageAttachmentRole';
+  }
+  return unexpected(kind);
+}
+
+/**
+ * The server's unmet decision preconditions in plain language; an unknown
+ * list is never shown as the server's reasons.
+ */
+function preconditionsRefusal(result: ApiResult<unknown>): Feedback {
+  const failures = parseDecisionFailures(conflictFailures(result));
+  return failures
+    ? { status: 'unmet', source: 'server', failures }
+    : refusedWith('decisionPreconditionsUnknown', true);
 }
 
 function hexadecimal(digest: ArrayBuffer): string {
@@ -3414,6 +4276,10 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
       detail.stage1Report,
       detail.stage2Plan,
       detail.stage2Report,
+      detail.recommendation,
+      detail.dossierReview,
+      detail.decision,
+      detail.certificateData,
     ].every(
       (version) => version === null || recorded(version.id, version.version),
     ) &&
@@ -3437,8 +4303,10 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
  * revision or at the revision of a step or Finding record, every recorded
  * agreement refers to an attachment with the agreement role attached before
  * it, every Stage record to attachments with the roles of their slots
- * attached before it, and every Finding record to evidence of this Case
- * attached before it.
+ * attached before it, every Finding record to evidence of this Case attached
+ * before it, every decision form and Certificate data form to an attachment
+ * with its role attached before it, and the Certificate to an attachment
+ * with the Certificate role.
  */
 function registerMatches(
   detail: CaseDetail,
@@ -3482,8 +4350,59 @@ function registerMatches(
             item.caseRevision < entry.caseRevision,
         ),
       ),
-    )
+    ) &&
+    timeline.entries.every((entry) =>
+      closingAttachmentsOf(entry).every(({ role, attachmentId }) =>
+        register.items.some(
+          (item) =>
+            item.id === attachmentId &&
+            item.role === role &&
+            item.caseRevision < entry.caseRevision,
+        ),
+      ),
+    ) &&
+    (detail.certificate === null ||
+      register.items.some(
+        (item) =>
+          item.id === detail.certificate?.attachmentId &&
+          item.role === 'certificate',
+      ))
   );
+}
+
+/** The forms a closing step cites, each with the role it must carry. */
+function closingAttachmentsOf(
+  entry: CaseTimeline['entries'][number],
+): { role: CertificationDocumentRole; attachmentId: string }[] {
+  switch (entry.step) {
+    case 'decision': {
+      const form = entry.value.decisionFormAttachmentId;
+      return form === null
+        ? []
+        : [{ role: 'decision_form', attachmentId: form }];
+    }
+    case 'certificate_data':
+      return [
+        {
+          role: 'certificate_data',
+          attachmentId: entry.value.agreementAttachmentId,
+        },
+      ];
+    case 'application':
+    case 'application_review':
+    case 'duration':
+    case 'agreement':
+    case 'team':
+    case 'team_decision':
+    case 'stage_1_plan':
+    case 'stage_1_report':
+    case 'stage_2_plan':
+    case 'stage_2_report':
+    case 'recommendation':
+    case 'dossier_review':
+      return [];
+  }
+  return unexpected(entry);
 }
 
 /** The attachments a timeline entry refers to by slot; none outside Stages. */
@@ -3500,6 +4419,10 @@ function stageAttachmentsOf(entry: CaseTimeline['entries'][number]) {
     case 'agreement':
     case 'team':
     case 'team_decision':
+    case 'recommendation':
+    case 'dossier_review':
+    case 'decision':
+    case 'certificate_data':
       return [];
   }
   return unexpected(entry);
@@ -3575,6 +4498,12 @@ function commandFeedback(
           return refusedWith('findingClassificationStage');
         case 'CERTIFICATION_FINDING_EVIDENCE_REQUIRED':
           return refusedWith('findingEvidenceRequired');
+        case 'CERTIFICATION_INDEPENDENCE_ATTESTATION':
+          return refusedWith(
+            kind === 'certificate'
+              ? 'certificateAttestationRequired'
+              : 'decisionAttestationRequired',
+          );
         default:
           return refusedWith('invalid');
       }
@@ -3593,7 +4522,10 @@ function commandFeedback(
         case 'CERTIFICATION_APPLICATION_ALREADY_REVIEWED':
           return refusedWith('blockedAlreadyReviewed', true);
         case 'CERTIFICATION_CASE_CLOSED':
-          return refusedWith('blockedClosed', true);
+          return refusedWith(
+            closing(kind) ? 'caseClosedRefusal' : 'blockedClosed',
+            true,
+          );
         case 'CERTIFICATION_CORRECTION_REASON':
           return refusedWith(correctionReasonRefusal(kind), true);
         case 'CERTIFICATION_DOCUMENT_ALREADY_ATTACHED':
@@ -3609,14 +4541,7 @@ function commandFeedback(
         case 'CERTIFICATION_TEAM_NOT_PENDING':
           return refusedWith('blockedTeamNotPending', true);
         case 'CERTIFICATION_INDEPENDENCE':
-          return refusedWith(
-            kind === 'team'
-              ? 'teamMemberDecided'
-              : kind === 'finding'
-                ? 'findingIndependence'
-                : 'teamIndependence',
-            true,
-          );
+          return independenceRefusal(kind);
         case 'CERTIFICATION_TEAM_CONFLICT_DECLARED':
           return refusedWith('teamConflictDeclared');
         case 'CERTIFICATION_CORRECTION_UNCHANGED':
@@ -3655,16 +4580,36 @@ function commandFeedback(
           return refusedWith(
             kind === 'finding'
               ? 'blockedFindingNotTeamLeader'
-              : 'blockedNotTeamLeader',
+              : kind === 'recommendation'
+                ? 'blockedRecommendationNotTeamLeader'
+                : 'blockedNotTeamLeader',
             true,
           );
         case 'CERTIFICATION_ATTACHMENT_ROLE':
+          return refusedWith(attachmentRoleRefusal(kind), true);
+        case 'CERTIFICATION_STAGE_2_NOT_REPORTED':
           return refusedWith(
-            kind === 'finding'
-              ? 'findingEvidenceUnavailable'
-              : 'stageAttachmentRole',
+            kind === 'certificateData'
+              ? 'blockedCertificateDataBeforeStage2'
+              : 'blockedRecommendationBeforeStage2',
             true,
           );
+        case 'CERTIFICATION_FINDINGS_OPEN':
+          return refusedWith('blockedRecommendationFindingsOpen', true);
+        case 'CERTIFICATION_RECOMMENDATION_MISSING':
+          return refusedWith('blockedDossierBeforeRecommendation', true);
+        case 'CERTIFICATION_DECIDED':
+          return refusedWith('blockedDecided', true);
+        case 'CERTIFICATION_DECISION_PRECONDITIONS':
+          return preconditionsRefusal(result);
+        case 'CERTIFICATION_NOT_GRANTED':
+          return refusedWith('blockedCertificateNotGranted', true);
+        case 'CERTIFICATION_CERTIFICATE_DATA_MISSING':
+          return refusedWith('blockedCertificateDataMissing', true);
+        case 'CERTIFICATION_CERTIFICATE_DATA_DIFFERS':
+          return refusedWith('certificateDataDiffers', true);
+        case 'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN':
+          return refusedWith('certificateNumberTaken');
         default:
           return refusedWith('conflict', kind !== 'open');
       }

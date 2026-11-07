@@ -753,7 +753,7 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
     expect(nextStep()).toBe('Team recommendation');
     expect(
       screen.getByText(
-        'Both Stages are reported. The next step, the team recommendation, is not available in this version yet.',
+        'Both Stages are reported and no nonconformity holds the Case. The leader of the approved audit team records the team recommendation.',
       ),
     ).toBeVisible();
     expect(stepState('Stage 1 audit')).toBe('Ready — report version 1');

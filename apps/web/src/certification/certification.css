@@ -204,6 +204,17 @@
   margin: 0;
   padding-inline-start: 1.1rem;
 }
+.certification-workspace .certification-texts {
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+.certification-workspace .certification-texts > li {
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 3px solid #e6eaf1;
+}
 .certification-workspace .certification-history summary {
   cursor: pointer;
   color: #49317f;
@@ -289,7 +300,8 @@
   font-size: 0.85rem;
   white-space: nowrap;
 }
-.certification-workspace .certification-status-rejected {
+.certification-workspace .certification-status-rejected,
+.certification-workspace .certification-status-refused {
   background: #fcecf0;
   color: #882f43;
 }

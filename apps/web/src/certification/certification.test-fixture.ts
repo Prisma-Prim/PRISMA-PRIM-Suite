@@ -243,6 +243,77 @@ export function nonconformityResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** The fictional dairy's Certificate texts in two languages. */
+export const CERTIFICATE_TEXTS = [
+  {
+    language: 'ro',
+    holderName: 'Lactis Demo SRL',
+    address: 'Str. Exemplu 1, Demo City',
+    scope: 'Producerea laptelui pasteurizat (exemplu)',
+  },
+  {
+    language: 'en',
+    holderName: 'Lactis Demo LLC',
+    address: '1 Example Street, Demo City',
+    scope: 'Production of pasteurised milk (example)',
+  },
+];
+
+/** The dossier items an approver answers, in the server's order. */
+export const DOSSIER_ITEM_NAMES = [
+  'application',
+  'application_review',
+  'duration',
+  'agreement',
+  'team_approval',
+  'stage_1_plan',
+  'stage_1_report',
+  'stage_2_plan',
+  'stage_2_report',
+  'participant_lists',
+  'findings_follow_up',
+  'recommendation',
+  'certificate_data',
+];
+
+/**
+ * A dossier review as the server records it: every item present except the
+ * follow-up, not applicable without nonconformity, and the given item missing.
+ */
+export function dossierReview(missing?: string) {
+  return {
+    items: Object.fromEntries(
+      DOSSIER_ITEM_NAMES.map((item) => [
+        item,
+        item === missing
+          ? { answer: 'missing', note: 'Signed participant list not received.' }
+          : {
+              answer:
+                item === 'findings_follow_up' ? 'not_applicable' : 'present',
+              note: null,
+            },
+      ]),
+    ),
+    conclusion: 'Dossier complete; the recommendation is supported.',
+  };
+}
+
+/** A granting Certification Decision as the server records it. */
+export function certificationDecision(overrides: Record<string, unknown> = {}) {
+  return {
+    decision: 'granted',
+    grantedTexts: CERTIFICATE_TEXTS,
+    decidedOn: '2026-11-06',
+    decidedBy: 'Decision Maker Demo',
+    decidedByFunction: 'Head of the certification body',
+    decisionFormAttachmentId: null,
+    independenceAttested: true,
+    rationale: 'Recommendation accepted after the dossier review.',
+    additionalInformation: null,
+    ...overrides,
+  };
+}
+
 type Actor = { workspaceMembershipId: string; displayName: string };
 const STAGE_STEPS = [
   'stage_1_plan',
@@ -250,6 +321,9 @@ const STAGE_STEPS = [
   'stage_2_plan',
   'stage_2_report',
 ] as const;
+/** The steps of the recommendation, review, decision and Certificate data. */
+type DecisionStep =
+  'recommendation' | 'dossier_review' | 'decision' | 'certificate_data';
 type Step = {
   id: string;
   step:
@@ -259,7 +333,8 @@ type Step = {
     | 'agreement'
     | 'team'
     | 'team_decision'
-    | (typeof STAGE_STEPS)[number];
+    | (typeof STAGE_STEPS)[number]
+    | DecisionStep;
   version: number;
   caseRevision: number;
   reason: string | null;
@@ -311,17 +386,31 @@ const FINDING_CLASSIFICATION_VALUES = [
   'opportunity_for_improvement',
   'area_of_concern',
 ];
+type StoredCertificate = {
+  id: string;
+  number: string;
+  validFrom: string;
+  validUntil: string;
+  firstSurveillanceBy: string;
+  texts: unknown[];
+  signedBy: string | null;
+  signedByFunction: string | null;
+  attachmentId: string;
+  recordedBy: Actor;
+  recordedAt: string;
+};
 type StoredCase = {
   id: string;
   orderReference: string;
   entity: { id: string; legalName: string };
-  status: 'open' | 'rejected';
+  status: 'open' | 'rejected' | 'refused' | 'certified';
   revision: number;
   openedAt: string;
   openedBy: Actor;
   steps: Step[];
   attachments: StoredAttachment[];
   findings: StoredFinding[];
+  certificate: StoredCertificate | null;
 };
 /** A frozen received PDF of the Case's Client, with its exact bytes. */
 export type FakeSource = {
@@ -606,6 +695,56 @@ export class FakeCertificationServer {
   }
 
   /**
+   * A colleague records a recommendation, dossier review, decision or
+   * Certificate data version; a refusing decision closes the Case.
+   */
+  recordStepAsColleague(
+    caseId: string,
+    step: DecisionStep,
+    value: Record<string, unknown>,
+    reason: string | null = null,
+  ) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case');
+    this.append(stored, step, value, reason, colleague);
+    if (step === 'decision' && value.decision === 'refused')
+      stored.status = 'refused';
+  }
+
+  /** A colleague approver records the Certificate, certifying the Case. */
+  recordCertificateAsColleague(
+    caseId: string,
+    {
+      number,
+      attachmentId,
+      signedBy = null,
+      signedByFunction = null,
+    }: {
+      number: string;
+      attachmentId: string;
+      signedBy?: string | null;
+      signedByFunction?: string | null;
+    },
+  ) {
+    const stored = this.cases.get(caseId);
+    const decided = stored && latestStep(stored, 'decision');
+    const agreed = stored && latestStep(stored, 'certificate_data');
+    if (!stored || !decided || !agreed) throw new Error('Not decided');
+    this.issue(
+      stored,
+      String(decided.value.decidedOn),
+      {
+        number,
+        attachmentId,
+        signedBy,
+        signedByFunction,
+        texts: list(agreed.value.texts),
+      },
+      colleague,
+    );
+  }
+
+  /**
    * A colleague team leader records a Finding with its first statement and
    * classification at one revision; returns the Finding's id.
    */
@@ -813,7 +952,7 @@ export class FakeCertificationServer {
         : this.reportStage(staged, which, request.body);
     }
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
@@ -854,9 +993,405 @@ export class FakeCertificationServer {
         return this.proposeTeam(stored, request.body);
       case '/team-decision':
         return this.decideTeam(stored, request.body);
+      case '/recommendation':
+        return this.recommend(stored, request.body);
+      case '/dossier-review':
+        return this.reviewDossier(stored, request.body);
+      case '/decision':
+        return this.decide(stored, request.body);
+      case '/certificate-data':
+        return this.agreeCertificateData(stored, request.body);
+      case '/certificate':
+        return this.recordCertificate(stored, request.body);
       default:
         return new Response(null, { status: 404 });
     }
+  }
+
+  /**
+   * The server's checks, in its order: the auditor grant, the input, the
+   * revision, the leader of the approved team, the Stage 2 report, no
+   * blocking Finding, no decision, the reason, then an unchanged correction.
+   */
+  private recommend(stored: StoredCase, body: unknown): Response {
+    if (!holdsAuditor(this.actor())) return new Response(null, { status: 403 });
+    const { expectedRevision, reason, recommendation, basis, ...rest } =
+      record(body);
+    if (
+      Object.keys(rest).length > 0 ||
+      typeof expectedRevision !== 'number' ||
+      (recommendation !== 'grant' &&
+        recommendation !== 'do_not_grant' &&
+        recommendation !== 'additional_audit') ||
+      !bounded(basis, 4000) ||
+      !optionalText(reason)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const closed = this.lockOpen(stored, expectedRevision);
+    if (closed) return closed;
+    if (!this.leads(stored))
+      return refusal(409, 'CERTIFICATION_NOT_TEAM_LEADER');
+    if (!latestStep(stored, 'stage_2_report'))
+      return refusal(409, 'CERTIFICATION_STAGE_2_NOT_REPORTED');
+    if (
+      stored.findings.some((finding) =>
+        findingBlocks(this.findingView(stored, finding)),
+      )
+    )
+      return refusal(409, 'CERTIFICATION_FINDINGS_OPEN');
+    if (latestStep(stored, 'decision'))
+      return refusal(409, 'CERTIFICATION_DECIDED');
+    return this.appendStage(
+      stored,
+      'recommendation',
+      { recommendation, basis },
+      reason,
+    );
+  }
+
+  /**
+   * The server's checks, in its order: the approver grant, every item
+   * answered, the revision, independence, a recommendation, no decision.
+   */
+  private reviewDossier(stored: StoredCase, body: unknown): Response {
+    if (!holdsApprover(this.actor()))
+      return new Response(null, { status: 403 });
+    const { expectedRevision, reason, items, conclusion, ...rest } =
+      record(body);
+    const answers = record(items);
+    const valid = DOSSIER_ITEM_NAMES.every((item) => {
+      const entry = answers[item];
+      if (!entry || typeof entry !== 'object') return false;
+      const { answer, note = null } = record(entry);
+      return (
+        (answer === 'present' ||
+          answer === 'missing' ||
+          answer === 'not_applicable') &&
+        (note === null || bounded(note, 1000)) &&
+        (answer !== 'missing' || note !== null)
+      );
+    });
+    if (
+      Object.keys(rest).length > 0 ||
+      Object.keys(answers).length !== DOSSIER_ITEM_NAMES.length ||
+      !valid ||
+      typeof expectedRevision !== 'number' ||
+      !bounded(conclusion, 4000) ||
+      !optionalText(reason)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const closed = this.lockOpen(stored, expectedRevision);
+    if (closed) return closed;
+    if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (!latestStep(stored, 'recommendation'))
+      return refusal(409, 'CERTIFICATION_RECOMMENDATION_MISSING');
+    if (latestStep(stored, 'decision'))
+      return refusal(409, 'CERTIFICATION_DECIDED');
+    return this.appendStage(
+      stored,
+      'dossier_review',
+      {
+        items: Object.fromEntries(
+          DOSSIER_ITEM_NAMES.map((item) => {
+            const { answer, note = null } = record(answers[item]);
+            return [item, { answer, note }];
+          }),
+        ),
+        conclusion,
+      },
+      reason,
+    );
+  }
+
+  /**
+   * The server's checks, in its order: the approver grant, the attestation,
+   * the input, the revision, independence, one decision, the decision maker
+   * outside the approved team, the form's role, then every precondition.
+   */
+  private decide(stored: StoredCase, body: unknown): Response {
+    if (!holdsApprover(this.actor()))
+      return new Response(null, { status: 403 });
+    const {
+      expectedRevision,
+      reason,
+      decision,
+      grantedTexts = null,
+      decidedOn,
+      decidedBy,
+      decidedByFunction = null,
+      decisionFormAttachmentId = null,
+      independenceAttested,
+      rationale,
+      additionalInformation = null,
+      ...rest
+    } = record(body);
+    if (independenceAttested !== true)
+      return refusal(400, 'CERTIFICATION_INDEPENDENCE_ATTESTATION');
+    const texts = grantedTexts === null ? null : certificateTexts(grantedTexts);
+    if (
+      Object.keys(rest).length > 0 ||
+      typeof expectedRevision !== 'number' ||
+      !(
+        (decision === 'granted' && texts !== null && texts !== undefined) ||
+        (decision === 'refused' && grantedTexts === null)
+      ) ||
+      !calendarDate(decidedOn) ||
+      !bounded(decidedBy, 200) ||
+      !(decidedByFunction === null || bounded(decidedByFunction, 200)) ||
+      !(
+        decisionFormAttachmentId === null || nonblank(decisionFormAttachmentId)
+      ) ||
+      !bounded(rationale, 4000) ||
+      !(additionalInformation === null || bounded(additionalInformation, 4000))
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const closed = this.lockOpen(stored, expectedRevision);
+    if (closed) return closed;
+    if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (latestStep(stored, 'decision'))
+      return refusal(409, 'CERTIFICATION_DECIDED');
+    if (this.namesTeamMember(stored, decidedBy))
+      return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (
+      decisionFormAttachmentId !== null &&
+      !this.hasAttachment(stored, decisionFormAttachmentId, ['decision_form'])
+    )
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    const failures = this.decisionFailures(stored, decision, decidedOn);
+    if (failures.length > 0)
+      return Response.json(
+        {
+          code: 'CERTIFICATION_DECISION_PRECONDITIONS',
+          message: 'The Certification Decision preconditions do not hold.',
+          failures,
+        },
+        { status: 409 },
+      );
+    if (reason !== undefined && reason !== null)
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    this.append(
+      stored,
+      'decision',
+      {
+        decision,
+        grantedTexts: texts,
+        decidedOn,
+        decidedBy,
+        decidedByFunction,
+        decisionFormAttachmentId,
+        independenceAttested: true,
+        rationale,
+        additionalInformation,
+      },
+      null,
+      me,
+    );
+    if (decision === 'refused') stored.status = 'refused';
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /**
+   * The server's checks, in its order: the programme manager grant, the
+   * input, the revision, the Stage 2 report, the form's role, the reason,
+   * then an unchanged correction.
+   */
+  private agreeCertificateData(stored: StoredCase, body: unknown): Response {
+    if (!holdsManager(this.actor())) return new Response(null, { status: 403 });
+    const {
+      expectedRevision,
+      reason,
+      texts,
+      agreedOn,
+      agreementAttachmentId,
+      ...rest
+    } = record(body);
+    const agreed = certificateTexts(texts);
+    if (
+      Object.keys(rest).length > 0 ||
+      typeof expectedRevision !== 'number' ||
+      !agreed ||
+      !calendarDate(agreedOn) ||
+      !nonblank(agreementAttachmentId) ||
+      !optionalText(reason)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const closed = this.lockOpen(stored, expectedRevision);
+    if (closed) return closed;
+    if (!latestStep(stored, 'stage_2_report'))
+      return refusal(409, 'CERTIFICATION_STAGE_2_NOT_REPORTED');
+    if (
+      !this.hasAttachment(stored, agreementAttachmentId, ['certificate_data'])
+    )
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    return this.appendStage(
+      stored,
+      'certificate_data',
+      { texts: agreed, agreedOn, agreementAttachmentId },
+      reason,
+    );
+  }
+
+  /**
+   * The server's checks, in its order: the approver grant, the attestation,
+   * the input, the revision, independence, a granting decision, the agreed
+   * data stating exactly what it grants, the signatory, the PDF's role and
+   * a number unused in the Company.
+   */
+  private recordCertificate(stored: StoredCase, body: unknown): Response {
+    if (!holdsApprover(this.actor()))
+      return new Response(null, { status: 403 });
+    const {
+      expectedRevision,
+      number,
+      attachmentId,
+      signedBy = null,
+      signedByFunction = null,
+      independenceAttested,
+      ...rest
+    } = record(body);
+    if (independenceAttested !== true)
+      return refusal(400, 'CERTIFICATION_INDEPENDENCE_ATTESTATION');
+    if (
+      Object.keys(rest).length > 0 ||
+      typeof expectedRevision !== 'number' ||
+      !bounded(number, 64) ||
+      !nonblank(attachmentId) ||
+      !(signedBy === null || bounded(signedBy, 200)) ||
+      !(signedByFunction === null || bounded(signedByFunction, 200))
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const closed = this.lockOpen(stored, expectedRevision);
+    if (closed) return closed;
+    if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    const decided = latestStep(stored, 'decision');
+    if (decided?.value.decision !== 'granted')
+      return refusal(409, 'CERTIFICATION_NOT_GRANTED');
+    const agreed = latestStep(stored, 'certificate_data');
+    if (!agreed) return refusal(409, 'CERTIFICATION_CERTIFICATE_DATA_MISSING');
+    const texts = list(agreed.value.texts);
+    if (!sameTexts(texts, list(decided.value.grantedTexts)))
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_DATA_DIFFERS');
+    if (signedBy !== null && this.namesTeamMember(stored, signedBy))
+      return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (!this.hasAttachment(stored, attachmentId, ['certificate']))
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    const trimmed = number.trim();
+    if (
+      [...this.cases.values()].some(
+        (entry) => entry.certificate?.number === trimmed,
+      )
+    )
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN');
+    this.issue(
+      stored,
+      String(decided.value.decidedOn),
+      {
+        number: trimmed,
+        attachmentId,
+        signedBy,
+        signedByFunction,
+        texts,
+      },
+      me,
+    );
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** The Certificate, valid three years minus one day from the decision. */
+  private issue(
+    stored: StoredCase,
+    decidedOn: string,
+    input: {
+      number: string;
+      attachmentId: string;
+      signedBy: string | null;
+      signedByFunction: string | null;
+      texts: unknown[];
+    },
+    by: Actor,
+  ) {
+    stored.revision += 1;
+    stored.status = 'certified';
+    stored.certificate = {
+      id: `11310000-0000-4000-8000-9000000000${String(++this.sequence).padStart(2, '0')}`,
+      ...input,
+      validFrom: decidedOn,
+      validUntil: addDays(addMonths(decidedOn, 36), -1),
+      firstSurveillanceBy: addMonths(decidedOn, 12),
+      recordedBy: by,
+      recordedAt: this.tick(),
+    };
+  }
+
+  /** The stale and closed refusals every Case command checks first. */
+  private lockOpen(
+    stored: StoredCase,
+    expectedRevision: unknown,
+  ): Response | undefined {
+    if (expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    return undefined;
+  }
+
+  /** Whether a name is the name of a member of the approved team. */
+  private namesTeamMember(stored: StoredCase, name: unknown): boolean {
+    const normal = (value: unknown) =>
+      String(value)
+        .normalize('NFKD')
+        .replace(/\p{M}/gu, '')
+        .replace(/\s+/gu, ' ')
+        .trim()
+        .toLocaleLowerCase('en');
+    const team = approvedTeamOf(stored);
+    return (
+      team !== undefined &&
+      list(team.value.members).some(
+        (member) => normal(record(member).name) === normal(name),
+      )
+    );
+  }
+
+  /** Every unmet precondition of a decision, in the server's order. */
+  private decisionFailures(
+    stored: StoredCase,
+    decision: unknown,
+    decidedOn: string,
+  ): string[] {
+    const failures: string[] = [];
+    if (latestStep(stored, 'application_review')?.value.outcome !== 'accepted')
+      failures.push('APPLICATION_NOT_ACCEPTED');
+    if (!latestStep(stored, 'duration')) failures.push('DURATION_MISSING');
+    if (!latestStep(stored, 'agreement')) failures.push('AGREEMENT_MISSING');
+    if (!approvedTeamOf(stored)) failures.push('TEAM_NOT_APPROVED');
+    if (latestStep(stored, 'stage_1_report')?.value.conclusion !== 'ready')
+      failures.push('STAGE_1_NOT_READY');
+    if (!latestStep(stored, 'stage_2_report'))
+      failures.push('STAGE_2_NOT_REPORTED');
+    const views = stored.findings.map((finding) =>
+      this.findingView(stored, finding),
+    );
+    if (views.some(findingBlocks)) failures.push('FINDINGS_OPEN');
+    if (views.some((view) => view.overdue)) failures.push('FINDINGS_OVERDUE');
+    const recommended = latestStep(stored, 'recommendation');
+    if (!recommended) failures.push('RECOMMENDATION_MISSING');
+    else if (
+      decision === 'granted' &&
+      recommended.value.recommendation !== 'grant'
+    )
+      failures.push('GRANT_AGAINST_RECOMMENDATION');
+    const reviewed = latestStep(stored, 'dossier_review');
+    if (
+      !reviewed ||
+      Object.values(record(reviewed.value.items)).some(
+        (entry) => record(entry).answer === 'missing',
+      )
+    )
+      failures.push('DOSSIER_REVIEW_INCOMPLETE');
+    if (decidedOn > new Date(this.clock).toISOString().slice(0, 10))
+      failures.push('DECISION_IN_FUTURE');
+    return failures;
   }
 
   /** The exact bytes of one attachment, under the Document rights. */
@@ -1242,7 +1777,7 @@ export class FakeCertificationServer {
   /** A first version has no reason; a correction states one and changes a value. */
   private appendStage(
     stored: StoredCase,
-    step: (typeof STAGE_STEPS)[number],
+    step: (typeof STAGE_STEPS)[number] | DecisionStep,
     value: Record<string, unknown>,
     reason: unknown,
   ): Response {
@@ -1796,6 +2331,7 @@ export class FakeCertificationServer {
       steps: [],
       attachments: [],
       findings: [],
+      certificate: null,
     };
     this.cases.set(stored.id, stored);
     return stored;
@@ -1842,7 +2378,15 @@ export class FakeCertificationServer {
                     findingBlocks(this.findingView(stored, finding)),
                   )
                 ? 'findings_follow_up'
-                : 'recommendation';
+                : !latest('recommendation')
+                  ? 'recommendation'
+                  : !latest('dossier_review')
+                    ? 'dossier_review'
+                    : !latest('decision')
+                      ? 'decision'
+                      : !latest('certificate_data')
+                        ? 'certificate_data'
+                        : 'certificate';
     return {
       id: stored.id,
       projectId: this.projectId,
@@ -1894,6 +2438,11 @@ export class FakeCertificationServer {
       findings: stored.findings.map((finding) =>
         this.findingView(stored, finding),
       ),
+      recommendation: latest('recommendation'),
+      dossierReview: latest('dossier_review'),
+      decision: latest('decision'),
+      certificateData: latest('certificate_data'),
+      certificate: stored.certificate,
     };
   }
 
@@ -1999,6 +2548,63 @@ function holdsAuditor(actor: unknown): boolean {
   return (
     Array.isArray(permissions) &&
     permissions.includes('certification.audit.record')
+  );
+}
+
+/** Whether the current actor captures the Certification Programme Manager grant. */
+function holdsManager(actor: unknown): boolean {
+  const company = record(record(actor).activeCompany);
+  const permissions = company.certificationProgrammeManagerPermissions;
+  return (
+    Array.isArray(permissions) &&
+    permissions.includes('certification.programme.manage')
+  );
+}
+
+/** One to four Certificate texts, one per language, as the server accepts them. */
+function certificateTexts(
+  value: unknown,
+): Record<string, unknown>[] | undefined {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4)
+    return undefined;
+  const texts = value.map((entry) =>
+    entry && typeof entry === 'object' ? record(entry) : {},
+  );
+  if (
+    texts.some(
+      (text) =>
+        Object.keys(text).some(
+          (key) =>
+            !['language', 'holderName', 'address', 'scope'].includes(key),
+        ) ||
+        !bounded(text.language, 10) ||
+        !bounded(text.holderName, 300) ||
+        !bounded(text.address, 500) ||
+        !bounded(text.scope, 2000),
+    )
+  )
+    return undefined;
+  const languages = texts.map((text) => String(text.language).trim());
+  if (new Set(languages).size !== languages.length) return undefined;
+  return texts.map((text, index) => ({ ...text, language: languages[index] }));
+}
+
+/** The same texts language by language, spaces collapsed, as the server compares. */
+function sameTexts(left: unknown[], right: unknown[]): boolean {
+  const normal = (value: unknown) => String(value).replace(/\s+/gu, ' ').trim();
+  return (
+    left.length === right.length &&
+    left.map(record).every((entry) => {
+      const other = right
+        .map(record)
+        .find((candidate) => candidate.language === entry.language);
+      return (
+        other !== undefined &&
+        normal(other.holderName) === normal(entry.holderName) &&
+        normal(other.address) === normal(entry.address) &&
+        normal(other.scope) === normal(entry.scope)
+      );
+    })
   );
 }
 

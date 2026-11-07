@@ -1,4 +1,19 @@
 import {
+  DECISION_LIMITS,
+  DOSSIER_ITEMS,
+  RECOMMENDATIONS,
+  dossierComplete,
+  sameCertificateTexts,
+  type Certificate,
+  type CertificateData,
+  type CertificateText,
+  type CertificationDecision,
+  type DossierAnswer,
+  type DossierItem,
+  type DossierReview,
+  type Recommendation,
+} from './certification-decision';
+import {
   DURATION_REFUSALS,
   DURATION_RULE_VERSION,
   DURATION_WARNINGS,
@@ -98,6 +113,8 @@ export const CERTIFICATION_DOCUMENT_ROLES = [
   'report',
   'evidence',
   'certificate',
+  'certificate_data',
+  'decision_form',
   'other',
 ] as const;
 export type CertificationDocumentRole =
@@ -199,7 +216,11 @@ export type StepVersion =
   | (StepVersionBase & { step: 'stage_1_plan'; value: StagePlan })
   | (StepVersionBase & { step: 'stage_1_report'; value: Stage1Report })
   | (StepVersionBase & { step: 'stage_2_plan'; value: StagePlan })
-  | (StepVersionBase & { step: 'stage_2_report'; value: Stage2Report });
+  | (StepVersionBase & { step: 'stage_2_report'; value: Stage2Report })
+  | (StepVersionBase & { step: 'recommendation'; value: Recommendation })
+  | (StepVersionBase & { step: 'dossier_review'; value: DossierReview })
+  | (StepVersionBase & { step: 'decision'; value: CertificationDecision })
+  | (StepVersionBase & { step: 'certificate_data'; value: CertificateData });
 export type ApplicationVersion = Extract<StepVersion, { step: 'application' }>;
 export type ApplicationReviewVersion = Extract<
   StepVersion,
@@ -227,6 +248,19 @@ export type StageStepVersion =
   | Stage1ReportVersion
   | Stage2PlanVersion
   | Stage2ReportVersion;
+export type RecommendationVersion = Extract<
+  StepVersion,
+  { step: 'recommendation' }
+>;
+export type DossierReviewVersion = Extract<
+  StepVersion,
+  { step: 'dossier_review' }
+>;
+export type DecisionVersion = Extract<StepVersion, { step: 'decision' }>;
+export type CertificateDataVersion = Extract<
+  StepVersion,
+  { step: 'certificate_data' }
+>;
 
 /** The Stage steps in the order the server lists their latest versions. */
 const STAGE_STEPS = [
@@ -249,7 +283,14 @@ export type CertificationNextStep =
   | 'stage_2_report'
   | 'findings_follow_up'
   | 'recommendation'
+  | 'dossier_review'
+  | 'decision'
+  | 'certificate_data'
+  | 'certificate'
   | null;
+
+/** Open, or closed by a rejection, a refusal or the recorded Certificate. */
+export type CaseStatus = 'open' | 'rejected' | 'refused' | 'certified';
 
 export interface CaseSummary {
   id: string;
@@ -258,7 +299,7 @@ export interface CaseSummary {
   clientLegalEntity: { id: string; legalName: string };
   standard: 'iso_22000_2018';
   auditType: 'initial_certification';
-  status: 'open' | 'rejected';
+  status: CaseStatus;
   revision: number;
   nextStep: CertificationNextStep;
   openedBy: CertificationActorReference;
@@ -283,6 +324,14 @@ export interface CaseDetail extends CaseSummary {
   stage2Report: Stage2ReportVersion | null;
   /** Every Finding of the Case in sequence order, with its records. */
   findings: Finding[];
+  /** The latest version of each closing step, when recorded. */
+  recommendation: RecommendationVersion | null;
+  dossierReview: DossierReviewVersion | null;
+  /** Recorded once; never corrected. */
+  decision: DecisionVersion | null;
+  certificateData: CertificateDataVersion | null;
+  /** The recorded Certificate, present exactly when the Case is certified. */
+  certificate: Certificate | null;
 }
 
 /** One exact frozen PDF of the Case's Client, attached with its role. */
@@ -397,6 +446,21 @@ export function parseCaseDetail(
         : teamDecisionVersion(body.teamDecision),
     ...stageVersions(body.stages),
     findings: findingList(body.findings),
+    recommendation:
+      body.recommendation === null
+        ? null
+        : recommendationVersion(body.recommendation),
+    dossierReview:
+      body.dossierReview === null
+        ? null
+        : dossierReviewVersion(body.dossierReview),
+    decision: body.decision === null ? null : decisionVersion(body.decision),
+    certificateData:
+      body.certificateData === null
+        ? null
+        : certificateDataVersion(body.certificateData),
+    certificate:
+      body.certificate === null ? null : certificateValue(body.certificate),
   };
   if (!consistent(detail)) invalid();
   return detail;
@@ -493,6 +557,26 @@ function teamVersion(value: unknown): TeamVersion {
 function teamDecisionVersion(value: unknown): TeamDecisionVersion {
   const version = parseStepVersion(value);
   return version.step === 'team_decision' ? version : invalid();
+}
+
+function recommendationVersion(value: unknown): RecommendationVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'recommendation' ? version : invalid();
+}
+
+function dossierReviewVersion(value: unknown): DossierReviewVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'dossier_review' ? version : invalid();
+}
+
+function decisionVersion(value: unknown): DecisionVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'decision' ? version : invalid();
+}
+
+function certificateDataVersion(value: unknown): CertificateDataVersion {
+  const version = parseStepVersion(value);
+  return version.step === 'certificate_data' ? version : invalid();
 }
 
 /** The Case's attachments, each at its own revision, in attachment order. */
@@ -628,10 +712,10 @@ function parseCaseSummary(value: unknown): CaseSummary {
     row.auditType !== 'initial_certification'
   )
     invalid();
-  const status =
-    row.status === 'open' || row.status === 'rejected' ? row.status : invalid();
+  const status = caseStatus(row.status);
   const nextStep = parseNextStep(row.nextStep);
-  if ((status === 'rejected') !== (nextStep === null)) invalid();
+  // Only a closed Case has no next step.
+  if ((status !== 'open') !== (nextStep === null)) invalid();
   return {
     id: text(row.id),
     projectId: text(row.projectId),
@@ -668,6 +752,22 @@ function parseNextStep(value: unknown): CertificationNextStep {
     case 'stage_2_report':
     case 'findings_follow_up':
     case 'recommendation':
+    case 'dossier_review':
+    case 'decision':
+    case 'certificate_data':
+    case 'certificate':
+      return value;
+    default:
+      return invalid();
+  }
+}
+
+function caseStatus(value: unknown): CaseStatus {
+  switch (value) {
+    case 'open':
+    case 'rejected':
+    case 'refused':
+    case 'certified':
       return value;
     default:
       return invalid();
@@ -744,11 +844,93 @@ function consistent(detail: CaseDetail): boolean {
     )
       return false;
   }
-  if (!stagesConsistent(detail) || !findingsConsistent(detail)) return false;
-  if (detail.status === 'rejected')
-    return review?.value.outcome === 'rejected' && detail.nextStep === null;
-  if (review?.value.outcome === 'rejected') return false;
-  return detail.nextStep === expectedNextStep(detail);
+  if (
+    !stagesConsistent(detail) ||
+    !findingsConsistent(detail) ||
+    !closingConsistent(detail)
+  )
+    return false;
+  const outcome = detail.decision?.value.decision;
+  switch (detail.status) {
+    case 'rejected':
+      return review?.value.outcome === 'rejected' && detail.nextStep === null;
+    // A closed Case has no next step (read with its summary), and a
+    // Certificate only follows a grant (checked with the closing steps).
+    case 'refused':
+      return outcome === 'refused';
+    case 'certified':
+      return detail.certificate !== null;
+    case 'open':
+      return (
+        review?.value.outcome !== 'rejected' &&
+        outcome !== 'refused' &&
+        detail.certificate === null &&
+        detail.nextStep === expectedNextStep(detail)
+      );
+  }
+  return unexpectedValue(detail.status);
+}
+
+/** A first version of `earlier` precedes `later`; a correction may come after. */
+function follows(
+  later: { caseRevision: number } | null,
+  earlier: { version: number; caseRevision: number } | null,
+): boolean {
+  return (
+    later === null ||
+    (earlier !== null &&
+      !(earlier.version === 1 && earlier.caseRevision > later.caseRevision))
+  );
+}
+
+/**
+ * The closing steps follow their predecessors: the recommendation and the
+ * Certificate data follow the Stage 2 report and the dossier review the
+ * recommendation. The decision is recorded once, after every version of
+ * both, which it freezes, on a review without a missing item, and grants
+ * only on a recommendation to grant. A Certificate is valid from the
+ * decision date, ends after its first surveillance and states exactly the
+ * agreed texts, which state what the decision grants.
+ */
+function closingConsistent(detail: CaseDetail): boolean {
+  const {
+    stage2Report,
+    recommendation,
+    dossierReview: review,
+    decision,
+    certificateData: data,
+    certificate,
+  } = detail;
+  if (
+    !follows(recommendation, stage2Report) ||
+    !follows(data, stage2Report) ||
+    !follows(review, recommendation)
+  )
+    return false;
+  if (decision) {
+    const decided = decision.value;
+    if (
+      !recommendation ||
+      !review ||
+      recommendation.caseRevision > decision.caseRevision ||
+      review.caseRevision > decision.caseRevision ||
+      !dossierComplete(review.value) ||
+      (decided.decision === 'granted' &&
+        recommendation.value.recommendation !== 'grant')
+    )
+      return false;
+  }
+  if (!certificate) return true;
+  const granted = decision?.value;
+  return (
+    granted?.decision === 'granted' &&
+    data !== null &&
+    certificate.validFrom === granted.decidedOn &&
+    certificate.validFrom < certificate.firstSurveillanceBy &&
+    certificate.firstSurveillanceBy < certificate.validUntil &&
+    JSON.stringify(certificate.texts) === JSON.stringify(data.value.texts) &&
+    sameCertificateTexts(certificate.texts, granted.grantedTexts)
+  );
 }
 
 /**
@@ -781,13 +963,6 @@ function stagesConsistent(detail: CaseDetail): boolean {
         decision.caseRevision > stage1Plan.caseRevision))
   )
     return false;
-  const follows = (
-    later: { caseRevision: number } | null,
-    earlier: { version: number; caseRevision: number } | null,
-  ) =>
-    later === null ||
-    (earlier !== null &&
-      !(earlier.version === 1 && earlier.caseRevision > later.caseRevision));
   return (
     follows(stage1Report, stage1Plan) &&
     follows(stage2Plan, stage1Report) &&
@@ -808,6 +983,10 @@ function stepRevisions(detail: CaseDetail): number[] {
     detail.stage1Report,
     detail.stage2Plan,
     detail.stage2Report,
+    detail.recommendation,
+    detail.dossierReview,
+    detail.decision,
+    detail.certificateData,
   ].flatMap((version) => (version ? [version.caseRevision] : []));
 }
 
@@ -868,9 +1047,12 @@ function expectedNextStep(detail: CaseDetail): CertificationNextStep {
     return 'stage_1_report';
   if (!detail.stage2Plan) return 'stage_2_plan';
   if (!detail.stage2Report) return 'stage_2_report';
-  return detail.findings.some(findingBlocks)
-    ? 'findings_follow_up'
-    : 'recommendation';
+  if (detail.findings.some(findingBlocks)) return 'findings_follow_up';
+  if (!detail.recommendation) return 'recommendation';
+  if (!detail.dossierReview) return 'dossier_review';
+  if (!detail.decision) return 'decision';
+  if (!detail.certificateData) return 'certificate_data';
+  return 'certificate';
 }
 
 function parseStepVersion(value: unknown): StepVersion {
@@ -927,7 +1109,13 @@ function parseStepVersion(value: unknown): StepVersion {
       value: teamDecisionValue(row.value),
     };
   }
-  // A new Stage plan or report version states why it replaces the latest.
+  if (row.step === 'decision') {
+    // The Certification Decision is recorded once and never corrected.
+    if (base.version !== 1 || base.reason !== null) invalid();
+    return { ...base, step: 'decision', value: decisionValue(row.value) };
+  }
+  // A new version of a Stage record, a recommendation, a dossier review or
+  // the Certificate data states why it replaces the latest.
   const stage = { ...base, reason: correctionReasonOf(base) };
   switch (row.step) {
     case 'stage_1_plan':
@@ -954,9 +1142,155 @@ function parseStepVersion(value: unknown): StepVersion {
         step: 'stage_2_report',
         value: stage2ReportValue(row.value),
       };
+    case 'recommendation':
+      return {
+        ...stage,
+        step: 'recommendation',
+        value: recommendationValue(row.value),
+      };
+    case 'dossier_review':
+      return {
+        ...stage,
+        step: 'dossier_review',
+        value: dossierReviewValue(row.value),
+      };
+    case 'certificate_data':
+      return {
+        ...stage,
+        step: 'certificate_data',
+        value: certificateDataValue(row.value),
+      };
     default:
       return invalid();
   }
+}
+
+function recommendationValue(value: unknown): Recommendation {
+  const body = object(value);
+  return {
+    recommendation:
+      RECOMMENDATIONS.find((entry) => entry === body.recommendation) ??
+      invalid(),
+    basis: text(body.basis, DECISION_LIMITS.basis),
+  };
+}
+
+/** Every dossier item answered explicitly; a missing one states its note. */
+function dossierReviewValue(value: unknown): DossierReview {
+  const body = object(value);
+  const itemsBody = object(body.items);
+  if (
+    Object.keys(itemsBody).some(
+      (key) => !DOSSIER_ITEMS.some((item) => item === key),
+    )
+  )
+    invalid();
+  const answer = (item: DossierItem): DossierAnswer => {
+    const entry = object(itemsBody[item]);
+    const note = optionalText(entry.note, DECISION_LIMITS.note);
+    const given = entry.answer;
+    if (given === 'present' || given === 'not_applicable')
+      return { answer: given, note };
+    if (given === 'missing' && note !== null) return { answer: given, note };
+    return invalid();
+  };
+  return {
+    items: {
+      application: answer('application'),
+      application_review: answer('application_review'),
+      duration: answer('duration'),
+      agreement: answer('agreement'),
+      team_approval: answer('team_approval'),
+      stage_1_plan: answer('stage_1_plan'),
+      stage_1_report: answer('stage_1_report'),
+      stage_2_plan: answer('stage_2_plan'),
+      stage_2_report: answer('stage_2_report'),
+      participant_lists: answer('participant_lists'),
+      findings_follow_up: answer('findings_follow_up'),
+      recommendation: answer('recommendation'),
+      certificate_data: answer('certificate_data'),
+    },
+    conclusion: text(body.conclusion, DECISION_LIMITS.conclusion),
+  };
+}
+
+/** The attested decision; a grant fixes its texts, a refusal states none. */
+function decisionValue(value: unknown): CertificationDecision {
+  const body = object(value);
+  if (body.independenceAttested !== true) invalid();
+  const facts = {
+    decidedOn: calendarDate(body.decidedOn),
+    decidedBy: text(body.decidedBy, DECISION_LIMITS.person),
+    decidedByFunction: optionalText(
+      body.decidedByFunction,
+      DECISION_LIMITS.person,
+    ),
+    decisionFormAttachmentId: optionalText(
+      body.decisionFormAttachmentId,
+      Number.MAX_SAFE_INTEGER,
+    ),
+    independenceAttested: true,
+    rationale: text(body.rationale, DECISION_LIMITS.rationale),
+    additionalInformation: optionalText(
+      body.additionalInformation,
+      DECISION_LIMITS.additionalInformation,
+    ),
+  } satisfies Omit<CertificationDecision, 'decision' | 'grantedTexts'>;
+  if (body.decision === 'granted')
+    return {
+      ...facts,
+      decision: 'granted',
+      grantedTexts: certificateTexts(body.grantedTexts),
+    };
+  if (body.decision === 'refused' && body.grantedTexts === null)
+    return { ...facts, decision: 'refused', grantedTexts: null };
+  return invalid();
+}
+
+function certificateDataValue(value: unknown): CertificateData {
+  const body = object(value);
+  return {
+    texts: certificateTexts(body.texts),
+    agreedOn: calendarDate(body.agreedOn),
+    agreementAttachmentId: text(body.agreementAttachmentId),
+  };
+}
+
+/** One to four Certificate texts, at most one per language. */
+function certificateTexts(value: unknown): CertificateText[] {
+  const texts = list(value, 1, DECISION_LIMITS.texts).map((entry) => {
+    const body = object(entry);
+    return {
+      language: text(body.language, DECISION_LIMITS.language),
+      holderName: text(body.holderName, DECISION_LIMITS.holderName),
+      address: text(body.address, DECISION_LIMITS.address),
+      scope: text(body.scope, DECISION_LIMITS.scope),
+    };
+  });
+  if (new Set(texts.map((entry) => entry.language)).size !== texts.length)
+    invalid();
+  return texts;
+}
+
+/** The recorded Certificate with the validity the server computed. */
+function certificateValue(value: unknown): Certificate {
+  const row = object(value);
+  return {
+    id: text(row.id),
+    number: text(row.number, DECISION_LIMITS.number),
+    validFrom: calendarDate(row.validFrom),
+    validUntil: calendarDate(row.validUntil),
+    firstSurveillanceBy: calendarDate(row.firstSurveillanceBy),
+    texts: certificateTexts(row.texts),
+    signedBy: optionalText(row.signedBy, DECISION_LIMITS.person),
+    signedByFunction: optionalText(
+      row.signedByFunction,
+      DECISION_LIMITS.person,
+    ),
+    attachmentId: text(row.attachmentId),
+    recordedBy: actorReference(row.recordedBy),
+    recordedAt: instant(row.recordedAt),
+  };
 }
 
 /** Only a correction states a reason; the first version never does. */
@@ -1744,4 +2078,8 @@ function instant(value: unknown): string {
 
 function invalid(): never {
   throw new Error('Invalid Certification response.');
+}
+
+function unexpectedValue(value: never): never {
+  throw new Error(`Unexpected Certification value: ${String(value)}`);
 }

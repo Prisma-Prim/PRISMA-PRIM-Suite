@@ -7,9 +7,13 @@ import {
   parseEligibleDocuments,
   parseTimeline,
 } from './certification-response';
+import { parseDecisionFailures } from './certification-decision';
 import {
+  CERTIFICATE_TEXTS,
   NO_CONFLICT,
+  certificationDecision,
   certificationIds,
+  dossierReview,
   findingStatement,
   lactisFacts,
   nonconformityResponse,
@@ -73,6 +77,11 @@ function detail(overrides: Record<string, unknown> = {}) {
     teamDecision: null,
     stages: [],
     findings: [],
+    recommendation: null,
+    dossierReview: null,
+    decision: null,
+    certificateData: null,
+    certificate: null,
     ...overrides,
   };
 }
@@ -2350,5 +2359,456 @@ describe('Certification Finding parsers', () => {
     ],
   ])('fails closed on %s', (_name, value) => {
     expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
+  });
+});
+
+const recommended = stageVersion('recommendation', 18, {
+  recommendation: 'grant',
+  basis: 'No nonconformity; system effectively implemented.',
+});
+const reviewItems = dossierReview().items;
+const reviewed = stageVersion('dossier_review', 19, dossierReview());
+const decided = stageVersion(
+  'decision',
+  20,
+  certificationDecision({ decisionFormAttachmentId: 'decision-form' }),
+);
+const agreedData = stageVersion('certificate_data', 21, {
+  texts: CERTIFICATE_TEXTS,
+  agreedOn: '2026-10-21',
+  agreementAttachmentId: 'data-form',
+});
+const certificate = {
+  id: 'certificate-1',
+  number: 'DEMO-0001',
+  validFrom: '2026-11-06',
+  validUntil: '2029-11-05',
+  firstSurveillanceBy: '2027-11-06',
+  texts: CERTIFICATE_TEXTS,
+  signedBy: 'Decision Maker Demo',
+  signedByFunction: 'Head of the certification body',
+  attachmentId: 'certificate-pdf',
+  recordedBy: by,
+  recordedAt: '2026-11-07T10:00:00.000Z',
+};
+const refusedDecision = stageVersion(
+  'decision',
+  20,
+  certificationDecision({
+    decision: 'refused',
+    grantedTexts: null,
+    rationale: 'Recommendation not to grant accepted.',
+  }),
+);
+const negative = {
+  ...recommended,
+  value: { recommendation: 'do_not_grant', basis: 'Major nonconformity.' },
+};
+/** Stage 2 reported (17), recommended (18), reviewed (19), decided (20), agreed (21). */
+function decidedDetail(overrides: Record<string, unknown> = {}) {
+  return stagedDetail(allStages, {
+    revision: 21,
+    nextStep: 'certificate',
+    recommendation: recommended,
+    dossierReview: reviewed,
+    decision: decided,
+    certificateData: agreedData,
+    ...overrides,
+  });
+}
+function certifiedDetail(certified: Record<string, unknown> = {}) {
+  return decidedDetail({
+    status: 'certified',
+    revision: 22,
+    nextStep: null,
+    certificate: { ...certificate, ...certified },
+  });
+}
+function refusedDetail(overrides: Record<string, unknown> = {}) {
+  return stagedDetail(allStages, {
+    status: 'refused',
+    revision: 20,
+    nextStep: null,
+    recommendation: negative,
+    dossierReview: reviewed,
+    decision: refusedDecision,
+    ...overrides,
+  });
+}
+/** Recommended (18) and reviewed (19) with these items, the decision next. */
+function reviewedDetail(items: Record<string, unknown> = reviewItems) {
+  return stagedDetail(allStages, {
+    revision: 19,
+    nextStep: 'decision',
+    recommendation: recommended,
+    dossierReview: { ...reviewed, value: { ...reviewed.value, items } },
+  });
+}
+/** An undecided Case whose read omits the decision field instead of null. */
+function withoutDecisionField() {
+  return Object.fromEntries(
+    Object.entries(reviewedDetail()).filter(([key]) => key !== 'decision'),
+  );
+}
+
+describe('Certification recommendation, decision and Certificate parsers', () => {
+  it('reads the recommendation, the review, a granting decision and the agreed data with every exact value', () => {
+    const parsed = parseCaseDetail(decidedDetail(), { ...scope, caseId });
+    expect(parsed.status).toBe('open');
+    expect(parsed.nextStep).toBe('certificate');
+    expect(parsed.recommendation?.value).toEqual({
+      recommendation: 'grant',
+      basis: 'No nonconformity; system effectively implemented.',
+    });
+    expect(parsed.dossierReview?.value).toEqual(dossierReview());
+    expect(parsed.decision?.value).toEqual(
+      certificationDecision({ decisionFormAttachmentId: 'decision-form' }),
+    );
+    expect(parsed.certificateData?.value).toEqual({
+      texts: CERTIFICATE_TEXTS,
+      agreedOn: '2026-10-21',
+      agreementAttachmentId: 'data-form',
+    });
+    expect(parsed.certificate).toBeNull();
+  });
+
+  it('reads each next step of the closing steps as the server derives it', () => {
+    const next = (overrides: Record<string, unknown>) =>
+      parseCaseDetail(stagedDetail(allStages, overrides), { ...scope, caseId })
+        .nextStep;
+    expect(
+      next({
+        revision: 18,
+        nextStep: 'dossier_review',
+        recommendation: recommended,
+      }),
+    ).toBe('dossier_review');
+    expect(
+      next({
+        revision: 19,
+        nextStep: 'decision',
+        recommendation: recommended,
+        dossierReview: reviewed,
+      }),
+    ).toBe('decision');
+    expect(
+      next({
+        revision: 20,
+        nextStep: 'certificate_data',
+        recommendation: recommended,
+        dossierReview: reviewed,
+        decision: decided,
+      }),
+    ).toBe('certificate_data');
+    // The data may be agreed once Stage 2 is reported, before the decision.
+    expect(
+      next({
+        revision: 21,
+        nextStep: 'decision',
+        recommendation: recommended,
+        dossierReview: reviewed,
+        certificateData: agreedData,
+      }),
+    ).toBe('decision');
+  });
+
+  it('reads a certified Case with its Certificate and the validity the server computed', () => {
+    const parsed = parseCaseDetail(certifiedDetail(), { ...scope, caseId });
+    expect(parsed.status).toBe('certified');
+    expect(parsed.nextStep).toBeNull();
+    expect(parsed.certificate).toEqual(certificate);
+    expect(
+      parseCaseDetail(
+        certifiedDetail({ signedBy: null, signedByFunction: null }),
+        { ...scope, caseId },
+      ).certificate,
+    ).toMatchObject({ signedBy: null, signedByFunction: null });
+  });
+
+  it('reads a refusal that closes the Case', () => {
+    const parsed = parseCaseDetail(refusedDetail(), { ...scope, caseId });
+    expect(parsed.status).toBe('refused');
+    expect(parsed.nextStep).toBeNull();
+    expect(parsed.decision?.value).toMatchObject({
+      decision: 'refused',
+      grantedTexts: null,
+    });
+  });
+
+  it('reads the closing step versions of the timeline and the new attachment roles', () => {
+    const corrected = stageVersion(
+      'recommendation',
+      22,
+      { recommendation: 'grant', basis: 'Basis completed.' },
+      { version: 2, reason: 'Basis completed after the closing meeting.' },
+    );
+    const entries = parseTimeline(
+      {
+        caseId,
+        entries: [
+          stage2Reported,
+          recommended,
+          reviewed,
+          decided,
+          agreedData,
+          corrected,
+        ],
+      },
+      caseId,
+    ).entries;
+    expect(entries.map((entry) => [entry.step, entry.version])).toEqual([
+      ['stage_2_report', 1],
+      ['recommendation', 1],
+      ['dossier_review', 1],
+      ['decision', 1],
+      ['certificate_data', 1],
+      ['recommendation', 2],
+    ]);
+    expect(entries.at(-1)?.reason).toBe(
+      'Basis completed after the closing meeting.',
+    );
+    expect(
+      parseDocumentRegister(
+        {
+          caseId,
+          items: [
+            attachmentRow({ role: 'decision_form' }),
+            { ...questionnaireRow, role: 'certificate_data' },
+          ],
+        },
+        caseId,
+      ).items.map((item) => item.role),
+    ).toEqual(['decision_form', 'certificate_data']);
+  });
+
+  it.each([
+    ['an open Case without the closing step fields', withoutDecisionField()],
+    ['an unknown status', decidedDetail({ status: 'issued' })],
+    ['an unknown next step', decidedDetail({ nextStep: 'issue' })],
+    ['the decision next once decided', decidedDetail({ nextStep: 'decision' })],
+    [
+      'an unknown recommendation',
+      decidedDetail({
+        recommendation: {
+          ...recommended,
+          value: { ...recommended.value, recommendation: 'maybe' },
+        },
+      }),
+    ],
+    [
+      'a first recommendation with a reason',
+      decidedDetail({ recommendation: { ...recommended, reason: 'Why.' } }),
+    ],
+    [
+      'a recommendation before the Stage 2 report',
+      decidedDetail({ recommendation: { ...recommended, caseRevision: 16 } }),
+    ],
+    [
+      'a dossier review missing an item',
+      reviewedDetail(
+        Object.fromEntries(
+          Object.entries(reviewItems).filter(
+            ([item]) => item !== 'certificate_data',
+          ),
+        ),
+      ),
+    ],
+    [
+      'a dossier review with an unknown item',
+      reviewedDetail({
+        ...reviewItems,
+        laboratory: { answer: 'present', note: null },
+      }),
+    ],
+    [
+      'a missing dossier item without its note',
+      reviewedDetail({
+        ...reviewItems,
+        participant_lists: { answer: 'missing', note: null },
+      }),
+    ],
+    [
+      'an unknown dossier answer',
+      reviewedDetail({
+        ...reviewItems,
+        agreement: { answer: 'partly', note: null },
+      }),
+    ],
+    [
+      'a dossier review before the recommendation',
+      decidedDetail({
+        recommendation: { ...recommended, caseRevision: 19 },
+        dossierReview: { ...reviewed, caseRevision: 18 },
+      }),
+    ],
+    [
+      'a decision before its dossier review',
+      decidedDetail({
+        dossierReview: { ...reviewed, caseRevision: 20 },
+        decision: { ...decided, caseRevision: 19 },
+      }),
+    ],
+    [
+      'a decision on an incomplete dossier review',
+      decidedDetail({
+        dossierReview: {
+          ...reviewed,
+          value: dossierReview('participant_lists'),
+        },
+      }),
+    ],
+    [
+      'a granting decision against a recommendation not to grant',
+      decidedDetail({ recommendation: negative }),
+    ],
+    [
+      'a second decision version',
+      decidedDetail({ decision: { ...decided, version: 2 } }),
+    ],
+    [
+      'a decision with a correction reason',
+      decidedDetail({ decision: { ...decided, reason: 'Changed.' } }),
+    ],
+    [
+      'a decision without the independence attestation',
+      decidedDetail({
+        decision: {
+          ...decided,
+          value: { ...decided.value, independenceAttested: false },
+        },
+      }),
+    ],
+    [
+      'a granting decision without texts',
+      decidedDetail({
+        decision: {
+          ...decided,
+          value: { ...decided.value, grantedTexts: null },
+        },
+      }),
+    ],
+    [
+      'a refusing decision with texts',
+      refusedDetail({
+        decision: {
+          ...refusedDecision,
+          value: { ...refusedDecision.value, grantedTexts: CERTIFICATE_TEXTS },
+        },
+      }),
+    ],
+    [
+      'Certificate texts with the same language twice',
+      decidedDetail({
+        certificateData: {
+          ...agreedData,
+          value: {
+            ...agreedData.value,
+            texts: [CERTIFICATE_TEXTS[0], CERTIFICATE_TEXTS[0]],
+          },
+        },
+      }),
+    ],
+    [
+      'more than four Certificate texts',
+      decidedDetail({
+        certificateData: {
+          ...agreedData,
+          value: {
+            ...agreedData.value,
+            texts: ['ro', 'en', 'fr', 'ru', 'de'].map((language) => ({
+              ...CERTIFICATE_TEXTS[1],
+              language,
+            })),
+          },
+        },
+      }),
+    ],
+    [
+      'Certificate data before the Stage 2 report',
+      decidedDetail({ certificateData: { ...agreedData, caseRevision: 16 } }),
+    ],
+    [
+      'a closing step at the revision of another step',
+      decidedDetail({ certificateData: { ...agreedData, caseRevision: 20 } }),
+    ],
+    [
+      'a Certificate on an open Case',
+      decidedDetail({ revision: 22, certificate }),
+    ],
+    [
+      'a certified Case without its Certificate',
+      decidedDetail({ status: 'certified', revision: 22, nextStep: null }),
+    ],
+    [
+      'a Certificate valid from another date than the decision',
+      certifiedDetail({ validFrom: '2026-11-07' }),
+    ],
+    [
+      'a Certificate valid until before its first surveillance',
+      certifiedDetail({ validUntil: '2027-11-05' }),
+    ],
+    [
+      'a first surveillance before the validity starts',
+      certifiedDetail({ firstSurveillanceBy: '2026-11-01' }),
+    ],
+    [
+      'a recommendation version after the decision',
+      decidedDetail({
+        revision: 22,
+        recommendation: {
+          ...recommended,
+          version: 2,
+          reason: 'Changed after the decision.',
+          caseRevision: 22,
+        },
+      }),
+    ],
+    [
+      // The same texts as granted, but not exactly as the data were agreed.
+      'a Certificate stating other texts than the agreed data',
+      certifiedDetail({ texts: [CERTIFICATE_TEXTS[1], CERTIFICATE_TEXTS[0]] }),
+    ],
+    [
+      'a Certificate stating texts the decision did not grant',
+      decidedDetail({
+        status: 'certified',
+        revision: 22,
+        nextStep: null,
+        certificateData: {
+          ...agreedData,
+          value: { ...agreedData.value, texts: [CERTIFICATE_TEXTS[1]] },
+        },
+        certificate: { ...certificate, texts: [CERTIFICATE_TEXTS[1]] },
+      }),
+    ],
+    ['a Certificate without its number', certifiedDetail({ number: ' ' })],
+    ['a refused Case with a Certificate', refusedDetail({ certificate })],
+    [
+      'a refused Case whose decision grants',
+      refusedDetail({ recommendation: recommended, decision: decided }),
+    ],
+    [
+      'an open Case with a refusing decision',
+      refusedDetail({ status: 'open', nextStep: 'certificate_data' }),
+    ],
+  ])('fails closed on %s', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
+  });
+
+  it('reads the server’s unmet decision preconditions and fails closed on an unknown one', () => {
+    expect(
+      parseDecisionFailures([
+        'DOSSIER_REVIEW_INCOMPLETE',
+        'DECISION_IN_FUTURE',
+      ]),
+    ).toEqual(['DOSSIER_REVIEW_INCOMPLETE', 'DECISION_IN_FUTURE']);
+    expect(
+      parseDecisionFailures(['DECISION_IN_FUTURE', 'MOON_PHASE']),
+    ).toBeUndefined();
+    expect(parseDecisionFailures([])).toBeUndefined();
+    expect(
+      parseDecisionFailures(['FINDINGS_OPEN', 'FINDINGS_OPEN']),
+    ).toBeUndefined();
+    expect(parseDecisionFailures(undefined)).toBeUndefined();
   });
 });
