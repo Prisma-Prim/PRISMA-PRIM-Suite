@@ -1,13 +1,11 @@
-import { and, eq, exists, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
-import { missionDeliverableAssignment } from '../access/mission-deliverable-access.js';
-import { receivedContractAssignment } from '../access/received-contract-access.js';
+import { missionDeliverableAssignmentExists } from '../access/mission-deliverable-access.js';
+import { receivedContractAssignmentExists } from '../access/received-contract-access.js';
 import type { DatabaseContext } from '../database/database-context.js';
 import {
   clientAccounts,
   clientCompanyRelationships,
-  // eslint-disable-next-line no-restricted-imports -- Document family grant EXISTS predates the Access boundary rule; #1106 moves it into Access.
-  companyRoleAssignments,
   workingDocuments,
 } from '../database/schema/index.js';
 
@@ -32,24 +30,8 @@ export function activityReadableDocuments({
   )
     return undefined;
 
-  const missionGrant = missionDeliverableAssignment(actor);
-  const mission = missionGrant
-    ? exists(
-        connection
-          .select({ id: companyRoleAssignments.id })
-          .from(companyRoleAssignments)
-          .where(missionGrant),
-      )
-    : sql`false`;
-  const receivedGrant = receivedContractAssignment(actor);
-  const received = receivedGrant
-    ? exists(
-        connection
-          .select({ id: companyRoleAssignments.id })
-          .from(companyRoleAssignments)
-          .where(receivedGrant),
-      )
-    : sql`false`;
+  const mission = missionDeliverableAssignmentExists({ actor, connection });
+  const received = receivedContractAssignmentExists({ actor, connection });
 
   return connection
     .select({

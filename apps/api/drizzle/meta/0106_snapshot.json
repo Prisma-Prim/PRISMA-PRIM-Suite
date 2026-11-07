@@ -1,5 +1,5 @@
 {
-  "id": "2d96a0c5-8356-495d-9997-43f4520f06fb",
+  "id": "ed69148e-a9e3-4655-8613-26203058f4d6",
   "prevId": "762fd6d8-c912-4fed-9395-0a5b1ad94db8",
   "version": "7",
   "dialect": "postgresql",
@@ -1478,6 +1478,33 @@
             },
             {
               "expression": "workspace_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "company_role_assignments_scope_unique": {
+          "name": "company_role_assignments_scope_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6373,6 +6400,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "client_id": {
           "name": "client_id",
           "type": "text",
@@ -6393,9 +6426,11 @@
           "tableFrom": "workspace_invitation_proofs",
           "tableTo": "workspace_invitations",
           "columnsFrom": [
+            "workspace_id",
             "invitation_id"
           ],
           "columnsTo": [
+            "workspace_id",
             "id"
           ],
           "onDelete": "no action",
@@ -9100,11 +9135,13 @@
           "tableTo": "project_lifecycle_transitions",
           "columnsFrom": [
             "workspace_id",
+            "company_id",
             "project_id",
             "result_revision"
           ],
           "columnsTo": [
             "workspace_id",
+            "company_id",
             "project_id",
             "lifecycle_revision"
           ],
@@ -9253,6 +9290,7 @@
           "nullsNotDistinct": false,
           "columns": [
             "workspace_id",
+            "company_id",
             "project_id",
             "lifecycle_revision"
           ]
@@ -12529,11 +12567,13 @@
           "tableTo": "opportunity_outcome_history",
           "columnsFrom": [
             "workspace_id",
+            "company_id",
             "opportunity_id",
             "result_version"
           ],
           "columnsTo": [
             "workspace_id",
+            "company_id",
             "opportunity_id",
             "opportunity_version"
           ],
@@ -13421,6 +13461,7 @@
           "nullsNotDistinct": false,
           "columns": [
             "workspace_id",
+            "company_id",
             "opportunity_id",
             "opportunity_version"
           ]
@@ -25988,19 +26029,6 @@
         }
       },
       "foreignKeys": {
-        "mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk": {
-          "name": "mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk",
-          "tableFrom": "mission_result_review_batches",
-          "tableTo": "company_role_assignments",
-          "columnsFrom": [
-            "reviewer_assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "mr_review_batches_source_fk": {
           "name": "mr_review_batches_source_fk",
           "tableFrom": "mission_result_review_batches",
@@ -26052,6 +26080,23 @@
             "workspace_id",
             "id",
             "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk": {
+          "name": "mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk",
+          "tableFrom": "mission_result_review_batches",
+          "tableTo": "company_role_assignments",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "reviewer_assignment_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -28083,19 +28128,6 @@
         }
       },
       "foreignKeys": {
-        "mission_applicability_facts_assignment_id_company_role_assignments_id_fk": {
-          "name": "mission_applicability_facts_assignment_id_company_role_assignments_id_fk",
-          "tableFrom": "mission_applicability_facts",
-          "tableTo": "company_role_assignments",
-          "columnsFrom": [
-            "assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "ma_facts_source_fk": {
           "name": "ma_facts_source_fk",
           "tableFrom": "mission_applicability_facts",
@@ -28147,6 +28179,23 @@
             "workspace_id",
             "id",
             "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "mission_applicability_facts_assignment_id_company_role_assignments_id_fk": {
+          "name": "mission_applicability_facts_assignment_id_company_role_assignments_id_fk",
+          "tableFrom": "mission_applicability_facts",
+          "tableTo": "company_role_assignments",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -28459,9 +28508,13 @@
           "tableFrom": "project_next_action_commands",
           "tableTo": "company_role_assignments",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "assignment_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -28940,9 +28993,13 @@
           "tableFrom": "project_next_action_history",
           "tableTo": "company_role_assignments",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "assignment_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -29952,9 +30009,13 @@
           "tableFrom": "internal_company_task_commands",
           "tableTo": "company_role_assignments",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "assignment_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -30737,6 +30798,33 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "ofup_command_scope_unique": {
+          "name": "ofup_command_scope_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -30745,9 +30833,13 @@
           "tableFrom": "opportunity_follow_up_commands",
           "tableTo": "company_role_assignments",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "assignment_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -30758,9 +30850,13 @@
           "tableFrom": "opportunity_follow_up_commands",
           "tableTo": "company_role_assignments",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "intake_assignment_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -30940,9 +31036,13 @@
           "tableFrom": "opportunity_follow_up_events",
           "tableTo": "opportunity_follow_up_commands",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "command_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -31191,9 +31291,13 @@
           "tableFrom": "opportunity_follow_up_history",
           "tableTo": "opportunity_follow_up_commands",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "command_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -31399,22 +31503,36 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "invoice_command_scope_unique": {
+          "name": "invoice_command_scope_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "invoice_record_commands_assignment_id_company_role_assignments_id_fk": {
-          "name": "invoice_record_commands_assignment_id_company_role_assignments_id_fk",
-          "tableFrom": "invoice_record_commands",
-          "tableTo": "company_role_assignments",
-          "columnsFrom": [
-            "assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "invoice_command_company_fk": {
           "name": "invoice_command_company_fk",
           "tableFrom": "invoice_record_commands",
@@ -31425,6 +31543,23 @@
           ],
           "columnsTo": [
             "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invoice_record_commands_assignment_id_company_role_assignments_id_fk": {
+          "name": "invoice_record_commands_assignment_id_company_role_assignments_id_fk",
+          "tableFrom": "invoice_record_commands",
+          "tableTo": "company_role_assignments",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -31607,9 +31742,13 @@
           "tableFrom": "invoice_record_events",
           "tableTo": "invoice_record_commands",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "command_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -31737,9 +31876,13 @@
           "tableFrom": "invoice_record_history",
           "tableTo": "invoice_record_commands",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "command_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -32346,22 +32489,36 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "payment_command_scope_unique": {
+          "name": "payment_command_scope_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "payment_commands_assignment_id_company_role_assignments_id_fk": {
-          "name": "payment_commands_assignment_id_company_role_assignments_id_fk",
-          "tableFrom": "payment_commands",
-          "tableTo": "company_role_assignments",
-          "columnsFrom": [
-            "assignment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "payment_command_company_fk": {
           "name": "payment_command_company_fk",
           "tableFrom": "payment_commands",
@@ -32372,6 +32529,23 @@
           ],
           "columnsTo": [
             "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payment_commands_assignment_id_company_role_assignments_id_fk": {
+          "name": "payment_commands_assignment_id_company_role_assignments_id_fk",
+          "tableFrom": "payment_commands",
+          "tableTo": "company_role_assignments",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "assignment_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -32554,9 +32728,13 @@
           "tableFrom": "payment_events",
           "tableTo": "payment_commands",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "command_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -32684,9 +32862,13 @@
           "tableFrom": "payment_history",
           "tableTo": "payment_commands",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
             "command_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
             "id"
           ],
           "onDelete": "no action",
@@ -34315,7 +34497,7 @@
       "checkConstraints": {
         "certification_case_documents_role_check": {
           "name": "certification_case_documents_role_check",
-          "value": "\"certification_case_documents\".\"role\" IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'decision_form', 'other') AND \"certification_case_documents\".\"case_revision\" > 1 AND \"certification_case_documents\".\"version_number\" > 0 AND \"certification_case_documents\".\"size_bytes\" > 0 AND \"certification_case_documents\".\"sha256\" ~ '^[a-f0-9]{64}$'"
+          "value": "\"certification_case_documents\".\"role\" IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'other') AND \"certification_case_documents\".\"case_revision\" > 1 AND \"certification_case_documents\".\"version_number\" > 0 AND \"certification_case_documents\".\"size_bytes\" > 0 AND \"certification_case_documents\".\"sha256\" ~ '^[a-f0-9]{64}$'"
         },
         "certification_case_documents_note_check": {
           "name": "certification_case_documents_note_check",
@@ -34608,241 +34790,11 @@
         },
         "certification_cases_kind_check": {
           "name": "certification_cases_kind_check",
-          "value": "\"certification_cases\".\"standard\" = 'iso_22000_2018' AND \"certification_cases\".\"audit_type\" = 'initial_certification' AND \"certification_cases\".\"status\" IN ('open', 'rejected', 'refused', 'certified')"
+          "value": "\"certification_cases\".\"standard\" = 'iso_22000_2018' AND \"certification_cases\".\"audit_type\" = 'initial_certification' AND \"certification_cases\".\"status\" IN ('open', 'rejected')"
         },
         "certification_cases_order_reference_check": {
           "name": "certification_cases_order_reference_check",
           "value": "length(btrim(\"certification_cases\".\"order_reference\")) BETWEEN 1 AND 64"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.certification_certificates": {
-      "name": "certification_certificates",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "case_id": {
-          "name": "case_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "case_revision": {
-          "name": "case_revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "number": {
-          "name": "number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "valid_from": {
-          "name": "valid_from",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "valid_until": {
-          "name": "valid_until",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "first_surveillance_by": {
-          "name": "first_surveillance_by",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "texts": {
-          "name": "texts",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "signed_by": {
-          "name": "signed_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "signed_by_function": {
-          "name": "signed_by_function",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attachment_id": {
-          "name": "attachment_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_membership_id": {
-          "name": "actor_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_internal_user_id": {
-          "name": "actor_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_display_name": {
-          "name": "actor_display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_at": {
-          "name": "recorded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "certification_certificates_case_unique": {
-          "name": "certification_certificates_case_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "case_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "certification_certificates_number_unique": {
-          "name": "certification_certificates_number_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "certification_certificates_case_fk": {
-          "name": "certification_certificates_case_fk",
-          "tableFrom": "certification_certificates",
-          "tableTo": "certification_cases",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "case_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "certification_certificates_attachment_fk": {
-          "name": "certification_certificates_attachment_fk",
-          "tableFrom": "certification_certificates",
-          "tableTo": "certification_case_documents",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "case_id",
-            "attachment_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "case_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "certification_certificates_actor_fk": {
-          "name": "certification_certificates_actor_fk",
-          "tableFrom": "certification_certificates",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_membership_id",
-            "actor_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "certification_certificates_values_check": {
-          "name": "certification_certificates_values_check",
-          "value": "length(btrim(\"certification_certificates\".\"number\")) BETWEEN 1 AND 64 AND \"certification_certificates\".\"valid_from\" < \"certification_certificates\".\"valid_until\" AND \"certification_certificates\".\"valid_from\" < \"certification_certificates\".\"first_surveillance_by\" AND \"certification_certificates\".\"case_revision\" > 1 AND jsonb_typeof(\"certification_certificates\".\"texts\") = 'array'"
         }
       },
       "isRLSEnabled": false
@@ -34990,7 +34942,7 @@
       "checkConstraints": {
         "certification_events_action_check": {
           "name": "certification_events_action_check",
-          "value": "\"certification_events\".\"action\" IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded') AND \"certification_events\".\"revision\" > 0 AND jsonb_typeof(\"certification_events\".\"metadata\") = 'object'"
+          "value": "\"certification_events\".\"action\" IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified') AND \"certification_events\".\"revision\" > 0 AND jsonb_typeof(\"certification_events\".\"metadata\") = 'object'"
         }
       },
       "isRLSEnabled": false
@@ -35484,7 +35436,7 @@
       "checkConstraints": {
         "certification_receipts_kind_check": {
           "name": "certification_receipts_kind_check",
-          "value": "\"certification_receipts\".\"command_kind\" IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate')"
+          "value": "\"certification_receipts\".\"command_kind\" IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record')"
         }
       },
       "isRLSEnabled": false
@@ -35693,7 +35645,7 @@
         },
         "certification_step_versions_step_check": {
           "name": "certification_step_versions_step_check",
-          "value": "\"certification_step_versions\".\"step\" IN ('application', 'application_review', 'duration', 'agreement', 'team', 'team_decision', 'stage_1_plan', 'stage_1_report', 'stage_2_plan', 'stage_2_report', 'recommendation', 'dossier_review', 'decision', 'certificate_data') AND \"certification_step_versions\".\"version\" > 0 AND \"certification_step_versions\".\"case_revision\" > 1"
+          "value": "\"certification_step_versions\".\"step\" IN ('application', 'application_review', 'duration', 'agreement', 'team', 'team_decision', 'stage_1_plan', 'stage_1_report', 'stage_2_plan', 'stage_2_report') AND \"certification_step_versions\".\"version\" > 0 AND \"certification_step_versions\".\"case_revision\" > 1"
         },
         "certification_step_versions_payload_check": {
           "name": "certification_step_versions_payload_check",

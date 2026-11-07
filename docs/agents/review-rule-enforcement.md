@@ -6,11 +6,11 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 
 | Rule                                                                     | Enforced by                                                                              | Source        |
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------- |
-| Table without `workspace_id`, or Company-owned without composite keys    | `apps/api/src/database/tenancy-schema.test.ts`; known exceptions in #1105                | #1103, #1107  |
+| Table without `workspace_id`, or Company-owned without composite keys    | `apps/api/src/database/tenancy-schema.test.ts`; reasoned exemptions only (#1105)         | #1103, #1107  |
 | Schema change without its generated migration                            | `pnpm db:check-drift` in CI `checks`                                                     | #1068, #1072  |
 | Drop, rename, retype or truncate in one migration step                   | `scripts/destructive-migrations.test.mjs`; needs a `destructive-change` approval comment | #1101, #1104  |
 | Activity Log event updated or deleted                                    | ESLint `no-restricted-syntax` on `*Events` tables, plus database triggers                | #1102, #1108  |
-| Access tables queried outside the Access module                          | ESLint `no-restricted-imports`; line exceptions tracked in #1106                         | #1102, #1108  |
+| Access tables queried outside the Access module                          | ESLint `no-restricted-imports`                                                           | #1102, #1108  |
 | Non-null `!` and type assertions in TypeScript                           | ESLint with the shrinking `eslint-suppressions.json` baseline                            | #1077, #1079  |
 | Hand-rolled `AbortController` in web code, not `useScopedOperation`      | ESLint `no-restricted-syntax` with the shrinking `eslint-suppressions.json` baseline     | #1119, #1135  |
 | Handler without an established actor context                             | `requireActorContext` returns 403                                                        | #1092         |

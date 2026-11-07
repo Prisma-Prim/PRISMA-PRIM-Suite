@@ -1105,6 +1105,39 @@ export class CompanyContextAuthorization {
       versions: ['v1'],
     });
   }
+  /**
+   * Knowledge source administration or evidence use: the delivered Document
+   * content read, then the exact captured Knowledge grant for the role,
+   * rechecked live and share-locked until the caller's transaction ends.
+   */
+  async requireKnowledgeAccess(
+    actor: ActorContext,
+    role: 'admin' | 'reader',
+  ): Promise<string> {
+    const companyId = await this.requireDocumentContentRead(actor);
+    const bundle =
+      role === 'admin'
+        ? COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE
+        : COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE;
+    const capture = actor.activeCompany?.knowledgeGrants?.find(
+      (grant) => grant.bundle === bundle && grant.permissionSetVersion === 'v1',
+    );
+    if (!capture) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      and(
+        eq(companyRoleAssignments.id, capture.assignmentId),
+        eq(companyRoleAssignments.bundle, capture.bundle),
+        eq(
+          companyRoleAssignments.permissionSetVersion,
+          capture.permissionSetVersion,
+        ),
+      ) ?? sql`false`,
+      true,
+    );
+    return companyId;
+  }
   /** Current captured family authority; a write's shared lock fences revocation. */
   async hasMissionDeliverableAccess(
     actor: ActorContext,

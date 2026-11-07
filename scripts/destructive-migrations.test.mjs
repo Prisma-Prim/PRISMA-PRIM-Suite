@@ -86,8 +86,24 @@ test('harmless statements, comments and string literals are not flagged', () => 
   }
 });
 
+// What each kind's failure says it does, and a phrase of its own safe
+// alternative: the "Expand, backfill, contract:" header is the same for all.
+const explanationByKind = {
+  'drop-table': ['drops a table', /add the replacement table/i],
+  'drop-schema': ['drops a schema', /move every object out of the schema/i],
+  'drop-column': ['drops a column', /keep the column, stop writing it/i],
+  rename: ['renames an object', /add the new name beside the old one/i],
+  'alter-type': ['changes a column type', /backfill it with a checked cast/i],
+  'drop-key': [
+    'drops a primary or foreign key',
+    /add the replacement constraint first/i,
+  ],
+  truncate: ['truncates a table', /DELETE \.\.\. WHERE/],
+  'delete-all': ['deletes every row of a table', /DELETE \.\.\. WHERE/],
+};
+
 test('an unmarked destructive statement fails, naming the file, line, statement and the safe alternative', () => {
-  for (const [, sql] of destructiveStatements) {
+  for (const [kind, sql] of destructiveStatements) {
     const failures = checkMigrations(
       fixture(`SELECT 1;--> statement-breakpoint\n${sql}\n`),
       [],
@@ -95,11 +111,15 @@ test('an unmarked destructive statement fails, naming the file, line, statement 
 
     assert.equal(failures.length, 1, sql);
     const [message] = failures;
-    assert.match(message, /apps\/api\/drizzle\/0100_fixture\.sql:2\b/, sql);
+    const [description, alternative] = explanationByKind[kind];
+    assert.ok(
+      message.startsWith(
+        `apps/api/drizzle/0100_fixture.sql:2 ${description} (${kind}):`,
+      ),
+      message,
+    );
     assert.ok(message.includes(sql.replace(/;$/, '')), message);
-    assert.match(message, /expand/i);
-    assert.match(message, /backfill/i);
-    assert.match(message, /contract/i);
+    assert.match(message, alternative);
     assert.match(
       message,
       /-- destructive-change: <reason>, approved in #<issue>/,
@@ -206,11 +226,115 @@ test('one marker accepts every destructive action of the statement it sits above
 });
 
 test('a statement that spans lines is read as one, and CRLF files give the same lines', () => {
-  const sql = 'ALTER TABLE "notes"\r\n  DROP COLUMN "body";\r\n';
-  const [finding] = findDestructiveStatements(sql.replaceAll('\r\n', '\n'));
+  const lines = [
+    'SELECT 1;',
+    marker,
+    'ALTER TABLE "notes"',
+    '  DROP COLUMN "body";',
+    '',
+  ];
 
-  assert.equal(finding.line, 1);
-  assert.equal(finding.statement, 'ALTER TABLE "notes" DROP COLUMN "body"');
+  for (const newline of ['\n', '\r\n']) {
+    const sql = lines.join(newline);
+    assert.deepEqual(
+      findDestructiveStatements(sql).map((finding) => [
+        finding.kind,
+        finding.line,
+        finding.statement,
+      ]),
+      [['drop-column', 3, 'ALTER TABLE "notes" DROP COLUMN "body"']],
+      JSON.stringify(newline),
+    );
+    assert.deepEqual(checkMigrations(fixture(sql), []), []);
+  }
+});
+
+test('keywords are found in any case and across several spaces or lines', () => {
+  const respelled = [
+    ['drop-table', 'drop  table notes;'],
+    ['drop-table', 'DROP\n  TABLE "notes";'],
+    ['drop-schema', 'drop  schema legacy;'],
+    ['drop-column', 'alter table notes drop  column body;'],
+    ['drop-column', 'alter  table notes drop body;'],
+    ['rename', 'alter table notes rename to memos;'],
+    ['alter-type', 'alter table notes alter  column  body  type text;'],
+    ['alter-type', 'alter table notes alter body set  data  type text;'],
+    ['drop-key', 'alter table notes drop  constraint  notes_pkey;'],
+    ['truncate', 'truncate notes;'],
+    ['delete-all', 'delete  from notes;'],
+  ];
+  for (const [kind, sql] of respelled) {
+    assert.deepEqual(
+      findDestructiveStatements(`SELECT 1;\n\n${sql}\n`).map((finding) => [
+        finding.kind,
+        finding.line,
+      ]),
+      [[kind, 3]],
+      sql,
+    );
+  }
+
+  const harmless = [
+    'delete from notes where id = 1;',
+    'alter table notes alter column body drop not null;',
+    'alter table notes drop constraint notes_body_check;',
+    'alter  table  notes  drop  constraint  owner_fk;\nalter  table  notes  add  constraint  owner_fk foreign key (owner_id) references owners (id);',
+  ];
+  for (const sql of harmless) {
+    assert.deepEqual(findDestructiveStatements(sql), [], sql);
+  }
+});
+
+test('a comment or a string literal before a destructive statement does not hide it', () => {
+  const visible = [
+    ['/* moved to notes.text */ DROP TABLE "notes";', 1],
+    ['/*\n * moved to notes.text\n */\nDROP TABLE "notes";', 4],
+    ['/* outer /* nested */ still a comment */ DROP TABLE "notes";', 1],
+    ['SELECT 1; -- done\nDROP TABLE "notes";', 2],
+    // An E-string escapes with a backslash; a standard string does not.
+    [String.raw`SELECT E'it\'s';` + '\nDROP TABLE "notes";', 2],
+    [String.raw`SELECT e'C:\\';` + '\nDROP TABLE "notes";', 2],
+    [String.raw`SELECT 'C:\';` + '\nDROP TABLE "notes";', 2],
+    [`SELECT '';\nDROP TABLE "notes";`, 2],
+  ];
+
+  for (const [sql, line] of visible) {
+    assert.deepEqual(
+      findDestructiveStatements(sql).map((finding) => [
+        finding.kind,
+        finding.line,
+      ]),
+      [['drop-table', line]],
+      sql,
+    );
+  }
+});
+
+test('the last statement is checked without a semicolon or a final newline', () => {
+  assert.deepEqual(
+    findDestructiveStatements('SELECT 1;\nDROP TABLE "notes"').map(
+      (finding) => [finding.kind, finding.line, finding.statement],
+    ),
+    [['drop-table', 2, 'DROP TABLE "notes"']],
+  );
+  assert.deepEqual(
+    findDestructiveStatements('DROP TABLE "notes"; -- no newline follows').map(
+      (finding) => [finding.kind, finding.line],
+    ),
+    [['drop-table', 1]],
+  );
+  assert.equal(
+    checkMigrations(fixture('ALTER TABLE "notes" DROP COLUMN "body"'), [])
+      .length,
+    1,
+  );
+  assert.deepEqual(
+    checkMigrations(
+      fixture(`ALTER TABLE "notes" DROP COLUMN "body"; ${marker}`),
+      [],
+    ),
+    [],
+  );
 });
 
 test('a foreign key dropped and added back under the same name is a replacement, not a loss', () => {
@@ -598,6 +722,62 @@ test('a grandfathered statement passes, a new one in the same file or a stale en
   assert.match(stale[0], /grandfather/i);
   assert.match(stale[0], /0050_fixture\.sql/);
   assert.match(stale[0], /remove/i);
+  assert.doesNotMatch(stale[0], /does not exist/);
+
+  const missing = checkMigrations(fixture('SELECT 1;', '0051_fixture.sql'), [
+    entry('ALTER TABLE "notes" DROP COLUMN "body"'),
+  ]);
+  assert.equal(missing.length, 1);
+  assert.match(missing[0], /because the migration does not exist/);
+});
+
+test('a grandfather entry accepts only its own file and kind', () => {
+  // One statement, two destructive kinds: the entry covers its kind only.
+  const statement =
+    'ALTER TABLE "notes" DROP COLUMN "body", DROP CONSTRAINT "notes_owner_fk"';
+  const entry = {
+    file: '0050_fixture.sql',
+    kind: 'drop-column',
+    statement,
+    reason: 'contract step of the notes split, approved in #1101',
+  };
+  assert.deepEqual(
+    findDestructiveStatements(`${statement};`).map((finding) => finding.kind),
+    ['drop-column', 'drop-key'],
+  );
+
+  const otherKind = checkMigrations(fixture(`${statement};`, entry.file), [
+    entry,
+  ]);
+  assert.equal(otherKind.length, 1, otherKind.join('\n'));
+  assert.ok(
+    otherKind[0].startsWith(
+      'apps/api/drizzle/0050_fixture.sql:1 drops a primary or foreign key (drop-key):',
+    ),
+    otherKind[0],
+  );
+
+  // The same statement in another file is not grandfathered, and the entry
+  // that names the first file matches nothing there.
+  const otherFile = checkMigrations(
+    [
+      { name: entry.file, sql: 'SELECT 1;' },
+      { name: '0051_fixture.sql', sql: `${statement};` },
+    ],
+    [entry],
+  );
+  assert.equal(otherFile.length, 3, otherFile.join('\n'));
+  assert.ok(
+    otherFile[0].startsWith(
+      'apps/api/drizzle/0051_fixture.sql:1 drops a column (drop-column):',
+    ),
+    otherFile[0],
+  );
+  assert.match(otherFile[1], /0051_fixture\.sql:1 .*\(drop-key\)/);
+  assert.match(
+    otherFile[2],
+    /^Grandfather entry for apps\/api\/drizzle\/0050_fixture\.sql \(drop-column\) matches no destructive statement:/,
+  );
 });
 
 test('the grandfather list is frozen: a migration after the last one needs a marker', () => {
@@ -617,6 +797,20 @@ test('the grandfather list is frozen: a migration after the last one needs a mar
   assert.equal(failures.length, 1);
   assert.match(failures[0], /frozen/i);
   assert.match(failures[0], /destructive-change/);
+
+  // The last grandfathered migration itself may still be listed.
+  const last = `${String(lastGrandfatheredMigration).padStart(4, '0')}_last.sql`;
+  assert.deepEqual(
+    checkMigrations(fixture('ALTER TABLE "notes" DROP COLUMN "body";', last), [
+      {
+        file: last,
+        kind: 'drop-column',
+        statement: 'ALTER TABLE "notes" DROP COLUMN "body"',
+        reason: 'contract step of the notes split, approved in #1101',
+      },
+    ]),
+    [],
+  );
 });
 
 test('every migration in apps/api/drizzle is scanned and only the grandfathered statements are destructive', async () => {

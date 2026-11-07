@@ -408,6 +408,12 @@ export const companyRoleAssignments = pgTable(
       table.workspaceMembershipId,
       table.id,
     ),
+    // The target of every Company-scoped reference to a captured assignment.
+    uniqueIndex('company_role_assignments_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+    ),
     uniqueIndex('company_role_assignments_bundle_target_unique').on(
       table.workspaceId,
       table.companyId,

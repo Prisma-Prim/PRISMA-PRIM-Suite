@@ -64,9 +64,7 @@ export const missionApplicabilityFacts = pgTable(
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorDisplayName: text('actor_display_name').notNull(),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    assignmentId: uuid('assignment_id').notNull(),
     permissionSetVersion: text('permission_set_version').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
@@ -113,6 +111,15 @@ export const missionApplicabilityFacts = pgTable(
         workspaceMemberships.workspaceId,
         workspaceMemberships.id,
         workspaceMemberships.internalUserId,
+      ],
+    }),
+    foreignKey({
+      name: 'mission_applicability_facts_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.assignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
       ],
     }),
     foreignKey({

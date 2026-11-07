@@ -15,12 +15,21 @@ import { workspaceInvitations } from './workspace-invitation.js';
 export const workspaceInvitationProofs = pgTable(
   'workspace_invitation_proofs',
   {
-    invitationId: uuid('invitation_id')
-      .primaryKey()
-      .references(() => workspaceInvitations.id),
+    invitationId: uuid('invitation_id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
     clientId: text('client_id').notNull().unique(),
     sealedToken: text('sealed_token').notNull(),
   },
+  (table) => [
+    foreignKey({
+      name: 'workspace_invitation_proofs_invitation_id_workspace_invitations_id_fk',
+      columns: [table.workspaceId, table.invitationId],
+      foreignColumns: [
+        workspaceInvitations.workspaceId,
+        workspaceInvitations.id,
+      ],
+    }),
+  ],
 );
 
 export const workspaceInvitationAcceptances = pgTable(

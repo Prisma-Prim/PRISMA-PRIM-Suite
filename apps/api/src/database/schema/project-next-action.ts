@@ -42,9 +42,7 @@ export const projectNextActionHistory = pgTable(
     text: text('text'),
     lifecycleRevision: integer('lifecycle_revision').notNull(),
     clientUseVersion: integer('client_use_version').notNull(),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    assignmentId: uuid('assignment_id').notNull(),
   },
   (t) => [
     unique('pna_history_scope_revision_unique').on(
@@ -53,6 +51,15 @@ export const projectNextActionHistory = pgTable(
       t.projectId,
       t.revision,
     ),
+    foreignKey({
+      name: 'project_next_action_history_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.assignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
+      ],
+    }),
     foreignKey({
       name: 'pna_history_project_fk',
       columns: [
@@ -156,9 +163,7 @@ export const projectNextActionCommands = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    assignmentId: uuid('assignment_id').notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     fingerprint: text('fingerprint').notNull(),
     revision: integer('revision').notNull(),
@@ -176,6 +181,15 @@ export const projectNextActionCommands = pgTable(
     uniqueIndex('pna_command_material_revision_unique')
       .on(t.workspaceId, t.companyId, t.projectId, t.revision)
       .where(sql`${t.outcome}='changed'`),
+    foreignKey({
+      name: 'project_next_action_commands_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.assignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
+      ],
+    }),
     foreignKey({
       name: 'pna_command_project_fk',
       columns: [

@@ -42,9 +42,7 @@ export const missionResultReviewBatches = pgTable(
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorDisplayName: text('actor_display_name').notNull(),
-    reviewerAssignmentId: uuid('reviewer_assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    reviewerAssignmentId: uuid('reviewer_assignment_id').notNull(),
     reviewerPermissionSetVersion: text(
       'reviewer_permission_set_version',
     ).notNull(),
@@ -103,6 +101,15 @@ export const missionResultReviewBatches = pgTable(
         workspaceMemberships.workspaceId,
         workspaceMemberships.id,
         workspaceMemberships.internalUserId,
+      ],
+    }),
+    foreignKey({
+      name: 'mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk',
+      columns: [table.workspaceId, table.companyId, table.reviewerAssignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
       ],
     }),
     check(

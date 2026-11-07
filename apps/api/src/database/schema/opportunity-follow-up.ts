@@ -34,12 +34,8 @@ export const opportunityFollowUpCommands = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
-    intakeAssignmentId: uuid('intake_assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    assignmentId: uuid('assignment_id').notNull(),
+    intakeAssignmentId: uuid('intake_assignment_id').notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     intent: jsonb('intent').$type<unknown>().notNull(),
     revision: bigint('revision', { mode: 'number' }).notNull().default(0),
@@ -62,6 +58,29 @@ export const opportunityFollowUpCommands = pgTable(
     uniqueIndex('ofup_command_material_revision')
       .on(t.workspaceId, t.companyId, t.opportunityId, t.revision)
       .where(sql`${t.outcome}='updated'`),
+    uniqueIndex('ofup_command_scope_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.id,
+    ),
+    foreignKey({
+      name: 'opportunity_follow_up_commands_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.assignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'opportunity_follow_up_commands_intake_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.intakeAssignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
+      ],
+    }),
     foreignKey({
       name: 'ofup_command_target_fk',
       columns: [t.workspaceId, t.companyId, t.opportunityId],
@@ -124,9 +143,7 @@ export const opportunityFollowUpHistory = pgTable(
   {
     ...scope(),
     revision: bigint('revision', { mode: 'number' }).notNull(),
-    commandId: uuid('command_id')
-      .notNull()
-      .references(() => opportunityFollowUpCommands.id),
+    commandId: uuid('command_id').notNull(),
     fact: jsonb('fact').$type<unknown>().notNull(),
   },
   (t) => [
@@ -134,6 +151,15 @@ export const opportunityFollowUpHistory = pgTable(
       columns: [t.workspaceId, t.companyId, t.opportunityId, t.revision],
     }),
     unique('ofup_history_command_unique').on(t.commandId),
+    foreignKey({
+      name: 'opportunity_follow_up_history_command_id_opportunity_follow_up_commands_id_fk',
+      columns: [t.workspaceId, t.companyId, t.commandId],
+      foreignColumns: [
+        opportunityFollowUpCommands.workspaceId,
+        opportunityFollowUpCommands.companyId,
+        opportunityFollowUpCommands.id,
+      ],
+    }),
     foreignKey({
       name: 'ofup_history_target_fk',
       columns: [t.workspaceId, t.companyId, t.opportunityId],
@@ -154,9 +180,7 @@ export const opportunityFollowUpEvents = pgTable(
   {
     ...scope(),
     revision: bigint('revision', { mode: 'number' }).notNull(),
-    commandId: uuid('command_id')
-      .notNull()
-      .references(() => opportunityFollowUpCommands.id),
+    commandId: uuid('command_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
@@ -168,6 +192,15 @@ export const opportunityFollowUpEvents = pgTable(
       columns: [t.workspaceId, t.companyId, t.opportunityId, t.revision],
     }),
     unique('ofup_event_command_unique').on(t.commandId),
+    foreignKey({
+      name: 'opportunity_follow_up_events_command_id_opportunity_follow_up_commands_id_fk',
+      columns: [t.workspaceId, t.companyId, t.commandId],
+      foreignColumns: [
+        opportunityFollowUpCommands.workspaceId,
+        opportunityFollowUpCommands.companyId,
+        opportunityFollowUpCommands.id,
+      ],
+    }),
     foreignKey({
       name: 'ofup_event_history_fk',
       columns: [t.workspaceId, t.companyId, t.opportunityId, t.revision],

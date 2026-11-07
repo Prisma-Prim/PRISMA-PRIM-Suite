@@ -70,7 +70,11 @@ export class WorkspaceInvitationAcceptanceService {
         if (current.kind === 'replay') return current;
         await this.database.connection
           .insert(workspaceInvitationProofs)
-          .values({ invitationId: invitation.id, ...prepared })
+          .values({
+            invitationId: invitation.id,
+            workspaceId: invitation.workspaceId,
+            ...prepared,
+          })
           .onConflictDoNothing();
         return {
           kind: 'prepared',

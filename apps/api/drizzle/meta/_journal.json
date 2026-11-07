@@ -747,8 +747,15 @@
     {
       "idx": 106,
       "version": "7",
-      "when": 1794031605948,
-      "tag": "0106_certification_decision",
+      "when": 1794068054378,
+      "tag": "0106_tenancy_composite_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1794077742868,
+      "tag": "0107_certification_decision",
       "breakpoints": true
     }
   ]
