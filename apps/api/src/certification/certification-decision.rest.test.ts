@@ -369,6 +369,12 @@ withPostgres(
       await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
         expectedRevision: 21,
         ...review(),
+        reviewedBy: {
+          actedBy: 'Quality Reviewer Demo',
+          actedByFunction: 'Dossier reviewer of the certification body',
+          actedOn: '2026-11-03',
+          formAttachmentId: null,
+        },
       });
       const formerMember = await post(
         CERTIFICATION_APPROVER,
@@ -391,6 +397,21 @@ withPostgres(
         ],
       });
       expect(record(await reviewerJoins.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      const namedReviewerJoins = await post(
+        CERTIFICATION_OWNER,
+        `${base}/team`,
+        {
+          expectedRevision: 22,
+          reason: 'The dossier reviewer joins by name only.',
+          members: [
+            leader,
+            member(' quality  REVIEWER demo', 'observer', null),
+          ],
+        },
+      );
+      expect(record(await namedReviewerJoins.json()).code).toBe(
         'CERTIFICATION_INDEPENDENCE',
       );
       expect(await fixture.eventCount(caseId)).toBe(22);

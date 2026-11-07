@@ -219,6 +219,24 @@ withPostgres(
           },
         },
       });
+      const approverJoins = await post(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 9,
+        reason: 'The head of the body joins as an observer.',
+        impartialityAnalysis: analysis,
+        members: [
+          leader(),
+          leader({
+            name: 'HEAD of body  Demo',
+            role: 'observer',
+            holdsCategory: false,
+            competenceNote: 'Observer',
+          }),
+        ],
+      });
+      expect(record(await approverJoins.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(9);
     });
 
     it('keeps the duration approval made on behalf of the certification body', async () => {

@@ -792,6 +792,17 @@ export class CertificationService {
             'CERTIFICATION_INDEPENDENCE',
             'A member who decided on the team, reviewed the dossier or recorded the decision cannot join the audit team.',
           );
+        // So does a person who did so on behalf of the certification body.
+        const actedFor = namedActingPersons(steps);
+        if (
+          input.team.members.some((member) =>
+            actedFor.some((name) => sameName(member.name, name)),
+          )
+        )
+          throw stepConflict(
+            'CERTIFICATION_INDEPENDENCE',
+            'A person who decided on the team or reviewed the dossier on behalf of the certification body cannot join the audit team.',
+          );
         const facts = this.acceptedApplication(steps);
         if (facts.consultant.used && input.team.impartialityAnalysis === null)
           throw new BadRequestException({
@@ -2819,6 +2830,26 @@ function optionalVersion<T>(
 ): T | null {
   const row = latest(steps, step);
   return row ? present(row) : null;
+}
+
+/**
+ * The persons named as acting for the certification body on a team decision
+ * or a dossier review, in every recorded version.
+ */
+function namedActingPersons(steps: readonly StepRow[]): string[] {
+  return steps.flatMap((row) => {
+    if (row.step === 'team_decision') {
+      const act = teamDecisionVersion(row).value.onBehalf;
+      return act ? [act.actedBy] : [];
+    }
+    if (row.step === 'dossier_review') {
+      const { reviewedBy, approvedBy } = dossierReviewVersion(row).value;
+      return [reviewedBy, approvedBy].flatMap((act) =>
+        act ? [act.actedBy] : [],
+      );
+    }
+    return [];
+  });
 }
 
 /** The latest team version when its latest decision approves it. */
