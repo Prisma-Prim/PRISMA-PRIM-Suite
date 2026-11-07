@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
@@ -203,7 +203,10 @@ export function useModelContractJourney(
     mayApprove,
     mayCheck,
   ]);
-  useEffect(() => {
+  // Retire work inside the commit that changes authority. A passive effect
+  // would run after React yields for paint, so a click in that frame (such as
+  // Copy on first display) would lose its own command and reads.
+  useLayoutEffect(() => {
     writeRequest.current?.abort();
     readRequest.current?.abort();
     attempt.current = undefined;
