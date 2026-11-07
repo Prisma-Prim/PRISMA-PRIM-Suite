@@ -12,9 +12,4 @@ New and changed tests are repeated three times on every pull request by the `fla
 
 ## Entries
 
-Seeded from CI runs between 2026-10-23 and 2026-11-06.
-
-- `apps/web/e2e/operational-risk.acceptance.spec.ts:20` (Playwright acceptance): "explicitly records, replays, follows and corrects a confidential Company Risk while preserving independent access".
-  - Symptom: 5000 ms `toContainText` timeout on the "Current journal statement" region, which still shows the previous revision.
-  - Evidence: run 41251704497 failed on attempt 1 and passed on attempt 2 of the same commit.
-  - Owner: #1082.
+None open. The two entries seeded from CI runs between 2026-10-23 and 2026-11-06 were fixed by #1095 (#1081) and this pull request (#1082).
