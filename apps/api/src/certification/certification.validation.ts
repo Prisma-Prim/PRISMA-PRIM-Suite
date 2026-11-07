@@ -5,6 +5,8 @@ import {
   REVIEW_CRITERIA,
   type ApplicationFacts,
   type ApplicationReview,
+  type CertificationAgreement,
+  type CertificationDocumentRole,
   type FoodChainSubcategory,
   type ReviewAnswer,
   type ReviewCriterion,
@@ -58,6 +60,90 @@ export function reviewCommand(value: unknown): {
       rejectionReason: body.rejectionReason,
     }),
   };
+}
+
+export const DOCUMENT_ROLES: readonly CertificationDocumentRole[] = [
+  'questionnaire',
+  'iso22000_annex',
+  'agreement',
+  'plan',
+  'participant_list',
+  'report',
+  'evidence',
+  'certificate',
+  'other',
+];
+
+export function attachCommand(value: unknown): {
+  expectedRevision: number;
+  role: CertificationDocumentRole;
+  documentId: string;
+  versionId: string;
+  representationId: string;
+  note: string | null;
+} {
+  const body = inputObject(value, [
+    'expectedRevision',
+    'role',
+    'documentId',
+    'versionId',
+    'representationId',
+    'note',
+  ]);
+  const role = DOCUMENT_ROLES.find((entry) => entry === body.role);
+  if (!role) return invalid();
+  return {
+    expectedRevision: revision(body.expectedRevision),
+    role,
+    documentId: requireUuid(body.documentId),
+    versionId: requireUuid(body.versionId),
+    representationId: requireUuid(body.representationId),
+    note: optionalText(body.note, 1000),
+  };
+}
+
+export function agreementCommand(value: unknown): {
+  expectedRevision: number;
+  reason: string | null;
+  agreement: CertificationAgreement;
+} {
+  const body = inputObject(value, [
+    'expectedRevision',
+    'reason',
+    'signedOn',
+    'attachmentId',
+  ]);
+  return {
+    expectedRevision: revision(body.expectedRevision),
+    reason: optionalText(body.reason, 2000),
+    agreement: agreement({
+      signedOn: body.signedOn,
+      attachmentId: body.attachmentId,
+    }),
+  };
+}
+
+/** Validates both submitted and persisted agreements. */
+export function agreement(value: unknown): CertificationAgreement {
+  const body = inputObject(value, ['signedOn', 'attachmentId']);
+  if (!calendarDate(body.signedOn)) return invalid();
+  return {
+    signedOn: body.signedOn,
+    attachmentId: requireUuid(body.attachmentId),
+  };
+}
+
+export function calendarDate(value: unknown): value is string {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/u.test(value) ||
+    value.startsWith('0000-')
+  )
+    return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
 }
 
 /** Validates both submitted and persisted application facts. */

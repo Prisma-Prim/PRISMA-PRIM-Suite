@@ -26,6 +26,7 @@ import {
 } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  certificationCaseDocuments,
   certificationCases,
   certificationReceipts,
   certificationStepVersions,
@@ -33,6 +34,7 @@ import {
 } from '../database/schema/certification.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
 import { ProjectService } from '../project/project.service.js';
+import { DocumentWorkingEvidenceReferenceService } from '../documents/document-working-evidence-reference.service.js';
 import {
   proposeDuration,
   roundToHundredths,
@@ -45,6 +47,10 @@ import {
   durationFactorInputs,
 } from './certification-duration.validation.js';
 import type {
+  AgreementVersion,
+  CertificationAttachment,
+  CertificationDocumentRegister,
+  CertificationEligibleDocuments,
   ApplicationFacts,
   ApplicationReviewVersion,
   DurationDetermination,
@@ -60,6 +66,9 @@ import type {
   CertificationTimeline,
 } from './certification.types.js';
 import {
+  agreement,
+  agreementCommand,
+  attachCommand,
   applicationCommand,
   applicationFacts,
   applicationReview,
@@ -81,6 +90,7 @@ export class CertificationService {
     private readonly authorization: CompanyContextAuthorization,
     private readonly accountability: AccountabilityService,
     private readonly projects: ProjectService,
+    private readonly sources: DocumentWorkingEvidenceReferenceService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
 
@@ -380,6 +390,271 @@ export class CertificationService {
     });
   }
 
+  /** Attaches one exact frozen received PDF of the Case's Client, with its role. */
+  attachDocument({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      kind: 'document',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = attachCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const source = await this.sources.qualifyWithinWriteTransaction({
+          actor,
+          context: { companyId, originalClientId: current.clientAccountId },
+          documentId: input.documentId,
+          versionId: input.versionId,
+          representationId: input.representationId,
+        });
+        const [duplicate] = await this.database.connection
+          .select({ id: certificationCaseDocuments.id })
+          .from(certificationCaseDocuments)
+          .where(
+            and(
+              eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+              eq(certificationCaseDocuments.companyId, companyId),
+              eq(certificationCaseDocuments.caseId, targetId),
+              eq(certificationCaseDocuments.documentId, input.documentId),
+              eq(certificationCaseDocuments.versionId, input.versionId),
+              eq(
+                certificationCaseDocuments.representationId,
+                input.representationId,
+              ),
+            ),
+          );
+        if (duplicate)
+          throw stepConflict(
+            'CERTIFICATION_DOCUMENT_ALREADY_ATTACHED',
+            'This exact document version is already attached to the Case.',
+          );
+        const now = this.clock.now();
+        const revision = current.revision + 1;
+        await this.database.connection
+          .insert(certificationCaseDocuments)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            caseRevision: revision,
+            role: input.role,
+            documentId: source.documentId,
+            versionId: source.versionId,
+            representationId: source.representationId,
+            versionNumber: source.versionNumber,
+            sourceTitle: source.sourceTitle,
+            fileName: source.filename,
+            sizeBytes: source.sizeBytes,
+            sha256: source.sha256,
+            note: input.note,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            attachedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.document_attached',
+          metadata: { role: input.role },
+        });
+      },
+    });
+  }
+
+  documents({
+    actor,
+    caseId,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+  }): Promise<CertificationDocumentRegister> {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'reader', async (companyId) => {
+      await this.visibleCase(actor, companyId, targetId);
+      const rows = await this.database.connection
+        .select()
+        .from(certificationCaseDocuments)
+        .where(
+          and(
+            eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+            eq(certificationCaseDocuments.companyId, companyId),
+            eq(certificationCaseDocuments.caseId, targetId),
+          ),
+        )
+        .orderBy(asc(certificationCaseDocuments.caseRevision))
+        .limit(TIMELINE_LIMIT);
+      return { caseId: targetId, items: rows.map(attachment) };
+    });
+  }
+
+  /** The exact preserved bytes of one attachment, under current Case and Document authority. */
+  documentContent({
+    actor,
+    caseId,
+    attachmentId,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    attachmentId: string;
+  }): Promise<{ bytes: Buffer; fileName: string }> {
+    const targetId = requireUuid(caseId);
+    const targetAttachment = requireUuid(attachmentId);
+    return this.read(actor, 'reader', async (companyId) => {
+      const row = await this.visibleCase(actor, companyId, targetId);
+      const [attached] = await this.database.connection
+        .select()
+        .from(certificationCaseDocuments)
+        .where(
+          and(
+            eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+            eq(certificationCaseDocuments.companyId, companyId),
+            eq(certificationCaseDocuments.caseId, targetId),
+            eq(certificationCaseDocuments.id, targetAttachment),
+          ),
+        );
+      if (!attached) throw new NotFoundException();
+      const source = await this.sources.readExactWithinReadTransaction({
+        actor,
+        context: { companyId, originalClientId: row.clientAccountId },
+        documentId: attached.documentId,
+        versionId: attached.versionId,
+        representationId: attached.representationId,
+      });
+      if (source.sha256 !== attached.sha256)
+        throw new InternalServerErrorException(
+          'The attached document no longer matches its recorded digest.',
+        );
+      return { bytes: source.bytes, fileName: attached.fileName };
+    });
+  }
+
+  /** Frozen received PDFs of the Case's Client that may be attached. */
+  eligibleDocuments({
+    actor,
+    caseId,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+  }): Promise<CertificationEligibleDocuments> {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'programme_manager', async (companyId) => {
+      const row = await this.visibleCase(actor, companyId, targetId);
+      const rows = await this.sources.eligibleWithinReadTransaction({
+        actor,
+        context: { companyId, originalClientId: row.clientAccountId },
+        after: null,
+        limit: 26,
+      });
+      return {
+        caseId: targetId,
+        items: rows.slice(0, 25).map((item) => ({
+          documentId: item.documentId,
+          versionId: item.versionId,
+          versionNumber: item.versionNumber,
+          representationId: item.representationId,
+          sourceTitle: item.sourceTitle,
+        })),
+        truncated: rows.length > 25,
+      };
+    });
+  }
+
+  recordAgreement({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      kind: 'agreement',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = agreementCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        if (!latest(steps, 'duration'))
+          throw stepConflict(
+            'CERTIFICATION_DURATION_MISSING',
+            'Confirm the audit duration before recording the agreement.',
+          );
+        const version = (latest(steps, 'agreement')?.version ?? 0) + 1;
+        if ((version === 1) !== (input.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A correction states its reason; a first agreement has none.',
+          );
+        if (
+          input.agreement.signedOn > this.clock.now().toISOString().slice(0, 10)
+        )
+          throw stepConflict(
+            'CERTIFICATION_AGREEMENT_IN_FUTURE',
+            'The agreement cannot be signed after today.',
+          );
+        const [attached] = await this.database.connection
+          .select({ role: certificationCaseDocuments.role })
+          .from(certificationCaseDocuments)
+          .where(
+            and(
+              eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+              eq(certificationCaseDocuments.companyId, companyId),
+              eq(certificationCaseDocuments.caseId, targetId),
+              eq(certificationCaseDocuments.id, input.agreement.attachmentId),
+            ),
+          );
+        if (attached?.role !== 'agreement')
+          throw stepConflict(
+            'CERTIFICATION_AGREEMENT_DOCUMENT',
+            'Attach the signed agreement with the agreement role first.',
+          );
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step: 'agreement',
+          version,
+          payload: input.agreement,
+          reason: input.reason,
+          action: 'certification_case.agreement_recorded',
+          metadata: { version },
+        });
+      },
+    });
+  }
+
   list({
     actor,
     projectId,
@@ -562,7 +837,8 @@ export class CertificationService {
     action:
       | 'certification_case.application_recorded'
       | 'certification_case.application_reviewed'
-      | 'certification_case.duration_confirmed';
+      | 'certification_case.duration_confirmed'
+      | 'certification_case.agreement_recorded';
     metadata: Record<string, string | number>;
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
@@ -588,6 +864,31 @@ export class CertificationService {
       actorDisplayName: actor.displayName,
       recordedAt: now,
     });
+    return this.advance({
+      actor,
+      companyId,
+      current,
+      at: now,
+      action: input.action,
+      metadata: input.metadata,
+      ...(input.status ? { status: input.status } : {}),
+    });
+  }
+
+  /** Moves the Case head one revision and records its event, in the command's transaction. */
+  private async advance(input: {
+    actor: ActorContext;
+    companyId: string;
+    current: CaseRow;
+    at: Date;
+    action: Parameters<
+      AccountabilityService['recordCertificationEvent']
+    >[0]['action'];
+    metadata: Record<string, string | number>;
+    status?: CaseRow['status'];
+  }): Promise<{ caseId: string; at: Date }> {
+    const { actor, companyId, current, at: now } = input;
+    const revision = current.revision + 1;
     const [updated] = await this.database.connection
       .update(certificationCases)
       .set({ revision, status: input.status ?? current.status })
@@ -683,6 +984,7 @@ export class CertificationService {
     const application = latest(steps, 'application');
     const review = latest(steps, 'application_review');
     const duration = latest(steps, 'duration');
+    const signed = latest(steps, 'agreement');
     return {
       ...summary,
       companyId: row.companyId,
@@ -690,6 +992,7 @@ export class CertificationService {
       application: application ? applicationVersion(application) : null,
       applicationReview: review ? reviewVersion(review) : null,
       duration: duration ? durationVersion(duration) : null,
+      agreement: signed ? agreementVersion(signed) : null,
     };
   }
 
@@ -847,7 +1150,8 @@ function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
   if (!latest(steps, 'application')) return 'application';
   if (!latest(steps, 'application_review')) return 'application_review';
   if (!latest(steps, 'duration')) return 'duration';
-  return 'agreement';
+  if (!latest(steps, 'agreement')) return 'agreement';
+  return 'team';
 }
 
 function stepConflict(code: string, message: string): ConflictException {
@@ -894,6 +1198,38 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     ...base(row),
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
+  };
+}
+
+function agreementVersion(row: StepRow): AgreementVersion {
+  return {
+    ...base(row),
+    step: 'agreement',
+    value: persisted(() => agreement(row.payload)),
+  };
+}
+
+function attachment(
+  row: typeof certificationCaseDocuments.$inferSelect,
+): CertificationAttachment {
+  return {
+    id: row.id,
+    caseRevision: row.caseRevision,
+    role: row.role,
+    documentId: row.documentId,
+    versionId: row.versionId,
+    representationId: row.representationId,
+    versionNumber: row.versionNumber,
+    sourceTitle: row.sourceTitle,
+    fileName: row.fileName,
+    sizeBytes: row.sizeBytes,
+    sha256: row.sha256,
+    note: row.note,
+    attachedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    attachedAt: row.attachedAt.toISOString(),
   };
 }
 
@@ -961,6 +1297,8 @@ function stepVersion(row: StepRow): CertificationStepVersion {
       return reviewVersion(row);
     case 'duration':
       return durationVersion(row);
+    case 'agreement':
+      return agreementVersion(row);
   }
   return unexpectedStep(row.step);
 }
