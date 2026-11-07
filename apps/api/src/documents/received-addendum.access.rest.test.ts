@@ -20,6 +20,7 @@ import {
   fictionalAddendumPdf,
   prepareReceivedAddendumParent,
 } from './received-addendum.test-support.js';
+import { expectHiddenDocumentCommandsToMatchMissing } from './document-command-denial.test-support.js';
 
 const withPostgres = process.env.TEST_DATABASE_URL ? describe : describe.skip;
 withPostgres('Received Addendum independent current authority', () => {
@@ -286,6 +287,18 @@ withPostgres('Received Addendum independent current authority', () => {
   it('requires the new captured family independently of every existing source and native PDF grant', async () => {
     await revoke('/company-received-addendum-access-assignments');
     expect((await read()).status).toBe(404);
+    await expectHiddenDocumentCommandsToMatchMissing(
+      (path, { body, key }) =>
+        parent.call(path, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(body),
+        }),
+      { documentId, versionId },
+    );
     expect((await read('/versions')).status).toBe(404);
     expect((await read(`/versions/${versionId}/content`)).status).toBe(404);
     expect((await parent.register(registrationKey)).status).toBe(403);

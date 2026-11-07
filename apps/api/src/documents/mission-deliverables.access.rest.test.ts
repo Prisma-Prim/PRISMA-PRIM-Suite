@@ -7,6 +7,7 @@ import {
   PDF_A,
   type MissionDocumentFixture,
 } from './mission-document.test-support.js';
+import { expectHiddenDocumentCommandsToMatchMissing } from './document-command-denial.test-support.js';
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 withPostgres('D3 mission-deliverable authority REST', () => {
@@ -114,6 +115,11 @@ withPostgres('D3 mission-deliverable authority REST', () => {
       { method: 'DELETE', company: null },
     );
     expect(revoked.status).toBe(200);
+    await expectHiddenDocumentCommandsToMatchMissing(
+      (path, { body, key }) => call(path, { method: 'POST', body, key }),
+      { documentId, versionId },
+      'protected-mission-link',
+    );
     const listing = await call('/documents');
     expect(listing.status).toBe(200);
     const listText = await listing.text();
