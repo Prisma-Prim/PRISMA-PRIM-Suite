@@ -743,6 +743,13 @@
       "when": 1794029047287,
       "tag": "0105_certification_findings",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1794068054378,
+      "tag": "0106_tenancy_composite_keys",
+      "breakpoints": true
     }
   ]
 }

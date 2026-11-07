@@ -87,9 +87,7 @@ export const paymentCommands = pgTable(
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     actorDisplayName: text('actor_display_name').notNull(),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    assignmentId: uuid('assignment_id').notNull(),
     sourceCaptures: jsonb('source_captures').$type<unknown>(),
     idempotencyKey: text('idempotency_key').notNull(),
     intent: jsonb('intent').$type<unknown>().notNull(),
@@ -114,10 +112,24 @@ export const paymentCommands = pgTable(
       t.paymentId,
       t.revision,
     ),
+    uniqueIndex('payment_command_scope_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.id,
+    ),
     foreignKey({
       name: 'payment_command_company_fk',
       columns: [t.workspaceId, t.companyId],
       foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'payment_commands_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.assignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
+      ],
     }),
     foreignKey({
       name: 'payment_command_actor_fk',
@@ -144,9 +156,7 @@ export const paymentHistory = pgTable(
     ...scope(),
     paymentId: uuid('payment_id').notNull(),
     revision: integer('revision').notNull(),
-    commandId: uuid('command_id')
-      .notNull()
-      .references(() => paymentCommands.id),
+    commandId: uuid('command_id').notNull(),
     fact: jsonb('fact').$type<unknown>().notNull(),
   },
   (t) => [
@@ -154,6 +164,15 @@ export const paymentHistory = pgTable(
       columns: [t.workspaceId, t.companyId, t.paymentId, t.revision],
     }),
     uniqueIndex('payment_history_command_unique').on(t.commandId),
+    foreignKey({
+      name: 'payment_history_command_id_payment_commands_id_fk',
+      columns: [t.workspaceId, t.companyId, t.commandId],
+      foreignColumns: [
+        paymentCommands.workspaceId,
+        paymentCommands.companyId,
+        paymentCommands.id,
+      ],
+    }),
     foreignKey({
       name: 'payment_history_record_fk',
       columns: [t.workspaceId, t.companyId, t.paymentId],
@@ -175,9 +194,7 @@ export const paymentEvents = pgTable(
     ...scope(),
     paymentId: uuid('payment_id').notNull(),
     revision: integer('revision').notNull(),
-    commandId: uuid('command_id')
-      .notNull()
-      .references(() => paymentCommands.id),
+    commandId: uuid('command_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
@@ -189,6 +206,15 @@ export const paymentEvents = pgTable(
       columns: [t.workspaceId, t.companyId, t.paymentId, t.revision],
     }),
     uniqueIndex('payment_event_command_unique').on(t.commandId),
+    foreignKey({
+      name: 'payment_events_command_id_payment_commands_id_fk',
+      columns: [t.workspaceId, t.companyId, t.commandId],
+      foreignColumns: [
+        paymentCommands.workspaceId,
+        paymentCommands.companyId,
+        paymentCommands.id,
+      ],
+    }),
     foreignKey({
       name: 'payment_event_history_fk',
       columns: [t.workspaceId, t.companyId, t.paymentId, t.revision],

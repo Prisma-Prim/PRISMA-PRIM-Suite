@@ -46,6 +46,7 @@ export const projectLifecycleTransitions = pgTable(
     // A constraint, not only an index, so each receipt can reference it.
     unique('project_lifecycle_transitions_revision_unique').on(
       table.workspaceId,
+      table.companyId,
       table.projectId,
       table.lifecycleRevision,
     ),
@@ -236,9 +237,15 @@ export const projectLifecycleCommands = pgTable(
     }),
     foreignKey({
       name: 'project_lifecycle_commands_transition_fk',
-      columns: [table.workspaceId, table.projectId, table.resultRevision],
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.projectId,
+        table.resultRevision,
+      ],
       foreignColumns: [
         projectLifecycleTransitions.workspaceId,
+        projectLifecycleTransitions.companyId,
         projectLifecycleTransitions.projectId,
         projectLifecycleTransitions.lifecycleRevision,
       ],

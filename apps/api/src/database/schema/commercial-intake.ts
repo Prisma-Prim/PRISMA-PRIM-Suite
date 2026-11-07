@@ -481,6 +481,7 @@ export const opportunityOutcomeHistory = pgTable(
     // also serves the newest-first history pages.
     unique('opportunity_outcome_history_version_unique').on(
       table.workspaceId,
+      table.companyId,
       table.opportunityId,
       table.opportunityVersion,
     ),
@@ -614,9 +615,15 @@ export const commercialIntakeOutcomeCommands = pgTable(
     }),
     foreignKey({
       name: 'commercial_intake_outcome_commands_history_fk',
-      columns: [table.workspaceId, table.opportunityId, table.resultVersion],
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.opportunityId,
+        table.resultVersion,
+      ],
       foreignColumns: [
         opportunityOutcomeHistory.workspaceId,
+        opportunityOutcomeHistory.companyId,
         opportunityOutcomeHistory.opportunityId,
         opportunityOutcomeHistory.opportunityVersion,
       ],

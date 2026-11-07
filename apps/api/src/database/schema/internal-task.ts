@@ -120,9 +120,7 @@ export const internalCompanyTaskCommands = pgTable(
     ...attribution(),
     id: uuid('id').defaultRandom().primaryKey(),
     taskId: uuid('task_id').notNull(),
-    assignmentId: uuid('assignment_id')
-      .notNull()
-      .references(() => companyRoleAssignments.id),
+    assignmentId: uuid('assignment_id').notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     intent: jsonb('intent').$type<unknown>().notNull(),
     version: integer('version').notNull(),
@@ -138,6 +136,15 @@ export const internalCompanyTaskCommands = pgTable(
     uniqueIndex('ict_command_material_unique')
       .on(t.workspaceId, t.companyId, t.taskId, t.version)
       .where(sql`${t.changed}=1`),
+    foreignKey({
+      name: 'internal_company_task_commands_assignment_id_company_role_assignments_id_fk',
+      columns: [t.workspaceId, t.companyId, t.assignmentId],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.id,
+      ],
+    }),
     foreignKey({
       name: 'ict_command_history_fk',
       columns: [t.workspaceId, t.companyId, t.taskId, t.version],

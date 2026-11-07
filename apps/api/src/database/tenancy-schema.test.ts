@@ -51,7 +51,6 @@ const EXEMPTIONS = {
     workspaces: 'The Workspace root: the isolation boundary itself.',
     internal_users:
       'Internal Users are global; Workspace access goes through workspace_memberships (ADR 0006).',
-    workspace_invitation_proofs: 'Known violation, see issue #1105.',
   },
   workspaceLevelTables: {
     workspace_memberships:
@@ -63,6 +62,8 @@ const EXEMPTIONS = {
     workspace_invitation_commands: 'Commands on a Workspace invitation.',
     workspace_invitation_acceptances:
       'Acceptance that creates a Workspace Membership.',
+    workspace_invitation_proofs:
+      'Private provider proof of a Workspace invitation.',
     companies: 'The Company root; its id is the Company scope.',
     activity_log_events:
       'Workspace evidence whose optional Company scope is target_company_id (ADR 0006).',
@@ -103,84 +104,6 @@ const EXEMPTIONS = {
       waives: ['Company'],
       reason:
         'Workspace-level Client Account command; its company_id is the acting Company, kept as attempted_company_id.',
-    },
-    workspace_invitation_proofs_invitation_id_workspace_invitations_id_fk: {
-      waives: ['Workspace'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    project_lifecycle_commands_transition_fk: {
-      waives: ['Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    commercial_intake_outcome_commands_history_fk: {
-      waives: ['Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk:
-      {
-        waives: ['Workspace', 'Company'],
-        reason: 'Known violation, see issue #1105.',
-      },
-    mission_applicability_facts_assignment_id_company_role_assignments_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    project_next_action_history_assignment_id_company_role_assignments_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    project_next_action_commands_assignment_id_company_role_assignments_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    internal_company_task_commands_assignment_id_company_role_assignments_id_fk:
-      {
-        waives: ['Workspace', 'Company'],
-        reason: 'Known violation, see issue #1105.',
-      },
-    opportunity_follow_up_commands_assignment_id_company_role_assignments_id_fk:
-      {
-        waives: ['Workspace', 'Company'],
-        reason: 'Known violation, see issue #1105.',
-      },
-    opportunity_follow_up_commands_intake_assignment_id_company_role_assignments_id_fk:
-      {
-        waives: ['Workspace', 'Company'],
-        reason: 'Known violation, see issue #1105.',
-      },
-    opportunity_follow_up_history_command_id_opportunity_follow_up_commands_id_fk:
-      {
-        waives: ['Workspace', 'Company'],
-        reason: 'Known violation, see issue #1105.',
-      },
-    opportunity_follow_up_events_command_id_opportunity_follow_up_commands_id_fk:
-      {
-        waives: ['Workspace', 'Company'],
-        reason: 'Known violation, see issue #1105.',
-      },
-    invoice_record_commands_assignment_id_company_role_assignments_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    invoice_record_history_command_id_invoice_record_commands_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    invoice_record_events_command_id_invoice_record_commands_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    payment_commands_assignment_id_company_role_assignments_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    payment_history_command_id_payment_commands_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
-    },
-    payment_events_command_id_payment_commands_id_fk: {
-      waives: ['Workspace', 'Company'],
-      reason: 'Known violation, see issue #1105.',
     },
   },
 } satisfies Exemptions;
