@@ -95,7 +95,7 @@ image/token endpoints for these checks while retaining the existing image versio
 ECR Public remains an external dependency with its own availability and rate
 limits; acquiring an image does not prove that packaging or the complete verification gate executed.
 
-`pnpm verify` remains an optional broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration. GitHub CI runs the complete verification, with its scope optimization and full PostgreSQL, browser and packaging coverage when required, on every pull request update and in the merge queue ([CI and merge](issue-execution.md#ci-and-merge)). Report only checks that actually executed.
+`pnpm verify` remains an optional broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration. GitHub CI runs the complete verification, with its scope optimization and full PostgreSQL, browser and packaging coverage when required, on every pull request update ([CI and merge](issue-execution.md#ci-and-merge)). Report only checks that actually executed.
 
 Narrow seams for targeted runs:
 
@@ -302,7 +302,7 @@ Some hosted command boundaries virtualize spawned process identifiers and do not
 
 The `web-postgres` Cloud setup installs Playwright Chromium with the CI command, which reuses the image's system libraries and installs none. The doctor proves only that the browser executable is present; an actual launch can still fail on a missing system library. A Cloud `pnpm verify` result therefore does not establish the GitHub integration result. A targeted local browser check or a [local reproduction](local-integration-verifier.md) needs a harness with a launchable Chromium and the relevant database/packaging prerequisites.
 
-Install Chromium during setup, not during the agent phase. Local browser runs must preserve the synthetic evidence as required by the execution guide. GitHub CI runs the browser suites on every pull request update and in the merge queue.
+Install Chromium during setup, not during the agent phase. Local browser runs must preserve the synthetic evidence as required by the execution guide. GitHub CI runs the browser suites on every pull request update.
 
 ### Network and credentials
 
