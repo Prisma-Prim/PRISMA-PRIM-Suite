@@ -15,6 +15,10 @@ import {
   paymentSourceRegistration,
   paymentText,
 } from './payment-evidence.test-support.js';
+import {
+  authorSourceCreateBody,
+  authorSourceReceipt,
+} from '../payment/payment-observation-author-source.test-support.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
@@ -100,6 +104,76 @@ withPostgres(
       const afterRestart = await fixture.call('/clients');
       expect(afterRestart.status).toBe(200);
       expect(await afterRestart.json()).toEqual(clients);
+    });
+
+    it('keeps a DRAFT Payment readable and withdrawable for its Recorder after the original Client is superseded by a union', async () => {
+      const { sourceClientId } = fixture.ids;
+      const registered = await fixture.call('/documents', {
+        method: 'POST',
+        body: paymentSourceRegistration(sourceClientId),
+        key: 'draft-source-before-union',
+      });
+      expect(registered.status, await registered.clone().text()).toBe(201);
+      const document = await paymentJson(registered);
+      const documentId = paymentText(document.id);
+      const documentVersionId = paymentText(paymentRecord(document.version).id);
+      const upload = await fixture.upload({
+        documentId,
+        versionId: documentVersionId,
+        revision: 1,
+        bytes: await paymentNoticePdf('draft source before union'),
+      });
+      expect(upload.status).toBe(201);
+      const representationId = paymentText(
+        (await paymentJson(upload)).representationId,
+      );
+      expect(
+        (
+          await fixture.call(
+            `/documents/${documentId}/versions/${documentVersionId}/official-designation`,
+            { method: 'POST', body: { expectedRevision: 2 } },
+          )
+        ).status,
+      ).toBe(200);
+      const { paymentId } = await authorSourceReceipt(
+        await fixture.call('/payments', {
+          method: 'POST',
+          body: authorSourceCreateBody({
+            documentId,
+            documentVersionId,
+            representationId,
+          }),
+        }),
+        { action: 'CREATE', revision: 1 },
+      );
+      const before = await fixture.call(`/payments/${paymentId}`);
+      expect(before.status).toBe(200);
+      const facts = paymentRecord(await paymentJson(before)).payment;
+
+      const review = await fixture.review();
+      const united = await fixture.confirm(paymentText(review.reviewReference));
+      expect(united.status, await united.clone().text()).toBe(201);
+
+      const after = await fixture.call(`/payments/${paymentId}`);
+      expect(after.status, await after.clone().text()).toBe(200);
+      const detail = paymentRecord(await paymentJson(after));
+      expect(detail.payment).toEqual(facts);
+      expect(detail.capabilities).toMatchObject({
+        canWithdraw: true,
+        canCorrect: false,
+        canConfirm: false,
+      });
+      await authorSourceReceipt(
+        await fixture.call(`/payments/${paymentId}/commands`, {
+          method: 'POST',
+          body: {
+            action: 'WITHDRAW_DRAFT',
+            expectedRevision: 1,
+            reason: 'Mistaken declaration after the Client union',
+          },
+        }),
+        { action: 'WITHDRAW_DRAFT', revision: 2 },
+      );
     });
 
     it('preserves original A, its frozen payer and exact PDF through a fresh current union to B without retargeting new source use', async () => {
