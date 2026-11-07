@@ -28,16 +28,28 @@ const props = {
   onCompanyContextRejected: () => undefined,
   initialContract: readModelContract(contract),
 };
-type Control = { protectSiblings?: () => void };
+type Control = {
+  protectSiblings?: () => void;
+  replaceActor?: (actor: typeof modelContractActor) => void;
+};
 
-/** Sibling ownership arrives as a parent state change, as in ModelContractPanel. */
+/**
+ * Sibling ownership and actor grants arrive as parent state changes, as in
+ * ModelContractPanel, which stays mounted when grants change.
+ */
 function Journey({ control }: { control: Control }) {
   const [siblingsProtected, setSiblingsProtected] = useState(false);
+  const [actor, setActor] = useState(props.actor);
   control.protectSiblings = () => setSiblingsProtected(true);
-  const journey = useModelContractJourney(props, siblingsProtected);
+  control.replaceActor = setActor;
+  const journey = useModelContractJourney(
+    { ...props, actor },
+    siblingsProtected,
+  );
   return (
     <>
       <p>Revision {journey.contract?.revision}</p>
+      <p>Read {journey.readState}</p>
       <button
         type="button"
         data-locked={String(journey.locked)}
@@ -118,6 +130,41 @@ it('retires a reload begun before a sibling takes revision ownership', async () 
       response({ contract: { ...contract, revision: contract.revision + 1 } }),
     );
   });
+  expect(screen.getByText(`Revision ${contract.revision}`)).toBeVisible();
+});
+
+it('does not revive a retired read status when the same authority returns', async () => {
+  let release: ((value: Response) => void) | undefined;
+  vi.spyOn(globalThis, 'fetch').mockImplementation(
+    () =>
+      new Promise<Response>((resolve) => {
+        release = resolve;
+      }),
+  );
+  const company = modelContractActor.activeCompany;
+  if (!company) throw new Error('Missing fixture Company.');
+  const replaced = {
+    ...modelContractActor,
+    activeCompany: {
+      ...company,
+      commercialIntakePermissionAssignmentId: 'replacement-intake',
+    },
+  };
+  const control: Control = {};
+  render(<Journey control={control} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+  await waitFor(() => expect(release).toBeDefined());
+  expect(screen.getByText('Read loading')).toBeVisible();
+  act(() => control.replaceActor?.(replaced));
+  expect(screen.getByText('Read idle')).toBeVisible();
+  act(() => control.replaceActor?.(modelContractActor));
+  expect(screen.getByText('Read idle')).toBeVisible();
+  await act(async () => {
+    release?.(
+      response({ contract: { ...contract, revision: contract.revision + 1 } }),
+    );
+  });
+  expect(screen.getByText('Read idle')).toBeVisible();
   expect(screen.getByText(`Revision ${contract.revision}`)).toBeVisible();
 });
 

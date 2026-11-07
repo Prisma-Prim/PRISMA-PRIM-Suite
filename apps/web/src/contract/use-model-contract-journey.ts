@@ -222,12 +222,15 @@ export function useModelContractJourney(
   const reads = useScopedOperation(readScope),
     writes = useScopedOperation(mutationAuthority);
   // A retired read scope's status reads as idle in the render that retires it.
+  // The generation never repeats, but authority values can (A→B→A), so the
+  // authority reset below also discards the status for good.
   const readState = readStatus?.scope === readScope ? readStatus.state : 'idle';
   const setReadState = (state: ReadState) =>
     setReadStatus(state === 'idle' ? null : { scope: readScope, state });
   useLayoutEffect(() => {
     attempt.current = undefined;
     activeWrite.current = false;
+    setReadStatus(null);
     setDraft(blank());
     setSources({ offer: null, model: null });
     setReviewBasis('');
