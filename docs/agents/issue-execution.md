@@ -7,7 +7,6 @@ One session owns one issue and delivers it as one focused pull request. One Code
 - Launch Codex Cloud from an `@codex` comment on the originating issue so the task inherits the complete issue body and comments. A manual task needs a prompt or repository files holding the complete contract; an issue URL alone is insufficient.
 - Codex Cloud runs targeted checks only: its standard environment has no Chromium and cannot run the [PostgreSQL profile](environment.md#postgresql-profile). GitHub CI runs the heavy verification: the complete suites, the `pnpm verify` families, browser and acceptance journeys, and production image packaging.
 - A local harness with a shell, such as Codex CLI or Claude Code, is equivalent and can also run affected PostgreSQL or browser suites.
-- A harness that cannot run the targeted checks the issue needs, such as a GitHub connector without a shell, publishes no code; it may draft issues, documentation and reviews. Never publish one commit per file.
 
 ## Before changing anything
 
@@ -20,7 +19,7 @@ One session owns one issue and delivers it as one focused pull request. One Code
 
 ## Handoffs
 
-A handoff between sessions, for example from Codex to Claude Code, is compact: issue and branch, current commit, decisions with source links, checks run with their results, unresolved findings and the next action. Link evidence instead of copying transcripts or logs. The receiving session works from the issue, the PR and this procedure, without private conversation history.
+A handoff between sessions, such as Codex to Claude Code, is compact: issue and branch, current commit, decisions with source links, checks run with their results, unresolved findings and the next action. Link evidence instead of copying transcripts or logs. The receiving session works from the issue, the PR and this procedure, without private conversation history.
 
 ## Shared decisions for major trade-offs
 
@@ -28,13 +27,13 @@ Use this procedure for the major delivery decisions that [AGENTS.md](../../AGENT
 
 1. Alert the owner in the user's language, briefly and without unexplained technical terms. Explain the goal and the expected effect on delivery time, cost or the way the project works. Separate observations from estimates and state what is uncertain; invent no figures.
 2. Present two or three viable options with their consequences and a recommendation, including keeping the current approach when it is viable.
-3. Wait for an explicit choice covering the trade-off, then record its source, scope and agreed limits in the execution note or PR. Reuse that decision within those limits; raise a materially changed trade-off again. Safe independent work and routine authorized work may continue meanwhile.
+3. Wait for an explicit choice covering the trade-off, then record its source, scope and agreed limits in the execution note or PR. Reuse that decision within those limits; raise a materially changed trade-off again. Safe independent and routine authorized work may continue meanwhile.
 
-The step is complete when the owner's choice and its limits are recorded. A repository procedure never justifies hiding an unexpectedly large cost from the owner.
+A repository procedure never justifies hiding an unexpectedly large cost from the owner.
 
 ## Implementation
 
-- Own exactly one issue. Blocked and follow-on work stays in its own issue; record valuable follow-ups as new issues.
+- Blocked and follow-on work stays in its own issue; record valuable follow-ups as new issues.
 - Follow the repository `implement` and `tdd` skills when behaviour changes, at the highest stable seam the issue names.
 - For any TypeScript implementation, apply the [mandatory TypeScript discipline](typescript-discipline.md) before reading or editing `.ts` or `.tsx` files and keep it active throughout the change.
 - Complete the narrow tracer bullet across every layer the issue requires.
@@ -46,7 +45,7 @@ The step is complete when the owner's choice and its limits are recorded. A repo
 1. Run targeted tests while iterating, then every command the issue requires.
 2. Before publishing, run format, lint and type checks and the focused behavioural tests for what changed, plus the affected PostgreSQL or browser suites when the harness provides them. Name in the PR each relevant check that could not run locally; CI runs it. To reproduce a CI failure locally, use the [local integration verifier](local-integration-verifier.md).
 3. For UI work, inspect the real journey at desktop and narrow viewports. Write synthetic screenshots through Playwright's `testInfo.outputPath(...)`, keep them out of commits, and inspect the relevant ones before claiming visual evidence.
-4. Self-review the final diff twice: against repository Standards and against the originating issue. Standards review must report all material violations of the TypeScript discipline when the diff contains TypeScript. Check every acceptance criterion against the complete change; for browser or asynchronous work, audit the journey's reads, writes and readiness conditions before assertions, with permissions and state transitions where relevant, and keep assertion strength. For documentation, check the requested outcomes, links and consistency with the owning instructions. Fix what you find.
+4. Self-review the final diff twice: against repository Standards and the originating issue. Standards review must report all material violations of the TypeScript discipline when the diff contains TypeScript. Check every acceptance criterion against the complete change; for browser or asynchronous work, audit the journey's reads, writes and readiness conditions before assertions, with permissions and state transitions where relevant, and keep assertion strength. For documentation, check the requested outcomes, links and consistency with the owning instructions. Fix what you find.
 5. Publish one focused commit; squash intermediate commits before the first push.
 
 ## CI and merge
@@ -64,7 +63,7 @@ Only a successful required check is a pass; queued, cancelled, failed and unexec
 
 Harness capabilities and the user's authorization decide publication; a task prompt never grants capabilities or permissions the harness lacks.
 
-- Cannot run the targeted checks: publish no code; produce an issue draft, documentation or a review.
+- Cannot run the targeted checks, such as a GitHub connector without a shell: publish no code; produce an issue draft, documentation or a review.
 - Git commit access without GitHub write access: report the exact publication blocker with the committed branch name.
 - Push and PR access: push the branch and open the PR.
 - Merge access with the standing authorization in [AGENTS.md](../../AGENTS.md#decision-authority): queue the merge as above. Without that authorization: stop after a green, reviewed PR.
@@ -73,17 +72,18 @@ Harness capabilities and the user's authorization decide publication; a task pro
 
 Every pull request gets one review round, because repeated review-and-fix cycles on a growing diff do not converge.
 
-1. A product-code PR receives one review: the automated Codex review, the repository owner's, or an independent reviewer the owner authorized. When automation already reviewed the PR on opening or on the ready transition, use that review; otherwise request `@codex review` once. A requested `thermos` review, both passes included, is that one review. For documentation and PRD pull requests, the recorded self-review disposition suffices and owner review is optional.
+1. A product-code PR receives one review: the automated Codex review, the repository owner's, or an independent reviewer the owner authorized. Use an automatic review made on opening or on the ready transition; otherwise request `@codex review` once. A requested `thermos` review, both passes included, is that one review. For documentation and PRD pull requests, the recorded self-review disposition suffices and owner review is optional.
 2. Triage every finding with one rule. A finding **blocks** only when it is a defect inside the changed scope that breaks an acceptance criterion, a security or data-integrity boundary, or a regression against `main`.
-3. Act only on a finding you can demonstrate with a failing test or command output; record the others under **Follow-ups** with the reason. Fix every blocking finding, plus simple P2 findings (small, local fixes inside the changed scope), in one correction commit and rerun the affected checks. For each finding, identify its cause and correct every occurrence of the same defect pattern in the authorized scope in that commit, without broadening into unrelated hardening. Record every other finding under **Follow-ups** in the PR body; it does not change the branch.
+3. Act only on a finding you can demonstrate with a failing test or command output. Fix every blocking finding, plus simple P2 findings (small, local fixes inside the changed scope), in one correction commit and rerun the affected checks. For each, identify its cause and correct every occurrence of the same defect pattern in the authorized scope, without broadening into unrelated hardening. Record every other finding, with the reason, under **Follow-ups** in the PR body; it does not change the branch.
 4. At most one confirmation review follows, only when the correction touched authorization, tenancy, migration or Activity Log code. Its findings follow the same triage and lead to no further review.
 5. When a correction would exceed a focused fix, or a confirmation review reports new blocking findings, keep the PR open: report the diagnosis and recommended re-scope on the issue and wait for the owner. The re-scoped correction lands on the same PR.
+6. Answer every review thread with its disposition: fixed in `<commit>`, follow-up `#N` (an issue you open or link), or not valid, with the reason. Only then resolve it with GraphQL `resolveReviewThread`. Threads opened after the correction commit get the same answers and, per steps 4–5, no further correction. Resolved threads are a merge precondition: the ruleset refuses the merge otherwise.
 
 A failed check alone needs no re-scope: keep the branch and PR, and record the diagnosis and next action. A green CI result requests no further review.
 
 ## Environment and tooling work
 
-Environment, CI, repository-setting and agent-tooling changes are separate issues the repository owner prioritizes, kept out of product issues; note friction as described in [environment friction](environment-friction.md). Use the simplest available mechanism, such as an operating-system package or an official container image. Apply the shared decision procedure before committing to major delay or cost; the one-hour maximum is a cap, not advance approval. Stop at the agreed budget or that maximum and report instead of building a custom installer or provisioning script.
+Environment, CI, repository-setting and agent-tooling changes are separate issues the repository owner prioritizes; note friction per [environment friction](environment-friction.md). Use the simplest available mechanism, such as an operating-system package or an official container image. Apply the shared decision procedure before committing to major delay or cost; the one-hour maximum is a cap, not advance approval. Stop at the agreed budget or that maximum and report instead of building a custom installer or provisioning script.
 
 ## Genuine blockers
 
