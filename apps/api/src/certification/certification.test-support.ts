@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
 import {
   createIsolatedPostgresTestDatabase,
   type IsolatedPostgresTestDatabase,
@@ -12,6 +15,11 @@ export const CERTIFICATION_OWNER = 'certification-owner';
 export const CERTIFICATION_READER = 'certification-reader';
 const MEMBERS = [CERTIFICATION_OWNER, CERTIFICATION_READER] as const;
 export type CertificationSubject = (typeof MEMBERS)[number];
+
+/** The repository's synthetic questionnaire PDF; no real content. */
+export const SYNTHETIC_PDF = readFileSync(
+  resolve('test-support/fixtures/questionnaire-demo.pdf'),
+);
 
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -63,6 +71,9 @@ export async function openCertificationFixture(input: {
   workspaceId: string;
 }) {
   let database: IsolatedPostgresTestDatabase | undefined;
+  let scanner:
+    Awaited<ReturnType<typeof openDocumentScannerFixture>> | undefined;
+  let clientId = '';
   let harness: PostgresRestTestHarness | undefined;
   const memberships = new Map<CertificationSubject, string>();
   let companyId = '';
@@ -124,6 +135,47 @@ export async function openCertificationFixture(input: {
     );
     return Number(result.rows[0]?.total);
   }
+  /** Registers, uploads and designates one received audit source PDF of the Client. */
+  async function receivedSource(title = 'Fictional signed original') {
+    const document = await created(
+      await call(CERTIFICATION_OWNER, '/documents', {
+        method: 'POST',
+        body: {
+          type: 'received-audit-source',
+          clientId,
+          title,
+          purpose: 'Fictional signed original for a certification test',
+        },
+      }),
+    );
+    const documentId = text(document.id);
+    const versionId = text(record(document.version).id);
+    const uploaded = await fetch(
+      `${origin()}/api/documents/${documentId}/versions/${versionId}/content?expectedRevision=1&fileName=signed-original.pdf`,
+      {
+        method: 'POST',
+        headers: {
+          'x-test-external-provider': 'deterministic-test',
+          'x-test-external-subject': CERTIFICATION_OWNER,
+          'x-test-display-name': `Synthetic ${CERTIFICATION_OWNER}`,
+          'x-test-email': `${CERTIFICATION_OWNER}@example.test`,
+          'x-company-context-id': companyId,
+          'content-type': 'application/pdf',
+          'idempotency-key': randomUUID(),
+        },
+        body: new Uint8Array(SYNTHETIC_PDF),
+      },
+    );
+    const representationId = text((await created(uploaded)).representationId);
+    const designated = await call(
+      CERTIFICATION_OWNER,
+      `/documents/${documentId}/versions/${versionId}/official-designation`,
+      { method: 'POST', body: { expectedRevision: 2 } },
+    );
+    if (designated.status !== 200)
+      throw new Error(`Designation failed: ${designated.status}`);
+    return { documentId, versionId, representationId };
+  }
   /** Opens a Case and records the given application; the review stays open. */
   async function caseWithApplication(facts = applicationFacts()) {
     const caseId = text(
@@ -176,6 +228,7 @@ export async function openCertificationFixture(input: {
   }
 
   try {
+    scanner = await openDocumentScannerFixture();
     database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: input.databaseUrl,
       namePrefix: input.namePrefix,
@@ -197,6 +250,7 @@ export async function openCertificationFixture(input: {
             workspaceId: input.workspaceId,
           },
         ]),
+        ...scanner.environment,
       },
     });
     for (const subject of MEMBERS) {
@@ -225,6 +279,11 @@ export async function openCertificationFixture(input: {
       '/company-director-client-assignments',
       '/company-certification-reader-assignments',
       '/company-certification-programme-manager-assignments',
+      '/company-document-registrar-assignments',
+      '/company-received-audit-source-access-assignments',
+      '/company-document-content-reader-assignments',
+      '/company-document-content-uploader-assignments',
+      '/company-document-approver-assignments',
     ])
       await grant(CERTIFICATION_OWNER, path);
     for (const path of [
@@ -234,7 +293,7 @@ export async function openCertificationFixture(input: {
       '/company-certification-reader-assignments',
     ])
       await grant(CERTIFICATION_READER, path);
-    const clientId = text(
+    clientId = text(
       (
         await created(
           await call(CERTIFICATION_OWNER, '/clients', {
@@ -281,6 +340,7 @@ export async function openCertificationFixture(input: {
   } catch (error) {
     await harness?.close();
     await database?.close();
+    await scanner?.close();
     throw error;
   }
 
@@ -291,12 +351,14 @@ export async function openCertificationFixture(input: {
     eventCount,
     caseWithApplication,
     acceptedCase,
+    receivedSource,
     get projectId() {
       return projectId;
     },
     async close() {
       await harness?.close();
       await database?.close();
+      await scanner?.close();
     },
   };
 }

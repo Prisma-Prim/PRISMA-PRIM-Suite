@@ -14,24 +14,41 @@ import {
 import { clientAccounts, companies, workspaceMemberships } from './core.js';
 import { clientLegalEntities } from './client-legal-entity.js';
 import { projects } from './project.js';
+import { documentPdfs } from './document-pdfs.js';
 
 export const CERTIFICATION_CASE_STATUSES = ['open', 'rejected'] as const;
 export const CERTIFICATION_STEPS = [
   'application',
   'application_review',
   'duration',
+  'agreement',
+] as const;
+export const CERTIFICATION_DOCUMENT_ROLES = [
+  'questionnaire',
+  'iso22000_annex',
+  'agreement',
+  'plan',
+  'participant_list',
+  'report',
+  'evidence',
+  'certificate',
+  'other',
 ] as const;
 export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.opened',
   'certification_case.application_recorded',
   'certification_case.application_reviewed',
   'certification_case.duration_confirmed',
+  'certification_case.document_attached',
+  'certification_case.agreement_recorded',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
   'application',
   'application_review',
   'duration',
+  'document',
+  'agreement',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -187,7 +204,7 @@ export const certificationStepVersions = pgTable(
     ),
     check(
       'certification_step_versions_step_check',
-      sql`${table.step} IN ('application', 'application_review', 'duration') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
+      sql`${table.step} IN ('application', 'application_review', 'duration', 'agreement') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
     ),
     check(
       'certification_step_versions_payload_check',
@@ -222,7 +239,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -268,7 +285,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',
@@ -292,5 +309,94 @@ export const certificationEvents = pgTable(
         workspaceMemberships.internalUserId,
       ],
     }),
+  ],
+);
+
+/** One exact preserved PDF of the Case's Client, attached with its role; append-only. */
+export const certificationCaseDocuments = pgTable(
+  'certification_case_documents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    role: text('role', { enum: CERTIFICATION_DOCUMENT_ROLES }).notNull(),
+    documentId: uuid('document_id').notNull(),
+    versionId: uuid('version_id').notNull(),
+    representationId: uuid('representation_id').notNull(),
+    versionNumber: integer('version_number').notNull(),
+    sourceTitle: text('source_title').notNull(),
+    fileName: text('file_name').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    sha256: text('sha256').notNull(),
+    note: text('note'),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    attachedAt: timestamp('attached_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_case_documents_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.id,
+    ),
+    uniqueIndex('certification_case_documents_tuple_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.documentId,
+      table.versionId,
+      table.representationId,
+    ),
+    foreignKey({
+      name: 'certification_case_documents_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_case_documents_pdf_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.documentId,
+        table.versionId,
+        table.representationId,
+      ],
+      foreignColumns: [
+        documentPdfs.workspaceId,
+        documentPdfs.companyId,
+        documentPdfs.documentId,
+        documentPdfs.versionId,
+        documentPdfs.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_case_documents_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_case_documents_role_check',
+      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      'certification_case_documents_note_check',
+      sql`${table.note} IS NULL OR length(btrim(${table.note})) BETWEEN 1 AND 1000`,
+    ),
   ],
 );

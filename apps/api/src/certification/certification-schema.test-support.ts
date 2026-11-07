@@ -7,6 +7,7 @@ import {
 
 /** Tables added by the certification migrations, in PostgreSQL name order. */
 export const certificationTables = [
+  'certification_case_documents',
   'certification_cases',
   'certification_events',
   'certification_receipts',

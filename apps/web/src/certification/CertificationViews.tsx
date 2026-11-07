@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { useCertificationCopy } from './certification.copy';
+import { AgreementView } from './CertificationDocumentViews';
 import { DurationView } from './CertificationDurationViews';
 import {
   REVIEW_CRITERIA,
@@ -10,6 +11,7 @@ import {
   type CaseDetail,
   type CaseTimeline,
   type CertificationNextStep,
+  type DocumentRegister,
   type StepVersion,
 } from './certification-response';
 
@@ -151,7 +153,15 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       : detail.applicationReview?.value.outcome === 'accepted'
         ? copy('stepToRecord')
         : copy('stepWaitingReview');
-  const agreement = closed ? copy('stepClosed') : copy('stepNotAvailable');
+  const agreement = closed
+    ? copy('stepClosed')
+    : detail.agreement
+      ? formatMessage(copy('stepRecorded'), {
+          version: detail.agreement.version,
+        })
+      : detail.duration
+        ? copy('stepToRecord')
+        : copy('stepWaitingDuration');
   return (
     <ol className="certification-steps" aria-label={copy('steps')}>
       <li data-current={detail.nextStep === 'application'}>
@@ -181,28 +191,45 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
       return <>{copy('nextDuration')}</>;
     case 'agreement':
       return <>{copy('nextAgreement')}</>;
+    case 'team':
+      return <>{copy('nextTeam')}</>;
     case null:
       return <>{copy('nextNone')}</>;
   }
   return unexpected(step);
 }
 
-/** Every recorded version in server order, each with its exact values. */
-export function TimelineView({ timeline }: { timeline: CaseTimeline }) {
+/**
+ * Every recorded version in server order, each with its exact values; an
+ * agreement names its signed original from the Case's register.
+ */
+export function TimelineView({
+  timeline,
+  register,
+}: {
+  timeline: CaseTimeline;
+  register: DocumentRegister;
+}) {
   const copy = useCertificationCopy();
   if (timeline.entries.length === 0) return <p>{copy('timelineEmpty')}</p>;
   return (
     <ol className="certification-timeline">
       {timeline.entries.map((entry) => (
         <li key={entry.id}>
-          <TimelineEntry entry={entry} />
+          <TimelineEntry entry={entry} register={register} />
         </li>
       ))}
     </ol>
   );
 }
 
-function TimelineEntry({ entry }: { entry: StepVersion }) {
+function TimelineEntry({
+  entry,
+  register,
+}: {
+  entry: StepVersion;
+  register: DocumentRegister;
+}) {
   const copy = useCertificationCopy();
   const values = (title: string, recorded: ReactNode) => (
     <>
@@ -231,6 +258,11 @@ function TimelineEntry({ entry }: { entry: StepVersion }) {
       return values(
         formatMessage(copy('timelineDuration'), { version: entry.version }),
         <DurationView determination={entry.value} />,
+      );
+    case 'agreement':
+      return values(
+        formatMessage(copy('timelineAgreement'), { version: entry.version }),
+        <AgreementView agreement={entry.value} register={register} />,
       );
   }
   return unexpected(entry);

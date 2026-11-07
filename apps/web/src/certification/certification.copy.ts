@@ -46,6 +46,7 @@ const keys = [
   'nextApplicationReview',
   'nextDuration',
   'nextAgreement',
+  'nextTeam',
   'nextNone',
   'openedBy',
   'openedAt',
@@ -78,9 +79,9 @@ const keys = [
   'stepToRecord',
   'stepWaiting',
   'stepWaitingReview',
+  'stepWaitingDuration',
   'stepAccepted',
   'stepRejected',
-  'stepNotAvailable',
   'stepClosed',
 
   'applicationTitle',
@@ -148,7 +149,7 @@ const keys = [
   'blockedClosed',
   'blockedCorrectionReason',
   'blockedCorrectionUnchanged',
-  'nextAgreementPending',
+  'nextTeamPending',
 
   'durationTitle',
   'durationMissing',
@@ -230,11 +231,70 @@ const keys = [
   'noFactor',
   'showProposal',
 
+  'documentsTitle',
+  'documentsHelp',
+  'documentsEmpty',
+  'documentRole',
+  'documentFile',
+  'documentSize',
+  'documentDigest',
+  'documentDigestShow',
+  'documentAttachedBy',
+  'documentAttachedAt',
+  'documentVersionOf',
+  'documentReference',
+  'documentDownload',
+  'documentDownloading',
+  'documentDownloadFailed',
+  'documentDownloadUnavailable',
+  'documentsDenied',
+  'documentsNoContentRights',
+  'attachNoRights',
+  'roleQuestionnaire',
+  'roleIso22000Annex',
+  'roleAgreement',
+  'rolePlan',
+  'roleParticipantList',
+  'roleReport',
+  'roleEvidence',
+  'roleCertificate',
+  'roleOther',
+  'attachToggle',
+  'attachTitle',
+  'attachHelp',
+  'eligibleDocument',
+  'selectEligibleDocument',
+  'eligibleAttached',
+  'eligibleLoading',
+  'eligibleUnavailable',
+  'eligibleEmpty',
+  'eligibleTruncated',
+  'selectDocumentRole',
+  'attachSubmit',
+  'attachValidation',
+  'attachDuplicate',
+  'attachUnavailable',
+  'agreementTitle',
+  'agreementMissing',
+  'agreementHelp',
+  'agreementSignedOn',
+  'agreementDocument',
+  'selectAgreementDocument',
+  'agreementNoDocument',
+  'recordAgreement',
+  'correctAgreement',
+  'agreementValidation',
+  'agreementInFuture',
+  'agreementDocumentRole',
+  'blockedAgreementBeforeDuration',
+  'blockedAgreementCorrectionReason',
+
   'timelineTitle',
   'timelineEmpty',
   'timelineApplication',
   'timelineReview',
   'timelineDuration',
+  'timelineAgreement',
   'showValues',
 ] as const;
 
@@ -255,7 +315,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certification',
     introduction:
-      'Certification Cases of this Project: the client’s application, its review and the audit duration, with every recorded version.',
+      'Certification Cases of this Project: the client’s application, its review, the audit duration, the attached signed originals and the certification agreement, with every recorded version.',
     refresh: 'Refresh Certification Cases',
     loading: 'Loading Certification Cases…',
     caseLoading: 'Loading the Certification Case…',
@@ -297,6 +357,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplicationReview: 'Review the application',
     nextDuration: 'Audit duration',
     nextAgreement: 'Certification agreement',
+    nextTeam: 'Audit team',
     nextNone: 'None',
     openedBy: 'Opened by',
     openedAt: 'Opened on',
@@ -335,9 +396,9 @@ export const certificationMessages = defineMessages(keys, {
     stepToRecord: 'To record',
     stepWaiting: 'Waits for the application',
     stepWaitingReview: 'Waits for the accepted review',
+    stepWaitingDuration: 'Waits for the confirmed duration',
     stepAccepted: 'Accepted',
     stepRejected: 'Rejected',
-    stepNotAvailable: 'Not available yet',
     stepClosed: 'Not applicable: the Case is closed',
 
     applicationTitle: 'Application',
@@ -419,8 +480,8 @@ export const certificationMessages = defineMessages(keys, {
       'A correction needs a reason and a first application has none. Reload the Case before saving again.',
     blockedCorrectionUnchanged:
       'The correction changes no value. Change at least one value or cancel the correction.',
-    nextAgreementPending:
-      'The audit duration is confirmed. The next step, the certification agreement, is not available in this version yet.',
+    nextTeamPending:
+      'The certification agreement is recorded. The next step, the audit team, is not available in this version yet.',
 
     durationTitle: 'Audit duration',
     durationMissing: 'No audit duration is confirmed yet.',
@@ -525,11 +586,89 @@ export const certificationMessages = defineMessages(keys, {
     noFactor: 'None',
     showProposal: 'Show the computed proposal',
 
+    documentsTitle: 'Dossier register',
+    documentsHelp:
+      'Exact PDFs received from the Client and attached to this Case, in the order they were attached. Each attachment keeps the exact version and its SHA-256 fingerprint.',
+    documentsEmpty: 'No document is attached to this Case yet.',
+    documentRole: 'Role',
+    documentFile: 'File',
+    documentSize: 'Size',
+    documentDigest: 'SHA-256 fingerprint',
+    documentDigestShow: 'Show the full fingerprint',
+    documentAttachedBy: 'Attached by',
+    documentAttachedAt: 'Attached on',
+    documentVersionOf: '{title} — version {version}',
+    documentReference: '{title} — version {version} ({file})',
+    documentDownload: 'Download {title} — version {version}',
+    documentDownloading: 'Downloading the PDF…',
+    documentDownloadFailed:
+      'The PDF could not be downloaded, or its bytes did not match the recorded fingerprint. Try again.',
+    documentDownloadUnavailable:
+      'This attached PDF is no longer available. Reload the Case.',
+    documentsDenied:
+      'Your Document rights on this Client’s received PDFs could not be confirmed. They are being checked again; the Case stays available.',
+    documentsNoContentRights:
+      'Opening the attached PDFs requires the right to read the content of this Client’s received audit sources (Documents).',
+    attachNoRights:
+      'Attaching a document requires the right to read the content of this Client’s received audit sources (Documents).',
+    roleQuestionnaire: 'Application questionnaire',
+    roleIso22000Annex: 'ISO 22000 annex',
+    roleAgreement: 'Certification agreement',
+    rolePlan: 'Audit plan',
+    roleParticipantList: 'Participant list',
+    roleReport: 'Audit report',
+    roleEvidence: 'Evidence',
+    roleCertificate: 'Certificate',
+    roleOther: 'Other document',
+    attachToggle: 'Attach a document',
+    attachTitle: 'Attach a document',
+    attachHelp:
+      'Choose an exact PDF received from this Case’s Client and the role it plays in the dossier. The attachment keeps that exact version, even if the document changes later.',
+    eligibleDocument: 'Received PDF',
+    selectEligibleDocument: 'Select a received PDF',
+    eligibleAttached: '{title} — version {version} (already attached)',
+    eligibleLoading: 'Loading the Client’s received PDFs…',
+    eligibleUnavailable:
+      'The Client’s received PDFs could not be loaded. Try again.',
+    eligibleEmpty:
+      'No received PDF of this Client can be attached yet. In the Documents workspace, register the signed original as a received audit source of this Client, upload its PDF and designate that version official. It then appears here.',
+    eligibleTruncated: 'Only the 25 most recently registered PDFs are listed.',
+    selectDocumentRole: 'Select a role',
+    attachSubmit: 'Attach the document',
+    attachValidation:
+      'Choose a received PDF that is not attached yet and its role. A note has at most 1,000 characters.',
+    attachDuplicate:
+      'This exact document version is already attached to the Case. Reload the Case and choose another document.',
+    attachUnavailable:
+      'This PDF is no longer available for this Case’s Client. Choose another one or reload the list.',
+    agreementTitle: 'Certification agreement',
+    agreementMissing: 'No certification agreement is recorded yet.',
+    agreementHelp:
+      'Record the date the agreement was signed and the signed original attached in the dossier register with the role Certification agreement.',
+    agreementSignedOn: 'Signed on',
+    agreementDocument: 'Signed original',
+    selectAgreementDocument: 'Select the signed original',
+    agreementNoDocument:
+      'No document is attached with the role Certification agreement yet. Attach the signed original in the dossier register first.',
+    recordAgreement: 'Record the agreement',
+    correctAgreement: 'Correct the agreement',
+    agreementValidation:
+      'Enter the signature date and choose a document attached with the role Certification agreement.',
+    agreementInFuture:
+      'The agreement cannot be signed after today. Check the signature date.',
+    agreementDocumentRole:
+      'The chosen document is not attached with the role Certification agreement. Reload the Case and choose the signed original.',
+    blockedAgreementBeforeDuration:
+      'The agreement is recorded once the audit duration is confirmed. Reload the Case.',
+    blockedAgreementCorrectionReason:
+      'A correction needs a reason and a first agreement has none. Reload the Case before saving again.',
+
     timelineTitle: 'Timeline',
     timelineEmpty: 'No step recorded yet.',
     timelineApplication: 'Application — version {version}',
     timelineReview: 'Application review — {outcome}',
     timelineDuration: 'Audit duration — version {version}',
+    timelineAgreement: 'Certification agreement — version {version}',
     showValues: 'Show the recorded values',
   },
   fr: {
@@ -548,7 +687,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certification',
     introduction:
-      'Dossiers de certification de ce Projet : la demande du client, sa revue et la durée d’audit, avec chaque version enregistrée.',
+      'Dossiers de certification de ce Projet : la demande du client, sa revue, la durée d’audit, les originaux signés joints et le contrat de certification, avec chaque version enregistrée.',
     refresh: 'Actualiser les dossiers de certification',
     loading: 'Chargement des dossiers de certification…',
     caseLoading: 'Chargement du dossier de certification…',
@@ -592,6 +731,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplicationReview: 'Revoir la demande',
     nextDuration: 'Durée d’audit',
     nextAgreement: 'Contrat de certification',
+    nextTeam: 'Équipe d’audit',
     nextNone: 'Aucune',
     openedBy: 'Ouvert par',
     openedAt: 'Ouvert le',
@@ -630,9 +770,9 @@ export const certificationMessages = defineMessages(keys, {
     stepToRecord: 'À enregistrer',
     stepWaiting: 'Attend la demande',
     stepWaitingReview: 'Attend la revue acceptée',
+    stepWaitingDuration: 'Attend la durée confirmée',
     stepAccepted: 'Acceptée',
     stepRejected: 'Rejetée',
-    stepNotAvailable: 'Pas encore disponible',
     stepClosed: 'Sans objet : le dossier est clos',
 
     applicationTitle: 'Demande',
@@ -716,8 +856,8 @@ export const certificationMessages = defineMessages(keys, {
       'Une correction exige un motif et une première demande n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
     blockedCorrectionUnchanged:
       'La correction ne change aucune valeur. Modifiez au moins une valeur ou annulez la correction.',
-    nextAgreementPending:
-      'La durée d’audit est confirmée. L’étape suivante, le contrat de certification, n’est pas encore disponible dans cette version.',
+    nextTeamPending:
+      'Le contrat de certification est enregistré. L’étape suivante, l’équipe d’audit, n’est pas encore disponible dans cette version.',
 
     durationTitle: 'Durée d’audit',
     durationMissing: 'Aucune durée d’audit n’est encore confirmée.',
@@ -825,11 +965,90 @@ export const certificationMessages = defineMessages(keys, {
     noFactor: 'Aucun',
     showProposal: 'Afficher la proposition calculée',
 
+    documentsTitle: 'Registre des pièces',
+    documentsHelp:
+      'PDF exacts reçus du Client et joints à ce dossier, dans l’ordre où ils ont été joints. Chaque pièce conserve la version exacte et son empreinte SHA-256.',
+    documentsEmpty: 'Aucune pièce n’est encore jointe à ce dossier.',
+    documentRole: 'Rôle',
+    documentFile: 'Fichier',
+    documentSize: 'Taille',
+    documentDigest: 'Empreinte SHA-256',
+    documentDigestShow: 'Afficher l’empreinte complète',
+    documentAttachedBy: 'Jointe par',
+    documentAttachedAt: 'Jointe le',
+    documentVersionOf: '{title} — version {version}',
+    documentReference: '{title} — version {version} ({file})',
+    documentDownload: 'Télécharger {title} — version {version}',
+    documentDownloading: 'Téléchargement du PDF…',
+    documentDownloadFailed:
+      'Le PDF n’a pas pu être téléchargé, ou ses octets ne correspondent pas à l’empreinte enregistrée. Réessayez.',
+    documentDownloadUnavailable:
+      'Ce PDF joint n’est plus disponible. Rechargez le dossier.',
+    documentsDenied:
+      'Vos droits Documents sur les PDF reçus de ce Client n’ont pas pu être confirmés. Ils sont vérifiés à nouveau ; le dossier reste disponible.',
+    documentsNoContentRights:
+      'L’ouverture des PDF joints exige le droit de lire le contenu des sources d’audit reçues de ce Client (Documents).',
+    attachNoRights:
+      'Joindre un document exige le droit de lire le contenu des sources d’audit reçues de ce Client (Documents).',
+    roleQuestionnaire: 'Questionnaire de demande',
+    roleIso22000Annex: 'Annexe ISO 22000',
+    roleAgreement: 'Contrat de certification',
+    rolePlan: 'Plan d’audit',
+    roleParticipantList: 'Liste des participants',
+    roleReport: 'Rapport d’audit',
+    roleEvidence: 'Preuve',
+    roleCertificate: 'Certificat',
+    roleOther: 'Autre document',
+    attachToggle: 'Joindre un document',
+    attachTitle: 'Joindre un document',
+    attachHelp:
+      'Choisissez un PDF exact reçu du Client de ce dossier et le rôle qu’il y joue. La pièce conserve cette version exacte, même si le document change ensuite.',
+    eligibleDocument: 'PDF reçu',
+    selectEligibleDocument: 'Sélectionnez un PDF reçu',
+    eligibleAttached: '{title} — version {version} (déjà joint)',
+    eligibleLoading: 'Chargement des PDF reçus du Client…',
+    eligibleUnavailable:
+      'Les PDF reçus du Client n’ont pas pu être chargés. Réessayez.',
+    eligibleEmpty:
+      'Aucun PDF reçu de ce Client ne peut encore être joint. Dans l’espace Documents, enregistrez l’original signé comme source d’audit reçue de ce Client, téléversez son PDF et désignez cette version comme officielle. Il apparaît alors ici.',
+    eligibleTruncated:
+      'Seuls les 25 PDF enregistrés le plus récemment sont listés.',
+    selectDocumentRole: 'Sélectionnez un rôle',
+    attachSubmit: 'Joindre le document',
+    attachValidation:
+      'Choisissez un PDF reçu qui n’est pas encore joint et son rôle. Une note compte 1 000 caractères au plus.',
+    attachDuplicate:
+      'Cette version exacte du document est déjà jointe au dossier. Rechargez le dossier et choisissez un autre document.',
+    attachUnavailable:
+      'Ce PDF n’est plus disponible pour le Client de ce dossier. Choisissez-en un autre ou rechargez la liste.',
+    agreementTitle: 'Contrat de certification',
+    agreementMissing: 'Aucun contrat de certification n’est encore enregistré.',
+    agreementHelp:
+      'Enregistrez la date de signature du contrat et l’original signé joint au registre des pièces avec le rôle Contrat de certification.',
+    agreementSignedOn: 'Signé le',
+    agreementDocument: 'Original signé',
+    selectAgreementDocument: 'Sélectionnez l’original signé',
+    agreementNoDocument:
+      'Aucun document n’est encore joint avec le rôle Contrat de certification. Joignez d’abord l’original signé au registre des pièces.',
+    recordAgreement: 'Enregistrer le contrat',
+    correctAgreement: 'Corriger le contrat',
+    agreementValidation:
+      'Saisissez la date de signature et choisissez un document joint avec le rôle Contrat de certification.',
+    agreementInFuture:
+      'Le contrat ne peut pas être signé après aujourd’hui. Vérifiez la date de signature.',
+    agreementDocumentRole:
+      'Le document choisi n’est pas joint avec le rôle Contrat de certification. Rechargez le dossier et choisissez l’original signé.',
+    blockedAgreementBeforeDuration:
+      'Le contrat s’enregistre une fois la durée d’audit confirmée. Rechargez le dossier.',
+    blockedAgreementCorrectionReason:
+      'Une correction exige un motif et un premier contrat n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+
     timelineTitle: 'Chronologie',
     timelineEmpty: 'Aucune étape enregistrée pour l’instant.',
     timelineApplication: 'Demande — version {version}',
     timelineReview: 'Revue de la demande — {outcome}',
     timelineDuration: 'Durée d’audit — version {version}',
+    timelineAgreement: 'Contrat de certification — version {version}',
     showValues: 'Afficher les valeurs enregistrées',
   },
   ro: {
@@ -846,7 +1065,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Certificare',
     introduction:
-      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei și durata auditului, cu fiecare versiune înregistrată.',
+      'Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate și contractul de certificare, cu fiecare versiune înregistrată.',
     refresh: 'Actualizați dosarele de certificare',
     loading: 'Se încarcă dosarele de certificare…',
     caseLoading: 'Se încarcă dosarul de certificare…',
@@ -890,6 +1109,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplicationReview: 'Analiza cererii',
     nextDuration: 'Durata auditului',
     nextAgreement: 'Contractul de certificare',
+    nextTeam: 'Echipa de audit',
     nextNone: 'Niciuna',
     openedBy: 'Deschis de',
     openedAt: 'Deschis la',
@@ -928,9 +1148,9 @@ export const certificationMessages = defineMessages(keys, {
     stepToRecord: 'De înregistrat',
     stepWaiting: 'Așteaptă cererea',
     stepWaitingReview: 'Așteaptă analiza acceptată',
+    stepWaitingDuration: 'Așteaptă durata confirmată',
     stepAccepted: 'Acceptată',
     stepRejected: 'Respinsă',
-    stepNotAvailable: 'Încă indisponibilă',
     stepClosed: 'Nu se aplică: dosarul este închis',
 
     applicationTitle: 'Cerere',
@@ -1013,8 +1233,8 @@ export const certificationMessages = defineMessages(keys, {
       'O corectare necesită un motiv, iar prima cerere nu are. Reîncărcați dosarul înainte de o nouă salvare.',
     blockedCorrectionUnchanged:
       'Corectarea nu schimbă nicio valoare. Modificați cel puțin o valoare sau anulați corectarea.',
-    nextAgreementPending:
-      'Durata auditului este confirmată. Etapa următoare, contractul de certificare, nu este încă disponibilă în această versiune.',
+    nextTeamPending:
+      'Contractul de certificare este înregistrat. Etapa următoare, echipa de audit, nu este încă disponibilă în această versiune.',
 
     durationTitle: 'Durata auditului',
     durationMissing: 'Nicio durată a auditului nu este încă confirmată.',
@@ -1119,11 +1339,91 @@ export const certificationMessages = defineMessages(keys, {
     noFactor: 'Niciunul',
     showProposal: 'Afișați propunerea calculată',
 
+    documentsTitle: 'Registrul documentelor dosarului',
+    documentsHelp:
+      'PDF-uri exacte primite de la Client și atașate acestui dosar, în ordinea atașării. Fiecare atașament păstrează versiunea exactă și amprenta ei SHA-256.',
+    documentsEmpty: 'Niciun document nu este încă atașat acestui dosar.',
+    documentRole: 'Rol',
+    documentFile: 'Fișier',
+    documentSize: 'Dimensiune',
+    documentDigest: 'Amprentă SHA-256',
+    documentDigestShow: 'Afișați amprenta completă',
+    documentAttachedBy: 'Atașat de',
+    documentAttachedAt: 'Atașat la',
+    documentVersionOf: '{title} — versiunea {version}',
+    documentReference: '{title} — versiunea {version} ({file})',
+    documentDownload: 'Descărcați {title} — versiunea {version}',
+    documentDownloading: 'Se descarcă PDF-ul…',
+    documentDownloadFailed:
+      'PDF-ul nu a putut fi descărcat sau octeții lui nu corespund amprentei înregistrate. Reîncercați.',
+    documentDownloadUnavailable:
+      'Acest PDF atașat nu mai este disponibil. Reîncărcați dosarul.',
+    documentsDenied:
+      'Drepturile dvs. Documente asupra PDF-urilor primite de la acest Client nu au putut fi confirmate. Se verifică din nou; dosarul rămâne disponibil.',
+    documentsNoContentRights:
+      'Deschiderea PDF-urilor atașate necesită dreptul de a citi conținutul surselor de audit primite de la acest Client (Documente).',
+    attachNoRights:
+      'Atașarea unui document necesită dreptul de a citi conținutul surselor de audit primite de la acest Client (Documente).',
+    roleQuestionnaire: 'Chestionar de cerere',
+    roleIso22000Annex: 'Anexa ISO 22000',
+    roleAgreement: 'Contract de certificare',
+    rolePlan: 'Plan de audit',
+    roleParticipantList: 'Lista participanților',
+    roleReport: 'Raport de audit',
+    roleEvidence: 'Dovadă',
+    roleCertificate: 'Certificat',
+    roleOther: 'Alt document',
+    attachToggle: 'Atașați un document',
+    attachTitle: 'Atașați un document',
+    attachHelp:
+      'Alegeți un PDF exact primit de la Clientul acestui dosar și rolul pe care îl are în dosar. Atașamentul păstrează această versiune exactă, chiar dacă documentul se schimbă ulterior.',
+    eligibleDocument: 'PDF primit',
+    selectEligibleDocument: 'Selectați un PDF primit',
+    eligibleAttached: '{title} — versiunea {version} (deja atașat)',
+    eligibleLoading: 'Se încarcă PDF-urile primite de la Client…',
+    eligibleUnavailable:
+      'PDF-urile primite de la Client nu au putut fi încărcate. Reîncercați.',
+    eligibleEmpty:
+      'Niciun PDF primit de la acest Client nu poate fi încă atașat. În spațiul Documente, înregistrați originalul semnat ca sursă de audit primită de la acest Client, încărcați PDF-ul lui și desemnați acea versiune ca oficială. Apoi apare aici.',
+    eligibleTruncated:
+      'Sunt listate doar cele mai recente 25 de PDF-uri înregistrate.',
+    selectDocumentRole: 'Selectați un rol',
+    attachSubmit: 'Atașați documentul',
+    attachValidation:
+      'Alegeți un PDF primit care nu este încă atașat și rolul lui. O notă are cel mult 1.000 de caractere.',
+    attachDuplicate:
+      'Această versiune exactă a documentului este deja atașată dosarului. Reîncărcați dosarul și alegeți alt document.',
+    attachUnavailable:
+      'Acest PDF nu mai este disponibil pentru Clientul acestui dosar. Alegeți altul sau reîncărcați lista.',
+    agreementTitle: 'Contractul de certificare',
+    agreementMissing:
+      'Niciun contract de certificare nu este încă înregistrat.',
+    agreementHelp:
+      'Înregistrați data semnării contractului și originalul semnat atașat în registrul documentelor cu rolul Contract de certificare.',
+    agreementSignedOn: 'Semnat la',
+    agreementDocument: 'Original semnat',
+    selectAgreementDocument: 'Selectați originalul semnat',
+    agreementNoDocument:
+      'Niciun document nu este încă atașat cu rolul Contract de certificare. Atașați mai întâi originalul semnat în registrul documentelor.',
+    recordAgreement: 'Înregistrați contractul',
+    correctAgreement: 'Corectați contractul',
+    agreementValidation:
+      'Introduceți data semnării și alegeți un document atașat cu rolul Contract de certificare.',
+    agreementInFuture:
+      'Contractul nu poate fi semnat după ziua de azi. Verificați data semnării.',
+    agreementDocumentRole:
+      'Documentul ales nu este atașat cu rolul Contract de certificare. Reîncărcați dosarul și alegeți originalul semnat.',
+    blockedAgreementBeforeDuration:
+      'Contractul se înregistrează după confirmarea duratei auditului. Reîncărcați dosarul.',
+    blockedAgreementCorrectionReason:
+      'O corectare necesită un motiv, iar primul contract nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+
     timelineTitle: 'Cronologie',
     timelineEmpty: 'Nicio etapă înregistrată încă.',
     timelineApplication: 'Cerere — versiunea {version}',
     timelineReview: 'Analiza cererii — {outcome}',
     timelineDuration: 'Durata auditului — versiunea {version}',
+    timelineAgreement: 'Contractul de certificare — versiunea {version}',
     showValues: 'Afișați valorile înregistrate',
   },
   ru: {
@@ -1141,7 +1441,7 @@ export const certificationMessages = defineMessages(keys, {
 
     title: 'Сертификация',
     introduction:
-      'Дела по сертификации этого Проекта: заявка клиента, её анализ и продолжительность аудита со всеми записанными версиями.',
+      'Дела по сертификации этого Проекта: заявка клиента, её анализ, продолжительность аудита, приложенные подписанные оригиналы и договор о сертификации со всеми записанными версиями.',
     refresh: 'Обновить дела по сертификации',
     loading: 'Загрузка дел по сертификации…',
     caseLoading: 'Загрузка дела по сертификации…',
@@ -1183,6 +1483,7 @@ export const certificationMessages = defineMessages(keys, {
     nextApplicationReview: 'Проанализировать заявку',
     nextDuration: 'Продолжительность аудита',
     nextAgreement: 'Договор о сертификации',
+    nextTeam: 'Аудиторская группа',
     nextNone: 'Нет',
     openedBy: 'Открыл(а)',
     openedAt: 'Дата открытия',
@@ -1221,9 +1522,9 @@ export const certificationMessages = defineMessages(keys, {
     stepToRecord: 'Нужно записать',
     stepWaiting: 'Ожидает заявку',
     stepWaitingReview: 'Ожидает принятия заявки',
+    stepWaitingDuration: 'Ожидает подтверждённую продолжительность',
     stepAccepted: 'Принята',
     stepRejected: 'Отклонена',
-    stepNotAvailable: 'Пока недоступно',
     stepClosed: 'Не применяется: дело закрыто',
 
     applicationTitle: 'Заявка',
@@ -1305,8 +1606,8 @@ export const certificationMessages = defineMessages(keys, {
       'Исправлению нужна причина, а у первой заявки её нет. Загрузите дело заново перед новым сохранением.',
     blockedCorrectionUnchanged:
       'Исправление не меняет ни одного значения. Измените хотя бы одно значение или отмените исправление.',
-    nextAgreementPending:
-      'Продолжительность аудита подтверждена. Следующий этап, договор о сертификации, в этой версии пока недоступен.',
+    nextTeamPending:
+      'Договор о сертификации записан. Следующий этап, аудиторская группа, в этой версии пока недоступен.',
 
     durationTitle: 'Продолжительность аудита',
     durationMissing: 'Продолжительность аудита ещё не подтверждена.',
@@ -1412,11 +1713,89 @@ export const certificationMessages = defineMessages(keys, {
     noFactor: 'Нет',
     showProposal: 'Показать рассчитанное предложение',
 
+    documentsTitle: 'Реестр документов дела',
+    documentsHelp:
+      'Точные PDF, полученные от Клиента и приложенные к этому делу, в порядке приложения. Каждое вложение хранит точную версию и её отпечаток SHA-256.',
+    documentsEmpty: 'К этому делу пока не приложено ни одного документа.',
+    documentRole: 'Роль',
+    documentFile: 'Файл',
+    documentSize: 'Размер',
+    documentDigest: 'Отпечаток SHA-256',
+    documentDigestShow: 'Показать полный отпечаток',
+    documentAttachedBy: 'Приложил(а)',
+    documentAttachedAt: 'Приложено',
+    documentVersionOf: '{title} — версия {version}',
+    documentReference: '{title} — версия {version} ({file})',
+    documentDownload: 'Скачать {title} — версия {version}',
+    documentDownloading: 'PDF скачивается…',
+    documentDownloadFailed:
+      'PDF не удалось скачать, или его байты не совпали с записанным отпечатком. Повторите попытку.',
+    documentDownloadUnavailable:
+      'Этот приложенный PDF больше недоступен. Загрузите дело заново.',
+    documentsDenied:
+      'Не удалось подтвердить ваши права в Документах на PDF, полученные от этого Клиента. Они проверяются повторно; дело остаётся доступным.',
+    documentsNoContentRights:
+      'Чтобы открывать приложенные PDF, нужно право читать содержимое полученных от этого Клиента источников аудита (Документы).',
+    attachNoRights:
+      'Чтобы приложить документ, нужно право читать содержимое полученных от этого Клиента источников аудита (Документы).',
+    roleQuestionnaire: 'Анкета заявки',
+    roleIso22000Annex: 'Приложение ISO 22000',
+    roleAgreement: 'Договор о сертификации',
+    rolePlan: 'План аудита',
+    roleParticipantList: 'Список участников',
+    roleReport: 'Отчёт об аудите',
+    roleEvidence: 'Свидетельство',
+    roleCertificate: 'Сертификат',
+    roleOther: 'Другой документ',
+    attachToggle: 'Приложить документ',
+    attachTitle: 'Приложить документ',
+    attachHelp:
+      'Выберите точный PDF, полученный от Клиента этого дела, и роль, которую он играет в деле. Вложение хранит эту точную версию, даже если документ потом изменится.',
+    eligibleDocument: 'Полученный PDF',
+    selectEligibleDocument: 'Выберите полученный PDF',
+    eligibleAttached: '{title} — версия {version} (уже приложен)',
+    eligibleLoading: 'Загрузка PDF, полученных от Клиента…',
+    eligibleUnavailable:
+      'Не удалось загрузить PDF, полученные от Клиента. Повторите попытку.',
+    eligibleEmpty:
+      'Пока нельзя приложить ни один PDF, полученный от этого Клиента. В разделе «Документы» зарегистрируйте подписанный оригинал как полученный от этого Клиента источник аудита, загрузите его PDF и назначьте эту версию официальной. После этого он появится здесь.',
+    eligibleTruncated: 'Показаны только 25 последних зарегистрированных PDF.',
+    selectDocumentRole: 'Выберите роль',
+    attachSubmit: 'Приложить выбранный документ',
+    attachValidation:
+      'Выберите ещё не приложенный полученный PDF и его роль. Примечание — не более 1 000 символов.',
+    attachDuplicate:
+      'Эта точная версия документа уже приложена к делу. Загрузите дело заново и выберите другой документ.',
+    attachUnavailable:
+      'Этот PDF больше недоступен для Клиента этого дела. Выберите другой или загрузите список заново.',
+    agreementTitle: 'Договор о сертификации',
+    agreementMissing: 'Договор о сертификации пока не записан.',
+    agreementHelp:
+      'Запишите дату подписания договора и подписанный оригинал, приложенный в реестре документов с ролью «Договор о сертификации».',
+    agreementSignedOn: 'Дата подписания',
+    agreementDocument: 'Подписанный оригинал',
+    selectAgreementDocument: 'Выберите подписанный оригинал',
+    agreementNoDocument:
+      'Пока не приложен ни один документ с ролью «Договор о сертификации». Сначала приложите подписанный оригинал в реестре документов.',
+    recordAgreement: 'Записать договор',
+    correctAgreement: 'Исправить договор',
+    agreementValidation:
+      'Введите дату подписания и выберите документ, приложенный с ролью «Договор о сертификации».',
+    agreementInFuture:
+      'Договор не может быть подписан позже сегодняшнего дня. Проверьте дату подписания.',
+    agreementDocumentRole:
+      'Выбранный документ приложен не с ролью «Договор о сертификации». Загрузите дело заново и выберите подписанный оригинал.',
+    blockedAgreementBeforeDuration:
+      'Договор записывается после подтверждения продолжительности аудита. Загрузите дело заново.',
+    blockedAgreementCorrectionReason:
+      'Исправлению нужна причина, а у первого договора её нет. Загрузите дело заново перед новым сохранением.',
+
     timelineTitle: 'Хронология',
     timelineEmpty: 'Этапы ещё не записаны.',
     timelineApplication: 'Заявка — версия {version}',
     timelineReview: 'Анализ заявки — {outcome}',
     timelineDuration: 'Продолжительность аудита — версия {version}',
+    timelineAgreement: 'Договор о сертификации — версия {version}',
     showValues: 'Показать записанные значения',
   },
 });

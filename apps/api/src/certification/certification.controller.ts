@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Req,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -135,6 +136,80 @@ export class CertificationController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.certification.confirmDuration({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Header('Cache-Control', 'private, no-store')
+  @Get('certification-cases/:caseId/documents')
+  documents(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+  ) {
+    return this.certification.documents({
+      actor: requireActorContext(request),
+      caseId,
+    });
+  }
+
+  @Post('certification-cases/:caseId/documents')
+  attachDocument(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.attachDocument({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Get('certification-cases/:caseId/documents/:attachmentId/content')
+  async documentContent(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Param('attachmentId') attachmentId: string,
+  ) {
+    const content = await this.certification.documentContent({
+      actor: requireActorContext(request),
+      caseId,
+      attachmentId,
+    });
+    return new StreamableFile(content.bytes, {
+      type: 'application/pdf',
+      length: content.bytes.length,
+      disposition: `attachment; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,
+    });
+  }
+
+  @Header('Cache-Control', 'private, no-store')
+  @Get('certification-cases/:caseId/eligible-documents')
+  eligibleDocuments(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+  ) {
+    return this.certification.eligibleDocuments({
+      actor: requireActorContext(request),
+      caseId,
+    });
+  }
+
+  @Post('certification-cases/:caseId/agreement')
+  recordAgreement(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordAgreement({
       actor: requireActorContext(request),
       caseId,
       body,

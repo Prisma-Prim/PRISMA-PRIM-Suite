@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   parseCaseDetail,
   parseCaseList,
+  parseDocumentRegister,
   parseDurationResult,
+  parseEligibleDocuments,
   parseTimeline,
 } from './certification-response';
 import {
@@ -59,6 +61,7 @@ function detail(overrides: Record<string, unknown> = {}) {
     application,
     applicationReview: review,
     duration: null,
+    agreement: null,
     ...overrides,
   };
 }
@@ -378,5 +381,292 @@ describe('Certification response parsers', () => {
     expect(
       parseTimeline({ caseId, entries: [application, review] }, caseId).entries,
     ).toHaveLength(2);
+  });
+});
+
+const attachmentId = '11310000-0000-4000-8000-600000000001';
+const agreement = {
+  id: 'step-4',
+  step: 'agreement',
+  version: 1,
+  caseRevision: 6,
+  reason: null,
+  recordedBy: by,
+  recordedAt: '2026-11-07T08:05:00.000Z',
+  value: { signedOn: '2026-11-02', attachmentId },
+};
+/** Duration at revision 4, the signed original attached at 5, agreement at 6. */
+function agreedDetail(overrides: Record<string, unknown> = {}) {
+  return durationDetail(
+    {},
+    { revision: 6, nextStep: 'team', agreement, ...overrides },
+  );
+}
+function attachmentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: attachmentId,
+    caseRevision: 5,
+    role: 'agreement',
+    documentId: 'document-1',
+    versionId: 'version-1',
+    representationId: 'representation-1',
+    versionNumber: 1,
+    sourceTitle: 'Signed certification agreement',
+    fileName: 'signed-certification-agreement.pdf',
+    sizeBytes: 2048,
+    sha256: 'a'.repeat(64),
+    note: null,
+    attachedBy: by,
+    attachedAt: '2026-11-07T08:04:00.000Z',
+    ...overrides,
+  };
+}
+const questionnaireRow = attachmentRow({
+  id: 'attachment-2',
+  caseRevision: 7,
+  role: 'questionnaire',
+  documentId: 'document-2',
+  versionId: 'version-2',
+  representationId: 'representation-2',
+  versionNumber: 2,
+  sourceTitle: 'Signed application questionnaire',
+  fileName: 'questionnaire.PDF',
+  note: 'Signed by the director.',
+});
+const eligibleRow = {
+  documentId: 'document-1',
+  versionId: 'version-1',
+  versionNumber: 1,
+  representationId: 'representation-1',
+  sourceTitle: 'Signed certification agreement',
+};
+
+describe('Certification signed originals and agreement parsers', () => {
+  it('reads a recorded agreement with the audit team next, and its timeline entry', () => {
+    const parsed = parseCaseDetail(agreedDetail(), { ...scope, caseId });
+    expect(parsed.nextStep).toBe('team');
+    expect(parsed.agreement?.value).toEqual({
+      signedOn: '2026-11-02',
+      attachmentId,
+    });
+    expect(
+      parseTimeline(
+        { caseId, entries: [application, review, duration, agreement] },
+        caseId,
+      ).entries.at(-1),
+    ).toMatchObject({ step: 'agreement', version: 1 });
+  });
+
+  it('reads an agreement whose duration was corrected afterwards, and a corrected agreement', () => {
+    const corrected = parseCaseDetail(
+      agreedDetail({
+        revision: 7,
+        duration: {
+          ...duration,
+          version: 2,
+          caseRevision: 7,
+          reason: 'Interpreter added.',
+        },
+      }),
+      { ...scope, caseId },
+    );
+    expect(corrected.duration?.caseRevision).toBe(7);
+    expect(
+      parseCaseDetail(
+        agreedDetail({
+          revision: 7,
+          agreement: {
+            ...agreement,
+            version: 2,
+            caseRevision: 7,
+            reason: 'The client signed a day later.',
+          },
+        }),
+        { ...scope, caseId },
+      ).agreement?.reason,
+    ).toBe('The client signed a day later.');
+  });
+
+  it.each([
+    [
+      'an agreement without a confirmed duration',
+      detail({ revision: 6, nextStep: 'team', agreement }),
+    ],
+    [
+      'the audit team next without an agreement',
+      durationDetail({}, { nextStep: 'team' }),
+    ],
+    [
+      'an agreement while the agreement is still next',
+      agreedDetail({ nextStep: 'agreement' }),
+    ],
+    ['an agreement beyond the Case revision', agreedDetail({ revision: 5 })],
+    [
+      'an agreement at the duration revision',
+      agreedDetail({ agreement: { ...agreement, caseRevision: 4 } }),
+    ],
+    [
+      'a first duration recorded after the agreement',
+      agreedDetail({
+        duration: { ...duration, caseRevision: 6 },
+        agreement: { ...agreement, caseRevision: 5 },
+      }),
+    ],
+    [
+      'a first agreement with a reason',
+      agreedDetail({ agreement: { ...agreement, reason: 'Not a fix' } }),
+    ],
+    [
+      'a corrected agreement without a reason',
+      agreedDetail({ agreement: { ...agreement, version: 2 } }),
+    ],
+    [
+      'an impossible signature date',
+      agreedDetail({
+        agreement: {
+          ...agreement,
+          value: { signedOn: '2026-02-30', attachmentId },
+        },
+      }),
+    ],
+    [
+      'a signature date with a time',
+      agreedDetail({
+        agreement: {
+          ...agreement,
+          value: { signedOn: '2026-11-02T00:00:00.000Z', attachmentId },
+        },
+      }),
+    ],
+    [
+      'a duration in the agreement field',
+      agreedDetail({ agreement: { ...duration, caseRevision: 6 } }),
+    ],
+  ])('fails closed on %s', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
+  });
+
+  it('reads the register in attachment order with its exact facts', () => {
+    const register = parseDocumentRegister(
+      { caseId, items: [attachmentRow(), questionnaireRow] },
+      caseId,
+    );
+    expect(register.items.map((item) => item.role)).toEqual([
+      'agreement',
+      'questionnaire',
+    ]);
+    expect(register.items[1]).toMatchObject({
+      fileName: 'questionnaire.PDF',
+      note: 'Signed by the director.',
+      sha256: 'a'.repeat(64),
+      attachedBy: by,
+    });
+    expect(parseDocumentRegister({ caseId, items: [] }, caseId).items).toEqual(
+      [],
+    );
+  });
+
+  it.each([
+    ['another Case', { caseId: 'other-case', items: [attachmentRow()] }],
+    [
+      'an unknown role',
+      { caseId, items: [attachmentRow({ role: 'invoice' })] },
+    ],
+    [
+      'an uppercase fingerprint',
+      { caseId, items: [attachmentRow({ sha256: 'A'.repeat(64) })] },
+    ],
+    [
+      'a short fingerprint',
+      { caseId, items: [attachmentRow({ sha256: 'a'.repeat(63) })] },
+    ],
+    [
+      'attachments out of revision order',
+      { caseId, items: [questionnaireRow, attachmentRow()] },
+    ],
+    [
+      'two attachments at one revision',
+      {
+        caseId,
+        items: [attachmentRow(), { ...questionnaireRow, caseRevision: 5 }],
+      },
+    ],
+    [
+      'the same exact PDF twice',
+      {
+        caseId,
+        items: [
+          attachmentRow(),
+          attachmentRow({ id: 'attachment-2', caseRevision: 7 }),
+        ],
+      },
+    ],
+    [
+      'a file name with a path',
+      { caseId, items: [attachmentRow({ fileName: '../agreement.pdf' })] },
+    ],
+    [
+      'a file name that is not a PDF',
+      { caseId, items: [attachmentRow({ fileName: 'agreement.exe' })] },
+    ],
+    [
+      'a size above five mebibytes',
+      { caseId, items: [attachmentRow({ sizeBytes: 5 * 1024 * 1024 + 1 })] },
+    ],
+    [
+      'an attachment at the opening revision',
+      { caseId, items: [attachmentRow({ caseRevision: 1 })] },
+    ],
+    ['a blank note', { caseId, items: [attachmentRow({ note: '  ' })] }],
+  ])('fails closed on a register with %s', (_name, value) => {
+    expect(() => parseDocumentRegister(value, caseId)).toThrow();
+  });
+
+  it('reads the eligible received PDFs and their truncation', () => {
+    expect(
+      parseEligibleDocuments(
+        { caseId, items: [eligibleRow], truncated: false },
+        caseId,
+      ),
+    ).toEqual({ caseId, items: [eligibleRow], truncated: false });
+    const page = Array.from({ length: 25 }, (_, index) => ({
+      ...eligibleRow,
+      representationId: `representation-${index}`,
+    }));
+    expect(
+      parseEligibleDocuments({ caseId, items: page, truncated: true }, caseId)
+        .truncated,
+    ).toBe(true);
+  });
+
+  it.each([
+    ['another Case', { caseId: 'other-case', items: [], truncated: false }],
+    ['no truncation flag', { caseId, items: [eligibleRow] }],
+    [
+      'a truncated short page',
+      { caseId, items: [eligibleRow], truncated: true },
+    ],
+    [
+      'the same exact PDF twice',
+      { caseId, items: [eligibleRow, eligibleRow], truncated: false },
+    ],
+    [
+      'a version zero',
+      {
+        caseId,
+        items: [{ ...eligibleRow, versionNumber: 0 }],
+        truncated: false,
+      },
+    ],
+    [
+      'a title beyond 200 characters',
+      {
+        caseId,
+        items: [{ ...eligibleRow, sourceTitle: 'T'.repeat(201) }],
+        truncated: false,
+      },
+    ],
+  ])('fails closed on eligible PDFs with %s', (_name, value) => {
+    expect(() => parseEligibleDocuments(value, caseId)).toThrow();
   });
 });

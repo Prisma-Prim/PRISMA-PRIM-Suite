@@ -101,6 +101,22 @@ export interface DurationDetermination {
   justification: string | null;
 }
 
+export type CertificationDocumentRole =
+  | 'questionnaire'
+  | 'iso22000_annex'
+  | 'agreement'
+  | 'plan'
+  | 'participant_list'
+  | 'report'
+  | 'evidence'
+  | 'certificate'
+  | 'other';
+
+export interface CertificationAgreement {
+  signedOn: string;
+  attachmentId: string;
+}
+
 export interface CertificationActorReference {
   workspaceMembershipId: string;
   displayName: string;
@@ -121,7 +137,8 @@ export type CertificationStepVersion =
       step: 'application_review';
       value: ApplicationReview;
     })
-  | (StepVersionBase & { step: 'duration'; value: DurationDetermination });
+  | (StepVersionBase & { step: 'duration'; value: DurationDetermination })
+  | (StepVersionBase & { step: 'agreement'; value: CertificationAgreement });
 
 export type ApplicationVersion = Extract<
   CertificationStepVersion,
@@ -135,10 +152,53 @@ export type DurationVersion = Extract<
   CertificationStepVersion,
   { step: 'duration' }
 >;
+export type AgreementVersion = Extract<
+  CertificationStepVersion,
+  { step: 'agreement' }
+>;
+
+export interface CertificationAttachment {
+  id: string;
+  caseRevision: number;
+  role: CertificationDocumentRole;
+  documentId: string;
+  versionId: string;
+  representationId: string;
+  versionNumber: number;
+  sourceTitle: string;
+  fileName: string;
+  sizeBytes: number;
+  sha256: string;
+  note: string | null;
+  attachedBy: CertificationActorReference;
+  attachedAt: string;
+}
+
+export interface CertificationDocumentRegister {
+  caseId: string;
+  items: CertificationAttachment[];
+}
+
+export interface CertificationEligibleDocuments {
+  caseId: string;
+  items: {
+    documentId: string;
+    versionId: string;
+    versionNumber: number;
+    representationId: string;
+    sourceTitle: string;
+  }[];
+  truncated: boolean;
+}
 
 /** The next step a programme manager can record, or none once closed. */
 export type CertificationNextStep =
-  'application' | 'application_review' | 'duration' | 'agreement' | null;
+  | 'application'
+  | 'application_review'
+  | 'duration'
+  | 'agreement'
+  | 'team'
+  | null;
 
 export interface CertificationCaseSummary {
   id: string;
@@ -160,6 +220,7 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   application: ApplicationVersion | null;
   applicationReview: ApplicationReviewVersion | null;
   duration: DurationVersion | null;
+  agreement: AgreementVersion | null;
 }
 
 export interface CertificationCaseList {

@@ -21,10 +21,16 @@ export const certificationIds = {
   colleague: '11310000-0000-4000-8000-000000000008',
 };
 
+/**
+ * A Certification Reader, optionally Programme Manager, optionally with the
+ * Document rights to read this Client's received audit source content.
+ */
 export function certificationActor({
   manager,
+  documents = false,
 }: {
   manager: boolean;
+  documents?: boolean;
 }): ActorContext {
   return {
     internalUserId: 'certification-person',
@@ -55,6 +61,25 @@ export function certificationActor({
             certificationProgrammeManagerAssignmentId:
               'certification-manager-grant',
             certificationProgrammeManagerPermissionSetVersion: 'v1',
+          }
+        : {}),
+      ...(documents
+        ? {
+            documentPermissions: [
+              'document.read',
+              'document.reference.read',
+              'document.content.read',
+              'document.received_audit_source.access',
+            ],
+            documentPermissionAssignmentId: 'document-grant',
+            documentPermissionSetVersion: 'v3',
+            documentContentReaderAssignmentId: 'document-content-grant',
+            documentContentReaderPermissionSetVersion: 'v1',
+            receivedAuditSourceAccessAssignmentId:
+              '11310000-0000-4000-8000-000000000009',
+            receivedAuditSourceAccessPermissionSetVersion: 'v1',
+            workingEvidenceContextCapture: `working-evidence-context.v1.${'c'.repeat(64)}`,
+            workingEvidenceClientReadCapture: `working-evidence-client-read.v1.${'d'.repeat(64)}`,
           }
         : {}),
     },
@@ -104,7 +129,7 @@ export function reviewCriteria(answer: 'yes' | 'no' = 'yes') {
 type Actor = { workspaceMembershipId: string; displayName: string };
 type Step = {
   id: string;
-  step: 'application' | 'application_review' | 'duration';
+  step: 'application' | 'application_review' | 'duration' | 'agreement';
   version: number;
   caseRevision: number;
   reason: string | null;
@@ -121,6 +146,34 @@ type StoredCase = {
   openedAt: string;
   openedBy: Actor;
   steps: Step[];
+  attachments: StoredAttachment[];
+};
+/** A frozen received PDF of the Case's Client, with its exact bytes. */
+export type FakeSource = {
+  documentId: string;
+  versionId: string;
+  versionNumber: number;
+  representationId: string;
+  sourceTitle: string;
+  fileName: string;
+  bytes: Uint8Array<ArrayBuffer>;
+  sha256: string;
+};
+type StoredAttachment = {
+  id: string;
+  caseRevision: number;
+  role: string;
+  documentId: string;
+  versionId: string;
+  representationId: string;
+  versionNumber: number;
+  sourceTitle: string;
+  fileName: string;
+  sizeBytes: number;
+  sha256: string;
+  note: string | null;
+  attachedBy: Actor;
+  attachedAt: string;
 };
 export type RecordedRequest = {
   method: string;
@@ -158,6 +211,10 @@ export class FakeCertificationServer {
   >();
   private clock = Date.parse('2026-11-07T08:00:00.000Z');
   private sequence = 0;
+  /** The Client's frozen received PDFs, newest first like the server. */
+  readonly sources: FakeSource[] = [];
+  /** Whether the actor holds the Document rights the server rechecks. */
+  documentAccess = true;
 
   readonly actor: () => unknown;
   readonly projectId: string;
@@ -183,6 +240,55 @@ export class FakeCertificationServer {
       vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
         this.fetch(input, init),
       ),
+    );
+  }
+
+  /** A received PDF registered, uploaded and designated in Documents. */
+  addSource(sourceTitle: string, versionNumber = 1): FakeSource {
+    const number = String(++this.sequence).padStart(2, '0');
+    const bytes = new TextEncoder().encode(
+      `%PDF-1.4\n% Fictional ${sourceTitle}, version ${versionNumber}\n%%EOF\n`,
+    );
+    const source: FakeSource = {
+      documentId: `11310000-0000-4000-8000-3000000000${number}`,
+      versionId: `11310000-0000-4000-8000-4000000000${number}`,
+      versionNumber,
+      representationId: `11310000-0000-4000-8000-5000000000${number}`,
+      sourceTitle,
+      fileName: `${sourceTitle.toLowerCase().replace(/[^a-z0-9]+/gu, '-')}.pdf`,
+      bytes,
+      sha256: sha256Hex(bytes),
+    };
+    this.sources.unshift(source);
+    return source;
+  }
+
+  /** A colleague attaches a PDF, making any earlier expected revision stale. */
+  attachAsColleague(
+    caseId: string,
+    source: FakeSource,
+    role: string,
+    note: string | null = null,
+  ): string {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case');
+    return this.attach(stored, source, role, note, colleague).id;
+  }
+
+  /** A colleague records the agreement on an attached signed original. */
+  recordAgreementAsColleague(
+    caseId: string,
+    signedOn: string,
+    attachmentId: string,
+  ) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case');
+    this.append(
+      stored,
+      'agreement',
+      { signedOn, attachmentId },
+      null,
+      colleague,
     );
   }
 
@@ -357,8 +463,13 @@ export class FakeCertificationServer {
           },
         ],
       });
+    const content =
+      /^\/api\/certification-cases\/([^/]+)\/documents\/([^/]+)\/content$/u.exec(
+        request.path,
+      );
+    if (content) return this.content(content[1], content[2]);
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
@@ -376,9 +487,136 @@ export class FakeCertificationServer {
         return this.proposeDuration(stored, request.body);
       case '/duration':
         return this.confirmDuration(stored, request.body);
+      case '/documents':
+        return request.method === 'POST'
+          ? this.attachDocument(stored, request.body)
+          : Response.json({ caseId: stored.id, items: stored.attachments });
+      case '/eligible-documents':
+        if (!this.documentAccess) return new Response(null, { status: 403 });
+        return Response.json({
+          caseId: stored.id,
+          items: this.sources.slice(0, 25).map((source) => ({
+            documentId: source.documentId,
+            versionId: source.versionId,
+            versionNumber: source.versionNumber,
+            representationId: source.representationId,
+            sourceTitle: source.sourceTitle,
+          })),
+          truncated: this.sources.length > 25,
+        });
+      case '/agreement':
+        return this.recordAgreement(stored, request.body);
       default:
         return new Response(null, { status: 404 });
     }
+  }
+
+  /** The exact bytes of one attachment, under the Document rights. */
+  private content(
+    caseId: string | undefined,
+    attachmentId: string | undefined,
+  ): Response {
+    const stored = caseId ? this.cases.get(caseId) : undefined;
+    const attached = stored?.attachments.find(
+      (item) => item.id === attachmentId,
+    );
+    if (!attached) return new Response(null, { status: 404 });
+    if (!this.documentAccess) return new Response(null, { status: 403 });
+    const source = this.sources.find(
+      (entry) => entry.representationId === attached.representationId,
+    );
+    if (!source) return new Response(null, { status: 503 });
+    return new Response(source.bytes, {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-length': String(source.bytes.length),
+      },
+    });
+  }
+
+  /** The server's checks, in its order: revision, Document rights, source, duplicate. */
+  private attachDocument(stored: StoredCase, body: unknown): Response {
+    const input = record(body);
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (!this.documentAccess) return new Response(null, { status: 403 });
+    const source = this.sources.find(
+      (entry) =>
+        entry.documentId === input.documentId &&
+        entry.versionId === input.versionId &&
+        entry.representationId === input.representationId,
+    );
+    if (!source) return new Response(null, { status: 404 });
+    if (
+      stored.attachments.some(
+        (item) => item.representationId === source.representationId,
+      )
+    )
+      return refusal(409, 'CERTIFICATION_DOCUMENT_ALREADY_ATTACHED');
+    const note = typeof input.note === 'string' ? input.note : null;
+    this.attach(stored, source, String(input.role), note, me);
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** The server's checks, in its order: revision, duration, reason, date, role. */
+  private recordAgreement(stored: StoredCase, body: unknown): Response {
+    const input = record(body);
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (!latestStep(stored, 'duration'))
+      return refusal(409, 'CERTIFICATION_DURATION_MISSING');
+    const first = !latestStep(stored, 'agreement');
+    const reason = typeof input.reason === 'string' ? input.reason : null;
+    if (first !== (reason === null))
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    const signedOn = String(input.signedOn);
+    if (signedOn > new Date(this.clock).toISOString().slice(0, 10))
+      return refusal(409, 'CERTIFICATION_AGREEMENT_IN_FUTURE');
+    const attached = stored.attachments.find(
+      (item) => item.id === input.attachmentId,
+    );
+    if (attached?.role !== 'agreement')
+      return refusal(409, 'CERTIFICATION_AGREEMENT_DOCUMENT');
+    this.append(
+      stored,
+      'agreement',
+      { signedOn, attachmentId: attached.id },
+      reason,
+      me,
+    );
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  private attach(
+    stored: StoredCase,
+    source: FakeSource,
+    role: string,
+    note: string | null,
+    by: Actor,
+  ): StoredAttachment {
+    stored.revision += 1;
+    const attached: StoredAttachment = {
+      id: `11310000-0000-4000-8000-6000000000${String(++this.sequence).padStart(2, '0')}`,
+      caseRevision: stored.revision,
+      role,
+      documentId: source.documentId,
+      versionId: source.versionId,
+      representationId: source.representationId,
+      versionNumber: source.versionNumber,
+      sourceTitle: source.sourceTitle,
+      fileName: source.fileName,
+      sizeBytes: source.bytes.length,
+      sha256: source.sha256,
+      note,
+      attachedBy: by,
+      attachedAt: this.tick(),
+    };
+    stored.attachments.push(attached);
+    return attached;
   }
 
   /** The accepted application's facts, or undefined before an acceptance. */
@@ -547,6 +785,7 @@ export class FakeCertificationServer {
       openedAt: this.tick(),
       openedBy: by,
       steps: [],
+      attachments: [],
     };
     this.cases.set(stored.id, stored);
     return stored;
@@ -577,6 +816,7 @@ export class FakeCertificationServer {
     const application = latest('application');
     const review = latest('application_review');
     const duration = latest('duration');
+    const agreement = latest('agreement');
     return {
       id: stored.id,
       projectId: this.projectId,
@@ -595,7 +835,9 @@ export class FakeCertificationServer {
               ? 'application_review'
               : !duration
                 ? 'duration'
-                : 'agreement',
+                : !agreement
+                  ? 'agreement'
+                  : 'team',
       openedBy: stored.openedBy,
       openedAt: stored.openedAt,
     };
@@ -610,6 +852,7 @@ export class FakeCertificationServer {
       application: latest('application'),
       applicationReview: latest('application_review'),
       duration: latest('duration'),
+      agreement: latest('agreement'),
     };
   }
 
@@ -812,4 +1055,68 @@ function centsText(cents: number): string {
 
 function refusal(status: number, code: string): Response {
   return Response.json({ code, message: code }, { status });
+}
+
+function primes(count: number): number[] {
+  const found: number[] = [];
+  for (let candidate = 2; found.length < count; candidate += 1)
+    if (found.every((prime) => candidate % prime !== 0)) found.push(candidate);
+  return found;
+}
+const fractionBits = (value: number) =>
+  ((value - Math.floor(value)) * 0x100000000) >>> 0;
+const SHA256_ROUND = primes(64).map((prime) => fractionBits(Math.cbrt(prime)));
+const SHA256_INITIAL = primes(8).map((prime) => fractionBits(Math.sqrt(prime)));
+const rotate = (value: number, bits: number) =>
+  (value >>> bits) | (value << (32 - bits));
+
+/**
+ * SHA-256 of fixture bytes, synchronous and without Node.js modules: this
+ * fixture is also present in the web image, which has none.
+ */
+function sha256Hex(bytes: Uint8Array): string {
+  const padded = new Uint8Array(Math.ceil((bytes.length + 9) / 64) * 64);
+  padded.set(bytes);
+  padded[bytes.length] = 0x80;
+  const view = new DataView(padded.buffer);
+  view.setUint32(padded.length - 8, Math.floor(bytes.length / 0x20000000));
+  view.setUint32(padded.length - 4, (bytes.length * 8) >>> 0);
+  const hash = [...SHA256_INITIAL];
+  const words = new Uint32Array(64);
+  for (let offset = 0; offset < padded.length; offset += 64) {
+    for (let i = 0; i < 16; i += 1) words[i] = view.getUint32(offset + i * 4);
+    for (let i = 16; i < 64; i += 1) {
+      const low = words[i - 15];
+      const high = words[i - 2];
+      const s0 = rotate(low, 7) ^ rotate(low, 18) ^ (low >>> 3);
+      const s1 = rotate(high, 17) ^ rotate(high, 19) ^ (high >>> 10);
+      words[i] = (words[i - 16] + s0 + words[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = hash;
+    for (let i = 0; i < 64; i += 1) {
+      const t1 =
+        (h +
+          (rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25)) +
+          ((e & f) ^ (~e & g)) +
+          SHA256_ROUND[i] +
+          words[i]) >>>
+        0;
+      const t2 =
+        ((rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22)) +
+          ((a & b) ^ (a & c) ^ (b & c))) >>>
+        0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + t1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (t1 + t2) >>> 0;
+    }
+    [a, b, c, d, e, f, g, h].forEach((value, i) => {
+      hash[i] = (hash[i] + value) >>> 0;
+    });
+  }
+  return hash.map((value) => value.toString(16).padStart(8, '0')).join('');
 }
