@@ -722,6 +722,13 @@
       "when": 1794027498918,
       "tag": "0102_certification_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1794028077733,
+      "tag": "0103_certification_team",
+      "breakpoints": true
     }
   ]
 }

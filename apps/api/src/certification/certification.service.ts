@@ -33,6 +33,7 @@ import {
   type CERTIFICATION_COMMAND_KINDS,
 } from '../database/schema/certification.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
+import { workspaceMemberships } from '../database/schema/core.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentWorkingEvidenceReferenceService } from '../documents/document-working-evidence-reference.service.js';
 import {
@@ -46,7 +47,17 @@ import {
   durationDetermination,
   durationFactorInputs,
 } from './certification-duration.validation.js';
+import {
+  auditTeam,
+  teamCommand,
+  teamDecision,
+  teamDecisionCommand,
+  teamMembershipIds,
+  teamWithoutConflict,
+} from './certification-team.js';
 import type {
+  TeamDecisionVersion,
+  TeamVersion,
   AgreementVersion,
   CertificationAttachment,
   CertificationDocumentRegister,
@@ -657,6 +668,153 @@ export class CertificationService {
     });
   }
 
+  proposeTeam({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      kind: 'team',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = teamCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        if (!latest(steps, 'agreement'))
+          throw stepConflict(
+            'CERTIFICATION_AGREEMENT_MISSING',
+            'Record the certification agreement before proposing the team.',
+          );
+        const version = (latest(steps, 'team')?.version ?? 0) + 1;
+        if ((version === 1) !== (input.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A new team version states its reason; a first proposal has none.',
+          );
+        for (const membershipId of teamMembershipIds(input.team)) {
+          const [member] = await this.database.connection
+            .select({ id: workspaceMemberships.id })
+            .from(workspaceMemberships)
+            .where(
+              and(
+                eq(workspaceMemberships.workspaceId, actor.workspaceId),
+                eq(workspaceMemberships.id, membershipId),
+                eq(workspaceMemberships.status, 'active'),
+              ),
+            );
+          if (!member)
+            throw new BadRequestException({
+              code: 'CERTIFICATION_TEAM_MEMBER_UNKNOWN',
+              message: 'A linked team member is not an active member.',
+            });
+        }
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step: 'team',
+          version,
+          payload: input.team,
+          reason: input.reason,
+          action: 'certification_case.team_proposed',
+          metadata: { version, members: input.team.members.length },
+        });
+      },
+    });
+  }
+
+  decideTeam({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'approver',
+      kind: 'team_decision',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = teamDecisionCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        const proposed = latest(steps, 'team');
+        const decided = latest(steps, 'team_decision');
+        if (
+          !proposed ||
+          (decided &&
+            teamDecisionVersion(decided).value.teamVersion === proposed.version)
+        )
+          throw stepConflict(
+            'CERTIFICATION_TEAM_NOT_PENDING',
+            'No proposed team awaits a decision.',
+          );
+        if (input.decision.teamVersion !== proposed.version)
+          throw staleVersionConflict(
+            'Reload the Certification Case: the team proposal changed.',
+          );
+        const team = teamVersion(proposed).value;
+        if (this.onTeam(actor, steps))
+          throw stepConflict(
+            'CERTIFICATION_INDEPENDENCE',
+            'A member of the audit team cannot approve it.',
+          );
+        if (
+          input.decision.decision === 'approved' &&
+          !teamWithoutConflict(team)
+        )
+          throw stepConflict(
+            'CERTIFICATION_TEAM_CONFLICT_DECLARED',
+            'A team with a declared conflict cannot be approved.',
+          );
+        const version = (decided?.version ?? 0) + 1;
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step: 'team_decision',
+          version,
+          payload: input.decision,
+          // A decision is not a correction: its own reason lives in the payload.
+          reason: null,
+          action: 'certification_case.team_decided',
+          metadata: {
+            teamVersion: proposed.version,
+            decision: input.decision.decision,
+          },
+        });
+      },
+    });
+  }
+
   list({
     actor,
     projectId,
@@ -783,8 +941,10 @@ export class CertificationService {
     key,
     fingerprint,
     execute,
+    role = 'programme_manager',
   }: {
     actor: ActorContext;
+    role?: Exclude<CertificationRole, 'reader'>;
     kind: CommandKind;
     key: string;
     fingerprint: string;
@@ -793,7 +953,7 @@ export class CertificationService {
     return this.protect(() =>
       runIdempotentCommand(this.database, {
         fingerprint,
-        authorize: () => this.authorize(actor, 'programme_manager'),
+        authorize: () => this.authorize(actor, role),
         lockParts: (companyId) => [
           'certification',
           actor.workspaceId,
@@ -840,7 +1000,9 @@ export class CertificationService {
       | 'certification_case.application_recorded'
       | 'certification_case.application_reviewed'
       | 'certification_case.duration_confirmed'
-      | 'certification_case.agreement_recorded';
+      | 'certification_case.agreement_recorded'
+      | 'certification_case.team_proposed'
+      | 'certification_case.team_decided';
     metadata: Record<string, string | number>;
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
@@ -987,6 +1149,8 @@ export class CertificationService {
     const review = latest(steps, 'application_review');
     const duration = latest(steps, 'duration');
     const signed = latest(steps, 'agreement');
+    const team = latest(steps, 'team');
+    const decided = latest(steps, 'team_decision');
     return {
       ...summary,
       companyId: row.companyId,
@@ -995,6 +1159,8 @@ export class CertificationService {
       applicationReview: review ? reviewVersion(review) : null,
       duration: duration ? durationVersion(duration) : null,
       agreement: signed ? agreementVersion(signed) : null,
+      team: team ? teamVersion(team) : null,
+      teamDecision: decided ? teamDecisionVersion(decided) : null,
     };
   }
 
@@ -1019,6 +1185,17 @@ export class CertificationService {
       },
       openedAt: row.openedAt.toISOString(),
     };
+  }
+
+  /** Whether the actor is linked to a member of any proposed team version. */
+  private onTeam(actor: ActorContext, steps: readonly StepRow[]): boolean {
+    return steps
+      .filter((row) => row.step === 'team')
+      .some((row) =>
+        teamMembershipIds(teamVersion(row).value).includes(
+          actor.workspaceMembershipId,
+        ),
+      );
   }
 
   /** The latest application facts once the review accepted them. */
@@ -1153,7 +1330,14 @@ function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
   if (!latest(steps, 'application_review')) return 'application_review';
   if (!latest(steps, 'duration')) return 'duration';
   if (!latest(steps, 'agreement')) return 'agreement';
-  return 'team';
+  const team = latest(steps, 'team');
+  if (!team) return 'team';
+  const decided = latest(steps, 'team_decision');
+  if (!decided) return 'team_decision';
+  const decision = teamDecisionVersion(decided).value;
+  if (decision.teamVersion !== team.version) return 'team_decision';
+  if (decision.decision === 'returned') return 'team';
+  return 'stage_1_plan';
 }
 
 function stepConflict(code: string, message: string): ConflictException {
@@ -1200,6 +1384,22 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     ...base(row),
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
+  };
+}
+
+function teamVersion(row: StepRow): TeamVersion {
+  return {
+    ...base(row),
+    step: 'team',
+    value: persisted(() => auditTeam(row.payload)),
+  };
+}
+
+function teamDecisionVersion(row: StepRow): TeamDecisionVersion {
+  return {
+    ...base(row),
+    step: 'team_decision',
+    value: persisted(() => teamDecision(row.payload)),
   };
 }
 
@@ -1301,6 +1501,10 @@ function stepVersion(row: StepRow): CertificationStepVersion {
       return durationVersion(row);
     case 'agreement':
       return agreementVersion(row);
+    case 'team':
+      return teamVersion(row);
+    case 'team_decision':
+      return teamDecisionVersion(row);
   }
   return unexpectedStep(row.step);
 }

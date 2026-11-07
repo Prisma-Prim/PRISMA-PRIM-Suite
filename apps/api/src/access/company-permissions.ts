@@ -602,6 +602,11 @@ export const COMPANY_ROLE_BUNDLES = {
     grantVersion: 'v1',
     versions: { v1: ['certification.programme.manage'] },
   },
+  company_certification_approver: {
+    label: 'Company Certification Approver',
+    grantVersion: 'v1',
+    versions: { v1: ['certification.approve'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -1445,6 +1450,10 @@ export const COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE =
   'company_certification_programme_manager' satisfies CompanyRoleBundle;
 export const COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_certification_programme_manager.label;
+export const COMPANY_CERTIFICATION_APPROVER_BUNDLE =
+  'company_certification_approver' satisfies CompanyRoleBundle;
+export const COMPANY_CERTIFICATION_APPROVER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_certification_approver.label;
 
 export const COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE =
   'company_working_evidence_case_reader' satisfies CompanyRoleBundle;

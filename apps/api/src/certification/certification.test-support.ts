@@ -13,7 +13,12 @@ import {
 
 export const CERTIFICATION_OWNER = 'certification-owner';
 export const CERTIFICATION_READER = 'certification-reader';
-const MEMBERS = [CERTIFICATION_OWNER, CERTIFICATION_READER] as const;
+export const CERTIFICATION_APPROVER = 'certification-approver';
+const MEMBERS = [
+  CERTIFICATION_OWNER,
+  CERTIFICATION_READER,
+  CERTIFICATION_APPROVER,
+] as const;
 export type CertificationSubject = (typeof MEMBERS)[number];
 
 /** The repository's synthetic questionnaire PDF; no real content. */
@@ -176,6 +181,76 @@ export async function openCertificationFixture(input: {
       throw new Error(`Designation failed: ${designated.status}`);
     return { documentId, versionId, representationId };
   }
+  /** A small accepted Case with confirmed duration and recorded agreement (revision 6). */
+  async function agreedCase() {
+    const caseId = await acceptedCase(
+      applicationFacts({
+        haccpStudyCount: 1,
+        effectiveFte: 10,
+        totalHeadcount: 10,
+      }),
+    );
+    await created(
+      await call(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/duration`,
+        {
+          method: 'POST',
+          body: {
+            expectedRevision: 3,
+            inputs: {
+              primary: 'CI',
+              haccpStudies: { CI: 1 },
+              increases: {},
+              reductions: {},
+            },
+            confirmed: {
+              initialOnSite: '2.5',
+              stage1OnSite: '1',
+              stage2OnSite: '1.5',
+              surveillanceOnSite: '0.83',
+              recertificationOnSite: '1.67',
+            },
+          },
+        },
+      ),
+    );
+    const source = await receivedSource('Signed certification agreement');
+    await created(
+      await call(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/documents`,
+        {
+          method: 'POST',
+          body: { expectedRevision: 4, role: 'agreement', ...source },
+        },
+      ),
+    );
+    const register = record(
+      await (
+        await call(
+          CERTIFICATION_OWNER,
+          `/certification-cases/${caseId}/documents`,
+        )
+      ).json(),
+    ).items;
+    if (!Array.isArray(register)) throw new Error('Expected attachments.');
+    await created(
+      await call(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/agreement`,
+        {
+          method: 'POST',
+          body: {
+            expectedRevision: 5,
+            signedOn: '2026-11-02',
+            attachmentId: text(record(register[0]).id),
+          },
+        },
+      ),
+    );
+    return caseId;
+  }
   /** Opens a Case and records the given application; the review stays open. */
   async function caseWithApplication(facts = applicationFacts()) {
     const caseId = text(
@@ -243,13 +318,13 @@ export async function openCertificationFixture(input: {
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: CERTIFICATION_OWNER,
         ACCESS_BOOTSTRAP_WORKSPACE_ID: input.workspaceId,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Certification Workspace',
-        ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
-          {
+        ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify(
+          [CERTIFICATION_READER, CERTIFICATION_APPROVER].map((subject) => ({
             provider: 'deterministic-test',
-            subject: CERTIFICATION_READER,
+            subject,
             workspaceId: input.workspaceId,
-          },
-        ]),
+          })),
+        ),
         ...scanner.environment,
       },
     });
@@ -293,6 +368,14 @@ export async function openCertificationFixture(input: {
       '/company-certification-reader-assignments',
     ])
       await grant(CERTIFICATION_READER, path);
+    for (const path of [
+      '/company-context-assignments',
+      '/company-director-client-assignments',
+      '/company-project-assignments',
+      '/company-certification-reader-assignments',
+      '/company-certification-approver-assignments',
+    ])
+      await grant(CERTIFICATION_APPROVER, path);
     clientId = text(
       (
         await created(
@@ -351,7 +434,13 @@ export async function openCertificationFixture(input: {
     eventCount,
     caseWithApplication,
     acceptedCase,
+    agreedCase,
     receivedSource,
+    membership(subject: CertificationSubject): string {
+      const id = memberships.get(subject);
+      if (!id) throw new Error(`Unknown member ${subject}`);
+      return id;
+    },
     get projectId() {
       return projectId;
     },

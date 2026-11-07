@@ -88,6 +88,41 @@ export class CompanyCertificationProgrammeManagerAssignmentController {
   }
 }
 
+@Controller('company-certification-approver-assignments')
+@UseGuards(ActorContextAdapter)
+export class CompanyCertificationApproverAssignmentController {
+  constructor(private readonly assignments: CompanyContextAssignmentService) {}
+
+  @Post()
+  grant(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const command = record(body);
+    return this.assignments.grantCertificationApprover(actorFrom(request), {
+      workspaceMembershipId: command.workspaceMembershipId,
+      companyId: command.companyId,
+      idempotencyKey,
+    });
+  }
+
+  @Delete(':workspaceMembershipId/:companyId')
+  revoke(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('workspaceMembershipId') workspaceMembershipId: string,
+    @Param('companyId') companyId: string,
+  ) {
+    return this.assignments.revokeCertificationApprover(
+      actorFrom(request),
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+}
+
 function actorFrom(request: ActorContextRequest) {
   if (!request.actorContext) throw new ForbiddenException();
   return request.actorContext;
