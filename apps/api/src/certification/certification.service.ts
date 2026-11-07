@@ -700,12 +700,20 @@ export class CertificationService {
             'CERTIFICATION_AGREEMENT_MISSING',
             'Record the certification agreement before proposing the team.',
           );
-        const version = (latest(steps, 'team')?.version ?? 0) + 1;
+        const previous = latest(steps, 'team');
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
             'A new team version states its reason; a first proposal has none.',
           );
+        // An unchanged team may be resubmitted after a return, for a new
+        // decision; any other unchanged version would change nothing.
+        const decided = latest(steps, 'team_decision');
+        const decision = decided ? teamDecisionVersion(decided).value : null;
+        const resubmitted =
+          decision?.decision === 'returned' &&
+          decision.teamVersion === previous?.version;
         for (const membershipId of teamMembershipIds(input.team)) {
           const [member] = await this.database.connection
             .select({ id: workspaceMemberships.id })
@@ -729,6 +737,7 @@ export class CertificationService {
           current,
           step: 'team',
           version,
+          replaces: resubmitted ? undefined : previous,
           payload: input.team,
           reason: input.reason,
           action: 'certification_case.team_proposed',

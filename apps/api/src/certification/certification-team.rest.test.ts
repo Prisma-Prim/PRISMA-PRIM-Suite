@@ -89,6 +89,14 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
       nextStep: 'team_decision',
       team: { version: 1, value: { members: [leader, expert] } },
     });
+    const unchanged = await propose(caseId, {
+      expectedRevision: 7,
+      reason: 'Same team',
+      members: [leader, expert],
+    });
+    expect(record(await unchanged.json()).code).toBe(
+      'CERTIFICATION_CORRECTION_UNCHANGED',
+    );
     const returned = await fixture.created(
       await decide(caseId, {
         expectedRevision: 7,
@@ -245,5 +253,20 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
         }),
       ),
     ).toMatchObject({ nextStep: 'team' });
+    // The same team may be resubmitted after a return, for a new decision.
+    expect(
+      await fixture.created(
+        await propose(conflicted, {
+          expectedRevision: 8,
+          reason: 'The training ended more than two years ago.',
+          members: [
+            member({
+              declarations: { ...NO_CONFLICT, noConsultancy: false },
+              conflictNote: 'Delivered a training to the client last year.',
+            }),
+          ],
+        }),
+      ),
+    ).toMatchObject({ nextStep: 'team_decision', team: { version: 2 } });
   });
 });
