@@ -72,6 +72,34 @@ import {
 } from './certification-team-draft';
 import { teamWithoutConflict } from './certification-team';
 import {
+  findingCommands,
+  isNonconformity,
+  recordEvidence,
+  type ClassificationRefusal,
+  type Finding,
+  type FindingCommand,
+} from './certification-findings';
+import {
+  classificationFromDraft,
+  correctionDraftFor,
+  correctionFromDraft,
+  emptyClassificationDraft,
+  emptyFindingDraft,
+  emptyPlanJudgmentDraft,
+  emptyResponseDraft,
+  emptyVerificationDraft,
+  findingFromDraft,
+  judgmentFromDraft,
+  responseFromDraft,
+  verificationFromDraft,
+  type ClassificationDraft,
+  type FindingCorrectionDraft,
+  type FindingDraft,
+  type PlanJudgmentDraft,
+  type ResponseDraft,
+  type VerificationDraft,
+} from './certification-findings-draft';
+import {
   approvedTeam,
   leadsTeam,
   slotRoles,
@@ -111,7 +139,11 @@ import {
   type LegalEntityOption,
 } from './certification-response';
 import { AgreementForm, AttachForm } from './CertificationDocumentForms';
-import { AgreementView, DossierRegister } from './CertificationDocumentViews';
+import {
+  AgreementView,
+  DossierRegister,
+  type RegisterDownload,
+} from './CertificationDocumentViews';
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
@@ -132,13 +164,27 @@ import {
   TeamView,
   type KnownPeople,
 } from './CertificationTeamViews';
+import { VersionAttribution } from './CertificationAttribution';
+import {
+  ClassificationForm,
+  FindingCorrectionForm,
+  FindingRecordForm,
+  PlanJudgmentForm,
+  ResponseForm,
+  VerificationForm,
+} from './CertificationFindingForms';
+import {
+  FindingFacts,
+  FindingHistory,
+  FindingHold,
+  useFindingHeading,
+} from './CertificationFindingViews';
 import {
   FactsView,
   NextStepLabel,
   ReviewView,
   StepRail,
   TimelineView,
-  VersionAttribution,
 } from './CertificationViews';
 
 export interface CertificationWorkspaceProps {
@@ -180,9 +226,33 @@ type MutationKind =
   | 'agreement'
   | 'team'
   | 'decision'
+  | 'finding'
   | StageKind;
 /** The Stage records, each with its own form and feedback. */
 type StageKind = 'stage1Plan' | 'stage2Plan' | 'stage1Report' | 'stage2Report';
+/**
+ * The one Finding form open in the Case, with its draft: a new Finding of a
+ * Stage, or a later version of one Finding.
+ */
+type FindingForm =
+  | { command: 'record'; stage: AuditStage; draft: FindingDraft }
+  | { command: 'correction'; findingId: string; draft: FindingCorrectionDraft }
+  | {
+      command: 'classification' | 'reclassification';
+      findingId: string;
+      draft: ClassificationDraft;
+    }
+  | { command: 'response'; findingId: string; draft: ResponseDraft }
+  | { command: 'planJudgment'; findingId: string; draft: PlanJudgmentDraft }
+  | { command: 'verification'; findingId: string; draft: VerificationDraft };
+/** What the actor may record on Findings in the read Case. */
+type FindingRoles = { leader: boolean; independentApprover: boolean };
+/** The serialized Finding command, or why the draft is refused. */
+type FindingSubmission =
+  | { status: 'ready'; path: string; body: string }
+  | { status: 'refused'; message: CertificationMessageKey }
+  /** The actor no longer holds the role: nothing is offered or sent. */
+  | { status: 'unavailable' };
 /** A Workspace member the read Case names, offered as a team member link. */
 type CasePerson = CertificationActorReference & { self: boolean };
 /**
@@ -339,6 +409,10 @@ function CertificationRegistry(
     stage1Report: stage1ReportFeedback,
     stage2Report: stage2ReportFeedback,
   };
+  /** Null while no Finding form is open; kept through a reload. */
+  const [findingForm, setFindingForm] = useState<FindingForm | null>(null);
+  const [findingFeedback, setFindingFeedback] = useState<Feedback>(IDLE);
+  const findingHeading = useFindingHeading();
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -354,6 +428,7 @@ function CertificationRegistry(
       agreementFeedback,
       teamFeedback,
       decisionFeedback,
+      findingFeedback,
       ...Object.values(stageFeedback),
     ].some((feedback) => feedback.status === 'saving');
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
@@ -376,6 +451,8 @@ function CertificationRegistry(
         return setTeamFeedback;
       case 'decision':
         return setDecisionFeedback;
+      case 'finding':
+        return setFindingFeedback;
       case 'stage1Plan':
         return setStage1PlanFeedback;
       case 'stage2Plan':
@@ -447,6 +524,8 @@ function CertificationRegistry(
       resetStageDraft(kind);
       feedbackSetter(kind)(IDLE);
     }
+    setFindingForm(null);
+    setFindingFeedback(IDLE);
     contentOperation.retire();
     setDownload(NO_DOWNLOAD);
   }
@@ -599,6 +678,7 @@ function CertificationRegistry(
       setAgreementFeedback(clear);
       setTeamFeedback(clear);
       setDecisionFeedback(clear);
+      setFindingFeedback(clear);
       for (const kind of STAGE_KINDS) feedbackSetter(kind)(clear);
     }
     selected.current = caseId;
@@ -743,6 +823,9 @@ function CertificationRegistry(
         break;
       case 'decision':
         setDecisionDraft(emptyDecisionDraft());
+        break;
+      case 'finding':
+        setFindingForm(null);
         break;
       case 'stage1Plan':
       case 'stage2Plan':
@@ -1128,6 +1211,123 @@ function CertificationRegistry(
   }
 
   /**
+   * What this actor may record on Findings, as the server checks it: the
+   * auditor linked to the approved team's leader, or an approver linked to
+   * no member of any team version.
+   */
+  function findingRoles(view: CaseView): FindingRoles {
+    const current = view.caseDetail;
+    const team = approvedTeam(current);
+    const open = current.status === 'open';
+    return {
+      leader:
+        open &&
+        authority.audit &&
+        team !== undefined &&
+        leadsTeam(team, actor.workspaceMembershipId),
+      independentApprover:
+        open &&
+        authority.approve &&
+        !linkedToAnyTeamVersion(view.timeline, actor.workspaceMembershipId),
+    };
+  }
+
+  /** Records the open Finding form; the server rechecks every rule. */
+  function submitFinding(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      !findingForm ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(findingFeedback)
+    )
+      return;
+    const view = detail.value;
+    const submission = findingSubmission(findingForm, view, findingRoles(view));
+    switch (submission.status) {
+      case 'unavailable':
+        return;
+      case 'refused':
+        setFindingFeedback(refusedWith(submission.message));
+        return;
+      case 'ready':
+        void execute(
+          'finding',
+          reuse(findingFeedback, {
+            path: submission.path,
+            body: submission.body,
+            caseId: view.caseDetail.id,
+          }),
+        );
+        return;
+    }
+    unexpected(submission);
+  }
+
+  function openFindingForm(finding: Finding, command: FindingCommand) {
+    const findingId = finding.id;
+    switch (command) {
+      case 'correction':
+        setFindingForm({
+          command,
+          findingId,
+          draft: correctionDraftFor(finding.statement),
+        });
+        break;
+      case 'classification':
+      case 'reclassification':
+        setFindingForm({
+          command,
+          findingId,
+          draft: emptyClassificationDraft(),
+        });
+        break;
+      case 'response':
+        setFindingForm({ command, findingId, draft: emptyResponseDraft() });
+        break;
+      case 'planJudgment':
+        setFindingForm({ command, findingId, draft: emptyPlanJudgmentDraft() });
+        break;
+      case 'verification':
+        setFindingForm({ command, findingId, draft: emptyVerificationDraft() });
+        break;
+      default:
+        unexpected(command);
+    }
+    setFindingFeedback(IDLE);
+  }
+
+  /** Keeps an edited Finding draft; an edit clears a refusal it may answer. */
+  function editFindingForm(next: FindingForm) {
+    setFindingForm(next);
+    if (
+      findingFeedback.status === 'saved' ||
+      (findingFeedback.status === 'refused' && !findingFeedback.reload)
+    )
+      setFindingFeedback(IDLE);
+  }
+
+  function closeFindingForm() {
+    setFindingForm(null);
+    setFindingFeedback(IDLE);
+  }
+
+  /** The exact attachments open through the register's download, if allowed. */
+  function registerDownload(view: CaseView): RegisterDownload | undefined {
+    return documentRights
+      ? {
+          pendingId:
+            download.status === 'pending' && download.rights === documentRights
+              ? download.attachmentId
+              : undefined,
+          disabled: busy,
+          onDownload: (attachment) =>
+            void downloadAttachment(view.caseDetail.id, attachment),
+        }
+      : undefined;
+  }
+
+  /**
    * The Workspace members the read Case names, the actor first. No member
    * directory is readable under the Certification grants, so a team member
    * can be linked only to a person the Case already shows.
@@ -1141,6 +1341,8 @@ function CertificationRegistry(
     add(view.caseDetail.openedBy);
     for (const entry of view.timeline.entries) add(entry.recordedBy);
     for (const item of view.register.items) add(item.attachedBy);
+    for (const finding of view.caseDetail.findings)
+      for (const record of finding.records) add(record.recordedBy);
     named.delete(actor.workspaceMembershipId);
     return [
       {
@@ -1419,6 +1621,7 @@ function CertificationRegistry(
     agreement: `${prefix}-agreement-feedback`,
     team: `${prefix}-team-feedback`,
     decision: `${prefix}-decision-feedback`,
+    finding: `${prefix}-finding-feedback`,
     stage1Plan: `${prefix}-stage-1-plan-feedback`,
     stage2Plan: `${prefix}-stage-2-plan-feedback`,
     stage1Report: `${prefix}-stage-1-report-feedback`,
@@ -1651,6 +1854,7 @@ function CertificationRegistry(
             agreementFeedback,
             teamFeedback,
             decisionFeedback,
+            findingFeedback,
             ...Object.values(stageFeedback),
           ].some((feedback) => feedback.status === 'saved') && (
             <p role="status">{copy('saveConfirmed')}</p>
@@ -1734,6 +1938,11 @@ function CertificationRegistry(
                   {copy('nextRecommendationPending')}
                 </p>
               )}
+              {caseView.caseDetail.nextStep === 'findings_follow_up' && (
+                <p className="certification-note">
+                  {copy('nextFindingsFollowUpPending')}
+                </p>
+              )}
               <section aria-labelledby={`${prefix}-application-title`}>
                 <h5 id={`${prefix}-application-title`}>
                   {copy('applicationTitle')}
@@ -1809,23 +2018,7 @@ function CertificationRegistry(
                 <p>{copy('documentsHelp')}</p>
                 <DossierRegister
                   register={caseView.register}
-                  download={
-                    documentRights
-                      ? {
-                          pendingId:
-                            download.status === 'pending' &&
-                            download.rights === documentRights
-                              ? download.attachmentId
-                              : undefined,
-                          disabled: busy,
-                          onDownload: (attachment) =>
-                            void downloadAttachment(
-                              caseView.caseDetail.id,
-                              attachment,
-                            ),
-                        }
-                      : undefined
-                  }
+                  download={registerDownload(caseView)}
                 />
                 {!documentRights && (
                   <p className="certification-note">
@@ -1932,6 +2125,7 @@ function CertificationRegistry(
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
                 <TimelineView
                   timeline={caseView.timeline}
+                  findings={caseView.caseDetail.findings}
                   register={caseView.register}
                   people={knownPeople(caseView)}
                 />
@@ -2319,7 +2513,277 @@ function CertificationRegistry(
         {stageReportView(view, stage)}
         {feedbackMessage(reportKind(stage), stageFeedback[reportKind(stage)])}
         {stageReportStep(view, stage)}
+        {plan && findingsSection(view, stage)}
       </section>
+    );
+  }
+
+  /**
+   * The Findings of a planned Stage in sequence order, each with its exact
+   * evidence, the server's dates and its history, the commands this actor
+   * may record, and the entry to a new Finding or why it is not offered.
+   */
+  function findingsSection(view: CaseView, stage: AuditStage) {
+    const titleId = `${prefix}-${stage}-findings-title`;
+    const findings = view.caseDetail.findings.filter(
+      (entry) => entry.stage === stage,
+    );
+    const roles = findingRoles(view);
+    const active = activeFindingForm(view, roles);
+    return (
+      <section aria-labelledby={titleId}>
+        <h6 id={titleId}>
+          {copy(
+            stage === 'stage_1' ? 'stage1FindingsTitle' : 'stage2FindingsTitle',
+          )}
+        </h6>
+        <p>{copy('findingsHelp')}</p>
+        {findings.length === 0 ? (
+          <p>{copy('findingsEmpty')}</p>
+        ) : (
+          <ol className="certification-findings">
+            {findings.map((finding) =>
+              findingItem(view, finding, roles, active),
+            )}
+          </ol>
+        )}
+        {view.caseDetail.status === 'open' &&
+          authority.approve &&
+          !roles.independentApprover &&
+          findings.length > 0 && (
+            <p className="certification-blocked">
+              {copy('findingIndependence')}
+            </p>
+          )}
+        {recordFindingStep(view, stage, roles, active)}
+      </section>
+    );
+  }
+
+  /**
+   * The open Finding form while the read Case still lets this actor record
+   * it; otherwise none is open and its draft no longer holds the panel.
+   */
+  function activeFindingForm(
+    view: CaseView,
+    roles: FindingRoles,
+  ): FindingForm | null {
+    if (!findingForm) return null;
+    switch (findingForm.command) {
+      case 'record':
+        return roles.leader &&
+          (findingForm.stage === 'stage_2' ||
+            view.caseDetail.stage2Plan === null)
+          ? findingForm
+          : null;
+      case 'reclassification':
+        return roles.independentApprover ? findingForm : null;
+      case 'correction':
+      case 'classification':
+      case 'response':
+      case 'planJudgment':
+      case 'verification':
+        return roles.leader ? findingForm : null;
+    }
+    return unexpected(findingForm);
+  }
+
+  function findingItem(
+    view: CaseView,
+    finding: Finding,
+    roles: FindingRoles,
+    active: FindingForm | null,
+  ) {
+    const headingId = `${prefix}-finding-${finding.id}`;
+    const open =
+      active !== null &&
+      active.command !== 'record' &&
+      active.findingId === finding.id
+        ? active
+        : null;
+    const commands = findingCommands(finding, roles);
+    return (
+      <li key={finding.id} aria-labelledby={headingId}>
+        <strong id={headingId}>{findingHeading(finding)}</strong>
+        <FindingFacts
+          finding={finding}
+          register={view.register}
+          download={registerDownload(view)}
+        />
+        <FindingHold finding={finding} />
+        <FindingHistory finding={finding} register={view.register} />
+        {open ? (
+          <>
+            {feedbackMessage('finding', findingFeedback)}
+            {findingFormFor(view, finding, open)}
+          </>
+        ) : (
+          commands.length > 0 && (
+            <div className="certification-actions">
+              {commands.map((command) => (
+                <button
+                  key={command}
+                  type="button"
+                  disabled={busy || active !== null}
+                  onClick={() => openFindingForm(finding, command)}
+                >
+                  {findingCommandTitle(command, finding)}
+                </button>
+              ))}
+            </div>
+          )
+        )}
+      </li>
+    );
+  }
+
+  function findingCommandTitle(command: FindingCommand, finding: Finding) {
+    return formatMessage(copy(findingCommandLabel(command)), {
+      sequence: finding.sequence,
+    });
+  }
+
+  /** The open form of a later version of one Finding. */
+  function findingFormFor(
+    view: CaseView,
+    finding: Finding,
+    open: Exclude<FindingForm, { command: 'record' }>,
+  ) {
+    const shared = {
+      idPrefix: `${prefix}-finding-${finding.id}-${open.command}`,
+      title: findingCommandTitle(open.command, finding),
+      disabled: busy,
+      submitting: findingFeedback.status === 'saving',
+      submitBlocked: blockedUntilReload(findingFeedback),
+      feedbackId: describedFeedback('finding', findingFeedback),
+      onSubmit: submitFinding,
+      onCancel: closeFindingForm,
+    };
+    const register = view.register.items;
+    switch (open.command) {
+      case 'correction':
+        return (
+          <FindingCorrectionForm
+            {...shared}
+            draft={open.draft}
+            register={register}
+            onChange={(draft) => editFindingForm({ ...open, draft })}
+          />
+        );
+      case 'classification':
+      case 'reclassification':
+        return (
+          <ClassificationForm
+            {...shared}
+            draft={open.draft}
+            stage={finding.stage}
+            by={
+              open.command === 'reclassification' ? 'approver' : 'team_leader'
+            }
+            onChange={(draft) => editFindingForm({ ...open, draft })}
+          />
+        );
+      case 'response':
+        return (
+          <ResponseForm
+            {...shared}
+            draft={open.draft}
+            register={register}
+            onChange={(draft) => editFindingForm({ ...open, draft })}
+          />
+        );
+      case 'planJudgment':
+        return (
+          <PlanJudgmentForm
+            {...shared}
+            draft={open.draft}
+            onChange={(draft) => editFindingForm({ ...open, draft })}
+          />
+        );
+      case 'verification':
+        return (
+          <VerificationForm
+            {...shared}
+            draft={open.draft}
+            register={register}
+            onChange={(draft) => editFindingForm({ ...open, draft })}
+          />
+        );
+    }
+    return unexpected(open);
+  }
+
+  /**
+   * The new-Finding form for the leader of the approved team holding the
+   * auditor role, or the plain reason it is not offered.
+   */
+  function recordFindingStep(
+    view: CaseView,
+    stage: AuditStage,
+    roles: FindingRoles,
+    active: FindingForm | null,
+  ) {
+    const current = view.caseDetail;
+    if (current.status !== 'open' || !authority.audit) return null;
+    if (!approvedTeam(current))
+      return (
+        <p className="certification-blocked">
+          {copy('blockedFindingTeamNotApproved')}
+        </p>
+      );
+    // The server refuses a Finding by anyone but the approved team's leader.
+    if (!roles.leader)
+      return (
+        <p className="certification-blocked">
+          {copy('blockedFindingNotTeamLeader')}
+        </p>
+      );
+    if (stage === 'stage_1' && current.stage2Plan)
+      return (
+        <p className="certification-note">
+          {copy('blockedFindingStageClosed')}
+        </p>
+      );
+    const title = copy(
+      stage === 'stage_1' ? 'recordStage1Finding' : 'recordStage2Finding',
+    );
+    const open =
+      active?.command === 'record' && active.stage === stage ? active : null;
+    if (!open)
+      return (
+        <button
+          type="button"
+          disabled={busy || active !== null}
+          onClick={() => {
+            setFindingForm({
+              command: 'record',
+              stage,
+              draft: emptyFindingDraft(),
+            });
+            setFindingFeedback(IDLE);
+          }}
+        >
+          {title}
+        </button>
+      );
+    return (
+      <>
+        {feedbackMessage('finding', findingFeedback)}
+        <FindingRecordForm
+          idPrefix={`${prefix}-${stage}-finding`}
+          title={title}
+          stage={stage}
+          draft={open.draft}
+          register={view.register.items}
+          disabled={busy}
+          submitting={findingFeedback.status === 'saving'}
+          submitBlocked={blockedUntilReload(findingFeedback)}
+          feedbackId={describedFeedback('finding', findingFeedback)}
+          onChange={(draft) => editFindingForm({ ...open, draft })}
+          onSubmit={submitFinding}
+          onCancel={closeFindingForm}
+        />
+      </>
     );
   }
 
@@ -2620,7 +3084,8 @@ function confirmedOnSite(
 /**
  * Why a Stage cannot be planned now, as the server would refuse it: the
  * latest team version is not approved, or Stage 2 lacks a Stage 1 report
- * concluding that the client is ready.
+ * concluding that the client is ready, or a Stage 1 nonconformity is not
+ * yet verified effective.
  */
 function planBlocked(
   current: CaseDetail,
@@ -2629,9 +3094,148 @@ function planBlocked(
   if (!approvedTeam(current)) return 'blockedStagePlanTeamNotApproved';
   if (stage === 'stage_1') return null;
   if (!current.stage1Report) return 'blockedStage2BeforeStage1Report';
-  return current.stage1Report.value.conclusion === 'ready'
-    ? null
-    : 'blockedStage2NotReady';
+  if (current.stage1Report.value.conclusion !== 'ready')
+    return 'blockedStage2NotReady';
+  return current.findings.some(
+    (finding) =>
+      finding.stage === 'stage_1' &&
+      isNonconformity(finding.classification) &&
+      finding.status !== 'verified_effective',
+  )
+    ? 'blockedStage2NonconformityOpen'
+    : null;
+}
+
+/**
+ * The Finding command an open form records, mirroring the server's checks
+ * on the read Case; the server rechecks every rule and the actor's role.
+ */
+function findingSubmission(
+  form: FindingForm,
+  view: CaseView,
+  roles: FindingRoles,
+): FindingSubmission {
+  const { caseDetail: current, register } = view;
+  const findingsPath = `/certification-cases/${encodeURIComponent(current.id)}/findings`;
+  const expectedRevision = current.revision;
+  const ready = (path: string, body: object): FindingSubmission => ({
+    status: 'ready',
+    path,
+    body: JSON.stringify({ expectedRevision, ...body }),
+  });
+  const refused = (message: CertificationMessageKey): FindingSubmission => ({
+    status: 'refused',
+    message,
+  });
+  if (form.command === 'record') {
+    if (!roles.leader) return { status: 'unavailable' };
+    const check = findingFromDraft(form.draft, {
+      stage: form.stage,
+      register: register.items,
+    });
+    if (check.status !== 'valid')
+      return refused(findingCheckMessage(check.status, 'findingValidation'));
+    return ready(findingsPath, {
+      stage: form.stage,
+      classification: check.classification,
+      ...check.statement,
+    });
+  }
+  const finding = current.findings.find((entry) => entry.id === form.findingId);
+  const role =
+    form.command === 'reclassification'
+      ? roles.independentApprover
+      : roles.leader;
+  if (!finding || !role) return { status: 'unavailable' };
+  const path = (update: string) =>
+    `${findingsPath}/${encodeURIComponent(finding.id)}/${update}`;
+  switch (form.command) {
+    case 'correction': {
+      const check = correctionFromDraft(form.draft, {
+        finding,
+        register: register.items,
+      });
+      if (check.status === 'reasonRequired') return refused('reasonRequired');
+      if (check.status !== 'valid')
+        return refused(
+          findingCheckMessage(check.status, 'findingStatementValidation'),
+        );
+      return ready(path('correction'), {
+        reason: check.reason,
+        ...check.statement,
+      });
+    }
+    case 'classification':
+    case 'reclassification': {
+      const check = classificationFromDraft(form.draft, finding);
+      if (check.status === 'unchanged')
+        return refused('classificationUnchanged');
+      if (check.status !== 'valid')
+        return refused(
+          findingCheckMessage(check.status, 'classificationValidation'),
+        );
+      return ready(path(form.command), {
+        reason: check.reason,
+        classification: check.classification,
+      });
+    }
+    case 'response': {
+      const check = responseFromDraft(form.draft, register.items);
+      return check.status === 'valid'
+        ? ready(path('response'), check.value)
+        : refused('responseValidation');
+    }
+    case 'planJudgment': {
+      const check = judgmentFromDraft(form.draft);
+      return check.status === 'valid'
+        ? ready(path('plan-judgment'), check.value)
+        : refused('judgmentValidation');
+    }
+    case 'verification': {
+      const check = verificationFromDraft(form.draft, register.items);
+      return check.status === 'valid'
+        ? ready(path('verification'), check.value)
+        : refused('verificationValidation');
+    }
+  }
+  return unexpected(form);
+}
+
+/** A Finding draft's refusal: incomplete, or one of the classification rules. */
+function findingCheckMessage(
+  status: 'incomplete' | ClassificationRefusal,
+  incomplete: CertificationMessageKey,
+): CertificationMessageKey {
+  switch (status) {
+    case 'incomplete':
+      return incomplete;
+    case 'clauseRequired':
+      return 'findingClauseRequired';
+    case 'classificationStage':
+      return 'findingClassificationStage';
+    case 'evidenceRequired':
+      return 'findingEvidenceRequired';
+  }
+  return unexpected(status);
+}
+
+/** The button and form title of each later Finding version. */
+function findingCommandLabel(command: FindingCommand): CertificationMessageKey {
+  switch (command) {
+    case 'response':
+      return 'recordResponse';
+    case 'planJudgment':
+      return 'judgePlan';
+    case 'verification':
+      return 'verifyFinding';
+    case 'correction':
+      return 'correctFinding';
+    case 'classification':
+      return 'changeClassification';
+    case 'reclassification':
+      return 'reclassifyFinding';
+  }
+  return unexpected(command);
 }
 
 function planMessage(
@@ -2720,6 +3324,8 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
     case 'stage1Report':
     case 'stage2Report':
       return 'blockedStageReportCorrectionReason';
+    case 'finding':
+      return 'blockedFindingCorrectionReason';
     case 'open':
     case 'application':
     case 'review':
@@ -2773,15 +3379,22 @@ function confirmationMessage(
   return unexpected(check);
 }
 
-/** The detail and its timeline must describe the same recorded versions. */
+/**
+ * The detail and its timeline must describe the same recorded versions, and
+ * no Finding record shares the revision of a step version.
+ */
 function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
   const last = timeline.entries.at(-1);
   const recorded = (id: string, version: number) =>
     timeline.entries.some(
       (entry) => entry.id === id && entry.version === version,
     );
+  const steps = new Set(timeline.entries.map((entry) => entry.caseRevision));
   return (
     (last === undefined || last.caseRevision <= detail.revision) &&
+    detail.findings.every((finding) =>
+      finding.records.every((record) => !steps.has(record.caseRevision)),
+    ) &&
     (detail.application === null ||
       recorded(detail.application.id, detail.application.version)) &&
     (detail.applicationReview === null ||
@@ -2821,17 +3434,31 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
 
 /**
  * The register belongs to the same Case read: no attachment beyond the Case
- * revision or at a step's revision, every recorded agreement refers to an
- * attachment with the agreement role attached before it, and every Stage
- * record to attachments with the roles of their slots attached before it.
+ * revision or at the revision of a step or Finding record, every recorded
+ * agreement refers to an attachment with the agreement role attached before
+ * it, every Stage record to attachments with the roles of their slots
+ * attached before it, and every Finding record to evidence of this Case
+ * attached before it.
  */
 function registerMatches(
   detail: CaseDetail,
   timeline: CaseTimeline,
   register: DocumentRegister,
 ) {
-  const steps = new Set(timeline.entries.map((entry) => entry.caseRevision));
+  const findingRecords = detail.findings.flatMap((finding) => finding.records);
+  const steps = new Set([
+    ...timeline.entries.map((entry) => entry.caseRevision),
+    ...findingRecords.map((record) => record.caseRevision),
+  ]);
   return (
+    findingRecords.every((record) =>
+      recordEvidence(record).every((attachmentId) =>
+        register.items.some(
+          (item) =>
+            item.id === attachmentId && item.caseRevision < record.caseRevision,
+        ),
+      ),
+    ) &&
     register.items.every(
       (item) =>
         item.caseRevision <= detail.revision && !steps.has(item.caseRevision),
@@ -2942,6 +3569,12 @@ function commandFeedback(
           return refusedWith('stageDeviationNoteRule', true);
         case 'CERTIFICATION_DOCUMENT_REVIEW_INCOMPLETE':
           return refusedWith('stageDocumentReviewRequired');
+        case 'CERTIFICATION_FINDING_CLAUSE_REQUIRED':
+          return refusedWith('findingClauseRequired');
+        case 'CERTIFICATION_FINDING_CLASSIFICATION_STAGE':
+          return refusedWith('findingClassificationStage');
+        case 'CERTIFICATION_FINDING_EVIDENCE_REQUIRED':
+          return refusedWith('findingEvidenceRequired');
         default:
           return refusedWith('invalid');
       }
@@ -2977,7 +3610,11 @@ function commandFeedback(
           return refusedWith('blockedTeamNotPending', true);
         case 'CERTIFICATION_INDEPENDENCE':
           return refusedWith(
-            kind === 'team' ? 'teamMemberDecided' : 'teamIndependence',
+            kind === 'team'
+              ? 'teamMemberDecided'
+              : kind === 'finding'
+                ? 'findingIndependence'
+                : 'teamIndependence',
             true,
           );
         case 'CERTIFICATION_TEAM_CONFLICT_DECLARED':
@@ -2988,6 +3625,18 @@ function commandFeedback(
           return refusedWith('blockedStagePlanTeamNotApproved', true);
         case 'CERTIFICATION_STAGE_1_NOT_READY':
           return refusedWith('blockedStage2NotReady', true);
+        case 'CERTIFICATION_STAGE_1_NONCONFORMITY_OPEN':
+          return refusedWith('blockedStage2NonconformityOpen', true);
+        case 'CERTIFICATION_STAGE_CLOSED':
+          return refusedWith('blockedFindingStageClosed', true);
+        case 'CERTIFICATION_FINDING_NOT_OPEN':
+          return refusedWith('findingNotOpen', true);
+        case 'CERTIFICATION_FINDING_NO_RESPONSE':
+          return refusedWith('findingNoResponse', true);
+        case 'CERTIFICATION_FINDING_PLAN_NOT_ADEQUATE':
+          return refusedWith('findingPlanNotAdequate', true);
+        case 'CERTIFICATION_FINDING_LIMIT_PASSED':
+          return refusedWith('findingLimitPassed', true);
         case 'CERTIFICATION_STAGE_DATES':
           // A Stage 2 start, or a report date, against the read Case.
           return refusedWith(
@@ -2996,11 +3645,26 @@ function commandFeedback(
               : 'stageReportDateRule',
           );
         case 'CERTIFICATION_STAGE_NOT_PLANNED':
-          return refusedWith('blockedStageReportBeforePlan', true);
+          return refusedWith(
+            kind === 'finding'
+              ? 'blockedFindingStageNotPlanned'
+              : 'blockedStageReportBeforePlan',
+            true,
+          );
         case 'CERTIFICATION_NOT_TEAM_LEADER':
-          return refusedWith('blockedNotTeamLeader', true);
+          return refusedWith(
+            kind === 'finding'
+              ? 'blockedFindingNotTeamLeader'
+              : 'blockedNotTeamLeader',
+            true,
+          );
         case 'CERTIFICATION_ATTACHMENT_ROLE':
-          return refusedWith('stageAttachmentRole', true);
+          return refusedWith(
+            kind === 'finding'
+              ? 'findingEvidenceUnavailable'
+              : 'stageAttachmentRole',
+            true,
+          );
         default:
           return refusedWith('conflict', kind !== 'open');
       }

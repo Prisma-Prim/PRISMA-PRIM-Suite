@@ -1,4 +1,5 @@
 import type { AuditTeam, TeamDecision } from './certification-team.js';
+import type { FindingView } from './certification-findings.js';
 import type {
   Stage1Report,
   Stage2Report,
@@ -226,6 +227,7 @@ export type CertificationNextStep =
   | 'stage_1_report'
   | 'stage_2_plan'
   | 'stage_2_report'
+  | 'findings_follow_up'
   | 'recommendation'
   | null;
 
@@ -253,6 +255,7 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   team: TeamVersion | null;
   teamDecision: TeamDecisionVersion | null;
   stages: StageStepVersion[];
+  findings: FindingView[];
 }
 
 export interface CertificationCaseList {

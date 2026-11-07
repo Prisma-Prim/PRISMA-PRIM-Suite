@@ -20,6 +20,25 @@ import {
 import { CertificationService } from './certification.service.js';
 import type { AuditStage } from './certification-stages.js';
 
+const FINDING_UPDATES = {
+  correction: 'correction',
+  classification: 'classification',
+  reclassification: 'reclassification',
+  response: 'response',
+  'plan-judgment': 'plan_judgment',
+  verification: 'verification',
+} as const satisfies Record<string, string>;
+
+function findingUpdate(
+  value: string,
+): (typeof FINDING_UPDATES)[keyof typeof FINDING_UPDATES] {
+  const entry = Object.entries(FINDING_UPDATES).find(
+    ([path]) => path === value,
+  );
+  if (!entry) throw new NotFoundException();
+  return entry[1];
+}
+
 function auditStage(value: string): AuditStage {
   if (value === 'stage-1') return 'stage_1';
   if (value === 'stage-2') return 'stage_2';
@@ -239,6 +258,40 @@ export class CertificationController {
       actor: requireActorContext(request),
       caseId,
       stage: auditStage(stage),
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/findings')
+  recordFinding(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordFinding({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/findings/:findingId/:update')
+  recordFindingUpdate(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Param('findingId') findingId: string,
+    @Param('update') update: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordFindingUpdate({
+      actor: requireActorContext(request),
+      caseId,
+      findingId,
+      kind: findingUpdate(update),
       body,
       key,
     });

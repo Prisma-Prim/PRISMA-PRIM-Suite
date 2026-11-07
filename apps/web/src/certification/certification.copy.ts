@@ -453,6 +453,123 @@ const keys = [
   'blockedStagePlanCorrectionReason',
   'blockedStageReportCorrectionReason',
 
+  'nextFindingsFollowUp',
+  'nextFindingsFollowUpPending',
+  'stepFindings',
+  'stepWaitingStage2Report',
+  'stepFindingsOpen',
+  'stepFindingsDone',
+  'blockedStage2NonconformityOpen',
+  'stage1FindingsTitle',
+  'stage2FindingsTitle',
+  'findingsHelp',
+  'findingsEmpty',
+  'findingHeading',
+  'findingClassification',
+  'classificationMajor',
+  'classificationMinor',
+  'classificationOpportunity',
+  'classificationAreaOfConcern',
+  'findingClause',
+  'findingArea',
+  'findingStatement',
+  'findingEvidence',
+  'findingNoEvidence',
+  'findingNotStated',
+  'findingStatus',
+  'statusNoActionRequired',
+  'statusAwaitingResponse',
+  'statusAwaitingPlanJudgment',
+  'statusPlanInadequate',
+  'statusPlanAdequate',
+  'statusVerifiedEffective',
+  'statusVerifiedNotEffective',
+  'findingResponseDueOn',
+  'findingLimitOn',
+  'findingOverdue',
+  'findingOverdueNote',
+  'findingHoldsVerification',
+  'findingHoldsPlan',
+  'findingHistory',
+  'findingRecordStatement',
+  'findingRecordClassification',
+  'classifiedByTeamLeader',
+  'classifiedByApprover',
+  'findingRecordResponse',
+  'findingRecordPlanJudgment',
+  'findingRecordVerification',
+  'responseCorrection',
+  'responseCause',
+  'responseCorrectiveAction',
+  'responseReceivedOn',
+  'responsePlannedCompletionOn',
+  'responseNoPlannedCompletion',
+  'planOutcome',
+  'planAdequate',
+  'planInadequate',
+  'planNote',
+  'verificationVerifiedOn',
+  'verificationMethod',
+  'methodDocumentReview',
+  'methodOnSite',
+  'verificationOutcome',
+  'outcomeEffective',
+  'outcomeNotEffective',
+  'verificationNote',
+  'recordStage1Finding',
+  'recordStage2Finding',
+  'findingSubmit',
+  'recordFindingHelp',
+  'findingClauseHelp',
+  'findingEvidenceHelp',
+  'findingNoEvidenceDocument',
+  'correctFinding',
+  'changeClassification',
+  'reclassifyFinding',
+  'classificationChangeHelp',
+  'reclassificationHelp',
+  'classificationNew',
+  'classificationReason',
+  'classificationSubmit',
+  'recordResponse',
+  'responseHelp',
+  'responseSubmit',
+  'judgePlan',
+  'judgePlanHelp',
+  'judgmentSubmit',
+  'verifyFinding',
+  'verifyHelp',
+  'verificationSubmit',
+  'findingValidation',
+  'findingStatementValidation',
+  'findingClauseRequired',
+  'findingClassificationStage',
+  'findingEvidenceRequired',
+  'classificationValidation',
+  'classificationUnchanged',
+  'responseValidation',
+  'judgmentValidation',
+  'verificationValidation',
+  'blockedFindingTeamNotApproved',
+  'blockedFindingNotTeamLeader',
+  'blockedFindingStageClosed',
+  'blockedFindingStageNotPlanned',
+  'findingNotOpen',
+  'findingNoResponse',
+  'findingPlanNotAdequate',
+  'findingLimitPassed',
+  'findingIndependence',
+  'findingEvidenceUnavailable',
+  'blockedFindingCorrectionReason',
+  'timelineFindingRecorded',
+  'timelineFindingCorrected',
+  'timelineFindingReclassified',
+  'timelineNonconformityResponse',
+  'timelineNonconformityPlanJudged',
+  'timelineNonconformityVerified',
+  'findingStage1',
+  'findingStage2',
+
   'timelineTitle',
   'timelineEmpty',
   'timelineApplication',
@@ -1046,6 +1163,164 @@ export const certificationMessages = defineMessages(keys, {
       'A new plan version needs a reason and a first plan has none. Reload the Case before saving again.',
     blockedStageReportCorrectionReason:
       'A new report version needs a reason and a first report has none. Reload the Case before saving again.',
+
+    nextFindingsFollowUp: 'Nonconformity follow-up',
+    nextFindingsFollowUpPending:
+      'Both Stages are reported. Before the team recommendation, every major nonconformity and every Stage 1 nonconformity is verified effective, and every other minor nonconformity has a plan judged adequate.',
+    stepFindings: 'Nonconformity follow-up',
+    stepWaitingStage2Report: 'Waits for the Stage 2 report',
+    stepFindingsOpen: 'Open — {count} to follow up',
+    stepFindingsDone: 'Completed',
+    blockedStage2NonconformityOpen:
+      'Stage 2 is planned once every Stage 1 nonconformity is verified effective. Follow up the open Stage 1 nonconformities first.',
+    stage1FindingsTitle: 'Stage 1 Findings',
+    stage2FindingsTitle: 'Stage 2 Findings',
+    findingsHelp:
+      'The leader of the approved audit team records each Finding with its requirement clause, process or area, statement, classification and exact evidence, then follows each nonconformity up. An approver who is not on the team may reclassify a Finding with a reason. Every version stays in the history.',
+    findingsEmpty: 'No Finding is recorded for this Stage.',
+    findingHeading: 'Finding {sequence} — {classification}',
+    findingClassification: 'Classification',
+    classificationMajor: 'Major nonconformity',
+    classificationMinor: 'Minor nonconformity',
+    classificationOpportunity: 'Opportunity for improvement',
+    classificationAreaOfConcern: 'Area of concern',
+    findingClause: 'Requirement clause',
+    findingArea: 'Process or area',
+    findingStatement: 'Statement',
+    findingEvidence: 'Evidence',
+    findingNoEvidence: 'No evidence cited',
+    findingNotStated: 'Not stated',
+    findingStatus: 'Follow-up',
+    statusNoActionRequired: 'No follow-up required',
+    statusAwaitingResponse: 'Awaiting the client’s response',
+    statusAwaitingPlanJudgment: 'Plan to judge',
+    statusPlanInadequate: 'Plan not adequate — a new response is expected',
+    statusPlanAdequate: 'Plan adequate — implementation to verify',
+    statusVerifiedEffective: 'Verified effective',
+    statusVerifiedNotEffective: 'Not effective — a new response is expected',
+    findingResponseDueOn: 'Response due on',
+    findingLimitOn: 'Six-month limit',
+    findingOverdue: 'Overdue',
+    findingOverdueNote:
+      'The six-month limit has passed without a verification that the nonconformity is eliminated.',
+    findingHoldsVerification: 'Holds the next step until verified effective.',
+    findingHoldsPlan: 'Holds the next step until its plan is judged adequate.',
+    findingHistory: 'History of Finding {sequence}',
+    findingRecordStatement: 'Statement — version {version}',
+    findingRecordClassification:
+      'Classification — {classification}, {by} (version {version})',
+    classifiedByTeamLeader: 'by the team leader',
+    classifiedByApprover: 'by the approver',
+    findingRecordResponse: 'Client’s response — version {version}',
+    findingRecordPlanJudgment: 'Plan judgment — {outcome} (version {version})',
+    findingRecordVerification: 'Verification — {outcome} (version {version})',
+    responseCorrection: 'Correction',
+    responseCause: 'Cause',
+    responseCorrectiveAction: 'Corrective action',
+    responseReceivedOn: 'Received on',
+    responsePlannedCompletionOn: 'Planned completion',
+    responseNoPlannedCompletion: 'Not stated',
+    planOutcome: 'Adequacy of the plan',
+    planAdequate: 'Adequate',
+    planInadequate: 'Not adequate',
+    planNote: 'Basis of the judgment',
+    verificationVerifiedOn: 'Verified on',
+    verificationMethod: 'Verification method',
+    methodDocumentReview: 'Document review',
+    methodOnSite: 'On site',
+    verificationOutcome: 'Effectiveness',
+    outcomeEffective: 'Effective',
+    outcomeNotEffective: 'Not effective',
+    verificationNote: 'Verification note',
+    recordStage1Finding: 'Record a Stage 1 Finding',
+    recordStage2Finding: 'Record a Stage 2 Finding',
+    findingSubmit: 'Record the Finding',
+    recordFindingHelp:
+      'Choose the classification, state the requirement clause, the process or area and the statement, and cite the exact evidence attached to this Case. A nonconformity cites at least one evidence PDF; an opportunity for improvement may omit the clause and the area.',
+    findingClauseHelp:
+      'For example 8.5.1. Optional only for an opportunity for improvement.',
+    findingEvidenceHelp:
+      'PDFs attached to this Case with the role Evidence, at most ten.',
+    findingNoEvidenceDocument:
+      'No document is attached with the role Evidence yet. Attach the evidence PDFs in the dossier register first: a nonconformity cites at least one.',
+    correctFinding: 'Correct the statement of Finding {sequence}',
+    changeClassification: 'Change the classification of Finding {sequence}',
+    reclassifyFinding: 'Reclassify Finding {sequence}',
+    classificationChangeHelp:
+      'As team leader, choose the new classification and state the reason. The earlier classification stays in the history.',
+    reclassificationHelp:
+      'As an approver who is not on the audit team, choose the new classification and state the reason. The earlier classification stays in the history.',
+    classificationNew: 'New classification',
+    classificationReason: 'Reason for the new classification',
+    classificationSubmit: 'Record the classification',
+    recordResponse: 'Record the client’s response to Finding {sequence}',
+    responseHelp:
+      'Record the client’s correction, cause analysis and corrective-action plan as received, with optional evidence. A new response after a plan judged not adequate is a new version.',
+    responseSubmit: 'Record the response',
+    judgePlan: 'Judge the plan of Finding {sequence}',
+    judgePlanHelp:
+      'Judge whether the latest response is adequate to eliminate the nonconformity, and on what basis.',
+    judgmentSubmit: 'Record the judgment',
+    verifyFinding: 'Verify the implementation of Finding {sequence}',
+    verifyHelp:
+      'Record when and how the implementation was verified, whether it is effective, and optional evidence.',
+    verificationSubmit: 'Record the verification',
+    findingValidation:
+      'Complete the Finding: choose a classification and write the statement (at most 4,000 characters). The clause takes at most 40 characters and the process or area at most 300; cite at most ten evidence PDFs of this Case.',
+    findingStatementValidation:
+      'Write the statement (at most 4,000 characters). The clause takes at most 40 characters and the process or area at most 300; cite at most ten evidence PDFs of this Case.',
+    findingClauseRequired:
+      'State the requirement clause and the process or area. Only an opportunity for improvement may omit them.',
+    findingClassificationStage:
+      'An area of concern is recorded at Stage 1 only. Choose another classification.',
+    findingEvidenceRequired:
+      'A nonconformity cites at least one exact evidence PDF attached to this Case.',
+    classificationValidation:
+      'Choose the new classification and state the reason (at most 2,000 characters).',
+    classificationUnchanged:
+      'This is already the classification of the Finding. Choose another one or cancel.',
+    responseValidation:
+      'Complete the response: the correction, the cause and the corrective action (at most 4,000 characters each) and the date it was received. The planned completion date and the evidence are optional.',
+    judgmentValidation:
+      'Choose whether the plan is adequate and state the basis of the judgment (at most 2,000 characters).',
+    verificationValidation:
+      'Complete the verification: its date, method and outcome, and the note (at most 2,000 characters). The evidence is optional.',
+    blockedFindingTeamNotApproved:
+      'The leader of the approved audit team records Findings; the latest team version is not approved.',
+    blockedFindingNotTeamLeader:
+      'Only the leader of the approved audit team records Findings and their follow-up. You are not linked to that team leader.',
+    blockedFindingStageClosed:
+      'Stage 1 Findings are recorded before Stage 2 is planned.',
+    blockedFindingStageNotPlanned:
+      'Findings are recorded once this Stage is planned. Reload the Case.',
+    findingNotOpen:
+      'Only an open nonconformity receives a response. Reload the Case.',
+    findingNoResponse:
+      'The plan is judged once the client’s response is recorded. Reload the Case.',
+    findingPlanNotAdequate:
+      'The implementation is verified once the plan is judged adequate. Reload the Case.',
+    findingLimitPassed:
+      'The six-month limit of this nonconformity has passed without an effective verification: this certification journey cannot continue. A repeated Stage or an additional audit is outside this version.',
+    findingIndependence:
+      'You cannot reclassify Findings: you are linked to a member of the audit team. An approver who is not on the team reclassifies.',
+    findingEvidenceUnavailable:
+      'A cited evidence PDF is not attached to this Case. Reload the Case and choose again.',
+    blockedFindingCorrectionReason:
+      'This change needs a reason, and a new Finding has none. Reload the Case before saving again.',
+    timelineFindingRecorded:
+      'Finding {sequence} recorded — {classification} ({stage})',
+    timelineFindingCorrected:
+      'Finding {sequence} — statement corrected (version {version})',
+    timelineFindingReclassified:
+      'Finding {sequence} reclassified — {classification}, {by} (version {version})',
+    timelineNonconformityResponse:
+      'Finding {sequence} — client’s response recorded (version {version})',
+    timelineNonconformityPlanJudged:
+      'Finding {sequence} — plan judged: {outcome} (version {version})',
+    timelineNonconformityVerified:
+      'Finding {sequence} — verification: {outcome} (version {version})',
+    findingStage1: 'Stage 1',
+    findingStage2: 'Stage 2',
 
     timelineTitle: 'Timeline',
     timelineEmpty: 'No step recorded yet.',
@@ -1653,6 +1928,169 @@ export const certificationMessages = defineMessages(keys, {
     blockedStageReportCorrectionReason:
       'Une nouvelle version du rapport exige un motif et un premier rapport n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
 
+    nextFindingsFollowUp: 'Suivi des non-conformités',
+    nextFindingsFollowUpPending:
+      'Les deux étapes sont rapportées. Avant la recommandation de l’équipe, chaque non-conformité majeure et chaque non-conformité de l’étape 1 est vérifiée efficace, et chaque autre non-conformité mineure a un plan jugé adéquat.',
+    stepFindings: 'Suivi des non-conformités',
+    stepWaitingStage2Report: 'Attend le rapport de l’étape 2',
+    stepFindingsOpen: 'Ouvert — {count} à suivre',
+    stepFindingsDone: 'Terminé',
+    blockedStage2NonconformityOpen:
+      'L’étape 2 est planifiée une fois chaque non-conformité de l’étape 1 vérifiée efficace. Suivez d’abord les non-conformités ouvertes de l’étape 1.',
+    stage1FindingsTitle: 'Constats de l’étape 1',
+    stage2FindingsTitle: 'Constats de l’étape 2',
+    findingsHelp:
+      'Le responsable de l’équipe d’audit approuvée enregistre chaque constat avec son exigence, son processus ou domaine, son énoncé, sa classification et ses preuves exactes, puis suit chaque non-conformité. Un approbateur qui ne fait pas partie de l’équipe peut reclasser un constat avec un motif. Chaque version reste dans l’historique.',
+    findingsEmpty: 'Aucun constat n’est enregistré pour cette étape.',
+    findingHeading: 'Constat {sequence} — {classification}',
+    findingClassification: 'Classification',
+    classificationMajor: 'Non-conformité majeure',
+    classificationMinor: 'Non-conformité mineure',
+    classificationOpportunity: 'Opportunité d’amélioration',
+    classificationAreaOfConcern: 'Point de vigilance',
+    findingClause: 'Exigence (article)',
+    findingArea: 'Processus ou domaine',
+    findingStatement: 'Énoncé',
+    findingEvidence: 'Preuves',
+    findingNoEvidence: 'Aucune preuve citée',
+    findingNotStated: 'Non indiqué',
+    findingStatus: 'Suivi',
+    statusNoActionRequired: 'Aucun suivi requis',
+    statusAwaitingResponse: 'En attente de la réponse du client',
+    statusAwaitingPlanJudgment: 'Plan à juger',
+    statusPlanInadequate:
+      'Plan non adéquat — une nouvelle réponse est attendue',
+    statusPlanAdequate: 'Plan adéquat — mise en œuvre à vérifier',
+    statusVerifiedEffective: 'Vérifiée efficace',
+    statusVerifiedNotEffective:
+      'Non efficace — une nouvelle réponse est attendue',
+    findingResponseDueOn: 'Réponse attendue le',
+    findingLimitOn: 'Limite de six mois',
+    findingOverdue: 'Dépassée',
+    findingOverdueNote:
+      'La limite de six mois est dépassée sans vérification de l’élimination de la non-conformité.',
+    findingHoldsVerification:
+      'Bloque l’étape suivante jusqu’à sa vérification efficace.',
+    findingHoldsPlan:
+      'Bloque l’étape suivante jusqu’à ce que son plan soit jugé adéquat.',
+    findingHistory: 'Historique du constat {sequence}',
+    findingRecordStatement: 'Énoncé — version {version}',
+    findingRecordClassification:
+      'Classification — {classification}, {by} (version {version})',
+    classifiedByTeamLeader: 'par le responsable d’équipe',
+    classifiedByApprover: 'par l’approbateur',
+    findingRecordResponse: 'Réponse du client — version {version}',
+    findingRecordPlanJudgment:
+      'Jugement du plan — {outcome} (version {version})',
+    findingRecordVerification: 'Vérification — {outcome} (version {version})',
+    responseCorrection: 'Correction',
+    responseCause: 'Cause',
+    responseCorrectiveAction: 'Action corrective',
+    responseReceivedOn: 'Reçue le',
+    responsePlannedCompletionOn: 'Réalisation prévue',
+    responseNoPlannedCompletion: 'Non indiquée',
+    planOutcome: 'Adéquation du plan',
+    planAdequate: 'Adéquat',
+    planInadequate: 'Non adéquat',
+    planNote: 'Fondement du jugement',
+    verificationVerifiedOn: 'Vérifiée le',
+    verificationMethod: 'Méthode de vérification',
+    methodDocumentReview: 'Revue documentaire',
+    methodOnSite: 'Sur site',
+    verificationOutcome: 'Efficacité',
+    outcomeEffective: 'Efficace',
+    outcomeNotEffective: 'Non efficace',
+    verificationNote: 'Note de vérification',
+    recordStage1Finding: 'Enregistrer un constat de l’étape 1',
+    recordStage2Finding: 'Enregistrer un constat de l’étape 2',
+    findingSubmit: 'Enregistrer le constat',
+    recordFindingHelp:
+      'Choisissez la classification, indiquez l’exigence, le processus ou domaine et l’énoncé, et citez les preuves exactes jointes à ce dossier. Une non-conformité cite au moins un PDF de preuve ; une opportunité d’amélioration peut omettre l’exigence et le domaine.',
+    findingClauseHelp:
+      'Par exemple 8.5.1. Facultatif uniquement pour une opportunité d’amélioration.',
+    findingEvidenceHelp:
+      'PDF joints à ce dossier avec le rôle Preuve, dix au plus.',
+    findingNoEvidenceDocument:
+      'Aucun document n’est encore joint avec le rôle Preuve. Joignez d’abord les PDF de preuve dans le registre du dossier : une non-conformité en cite au moins un.',
+    correctFinding: 'Corriger l’énoncé du constat {sequence}',
+    changeClassification: 'Changer la classification du constat {sequence}',
+    reclassifyFinding: 'Reclasser le constat {sequence}',
+    classificationChangeHelp:
+      'En tant que responsable d’équipe, choisissez la nouvelle classification et indiquez le motif. La classification antérieure reste dans l’historique.',
+    reclassificationHelp:
+      'En tant qu’approbateur qui ne fait pas partie de l’équipe d’audit, choisissez la nouvelle classification et indiquez le motif. La classification antérieure reste dans l’historique.',
+    classificationNew: 'Nouvelle classification',
+    classificationReason: 'Motif de la nouvelle classification',
+    classificationSubmit: 'Enregistrer la classification',
+    recordResponse: 'Enregistrer la réponse du client au constat {sequence}',
+    responseHelp:
+      'Enregistrez la correction, l’analyse des causes et le plan d’actions correctives du client tels que reçus, avec des preuves facultatives. Une nouvelle réponse après un plan jugé non adéquat est une nouvelle version.',
+    responseSubmit: 'Enregistrer la réponse',
+    judgePlan: 'Juger le plan du constat {sequence}',
+    judgePlanHelp:
+      'Jugez si la dernière réponse est adéquate pour éliminer la non-conformité, et sur quel fondement.',
+    judgmentSubmit: 'Enregistrer le jugement',
+    verifyFinding: 'Vérifier la mise en œuvre du constat {sequence}',
+    verifyHelp:
+      'Enregistrez quand et comment la mise en œuvre a été vérifiée, si elle est efficace, et des preuves facultatives.',
+    verificationSubmit: 'Enregistrer la vérification',
+    findingValidation:
+      'Complétez le constat : choisissez une classification et rédigez l’énoncé (4 000 caractères au plus). L’exigence compte au plus 40 caractères et le processus ou domaine au plus 300 ; citez au plus dix PDF de preuve de ce dossier.',
+    findingStatementValidation:
+      'Rédigez l’énoncé (4 000 caractères au plus). L’exigence compte au plus 40 caractères et le processus ou domaine au plus 300 ; citez au plus dix PDF de preuve de ce dossier.',
+    findingClauseRequired:
+      'Indiquez l’exigence et le processus ou domaine. Seule une opportunité d’amélioration peut les omettre.',
+    findingClassificationStage:
+      'Un point de vigilance n’est enregistré qu’à l’étape 1. Choisissez une autre classification.',
+    findingEvidenceRequired:
+      'Une non-conformité cite au moins un PDF de preuve exact joint à ce dossier.',
+    classificationValidation:
+      'Choisissez la nouvelle classification et indiquez le motif (2 000 caractères au plus).',
+    classificationUnchanged:
+      'C’est déjà la classification du constat. Choisissez-en une autre ou annulez.',
+    responseValidation:
+      'Complétez la réponse : la correction, la cause et l’action corrective (4 000 caractères au plus chacune) et la date de réception. La date de réalisation prévue et les preuves sont facultatives.',
+    judgmentValidation:
+      'Indiquez si le plan est adéquat et le fondement du jugement (2 000 caractères au plus).',
+    verificationValidation:
+      'Complétez la vérification : sa date, sa méthode et son résultat, et la note (2 000 caractères au plus). Les preuves sont facultatives.',
+    blockedFindingTeamNotApproved:
+      'Le responsable de l’équipe d’audit approuvée enregistre les constats ; la dernière version de l’équipe n’est pas approuvée.',
+    blockedFindingNotTeamLeader:
+      'Seul le responsable de l’équipe d’audit approuvée enregistre les constats et leur suivi. Vous n’êtes pas lié à ce responsable d’équipe.',
+    blockedFindingStageClosed:
+      'Les constats de l’étape 1 sont enregistrés avant la planification de l’étape 2.',
+    blockedFindingStageNotPlanned:
+      'Les constats sont enregistrés une fois cette étape planifiée. Rechargez le dossier.',
+    findingNotOpen:
+      'Seule une non-conformité ouverte reçoit une réponse. Rechargez le dossier.',
+    findingNoResponse:
+      'Le plan est jugé une fois la réponse du client enregistrée. Rechargez le dossier.',
+    findingPlanNotAdequate:
+      'La mise en œuvre est vérifiée une fois le plan jugé adéquat. Rechargez le dossier.',
+    findingLimitPassed:
+      'Le délai de six mois de cette non-conformité est dépassé sans vérification efficace : ce parcours de certification ne peut pas continuer. Une étape répétée ou un audit complémentaire sort de cette version.',
+    findingIndependence:
+      'Vous ne pouvez pas reclasser les constats : vous êtes lié à un membre de l’équipe d’audit. Un approbateur qui ne fait pas partie de l’équipe reclasse.',
+    findingEvidenceUnavailable:
+      'Un PDF de preuve cité n’est pas joint à ce dossier. Rechargez le dossier et choisissez à nouveau.',
+    blockedFindingCorrectionReason:
+      'Ce changement nécessite un motif, et un nouveau constat n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+    timelineFindingRecorded:
+      'Constat {sequence} enregistré — {classification} ({stage})',
+    timelineFindingCorrected:
+      'Constat {sequence} — énoncé corrigé (version {version})',
+    timelineFindingReclassified:
+      'Constat {sequence} reclassé — {classification}, {by} (version {version})',
+    timelineNonconformityResponse:
+      'Constat {sequence} — réponse du client enregistrée (version {version})',
+    timelineNonconformityPlanJudged:
+      'Constat {sequence} — plan jugé : {outcome} (version {version})',
+    timelineNonconformityVerified:
+      'Constat {sequence} — vérification : {outcome} (version {version})',
+    findingStage1: 'étape 1',
+    findingStage2: 'étape 2',
+
     timelineTitle: 'Chronologie',
     timelineEmpty: 'Aucune étape enregistrée pour l’instant.',
     timelineApplication: 'Demande — version {version}',
@@ -2254,6 +2692,169 @@ export const certificationMessages = defineMessages(keys, {
     blockedStageReportCorrectionReason:
       'O nouă versiune a raportului necesită un motiv, iar primul raport nu are. Reîncărcați dosarul înainte de o nouă salvare.',
 
+    nextFindingsFollowUp: 'Urmărirea neconformităților',
+    nextFindingsFollowUpPending:
+      'Ambele etape au rapoarte. Înainte de recomandarea echipei, fiecare neconformitate majoră și fiecare neconformitate din etapa 1 este verificată ca eficace, iar fiecare altă neconformitate minoră are un plan apreciat ca adecvat.',
+    stepFindings: 'Urmărirea neconformităților',
+    stepWaitingStage2Report: 'Așteaptă raportul etapei 2',
+    stepFindingsOpen: 'Deschisă — {count} de urmărit',
+    stepFindingsDone: 'Finalizată',
+    blockedStage2NonconformityOpen:
+      'Etapa 2 se planifică după ce fiecare neconformitate din etapa 1 este verificată ca eficace. Urmăriți mai întâi neconformitățile deschise din etapa 1.',
+    stage1FindingsTitle: 'Constatările etapei 1',
+    stage2FindingsTitle: 'Constatările etapei 2',
+    findingsHelp:
+      'Șeful echipei de audit aprobate înregistrează fiecare constatare cu cerința, procesul sau zona, enunțul, clasificarea și dovezile exacte, apoi urmărește fiecare neconformitate. Un aprobator care nu face parte din echipă poate reclasifica o constatare cu un motiv. Fiecare versiune rămâne în istoric.',
+    findingsEmpty:
+      'Nicio constatare nu este înregistrată pentru această etapă.',
+    findingHeading: 'Constatarea {sequence} — {classification}',
+    findingClassification: 'Clasificare',
+    classificationMajor: 'Neconformitate majoră',
+    classificationMinor: 'Neconformitate minoră',
+    classificationOpportunity: 'Oportunitate de îmbunătățire',
+    classificationAreaOfConcern: 'Zonă de atenție',
+    findingClause: 'Cerința (clauza)',
+    findingArea: 'Procesul sau zona',
+    findingStatement: 'Enunț',
+    findingEvidence: 'Dovezi',
+    findingNoEvidence: 'Nicio dovadă citată',
+    findingNotStated: 'Neindicat',
+    findingStatus: 'Urmărire',
+    statusNoActionRequired: 'Nu necesită urmărire',
+    statusAwaitingResponse: 'Așteaptă răspunsul clientului',
+    statusAwaitingPlanJudgment: 'Plan de apreciat',
+    statusPlanInadequate: 'Plan neadecvat — se așteaptă un răspuns nou',
+    statusPlanAdequate: 'Plan adecvat — implementare de verificat',
+    statusVerifiedEffective: 'Verificată ca eficace',
+    statusVerifiedNotEffective: 'Neeficace — se așteaptă un răspuns nou',
+    findingResponseDueOn: 'Răspuns așteptat până la',
+    findingLimitOn: 'Termenul de șase luni',
+    findingOverdue: 'Depășit',
+    findingOverdueNote:
+      'Termenul de șase luni a trecut fără o verificare a eliminării neconformității.',
+    findingHoldsVerification:
+      'Blochează etapa următoare până la verificarea ca eficace.',
+    findingHoldsPlan:
+      'Blochează etapa următoare până când planul este apreciat ca adecvat.',
+    findingHistory: 'Istoricul constatării {sequence}',
+    findingRecordStatement: 'Enunț — versiunea {version}',
+    findingRecordClassification:
+      'Clasificare — {classification}, {by} (versiunea {version})',
+    classifiedByTeamLeader: 'de șeful echipei',
+    classifiedByApprover: 'de aprobator',
+    findingRecordResponse: 'Răspunsul clientului — versiunea {version}',
+    findingRecordPlanJudgment:
+      'Aprecierea planului — {outcome} (versiunea {version})',
+    findingRecordVerification: 'Verificare — {outcome} (versiunea {version})',
+    responseCorrection: 'Corecție',
+    responseCause: 'Cauză',
+    responseCorrectiveAction: 'Acțiune corectivă',
+    responseReceivedOn: 'Primit la',
+    responsePlannedCompletionOn: 'Finalizare planificată',
+    responseNoPlannedCompletion: 'Neindicată',
+    planOutcome: 'Adecvarea planului',
+    planAdequate: 'Adecvat',
+    planInadequate: 'Neadecvat',
+    planNote: 'Temeiul aprecierii',
+    verificationVerifiedOn: 'Verificată la',
+    verificationMethod: 'Metoda de verificare',
+    methodDocumentReview: 'Analiză documentară',
+    methodOnSite: 'La fața locului',
+    verificationOutcome: 'Eficacitate',
+    outcomeEffective: 'Eficace',
+    outcomeNotEffective: 'Neeficace',
+    verificationNote: 'Nota verificării',
+    recordStage1Finding: 'Înregistrați o constatare a etapei 1',
+    recordStage2Finding: 'Înregistrați o constatare a etapei 2',
+    findingSubmit: 'Înregistrați constatarea',
+    recordFindingHelp:
+      'Alegeți clasificarea, indicați cerința, procesul sau zona și enunțul și citați dovezile exacte atașate acestui dosar. O neconformitate citează cel puțin un PDF de dovadă; o oportunitate de îmbunătățire poate omite cerința și zona.',
+    findingClauseHelp:
+      'De exemplu 8.5.1. Opțional doar pentru o oportunitate de îmbunătățire.',
+    findingEvidenceHelp:
+      'PDF-uri atașate acestui dosar cu rolul Dovadă, cel mult zece.',
+    findingNoEvidenceDocument:
+      'Niciun document nu este încă atașat cu rolul Dovadă. Atașați mai întâi PDF-urile de dovadă în registrul dosarului: o neconformitate citează cel puțin unul.',
+    correctFinding: 'Corectați enunțul constatării {sequence}',
+    changeClassification: 'Schimbați clasificarea constatării {sequence}',
+    reclassifyFinding: 'Reclasificați constatarea {sequence}',
+    classificationChangeHelp:
+      'Ca șef de echipă, alegeți clasificarea nouă și indicați motivul. Clasificarea anterioară rămâne în istoric.',
+    reclassificationHelp:
+      'Ca aprobator care nu face parte din echipa de audit, alegeți clasificarea nouă și indicați motivul. Clasificarea anterioară rămâne în istoric.',
+    classificationNew: 'Clasificarea nouă',
+    classificationReason: 'Motivul clasificării noi',
+    classificationSubmit: 'Înregistrați clasificarea',
+    recordResponse:
+      'Înregistrați răspunsul clientului la constatarea {sequence}',
+    responseHelp:
+      'Înregistrați corecția, analiza cauzelor și planul de acțiuni corective ale clientului așa cum au fost primite, cu dovezi opționale. Un răspuns nou după un plan apreciat ca neadecvat este o versiune nouă.',
+    responseSubmit: 'Înregistrați răspunsul',
+    judgePlan: 'Apreciați planul constatării {sequence}',
+    judgePlanHelp:
+      'Apreciați dacă ultimul răspuns este adecvat pentru eliminarea neconformității și pe ce temei.',
+    judgmentSubmit: 'Înregistrați aprecierea',
+    verifyFinding: 'Verificați implementarea constatării {sequence}',
+    verifyHelp:
+      'Înregistrați când și cum a fost verificată implementarea, dacă este eficace și dovezi opționale.',
+    verificationSubmit: 'Înregistrați verificarea',
+    findingValidation:
+      'Completați constatarea: alegeți o clasificare și scrieți enunțul (cel mult 4 000 de caractere). Cerința are cel mult 40 de caractere, iar procesul sau zona cel mult 300; citați cel mult zece PDF-uri de dovadă ale acestui dosar.',
+    findingStatementValidation:
+      'Scrieți enunțul (cel mult 4 000 de caractere). Cerința are cel mult 40 de caractere, iar procesul sau zona cel mult 300; citați cel mult zece PDF-uri de dovadă ale acestui dosar.',
+    findingClauseRequired:
+      'Indicați cerința și procesul sau zona. Doar o oportunitate de îmbunătățire le poate omite.',
+    findingClassificationStage:
+      'O zonă de atenție se înregistrează doar în etapa 1. Alegeți altă clasificare.',
+    findingEvidenceRequired:
+      'O neconformitate citează cel puțin un PDF de dovadă exact atașat acestui dosar.',
+    classificationValidation:
+      'Alegeți clasificarea nouă și indicați motivul (cel mult 2 000 de caractere).',
+    classificationUnchanged:
+      'Aceasta este deja clasificarea constatării. Alegeți alta sau anulați.',
+    responseValidation:
+      'Completați răspunsul: corecția, cauza și acțiunea corectivă (cel mult 4 000 de caractere fiecare) și data primirii. Data de finalizare planificată și dovezile sunt opționale.',
+    judgmentValidation:
+      'Alegeți dacă planul este adecvat și indicați temeiul aprecierii (cel mult 2 000 de caractere).',
+    verificationValidation:
+      'Completați verificarea: data, metoda și rezultatul ei și nota (cel mult 2 000 de caractere). Dovezile sunt opționale.',
+    blockedFindingTeamNotApproved:
+      'Șeful echipei de audit aprobate înregistrează constatările; ultima versiune a echipei nu este aprobată.',
+    blockedFindingNotTeamLeader:
+      'Doar șeful echipei de audit aprobate înregistrează constatările și urmărirea lor. Nu sunteți legat de acel șef de echipă.',
+    blockedFindingStageClosed:
+      'Constatările etapei 1 se înregistrează înainte de planificarea etapei 2.',
+    blockedFindingStageNotPlanned:
+      'Constatările se înregistrează după ce această etapă este planificată. Reîncărcați dosarul.',
+    findingNotOpen:
+      'Doar o neconformitate deschisă primește un răspuns. Reîncărcați dosarul.',
+    findingNoResponse:
+      'Planul se apreciază după ce răspunsul clientului este înregistrat. Reîncărcați dosarul.',
+    findingPlanNotAdequate:
+      'Implementarea se verifică după ce planul este apreciat ca adecvat. Reîncărcați dosarul.',
+    findingLimitPassed:
+      'Termenul de șase luni al acestei neconformități a fost depășit fără o verificare eficace: acest parcurs de certificare nu poate continua. O etapă repetată sau un audit suplimentar nu fac parte din această versiune.',
+    findingIndependence:
+      'Nu puteți reclasifica constatări: sunteți legat de un membru al echipei de audit. Reclasifică un aprobator care nu face parte din echipă.',
+    findingEvidenceUnavailable:
+      'Un PDF de dovadă citat nu este atașat acestui dosar. Reîncărcați dosarul și alegeți din nou.',
+    blockedFindingCorrectionReason:
+      'Această schimbare necesită un motiv, iar o constatare nouă nu are. Reîncărcați dosarul înainte de a salva din nou.',
+    timelineFindingRecorded:
+      'Constatarea {sequence} înregistrată — {classification} ({stage})',
+    timelineFindingCorrected:
+      'Constatarea {sequence} — enunț corectat (versiunea {version})',
+    timelineFindingReclassified:
+      'Constatarea {sequence} reclasificată — {classification}, {by} (versiunea {version})',
+    timelineNonconformityResponse:
+      'Constatarea {sequence} — răspunsul clientului înregistrat (versiunea {version})',
+    timelineNonconformityPlanJudged:
+      'Constatarea {sequence} — plan apreciat: {outcome} (versiunea {version})',
+    timelineNonconformityVerified:
+      'Constatarea {sequence} — verificare: {outcome} (versiunea {version})',
+    findingStage1: 'etapa 1',
+    findingStage2: 'etapa 2',
+
     timelineTitle: 'Cronologie',
     timelineEmpty: 'Nicio etapă înregistrată încă.',
     timelineApplication: 'Cerere — versiunea {version}',
@@ -2846,6 +3447,166 @@ export const certificationMessages = defineMessages(keys, {
       'Новой версии плана нужна причина, а у первого плана её нет. Загрузите дело заново перед новым сохранением.',
     blockedStageReportCorrectionReason:
       'Новой версии отчёта нужна причина, а у первого отчёта её нет. Загрузите дело заново перед новым сохранением.',
+
+    nextFindingsFollowUp: 'Работа с несоответствиями',
+    nextFindingsFollowUpPending:
+      'По обоим этапам записаны отчёты. До рекомендации группы каждое значительное несоответствие и каждое несоответствие этапа 1 проверено как результативно устранённое, а у каждого другого незначительного несоответствия план признан адекватным.',
+    stepFindings: 'Работа с несоответствиями',
+    stepWaitingStage2Report: 'Ожидает отчёт этапа 2',
+    stepFindingsOpen: 'Открыто — осталось: {count}',
+    stepFindingsDone: 'Завершено',
+    blockedStage2NonconformityOpen:
+      'Этап 2 планируется после того, как каждое несоответствие этапа 1 проверено как результативно устранённое. Сначала завершите работу с открытыми несоответствиями этапа 1.',
+    stage1FindingsTitle: 'Наблюдения этапа 1',
+    stage2FindingsTitle: 'Наблюдения этапа 2',
+    findingsHelp:
+      'Руководитель утверждённой аудиторской группы записывает каждое наблюдение с требованием, процессом или областью, формулировкой, классификацией и точными свидетельствами, затем ведёт работу с каждым несоответствием. Утверждающий, не входящий в группу, может переклассифицировать наблюдение с указанием причины. Каждая версия остаётся в истории.',
+    findingsEmpty: 'Для этого этапа наблюдения не записаны.',
+    findingHeading: 'Наблюдение {sequence} — {classification}',
+    findingClassification: 'Классификация',
+    classificationMajor: 'Значительное несоответствие',
+    classificationMinor: 'Незначительное несоответствие',
+    classificationOpportunity: 'Возможность для улучшения',
+    classificationAreaOfConcern: 'Проблемная область',
+    findingClause: 'Требование (пункт)',
+    findingArea: 'Процесс или область',
+    findingStatement: 'Формулировка',
+    findingEvidence: 'Свидетельства',
+    findingNoEvidence: 'Свидетельства не указаны',
+    findingNotStated: 'Не указано',
+    findingStatus: 'Работа с наблюдением',
+    statusNoActionRequired: 'Действия не требуются',
+    statusAwaitingResponse: 'Ожидается ответ клиента',
+    statusAwaitingPlanJudgment: 'План нужно оценить',
+    statusPlanInadequate: 'План неадекватен — ожидается новый ответ',
+    statusPlanAdequate: 'План адекватен — нужно проверить выполнение',
+    statusVerifiedEffective: 'Проверено: результативно',
+    statusVerifiedNotEffective: 'Нерезультативно — ожидается новый ответ',
+    findingResponseDueOn: 'Ответ ожидается до',
+    findingLimitOn: 'Шестимесячный срок',
+    findingOverdue: 'Просрочено',
+    findingOverdueNote:
+      'Шестимесячный срок истёк без проверки устранения несоответствия.',
+    findingHoldsVerification:
+      'Блокирует следующий этап до проверки результативности.',
+    findingHoldsPlan:
+      'Блокирует следующий этап, пока план не признан адекватным.',
+    findingHistory: 'История наблюдения {sequence}',
+    findingRecordStatement: 'Формулировка — версия {version}',
+    findingRecordClassification:
+      'Классификация — {classification}, {by} (версия {version})',
+    classifiedByTeamLeader: 'руководителем группы',
+    classifiedByApprover: 'утверждающим',
+    findingRecordResponse: 'Ответ клиента — версия {version}',
+    findingRecordPlanJudgment: 'Оценка плана — {outcome} (версия {version})',
+    findingRecordVerification: 'Проверка — {outcome} (версия {version})',
+    responseCorrection: 'Коррекция',
+    responseCause: 'Причина',
+    responseCorrectiveAction: 'Корректирующее действие',
+    responseReceivedOn: 'Получен',
+    responsePlannedCompletionOn: 'Плановое завершение',
+    responseNoPlannedCompletion: 'Не указано',
+    planOutcome: 'Адекватность плана',
+    planAdequate: 'Адекватен',
+    planInadequate: 'Неадекватен',
+    planNote: 'Обоснование оценки',
+    verificationVerifiedOn: 'Дата проверки',
+    verificationMethod: 'Метод проверки',
+    methodDocumentReview: 'Анализ документов',
+    methodOnSite: 'На месте',
+    verificationOutcome: 'Результативность',
+    outcomeEffective: 'Результативно',
+    outcomeNotEffective: 'Нерезультативно',
+    verificationNote: 'Примечание к проверке',
+    recordStage1Finding: 'Записать наблюдение этапа 1',
+    recordStage2Finding: 'Записать наблюдение этапа 2',
+    findingSubmit: 'Записать наблюдение',
+    recordFindingHelp:
+      'Выберите классификацию, укажите требование, процесс или область и формулировку и сошлитесь на точные свидетельства, приложенные к этому делу. Несоответствие ссылается хотя бы на один PDF-свидетельство; возможность для улучшения может не указывать требование и область.',
+    findingClauseHelp:
+      'Например, 8.5.1. Необязательно только для возможности для улучшения.',
+    findingEvidenceHelp:
+      'PDF, приложенные к этому делу с ролью «Свидетельство», не более десяти.',
+    findingNoEvidenceDocument:
+      'Документы с ролью «Свидетельство» пока не приложены. Сначала приложите PDF-свидетельства в реестре дела: несоответствие ссылается хотя бы на одно.',
+    correctFinding: 'Исправить формулировку наблюдения {sequence}',
+    changeClassification: 'Изменить классификацию наблюдения {sequence}',
+    reclassifyFinding: 'Переклассифицировать наблюдение {sequence}',
+    classificationChangeHelp:
+      'Как руководитель группы выберите новую классификацию и укажите причину. Прежняя классификация остаётся в истории.',
+    reclassificationHelp:
+      'Как утверждающий, не входящий в аудиторскую группу, выберите новую классификацию и укажите причину. Прежняя классификация остаётся в истории.',
+    classificationNew: 'Новая классификация',
+    classificationReason: 'Причина новой классификации',
+    classificationSubmit: 'Записать классификацию',
+    recordResponse: 'Записать ответ клиента на наблюдение {sequence}',
+    responseHelp:
+      'Запишите коррекцию, анализ причин и план корректирующих действий клиента в полученном виде, с необязательными свидетельствами. Новый ответ после плана, признанного неадекватным, — это новая версия.',
+    responseSubmit: 'Записать ответ',
+    judgePlan: 'Оценить план по наблюдению {sequence}',
+    judgePlanHelp:
+      'Оцените, адекватен ли последний ответ для устранения несоответствия, и на каком основании.',
+    judgmentSubmit: 'Записать оценку',
+    verifyFinding: 'Проверить выполнение по наблюдению {sequence}',
+    verifyHelp:
+      'Запишите, когда и как проверено выполнение, результативно ли оно, и необязательные свидетельства.',
+    verificationSubmit: 'Записать проверку',
+    findingValidation:
+      'Заполните наблюдение: выберите классификацию и напишите формулировку (не более 4 000 символов). Требование — не более 40 символов, процесс или область — не более 300; укажите не более десяти PDF-свидетельств этого дела.',
+    findingStatementValidation:
+      'Напишите формулировку (не более 4 000 символов). Требование — не более 40 символов, процесс или область — не более 300; укажите не более десяти PDF-свидетельств этого дела.',
+    findingClauseRequired:
+      'Укажите требование и процесс или область. Только возможность для улучшения может их не указывать.',
+    findingClassificationStage:
+      'Проблемная область записывается только на этапе 1. Выберите другую классификацию.',
+    findingEvidenceRequired:
+      'Несоответствие ссылается хотя бы на один точный PDF-свидетельство, приложенный к этому делу.',
+    classificationValidation:
+      'Выберите новую классификацию и укажите причину (не более 2 000 символов).',
+    classificationUnchanged:
+      'Это уже классификация наблюдения. Выберите другую или отмените.',
+    responseValidation:
+      'Заполните ответ: коррекцию, причину и корректирующее действие (не более 4 000 символов каждое) и дату получения. Плановая дата завершения и свидетельства необязательны.',
+    judgmentValidation:
+      'Укажите, адекватен ли план, и обоснование оценки (не более 2 000 символов).',
+    verificationValidation:
+      'Заполните проверку: дату, метод, результат и примечание (не более 2 000 символов). Свидетельства необязательны.',
+    blockedFindingTeamNotApproved:
+      'Наблюдения записывает руководитель утверждённой аудиторской группы; последняя версия группы не утверждена.',
+    blockedFindingNotTeamLeader:
+      'Наблюдения и работу с ними записывает только руководитель утверждённой аудиторской группы. Вы не связаны с этим руководителем группы.',
+    blockedFindingStageClosed:
+      'Наблюдения этапа 1 записываются до планирования этапа 2.',
+    blockedFindingStageNotPlanned:
+      'Наблюдения записываются после того, как этот этап запланирован. Загрузите дело заново.',
+    findingNotOpen:
+      'Ответ принимается только по открытому несоответствию. Загрузите дело заново.',
+    findingNoResponse:
+      'План оценивается после того, как записан ответ клиента. Загрузите дело заново.',
+    findingPlanNotAdequate:
+      'Выполнение проверяется после того, как план признан адекватным. Загрузите дело заново.',
+    findingLimitPassed:
+      'Шестимесячный срок по этому несоответствию истёк без подтверждённой эффективности: этот процесс сертификации не может продолжаться. Повторный этап или дополнительный аудит выходят за рамки этой версии.',
+    findingIndependence:
+      'Вы не можете переклассифицировать наблюдения: вы связаны с участником аудиторской группы. Переклассифицирует утверждающий, не входящий в группу.',
+    findingEvidenceUnavailable:
+      'Указанный PDF-свидетельство не приложен к этому делу. Загрузите дело заново и выберите снова.',
+    blockedFindingCorrectionReason:
+      'Для этого изменения нужна причина, а у нового наблюдения её нет. Загрузите дело заново перед новым сохранением.',
+    timelineFindingRecorded:
+      'Наблюдение {sequence} записано — {classification} ({stage})',
+    timelineFindingCorrected:
+      'Наблюдение {sequence} — формулировка исправлена (версия {version})',
+    timelineFindingReclassified:
+      'Наблюдение {sequence} переклассифицировано — {classification}, {by} (версия {version})',
+    timelineNonconformityResponse:
+      'Наблюдение {sequence} — записан ответ клиента (версия {version})',
+    timelineNonconformityPlanJudged:
+      'Наблюдение {sequence} — оценка плана: {outcome} (версия {version})',
+    timelineNonconformityVerified:
+      'Наблюдение {sequence} — проверка: {outcome} (версия {version})',
+    findingStage1: 'этап 1',
+    findingStage2: 'этап 2',
 
     timelineTitle: 'Хронология',
     timelineEmpty: 'Этапы ещё не записаны.',

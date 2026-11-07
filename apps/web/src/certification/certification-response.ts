@@ -20,6 +20,24 @@ import {
   type DurationWarning,
 } from './certification-duration';
 import {
+  FINDING_CLASSIFICATIONS,
+  FINDING_LIMITS,
+  FINDING_STATUSES,
+  classificationRefusal,
+  findingBlocks,
+  isNonconformity,
+  replayFinding,
+  type Finding,
+  type FindingClassification,
+  type FindingClassificationRecord,
+  type FindingRecord,
+  type FindingStatement,
+  type FindingStatus,
+  type NonconformityResponse,
+  type NonconformityVerification,
+  type PlanJudgment,
+} from './certification-findings';
+import {
   STAGE_LIMITS,
   stageDayCents,
   type Stage1Report,
@@ -229,6 +247,7 @@ export type CertificationNextStep =
   | 'stage_1_report'
   | 'stage_2_plan'
   | 'stage_2_report'
+  | 'findings_follow_up'
   | 'recommendation'
   | null;
 
@@ -262,6 +281,8 @@ export interface CaseDetail extends CaseSummary {
   stage1Report: Stage1ReportVersion | null;
   stage2Plan: Stage2PlanVersion | null;
   stage2Report: Stage2ReportVersion | null;
+  /** Every Finding of the Case in sequence order, with its records. */
+  findings: Finding[];
 }
 
 /** One exact frozen PDF of the Case's Client, attached with its role. */
@@ -375,6 +396,7 @@ export function parseCaseDetail(
         ? null
         : teamDecisionVersion(body.teamDecision),
     ...stageVersions(body.stages),
+    findings: findingList(body.findings),
   };
   if (!consistent(detail)) invalid();
   return detail;
@@ -644,6 +666,7 @@ function parseNextStep(value: unknown): CertificationNextStep {
     case 'stage_1_report':
     case 'stage_2_plan':
     case 'stage_2_report':
+    case 'findings_follow_up':
     case 'recommendation':
       return value;
     default:
@@ -721,7 +744,7 @@ function consistent(detail: CaseDetail): boolean {
     )
       return false;
   }
-  if (!stagesConsistent(detail)) return false;
+  if (!stagesConsistent(detail) || !findingsConsistent(detail)) return false;
   if (detail.status === 'rejected')
     return review?.value.outcome === 'rejected' && detail.nextStep === null;
   if (review?.value.outcome === 'rejected') return false;
@@ -744,18 +767,7 @@ function stagesConsistent(detail: CaseDetail): boolean {
     stage2Plan,
     stage2Report,
   } = detail;
-  const versions = [
-    detail.application,
-    detail.applicationReview,
-    detail.duration,
-    detail.agreement,
-    detail.team,
-    decision,
-    stage1Plan,
-    stage1Report,
-    stage2Plan,
-    stage2Report,
-  ].flatMap((version) => (version ? [version.caseRevision] : []));
+  const versions = stepRevisions(detail);
   if (
     new Set(versions).size !== versions.length ||
     versions.some((revision) => revision > detail.revision)
@@ -783,6 +795,63 @@ function stagesConsistent(detail: CaseDetail): boolean {
   );
 }
 
+/** The revisions of the latest step versions the Case read lists. */
+function stepRevisions(detail: CaseDetail): number[] {
+  return [
+    detail.application,
+    detail.applicationReview,
+    detail.duration,
+    detail.agreement,
+    detail.team,
+    detail.teamDecision,
+    detail.stage1Plan,
+    detail.stage1Report,
+    detail.stage2Plan,
+    detail.stage2Report,
+  ].flatMap((version) => (version ? [version.caseRevision] : []));
+}
+
+/**
+ * Findings follow their Stage: each is created, in sequence order, once the
+ * first plan of its Stage is recorded, and a Stage 1 Finding before the first
+ * Stage 2 plan. Each command records at its own revision, which the Case has
+ * reached: a Finding's records share no revision with a step version or with
+ * another Finding.
+ */
+function findingsConsistent(detail: CaseDetail): boolean {
+  const steps = new Set(stepRevisions(detail));
+  const used = new Set<number>();
+  let previousCreation = 0;
+  for (const finding of detail.findings) {
+    const plan =
+      finding.stage === 'stage_1' ? detail.stage1Plan : detail.stage2Plan;
+    const created = finding.records[0]?.caseRevision;
+    if (!plan || created === undefined || created <= previousCreation)
+      return false;
+    previousCreation = created;
+    if (plan.version === 1 && plan.caseRevision > created) return false;
+    const stage2Plan = detail.stage2Plan;
+    if (
+      finding.stage === 'stage_1' &&
+      stage2Plan?.version === 1 &&
+      stage2Plan.caseRevision < created
+    )
+      return false;
+    for (const revision of new Set(
+      finding.records.map((record) => record.caseRevision),
+    )) {
+      if (
+        revision > detail.revision ||
+        steps.has(revision) ||
+        used.has(revision)
+      )
+        return false;
+      used.add(revision);
+    }
+  }
+  return true;
+}
+
 /** The server's derivation of the next step of an open Case. */
 function expectedNextStep(detail: CaseDetail): CertificationNextStep {
   if (!detail.application) return 'application';
@@ -799,7 +868,9 @@ function expectedNextStep(detail: CaseDetail): CertificationNextStep {
     return 'stage_1_report';
   if (!detail.stage2Plan) return 'stage_2_plan';
   if (!detail.stage2Report) return 'stage_2_report';
-  return 'recommendation';
+  return detail.findings.some(findingBlocks)
+    ? 'findings_follow_up'
+    : 'recommendation';
 }
 
 function parseStepVersion(value: unknown): StepVersion {
@@ -951,6 +1022,240 @@ function stage2ReportValue(value: unknown): Stage2Report {
       Number.MAX_SAFE_INTEGER,
     ),
   };
+}
+
+/** Every Finding in sequence order: 1, 2, 3… as the server numbers them. */
+function findingList(value: unknown): Finding[] {
+  const findings = list(value, 0, MAX_TIMELINE).map(findingValue);
+  if (
+    findings.some((finding, index) => finding.sequence !== index + 1) ||
+    new Set(findings.map((finding) => finding.id)).size !== findings.length
+  )
+    invalid();
+  return findings;
+}
+
+/**
+ * One Finding: its records in Case order, and the statement, classification
+ * and status the server derives from them, which must equal their replay.
+ * The current classification holds the server's rules for the current
+ * statement. The server's dates are read as given: present exactly for the
+ * nonconformities it dates, and overdue only before a verified effect.
+ */
+function findingValue(value: unknown): Finding {
+  const row = object(value);
+  const stage =
+    row.stage === 'stage_1' || row.stage === 'stage_2' ? row.stage : invalid();
+  const records = list(row.records, 2, MAX_TIMELINE).map(findingRecord);
+  if (!recordsInOrder(records)) invalid();
+  const replay = replayFinding(records) ?? invalid();
+  const statement = findingStatement(row.statement);
+  const classification = findingClassification(row.classification);
+  const status = findingStatus(row.status);
+  if (
+    JSON.stringify(statement) !== JSON.stringify(replay.statement) ||
+    classification !== replay.classification ||
+    status !== replay.status ||
+    classificationRefusal(classification, stage, statement) !== null
+  )
+    invalid();
+  const responseDueOn =
+    row.responseDueOn === null ? null : calendarDate(row.responseDueOn);
+  const limitOn = row.limitOn === null ? null : calendarDate(row.limitOn);
+  const nonconformity = isNonconformity(classification);
+  const limited =
+    nonconformity &&
+    (stage === 'stage_1' || classification === 'major_nonconformity');
+  if (
+    (responseDueOn !== null) !== nonconformity ||
+    (limitOn !== null) !== limited ||
+    typeof row.overdue !== 'boolean' ||
+    (row.overdue && (limitOn === null || status === 'verified_effective'))
+  )
+    invalid();
+  return {
+    id: text(row.id),
+    stage,
+    sequence: positive(row.sequence),
+    statement,
+    classification,
+    status,
+    responseDueOn,
+    limitOn,
+    overdue: row.overdue,
+    records,
+  };
+}
+
+/**
+ * A Finding is created with its first statement and classification at one
+ * revision, in either order; every later record follows at its own later
+ * revision; each kind's versions count 1, 2, 3… in order.
+ */
+function recordsInOrder(records: readonly FindingRecord[]): boolean {
+  const [first, second, ...later] = records;
+  if (
+    !first ||
+    !second ||
+    first.caseRevision !== second.caseRevision ||
+    first.kind === second.kind ||
+    (first.kind !== 'statement' && first.kind !== 'classification') ||
+    (second.kind !== 'statement' && second.kind !== 'classification')
+  )
+    return false;
+  let previous = first.caseRevision;
+  for (const record of later) {
+    if (record.caseRevision <= previous) return false;
+    previous = record.caseRevision;
+  }
+  const versions = new Map<FindingRecord['kind'], number>();
+  for (const record of records) {
+    const expected = (versions.get(record.kind) ?? 0) + 1;
+    if (record.version !== expected) return false;
+    versions.set(record.kind, expected);
+  }
+  return true;
+}
+
+/**
+ * A later statement or classification version states its reason; a first
+ * one never does, and only the team leader classifies first. A response,
+ * judgment or verification carries no correction reason.
+ */
+function findingRecord(value: unknown): FindingRecord {
+  const row = object(value);
+  const base = {
+    id: text(row.id),
+    version: positive(row.version),
+    caseRevision: positive(row.caseRevision),
+    reason:
+      row.reason === null
+        ? null
+        : text(row.reason, CERTIFICATION_LIMITS.reason),
+    recordedBy: actorReference(row.recordedBy),
+    recordedAt: instant(row.recordedAt),
+  };
+  switch (row.kind) {
+    case 'statement':
+      return {
+        ...base,
+        reason: correctionReasonOf(base),
+        kind: 'statement',
+        value: findingStatement(row.value),
+      };
+    case 'classification': {
+      const classified = classificationRecord(row.value);
+      if (base.version === 1 && classified.by !== 'team_leader') invalid();
+      return {
+        ...base,
+        reason: correctionReasonOf(base),
+        kind: 'classification',
+        value: classified,
+      };
+    }
+    case 'response':
+      return {
+        ...base,
+        reason: withoutReason(base),
+        kind: 'response',
+        value: nonconformityResponse(row.value),
+      };
+    case 'plan_judgment':
+      return {
+        ...base,
+        reason: withoutReason(base),
+        kind: 'plan_judgment',
+        value: planJudgment(row.value),
+      };
+    case 'verification':
+      return {
+        ...base,
+        reason: withoutReason(base),
+        kind: 'verification',
+        value: nonconformityVerification(row.value),
+      };
+    default:
+      return invalid();
+  }
+}
+
+function withoutReason(base: { reason: string | null }): null {
+  return base.reason === null ? null : invalid();
+}
+
+function findingStatement(value: unknown): FindingStatement {
+  const body = object(value);
+  return {
+    clause: optionalText(body.clause, FINDING_LIMITS.clause),
+    area: optionalText(body.area, FINDING_LIMITS.area),
+    statement: text(body.statement, FINDING_LIMITS.statement),
+    evidenceAttachmentIds: evidence(body.evidenceAttachmentIds),
+  };
+}
+
+function classificationRecord(value: unknown): FindingClassificationRecord {
+  const body = object(value);
+  const by =
+    body.by === 'team_leader' || body.by === 'approver' ? body.by : invalid();
+  return { classification: findingClassification(body.classification), by };
+}
+
+function nonconformityResponse(value: unknown): NonconformityResponse {
+  const body = object(value);
+  return {
+    correction: text(body.correction, FINDING_LIMITS.responseText),
+    cause: text(body.cause, FINDING_LIMITS.responseText),
+    correctiveAction: text(body.correctiveAction, FINDING_LIMITS.responseText),
+    receivedOn: calendarDate(body.receivedOn),
+    plannedCompletionOn:
+      body.plannedCompletionOn === null
+        ? null
+        : calendarDate(body.plannedCompletionOn),
+    evidenceAttachmentIds: evidence(body.evidenceAttachmentIds),
+  };
+}
+
+function planJudgment(value: unknown): PlanJudgment {
+  const body = object(value);
+  const outcome =
+    body.outcome === 'adequate' || body.outcome === 'inadequate'
+      ? body.outcome
+      : invalid();
+  return { outcome, note: text(body.note, FINDING_LIMITS.note) };
+}
+
+function nonconformityVerification(value: unknown): NonconformityVerification {
+  const body = object(value);
+  const method =
+    body.method === 'document_review' || body.method === 'on_site'
+      ? body.method
+      : invalid();
+  const outcome =
+    body.outcome === 'effective' || body.outcome === 'not_effective'
+      ? body.outcome
+      : invalid();
+  return {
+    verifiedOn: calendarDate(body.verifiedOn),
+    method,
+    outcome,
+    note: text(body.note, FINDING_LIMITS.note),
+    evidenceAttachmentIds: evidence(body.evidenceAttachmentIds),
+  };
+}
+
+/** At most ten attachments of the Case, each cited once. */
+function evidence(value: unknown): string[] {
+  const ids = list(value, 0, FINDING_LIMITS.evidence).map((id) => text(id));
+  if (new Set(ids).size !== ids.length) invalid();
+  return ids;
+}
+
+function findingClassification(value: unknown): FindingClassification {
+  return FINDING_CLASSIFICATIONS.find((entry) => entry === value) ?? invalid();
+}
+
+function findingStatus(value: unknown): FindingStatus {
+  return FINDING_STATUSES.find((entry) => entry === value) ?? invalid();
 }
 
 function calendarDate(value: unknown): string {
