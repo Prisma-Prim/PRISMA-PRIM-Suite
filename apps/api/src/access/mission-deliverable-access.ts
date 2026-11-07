@@ -1,4 +1,5 @@
-import { and, eq, isNull, type SQL } from 'drizzle-orm';
+import { and, eq, exists, isNull, sql, type SQL } from 'drizzle-orm';
+import type { DatabaseContext } from '../database/database-context.js';
 import { companyRoleAssignments } from '../database/schema/index.js';
 import type { ActorContext } from './access.types.js';
 import { COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE } from './company-permissions.js';
@@ -29,4 +30,23 @@ export function missionDeliverableAssignment(
     eq(companyRoleAssignments.permissionSetVersion, 'v1'),
     isNull(companyRoleAssignments.revokedAt),
   );
+}
+
+/** Unlocked live-grant condition for a row-level projection; `false` without the capture. */
+export function missionDeliverableAssignmentExists({
+  actor,
+  connection,
+}: {
+  actor: ActorContext;
+  connection: DatabaseContext['connection'];
+}): SQL {
+  const grant = missionDeliverableAssignment(actor);
+  return grant
+    ? exists(
+        connection
+          .select({ id: companyRoleAssignments.id })
+          .from(companyRoleAssignments)
+          .where(grant),
+      )
+    : sql`false`;
 }

@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
-import { COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE } from '../access/company-permissions.js';
+import {
+  requireLiveClientReadAuthority,
+  requireLiveCompanyClientReadAuthority,
+} from '../access/client-read-access.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { ClientReferenceStateDrift } from './client-reference-state-drift.js';
 import {
@@ -16,10 +19,6 @@ import {
   clientUnionOperations,
   clientUnionReviews,
   clientUnionReversals,
-  // eslint-disable-next-line no-restricted-imports -- Client read authority lock predates the Access boundary rule; #1106 moves it into Access.
-  companyRoleAssignments,
-  // eslint-disable-next-line no-restricted-imports -- Client read authority lock predates the Access boundary rule; #1106 moves it into Access.
-  workspacePermissionGrants,
 } from '../database/schema/index.js';
 
 export interface ProjectClientReference {
@@ -957,30 +956,13 @@ export class ClientOperationalReferenceService {
     lock = true,
     exactCapture = false,
   ): Promise<void> {
-    if (actor.workspacePermissions.includes('client.manage')) {
-      const query = this.databaseContext.connection
-        .select({ id: workspacePermissionGrants.id })
-        .from(workspacePermissionGrants)
-        .where(
-          and(
-            eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
-            eq(
-              workspacePermissionGrants.workspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(workspacePermissionGrants.permission, 'client.manage'),
-          ),
-        );
-      const managerGrants = lock ? await query.for('share') : await query;
-      if (managerGrants.length > 0) return;
-    }
-
-    await this.lockCompanyClientReadAuthority(
+    await requireLiveClientReadAuthority({
+      connection: this.databaseContext.connection,
       actor,
       companyId,
       lock,
       exactCapture,
-    );
+    });
   }
 
   private async lockCompanyClientReadAuthority(
@@ -989,41 +971,12 @@ export class ClientOperationalReferenceService {
     lock = true,
     exactCapture = false,
   ): Promise<void> {
-    const capturedVersion = actor.activeCompany?.clientPermissionSetVersion;
-    if (exactCapture && capturedVersion !== 'v1' && capturedVersion !== 'v2')
-      throw new ForbiddenException();
-    const assignmentId = actor.activeCompany?.clientPermissionAssignmentId;
-    if (
-      assignmentId &&
-      actor.activeCompany?.clientPermissions.includes('client.read')
-    ) {
-      const query = this.databaseContext.connection
-        .select({ id: companyRoleAssignments.id })
-        .from(companyRoleAssignments)
-        .where(
-          and(
-            eq(companyRoleAssignments.id, assignmentId),
-            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-            eq(
-              companyRoleAssignments.workspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(companyRoleAssignments.companyId, companyId),
-            eq(
-              companyRoleAssignments.bundle,
-              COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-            ),
-            inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
-            exactCapture && capturedVersion
-              ? eq(companyRoleAssignments.permissionSetVersion, capturedVersion)
-              : undefined,
-            sql`${companyRoleAssignments.revokedAt} IS NULL`,
-          ),
-        );
-      const assignments = lock ? await query.for('share') : await query;
-      if (assignments.length > 0) return;
-    }
-
-    throw new ForbiddenException();
+    await requireLiveCompanyClientReadAuthority({
+      connection: this.databaseContext.connection,
+      actor,
+      companyId,
+      lock,
+      exactCapture,
+    });
   }
 }

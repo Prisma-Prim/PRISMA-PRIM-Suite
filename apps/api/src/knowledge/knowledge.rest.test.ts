@@ -1,4 +1,5 @@
 import { AccountabilityService } from '../accountability/accountability.service.js';
+import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { KnowledgeAuthorization } from './knowledge.authorization.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -705,6 +706,149 @@ withPostgres('Governed Knowledge source public REST', () => {
       guard.mockRestore();
     }
   });
+
+  // #1106: the Knowledge grant recheck must not outlive the member, its
+  // Internal User or the Company, whichever check observes the loss.
+  const livenessLosses = [
+    {
+      row: 'Workspace Membership',
+      statement:
+        "UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1",
+      target: 'membership',
+    },
+    {
+      row: 'Internal User',
+      statement: `UPDATE internal_users SET status = 'inactive'
+        WHERE id = (SELECT internal_user_id FROM workspace_memberships WHERE id = $1)`,
+      target: 'membership',
+    },
+    {
+      row: 'Company',
+      statement: "UPDATE companies SET status = 'inactive' WHERE id = $1",
+      target: 'company',
+    },
+  ] as const;
+  function livenessTarget(target: 'membership' | 'company'): string {
+    return target === 'company' ? companyId : membershipId;
+  }
+
+  function checkpoint() {
+    let reach = (): void => undefined;
+    let release = (): void => undefined;
+    const reached = new Promise<void>((resolve) => {
+      reach = resolve;
+    });
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { reach, reached, release, released };
+  }
+
+  it.each(livenessLosses)(
+    'refuses a captured Knowledge read after its $row stops being active',
+    async ({ statement, target }) => {
+      const source = await admitted();
+      await grant('readers');
+      const paused = checkpoint();
+      const original = KnowledgeAuthorization.prototype.require;
+      let waiting = true;
+      const guard = vi
+        .spyOn(KnowledgeAuthorization.prototype, 'require')
+        .mockImplementation(async function (
+          this: KnowledgeAuthorization,
+          actor,
+          role,
+        ) {
+          if (role === 'reader' && waiting) {
+            waiting = false;
+            paused.reach();
+            await paused.released;
+          }
+          return original.call(this, actor, role);
+        });
+      try {
+        const result = await harness.measureApplicationQueries(async () => {
+          const pending = call(
+            `/knowledge/sources/${source.sourceId}/passages/p1`,
+          );
+          try {
+            await paused.reached;
+            await harness.pool.query(statement, [livenessTarget(target)]);
+          } finally {
+            paused.release();
+          }
+          return pending;
+        });
+        expect(result.value.status).toBe(403);
+        expect(await result.value.text()).not.toContain(
+          KNOWLEDGE_DOCUMENT_LITERAL,
+        );
+        expect(
+          result.queries.some((query) =>
+            query.includes('from "knowledge_passages"'),
+          ),
+        ).toBe(false);
+      } finally {
+        paused.release();
+        guard.mockRestore();
+      }
+    },
+  );
+
+  it.each(livenessLosses)(
+    'holds the $row active until a Knowledge read past its Document gate commits',
+    async ({ statement, target }) => {
+      const source = await admitted();
+      await grant('readers');
+      const paused = checkpoint();
+      const original =
+        CompanyContextAuthorization.prototype.requireDocumentContentRead;
+      let waiting = true;
+      const gate = vi
+        .spyOn(
+          CompanyContextAuthorization.prototype,
+          'requireDocumentContentRead',
+        )
+        .mockImplementation(async function (
+          this: CompanyContextAuthorization,
+          actor,
+        ) {
+          const gatedCompanyId = await original.call(this, actor);
+          if (waiting) {
+            waiting = false;
+            paused.reach();
+            await paused.released;
+          }
+          return gatedCompanyId;
+        });
+      try {
+        const pending = call(
+          `/knowledge/sources/${source.sourceId}/passages/p1`,
+        );
+        const contender = await harness.pool.connect();
+        try {
+          await paused.reached;
+          await contender.query('BEGIN');
+          await contender.query("SET LOCAL lock_timeout = '250ms'");
+          await expect(
+            contender.query(statement, [livenessTarget(target)]),
+          ).rejects.toMatchObject({ code: '55P03' });
+        } finally {
+          await contender.query('ROLLBACK');
+          contender.release();
+          paused.release();
+        }
+        const response = await pending;
+        expect(response.status, await response.clone().text()).toBe(200);
+        expect(object(await response.json()).text).toBe(
+          KNOWLEDGE_DOCUMENT_LITERAL,
+        );
+      } finally {
+        paused.release();
+        gate.mockRestore();
+      }
+    },
+  );
 
   it.each([
     {
