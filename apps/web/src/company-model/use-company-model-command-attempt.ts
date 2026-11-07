@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
+import { useScopedOperation } from '../api/use-scoped-operation';
 
 export type ModelCommandNotice = {
   key: 'saved' | 'decisionSaved' | 'withdrawalSaved';
@@ -28,9 +29,12 @@ type State =
       error: 'invalid' | 'stale' | null;
     }
   | { kind: 'pending' | 'uncertain' };
-type Run = { kind: 'pending'; controller: AbortController };
+type Run = { kind: 'pending'; signal: AbortSignal };
+/** A pending or uncertain owner retires with its signal; the slot is then free. */
 type Owner =
-  { kind: 'idle' | 'retired' } | Run | { kind: 'uncertain'; attempt: Attempt };
+  | { kind: 'idle' }
+  | Run
+  | { kind: 'uncertain'; attempt: Attempt; signal: AbortSignal };
 type Outcome =
   | { kind: 'confirmed'; notice: ModelCommandNotice }
   | { kind: 'denied'; result: ApiResult<unknown> }
@@ -61,23 +65,15 @@ export function useCompanyModelCommandAttempt({
     notice: null,
     error: null,
   });
+  // The keyed parent fixes identity, Company and authority for this mount.
+  // Effect replay creates a new owner; an old run can never become live again.
+  const operation = useScopedOperation(companyId);
   const owner = useRef<Owner>({ kind: 'idle' });
   const callbacks = useRef({ onStart, onConfirmed, onDenied });
   callbacks.current = { onStart, onConfirmed, onDenied };
 
-  // The keyed parent fixes identity, Company and authority for this mount.
-  // Effect replay creates a new owner; an old run can never become live again.
-  useEffect(() => {
-    if (owner.current.kind === 'retired') owner.current = { kind: 'idle' };
-    return () => {
-      const previous = owner.current;
-      owner.current = { kind: 'retired' };
-      if (previous.kind === 'pending') previous.controller.abort();
-    };
-  }, []);
-
   function live(run: Run) {
-    return owner.current === run && !run.controller.signal.aborted;
+    return owner.current === run && !run.signal.aborted;
   }
 
   async function execute(run: Run, attempt: Attempt): Promise<Outcome> {
@@ -92,7 +88,7 @@ export function useCompanyModelCommandAttempt({
           'idempotency-key': attempt.key,
         },
         companyContextId: attempt.companyId,
-        signal: run.controller.signal,
+        signal: run.signal,
       });
       if (!live(run)) return { kind: 'uncertain' };
       if (result.status === 'unauthorized' || result.status === 'forbidden')
@@ -107,7 +103,7 @@ export function useCompanyModelCommandAttempt({
           if (!live(run)) throw new Error('Model attempt retired.');
           const confirmation = await api.request<unknown>(path, {
             companyContextId: attempt.companyId,
-            signal: run.controller.signal,
+            signal: run.signal,
           });
           if (!live(run)) throw new Error('Model attempt retired.');
           if (
@@ -132,7 +128,7 @@ export function useCompanyModelCommandAttempt({
     const outcome = await execute(current, attempt);
     if (!live(current)) return;
     if (outcome.kind === 'uncertain') {
-      owner.current = { kind: 'uncertain', attempt };
+      owner.current = { kind: 'uncertain', attempt, signal: current.signal };
       setState({ kind: 'uncertain' });
       return;
     }
@@ -153,6 +149,14 @@ export function useCompanyModelCommandAttempt({
     }
   }
 
+  function claim(): Run | null {
+    const signal = operation.begin();
+    if (!signal) return null;
+    const current: Run = { kind: 'pending', signal };
+    owner.current = current;
+    return current;
+  }
+
   function begin(attempt: Attempt, current: Run) {
     setState({ kind: 'pending' });
     callbacks.current.onStart();
@@ -163,31 +167,25 @@ export function useCompanyModelCommandAttempt({
     state,
     blocked: state.kind !== 'idle',
     start(prepare: () => PreparedAttempt) {
-      if (owner.current.kind !== 'idle') return;
-      const current: Run = {
-        kind: 'pending',
-        controller: new AbortController(),
-      };
-      owner.current = current;
+      const previous = owner.current;
+      if (previous.kind !== 'idle' && !previous.signal.aborted) return;
+      const current = claim();
+      if (!current) return;
       let attempt: Attempt;
       try {
         attempt = { ...prepare(), companyId, key: crypto.randomUUID() };
       } catch (error: unknown) {
         owner.current = { kind: 'idle' };
-        current.controller.abort();
+        operation.retire();
         throw error;
       }
       begin(attempt, current);
     },
     retry() {
-      if (owner.current.kind !== 'uncertain') return;
-      const { attempt } = owner.current;
-      const current: Run = {
-        kind: 'pending',
-        controller: new AbortController(),
-      };
-      owner.current = current;
-      begin(attempt, current);
+      const previous = owner.current;
+      if (previous.kind !== 'uncertain' || previous.signal.aborted) return;
+      const current = claim();
+      if (current) begin(previous.attempt, current);
     },
   };
 }

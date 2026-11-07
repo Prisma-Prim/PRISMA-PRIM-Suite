@@ -4,6 +4,7 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import {
   readModelOffer,
   type ModelOfferView,
@@ -72,6 +73,8 @@ type Attempt = { key: string; path: string; body: string } & (
 );
 type Feedback =
   'invalid' | 'unavailable' | 'conflict' | 'uncertain' | 'denied' | null;
+type ReadState = 'idle' | 'loading' | 'error';
+type ReadStatus = { scope: string; state: Exclude<ReadState, 'idle'> } | null;
 export type ModelContractJourneyProps = ContractPanelProps & {
   initialContract: ModelContractView | null;
   initialOffer?: unknown;
@@ -166,7 +169,7 @@ export function useModelContractJourney(
       props.initialContract ? 'view' : 'prepare',
     );
   const [sources, setSources] = useState<Sources>({ offer: null, model: null }),
-    [readState, setReadState] = useState<'idle' | 'loading' | 'error'>('idle');
+    [readStatus, setReadStatus] = useState<ReadStatus>(null);
   const [history, setHistory] = useState<ReturnType<
       typeof readModelContractHistory
     > | null>(null),
@@ -181,9 +184,7 @@ export function useModelContractJourney(
   const [reviewBasis, setReviewBasis] = useState(''),
     [reason, setReason] = useState(''),
     [acknowledgements, setAcknowledgements] = useState<string[]>([]);
-  const attempt = useRef<Attempt | undefined>(undefined),
-    readRequest = useRef<AbortController | undefined>(undefined),
-    writeRequest = useRef<AbortController | undefined>(undefined);
+  const attempt = useRef<Attempt | undefined>(undefined);
   const activeWrite = useRef(false);
   const locked = running || feedback === 'uncertain' || siblingsProtected;
   const mutationAuthority = JSON.stringify([
@@ -203,14 +204,33 @@ export function useModelContractJourney(
     mayApprove,
     mayCheck,
   ]);
-  // Retire work inside the commit that changes authority. A passive effect
-  // would run after React yields for paint, so a click in that frame (such as
-  // Copy on first display) would lose its own command and reads.
+  // A sibling taking revision ownership starts a new read generation: earlier
+  // navigation/reload replies retire, independently requested later reads stay.
+  const ownership = useRef({ siblingsProtected, generation: 0 });
+  if (ownership.current.siblingsProtected !== siblingsProtected)
+    ownership.current = {
+      siblingsProtected,
+      generation: ownership.current.generation + (siblingsProtected ? 1 : 0),
+    };
+  const readScope = JSON.stringify([
+    mutationAuthority,
+    ownership.current.generation,
+  ]);
+  // Work retires inside the commit that changes its scope, so a click on the
+  // first displayed frame (Copy, or History after a sibling took ownership)
+  // keeps its own command and reads.
+  const reads = useScopedOperation(readScope),
+    writes = useScopedOperation(mutationAuthority);
+  // A retired read scope's status reads as idle in the render that retires it.
+  // The generation never repeats, but authority values can (A→B→A), so the
+  // authority reset below also discards the status for good.
+  const readState = readStatus?.scope === readScope ? readStatus.state : 'idle';
+  const setReadState = (state: ReadState) =>
+    setReadStatus(state === 'idle' ? null : { scope: readScope, state });
   useLayoutEffect(() => {
-    writeRequest.current?.abort();
-    readRequest.current?.abort();
     attempt.current = undefined;
     activeWrite.current = false;
+    setReadStatus(null);
     setDraft(blank());
     setSources({ offer: null, model: null });
     setReviewBasis('');
@@ -218,28 +238,11 @@ export function useModelContractJourney(
     setAcknowledgements([]);
     setRunning(false);
     setFeedback(null);
-    setReadState('idle');
   }, [mutationAuthority]);
-  useEffect(
-    () => () => {
-      readRequest.current?.abort();
-      writeRequest.current?.abort();
-    },
-    [],
-  );
   useEffect(() => {
     if (!props.initialContract && mayPrepare)
       void loadSources(props.initialOffer);
   }, []);
-
-  useEffect(() => {
-    if (siblingsProtected) {
-      // Retire earlier navigation/reload replies when a sibling takes revision
-      // ownership. Independently requested later reads remain available.
-      readRequest.current?.abort();
-      setReadState('idle');
-    }
-  }, [siblingsProtected]);
 
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
     const denied = await handleAuthenticatedAccessRejection({
@@ -252,8 +255,9 @@ export function useModelContractJourney(
       signal,
     });
     if (denied && !signal.aborted) {
-      readRequest.current?.abort();
-      writeRequest.current?.abort();
+      reads.retire();
+      writes.retire();
+      activeWrite.current = false;
       if (denied === 'unauthorized')
         setContractSnapshot({ contract: null, projectReadKey });
       setDraft(blank());
@@ -280,21 +284,20 @@ export function useModelContractJourney(
     apply: (value: T) => void,
   ) {
     if (attempt.current || !companyId) return false;
-    readRequest.current?.abort();
-    const controller = new AbortController();
-    readRequest.current = controller;
+    const signal = reads.begin();
+    if (!signal) return false;
     setReadState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
-      if (controller.signal.aborted) return false;
-      const value = await operation(api, controller.signal);
-      if (!controller.signal.aborted) {
+      if (signal.aborted) return false;
+      const value = await operation(api, signal);
+      if (!signal.aborted) {
         apply(value);
         setReadState('idle');
         return true;
       }
     } catch {
-      if (!controller.signal.aborted) setReadState('error');
+      if (!signal.aborted) setReadState('error');
     }
     return false;
   }
@@ -371,7 +374,7 @@ export function useModelContractJourney(
   }
   function applyContract(next: ModelContractView) {
     // A confirmed sibling result supersedes every read begun before it.
-    readRequest.current?.abort();
+    reads.retire();
     setReadState('idle');
     setContractSnapshot({ contract: next, projectReadKey });
     setQuality(next.version.latestQualityRun);
@@ -587,15 +590,14 @@ export function useModelContractJourney(
       setFeedback('invalid');
       return;
     }
+    const signal = writes.begin();
+    if (!signal) return;
     attempt.current = command;
     activeWrite.current = true;
-    readRequest.current?.abort();
+    reads.retire();
     setReadState('idle');
     setRunning(true);
     setFeedback(null);
-    const controller = new AbortController();
-    writeRequest.current = controller;
-    const { signal } = controller;
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (signal.aborted) return;
@@ -700,8 +702,11 @@ export function useModelContractJourney(
     } catch {
       if (!signal.aborted) setFeedback('uncertain');
     } finally {
-      if (writeRequest.current === controller) activeWrite.current = false;
-      if (!signal.aborted) setRunning(false);
+      // A retired write was released by whoever retired it.
+      if (!signal.aborted) {
+        activeWrite.current = false;
+        setRunning(false);
+      }
     }
   }
   return {
