@@ -19,16 +19,19 @@ export const CERTIFICATION_CASE_STATUSES = ['open', 'rejected'] as const;
 export const CERTIFICATION_STEPS = [
   'application',
   'application_review',
+  'duration',
 ] as const;
 export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.opened',
   'certification_case.application_recorded',
   'certification_case.application_reviewed',
+  'certification_case.duration_confirmed',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
   'application',
   'application_review',
+  'duration',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -184,7 +187,7 @@ export const certificationStepVersions = pgTable(
     ),
     check(
       'certification_step_versions_step_check',
-      sql`${table.step} IN ('application', 'application_review') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
+      sql`${table.step} IN ('application', 'application_review', 'duration') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
     ),
     check(
       'certification_step_versions_payload_check',
@@ -219,7 +222,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -265,7 +268,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',

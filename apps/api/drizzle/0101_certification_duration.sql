@@ -1,0 +1,6 @@
+ALTER TABLE "certification_events" DROP CONSTRAINT "certification_events_action_check";--> statement-breakpoint
+ALTER TABLE "certification_receipts" DROP CONSTRAINT "certification_receipts_kind_check";--> statement-breakpoint
+ALTER TABLE "certification_step_versions" DROP CONSTRAINT "certification_step_versions_step_check";--> statement-breakpoint
+ALTER TABLE "certification_events" ADD CONSTRAINT "certification_events_action_check" CHECK ("certification_events"."action" IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed') AND "certification_events"."revision" > 0 AND jsonb_typeof("certification_events"."metadata") = 'object');--> statement-breakpoint
+ALTER TABLE "certification_receipts" ADD CONSTRAINT "certification_receipts_kind_check" CHECK ("certification_receipts"."command_kind" IN ('open', 'application', 'application_review', 'duration'));--> statement-breakpoint
+ALTER TABLE "certification_step_versions" ADD CONSTRAINT "certification_step_versions_step_check" CHECK ("certification_step_versions"."step" IN ('application', 'application_review', 'duration') AND "certification_step_versions"."version" > 0 AND "certification_step_versions"."case_revision" > 1);
