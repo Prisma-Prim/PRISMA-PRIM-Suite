@@ -26,6 +26,8 @@ import {
 } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  certificationFindingRecords,
+  certificationFindings,
   certificationCaseDocuments,
   certificationCases,
   certificationReceipts,
@@ -55,6 +57,22 @@ import {
   teamMembershipIds,
   teamWithoutConflict,
 } from './certification-team.js';
+import {
+  allowedInStage,
+  classification as findingClassificationValue,
+  findingBlocks,
+  findingCommand,
+  findingRecordView,
+  findingRule,
+  findingStatement,
+  findingView,
+  isNonconformity,
+  nonconformityResponse,
+  nonconformityVerification,
+  planJudgment,
+  type FindingRecordKind,
+  type FindingView,
+} from './certification-findings.js';
 import {
   dayCents,
   stage1Report,
@@ -86,6 +104,8 @@ import type {
   CertificationTimeline,
 } from './certification.types.js';
 import {
+  DOCUMENT_ROLES,
+  inputObject,
   agreement,
   agreementCommand,
   attachCommand,
@@ -896,6 +916,24 @@ export class CertificationService {
               'CERTIFICATION_STAGE_1_NOT_READY',
               'Stage 2 is planned after a Stage 1 report concluding the client is ready.',
             );
+          const findings = await this.findings(
+            actor,
+            companyId,
+            targetId,
+            steps,
+          );
+          if (
+            findings.some(
+              (finding) =>
+                finding.stage === 'stage_1' &&
+                isNonconformity(finding.classification) &&
+                finding.status !== 'verified_effective',
+            )
+          )
+            throw stepConflict(
+              'CERTIFICATION_STAGE_1_NONCONFORMITY_OPEN',
+              'Stage 2 starts once every Stage 1 nonconformity is verified as eliminated.',
+            );
           if (input.payload.startDate <= value.reportDate)
             throw stepConflict(
               'CERTIFICATION_STAGE_DATES',
@@ -1044,6 +1082,341 @@ export class CertificationService {
     });
   }
 
+  /** The team leader records a classified Finding of a planned Stage. */
+  recordFinding({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'auditor',
+      kind: 'finding',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = findingCommand(body, (payload) => {
+          const fields = inputObject(payload, [
+            'stage',
+            'classification',
+            'clause',
+            'area',
+            'statement',
+            'evidenceAttachmentIds',
+          ]);
+          const { stage, classification, ...statement } = fields;
+          let findingStage: AuditStage;
+          if (stage === 'stage_1') findingStage = 'stage_1';
+          else if (stage === 'stage_2') findingStage = 'stage_2';
+          else
+            throw findingRule(
+              'INVALID_CERTIFICATION_INPUT',
+              'Invalid certification input.',
+            );
+          return {
+            stage: findingStage,
+            classification: findingClassificationValue(classification),
+            statement: findingStatement(statement),
+          };
+        });
+        if (input.reason !== null)
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A new Finding has no correction reason.',
+          );
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        this.requireTeamLeader(actor, steps);
+        const { stage, classification, statement } = input.payload;
+        if (
+          !latest(steps, stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan')
+        )
+          throw stepConflict(
+            'CERTIFICATION_STAGE_NOT_PLANNED',
+            'Record Findings of a planned Stage.',
+          );
+        if (stage === 'stage_1' && latest(steps, 'stage_2_plan'))
+          throw stepConflict(
+            'CERTIFICATION_STAGE_CLOSED',
+            'Stage 1 Findings are recorded before Stage 2 is planned.',
+          );
+        this.requireClassification(classification, stage, statement);
+        await this.requireAttachments(
+          actor,
+          companyId,
+          targetId,
+          statement.evidenceAttachmentIds,
+        );
+        const [existing] = await this.database.connection
+          .select({ value: count() })
+          .from(certificationFindings)
+          .where(
+            and(
+              eq(certificationFindings.workspaceId, actor.workspaceId),
+              eq(certificationFindings.companyId, companyId),
+              eq(certificationFindings.caseId, targetId),
+            ),
+          );
+        const now = this.clock.now();
+        const revision = current.revision + 1;
+        const [finding] = await this.database.connection
+          .insert(certificationFindings)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            stage,
+            sequence: (existing?.value ?? 0) + 1,
+            caseRevision: revision,
+            createdAt: now,
+          })
+          .returning({ id: certificationFindings.id });
+        if (!finding) throw new InternalServerErrorException();
+        await this.insertFindingRecord(actor, companyId, targetId, {
+          findingId: finding.id,
+          kind: 'statement',
+          version: 1,
+          caseRevision: revision,
+          payload: statement,
+          reason: null,
+          at: now,
+        });
+        await this.insertFindingRecord(actor, companyId, targetId, {
+          findingId: finding.id,
+          kind: 'classification',
+          version: 1,
+          caseRevision: revision,
+          payload: { classification, by: 'team_leader' },
+          reason: null,
+          at: now,
+        });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.finding_recorded',
+          metadata: { stage, classification },
+        });
+      },
+    });
+  }
+
+  /** One later version of a Finding: correction, classification or follow-up. */
+  recordFindingUpdate({
+    actor,
+    caseId,
+    findingId,
+    kind,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    findingId: string;
+    kind:
+      | 'correction'
+      | 'classification'
+      | 'reclassification'
+      | 'response'
+      | 'plan_judgment'
+      | 'verification';
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    const targetFinding = requireUuid(findingId);
+    return this.command({
+      actor,
+      role: kind === 'reclassification' ? 'approver' : 'auditor',
+      kind: 'finding_record',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, findingId, kind, body }),
+      execute: async (companyId) => {
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          findingCommand(body, () => null).expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        if (kind === 'reclassification') {
+          if (this.onTeam(actor, steps))
+            throw stepConflict(
+              'CERTIFICATION_INDEPENDENCE',
+              'A member of the audit team cannot reclassify as approver.',
+            );
+        } else this.requireTeamLeader(actor, steps);
+        const view = await this.finding(
+          actor,
+          companyId,
+          targetId,
+          targetFinding,
+          steps,
+        );
+        const recordKind: FindingRecordKind =
+          kind === 'correction'
+            ? 'statement'
+            : kind === 'reclassification'
+              ? 'classification'
+              : kind;
+        let payload: object;
+        let reason: string | null = null;
+        let action: Parameters<
+          AccountabilityService['recordCertificationEvent']
+        >[0]['action'];
+        let metadata: Record<string, string | number>;
+        switch (kind) {
+          case 'correction': {
+            const input = findingCommand(body, findingStatement);
+            if (input.reason === null)
+              throw stepConflict(
+                'CERTIFICATION_CORRECTION_REASON',
+                'A correction states its reason.',
+              );
+            this.requireClassification(
+              view.classification,
+              view.stage,
+              input.payload,
+            );
+            await this.requireAttachments(
+              actor,
+              companyId,
+              targetId,
+              input.payload.evidenceAttachmentIds,
+            );
+            payload = input.payload;
+            reason = input.reason;
+            action = 'certification_case.finding_corrected';
+            metadata = { sequence: view.sequence };
+            break;
+          }
+          case 'classification':
+          case 'reclassification': {
+            const input = findingCommand(body, (value) =>
+              findingClassificationValue(
+                inputObject(value, ['classification']).classification,
+              ),
+            );
+            if (input.reason === null)
+              throw stepConflict(
+                'CERTIFICATION_CORRECTION_REASON',
+                'A classification change states its reason.',
+              );
+            this.requireClassification(
+              input.payload,
+              view.stage,
+              view.statement,
+            );
+            payload = {
+              classification: input.payload,
+              by: kind === 'reclassification' ? 'approver' : 'team_leader',
+            };
+            reason = input.reason;
+            action = 'certification_case.finding_reclassified';
+            metadata = {
+              sequence: view.sequence,
+              classification: input.payload,
+            };
+            break;
+          }
+          case 'response': {
+            const input = findingCommand(body, nonconformityResponse);
+            if (
+              !isNonconformity(view.classification) ||
+              view.status === 'verified_effective'
+            )
+              throw stepConflict(
+                'CERTIFICATION_FINDING_NOT_OPEN',
+                'Only an open nonconformity receives a response.',
+              );
+            await this.requireAttachments(
+              actor,
+              companyId,
+              targetId,
+              input.payload.evidenceAttachmentIds,
+            );
+            payload = input.payload;
+            action = 'certification_case.nonconformity_response_recorded';
+            metadata = { sequence: view.sequence };
+            break;
+          }
+          case 'plan_judgment': {
+            const input = findingCommand(body, planJudgment);
+            if (view.status !== 'awaiting_plan_judgment')
+              throw stepConflict(
+                'CERTIFICATION_FINDING_NO_RESPONSE',
+                'Judge the plan of a nonconformity after its response.',
+              );
+            payload = input.payload;
+            action = 'certification_case.nonconformity_plan_judged';
+            metadata = {
+              sequence: view.sequence,
+              outcome: input.payload.outcome,
+            };
+            break;
+          }
+          case 'verification': {
+            const input = findingCommand(body, nonconformityVerification);
+            if (view.status !== 'plan_adequate')
+              throw stepConflict(
+                'CERTIFICATION_FINDING_PLAN_NOT_ADEQUATE',
+                'Verify a nonconformity once its plan is adequate.',
+              );
+            await this.requireAttachments(
+              actor,
+              companyId,
+              targetId,
+              input.payload.evidenceAttachmentIds,
+            );
+            payload = input.payload;
+            action = 'certification_case.nonconformity_verified';
+            metadata = {
+              sequence: view.sequence,
+              outcome: input.payload.outcome,
+            };
+            break;
+          }
+        }
+        const version =
+          view.records.filter((record) => record.kind === recordKind).length +
+          1;
+        const now = this.clock.now();
+        await this.insertFindingRecord(actor, companyId, targetId, {
+          findingId: targetFinding,
+          kind: recordKind,
+          version,
+          caseRevision: current.revision + 1,
+          payload,
+          reason,
+          at: now,
+        });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action,
+          metadata,
+        });
+      },
+    });
+  }
+
   list({
     actor,
     projectId,
@@ -1073,14 +1446,17 @@ export class CertificationService {
         .orderBy(desc(certificationCases.openedAt), desc(certificationCases.id))
         .limit(CASE_LIST_LIMIT);
       const cases: CertificationCaseSummary[] = [];
-      for (const row of rows)
+      for (const row of rows) {
+        const steps = await this.steps(actor, companyId, row.id);
         cases.push(
           this.summary(
             row,
             await this.legalName(actor, row),
-            await this.steps(actor, companyId, row.id),
+            steps,
+            await this.findings(actor, companyId, row.id, steps),
           ),
         );
+      }
       return {
         projectId: targetProjectId,
         cases,
@@ -1375,7 +1751,13 @@ export class CertificationService {
   ): Promise<CertificationCaseDetail> {
     const row = await this.visibleCase(actor, companyId, caseId);
     const steps = await this.steps(actor, companyId, caseId);
-    const summary = this.summary(row, await this.legalName(actor, row), steps);
+    const findings = await this.findings(actor, companyId, caseId, steps);
+    const summary = this.summary(
+      row,
+      await this.legalName(actor, row),
+      steps,
+      findings,
+    );
     const application = latest(steps, 'application');
     const review = latest(steps, 'application_review');
     const duration = latest(steps, 'duration');
@@ -1392,6 +1774,7 @@ export class CertificationService {
       agreement: signed ? agreementVersion(signed) : null,
       team: team ? teamVersion(team) : null,
       teamDecision: decided ? teamDecisionVersion(decided) : null,
+      findings,
       stages: STAGE_STEPS.flatMap((step) => {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
@@ -1403,6 +1786,7 @@ export class CertificationService {
     row: CaseRow,
     legalName: string,
     steps: StepRow[],
+    findings: readonly FindingView[],
   ): CertificationCaseSummary {
     return {
       id: row.id,
@@ -1413,13 +1797,146 @@ export class CertificationService {
       auditType: row.auditType,
       status: row.status,
       revision: row.revision,
-      nextStep: nextStep(row, steps),
+      nextStep: nextStep(row, steps, findings),
       openedBy: {
         workspaceMembershipId: row.openedByMembershipId,
         displayName: row.openedByDisplayName,
       },
       openedAt: row.openedAt.toISOString(),
     };
+  }
+
+  private requireClassification(
+    classification: FindingView['classification'],
+    stage: FindingView['stage'],
+    statement: FindingView['statement'],
+  ): void {
+    if (!allowedInStage(classification, stage))
+      throw findingRule(
+        'CERTIFICATION_FINDING_CLASSIFICATION_STAGE',
+        'An area of concern belongs to Stage 1 only.',
+      );
+    if (
+      isNonconformity(classification) &&
+      !statement.evidenceAttachmentIds.length
+    )
+      throw findingRule(
+        'CERTIFICATION_FINDING_EVIDENCE_REQUIRED',
+        'A nonconformity cites at least one exact evidence document.',
+      );
+  }
+
+  /** Every attachment must belong to this Case. */
+  private async requireAttachments(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    attachmentIds: readonly string[],
+  ): Promise<void> {
+    for (const attachmentId of attachmentIds)
+      await this.requireAttachment(
+        actor,
+        companyId,
+        caseId,
+        attachmentId,
+        DOCUMENT_ROLES,
+      );
+  }
+
+  private async insertFindingRecord(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    input: {
+      findingId: string;
+      kind: FindingRecordKind;
+      version: number;
+      caseRevision: number;
+      payload: object;
+      reason: string | null;
+      at: Date;
+    },
+  ): Promise<void> {
+    await this.database.connection.insert(certificationFindingRecords).values({
+      workspaceId: actor.workspaceId,
+      companyId,
+      caseId,
+      findingId: input.findingId,
+      kind: input.kind,
+      version: input.version,
+      caseRevision: input.caseRevision,
+      payload: input.payload,
+      reason: input.reason,
+      actorMembershipId: actor.workspaceMembershipId,
+      actorInternalUserId: actor.internalUserId,
+      actorDisplayName: actor.displayName,
+      recordedAt: input.at,
+    });
+  }
+
+  /** Every Finding of the Case with its derived status, in sequence order. */
+  private async findings(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    steps: readonly StepRow[],
+  ): Promise<FindingView[]> {
+    const rows = await this.database.connection
+      .select()
+      .from(certificationFindings)
+      .where(
+        and(
+          eq(certificationFindings.workspaceId, actor.workspaceId),
+          eq(certificationFindings.companyId, companyId),
+          eq(certificationFindings.caseId, caseId),
+        ),
+      )
+      .orderBy(asc(certificationFindings.sequence));
+    if (!rows.length) return [];
+    const records = await this.database.connection
+      .select()
+      .from(certificationFindingRecords)
+      .where(
+        and(
+          eq(certificationFindingRecords.workspaceId, actor.workspaceId),
+          eq(certificationFindingRecords.companyId, companyId),
+          eq(certificationFindingRecords.caseId, caseId),
+        ),
+      );
+    const today = this.clock.now().toISOString().slice(0, 10);
+    return rows.map((row) => {
+      const plan = latest(
+        steps,
+        row.stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan',
+      );
+      if (!plan) throw new InternalServerErrorException();
+      return persisted(() =>
+        findingView({
+          id: row.id,
+          stage: row.stage,
+          sequence: row.sequence,
+          stageEnd: stagePlanVersion(plan).value.endDate,
+          today,
+          records: records
+            .filter((record) => record.findingId === row.id)
+            .map(findingRecordView),
+        }),
+      );
+    });
+  }
+
+  private async finding(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    findingId: string,
+    steps: readonly StepRow[],
+  ): Promise<FindingView> {
+    const view = (await this.findings(actor, companyId, caseId, steps)).find(
+      (entry) => entry.id === findingId,
+    );
+    if (!view) throw new NotFoundException();
+    return view;
   }
 
   /** Refuses unless the actor is linked to the leader of the approved team. */
@@ -1601,7 +2118,11 @@ function latest(
   return steps.filter((row) => row.step === step).at(-1);
 }
 
-function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
+function nextStep(
+  row: CaseRow,
+  steps: StepRow[],
+  findings: readonly FindingView[],
+): CertificationNextStep {
   if (row.status !== 'open') return null;
   if (!latest(steps, 'application')) return 'application';
   if (!latest(steps, 'application_review')) return 'application_review';
@@ -1620,6 +2141,7 @@ function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
     return 'stage_1_report';
   if (!latest(steps, 'stage_2_plan')) return 'stage_2_plan';
   if (!latest(steps, 'stage_2_report')) return 'stage_2_report';
+  if (findings.some(findingBlocks)) return 'findings_follow_up';
   return 'recommendation';
 }
 

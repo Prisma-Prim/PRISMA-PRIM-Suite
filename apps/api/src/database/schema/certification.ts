@@ -51,6 +51,12 @@ export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.team_decided',
   'certification_case.stage_planned',
   'certification_case.stage_reported',
+  'certification_case.finding_recorded',
+  'certification_case.finding_corrected',
+  'certification_case.finding_reclassified',
+  'certification_case.nonconformity_response_recorded',
+  'certification_case.nonconformity_plan_judged',
+  'certification_case.nonconformity_verified',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
@@ -63,6 +69,8 @@ export const CERTIFICATION_COMMAND_KINDS = [
   'team_decision',
   'stage_plan',
   'stage_report',
+  'finding',
+  'finding_record',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -253,7 +261,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -299,7 +307,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',
@@ -411,6 +419,123 @@ export const certificationCaseDocuments = pgTable(
     check(
       'certification_case_documents_note_check',
       sql`${table.note} IS NULL OR length(btrim(${table.note})) BETWEEN 1 AND 1000`,
+    ),
+  ],
+);
+
+/** The identity of one Finding of one Stage; its content lives in immutable records. */
+export const certificationFindings = pgTable(
+  'certification_findings',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    stage: text('stage', { enum: ['stage_1', 'stage_2'] }).notNull(),
+    sequence: integer('sequence').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_findings_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.id,
+    ),
+    uniqueIndex('certification_findings_sequence_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.sequence,
+    ),
+    foreignKey({
+      name: 'certification_findings_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    check(
+      'certification_findings_values_check',
+      sql`${table.stage} IN ('stage_1', 'stage_2') AND ${table.sequence} > 0 AND ${table.caseRevision} > 1`,
+    ),
+  ],
+);
+
+export const CERTIFICATION_FINDING_RECORD_KINDS = [
+  'statement',
+  'classification',
+  'response',
+  'plan_judgment',
+  'verification',
+] as const;
+
+/** Statement, classification and follow-up versions of a Finding; append-only. */
+export const certificationFindingRecords = pgTable(
+  'certification_finding_records',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    findingId: uuid('finding_id').notNull(),
+    kind: text('kind', { enum: CERTIFICATION_FINDING_RECORD_KINDS }).notNull(),
+    version: integer('version').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    payload: jsonb('payload').$type<unknown>().notNull(),
+    reason: text('reason'),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_finding_records_number_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.findingId,
+      table.kind,
+      table.version,
+    ),
+    foreignKey({
+      name: 'certification_finding_records_finding_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.findingId,
+      ],
+      foreignColumns: [
+        certificationFindings.workspaceId,
+        certificationFindings.companyId,
+        certificationFindings.caseId,
+        certificationFindings.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_finding_records_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_finding_records_values_check',
+      sql`${table.kind} IN ('statement', 'classification', 'response', 'plan_judgment', 'verification') AND ${table.version} > 0 AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.payload}) = 'object'`,
+    ),
+    check(
+      'certification_finding_records_reason_check',
+      sql`(${table.kind} IN ('statement', 'classification') AND ((${table.version} = 1 AND ${table.reason} IS NULL) OR (${table.version} > 1 AND length(btrim(${table.reason})) > 0))) OR (${table.kind} NOT IN ('statement', 'classification') AND ${table.reason} IS NULL)`,
     ),
   ],
 );
