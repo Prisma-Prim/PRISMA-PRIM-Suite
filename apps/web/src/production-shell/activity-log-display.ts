@@ -302,6 +302,36 @@ export function useActivityLogDisplay() {
     'company_offer_preparer_assignment.granted': message(
       'company_offer_preparer_assignment.granted',
     ),
+    'company_contract_preparer_assignment.granted': message(
+      'company_contract_preparer_assignment.granted',
+    ),
+    'company_contract_preparer_assignment.revoked': message(
+      'company_contract_preparer_assignment.revoked',
+    ),
+    'company_contract_early_preparation_assignment.granted': message(
+      'company_contract_early_preparation_assignment.granted',
+    ),
+    'company_contract_early_preparation_assignment.revoked': message(
+      'company_contract_early_preparation_assignment.revoked',
+    ),
+    'company_contract_approver_assignment.granted': message(
+      'company_contract_approver_assignment.granted',
+    ),
+    'company_contract_approver_assignment.revoked': message(
+      'company_contract_approver_assignment.revoked',
+    ),
+    'company_profitability_contributor_assignment.granted': message(
+      'company_profitability_contributor_assignment.granted',
+    ),
+    'company_profitability_contributor_assignment.revoked': message(
+      'company_profitability_contributor_assignment.revoked',
+    ),
+    'company_profitability_director_assignment.granted': message(
+      'company_profitability_director_assignment.granted',
+    ),
+    'company_profitability_director_assignment.revoked': message(
+      'company_profitability_director_assignment.revoked',
+    ),
     'company_offer_model_editor_assignment.granted': model('editorGranted'),
     'company_contract_model_editor_assignment.granted':
       contractModel('editorGranted'),
