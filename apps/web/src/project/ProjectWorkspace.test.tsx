@@ -12,7 +12,9 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
+import { useLayoutEffect } from 'react';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import type { ProjectNavigationRequest } from './use-project-navigation';
 import {
   isLifecycleRead,
   preparatoryLifecycle,
@@ -118,6 +120,109 @@ it('shows open Projects by default, includes closed Projects on request and rese
       name: 'Completed assessment Client: Synthetic Client',
     }),
   ).toBeNull();
+});
+
+/**
+ * Records the directory a member could edit in the commit that delivers each
+ * directory intent. Layout effects run once that commit's DOM is in place and
+ * before any of its passive effects.
+ */
+function DirectoryIntentHost({
+  identity,
+  navigation,
+  presented,
+}: {
+  identity: ReturnType<typeof deterministicBrowserIdentity>;
+  navigation?: ProjectNavigationRequest;
+  presented: Array<{ search: string; rows: string[] }>;
+}) {
+  useLayoutEffect(() => {
+    if (!navigation) return;
+    const search = screen.getByRole('searchbox', { name: 'Find Projects' });
+    if (!(search instanceof HTMLInputElement))
+      throw new Error('Expected the Project search input.');
+    presented.push({
+      search: search.value,
+      rows: within(screen.getByRole('list', { name: 'Projects' }))
+        .queryAllByRole('button')
+        .map((row) => row.textContent ?? ''),
+    });
+  }, [navigation, presented]);
+  return (
+    <ProjectWorkspace
+      actor={actor}
+      identity={identity}
+      navigation={navigation}
+    />
+  );
+}
+
+it('presents a Client’s Projects in the very commit that opens them, so a search typed on that frame is not merged with the restriction (#1158)', async () => {
+  const otherProject = {
+    ...validProject,
+    id: 'other-project',
+    title: 'Other preparation',
+    clientAccountId: 'other-client',
+    clientDossierId: 'other-client',
+    clientDisplayName: 'Other Client',
+  };
+  stubFetch(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [
+              { id: 'client', displayName: 'Synthetic Client' },
+              { id: 'other-client', displayName: 'Other Client' },
+            ]
+          : [{ ...validProject, clientDossierId: 'client' }, otherProject],
+      ),
+    ),
+  );
+  const identity = deterministicBrowserIdentity();
+  const presented: Array<{ search: string; rows: string[] }> = [];
+  const view = render(
+    <DirectoryIntentHost identity={identity} presented={presented} />,
+  );
+  await screen.findByRole('button', {
+    name: 'Other preparation Client: Other Client',
+  });
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
+    target: { value: 'preparation' },
+  });
+
+  view.rerender(
+    <DirectoryIntentHost
+      identity={identity}
+      presented={presented}
+      navigation={{
+        kind: 'directory',
+        requestId: 1,
+        client: { clientDossierId: 'client', displayName: 'Synthetic Client' },
+      }}
+    />,
+  );
+  view.rerender(
+    <DirectoryIntentHost
+      identity={identity}
+      presented={presented}
+      navigation={{ kind: 'directory', requestId: 2 }}
+    />,
+  );
+
+  expect(presented).toEqual([
+    {
+      search: 'Synthetic Client',
+      rows: ['ISO preparation Client: Synthetic Client'],
+    },
+    {
+      search: '',
+      rows: [
+        'ISO preparation Client: Synthetic Client',
+        'Other preparation Client: Other Client',
+      ],
+    },
+  ]);
 });
 
 it('explains when only closed Projects exist', async () => {

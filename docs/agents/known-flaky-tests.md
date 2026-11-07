@@ -12,4 +12,9 @@ New and changed tests are repeated three times on every pull request by the `fla
 
 ## Entries
 
-None open. The two entries seeded from CI runs between 2026-10-23 and 2026-11-06 were fixed by #1095 (#1081) and this pull request (#1082).
+The two entries seeded from CI runs between 2026-10-23 and 2026-11-06 were fixed by #1095 (#1081) and #1097 (#1082).
+
+- `apps/web/e2e/document-content.acceptance.spec.ts:298` (Playwright acceptance, desktop): "retires actual-App token, response, parser, hash, Blob and recovery work under native authority changes".
+  - Symptom: `locator.click: Test timeout of 120000ms exceeded`, waiting for the `.project-workspace section.working-evidence` button "Fictional lifetime Case desktop" in `openCase()` of `working-evidence-lifetime.acceptance.fixture.ts`, called inside the stage loop after the Company round trip.
+  - Evidence: run 42330108864 (#1115, scripts only) failed on attempt 1 and passed on attempt 2 of the same commit. The rerun replaced the failure trace, so the cause is unproven; it is not the #1158 Project search race, because the Project row click before it succeeded.
+  - Owner: #1158.
