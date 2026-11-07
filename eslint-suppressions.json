@@ -93,9 +93,44 @@
       "count": 1
     }
   },
+  "apps/web/src/access/CompanyContextAccess.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/access/WorkspaceInvitationAcceptance.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/access/WorkspaceInvitations.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/access/WorkspaceMembershipSuspension.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/access/WorkspaceSessionRevocations.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "apps/web/src/api/latest-authenticated-request.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
+    }
+  },
+  "apps/web/src/api/latest-authenticated-request.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/api/use-access-recovery.ts": {
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "apps/web/src/client/ClientWorkspace.test.tsx": {
@@ -106,14 +141,334 @@
       "count": 1
     }
   },
+  "apps/web/src/commercial-catalogue/ServiceCatalogueWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/commercial-decision-queue/PendingDecisionQueue.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/commercial-intake/ClientCommercialOverview.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/commercial-intake/CommercialIntakeWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 13
+    }
+  },
+  "apps/web/src/commercial-intake/RequestClientAssociation.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/commercial-intake/SalesStageSettings.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "apps/web/src/commercial-intake/opportunity-outcome.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
+      "count": 3
+    }
+  },
+  "apps/web/src/commercial-pdf/CommercialPdfDownload.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractAddendumEditor.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/contract/ContractDecisionPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractDirectEditor.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/contract/ContractPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractPrecontractEditor.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractProjectCreatePanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractProjectsPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/contract/ContractQualityPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractRepresentationViewer.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractSignaturePanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractVersionHistory.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ContractVersionPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/contract/LegacyContractPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 8
+    }
+  },
+  "apps/web/src/contract/ProjectContracts.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/contract/ReportedSigningForm.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/contract/SigningPdfDownload.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/documents/ClientDocumentOverview.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/documents/DocumentPdfContent.tsx": {
+    "no-restricted-syntax": {
       "count": 3
     }
   },
   "apps/web/src/documents/DocumentVersionReferences.test.tsx": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 1
+    }
+  },
+  "apps/web/src/documents/DocumentVersions.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/documents/DocumentWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 6
+    }
+  },
+  "apps/web/src/documents/ExternalInvoiceRegistration.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/documents/ExternalInvoiceRelation.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/documents/ReceivedAddendumRegistration.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/documents/ReceivedAddendumRelation.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/documents/ReceivedContractRegistration.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/documents/ReceivedContractRelation.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/ideas/IdeasWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "apps/web/src/invoice-record/invoice-record-owner.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/knowledge-evidence/KnowledgeEvidenceWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/mission-plan/use-mission-plan-io.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/offer-message/offer-message-preparation.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/offer/EstimateOfferPreparation.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/offer/OfferClientResponsePanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/offer/OfferDecisionPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/offer/OfferEstimateSource.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/offer/OfferPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/offer/OfferQualityPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/offer/OfferTransmissionPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/offer/OfferVersionHistory.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/operational-home/multi-company-summary-contract.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/operational-risk/OperationalRiskWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "apps/web/src/operational-risk/use-risk-journal-statement.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/opportunity-follow-up/follow-up-owner.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidenceDetail.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidenceMetadataCorrection.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidencePayer.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidencePayerPicker.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidencePdf.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidencePdfUpload.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidenceRegistration.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidenceSourcePanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidenceVersionCommand.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-evidence/PaymentEvidenceVersions.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/payment-observation/payment-owner.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/pricing-configuration/PricingConfigurationWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/pricing-configuration/PricingSnapshotPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "apps/web/src/pricing-configuration/TariffVersionPanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 4
     }
   },
   "apps/web/src/production-build.test.ts": {
@@ -139,14 +494,149 @@
       "count": 12
     }
   },
+  "apps/web/src/production-shell/production-shell-session.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "apps/web/src/production-shell/useProductionShellContext.test.tsx": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 4
     }
   },
+  "apps/web/src/profitability-estimate/ProfitabilityDecisionQueue.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/profitability-estimate/ProfitabilityEstimatePanel.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/ClientMissionOverview.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/project/ClientMissionTasks.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/MissionApplicability.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/MissionReadiness.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/project/MissionResultReview.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/MissionResultReviewForm.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/project/ProjectDocuments.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/ProjectLifecycle.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/ProjectNextAction.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/ProjectNextActionEditor.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/ProjectPdfBundle.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/project/ProjectResponsible.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/ProjectStage.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/ProjectTasks.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/ProjectTemplate.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/ProjectTemplateConfiguration.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/ProjectWorkspace.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/TaskPlanning.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/web/src/project/TaskResults.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/TeamTasks.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/use-applicability-history.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/project/use-client-mission-rejection.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/web/src/project/use-project-directory.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "apps/web/src/ui-baseline/PrismaCertUiBaseline.tsx": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 22
+    }
+  },
+  "apps/web/src/working-evidence/use-evidence-operations.ts": {
+    "no-restricted-syntax": {
+      "count": 1
     }
   }
 }

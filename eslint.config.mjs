@@ -96,6 +96,30 @@ export default tseslint.config(
     },
   },
   {
+    // Hand-rolled cancellation races scope changes (#1081, #1119). Existing
+    // controllers are recorded in eslint-suppressions.json, like the `!` and
+    // `as` baseline above: move a caller to the primitive when a feature
+    // touches it, then prune. Extend this block rather than configuring the
+    // rule again for web files.
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    ignores: [
+      '**/*.{test,spec}.{ts,tsx}',
+      '**/*.test-*.{ts,tsx}',
+      'apps/web/src/test/**',
+      'apps/web/src/api/use-scoped-operation.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="AbortController"]',
+          message:
+            'Do not hand-roll an AbortController: take the signal from useScopedOperation(scope).begin() (apps/web/src/api/use-scoped-operation.ts), and pass it as `signal` to runLatestAuthenticatedRequest.',
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.browser,

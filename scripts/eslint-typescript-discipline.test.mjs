@@ -140,7 +140,12 @@ test('a baseline entry for a fixed violation fails lint until it is pruned', asy
   assert.match(result.output, /--prune-suppressions/);
 });
 
-test('the committed baseline records only the discipline rules for existing files', async () => {
+// In web source files, `no-restricted-syntax` forbids only a hand-rolled
+// AbortController (#1135); the API's append-only Activity Log rule is never
+// baselined.
+const webSyntaxRule = 'no-restricted-syntax';
+
+test('the committed baseline records only the discipline rules and web AbortControllers for existing files', async () => {
   const baseline = JSON.parse(
     await readFile(
       new URL('../eslint-suppressions.json', import.meta.url),
@@ -153,8 +158,9 @@ test('the committed baseline records only the discipline rules for existing file
     await access(path.join(repositoryRoot, file));
     for (const [rule, { count }] of Object.entries(rules)) {
       assert.ok(
-        [nonNullRule, assertionRule].includes(rule),
-        `${file} suppresses ${rule}; the baseline is reserved for the TypeScript discipline rules`,
+        [nonNullRule, assertionRule].includes(rule) ||
+          (rule === webSyntaxRule && file.startsWith('apps/web/src/')),
+        `${file} suppresses ${rule}; the baseline is reserved for the TypeScript discipline rules and web AbortControllers`,
       );
       assert.ok(Number.isInteger(count) && count > 0, `${file} ${rule}`);
     }
