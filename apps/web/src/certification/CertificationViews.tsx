@@ -2,8 +2,14 @@ import type { ReactNode } from 'react';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { useCertificationCopy } from './certification.copy';
+import { VersionAttribution } from './CertificationAttribution';
 import { AgreementView } from './CertificationDocumentViews';
 import { DurationView } from './CertificationDurationViews';
+import {
+  FindingTimelineItem,
+  findingTimelineEntries,
+} from './CertificationFindingViews';
+import { findingBlocks, type Finding } from './certification-findings';
 import {
   Stage1ReportView,
   Stage2ReportView,
@@ -115,28 +121,6 @@ export function ReviewView({ review }: { review: ApplicationReview }) {
   );
 }
 
-/** Who recorded a version, when, and why when it corrects an earlier one. */
-export function VersionAttribution({ version }: { version: StepVersion }) {
-  const copy = useCertificationCopy();
-  const { formatDateTime } = useInterfaceLocale();
-  return (
-    <p className="certification-attribution">
-      {formatMessage(copy('version'), { version: version.version })} ·{' '}
-      {copy('recordedBy')}: {version.recordedBy.displayName} ·{' '}
-      {copy('recordedAt')}:{' '}
-      <time dateTime={version.recordedAt}>
-        {formatDateTime(version.recordedAt)}
-      </time>
-      {version.reason !== null && (
-        <>
-          <br />
-          {copy('correctionReason')}: {version.reason}
-        </>
-      )}
-    </p>
-  );
-}
-
 /** The state of each step of this slice, derived only from the read Case. */
 export function StepRail({ detail }: { detail: CaseDetail }) {
   const copy = useCertificationCopy();
@@ -218,8 +202,24 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       >
         <strong>{copy('stepStage2')}</strong> {stage2State(detail)}
       </li>
+      <li data-current={detail.nextStep === 'findings_follow_up'}>
+        <strong>{copy('stepFindings')}</strong> {findingsState(detail)}
+      </li>
     </ol>
   );
+
+  /**
+   * Once Stage 2 is reported: the nonconformities that still hold the
+   * recommendation, by the server's rule, or completed.
+   */
+  function findingsState(current: CaseDetail): string {
+    if (closed) return copy('stepClosed');
+    if (!current.stage2Report) return copy('stepWaitingStage2Report');
+    const open = current.findings.filter(findingBlocks).length;
+    return open > 0
+      ? formatMessage(copy('stepFindingsOpen'), { count: open })
+      : copy('stepFindingsDone');
+  }
 
   /** The latest Stage 1 report's conclusion, its plan, or what it waits for. */
   function stage1State(current: CaseDetail): string {
@@ -294,6 +294,8 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
       return <>{copy('nextStage2Plan')}</>;
     case 'stage_2_report':
       return <>{copy('nextStage2Report')}</>;
+    case 'findings_follow_up':
+      return <>{copy('nextFindingsFollowUp')}</>;
     case 'recommendation':
       return <>{copy('nextRecommendation')}</>;
     case null:
@@ -303,27 +305,41 @@ export function NextStepLabel({ step }: { step: CertificationNextStep }) {
 }
 
 /**
- * Every recorded version in server order, each with its exact values; an
- * agreement and a Stage record name their PDFs from the Case's register and
- * a team names the linked Workspace members known in the Case.
+ * Every recorded version in Case order, each with its exact values: the step
+ * versions of the timeline and the Finding records of the Case read, one
+ * line per command. Agreements, Stage records and Findings name their PDFs
+ * from the Case's register; a team names the Workspace members known in the
+ * Case.
  */
 export function TimelineView({
   timeline,
+  findings,
   register,
   people,
 }: {
   timeline: CaseTimeline;
+  findings: readonly Finding[];
   register: DocumentRegister;
   people: KnownPeople;
 }) {
   const copy = useCertificationCopy();
-  if (timeline.entries.length === 0) return <p>{copy('timelineEmpty')}</p>;
+  const lines = [
+    ...timeline.entries.map((entry) => ({
+      key: entry.id,
+      caseRevision: entry.caseRevision,
+      line: <TimelineEntry entry={entry} register={register} people={people} />,
+    })),
+    ...findingTimelineEntries(findings).map((entry) => ({
+      key: entry.key,
+      caseRevision: entry.caseRevision,
+      line: <FindingTimelineItem entry={entry} register={register} />,
+    })),
+  ].sort((left, right) => left.caseRevision - right.caseRevision);
+  if (lines.length === 0) return <p>{copy('timelineEmpty')}</p>;
   return (
     <ol className="certification-timeline">
-      {timeline.entries.map((entry) => (
-        <li key={entry.id}>
-          <TimelineEntry entry={entry} register={register} people={people} />
-        </li>
+      {lines.map(({ key, line }) => (
+        <li key={key}>{line}</li>
       ))}
     </ol>
   );

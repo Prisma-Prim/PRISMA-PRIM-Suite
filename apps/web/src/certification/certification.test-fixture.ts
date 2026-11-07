@@ -219,6 +219,30 @@ export function stage2Report(
   };
 }
 
+/** A Finding statement as the server records it: a cited minor nonconformity. */
+export function findingStatement(overrides: Record<string, unknown> = {}) {
+  return {
+    clause: '8.5.1',
+    area: 'Receiving of raw milk',
+    statement: 'Hazard analysis does not cover allergens at receiving.',
+    evidenceAttachmentIds: [],
+    ...overrides,
+  };
+}
+
+/** The client's response to a nonconformity as the server records it. */
+export function nonconformityResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    correction: 'Allergen added to the receiving hazard analysis.',
+    cause: 'The template omitted allergens.',
+    correctiveAction: 'Template revised and staff trained.',
+    receivedOn: '2026-11-12',
+    plannedCompletionOn: null,
+    evidenceAttachmentIds: [],
+    ...overrides,
+  };
+}
+
 type Actor = { workspaceMembershipId: string; displayName: string };
 const STAGE_STEPS = [
   'stage_1_plan',
@@ -243,6 +267,50 @@ type Step = {
   recordedAt: string;
   value: Record<string, unknown>;
 };
+type FindingRecordKind =
+  | 'statement'
+  | 'classification'
+  | 'response'
+  | 'plan_judgment'
+  | 'verification';
+type StoredFindingRecord = {
+  id: string;
+  kind: FindingRecordKind;
+  version: number;
+  caseRevision: number;
+  reason: string | null;
+  recordedBy: Actor;
+  recordedAt: string;
+  value: Record<string, unknown>;
+};
+type StoredFinding = {
+  id: string;
+  stage: 'stage_1' | 'stage_2';
+  sequence: number;
+  records: StoredFindingRecord[];
+};
+type FindingUpdate =
+  | 'correction'
+  | 'classification'
+  | 'reclassification'
+  | 'response'
+  | 'plan_judgment'
+  | 'verification';
+/** The later Finding version each command path records. */
+const FINDING_UPDATES = new Map<string, FindingUpdate>([
+  ['correction', 'correction'],
+  ['classification', 'classification'],
+  ['reclassification', 'reclassification'],
+  ['response', 'response'],
+  ['plan-judgment', 'plan_judgment'],
+  ['verification', 'verification'],
+]);
+const FINDING_CLASSIFICATION_VALUES = [
+  'major_nonconformity',
+  'minor_nonconformity',
+  'opportunity_for_improvement',
+  'area_of_concern',
+];
 type StoredCase = {
   id: string;
   orderReference: string;
@@ -253,6 +321,7 @@ type StoredCase = {
   openedBy: Actor;
   steps: Step[];
   attachments: StoredAttachment[];
+  findings: StoredFinding[];
 };
 /** A frozen received PDF of the Case's Client, with its exact bytes. */
 export type FakeSource = {
@@ -537,6 +606,54 @@ export class FakeCertificationServer {
   }
 
   /**
+   * A colleague team leader records a Finding with its first statement and
+   * classification at one revision; returns the Finding's id.
+   */
+  recordFindingAsColleague(
+    caseId: string,
+    {
+      stage,
+      classification,
+      statement = findingStatement(),
+    }: {
+      stage: 'stage_1' | 'stage_2';
+      classification: string;
+      statement?: Record<string, unknown>;
+    },
+  ): string {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case');
+    return this.addFinding(stored, stage, classification, statement, colleague)
+      .id;
+  }
+
+  /**
+   * A later Finding version recorded by a colleague: a corrected statement,
+   * a classification by the team leader or approver, a response, a plan
+   * judgment or a verification.
+   */
+  recordFindingUpdateAsColleague(
+    caseId: string,
+    findingId: string,
+    kind: FindingRecordKind,
+    value: Record<string, unknown>,
+    reason: string | null = null,
+  ) {
+    const stored = this.cases.get(caseId);
+    const found = stored?.findings.find((entry) => entry.id === findingId);
+    if (!stored || !found) throw new Error('Unknown Finding');
+    stored.revision += 1;
+    this.addFindingRecord(
+      found,
+      kind,
+      value,
+      reason,
+      stored.revision,
+      colleague,
+    );
+  }
+
+  /**
    * A colleague confirms the proposal for CI with every declared study and no
    * factor, making any earlier expected revision stale.
    */
@@ -664,6 +781,23 @@ export class FakeCertificationServer {
       /^\/api\/certification-cases\/([^/]+)\/stages\/([^/]+)\/(plan|report)$/u.exec(
         request.path,
       );
+    const findingPath =
+      /^\/api\/certification-cases\/([^/]+)\/findings(?:\/([^/]+)\/([^/]+))?$/u.exec(
+        request.path,
+      );
+    if (findingPath) {
+      const staged = findingPath[1]
+        ? this.cases.get(findingPath[1])
+        : undefined;
+      if (!staged || request.method !== 'POST')
+        return new Response(null, { status: 404 });
+      const [, , findingId, update] = findingPath;
+      if (findingId === undefined || update === undefined)
+        return this.recordFinding(staged, request.body);
+      const kind = FINDING_UPDATES.get(update);
+      if (!kind) return new Response(null, { status: 404 });
+      return this.updateFinding(staged, findingId, kind, request.body);
+    }
     if (stage) {
       const staged = stage[1] ? this.cases.get(stage[1]) : undefined;
       const which =
@@ -948,6 +1082,17 @@ export class FakeCertificationServer {
       const report = latestStep(stored, 'stage_1_report')?.value;
       if (report?.conclusion !== 'ready')
         return refusal(409, 'CERTIFICATION_STAGE_1_NOT_READY');
+      if (
+        stored.findings.some((finding) => {
+          const view = this.findingView(stored, finding);
+          return (
+            view.stage === 'stage_1' &&
+            nonconformity(view.classification) &&
+            view.status !== 'verified_effective'
+          );
+        })
+      )
+        return refusal(409, 'CERTIFICATION_STAGE_1_NONCONFORMITY_OPEN');
       if (startDate <= String(report.reportDate))
         return refusal(409, 'CERTIFICATION_STAGE_DATES');
     }
@@ -1109,6 +1254,340 @@ export class FakeCertificationServer {
       return refusal(409, 'CERTIFICATION_CORRECTION_UNCHANGED');
     this.append(stored, step, value, stated, me);
     return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /**
+   * The server's checks, in its order: the auditor grant, the input, a new
+   * Finding without reason, the revision, the leader of the approved team,
+   * a planned and open Stage, the classification rules, then the evidence.
+   */
+  private recordFinding(stored: StoredCase, body: unknown): Response {
+    if (!holdsAuditor(this.actor())) return new Response(null, { status: 403 });
+    const { expectedRevision, reason, stage, classification, ...fields } =
+      record(body);
+    const statement = statementInput(fields);
+    if (
+      typeof expectedRevision !== 'number' ||
+      (stage !== 'stage_1' && stage !== 'stage_2') ||
+      !FINDING_CLASSIFICATION_VALUES.includes(String(classification)) ||
+      !statement ||
+      !optionalText(reason)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (reason !== undefined && reason !== null)
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    if (expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (!this.leads(stored))
+      return refusal(409, 'CERTIFICATION_NOT_TEAM_LEADER');
+    if (
+      !latestStep(stored, stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan')
+    )
+      return refusal(409, 'CERTIFICATION_STAGE_NOT_PLANNED');
+    if (stage === 'stage_1' && latestStep(stored, 'stage_2_plan'))
+      return refusal(409, 'CERTIFICATION_STAGE_CLOSED');
+    const rule = classificationRule(String(classification), stage, statement);
+    if (rule) return refusal(400, rule);
+    if (!this.allAttached(stored, statement.evidenceAttachmentIds))
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    this.addFinding(stored, stage, String(classification), statement, me);
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /**
+   * The server's checks, in its order: the role grant, the revision, team
+   * independence or leadership, the Finding, then the rules of each update.
+   */
+  private updateFinding(
+    stored: StoredCase,
+    findingId: string,
+    kind: FindingUpdate,
+    body: unknown,
+  ): Response {
+    const granted =
+      kind === 'reclassification'
+        ? holdsApprover(this.actor())
+        : holdsAuditor(this.actor());
+    if (!granted) return new Response(null, { status: 403 });
+    const { expectedRevision, reason, ...payload } = record(body);
+    if (typeof expectedRevision !== 'number' || !optionalText(reason))
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (kind === 'reclassification') {
+      if (this.onTeam(stored))
+        return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    } else if (!this.leads(stored))
+      return refusal(409, 'CERTIFICATION_NOT_TEAM_LEADER');
+    const found = stored.findings.find((entry) => entry.id === findingId);
+    if (!found) return new Response(null, { status: 404 });
+    const view = this.findingView(stored, found);
+    const stated = nonblank(reason) ? reason : null;
+    switch (kind) {
+      case 'correction': {
+        const statement = statementInput(payload);
+        if (!statement) return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+        if (stated === null)
+          return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+        if (sameValue(view.statement, statement))
+          return refusal(409, 'CERTIFICATION_CORRECTION_UNCHANGED');
+        const rule = classificationRule(
+          view.classification,
+          view.stage,
+          statement,
+        );
+        if (rule) return refusal(400, rule);
+        if (!this.allAttached(stored, statement.evidenceAttachmentIds))
+          return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+        return this.appendFindingRecord(
+          stored,
+          found,
+          'statement',
+          statement,
+          stated,
+        );
+      }
+      case 'classification':
+      case 'reclassification': {
+        const { classification, ...rest } = payload;
+        if (
+          Object.keys(rest).length > 0 ||
+          !FINDING_CLASSIFICATION_VALUES.includes(String(classification))
+        )
+          return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+        if (stated === null)
+          return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+        if (classification === view.classification)
+          return refusal(409, 'CERTIFICATION_CORRECTION_UNCHANGED');
+        const rule = classificationRule(
+          String(classification),
+          view.stage,
+          view.statement,
+        );
+        if (rule) return refusal(400, rule);
+        return this.appendFindingRecord(
+          stored,
+          found,
+          'classification',
+          {
+            classification,
+            by: kind === 'reclassification' ? 'approver' : 'team_leader',
+          },
+          stated,
+        );
+      }
+      case 'response': {
+        const value = responseInput(payload);
+        if (!value) return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+        if (
+          !nonconformity(view.classification) ||
+          view.status === 'verified_effective'
+        )
+          return refusal(409, 'CERTIFICATION_FINDING_NOT_OPEN');
+        if (!this.allAttached(stored, value.evidenceAttachmentIds))
+          return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+        return this.appendFindingRecord(stored, found, 'response', value, null);
+      }
+      case 'plan_judgment': {
+        const { outcome, note, ...rest } = payload;
+        if (
+          Object.keys(rest).length > 0 ||
+          (outcome !== 'adequate' && outcome !== 'inadequate') ||
+          !nonblank(note)
+        )
+          return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+        if (view.status !== 'awaiting_plan_judgment')
+          return refusal(409, 'CERTIFICATION_FINDING_NO_RESPONSE');
+        return this.appendFindingRecord(
+          stored,
+          found,
+          'plan_judgment',
+          { outcome, note },
+          null,
+        );
+      }
+      case 'verification': {
+        const value = verificationInput(payload);
+        if (!value) return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+        if (view.status !== 'plan_adequate')
+          return refusal(409, 'CERTIFICATION_FINDING_PLAN_NOT_ADEQUATE');
+        if (!this.allAttached(stored, value.evidenceAttachmentIds))
+          return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+        return this.appendFindingRecord(
+          stored,
+          found,
+          'verification',
+          value,
+          null,
+        );
+      }
+    }
+  }
+
+  private appendFindingRecord(
+    stored: StoredCase,
+    finding: StoredFinding,
+    kind: FindingRecordKind,
+    value: Record<string, unknown>,
+    reason: string | null,
+  ): Response {
+    stored.revision += 1;
+    this.addFindingRecord(finding, kind, value, reason, stored.revision, me);
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  private addFinding(
+    stored: StoredCase,
+    stage: 'stage_1' | 'stage_2',
+    classification: string,
+    statement: Record<string, unknown>,
+    by: Actor,
+  ): StoredFinding {
+    stored.revision += 1;
+    const finding: StoredFinding = {
+      id: `11310000-0000-4000-8000-7000000000${String(++this.sequence).padStart(2, '0')}`,
+      stage,
+      sequence: stored.findings.length + 1,
+      records: [],
+    };
+    stored.findings.push(finding);
+    this.addFindingRecord(
+      finding,
+      'statement',
+      statement,
+      null,
+      stored.revision,
+      by,
+    );
+    this.addFindingRecord(
+      finding,
+      'classification',
+      { classification, by: 'team_leader' },
+      null,
+      stored.revision,
+      by,
+    );
+    return finding;
+  }
+
+  private addFindingRecord(
+    finding: StoredFinding,
+    kind: FindingRecordKind,
+    value: Record<string, unknown>,
+    reason: string | null,
+    caseRevision: number,
+    by: Actor,
+  ) {
+    finding.records.push({
+      id: `11310000-0000-4000-8000-8000000000${String(++this.sequence).padStart(2, '0')}`,
+      kind,
+      version:
+        finding.records.filter((entry) => entry.kind === kind).length + 1,
+      caseRevision,
+      reason,
+      recordedBy: by,
+      recordedAt: this.tick(),
+      value,
+    });
+  }
+
+  /**
+   * The server's derived view: the latest statement and classification, the
+   * follow-up status replayed in Case order, and the dates counted from the
+   * last planned day of the Finding's Stage.
+   */
+  private findingView(stored: StoredCase, finding: StoredFinding) {
+    let statement: Record<string, unknown> = {};
+    let classification = '';
+    let status = 'no_action_required';
+    for (const entry of finding.records)
+      switch (entry.kind) {
+        case 'statement':
+          statement = entry.value;
+          break;
+        case 'classification': {
+          const was = nonconformity(classification);
+          classification = String(entry.value.classification);
+          if (!nonconformity(classification)) status = 'no_action_required';
+          else if (!was) status = 'awaiting_response';
+          break;
+        }
+        case 'response':
+          status = 'awaiting_plan_judgment';
+          break;
+        case 'plan_judgment':
+          status =
+            entry.value.outcome === 'adequate'
+              ? 'plan_adequate'
+              : 'plan_inadequate';
+          break;
+        case 'verification':
+          status =
+            entry.value.outcome === 'effective'
+              ? 'verified_effective'
+              : 'verified_not_effective';
+          break;
+      }
+    const plan = latestStep(
+      stored,
+      finding.stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan',
+    );
+    const stageEnd = String(plan?.value.endDate);
+    const limited =
+      nonconformity(classification) &&
+      (finding.stage === 'stage_1' || classification === 'major_nonconformity');
+    const limitOn = limited ? addMonths(stageEnd, 6) : null;
+    const today = new Date(this.clock).toISOString().slice(0, 10);
+    return {
+      id: finding.id,
+      stage: finding.stage,
+      sequence: finding.sequence,
+      statement,
+      classification,
+      status,
+      responseDueOn: nonconformity(classification)
+        ? addDays(stageEnd, 14)
+        : null,
+      limitOn,
+      overdue:
+        limitOn !== null && status !== 'verified_effective' && today > limitOn,
+      records: finding.records,
+    };
+  }
+
+  /** Whether the actor is linked to the leader of the approved team. */
+  private leads(stored: StoredCase): boolean {
+    const team = approvedTeamOf(stored);
+    return (
+      team !== undefined &&
+      list(team.value.members)
+        .map(record)
+        .some(
+          (member) =>
+            member.role === 'team_leader' &&
+            member.workspaceMembershipId === me.workspaceMembershipId,
+        )
+    );
+  }
+
+  /** Whether the actor is linked to a member of any proposed team version. */
+  private onTeam(stored: StoredCase): boolean {
+    return stored.steps.some(
+      (step) =>
+        step.step === 'team' &&
+        list(step.value.members).some(
+          (member) =>
+            record(member).workspaceMembershipId === me.workspaceMembershipId,
+        ),
+    );
+  }
+
+  private allAttached(stored: StoredCase, ids: readonly string[]): boolean {
+    return ids.every((id) => stored.attachments.some((item) => item.id === id));
   }
 
   private hasAttachment(
@@ -1316,6 +1795,7 @@ export class FakeCertificationServer {
       openedBy: by,
       steps: [],
       attachments: [],
+      findings: [],
     };
     this.cases.set(stored.id, stored);
     return stored;
@@ -1358,7 +1838,11 @@ export class FakeCertificationServer {
             ? 'stage_2_plan'
             : !latest('stage_2_report')
               ? 'stage_2_report'
-              : 'recommendation';
+              : stored.findings.some((finding) =>
+                    findingBlocks(this.findingView(stored, finding)),
+                  )
+                ? 'findings_follow_up'
+                : 'recommendation';
     return {
       id: stored.id,
       projectId: this.projectId,
@@ -1407,6 +1891,9 @@ export class FakeCertificationServer {
         const version = latestStep(stored, step);
         return version ? [version] : [];
       }),
+      findings: stored.findings.map((finding) =>
+        this.findingView(stored, finding),
+      ),
     };
   }
 
@@ -1553,6 +2040,175 @@ function dayCents(value: unknown, zeroAllowed: boolean): number | undefined {
 /** Absent, null or a non-blank text, as an optional reason. */
 function optionalText(value: unknown): boolean {
   return value === undefined || value === null || nonblank(value);
+}
+
+function nonconformity(classification: unknown): boolean {
+  return (
+    classification === 'major_nonconformity' ||
+    classification === 'minor_nonconformity'
+  );
+}
+
+/** The server's rule: a Finding that still holds the next step. */
+function findingBlocks(view: {
+  stage: string;
+  classification: string;
+  status: string;
+}): boolean {
+  if (view.classification === 'major_nonconformity' || view.stage === 'stage_1')
+    return (
+      nonconformity(view.classification) && view.status !== 'verified_effective'
+    );
+  if (view.classification === 'minor_nonconformity')
+    return (
+      view.status !== 'plan_adequate' && view.status !== 'verified_effective'
+    );
+  return false;
+}
+
+/** The server's classification refusal code for a statement, if any. */
+function classificationRule(
+  classification: string,
+  stage: string,
+  statement: Record<string, unknown>,
+): string | null {
+  if (
+    classification !== 'opportunity_for_improvement' &&
+    (statement.clause === null || statement.area === null)
+  )
+    return 'CERTIFICATION_FINDING_CLAUSE_REQUIRED';
+  if (classification === 'area_of_concern' && stage !== 'stage_1')
+    return 'CERTIFICATION_FINDING_CLASSIFICATION_STAGE';
+  if (
+    nonconformity(classification) &&
+    list(statement.evidenceAttachmentIds).length === 0
+  )
+    return 'CERTIFICATION_FINDING_EVIDENCE_REQUIRED';
+  return null;
+}
+
+/** Text within a limit, as the server accepts it. */
+function bounded(value: unknown, limit: number): value is string {
+  return nonblank(value) && value.length <= limit;
+}
+
+/** At most ten distinct attachment identifiers. */
+function evidenceInput(value: unknown): string[] | undefined {
+  if (
+    !Array.isArray(value) ||
+    value.length > 10 ||
+    !value.every(nonblank) ||
+    new Set(value).size !== value.length
+  )
+    return undefined;
+  return value.map(String);
+}
+
+/** The statement fields exactly, the clause and area optional. */
+function statementInput(
+  fields: Record<string, unknown>,
+): (Record<string, unknown> & { evidenceAttachmentIds: string[] }) | undefined {
+  const {
+    clause = null,
+    area = null,
+    statement,
+    evidenceAttachmentIds,
+  } = fields;
+  const evidence = evidenceInput(evidenceAttachmentIds);
+  if (
+    Object.keys(fields).some(
+      (key) =>
+        !['clause', 'area', 'statement', 'evidenceAttachmentIds'].includes(key),
+    ) ||
+    !(clause === null || bounded(clause, 40)) ||
+    !(area === null || bounded(area, 300)) ||
+    !bounded(statement, 4000) ||
+    !evidence
+  )
+    return undefined;
+  return { clause, area, statement, evidenceAttachmentIds: evidence };
+}
+
+function responseInput(
+  fields: Record<string, unknown>,
+): (Record<string, unknown> & { evidenceAttachmentIds: string[] }) | undefined {
+  const {
+    correction,
+    cause,
+    correctiveAction,
+    receivedOn,
+    plannedCompletionOn = null,
+    evidenceAttachmentIds = [],
+    ...rest
+  } = fields;
+  const evidence = evidenceInput(evidenceAttachmentIds);
+  if (
+    Object.keys(rest).length > 0 ||
+    !bounded(correction, 4000) ||
+    !bounded(cause, 4000) ||
+    !bounded(correctiveAction, 4000) ||
+    !calendarDate(receivedOn) ||
+    !(plannedCompletionOn === null || calendarDate(plannedCompletionOn)) ||
+    !evidence
+  )
+    return undefined;
+  return {
+    correction,
+    cause,
+    correctiveAction,
+    receivedOn,
+    plannedCompletionOn,
+    evidenceAttachmentIds: evidence,
+  };
+}
+
+function verificationInput(
+  fields: Record<string, unknown>,
+): (Record<string, unknown> & { evidenceAttachmentIds: string[] }) | undefined {
+  const {
+    verifiedOn,
+    method,
+    outcome,
+    note,
+    evidenceAttachmentIds = [],
+    ...rest
+  } = fields;
+  const evidence = evidenceInput(evidenceAttachmentIds);
+  if (
+    Object.keys(rest).length > 0 ||
+    !calendarDate(verifiedOn) ||
+    (method !== 'document_review' && method !== 'on_site') ||
+    (outcome !== 'effective' && outcome !== 'not_effective') ||
+    !bounded(note, 2000) ||
+    !evidence
+  )
+    return undefined;
+  return {
+    verifiedOn,
+    method,
+    outcome,
+    note,
+    evidenceAttachmentIds: evidence,
+  };
+}
+
+/** Calendar arithmetic on ISO dates in UTC, as the server counts. */
+function addDays(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function addMonths(isoDate: string, months: number): string {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + months);
+  const last = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  date.setUTCDate(Math.min(day, last));
+  return date.toISOString().slice(0, 10);
 }
 
 /** The same recorded value, whatever the order of its keys. */

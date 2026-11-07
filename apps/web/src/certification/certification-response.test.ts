@@ -10,7 +10,9 @@ import {
 import {
   NO_CONFLICT,
   certificationIds,
+  findingStatement,
   lactisFacts,
+  nonconformityResponse,
   reviewCriteria,
   stage1Report,
   stage2Report,
@@ -70,6 +72,7 @@ function detail(overrides: Record<string, unknown> = {}) {
     team: null,
     teamDecision: null,
     stages: [],
+    findings: [],
     ...overrides,
   };
 }
@@ -1491,5 +1494,861 @@ describe('Certification Stage plan and report parsers', () => {
         caseId,
       ),
     ).toThrow();
+  });
+});
+
+function findingRecord(
+  kind: string,
+  caseRevision: number,
+  value: Record<string, unknown>,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: `record-${kind}-${String(caseRevision)}`,
+    kind,
+    version: 1,
+    caseRevision,
+    reason: null,
+    recordedBy: by,
+    recordedAt: `2026-11-07T10:${String(caseRevision).padStart(2, '0')}:00.000Z`,
+    value,
+    ...overrides,
+  };
+}
+const classified = (classification: string, by = 'team_leader') => ({
+  classification,
+  by,
+});
+const judged = (outcome: string) => ({ outcome, note: 'Plan judged.' });
+const verified = (outcome: string, evidenceAttachmentIds: string[] = []) => ({
+  verifiedOn: '2026-11-14',
+  method: 'document_review',
+  outcome,
+  note: 'Revised analysis and training record reviewed.',
+  evidenceAttachmentIds,
+});
+/** Stage 1 planned at 10 and reported ready at 12; Stage 2 at 16 and 18. */
+const findingStages = [
+  stage1Planned,
+  stageVersion('stage_1_report', 12, stage1Report('report-1')),
+  stageVersion(
+    'stage_2_plan',
+    16,
+    stagePlan('plan-2', {
+      startDate: '2026-11-20',
+      endDate: '2026-11-21',
+      onSiteDays: '2',
+    }),
+  ),
+  stageVersion('stage_2_report', 18, stage2Report('report-2')),
+];
+const minorStatement = findingStatement({
+  evidenceAttachmentIds: ['evidence-1'],
+});
+/** A Stage 1 minor nonconformity at 11, followed up at 13, 14 and 15. */
+const minorRecords = [
+  findingRecord('statement', 11, minorStatement),
+  findingRecord('classification', 11, classified('minor_nonconformity')),
+  findingRecord('response', 13, nonconformityResponse()),
+  findingRecord('plan_judgment', 14, judged('adequate')),
+  findingRecord('verification', 15, verified('effective')),
+];
+const minor = {
+  id: 'finding-1',
+  stage: 'stage_1',
+  sequence: 1,
+  statement: minorStatement,
+  classification: 'minor_nonconformity',
+  status: 'verified_effective',
+  responseDueOn: '2026-11-24',
+  limitOn: '2027-05-10',
+  overdue: false,
+  records: minorRecords,
+};
+const majorStatement = findingStatement({
+  clause: '8.5.4.3',
+  area: 'Pasteurisation CCP',
+  statement:
+    'Critical limit deviations were not followed by corrective actions.',
+  evidenceAttachmentIds: ['evidence-2', 'evidence-3'],
+});
+/** A Stage 2 major nonconformity recorded at 17, before the report at 18. */
+const majorRecords = [
+  findingRecord('classification', 17, classified('major_nonconformity')),
+  findingRecord('statement', 17, majorStatement),
+];
+const major = {
+  id: 'finding-2',
+  stage: 'stage_2',
+  sequence: 2,
+  statement: majorStatement,
+  classification: 'major_nonconformity',
+  status: 'awaiting_response',
+  responseDueOn: '2026-12-05',
+  limitOn: '2027-05-21',
+  overdue: false,
+  records: majorRecords,
+};
+const majorVerified = {
+  ...major,
+  status: 'verified_effective',
+  records: [
+    ...majorRecords,
+    findingRecord('response', 19, nonconformityResponse()),
+    findingRecord('plan_judgment', 20, judged('adequate')),
+    findingRecord('verification', 21, verified('effective', ['evidence-2'])),
+  ],
+};
+function foundDetail(
+  findings: unknown,
+  overrides: Record<string, unknown> = {},
+) {
+  return stagedDetail(findingStages, {
+    revision: 18,
+    nextStep: 'findings_follow_up',
+    findings,
+    ...overrides,
+  });
+}
+/** Only Stage 1 planned, at 10: Findings of Stage 1 follow from 11. */
+function stage1Findings(
+  findings: unknown,
+  overrides: Record<string, unknown> = {},
+) {
+  return stagedDetail([stage1Planned], {
+    revision: 12,
+    nextStep: 'stage_1_report',
+    findings,
+    ...overrides,
+  });
+}
+const opportunityStatement = findingStatement({
+  clause: null,
+  area: null,
+  statement: 'Consider digital temperature records.',
+});
+const opportunity = {
+  id: 'finding-1',
+  stage: 'stage_1',
+  sequence: 1,
+  statement: opportunityStatement,
+  classification: 'opportunity_for_improvement',
+  status: 'no_action_required',
+  responseDueOn: null,
+  limitOn: null,
+  overdue: false,
+  records: [
+    findingRecord('statement', 11, opportunityStatement),
+    findingRecord(
+      'classification',
+      11,
+      classified('opportunity_for_improvement'),
+    ),
+  ],
+};
+const concernStatement = findingStatement({
+  clause: '7.5',
+  area: 'Document control',
+  statement: 'Obsolete forms still available at the line.',
+});
+/** An opportunity at 11 that the approver reclassifies at 12. */
+const reclassified = {
+  ...opportunity,
+  statement: concernStatement,
+  classification: 'area_of_concern',
+  records: [
+    findingRecord('statement', 11, concernStatement),
+    findingRecord(
+      'classification',
+      11,
+      classified('opportunity_for_improvement'),
+    ),
+    findingRecord(
+      'classification',
+      12,
+      classified('area_of_concern', 'approver'),
+      {
+        version: 2,
+        reason: 'A problem area rather than an improvement point.',
+      },
+    ),
+  ],
+};
+
+describe('Certification Finding parsers', () => {
+  it('reads every Finding with its exact statement, evidence, dates and records', () => {
+    const parsed = parseCaseDetail(foundDetail([minor, major]), {
+      ...scope,
+      caseId,
+    });
+    expect(parsed.nextStep).toBe('findings_follow_up');
+    expect(parsed.findings).toHaveLength(2);
+    const [first, second] = parsed.findings;
+    expect(first).toMatchObject({
+      id: 'finding-1',
+      stage: 'stage_1',
+      sequence: 1,
+      statement: {
+        clause: '8.5.1',
+        area: 'Receiving of raw milk',
+        statement: 'Hazard analysis does not cover allergens at receiving.',
+        evidenceAttachmentIds: ['evidence-1'],
+      },
+      classification: 'minor_nonconformity',
+      status: 'verified_effective',
+      responseDueOn: '2026-11-24',
+      limitOn: '2027-05-10',
+      overdue: false,
+    });
+    expect(first?.records.map((record) => record.kind)).toEqual([
+      'statement',
+      'classification',
+      'response',
+      'plan_judgment',
+      'verification',
+    ]);
+    expect(first?.records[2]).toMatchObject({
+      kind: 'response',
+      version: 1,
+      caseRevision: 13,
+      reason: null,
+      recordedBy: by,
+      value: {
+        correction: 'Allergen added to the receiving hazard analysis.',
+        cause: 'The template omitted allergens.',
+        correctiveAction: 'Template revised and staff trained.',
+        receivedOn: '2026-11-12',
+        plannedCompletionOn: null,
+        evidenceAttachmentIds: [],
+      },
+    });
+    expect(first?.records[4]).toMatchObject({
+      kind: 'verification',
+      value: { method: 'document_review', outcome: 'effective' },
+    });
+    // The creation records may come in either order at one revision.
+    expect(second).toMatchObject({
+      stage: 'stage_2',
+      classification: 'major_nonconformity',
+      status: 'awaiting_response',
+      responseDueOn: '2026-12-05',
+      limitOn: '2027-05-21',
+      statement: { evidenceAttachmentIds: ['evidence-2', 'evidence-3'] },
+    });
+    expect(
+      parseCaseList(
+        {
+          projectId: certificationIds.project,
+          cases: [foundDetail([minor, major])],
+          total: 1,
+        },
+        certificationIds.project,
+      ).cases[0]?.nextStep,
+    ).toBe('findings_follow_up');
+  });
+
+  it('reads the recommendation next once the major nonconformity is verified effective', () => {
+    const parsed = parseCaseDetail(
+      foundDetail([minor, majorVerified], {
+        revision: 21,
+        nextStep: 'recommendation',
+      }),
+      { ...scope, caseId },
+    );
+    expect(parsed.nextStep).toBe('recommendation');
+    expect(parsed.findings[1]?.status).toBe('verified_effective');
+  });
+
+  it('reads a minor Stage 2 nonconformity with an adequate plan as no longer holding the recommendation', () => {
+    const minorStage2 = {
+      ...major,
+      statement: minorStatement,
+      classification: 'minor_nonconformity',
+      status: 'plan_adequate',
+      limitOn: null,
+      records: [
+        findingRecord('statement', 17, minorStatement),
+        findingRecord('classification', 17, classified('minor_nonconformity')),
+        findingRecord('response', 19, nonconformityResponse()),
+        findingRecord('plan_judgment', 20, judged('inadequate')),
+        findingRecord(
+          'response',
+          21,
+          nonconformityResponse({
+            correctiveAction: 'Template revised; training recorded.',
+          }),
+          { version: 2 },
+        ),
+        findingRecord('plan_judgment', 22, judged('adequate'), {
+          version: 2,
+        }),
+      ],
+    };
+    const parsed = parseCaseDetail(
+      foundDetail([minor, minorStage2], {
+        revision: 22,
+        nextStep: 'recommendation',
+      }),
+      { ...scope, caseId },
+    );
+    expect(parsed.findings[1]).toMatchObject({
+      status: 'plan_adequate',
+      limitOn: null,
+    });
+    expect(
+      parsed.findings[1]?.records.map((record) => [
+        record.kind,
+        record.version,
+      ]),
+    ).toEqual([
+      ['statement', 1],
+      ['classification', 1],
+      ['response', 1],
+      ['plan_judgment', 1],
+      ['response', 2],
+      ['plan_judgment', 2],
+    ]);
+  });
+
+  it('reads a major nonconformity with an adequate plan as holding the recommendation until verified', () => {
+    const adequate = {
+      ...major,
+      status: 'plan_adequate',
+      records: [
+        ...majorRecords,
+        findingRecord('response', 19, nonconformityResponse()),
+        findingRecord('plan_judgment', 20, judged('adequate')),
+      ],
+    };
+    const parsed = parseCaseDetail(
+      foundDetail([minor, adequate], { revision: 20 }),
+      { ...scope, caseId },
+    );
+    expect(parsed.nextStep).toBe('findings_follow_up');
+    expect(() =>
+      parseCaseDetail(
+        foundDetail([minor, adequate], {
+          revision: 20,
+          nextStep: 'recommendation',
+        }),
+        { ...scope, caseId },
+      ),
+    ).toThrow();
+  });
+
+  it('reads an opportunity for improvement without clause or area, and a reclassification by the approver', () => {
+    expect(
+      parseCaseDetail(stage1Findings([opportunity], { revision: 11 }), {
+        ...scope,
+        caseId,
+      }).findings[0],
+    ).toMatchObject({
+      statement: { clause: null, area: null },
+      status: 'no_action_required',
+      responseDueOn: null,
+      limitOn: null,
+    });
+    const parsed = parseCaseDetail(stage1Findings([reclassified]), {
+      ...scope,
+      caseId,
+    });
+    expect(parsed.findings[0]).toMatchObject({
+      classification: 'area_of_concern',
+      status: 'no_action_required',
+    });
+    expect(parsed.findings[0]?.records.at(-1)).toMatchObject({
+      kind: 'classification',
+      version: 2,
+      reason: 'A problem area rather than an improvement point.',
+      value: { classification: 'area_of_concern', by: 'approver' },
+    });
+  });
+
+  it('reads the server statement that a six-month limit has passed', () => {
+    const open = {
+      ...minor,
+      status: 'awaiting_response',
+      overdue: true,
+      records: minorRecords.slice(0, 2),
+    };
+    expect(
+      parseCaseDetail(stage1Findings([open], { revision: 11 }), {
+        ...scope,
+        caseId,
+      }).findings[0]?.overdue,
+    ).toBe(true);
+  });
+
+  const withMinor = (overrides: Record<string, unknown>) =>
+    foundDetail([{ ...minor, ...overrides }, major]);
+  /** The major nonconformity with this statement, current and recorded. */
+  const withMajorStatement = (statement: Record<string, unknown>) =>
+    foundDetail([
+      minor,
+      {
+        ...major,
+        statement,
+        records: [majorRecords[0], findingRecord('statement', 17, statement)],
+      },
+    ]);
+  const withMinorRecords = (
+    records: unknown[],
+    overrides: Record<string, unknown> = {},
+  ) => withMinor({ records, ...overrides });
+  const [minorStatementRecord, minorClassificationRecord, response] =
+    minorRecords;
+  const withoutKey = (value: Record<string, unknown>, key: string) =>
+    Object.fromEntries(Object.entries(value).filter(([name]) => name !== key));
+
+  it.each([
+    [
+      'a Case read without its Findings',
+      withoutKey(foundDetail([minor, major]), 'findings'),
+    ],
+    ['Findings that are not a list', foundDetail({ minor })],
+    ['an unknown classification', withMinor({ classification: 'critical' })],
+    [
+      'an unknown classification record',
+      withMinorRecords([
+        minorStatementRecord,
+        findingRecord('classification', 11, classified('critical')),
+      ]),
+    ],
+    ['an unknown status', withMinor({ status: 'closed' })],
+    [
+      'a nonconformity without evidence',
+      foundDetail([
+        minor,
+        {
+          ...major,
+          statement: { ...majorStatement, evidenceAttachmentIds: [] },
+          records: [
+            majorRecords[0],
+            findingRecord('statement', 17, {
+              ...majorStatement,
+              evidenceAttachmentIds: [],
+            }),
+          ],
+        },
+      ]),
+    ],
+    [
+      'a minor nonconformity without a clause',
+      withMinorRecords(
+        [
+          findingRecord('statement', 11, { ...minorStatement, clause: null }),
+          ...minorRecords.slice(1),
+        ],
+        { statement: { ...minorStatement, clause: null } },
+      ),
+    ],
+    [
+      'an area of concern at Stage 2',
+      // Nothing else holds the recommendation: only the Stage rule refuses it.
+      foundDetail(
+        [
+          minor,
+          {
+            ...major,
+            classification: 'area_of_concern',
+            status: 'no_action_required',
+            responseDueOn: null,
+            limitOn: null,
+            records: [
+              findingRecord(
+                'classification',
+                17,
+                classified('area_of_concern'),
+              ),
+              majorRecords[1],
+            ],
+          },
+        ],
+        { nextStep: 'recommendation' },
+      ),
+    ],
+    [
+      'a status other than the replayed one',
+      withMinor({ status: 'plan_adequate' }),
+    ],
+    [
+      'a classification other than the latest record',
+      withMinor({ classification: 'major_nonconformity' }),
+    ],
+    [
+      'a statement other than the latest record',
+      withMinor({ statement: { ...minorStatement, statement: 'Other.' } }),
+    ],
+    [
+      'a plan judgment without a response',
+      withMinorRecords(
+        [
+          minorStatementRecord,
+          minorClassificationRecord,
+          findingRecord('plan_judgment', 13, judged('adequate')),
+        ],
+        { status: 'plan_adequate' },
+      ),
+    ],
+    [
+      'a verification of a plan not judged adequate',
+      withMinorRecords(
+        [
+          minorStatementRecord,
+          minorClassificationRecord,
+          response,
+          findingRecord('plan_judgment', 14, judged('inadequate')),
+          findingRecord('verification', 15, verified('effective')),
+        ],
+        { status: 'verified_effective' },
+      ),
+    ],
+    [
+      'a response to an opportunity for improvement',
+      stage1Findings([
+        {
+          ...opportunity,
+          status: 'awaiting_plan_judgment',
+          records: [
+            ...opportunity.records,
+            findingRecord('response', 12, nonconformityResponse()),
+          ],
+        },
+      ]),
+    ],
+    [
+      'a new response once verified effective',
+      foundDetail(
+        [
+          {
+            ...minor,
+            status: 'awaiting_plan_judgment',
+            records: [
+              ...minorRecords,
+              findingRecord('response', 19, nonconformityResponse(), {
+                version: 2,
+              }),
+            ],
+          },
+          major,
+        ],
+        { revision: 19 },
+      ),
+    ],
+    [
+      'a response due date on an opportunity for improvement',
+      stage1Findings([{ ...opportunity, responseDueOn: '2026-11-24' }], {
+        revision: 11,
+      }),
+    ],
+    [
+      'a nonconformity without its response due date',
+      withMinor({ responseDueOn: null }),
+    ],
+    [
+      'an invalid response due date',
+      withMinor({ responseDueOn: '24.11.2026' }),
+    ],
+    [
+      'a six-month limit on a minor Stage 2 nonconformity',
+      foundDetail([
+        minor,
+        {
+          ...major,
+          classification: 'minor_nonconformity',
+          records: [
+            findingRecord(
+              'classification',
+              17,
+              classified('minor_nonconformity'),
+            ),
+            majorRecords[1],
+          ],
+        },
+      ]),
+    ],
+    [
+      'a Stage 1 nonconformity without its six-month limit',
+      withMinor({ limitOn: null }),
+    ],
+    ['an overdue Finding verified effective', withMinor({ overdue: true })],
+    [
+      'an overdue opportunity for improvement',
+      stage1Findings([{ ...opportunity, overdue: true }], { revision: 11 }),
+    ],
+    ['an overdue flag that is not a boolean', withMinor({ overdue: 'no' })],
+    [
+      'a Finding of a Stage not planned',
+      stage1Findings([{ ...major, sequence: 1 }], { revision: 17 }),
+    ],
+    [
+      'a Finding before the first plan of its Stage',
+      stage1Findings(
+        [
+          {
+            ...opportunity,
+            records: opportunity.records.map((record) => ({
+              ...record,
+              caseRevision: 9,
+            })),
+          },
+        ],
+        { revision: 10 },
+      ),
+    ],
+    [
+      'a Stage 1 Finding after the first Stage 2 plan',
+      foundDetail(
+        [
+          minor,
+          major,
+          {
+            ...opportunity,
+            id: 'finding-3',
+            sequence: 3,
+            records: opportunity.records.map((record) => ({
+              ...record,
+              caseRevision: 19,
+            })),
+          },
+        ],
+        { revision: 19 },
+      ),
+    ],
+    ['Findings out of sequence', foundDetail([major, minor])],
+    [
+      'Findings numbered out of their creation order',
+      foundDetail([
+        { ...major, sequence: 1 },
+        { ...minor, sequence: 2 },
+      ]),
+    ],
+    ['a sequence gap', foundDetail([minor, { ...major, sequence: 3 }])],
+    [
+      'two Findings with one identifier',
+      foundDetail([minor, { ...major, id: 'finding-1' }]),
+    ],
+    [
+      'a record beyond the Case revision',
+      foundDetail([
+        minor,
+        {
+          ...major,
+          status: 'awaiting_plan_judgment',
+          records: [
+            ...majorRecords,
+            findingRecord('response', 19, nonconformityResponse()),
+          ],
+        },
+      ]),
+    ],
+    [
+      'a record at the revision of a step version',
+      withMinorRecords([
+        minorStatementRecord,
+        minorClassificationRecord,
+        findingRecord('response', 12, nonconformityResponse()),
+        findingRecord('plan_judgment', 14, judged('adequate')),
+        findingRecord('verification', 15, verified('effective')),
+      ]),
+    ],
+    [
+      'two Findings recorded at one revision',
+      withMinorRecords([
+        ...minorRecords.slice(0, 4),
+        findingRecord('verification', 17, verified('effective')),
+      ]),
+    ],
+    [
+      'creation records at two revisions',
+      stage1Findings([
+        {
+          ...opportunity,
+          records: [
+            opportunity.records[0],
+            { ...opportunity.records[1], caseRevision: 12 },
+          ],
+        },
+      ]),
+    ],
+    [
+      'a creation without its classification',
+      withMinorRecords([
+        minorStatementRecord,
+        findingRecord('statement', 11, minorStatement, { version: 2 }),
+      ]),
+    ],
+    [
+      'a later record before the previous one',
+      stage1Findings(
+        [
+          {
+            ...reclassified,
+            statement: { ...concernStatement, statement: 'Corrected.' },
+            records: [
+              reclassified.records[0],
+              reclassified.records[1],
+              findingRecord(
+                'statement',
+                13,
+                { ...concernStatement, statement: 'Corrected.' },
+                { version: 2, reason: 'Wording corrected.' },
+              ),
+              reclassified.records[2],
+            ],
+          },
+        ],
+        { revision: 13 },
+      ),
+    ],
+    [
+      'a version that skips',
+      withMinorRecords([
+        minorStatementRecord,
+        minorClassificationRecord,
+        { ...response, version: 2 },
+        ...minorRecords.slice(3),
+      ]),
+    ],
+    [
+      'a first statement with a reason',
+      withMinorRecords([
+        { ...minorStatementRecord, reason: 'Not a correction' },
+        ...minorRecords.slice(1),
+      ]),
+    ],
+    [
+      'a corrected statement without its reason',
+      stage1Findings([
+        {
+          ...opportunity,
+          statement: { ...opportunityStatement, statement: 'Corrected.' },
+          records: [
+            ...opportunity.records,
+            findingRecord(
+              'statement',
+              12,
+              { ...opportunityStatement, statement: 'Corrected.' },
+              { version: 2 },
+            ),
+          ],
+        },
+      ]),
+    ],
+    [
+      'a first classification by the approver',
+      withMinorRecords([
+        minorStatementRecord,
+        findingRecord(
+          'classification',
+          11,
+          classified('minor_nonconformity', 'approver'),
+        ),
+        ...minorRecords.slice(2),
+      ]),
+    ],
+    [
+      'a classification by an unknown author',
+      withMinorRecords([
+        minorStatementRecord,
+        findingRecord(
+          'classification',
+          11,
+          classified('minor_nonconformity', 'client'),
+        ),
+        ...minorRecords.slice(2),
+      ]),
+    ],
+    [
+      'a response with a correction reason',
+      withMinorRecords([
+        minorStatementRecord,
+        minorClassificationRecord,
+        { ...response, reason: 'Not a correction' },
+        ...minorRecords.slice(3),
+      ]),
+    ],
+    [
+      'an unknown record kind',
+      withMinorRecords([
+        ...minorRecords,
+        findingRecord('closure', 17, { closed: true }),
+      ]),
+    ],
+    [
+      'a response without its cause',
+      withMinorRecords([
+        minorStatementRecord,
+        minorClassificationRecord,
+        findingRecord('response', 13, nonconformityResponse({ cause: ' ' })),
+        ...minorRecords.slice(3),
+      ]),
+    ],
+    [
+      'a response with an invalid received date',
+      withMinorRecords([
+        minorStatementRecord,
+        minorClassificationRecord,
+        findingRecord(
+          'response',
+          13,
+          nonconformityResponse({ receivedOn: '2026-02-30' }),
+        ),
+        ...minorRecords.slice(3),
+      ]),
+    ],
+    [
+      'an unknown plan outcome',
+      withMinorRecords([
+        ...minorRecords.slice(0, 3),
+        findingRecord('plan_judgment', 14, judged('partial')),
+        minorRecords[4],
+      ]),
+    ],
+    [
+      'an unknown verification method',
+      withMinorRecords([
+        ...minorRecords.slice(0, 4),
+        findingRecord('verification', 15, {
+          ...verified('effective'),
+          method: 'telephone',
+        }),
+      ]),
+    ],
+    [
+      'the same evidence cited twice',
+      withMajorStatement({
+        ...majorStatement,
+        evidenceAttachmentIds: ['evidence-2', 'evidence-2'],
+      }),
+    ],
+    [
+      'more than ten evidence references',
+      withMajorStatement({
+        ...majorStatement,
+        evidenceAttachmentIds: Array.from(
+          { length: 11 },
+          (_, index) => `evidence-${String(index)}`,
+        ),
+      }),
+    ],
+    [
+      'a clause beyond its limit',
+      withMajorStatement({ ...majorStatement, clause: 'x'.repeat(41) }),
+    ],
+    [
+      'a blank statement',
+      withMajorStatement({ ...majorStatement, statement: '  ' }),
+    ],
+    [
+      'the recommendation next while a major nonconformity is open',
+      foundDetail([minor, major], { nextStep: 'recommendation' }),
+    ],
+    [
+      'the follow-up next when nothing holds it',
+      foundDetail([minor, majorVerified], { revision: 21 }),
+    ],
+  ])('fails closed on %s', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
   });
 });
