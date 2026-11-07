@@ -163,11 +163,14 @@ test('explicitly records, replays, follows and corrects a confidential Company R
   expect(writes[1]).toEqual(writes[0]);
   expect(writes[0]?.company).toBe(company.id);
   if (!recordedId) throw new Error('The real committed Risk was not observed.');
-  await page.unroute('**/api/operational-risks');
   await expect(risks.getByText('Assessment: not assessed')).toBeVisible();
   await expect(
     risks.getByText(/The note author is not the risk owner/u),
   ).toBeVisible();
+  // Unroute only after the refreshed Risk is visible. Removing the last route
+  // turns request interception off, and a read still in flight at that moment
+  // never settles (#1082).
+  await page.unroute('**/api/operational-risks');
   await expect(risks.locator('script')).toHaveCount(0);
 
   for (const kind of ['observation', 'reassessment']) {
@@ -480,7 +483,6 @@ async function journalCorrectionJourney({
         ).toBeVisible();
         expect(captured).toHaveLength(2);
         expect(captured[1]).toEqual(captured[0]);
-        await page.unroute(`${browserRoot}/corrections`);
       } else if (refreshFailure) {
         await expect(
           risks.getByText(/The record is confirmed, but refresh failed/u),
@@ -513,6 +515,9 @@ async function journalCorrectionJourney({
       await expect(statement).toContainText('Correction author:');
       await expect(statement).toContainText('Original author:');
       await expect(risks.getByText('Assessment: not assessed')).toBeVisible();
+      // The corrected statement is the refresh's last read: no read is in
+      // flight when this unroute turns request interception off (#1082).
+      if (lose) await page.unroute(`${browserRoot}/corrections`);
     }
   }
   if (!observationId)
