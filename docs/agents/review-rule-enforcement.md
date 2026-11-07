@@ -14,6 +14,7 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 | Non-null `!` and type assertions in TypeScript                           | ESLint with the shrinking `eslint-suppressions.json` baseline                            | #1077, #1079  |
 | Hand-rolled `AbortController` in web code, not `useScopedOperation`      | ESLint `no-restricted-syntax` with the shrinking `eslint-suppressions.json` baseline     | #1119, #1135  |
 | Handler without an established actor context                             | `requireActorContext` returns 403                                                        | #1092         |
+| Company leak, lasting access or false history in Internal Company Tasks  | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1155, #1156  |
 | Request-supplied or missing scope in a query or command                  | Review only                                                                              | ADR 0006      |
 | Hidden and missing records answered differently                          | Review only                                                                              | ADR 0006      |
 | Authority from payload, role names or controller conditions              | Review only                                                                              | Access module |
