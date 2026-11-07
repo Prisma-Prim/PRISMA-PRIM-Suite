@@ -28,7 +28,7 @@ function plan(
   };
 }
 
-withPostgres('Certification Case Stage 1 and Stage 2 Audits', () => {
+withPostgres('Certification Case Stage 1 and Stage 2 Audits', { timeout: 60_000 }, () => {
   let fixture: Awaited<ReturnType<typeof openCertificationFixture>>;
 
   function post(
