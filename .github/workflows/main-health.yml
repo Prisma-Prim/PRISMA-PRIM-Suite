@@ -1,0 +1,88 @@
+name: Main health
+
+# Each pull request is tested against the main it saw, so two green pull
+# requests can still break main together. A push to main reruns the CI fast
+# checks, the night reruns the complete CI, and `report` keeps one open
+# `main-red` issue while main is red.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 2 * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+# No workflow concurrency: nothing may cancel a main run and hide its failure.
+
+jobs:
+  # The steps of the CI `checks` job; the workflow contract test keeps them
+  # identical.
+  checks:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: 'false'
+          chromium: 'false'
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: Check Drizzle migrations match the schema
+        run: pnpm db:check-drift
+
+      - name: Test scripts
+        run: pnpm test:scripts
+
+      - name: Test documentation contracts
+        run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration
+
+  ci:
+    if: ${{ github.event_name == 'schedule' }}
+    uses: ./.github/workflows/ci.yml
+
+  report:
+    needs: [checks, ci]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pull-requests: read
+    # One report at a time, so two red runs never open two issues.
+    concurrency:
+      group: main-red-report
+      cancel-in-progress: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Open, update or close the main-red issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/main-health-report.mjs

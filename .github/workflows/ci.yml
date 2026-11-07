@@ -6,13 +6,16 @@ on:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+  # Main health (main-health.yml) runs this complete CI nightly on main.
+  workflow_call:
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # The nightly main run gets a group of its own: nothing cancels it.
+  group: ci-${{ github.event.pull_request.number || (github.event_name == 'schedule' && format('nightly-{0}', github.run_id)) || github.ref }}
   cancel-in-progress: true
 
 jobs:
