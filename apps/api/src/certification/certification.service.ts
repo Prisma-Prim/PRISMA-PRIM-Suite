@@ -611,7 +611,8 @@ export class CertificationService {
             'CERTIFICATION_DURATION_MISSING',
             'Confirm the audit duration before recording the agreement.',
           );
-        const version = (latest(steps, 'agreement')?.version ?? 0) + 1;
+        const previous = latest(steps, 'agreement');
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
@@ -646,6 +647,7 @@ export class CertificationService {
           current,
           step: 'agreement',
           version,
+          replaces: previous,
           payload: input.agreement,
           reason: input.reason,
           action: 'certification_case.agreement_recorded',
