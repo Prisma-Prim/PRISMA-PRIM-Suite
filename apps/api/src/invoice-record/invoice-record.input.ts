@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import {
-  requireIdempotencyKey,
+  requireBoundedIdempotencyKey,
   requireUuid,
 } from '../access/access-command-validation.js';
 
@@ -194,7 +194,9 @@ export function invoiceQuery(value: unknown): string | undefined {
     throw invalid();
   return typeof v.cursor === 'string' ? v.cursor : undefined;
 }
-export const invoiceKey = requireIdempotencyKey;
+// invoice_record_commands stores keys of 1 to 200 characters.
+export const invoiceKey = (value: string | undefined) =>
+  requireBoundedIdempotencyKey(value, 200);
 function invalid() {
   return new BadRequestException({
     code: 'INVOICE_INPUT_INVALID',

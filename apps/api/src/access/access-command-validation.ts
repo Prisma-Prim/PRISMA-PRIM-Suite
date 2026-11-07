@@ -17,3 +17,19 @@ export function requireIdempotencyKey(value: string | undefined): string {
     throw new BadRequestException('Idempotency-Key header is required.');
   return value.trim();
 }
+
+/**
+ * A required Idempotency-Key whose store accepts at most `maxLength`
+ * characters, counted as the database counts them (code points).
+ */
+export function requireBoundedIdempotencyKey(
+  value: string | undefined,
+  maxLength: number,
+): string {
+  const key = requireIdempotencyKey(value);
+  if ([...key].length > maxLength)
+    throw new BadRequestException(
+      `Idempotency-Key must be at most ${maxLength} characters.`,
+    );
+  return key;
+}

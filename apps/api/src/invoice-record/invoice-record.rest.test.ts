@@ -256,6 +256,9 @@ withPostgres('External Invoice Record complete native journey', () => {
       expect(response.status).toBe(400);
       expect(await invoiceRecordEffects(fixture)).toEqual(effects);
     }
+    const tooLongKey = await source.create(source.createBody, 'k'.repeat(201));
+    expect(tooLongKey.status).toBe(400);
+    expect(await invoiceRecordEffects(fixture)).toEqual(effects);
     const accepted = await source.create(
       {
         ...source.createBody,
