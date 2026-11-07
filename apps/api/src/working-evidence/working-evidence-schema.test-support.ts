@@ -1,5 +1,6 @@
 import { types } from 'pg';
 import { expect } from 'vitest';
+import { withoutCertificationSchema } from '../certification/certification-schema.test-support.js';
 import {
   fixtureObjects,
   fixtureString,
@@ -38,6 +39,8 @@ const additions: Readonly<Record<string, readonly string[]>> = {
 export function withoutWorkingEvidenceSchema(
   schema: Record<string, unknown>,
 ): Record<string, unknown> {
+  // Later additive migrations are removed first, newest to oldest.
+  schema = withoutCertificationSchema(schema);
   const constraints = fixtureObjects(schema.constraints).map((entry) => {
     const name = fixtureString(entry.name);
     let definition = fixtureString(entry.definition);
