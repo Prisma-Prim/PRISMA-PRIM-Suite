@@ -142,6 +142,22 @@ const targetTypes = {
   'company_pricing_user_assignment.granted': 'company_role_assignment',
   'company_pricing_user_assignment.revoked': 'company_role_assignment',
   'company_offer_preparer_assignment.granted': 'company_role_assignment',
+  'company_contract_preparer_assignment.granted': 'company_role_assignment',
+  'company_contract_preparer_assignment.revoked': 'company_role_assignment',
+  'company_contract_early_preparation_assignment.granted':
+    'company_role_assignment',
+  'company_contract_early_preparation_assignment.revoked':
+    'company_role_assignment',
+  'company_contract_approver_assignment.granted': 'company_role_assignment',
+  'company_contract_approver_assignment.revoked': 'company_role_assignment',
+  'company_profitability_contributor_assignment.granted':
+    'company_role_assignment',
+  'company_profitability_contributor_assignment.revoked':
+    'company_role_assignment',
+  'company_profitability_director_assignment.granted':
+    'company_role_assignment',
+  'company_profitability_director_assignment.revoked':
+    'company_role_assignment',
   'company_offer_approver_assignment.granted': 'company_role_assignment',
   'company_offer_approver_assignment.revoked': 'company_role_assignment',
   'company_offer_preparer_assignment.revoked': 'company_role_assignment',
@@ -971,7 +987,7 @@ function recorded(event: Record<string, unknown>) {
   };
 }
 
-function isActivityAction(value: unknown): value is ActivityAction {
+export function isActivityAction(value: unknown): value is ActivityAction {
   return typeof value === 'string' && Object.hasOwn(targetTypes, value);
 }
 
