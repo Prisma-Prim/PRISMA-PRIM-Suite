@@ -295,7 +295,7 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
           reason: 'The training ended more than two years ago.',
           members: [
             member({
-              declarations: { ...NO_CONFLICT, noConsultancy: false },
+              declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
               conflictNote: 'Delivered a training to the client last year.',
             }),
           ],
