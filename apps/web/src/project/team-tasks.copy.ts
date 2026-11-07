@@ -28,7 +28,7 @@ const keys = [
   'malformed',
   'retry',
 ] as const;
-const messages = defineMessages(keys, {
+export const teamTasksMessages = defineMessages(keys, {
   en: {
     title: 'Team Tasks',
     description: 'Find readable team work across the active Company.',
@@ -156,5 +156,5 @@ const messages = defineMessages(keys, {
   },
 });
 export function useTeamTasksCopy() {
-  return useMessages(messages);
+  return useMessages(teamTasksMessages);
 }
