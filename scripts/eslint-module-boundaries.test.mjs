@@ -28,8 +28,9 @@ const lintErrors = 1;
 
 /**
  * Lints fixture files, keyed by their repository-relative path, with the
- * repository configuration inside a throwaway directory. Paths matter: both
- * rules are scoped to directories of `apps/api`.
+ * repository configuration inside a throwaway directory. Paths matter: every
+ * rule is scoped to directories of `apps/api` or `apps/web/src`. A fixture
+ * keyed `eslint-suppressions.json` becomes the baseline of that directory.
  */
 async function lintFiles(files) {
   const directory = await mkdtemp(path.join(tmpdir(), 'eslint-boundaries-'));
@@ -230,4 +231,90 @@ test('every event table follows the naming the append-only rule matches', async 
   for (const identifier of eventTables) {
     assert.match(identifier, /Events$/, `${identifier} escapes the rule`);
   }
+});
+
+const scopedOperationRule = 'no-restricted-syntax';
+
+// Reduced from 34d7ef0a^ (#1081, fixed in #1095),
+// apps/web/src/contract/use-model-contract-journey.ts: the hook hand-rolled
+// its read controller and retired it in a passive effect, so a read begun on
+// the first displayed frame was aborted before any fetch.
+const handRolledRead = [
+  "import { useEffect, useRef } from 'react';",
+  '',
+  'export function useModelContractReads(mutationAuthority: string) {',
+  '  const readRequest = useRef<AbortController | undefined>(undefined);',
+  '  useEffect(() => {',
+  '    readRequest.current?.abort();',
+  '  }, [mutationAuthority]);',
+  '  return async (load: (signal: AbortSignal) => Promise<void>) => {',
+  '    readRequest.current?.abort();',
+  '    const controller = new AbortController();',
+  '    readRequest.current = controller;',
+  '    await load(controller.signal);',
+  '  };',
+  '}',
+  '',
+].join('\n');
+
+test('web code that hand-rolls an AbortController fails lint and points to useScopedOperation', async () => {
+  const result = await lintFiles({
+    'apps/web/src/contract/use-model-contract-journey.ts': handRolledRead,
+    'apps/web/src/client/ClientWorkspace.tsx': [
+      'export function Reload() {',
+      "  const reload = () => fetch('/clients', { signal: new AbortController().signal });",
+      '  return <button onClick={reload}>Reload</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  });
+
+  assert.equal(result.status, lintErrors, result.output);
+  const reports = result.output.match(
+    new RegExp(`error .*useScopedOperation.*${scopedOperationRule}`, 'g'),
+  );
+  assert.equal(reports?.length, 2, result.output);
+});
+
+test('a recorded AbortController passes, but a new one in the same file fails', async () => {
+  const file = 'apps/web/src/contract/use-model-contract-journey.ts';
+  const baseline = JSON.stringify({
+    [file]: { [scopedOperationRule]: { count: 1 } },
+  });
+
+  const recorded = await lintFiles({
+    [file]: handRolledRead,
+    'eslint-suppressions.json': baseline,
+  });
+  assert.equal(recorded.status, 0, recorded.output);
+
+  const added = await lintFiles({
+    [file]: `${handRolledRead}export const another = new AbortController();\n`,
+    'eslint-suppressions.json': baseline,
+  });
+  assert.equal(added.status, lintErrors, added.output);
+  assert.match(added.output, new RegExp(`error .*${scopedOperationRule}`));
+});
+
+test('the primitive, web tests and API code may create an AbortController', async () => {
+  const result = await lintFiles({
+    'apps/web/src/api/use-scoped-operation.ts': handRolledRead,
+    'apps/web/src/api/use-scoped-operation.test.tsx': handRolledRead,
+    'apps/web/src/contract/use-model-contract-journey.test.ts': handRolledRead,
+    'apps/web/src/mission-plan/current-work-app.test-support.tsx':
+      handRolledRead,
+    'apps/web/src/test/activity-localization-fixture.ts': handRolledRead,
+    'apps/api/src/commercial-pdf/commercial-pdf-read.ts':
+      'export const deadline = new AbortController();\n',
+    'apps/web/src/contract/use-model-contract-reads.ts': [
+      "import { useScopedOperation } from '../api/use-scoped-operation';",
+      '',
+      'export function useModelContractReads(scope: string) {',
+      '  return useScopedOperation(scope).begin;',
+      '}',
+      '',
+    ].join('\n'),
+  });
+
+  assert.equal(result.status, 0, result.output);
 });

@@ -1,3 +1,4 @@
+import { renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -5,6 +6,7 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from './latest-authenticated-request';
+import { useScopedOperation } from './use-scoped-operation';
 
 describe('latest authenticated request', () => {
   afterEach(() => {
@@ -61,6 +63,83 @@ describe('latest authenticated request', () => {
     publication.resolve('published');
     await expect(run).resolves.toBe('result');
     expect(pending.current).toBeUndefined();
+  });
+
+  it('lets a scoped operation supersede an older request through the signal it began', async () => {
+    const { result } = renderHook(() => useScopedOperation('company-a'));
+    const first = deferred<string>();
+    const olderSignal = result.current.begin();
+    if (!olderSignal) throw new Error('Expected live scoped work.');
+    const olderResult = vi.fn();
+    const olderSettled = vi.fn();
+    const olderRun = runLatestAuthenticatedRequest({
+      signal: olderSignal,
+      identity: deterministicBrowserIdentity(),
+      execute: async () => first.promise,
+      onResult: olderResult,
+      onError: vi.fn(),
+      onSettled: olderSettled,
+    });
+
+    const latestSignal = result.current.begin();
+    if (!latestSignal) throw new Error('Expected live scoped work.');
+    const executedWith: AbortSignal[] = [];
+    const latestResult = vi.fn();
+    const latestSettled = vi.fn();
+    const latestRun = runLatestAuthenticatedRequest({
+      signal: latestSignal,
+      identity: deterministicBrowserIdentity(),
+      execute: async (_api, signal) => {
+        executedWith.push(signal);
+        return 'latest';
+      },
+      onResult: latestResult,
+      onError: vi.fn(),
+      onSettled: latestSettled,
+    });
+    first.resolve('older');
+
+    await expect(latestRun).resolves.toBe('latest');
+    await expect(olderRun).resolves.toBeUndefined();
+    // The operation's signal is the only abort path: no derived controller.
+    expect(executedWith).toEqual([latestSignal]);
+    expect(latestResult).toHaveBeenCalledWith('latest', latestSignal);
+    expect(latestSettled).toHaveBeenCalledOnce();
+    expect(olderResult).not.toHaveBeenCalled();
+    expect(olderSettled).not.toHaveBeenCalled();
+  });
+
+  it('reports nothing for a scoped request whose scope retired before it failed', async () => {
+    const { result, rerender } = renderHook(
+      ({ scope }) => useScopedOperation(scope),
+      { initialProps: { scope: 'company-a' } },
+    );
+    const response = deferred<string>();
+    const signal = result.current.begin();
+    if (!signal) throw new Error('Expected live scoped work.');
+    const onResult = vi.fn();
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const run = runLatestAuthenticatedRequest({
+      signal,
+      identity: deterministicBrowserIdentity(),
+      execute: async () => {
+        await response.promise;
+        throw new Error('Request failed.');
+      },
+      onResult,
+      onError,
+      onSettled,
+    });
+
+    rerender({ scope: 'company-b' });
+    response.resolve('failed');
+
+    await expect(run).resolves.toBeUndefined();
+    expect(signal.aborted).toBe(true);
+    expect(onResult).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSettled).not.toHaveBeenCalled();
   });
 
   it('rejects an unauthorized session without changing Company context', async () => {
