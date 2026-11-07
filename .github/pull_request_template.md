@@ -18,6 +18,8 @@ Closes #
 
 <!-- Door: one-way or two-way. Blast radius: one word, then any ramification. -->
 
+How to revert: <!-- e.g. "revert this commit; the migration is reversible", or "needs a follow-up down migration" -->
+
 ## CI and review
 
 - CI run:
