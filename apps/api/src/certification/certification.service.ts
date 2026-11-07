@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, count, desc, eq } from 'drizzle-orm';
+import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -2062,8 +2063,13 @@ export class CertificationService {
   }): Promise<{ bytes: Uint8Array; fileName: string }> {
     const targetId = requireUuid(caseId);
     const language = registerLanguage(query);
-    const source = await this.read(actor, 'reader', (companyId) =>
-      this.registerSource(actor, companyId, targetId),
+    // One snapshot: a command committing meanwhile cannot mix two revisions.
+    // Not read only: the authority recheck locks its grants FOR SHARE.
+    const source = await this.read(
+      actor,
+      'reader',
+      (companyId) => this.registerSource(actor, companyId, targetId),
+      { isolationLevel: 'repeatable read' },
     );
     return {
       bytes: await renderCertificationRegister(
@@ -2770,10 +2776,12 @@ export class CertificationService {
     actor: ActorContext,
     role: CertificationRole,
     work: (companyId: string) => Promise<T>,
+    config?: PgTransactionConfig,
   ): Promise<T> {
     return this.protect(() =>
-      this.database.transaction(async () =>
-        work(await this.authorize(actor, role)),
+      this.database.transaction(
+        async () => work(await this.authorize(actor, role)),
+        config,
       ),
     );
   }

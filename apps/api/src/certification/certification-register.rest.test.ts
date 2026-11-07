@@ -339,6 +339,28 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
     expect(Buffer.from(first).equals(Buffer.from(second))).toBe(true);
   });
 
+  it('reads the whole register at one Case revision while another transaction commits', async () => {
+    const pending = await fixture.caseWithApplication();
+    const before = await pdfOf(await register(CERTIFICATION_READER, pending));
+    const hold = await fixture.holdTable('certification_findings');
+    const during = register(CERTIFICATION_READER, pending);
+    try {
+      await expect.poll(() => hold.waiting(), { timeout: 10_000 }).toBe(true);
+      // Another transaction reaches the next revision while the register is
+      // half read; its event commits before the register reads the events.
+      await hold.write(
+        `INSERT INTO certification_events (workspace_id, company_id, case_id, revision, action, actor_membership_id, actor_internal_user_id, occurred_at, metadata)
+         SELECT workspace_id, company_id, case_id, revision + 1, 'certification_case.document_attached', actor_membership_id, actor_internal_user_id, occurred_at + interval '1 hour', metadata
+           FROM certification_events WHERE case_id = $1 ORDER BY revision DESC LIMIT 1`,
+        [pending],
+      );
+    } finally {
+      await hold.release();
+    }
+    const concurrent = await pdfOf(await during);
+    expect(Buffer.from(concurrent).equals(Buffer.from(before))).toBe(true);
+  });
+
   it('refuses an unknown language or query with a closed code', async () => {
     for (const query of [
       '?language=de',
