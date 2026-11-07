@@ -99,6 +99,16 @@ const keys = [
   'company_pricing_user_assignment.granted',
   'company_pricing_user_assignment.revoked',
   'company_offer_preparer_assignment.granted',
+  'company_contract_preparer_assignment.granted',
+  'company_contract_preparer_assignment.revoked',
+  'company_contract_early_preparation_assignment.granted',
+  'company_contract_early_preparation_assignment.revoked',
+  'company_contract_approver_assignment.granted',
+  'company_contract_approver_assignment.revoked',
+  'company_profitability_contributor_assignment.granted',
+  'company_profitability_contributor_assignment.revoked',
+  'company_profitability_director_assignment.granted',
+  'company_profitability_director_assignment.revoked',
   'company_offer_preparer_assignment.revoked',
   'company_offer_approver_assignment.granted',
   'company_offer_approver_assignment.revoked',
@@ -231,6 +241,26 @@ export const activityLogMessages = defineMessages(keys, {
       'revoked Company Pricing Configuration',
     'company_pricing_user_assignment.granted': 'granted Company Pricing User',
     'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
+    'company_contract_preparer_assignment.granted':
+      'granted Company Contract Preparer',
+    'company_contract_preparer_assignment.revoked':
+      'revoked Company Contract Preparer',
+    'company_contract_early_preparation_assignment.granted':
+      'granted Company Contract Early Preparation',
+    'company_contract_early_preparation_assignment.revoked':
+      'revoked Company Contract Early Preparation',
+    'company_contract_approver_assignment.granted':
+      'granted Company Contract Approver',
+    'company_contract_approver_assignment.revoked':
+      'revoked Company Contract Approver',
+    'company_profitability_contributor_assignment.granted':
+      'granted Company Profitability Contributor',
+    'company_profitability_contributor_assignment.revoked':
+      'revoked Company Profitability Contributor',
+    'company_profitability_director_assignment.granted':
+      'granted Company Profitability Director',
+    'company_profitability_director_assignment.revoked':
+      'revoked Company Profitability Director',
     'company_offer_preparer_assignment.granted':
       'granted Company Offer Preparer',
     'company_offer_preparer_assignment.revoked':
@@ -398,6 +428,26 @@ export const activityLogMessages = defineMessages(keys, {
       'a acordat Utilizare prețuri a Companiei',
     'company_pricing_user_assignment.revoked':
       'a revocat Utilizare prețuri a Companiei',
+    'company_contract_preparer_assignment.granted':
+      'a acordat Responsabil cu pregătirea contractelor companiei',
+    'company_contract_preparer_assignment.revoked':
+      'a revocat Responsabil cu pregătirea contractelor companiei',
+    'company_contract_early_preparation_assignment.granted':
+      'a acordat Pregătire anticipată a contractelor companiei',
+    'company_contract_early_preparation_assignment.revoked':
+      'a revocat Pregătire anticipată a contractelor companiei',
+    'company_contract_approver_assignment.granted':
+      'a acordat Aprobator de contracte al companiei',
+    'company_contract_approver_assignment.revoked':
+      'a revocat Aprobator de contracte al companiei',
+    'company_profitability_contributor_assignment.granted':
+      'a acordat Contributor rentabilitate Companie',
+    'company_profitability_contributor_assignment.revoked':
+      'a revocat Contributor rentabilitate Companie',
+    'company_profitability_director_assignment.granted':
+      'a acordat Director rentabilitate Companie',
+    'company_profitability_director_assignment.revoked':
+      'a revocat Director rentabilitate Companie',
     'company_offer_preparer_assignment.granted':
       'a acordat Pregătire Oferte a Companiei',
     'company_offer_preparer_assignment.revoked':
@@ -561,6 +611,26 @@ export const activityLogMessages = defineMessages(keys, {
       '— предоставление права: Использование ценообразования Компании',
     'company_pricing_user_assignment.revoked':
       '— отзыв права: Использование ценообразования Компании',
+    'company_contract_preparer_assignment.granted':
+      '— предоставление права: Подготовка договоров компании',
+    'company_contract_preparer_assignment.revoked':
+      '— отзыв права: Подготовка договоров компании',
+    'company_contract_early_preparation_assignment.granted':
+      '— предоставление права: Ранняя подготовка договоров компании',
+    'company_contract_early_preparation_assignment.revoked':
+      '— отзыв права: Ранняя подготовка договоров компании',
+    'company_contract_approver_assignment.granted':
+      '— предоставление права: Согласующий договоры компании',
+    'company_contract_approver_assignment.revoked':
+      '— отзыв права: Согласующий договоры компании',
+    'company_profitability_contributor_assignment.granted':
+      '— предоставление права: Автор оценки рентабельности Компании',
+    'company_profitability_contributor_assignment.revoked':
+      '— отзыв права: Автор оценки рентабельности Компании',
+    'company_profitability_director_assignment.granted':
+      '— предоставление права: Директор оценки рентабельности Компании',
+    'company_profitability_director_assignment.revoked':
+      '— отзыв права: Директор оценки рентабельности Компании',
     'company_offer_preparer_assignment.granted':
       '— предоставление права: Подготовка Оферт Компании',
     'company_offer_preparer_assignment.revoked':
@@ -729,6 +799,26 @@ export const activityLogMessages = defineMessages(keys, {
       'a accordé Utilisation tarifaire de l’Entreprise',
     'company_pricing_user_assignment.revoked':
       'a révoqué Utilisation tarifaire de l’Entreprise',
+    'company_contract_preparer_assignment.granted':
+      'a accordé Préparateur de contrats de la société',
+    'company_contract_preparer_assignment.revoked':
+      'a révoqué Préparateur de contrats de la société',
+    'company_contract_early_preparation_assignment.granted':
+      'a accordé Préparation anticipée des contrats de la société',
+    'company_contract_early_preparation_assignment.revoked':
+      'a révoqué Préparation anticipée des contrats de la société',
+    'company_contract_approver_assignment.granted':
+      'a accordé Approbateur de contrats de la société',
+    'company_contract_approver_assignment.revoked':
+      'a révoqué Approbateur de contrats de la société',
+    'company_profitability_contributor_assignment.granted':
+      'a accordé Contributeur de rentabilité Société',
+    'company_profitability_contributor_assignment.revoked':
+      'a révoqué Contributeur de rentabilité Société',
+    'company_profitability_director_assignment.granted':
+      'a accordé Directeur de rentabilité Société',
+    'company_profitability_director_assignment.revoked':
+      'a révoqué Directeur de rentabilité Société',
     'company_offer_preparer_assignment.granted':
       'a accordé Préparation des Offres de l’Entreprise',
     'company_offer_preparer_assignment.revoked':
