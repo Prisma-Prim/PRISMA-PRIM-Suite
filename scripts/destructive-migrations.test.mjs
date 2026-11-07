@@ -228,12 +228,276 @@ test('a foreign key dropped and added back under the same name is a replacement,
   assert.equal(checkMigrations(fixture(replacedByAnotherName), []).length, 1);
 });
 
+test('a foreign key dropped from one table is not replaced by the same name added to another table or schema', () => {
+  const add = (table) =>
+    `ALTER TABLE ${table} ADD CONSTRAINT "owner_fk" FOREIGN KEY ("owner_id") REFERENCES "owners"("id");`;
+  const drop = (table) => `ALTER TABLE ${table} DROP CONSTRAINT "owner_fk";`;
+  const lost = [
+    [drop('"a"'), add('"b"')],
+    [drop('"a"'), add('"legacy"."a"')],
+    [drop('"legacy"."a"'), add('"a"')],
+    [drop('"a"'), add('"public"."a_copy"')],
+    [add('"b"'), drop('"a"')],
+  ];
+
+  for (const statements of lost) {
+    const sql = statements.join('--> statement-breakpoint\n');
+    const found = findDestructiveStatements(sql);
+
+    assert.equal(found.length, 1, sql);
+    assert.equal(found[0].kind, 'drop-key', sql);
+    assert.match(found[0].statement, /DROP CONSTRAINT/, sql);
+    assert.equal(checkMigrations(fixture(sql), []).length, 1, sql);
+  }
+});
+
+test('a foreign key replaced on the same table is accepted however the table is spelled', () => {
+  const replacement = (table) =>
+    `ALTER TABLE ${table} ADD CONSTRAINT "owner_fk" FOREIGN KEY ("owner_id") REFERENCES "owners"("id");`;
+  const drop = (table) => `ALTER TABLE ${table} DROP CONSTRAINT "owner_fk";`;
+  const spellings = [
+    ['"notes"', '"notes"'],
+    ['"notes"', '"public"."notes"'],
+    ['public.notes', 'notes'],
+    ['NOTES', '"notes"'],
+    ['ONLY "notes"', '"notes"'],
+    ['IF EXISTS "public"."notes"', 'ONLY public . notes'],
+  ];
+
+  for (const [dropped, added] of spellings) {
+    const sql = [drop(dropped), replacement(added)].join(
+      '--> statement-breakpoint\n',
+    );
+
+    assert.deepEqual(findDestructiveStatements(sql), [], sql);
+    assert.deepEqual(
+      checkMigrations(
+        fixture([replacement(added), drop(dropped)].join('\n')),
+        [],
+      ),
+      [],
+    );
+  }
+
+  const oneStatement =
+    'ALTER TABLE "notes" DROP CONSTRAINT "owner_fk", ADD CONSTRAINT "owner_fk" FOREIGN KEY ("owner_id") REFERENCES "owners"("id");';
+  assert.deepEqual(findDestructiveStatements(oneStatement), []);
+});
+
+test('a quoted table or constraint name is case-sensitive, an unquoted one is folded to lower case', () => {
+  const replacement = (table, constraint) =>
+    [
+      `ALTER TABLE ${table[0]} DROP CONSTRAINT ${constraint[0]};`,
+      `ALTER TABLE ${table[1]} ADD CONSTRAINT ${constraint[1]} FOREIGN KEY ("owner_id") REFERENCES "owners"("id");`,
+    ].join('\n');
+  const kept = (table, constraint) =>
+    findDestructiveStatements(replacement(table, constraint));
+
+  assert.deepEqual(kept(['"Notes"', '"Notes"'], ['a_fk', 'a_fk']), []);
+  assert.equal(kept(['"Notes"', '"notes"'], ['a_fk', 'a_fk']).length, 1);
+  assert.equal(kept(['"Notes"', 'Notes'], ['a_fk', 'a_fk']).length, 1);
+  assert.deepEqual(kept(['Notes', '"notes"'], ['a_fk', 'a_fk']), []);
+  assert.deepEqual(kept(['"notes"', '"notes"'], ['"a_fk"', 'A_FK']), []);
+  assert.equal(kept(['"notes"', '"notes"'], ['"A_FK"', '"a_fk"']).length, 1);
+});
+
+test('a key dropped inside a DO block is replaced only by a key added to the same table', () => {
+  const block = (body) => `DO $$ BEGIN ${body} END $$;`;
+  const drop = 'ALTER TABLE "a" DROP CONSTRAINT "owner_fk";';
+  const add = (table) =>
+    `ALTER TABLE ${table} ADD CONSTRAINT "owner_fk" FOREIGN KEY ("owner_id") REFERENCES "owners"("id");`;
+
+  assert.deepEqual(
+    findDestructiveStatements(block(`${drop} ${add('"a"')}`)),
+    [],
+  );
+  assert.equal(
+    findDestructiveStatements(block(`${drop} ${add('"b"')}`)).length,
+    1,
+  );
+});
+
 test('a delete without a where clause fails, with one it does not', () => {
   assert.equal(checkMigrations(fixture('DELETE FROM "notes";'), []).length, 1);
   assert.deepEqual(
     checkMigrations(fixture('DELETE FROM "notes" WHERE "id" IS NULL;'), []),
     [],
   );
+});
+
+test('a where clause of a CTE, a USING subquery or a RETURNING subquery does not exempt an unfiltered delete', () => {
+  const unfiltered = [
+    'WITH selected AS (SELECT id FROM source WHERE enabled) DELETE FROM target;',
+    'WITH selected AS (SELECT id FROM source WHERE enabled)\nDELETE FROM "target" RETURNING "id";',
+    'DELETE FROM "target" USING (SELECT "id" FROM "source" WHERE "enabled") AS "s";',
+    'DELETE FROM "target" AS "t" USING "source" AS "s" WHERE "t"."id" = "s"."id" AND "s"."ok"; DELETE FROM "other";',
+    'DELETE FROM "target" RETURNING (SELECT 1 WHERE true);',
+    'WITH gone AS (DELETE FROM "target" RETURNING "id") SELECT count(*) FROM "gone" WHERE true;',
+    'WITH selected AS (SELECT 1 WHERE true), gone AS (DELETE FROM "target" RETURNING "id") SELECT * FROM "gone";',
+    'WITH gone AS (DELETE FROM "a" RETURNING "id") DELETE FROM "b" WHERE "id" IN (SELECT "id" FROM "gone");',
+  ];
+
+  for (const sql of unfiltered) {
+    const found = findDestructiveStatements(`SELECT 1;\n${sql}\n`);
+
+    assert.deepEqual(
+      found.map((finding) => [finding.kind, finding.line]),
+      [['delete-all', 2]],
+      sql,
+    );
+    assert.equal(checkMigrations(fixture(sql), []).length, 1, sql);
+  }
+
+  const [first] = findDestructiveStatements(unfiltered[0]);
+  assert.match(first.statement, /^WITH selected AS .* DELETE FROM target$/);
+});
+
+test('a delete whose own where clause is present stays accepted next to CTEs and subqueries', () => {
+  const filtered = [
+    'WITH selected AS (SELECT id FROM source WHERE enabled) DELETE FROM target WHERE id IN (SELECT id FROM selected);',
+    'WITH selected AS (SELECT id FROM source) DELETE FROM target\nUSING selected\nWHERE target.id = selected.id;',
+    'DELETE FROM "target" USING (SELECT "id" FROM "source" WHERE "enabled") AS "s" WHERE "target"."id" = "s"."id";',
+    'DELETE FROM "target" WHERE "id" IN (SELECT "id" FROM "source" WHERE "enabled");',
+    'WITH gone AS (DELETE FROM "target" WHERE "stale" RETURNING "id") SELECT * FROM "gone";',
+    'DELETE FROM "target" WHERE CURRENT OF "cursor";',
+    'DELETE FROM ONLY "target" * WHERE "id" = 1 RETURNING *;',
+  ];
+
+  for (const sql of filtered) {
+    assert.deepEqual(findDestructiveStatements(sql), [], sql);
+  }
+});
+
+test('a delete without a where clause inside a DO block or a function body fails', () => {
+  const sql = 'DO $$ BEGIN DELETE FROM "notes"; END $$;';
+
+  assert.deepEqual(
+    findDestructiveStatements(sql).map((finding) => finding.kind),
+    ['delete-all'],
+  );
+  assert.deepEqual(
+    findDestructiveStatements(
+      'DO $$ BEGIN DELETE FROM "notes" WHERE "id" = 1; END $$;',
+    ),
+    [],
+  );
+});
+
+test('an apostrophe inside a dollar-quoted string does not hide the statement that follows', () => {
+  const hidden = [
+    [
+      `COMMENT ON TABLE "notes" IS $$User's notes$$;\nDROP TABLE "notes";`,
+      ['drop-table', 2],
+    ],
+    [
+      `COMMENT ON TABLE "notes" IS $note$User's $$ notes$note$;\nDROP TABLE "notes";`,
+      ['drop-table', 2],
+    ],
+    [
+      `COMMENT ON TABLE "notes" IS $$line one\nUser's line two\n$$;\nALTER TABLE "notes" DROP COLUMN "body";`,
+      ['drop-column', 4],
+    ],
+    [
+      `COMMENT ON TABLE "notes" IS $$it's$$; COMMENT ON TABLE "tags" IS $x$it's$x$;\nTRUNCATE "notes";`,
+      ['truncate', 2],
+    ],
+    [`SELECT $$a$$$$b$$, 'it''s'; DELETE FROM "notes";`, ['delete-all', 1]],
+  ];
+
+  for (const [sql, [kind, line]] of hidden) {
+    assert.deepEqual(
+      findDestructiveStatements(sql).map((finding) => [
+        finding.kind,
+        finding.line,
+      ]),
+      [[kind, line]],
+      sql,
+    );
+    assert.equal(checkMigrations(fixture(sql), []).length, 1, sql);
+  }
+});
+
+test('a destructive keyword inside a dollar-quoted string is not flagged', () => {
+  const harmless = [
+    'SELECT $$DROP TABLE notes$$;',
+    'SELECT $note$DROP TABLE notes; TRUNCATE notes; DELETE FROM notes$note$;',
+    'COMMENT ON TABLE "notes" IS $$ALTER TABLE "notes" DROP COLUMN "body"; $$;',
+    'INSERT INTO "notes" ("body") VALUES ($$it\'s DROP TABLE notes$$);',
+    'INSERT INTO "notes" ("body") VALUES ($a$ $b$ DROP TABLE notes $b$ $a$);',
+    'COMMENT ON COLUMN "notes"."body" IS $$-- DROP TABLE "notes"; /* RENAME $$;',
+    'SELECT $$ DROP TABLE notes',
+  ];
+
+  for (const sql of harmless) {
+    assert.deepEqual(findDestructiveStatements(sql), [], sql);
+  }
+});
+
+test('a dollar sign that is part of an identifier or a parameter does not open a string', () => {
+  const stillDestructive = [
+    'CREATE TABLE "notes" ("a$$b" text, c$$d text);\nDROP TABLE "notes";',
+    'SELECT price$$ FROM "notes";\nDROP TABLE "notes";',
+    'PREPARE p AS SELECT $1, $2;\nDROP TABLE "notes";',
+    'SELECT 1 AS "$$";\nDROP TABLE "notes";',
+    'SELECT 1 AS a$1$;\nDROP TABLE "notes";',
+  ];
+
+  for (const sql of stillDestructive) {
+    assert.deepEqual(
+      findDestructiveStatements(sql).map((finding) => [
+        finding.kind,
+        finding.line,
+      ]),
+      [['drop-table', 2]],
+      sql,
+    );
+  }
+});
+
+test('a DO block or a function body in dollar quotes is still scanned as code', () => {
+  const bodies = [
+    ['DO $$ BEGIN\n  DROP TABLE "notes";\nEND $$;', [['drop-table', 1]]],
+    [
+      'DO LANGUAGE plpgsql $body$ BEGIN ALTER TABLE "notes" DROP COLUMN "body"; END $body$;',
+      [['drop-column', 1]],
+    ],
+    [
+      'CREATE OR REPLACE FUNCTION "migrate"() RETURNS void LANGUAGE plpgsql AS $fn$\nBEGIN\n  TRUNCATE "notes";\nEND\n$fn$;',
+      [['truncate', 1]],
+    ],
+    [
+      'CREATE PROCEDURE "migrate"() AS $$ BEGIN ALTER TABLE "notes" RENAME TO "memos"; END $$ LANGUAGE plpgsql;',
+      [['rename', 1]],
+    ],
+    ["DO $$ BEGIN RAISE NOTICE 'it''s DROP TABLE notes'; END $$;", []],
+    [
+      'CREATE FUNCTION "f"() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION \'it\'\'s append-only\'; END $$ LANGUAGE plpgsql;\nDROP TABLE "notes";',
+      [['drop-table', 2]],
+    ],
+  ];
+
+  for (const [sql, expected] of bodies) {
+    assert.deepEqual(
+      findDestructiveStatements(sql).map((finding) => [
+        finding.kind,
+        finding.line,
+      ]),
+      expected,
+      sql,
+    );
+  }
+});
+
+test('a marker above a DO block accepts what its body drops', () => {
+  const sql = [
+    marker,
+    'DO $$ BEGIN',
+    '  ALTER TABLE "notes" DROP COLUMN "body";',
+    'END $$;',
+  ].join('\n');
+
+  assert.equal(findDestructiveStatements(sql).length, 1);
+  assert.deepEqual(checkMigrations(fixture(sql), []), []);
 });
 
 test('a grandfathered statement passes, a new one in the same file or a stale entry fails', () => {

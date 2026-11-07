@@ -87,7 +87,7 @@ const adviceByKind = {
   'alter-type':
     'Add a column of the new type, backfill it with a checked cast, move every consumer, and drop the old column in a later migration. A pure widening may use the marker; say so in its reason.',
   'drop-key':
-    'Add the replacement constraint first (re-adding a constraint of the same name in this file is accepted as a replacement); dropping a key with no replacement removes the integrity guarantee.',
+    'Add the replacement constraint first (re-adding a constraint of the same name to the same table in this file is accepted as a replacement); dropping a key with no replacement removes the integrity guarantee.',
   truncate:
     'Remove only the rows you name with DELETE ... WHERE, preserving identifiers and events; Activity Log events are append-only.',
   'delete-all':
@@ -134,19 +134,38 @@ const addConstraint = new RegExp(
   String.raw`\bADD\s+CONSTRAINT\s+(${wordOrQuoted})`,
   'gid',
 );
+// The owning table of a constraint action: ALTER TABLE [IF EXISTS] [ONLY]
+// [schema.]table. An unqualified table is resolved in the default schema.
+const alterTable = new RegExp(
+  String.raw`\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?(${wordOrQuoted})(?:\s*\.\s*(${wordOrQuoted}))?`,
+  'gid',
+);
+const defaultSchema = 'public';
+
+// PostgreSQL dollar quoting: $$...$$ or $tag$...$tag$. The tag follows the
+// rules of an unquoted identifier, minus the dollar sign.
+const dollarDelimiter = /\$(?:[A-Za-z_\u0080-\uFFFF][\w\u0080-\uFFFF]*)?\$/y;
+// The body of a DO block or of a function or procedure is SQL, not text: it
+// stays visible so a destructive statement inside it is still found.
+const codeBodyStatement =
+  /^\s*(?:DO|CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE))\b/i;
 
 /**
  * Returns a copy of the SQL of the same length in which comments and string
- * literals are blanked and quoted identifiers keep their quotes but lose their
- * text, so keywords can be matched without false positives. Offsets and line
- * numbers are identical to the original.
+ * literals (single-quoted and dollar-quoted) are blanked and quoted
+ * identifiers keep their quotes but lose their text, so keywords can be
+ * matched without false positives. The body of a DO block or of a function is
+ * masked the same way but stays code. Offsets and line numbers are identical
+ * to the original.
  */
 function maskSql(sql) {
   const hide = (text, fill) => text.replace(/[^\n]/g, fill);
   let masked = '';
+  let statementStart = 0;
   let index = 0;
   while (index < sql.length) {
     const pair = sql.slice(index, index + 2);
+    const delimiter = dollarDelimiterAt(sql, index, masked.at(-1));
     let end = index + 1;
     if (pair === '--') {
       end = sql.indexOf('\n', index);
@@ -155,6 +174,17 @@ function maskSql(sql) {
     } else if (pair === '/*') {
       end = endOfBlockComment(sql, index);
       masked += hide(sql.slice(index, end), ' ');
+    } else if (delimiter) {
+      const bodyStart = index + delimiter.length;
+      const closing = sql.indexOf(delimiter, bodyStart);
+      const bodyEnd = closing === -1 ? sql.length : closing;
+      const body = sql.slice(bodyStart, bodyEnd);
+      end = closing === -1 ? sql.length : closing + delimiter.length;
+      masked += hide(delimiter, ' ');
+      masked += codeBodyStatement.test(masked.slice(statementStart))
+        ? maskSql(body)
+        : hide(body, ' ');
+      masked += hide(sql.slice(bodyEnd, end), ' ');
     } else if (sql[index] === "'") {
       const escapes = /(?:^|\W)[eE]$/.test(
         sql.slice(Math.max(0, index - 2), index),
@@ -170,10 +200,26 @@ function maskSql(sql) {
           : `"${hide(quoted.slice(1, -1), '_')}${quoted.at(-1)}`;
     } else {
       masked += sql[index];
+      if (sql[index] === ';') statementStart = masked.length;
     }
     index = end;
   }
   return masked;
+}
+
+/**
+ * Returns the dollar-quote delimiter that opens at `index`, or null. A dollar
+ * sign inside an identifier (`price$$`) or a parameter (`$1`) opens nothing.
+ */
+function dollarDelimiterAt(sql, index, previous) {
+  if (
+    sql[index] !== '$' ||
+    (previous !== undefined && /[\w$\u0080-\uFFFF]/.test(previous))
+  ) {
+    return null;
+  }
+  dollarDelimiter.lastIndex = index;
+  return dollarDelimiter.exec(sql)?.[0] ?? null;
 }
 
 function endOfBlockComment(sql, start) {
@@ -227,15 +273,63 @@ function statementRanges(masked) {
   return ranges;
 }
 
-function constraintNames(masked, raw, pattern) {
-  return [...masked.matchAll(pattern)].map((match) => {
+/**
+ * Finds the constraint actions of one statement that `pattern` matches, as
+ * `{ name, key }`. `key` identifies the constraint by its owning schema, table
+ * and name (PostgreSQL allows one name on several tables), or is null when the
+ * statement names no owning table. `code` is the masked statement and `raw`
+ * the same statement unmasked, at the same offsets.
+ */
+function constraintActions(code, raw, pattern) {
+  const tables = [...code.matchAll(alterTable)].map((match) => {
+    const parts = match.indices
+      .slice(1)
+      .filter(Boolean)
+      .map(([from, to]) => normalizeIdentifier(raw.slice(from, to)));
+    return {
+      at: match.index,
+      owner: parts.length === 2 ? parts : [defaultSchema, parts[0]],
+    };
+  });
+  return [...code.matchAll(pattern)].map((match) => {
     const [from, to] = match.indices[1];
-    return normalizeName(raw.slice(from, to));
+    const name = normalizeIdentifier(raw.slice(from, to));
+    const table = tables.findLast(({ at }) => at < match.index);
+    return { name, key: table ? JSON.stringify([...table.owner, name]) : null };
   });
 }
 
-function normalizeName(name) {
-  return name.replaceAll('"', '').toLowerCase();
+/** Folds an unquoted identifier to lower case; a quoted one keeps its case. */
+function normalizeIdentifier(identifier) {
+  const quoted = /^"(.*)"$/s.exec(identifier);
+  return quoted ? quoted[1].replaceAll('""', '"') : identifier.toLowerCase();
+}
+
+/**
+ * Whether `code` holds a DELETE that removes every row: one with no WHERE of
+ * its own. A WHERE inside parentheses (a CTE, a USING or RETURNING subquery)
+ * belongs to another query, and a DELETE inside a CTE ends where its
+ * enclosing parenthesis closes.
+ */
+function deletesEveryRow(code) {
+  return [...code.matchAll(/\bDELETE\s+FROM\b/gi)].some(
+    (match) => !hasOwnWhere(code, match.index + match[0].length),
+  );
+}
+
+function hasOwnWhere(code, from) {
+  let depth = 0;
+  for (const token of code.slice(from).matchAll(/[()]|\bWHERE\b/gi)) {
+    if (token[0] === '(') {
+      depth += 1;
+    } else if (token[0] === ')') {
+      if (depth === 0) return false;
+      depth -= 1;
+    } else if (depth === 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function collapse(text) {
@@ -265,11 +359,22 @@ export function findDestructiveStatements(sql) {
   const raw = sql.replaceAll('\r\n', '\n');
   const masked = maskSql(raw);
   const lines = raw.split('\n');
-  const replaced = new Set(constraintNames(masked, raw, addConstraint));
+  const statements = statementRanges(masked).map(({ start, end }) => ({
+    start,
+    code: masked.slice(start, end),
+    text: raw.slice(start, end),
+  }));
+  // A key is replaced when the file adds a constraint of the same name to the
+  // same table, whichever comes first.
+  const replaced = new Set(
+    statements
+      .flatMap(({ code, text }) => constraintActions(code, text, addConstraint))
+      .map(({ key }) => key)
+      .filter((key) => key !== null),
+  );
   const findings = [];
 
-  for (const { start, end } of statementRanges(masked)) {
-    const code = masked.slice(start, end);
+  for (const { start, code, text } of statements) {
     const kinds = new Set();
     for (const [kind, pattern] of simpleRules) {
       if (pattern.test(code)) kinds.add(kind);
@@ -277,22 +382,17 @@ export function findDestructiveStatements(sql) {
     if (/^ALTER\s+TABLE\b/i.test(code) && implicitDropColumn.test(code)) {
       kinds.add('drop-column');
     }
-    if (/\bDELETE\s+FROM\b/i.test(code) && !/\bWHERE\b/i.test(code)) {
-      kinds.add('delete-all');
-    }
-    const droppedKeys = constraintNames(
-      code,
-      raw.slice(start, end),
-      dropConstraint,
-    )
-      .filter((name) => keyConstraintName.test(name))
-      .filter((name) => !replaced.has(name));
-    if (droppedKeys.length > 0) kinds.add('drop-key');
+    if (deletesEveryRow(code)) kinds.add('delete-all');
+    const lostKey = constraintActions(code, text, dropConstraint).some(
+      ({ name, key }) =>
+        keyConstraintName.test(name) && (key === null || !replaced.has(key)),
+    );
+    if (lostKey) kinds.add('drop-key');
     if (kinds.size === 0) continue;
 
     const line = masked.slice(0, start).split('\n').length;
     const marker = markerNextTo(lines, line);
-    const statement = collapse(raw.slice(start, end));
+    const statement = collapse(text);
     for (const kind of kinds) findings.push({ kind, line, statement, marker });
   }
   return findings;
