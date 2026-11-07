@@ -8,15 +8,32 @@ import {
 } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import * as schema from './schema/index.js';
-import { companies, companyRoleAssignments } from './schema/index.js';
+import {
+  clientUnionOperations,
+  clientUnionReversals,
+  companies,
+  companyRoleAssignments,
+} from './schema/index.js';
 
 // Executable form of the AGENTS.md Code Review Rule "Business table without
 // `workspace_id`, or Company-owned without `company_id` and composite foreign
 // keys: allows cross-Workspace references", derived from
 // docs/adr/0006-workspace-tenancy-and-company-scoped-authorization.md.
-// Every exemption below carries its reason; one that no longer matches a
-// violation fails the test.
+// Every exemption below carries its reason, and a foreign key exemption waives
+// only the scopes it names. An exemption, or a waived scope, that matches no
+// current violation fails the test.
 const ADR = 'ADR 0006';
+
+type Scope = 'Workspace' | 'Company';
+
+type ForeignKeyExemption = {
+  /** The scopes whose violation this exemption waives; others still fail. */
+  readonly waives:
+    | readonly ['Workspace']
+    | readonly ['Company']
+    | readonly ['Workspace', 'Company'];
+  readonly reason: string;
+};
 
 type Exemptions = {
   /** Tables without `workspace_id`: global roots only. */
@@ -24,10 +41,12 @@ type Exemptions = {
   /** Tables whose rows belong to the Workspace, not to one Company. */
   readonly workspaceLevelTables: Readonly<Record<string, string>>;
   /** Foreign keys, by constraint name, that omit a parent's scope column. */
-  readonly foreignKeysOmittingScope: Readonly<Record<string, string>>;
+  readonly foreignKeysOmittingScope: Readonly<
+    Record<string, ForeignKeyExemption>
+  >;
 };
 
-const EXEMPTIONS: Exemptions = {
+const EXEMPTIONS = {
   globalTables: {
     workspaces: 'The Workspace root: the isolation boundary itself.',
     internal_users:
@@ -60,54 +79,111 @@ const EXEMPTIONS: Exemptions = {
       'Service Definition: Workspace-level, shared by every Company that offers it (CONTEXT.md).',
   },
   foreignKeysOmittingScope: {
-    client_union_operations_review_fk:
-      'Client union is a Workspace-level operation on shared Client Accounts; each row names its own acting Company.',
-    client_union_reversals_operation_fk:
-      'Client union is a Workspace-level operation on shared Client Accounts; each row names its own acting Company.',
-    client_union_projections_operation_fk:
-      'One projection per affected Company, by design not the acting Company of the operation.',
-    client_duplicate_reviews_registration_command_fk:
-      'Workspace-level Client Account command; its company_id is the acting Company, kept as attempted_company_id.',
-    client_duplicate_reviews_correction_command_fk:
-      'Workspace-level Client Account command; its company_id is the acting Company, kept as attempted_company_id.',
-    workspace_invitation_proofs_invitation_id_workspace_invitations_id_fk:
-      'Known violation, see issue #1105.',
-    project_lifecycle_commands_transition_fk:
-      'Known violation, see issue #1105.',
-    commercial_intake_outcome_commands_history_fk:
-      'Known violation, see issue #1105.',
+    client_union_operations_review_fk: {
+      waives: ['Company'],
+      reason:
+        'Client union is a Workspace-level operation on shared Client Accounts; each row names its own acting Company.',
+    },
+    client_union_reversals_operation_fk: {
+      waives: ['Company'],
+      reason:
+        'Client union is a Workspace-level operation on shared Client Accounts; each row names its own acting Company.',
+    },
+    client_union_projections_operation_fk: {
+      waives: ['Company'],
+      reason:
+        'One projection per affected Company, by design not the acting Company of the operation.',
+    },
+    client_duplicate_reviews_registration_command_fk: {
+      waives: ['Company'],
+      reason:
+        'Workspace-level Client Account command; its company_id is the acting Company, kept as attempted_company_id.',
+    },
+    client_duplicate_reviews_correction_command_fk: {
+      waives: ['Company'],
+      reason:
+        'Workspace-level Client Account command; its company_id is the acting Company, kept as attempted_company_id.',
+    },
+    workspace_invitation_proofs_invitation_id_workspace_invitations_id_fk: {
+      waives: ['Workspace'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    project_lifecycle_commands_transition_fk: {
+      waives: ['Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    commercial_intake_outcome_commands_history_fk: {
+      waives: ['Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
     mission_result_review_batches_reviewer_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
-    mission_applicability_facts_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
-    project_next_action_history_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
-    project_next_action_commands_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
+      {
+        waives: ['Workspace', 'Company'],
+        reason: 'Known violation, see issue #1105.',
+      },
+    mission_applicability_facts_assignment_id_company_role_assignments_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    project_next_action_history_assignment_id_company_role_assignments_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    project_next_action_commands_assignment_id_company_role_assignments_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
     internal_company_task_commands_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
+      {
+        waives: ['Workspace', 'Company'],
+        reason: 'Known violation, see issue #1105.',
+      },
     opportunity_follow_up_commands_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
+      {
+        waives: ['Workspace', 'Company'],
+        reason: 'Known violation, see issue #1105.',
+      },
     opportunity_follow_up_commands_intake_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
+      {
+        waives: ['Workspace', 'Company'],
+        reason: 'Known violation, see issue #1105.',
+      },
     opportunity_follow_up_history_command_id_opportunity_follow_up_commands_id_fk:
-      'Known violation, see issue #1105.',
+      {
+        waives: ['Workspace', 'Company'],
+        reason: 'Known violation, see issue #1105.',
+      },
     opportunity_follow_up_events_command_id_opportunity_follow_up_commands_id_fk:
-      'Known violation, see issue #1105.',
-    invoice_record_commands_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
-    invoice_record_history_command_id_invoice_record_commands_id_fk:
-      'Known violation, see issue #1105.',
-    invoice_record_events_command_id_invoice_record_commands_id_fk:
-      'Known violation, see issue #1105.',
-    payment_commands_assignment_id_company_role_assignments_id_fk:
-      'Known violation, see issue #1105.',
-    payment_history_command_id_payment_commands_id_fk:
-      'Known violation, see issue #1105.',
-    payment_events_command_id_payment_commands_id_fk:
-      'Known violation, see issue #1105.',
+      {
+        waives: ['Workspace', 'Company'],
+        reason: 'Known violation, see issue #1105.',
+      },
+    invoice_record_commands_assignment_id_company_role_assignments_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    invoice_record_history_command_id_invoice_record_commands_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    invoice_record_events_command_id_invoice_record_commands_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    payment_commands_assignment_id_company_role_assignments_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    payment_history_command_id_payment_commands_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
+    payment_events_command_id_payment_commands_id_fk: {
+      waives: ['Workspace', 'Company'],
+      reason: 'Known violation, see issue #1105.',
+    },
   },
-};
+} satisfies Exemptions;
 
 type ColumnPair = { readonly local: string; readonly parent: string };
 
@@ -177,32 +253,37 @@ function scopedTable(table: PgTable): ScopedTable {
 const maps = (foreignKey: ScopedForeignKey, { local, parent }: ColumnPair) =>
   foreignKey.pairs.some((p) => p.local === local && p.parent === parent);
 
+type ScopeFinding = { readonly scope: Scope; readonly message: string };
+
 function foreignKeyFindings(
   table: ScopedTable,
   foreignKey: ScopedForeignKey,
-): string[] {
+): ScopeFinding[] {
   const { parent } = foreignKey;
-  const findings: string[] = [];
+  const findings: ScopeFinding[] = [];
   if (
     parent.workspaceColumn !== undefined &&
     !maps(foreignKey, { local: 'workspace_id', parent: parent.workspaceColumn })
   )
-    findings.push(
-      `${table.name}: foreign key ${foreignKey.name} references ${parent.name} without mapping workspace_id to ${parent.name}.${parent.workspaceColumn}, so it can point into another Workspace (${ADR}).`,
-    );
+    findings.push({
+      scope: 'Workspace',
+      message: `${table.name}: foreign key ${foreignKey.name} references ${parent.name} without mapping workspace_id to ${parent.name}.${parent.workspaceColumn}, so it can point into another Workspace (${ADR}).`,
+    });
   if (
     parent.companyColumn !== undefined &&
     !foreignKey.pairs.some((p) => p.parent === parent.companyColumn)
   )
-    findings.push(
-      `${table.name}: foreign key ${foreignKey.name} references Company-owned ${parent.name} without its ${parent.companyColumn}, so it can point at another Company's row (${ADR}).`,
-    );
+    findings.push({
+      scope: 'Company',
+      message: `${table.name}: foreign key ${foreignKey.name} references Company-owned ${parent.name} without its ${parent.companyColumn}, so it can point at another Company's row (${ADR}).`,
+    });
   return findings;
 }
 
 /**
- * Every tenancy-rule violation in `tables`, plus every exemption that no
- * longer matches a violation, as one message each.
+ * Every tenancy-rule violation in `tables` that no exemption waives, plus
+ * every exemption, or waived scope, that matches no violation, as one message
+ * each.
  */
 function tenancyFindings(
   tables: readonly PgTable[],
@@ -211,6 +292,11 @@ function tenancyFindings(
   const findings: string[] = [];
   const scoped = tables.map(scopedTable);
   const used = new Set<string>();
+  const foreignKeyExemptions = new Map(
+    Object.entries(exemptions.foreignKeysOmittingScope),
+  );
+  /** The waived scopes each exempted foreign key actually violates. */
+  const waivedScopes = new Map<string, Set<Scope>>();
 
   for (const table of scoped) {
     const workspaceNotNull = table.notNullByColumn.get('workspace_id');
@@ -250,11 +336,15 @@ function tenancyFindings(
       );
 
     for (const foreignKey of table.foreignKeys) {
-      const fkFindings = foreignKeyFindings(table, foreignKey);
-      if (Object.hasOwn(exemptions.foreignKeysOmittingScope, foreignKey.name)) {
-        if (fkFindings.length > 0) used.add(foreignKey.name);
-      } else {
-        findings.push(...fkFindings);
+      const waives: readonly Scope[] =
+        foreignKeyExemptions.get(foreignKey.name)?.waives ?? [];
+      for (const { scope, message } of foreignKeyFindings(table, foreignKey)) {
+        if (waives.includes(scope)) {
+          const waived = waivedScopes.get(foreignKey.name) ?? new Set<Scope>();
+          waivedScopes.set(foreignKey.name, waived.add(scope));
+        } else {
+          findings.push(message);
+        }
       }
     }
   }
@@ -262,12 +352,24 @@ function tenancyFindings(
   for (const name of [
     ...Object.keys(exemptions.globalTables),
     ...Object.keys(exemptions.workspaceLevelTables),
-    ...Object.keys(exemptions.foreignKeysOmittingScope),
   ])
     if (!used.has(name))
       findings.push(
         `${name}: exemption matches no current violation; remove the entry.`,
       );
+  for (const [name, { waives }] of foreignKeyExemptions) {
+    const waived = waivedScopes.get(name);
+    if (waived === undefined)
+      findings.push(
+        `${name}: exemption matches no current violation; remove the entry.`,
+      );
+    else
+      for (const scope of waives)
+        if (!waived.has(scope))
+          findings.push(
+            `${name}: exemption waives the ${scope} scope, which the foreign key does not omit; narrow the entry.`,
+          );
+  }
   return findings;
 }
 
@@ -334,6 +436,42 @@ describe('tenancy schema rule (docs/adr/0006-workspace-tenancy-and-company-scope
     ]);
   });
 
+  it('still reports the scope a foreign key exemption does not waive', () => {
+    const exemptions: Exemptions = {
+      ...NO_EXEMPTIONS,
+      foreignKeysOmittingScope: {
+        client_union_reversals_operation_fk:
+          EXEMPTIONS.foreignKeysOmittingScope
+            .client_union_reversals_operation_fk,
+      },
+    };
+    const weakened = pgTable(
+      'client_union_reversals',
+      {
+        operationId: uuid('operation_id').primaryKey(),
+        workspaceId: uuid('workspace_id').notNull(),
+        companyId: uuid('company_id').notNull(),
+      },
+      (t) => [
+        foreignKey({
+          name: 'client_union_reversals_operation_fk',
+          columns: [t.operationId],
+          foreignColumns: [clientUnionOperations.id],
+        }),
+        foreignKey({
+          name: 'client_union_reversals_company_fk',
+          columns: [t.workspaceId, t.companyId],
+          foreignColumns: [companies.workspaceId, companies.id],
+        }),
+      ],
+    );
+
+    expect(tenancyFindings([clientUnionReversals], exemptions)).toEqual([]);
+    expect(tenancyFindings([weakened], exemptions)).toEqual([
+      `client_union_reversals: foreign key client_union_reversals_operation_fk references client_union_operations without mapping workspace_id to client_union_operations.workspace_id, so it can point into another Workspace (${ADR}).`,
+    ]);
+  });
+
   it('accepts composite keys and flags an exemption that no longer applies', () => {
     const scopedChild = pgTable(
       'fixture_scoped_child',
@@ -360,11 +498,30 @@ describe('tenancy schema rule (docs/adr/0006-workspace-tenancy-and-company-scope
       tenancyFindings([scopedChild], {
         ...NO_EXEMPTIONS,
         foreignKeysOmittingScope: {
-          fixture_scoped_child_assignment_fk: 'Fixed since.',
+          fixture_scoped_child_assignment_fk: {
+            waives: ['Workspace', 'Company'],
+            reason: 'Fixed since.',
+          },
         },
       }),
     ).toEqual([
       'fixture_scoped_child_assignment_fk: exemption matches no current violation; remove the entry.',
+    ]);
+  });
+
+  it('flags a waived scope that the foreign key does not omit', () => {
+    expect(
+      tenancyFindings([clientUnionReversals], {
+        ...NO_EXEMPTIONS,
+        foreignKeysOmittingScope: {
+          client_union_reversals_operation_fk: {
+            waives: ['Workspace', 'Company'],
+            reason: 'Wider than the omitted scope.',
+          },
+        },
+      }),
+    ).toEqual([
+      'client_union_reversals_operation_fk: exemption waives the Workspace scope, which the foreign key does not omit; narrow the entry.',
     ]);
   });
 });
