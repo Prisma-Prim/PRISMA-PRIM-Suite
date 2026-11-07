@@ -285,6 +285,19 @@ withPostgres(
     it('refuses a decision with unmet preconditions, against the recommendation or by a team member', async () => {
       const caseId = await recommendedCase();
       const base = `/certification-cases/${caseId}`;
+      const unchanged = await post(
+        CERTIFICATION_AUDITOR,
+        `${base}/recommendation`,
+        {
+          expectedRevision: 17,
+          reason: 'Same recommendation',
+          recommendation: 'grant',
+          basis: 'No nonconformity; system effectively implemented.',
+        },
+      );
+      expect(record(await unchanged.json()).code).toBe(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+      );
       const early = await post(
         CERTIFICATION_APPROVER,
         `${base}/decision`,

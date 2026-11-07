@@ -1747,7 +1747,8 @@ export class CertificationService {
           companyId,
           payload: command.payload,
         });
-        const version = (latest(steps, input.step)?.version ?? 0) + 1;
+        const previous = latest(steps, input.step);
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (command.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
@@ -1760,6 +1761,7 @@ export class CertificationService {
           current,
           step: input.step,
           version,
+          replaces: previous,
           payload: command.payload,
           reason: command.reason,
           action: input.action,
