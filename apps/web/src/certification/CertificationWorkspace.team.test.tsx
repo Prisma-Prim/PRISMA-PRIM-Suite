@@ -451,6 +451,12 @@ describe('Certification audit team and its approval', () => {
       'A new team version needs a reason and a first proposal has none. Reload the Case before saving again.',
       true,
     ],
+    [
+      409,
+      'CERTIFICATION_INDEPENDENCE',
+      'A member who decided on a version of this team cannot join it. Remove that link, reload the Case and propose again.',
+      true,
+    ],
   ] as const)(
     'explains the team refusal %i %s in plain language',
     async (status, code, message, reload) => {

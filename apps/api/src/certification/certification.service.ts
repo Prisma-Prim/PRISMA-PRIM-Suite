@@ -714,6 +714,19 @@ export class CertificationService {
         const resubmitted =
           decision?.decision === 'returned' &&
           decision.teamVersion === previous?.version;
+        // Whoever decided on any team version stays outside every later one.
+        const deciders = steps
+          .filter((row) => row.step === 'team_decision')
+          .map((row) => row.actorMembershipId);
+        if (
+          teamMembershipIds(input.team).some((membershipId) =>
+            deciders.includes(membershipId),
+          )
+        )
+          throw stepConflict(
+            'CERTIFICATION_INDEPENDENCE',
+            'A member who decided on a team version cannot join the audit team.',
+          );
         for (const membershipId of teamMembershipIds(input.team)) {
           const [member] = await this.database.connection
             .select({ id: workspaceMemberships.id })

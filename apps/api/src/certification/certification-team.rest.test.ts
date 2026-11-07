@@ -192,6 +192,36 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
     expect(await fixture.eventCount(caseId)).toBe(6);
   });
 
+  it('refuses a later team version that links a member who decided on an earlier one', async () => {
+    const caseId = await fixture.agreedCase();
+    await fixture.created(
+      await propose(caseId, { expectedRevision: 6, members: [member()] }),
+    );
+    await fixture.created(
+      await decide(caseId, {
+        expectedRevision: 7,
+        teamVersion: 1,
+        decision: 'approved',
+      }),
+    );
+    const linked = await propose(caseId, {
+      expectedRevision: 8,
+      reason: 'An observer joins the team.',
+      members: [
+        member(),
+        member({
+          name: 'Former approver',
+          role: 'observer',
+          holdsCategory: false,
+          workspaceMembershipId: fixture.membership(CERTIFICATION_APPROVER),
+        }),
+      ],
+    });
+    expect(linked.status).toBe(409);
+    expect(record(await linked.json()).code).toBe('CERTIFICATION_INDEPENDENCE');
+    expect(await fixture.eventCount(caseId)).toBe(8);
+  });
+
   it('refuses an approver on the team, a declared conflict and a programme manager without the approver role', async () => {
     const caseId = await fixture.agreedCase();
     await fixture.created(

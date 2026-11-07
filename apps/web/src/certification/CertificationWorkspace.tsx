@@ -2388,7 +2388,10 @@ function commandFeedback(
         case 'CERTIFICATION_TEAM_NOT_PENDING':
           return refusedWith('blockedTeamNotPending', true);
         case 'CERTIFICATION_INDEPENDENCE':
-          return refusedWith('teamIndependence', true);
+          return refusedWith(
+            kind === 'team' ? 'teamMemberDecided' : 'teamIndependence',
+            true,
+          );
         case 'CERTIFICATION_TEAM_CONFLICT_DECLARED':
           return refusedWith('teamConflictDeclared');
         case 'CERTIFICATION_CORRECTION_UNCHANGED':

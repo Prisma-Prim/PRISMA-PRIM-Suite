@@ -362,6 +362,7 @@ const keys = [
   'decisionConflictOnly',
   'teamConflictDeclared',
   'teamIndependence',
+  'teamMemberDecided',
   'blockedTeamNotPending',
 
   'timelineTitle',
@@ -834,6 +835,8 @@ export const certificationMessages = defineMessages(keys, {
       'A team with a declared conflict of interest cannot be approved. Return it with a reason.',
     teamIndependence:
       'You cannot decide on this team: you are linked to a member of one of its versions. An approver who is not on the team must decide.',
+    teamMemberDecided:
+      'A member who decided on a version of this team cannot join it. Remove that link, reload the Case and propose again.',
     blockedTeamNotPending:
       'No proposed team awaits a decision any more. Reload the Case.',
 
@@ -1314,6 +1317,8 @@ export const certificationMessages = defineMessages(keys, {
       'Une équipe avec un conflit d’intérêts déclaré ne peut pas être approuvée. Renvoyez-la avec un motif.',
     teamIndependence:
       'Vous ne pouvez pas statuer sur cette équipe : vous êtes lié à un membre de l’une de ses versions. Un approbateur qui ne fait pas partie de l’équipe doit statuer.',
+    teamMemberDecided:
+      'Un membre qui a statué sur une version de cette équipe ne peut pas en faire partie. Retirez ce lien, rechargez le dossier et proposez à nouveau.',
     blockedTeamNotPending:
       'Aucune équipe proposée n’attend plus de décision. Rechargez le dossier.',
 
@@ -1789,6 +1794,8 @@ export const certificationMessages = defineMessages(keys, {
       'O echipă cu un conflict de interese declarat nu poate fi aprobată. Returnați-o cu un motiv.',
     teamIndependence:
       'Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă.',
+    teamMemberDecided:
+      'Un membru care a decis asupra unei versiuni a acestei echipe nu poate face parte din ea. Eliminați această legătură, reîncărcați dosarul și propuneți din nou.',
     blockedTeamNotPending:
       'Nicio echipă propusă nu mai așteaptă o decizie. Reîncărcați dosarul.',
 
@@ -2260,6 +2267,8 @@ export const certificationMessages = defineMessages(keys, {
       'Группу с заявленным конфликтом интересов нельзя утвердить. Верните её с указанием причины.',
     teamIndependence:
       'Вы не можете принимать решение по этой группе: вы связаны с участником одной из её версий. Решение должен принять утверждающий, не входящий в группу.',
+    teamMemberDecided:
+      'Участник, принявший решение по одной из версий этой группы, не может в неё входить. Удалите эту связь, загрузите дело заново и предложите снова.',
     blockedTeamNotPending:
       'Ни одна предложенная группа больше не ожидает решения. Загрузите дело заново.',
 
