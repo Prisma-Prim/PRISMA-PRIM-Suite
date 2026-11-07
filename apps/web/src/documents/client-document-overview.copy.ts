@@ -16,7 +16,7 @@ const keys = [
   'open',
   'hint',
 ] as const;
-const messages = defineMessages(keys, {
+export const clientDocumentOverviewMessages = defineMessages(keys, {
   en: {
     title: 'Client Documents',
     company: 'Company',
@@ -86,5 +86,5 @@ const messages = defineMessages(keys, {
   },
 });
 export function useClientDocumentOverviewCopy() {
-  return useMessages(messages);
+  return useMessages(clientDocumentOverviewMessages);
 }

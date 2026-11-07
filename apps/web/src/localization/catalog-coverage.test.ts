@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { assertClerkAuthenticationCoverage } from '../access/clerk-authentication.copy';
-import { assertEveryLocalizedCatalogCovered } from '../test/localized-catalog-coverage';
+import {
+  assertEveryCatalogDefinitionReachable,
+  assertEveryLocalizedCatalogCovered,
+} from '../test/localized-catalog-coverage';
 import { interfaceLocales, type InterfaceLocale } from './interface-locale';
 import { defineMessages } from './messages';
 
@@ -8,6 +11,12 @@ import { defineMessages } from './messages';
 // later is covered without registering it anywhere. The modules are unparsed
 // input: assertEveryLocalizedCatalogCovered checks each export's shape.
 const copyModules = import.meta.glob('../**/*.copy.ts', { eager: true });
+// The same files as text, to find catalogs defined but not exported.
+const copySources = import.meta.glob('../**/*.copy.ts', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+});
 
 const keys = ['greeting', 'farewell'] as const;
 const complete = {
@@ -42,6 +51,16 @@ describe('localized catalog release coverage', () => {
     expect(covered).toContain(
       'contract-model/contract-model.copy.ts#contractModelMessages',
     );
+    expect(covered).toContain('project/team-tasks.copy.ts#teamTasksMessages');
+  });
+
+  it('reaches every catalog that a .copy.ts file defines', () => {
+    expect(() =>
+      assertEveryCatalogDefinitionReachable({
+        modules: copyModules,
+        sources: copySources,
+      }),
+    ).not.toThrow();
   });
 
   it('keeps the Clerk authentication token and empty-value checks', () => {
@@ -113,5 +132,79 @@ describe('localized catalog release coverage', () => {
     ).toThrow(
       'Malformed message catalog: example/example.copy.ts#brokenMessages',
     );
+  });
+
+  describe('catalog definitions the export scan cannot see', () => {
+    const exported = {
+      '../example/example.copy.ts': {
+        exampleMessages: defineMessages(keys, complete),
+      },
+    };
+    const exportedSource = {
+      '../example/example.copy.ts':
+        'export const exampleMessages = defineMessages(keys, {});',
+    };
+
+    it('accepts a defined catalog that its module exports', () => {
+      expect(() =>
+        assertEveryCatalogDefinitionReachable({
+          modules: exported,
+          sources: exportedSource,
+        }),
+      ).not.toThrow();
+    });
+
+    it('fails naming the file when a module keeps its catalog private', () => {
+      expect(() =>
+        assertEveryCatalogDefinitionReachable({
+          modules: {
+            '../example/example.copy.ts': { useExampleCopy: () => '' },
+          },
+          sources: {
+            '../example/example.copy.ts': [
+              'const messages = defineMessages(keys, {});',
+              'export const useExampleCopy = () => messages;',
+            ].join('\n'),
+          },
+        }),
+      ).toThrow(
+        'Unchecked message catalog: example/example.copy.ts defines 1 catalog(s) with defineMessages but exports 0. Export each catalog so the release check can reach it.',
+      );
+    });
+
+    it('counts a typed call and every catalog of a module', () => {
+      expect(() =>
+        assertEveryCatalogDefinitionReachable({
+          modules: exported,
+          sources: {
+            '../example/example.copy.ts': [
+              "export const exampleMessages = defineMessages<'greeting'>(keys, {});",
+              'const second = defineMessages(keys, {});',
+            ].join('\n'),
+          },
+        }),
+      ).toThrow('defines 2 catalog(s) with defineMessages but exports 1');
+    });
+
+    it('accepts a module that only re-exports a catalog', () => {
+      expect(() =>
+        assertEveryCatalogDefinitionReachable({
+          modules: exported,
+          sources: {
+            '../example/example.copy.ts':
+              "export { exampleMessages } from './example-localized.copy';",
+          },
+        }),
+      ).not.toThrow();
+    });
+
+    it('fails when a source has no module to inspect', () => {
+      expect(() =>
+        assertEveryCatalogDefinitionReachable({
+          modules: {},
+          sources: exportedSource,
+        }),
+      ).toThrow('Missing module for source: example/example.copy.ts');
+    });
   });
 });

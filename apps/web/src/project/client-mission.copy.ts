@@ -21,7 +21,7 @@ const keys = [
   'openTask',
   'taskHint',
 ] as const;
-const messages = defineMessages(keys, {
+export const clientMissionMessages = defineMessages(keys, {
   en: {
     title: 'Client missions',
     tasksFor: 'Tasks for',
@@ -118,5 +118,5 @@ const messages = defineMessages(keys, {
   },
 });
 export function useClientMissionCopy() {
-  return useMessages(messages);
+  return useMessages(clientMissionMessages);
 }

@@ -14,7 +14,7 @@ const keys = [
   'page',
   'hint',
 ] as const;
-const messages = defineMessages(keys, {
+export const clientCommercialMessages = defineMessages(keys, {
   en: {
     title: 'Commercial affairs',
     loading: 'Loading commercial affairs…',
@@ -78,5 +78,5 @@ const messages = defineMessages(keys, {
   },
 });
 export function useClientCommercialCopy() {
-  return useMessages(messages);
+  return useMessages(clientCommercialMessages);
 }

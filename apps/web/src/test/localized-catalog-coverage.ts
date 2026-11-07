@@ -60,3 +60,36 @@ export function assertEveryLocalizedCatalogCovered(
   }
   return covered;
 }
+
+const catalogDefinition = /\bdefineMessages\b(?:<[^>]*>)?\s*\(/gu;
+
+/**
+ * The export scan above cannot see a catalog its module keeps private. This
+ * compares, for every `.copy.ts` source, the `defineMessages` calls with the
+ * distinct catalogs the module exports, and fails for the file when some
+ * catalog is not exported and so would escape the release check.
+ */
+export function assertEveryCatalogDefinitionReachable({
+  modules,
+  sources,
+}: {
+  modules: CopyModules;
+  sources: CopyModules;
+}): void {
+  for (const [path, source] of Object.entries(sources)) {
+    const file = displayPath(path);
+    if (typeof source !== 'string')
+      throw new Error(`Unreadable source: ${file}`);
+    const defined = [...source.matchAll(catalogDefinition)].length;
+    if (defined === 0) continue;
+    const copyModule = modules[path];
+    if (!isRecord(copyModule))
+      throw new Error(`Missing module for source: ${file}`);
+    const exported = new Set(Object.values(copyModule).filter(isMessageCatalog))
+      .size;
+    if (exported < defined)
+      throw new Error(
+        `Unchecked message catalog: ${file} defines ${defined} catalog(s) with defineMessages but exports ${exported}. Export each catalog so the release check can reach it.`,
+      );
+  }
+}
