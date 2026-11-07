@@ -133,10 +133,11 @@ for (const frame of ['prisme', 'classic'] as const)
         .getByRole('region', { name: clientName, exact: true })
         .getByRole('button', { name: 'Open Client Projects', exact: true })
         .click();
-      const projects = page.locator('.project-workspace');
-      await projects
-        .getByRole('searchbox', { name: 'Find Projects' })
-        .fill(title);
+      const projects = page.locator('.project-workspace'),
+        search = projects.getByRole('searchbox', { name: 'Find Projects' });
+      // The Client restriction is presented with the section (#1158).
+      await expect(search).toHaveValue(clientName);
+      await search.fill(title);
       await projects
         .getByRole('list', { name: 'Projects', exact: true })
         .getByRole('button', { name: new RegExp(title, 'u') })

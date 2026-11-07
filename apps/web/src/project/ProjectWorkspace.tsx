@@ -58,6 +58,12 @@ type DetailPanel = 'tasks' | 'documents' | 'working-evidence' | 'certification';
 type ProjectFilter =
   | { kind: 'text'; query: string }
   | { kind: 'client'; clientDossierId: string; displayName: string };
+/** The sources the search last presented, compared by identity in render. */
+type SearchSources = {
+  scope: readonly unknown[];
+  clientIdentityRevision: number;
+  directoryRequestId: number | undefined;
+};
 
 function projectFilterText(value: string) {
   // Fold Romanian spelling only; removing every combining mark would conflate й/и.
@@ -220,6 +226,53 @@ export function ProjectWorkspace({
     actor.activeCompany?.projectPermissions?.includes('project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
       actor.activeCompany.clientPermissions?.includes('client.read'));
+  // The search follows its sources in the commit that delivers them, never a
+  // passive effect later, so input on that first displayed frame cannot merge
+  // with a late intent (#1158). A new scope clears it, a Client identity
+  // refresh retires only a dossier restriction and each directory intent
+  // applies once. The scope mirrors the reset effect's dependencies below.
+  const searchScope = [
+    actor.workspaceId,
+    actor.internalUserId,
+    actor.workspaceMembershipId,
+    companyId,
+    authorized,
+    generation,
+    identity,
+  ];
+  const [searchSources, setSearchSources] = useState<SearchSources>(() => ({
+    scope: searchScope,
+    clientIdentityRevision,
+    directoryRequestId: undefined,
+  }));
+  const directoryRequest =
+    navigation?.kind === 'directory' ? navigation : undefined;
+  const rescoped = searchScope.some(
+    (value, index) => !Object.is(value, searchSources.scope[index]),
+  );
+  const identityRefreshed =
+    searchSources.clientIdentityRevision !== clientIdentityRevision;
+  const directoryRequested =
+    directoryRequest !== undefined &&
+    directoryRequest.requestId !== searchSources.directoryRequestId;
+  if (rescoped || identityRefreshed || directoryRequested) {
+    setSearchSources({
+      scope: searchScope,
+      clientIdentityRevision,
+      directoryRequestId: directoryRequested
+        ? directoryRequest.requestId
+        : searchSources.directoryRequestId,
+    });
+    if (directoryRequested) {
+      setIncludeClosed(false);
+      setFilter(
+        directoryRequest.client
+          ? { kind: 'client', ...directoryRequest.client }
+          : { kind: 'text', query: '' },
+      );
+    } else if (rescoped || filter.kind === 'client')
+      setFilter({ kind: 'text', query: '' });
+  }
   const directory = useProjectDirectory({
     identity,
     companyId,
@@ -242,7 +295,7 @@ export function ProjectWorkspace({
   }
   // A different Company, member, authority or reload retires everything this
   // module presents, including the drafts, commands and requested opens
-  // started under it.
+  // started under it. Its search was already cleared during render.
   useEffect(() => {
     scope.current = { retired: false };
     request.current?.abort();
@@ -250,7 +303,6 @@ export function ProjectWorkspace({
     setSelected(null);
     setResponsibleRead(null);
     lastResponsibleRead.current = null;
-    setFilter({ kind: 'text', query: '' });
     setFeedback(null);
     setPending(false);
     setTitle('');
@@ -338,26 +390,17 @@ export function ProjectWorkspace({
     return () => controller.abort();
   }, [staleProjectId, clientIdentityRevision, companyId, identity]);
 
-  // Identity refresh retires only the obsolete dossier restriction. Stable
-  // exact targets, the selected view and independently authorized work survive.
-  useEffect(() => {
-    setFilter((current) =>
-      current.kind === 'client' ? { kind: 'text', query: '' } : current,
-    );
-  }, [clientIdentityRevision]);
+  // Identity refresh retires only the obsolete dossier restriction (during
+  // render, above). Stable exact targets, the selected view and independently
+  // authorized work survive. A directory intent's search is presented during
+  // render; only its All read starts here.
   useEffect(() => {
     if (!navigation || navigation.requestId === appliedNavigation.current)
       return;
     appliedNavigation.current = navigation.requestId;
     switch (navigation.kind) {
       case 'directory':
-        setIncludeClosed(false);
         directory.changeView('all');
-        setFilter(
-          navigation.client
-            ? { kind: 'client', ...navigation.client }
-            : { kind: 'text', query: '' },
-        );
         break;
       case 'project':
         if (load.view === 'all') setIncludeClosed(false);
