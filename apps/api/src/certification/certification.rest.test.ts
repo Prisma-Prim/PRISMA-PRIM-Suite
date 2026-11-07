@@ -507,6 +507,18 @@ withPostgres('Certification Case public REST boundary', () => {
       );
       expect(response.status).toBe(400);
     }
+    const unchanged = await call(
+      OWNER,
+      `/certification-cases/${caseId}/application`,
+      {
+        method: 'POST',
+        body: { expectedRevision: 2, reason: 'Same facts', facts: facts() },
+      },
+    );
+    expect(unchanged.status).toBe(409);
+    expect(record(await unchanged.json()).code).toBe(
+      'CERTIFICATION_CORRECTION_UNCHANGED',
+    );
     expect(await eventCount(caseId)).toBe(2);
   });
 

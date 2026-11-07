@@ -144,6 +144,7 @@ const keys = [
   'blockedAlreadyReviewed',
   'blockedClosed',
   'blockedCorrectionReason',
+  'blockedCorrectionUnchanged',
   'nextDurationPending',
 
   'timelineTitle',
@@ -329,6 +330,8 @@ export const certificationMessages = defineMessages(keys, {
       'This Case is closed: the application was rejected. No further step can be recorded; a new application needs a new Case.',
     blockedCorrectionReason:
       'A correction needs a reason and a first application has none. Reload the Case before saving again.',
+    blockedCorrectionUnchanged:
+      'The correction changes no value. Change at least one value or cancel the correction.',
     nextDurationPending:
       'The application is accepted. The next step, audit duration, is not available in this version yet.',
 
@@ -517,6 +520,8 @@ export const certificationMessages = defineMessages(keys, {
       'Ce dossier est clos : la demande a été rejetée. Aucune autre étape ne peut être enregistrée ; une nouvelle demande exige un nouveau dossier.',
     blockedCorrectionReason:
       'Une correction exige un motif et une première demande n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+    blockedCorrectionUnchanged:
+      'La correction ne change aucune valeur. Modifiez au moins une valeur ou annulez la correction.',
     nextDurationPending:
       'La demande est acceptée. L’étape suivante, la durée d’audit, n’est pas encore disponible dans cette version.',
 
@@ -702,6 +707,8 @@ export const certificationMessages = defineMessages(keys, {
       'Acest dosar este închis: cererea a fost respinsă. Nu se mai poate înregistra nicio etapă; o cerere nouă necesită un dosar nou.',
     blockedCorrectionReason:
       'O corectare necesită un motiv, iar prima cerere nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+    blockedCorrectionUnchanged:
+      'Corectarea nu schimbă nicio valoare. Modificați cel puțin o valoare sau anulați corectarea.',
     nextDurationPending:
       'Cererea este acceptată. Etapa următoare, durata auditului, nu este încă disponibilă în această versiune.',
 
@@ -885,6 +892,8 @@ export const certificationMessages = defineMessages(keys, {
       'Это дело закрыто: заявка отклонена. Новые этапы записать нельзя; для новой заявки нужно новое дело.',
     blockedCorrectionReason:
       'Исправлению нужна причина, а у первой заявки её нет. Загрузите дело заново перед новым сохранением.',
+    blockedCorrectionUnchanged:
+      'Исправление не меняет ни одного значения. Измените хотя бы одно значение или отмените исправление.',
     nextDurationPending:
       'Заявка принята. Следующий этап, продолжительность аудита, в этой версии пока недоступен.',
 

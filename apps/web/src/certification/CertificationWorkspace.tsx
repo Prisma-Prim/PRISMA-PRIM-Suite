@@ -1020,6 +1020,8 @@ function commandFeedback(
           return refusedWith('blockedClosed', true);
         case 'CERTIFICATION_CORRECTION_REASON':
           return refusedWith('blockedCorrectionReason', true);
+        case 'CERTIFICATION_CORRECTION_UNCHANGED':
+          return refusedWith('blockedCorrectionUnchanged');
         default:
           return refusedWith('conflict', kind !== 'open');
       }

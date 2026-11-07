@@ -513,6 +513,41 @@ describe('Certification Case workspace', () => {
     expect(server.cases.size).toBe(1);
   });
 
+  it('explains a correction that changes no value and keeps the draft', async () => {
+    const server = new FakeCertificationServer();
+    server.seed({ orderReference: 'CERT-SAME', application: true });
+    server.install();
+    renderWorkspace();
+    await openSeededCase('CERT-SAME');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Correct the application' }),
+    );
+    const form = screen.getByRole('form', { name: 'Correct the application' });
+    change(within(form).getByLabelText('Correction reason'), 'Nothing new.');
+    server.interceptions.push({
+      match: (request) => request.method === 'POST',
+      respond: () =>
+        Response.json(
+          { code: 'CERTIFICATION_CORRECTION_UNCHANGED' },
+          { status: 409 },
+        ),
+    });
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the correction' }),
+    );
+    expect(
+      await screen.findByText(
+        'The correction changes no value. Change at least one value or cancel the correction.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(form).getByRole('button', { name: 'Record the correction' }),
+    ).toBeEnabled();
+    expect(within(form).getByLabelText('Correction reason')).toHaveValue(
+      'Nothing new.',
+    );
+  });
+
   it('shows a reader the Case without any mutation control', async () => {
     const server = new FakeCertificationServer({
       actor: () => certificationActor({ manager: false }),

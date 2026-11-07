@@ -186,7 +186,8 @@ export class CertificationService {
             'CERTIFICATION_APPLICATION_REVIEWED',
             'The application can no longer change after its review.',
           );
-        const version = (latest(steps, 'application')?.version ?? 0) + 1;
+        const previous = latest(steps, 'application');
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
@@ -198,6 +199,7 @@ export class CertificationService {
           current,
           step: 'application',
           version,
+          replaces: previous,
           payload: input.facts,
           reason: input.reason,
           action: 'certification_case.application_recorded',
@@ -435,6 +437,8 @@ export class CertificationService {
     current: CaseRow;
     step: StepRow['step'];
     version: number;
+    /** The version this one corrects; an identical value is refused. */
+    replaces?: StepRow;
     payload: object;
     reason: string | null;
     action:
@@ -444,6 +448,11 @@ export class CertificationService {
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
     const { actor, companyId, current } = input;
+    if (input.replaces && sameValue(input.replaces.payload, input.payload))
+      throw stepConflict(
+        'CERTIFICATION_CORRECTION_UNCHANGED',
+        'The correction changes no recorded value.',
+      );
     const now = this.clock.now();
     const revision = current.revision + 1;
     await this.database.connection.insert(certificationStepVersions).values({
@@ -705,6 +714,19 @@ function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
 
 function stepConflict(code: string, message: string): ConflictException {
   return new ConflictException({ code, message });
+}
+
+/**
+ * Equal stored and validated values, whatever their key order. The validated
+ * value takes its stored JSON form first, so absent optional keys compare
+ * like the stored payload.
+ */
+function sameValue(stored: unknown, value: object): boolean {
+  const json: unknown = JSON.parse(JSON.stringify(value));
+  return (
+    commandFingerprint({ value: stored }) ===
+    commandFingerprint({ value: json })
+  );
 }
 
 function base(row: StepRow) {
