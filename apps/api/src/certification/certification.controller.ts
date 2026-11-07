@@ -5,6 +5,7 @@ import {
   Header,
   Headers,
   HttpCode,
+  NotFoundException,
   Param,
   Post,
   Req,
@@ -17,6 +18,13 @@ import {
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
 import { CertificationService } from './certification.service.js';
+import type { AuditStage } from './certification-stages.js';
+
+function auditStage(value: string): AuditStage {
+  if (value === 'stage-1') return 'stage_1';
+  if (value === 'stage-2') return 'stage_2';
+  throw new NotFoundException();
+}
 
 @Controller()
 @UseGuards(ActorContextAdapter)
@@ -199,6 +207,40 @@ export class CertificationController {
     return this.certification.eligibleDocuments({
       actor: requireActorContext(request),
       caseId,
+    });
+  }
+
+  @Post('certification-cases/:caseId/stages/:stage/plan')
+  planStage(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Param('stage') stage: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.planStage({
+      actor: requireActorContext(request),
+      caseId,
+      stage: auditStage(stage),
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/stages/:stage/report')
+  reportStage(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Param('stage') stage: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.reportStage({
+      actor: requireActorContext(request),
+      caseId,
+      stage: auditStage(stage),
+      body,
+      key,
     });
   }
 

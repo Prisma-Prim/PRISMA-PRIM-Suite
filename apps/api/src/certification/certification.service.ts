@@ -55,7 +55,16 @@ import {
   teamMembershipIds,
   teamWithoutConflict,
 } from './certification-team.js';
+import {
+  dayCents,
+  stage1Report,
+  stage2Report,
+  stageCommand,
+  stagePlan,
+  type AuditStage,
+} from './certification-stages.js';
 import type {
+  StageStepVersion,
   TeamDecisionVersion,
   TeamVersion,
   AgreementVersion,
@@ -92,6 +101,12 @@ type CaseRow = typeof certificationCases.$inferSelect;
 type StepRow = typeof certificationStepVersions.$inferSelect;
 
 const CASE_LIST_LIMIT = 100;
+const STAGE_STEPS: readonly StepRow['step'][] = [
+  'stage_1_plan',
+  'stage_1_report',
+  'stage_2_plan',
+  'stage_2_report',
+];
 const TIMELINE_LIMIT = 500;
 
 @Injectable()
@@ -837,6 +852,194 @@ export class CertificationService {
     });
   }
 
+  /** The programme manager plans one Stage against the confirmed duration. */
+  planStage({
+    actor,
+    caseId,
+    stage,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    stage: AuditStage;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    const step = stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan';
+    return this.command({
+      actor,
+      kind: 'stage_plan',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, stage, body }),
+      execute: async (companyId) => {
+        const input = stageCommand(body, stagePlan);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        if (!approvedTeam(steps))
+          throw stepConflict(
+            'CERTIFICATION_TEAM_NOT_APPROVED',
+            'Plan the Audit once the audit team is approved.',
+          );
+        if (stage === 'stage_2') {
+          const report = latest(steps, 'stage_1_report');
+          const value = report ? stage1Version(report).value : undefined;
+          if (value?.conclusion !== 'ready')
+            throw stepConflict(
+              'CERTIFICATION_STAGE_1_NOT_READY',
+              'Stage 2 is planned after a Stage 1 report concluding the client is ready.',
+            );
+          if (input.payload.startDate <= value.reportDate)
+            throw stepConflict(
+              'CERTIFICATION_STAGE_DATES',
+              'Stage 2 starts after the Stage 1 report date.',
+            );
+        }
+        const duration = latest(steps, 'duration');
+        if (!duration) throw new InternalServerErrorException();
+        const confirmed = durationVersion(duration).value.confirmed;
+        const expected =
+          stage === 'stage_1' ? confirmed.stage1OnSite : confirmed.stage2OnSite;
+        if (
+          (dayCents(input.payload.onSiteDays) !== dayCents(expected)) !==
+          (input.payload.deviationNote !== null)
+        )
+          throw new BadRequestException({
+            code: 'CERTIFICATION_STAGE_DEVIATION_NOTE',
+            message:
+              'Explain on-site days that differ from the confirmed duration, and only then.',
+          });
+        await this.requireAttachment(
+          actor,
+          companyId,
+          targetId,
+          input.payload.planAttachmentId,
+          ['plan'],
+        );
+        const version = (latest(steps, step)?.version ?? 0) + 1;
+        if ((version === 1) !== (input.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A new plan version states its reason; a first plan has none.',
+          );
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step,
+          version,
+          payload: input.payload,
+          reason: input.reason,
+          action: 'certification_case.stage_planned',
+          metadata: { stage, version },
+        });
+      },
+    });
+  }
+
+  /** The team leader of the approved team records one Stage report. */
+  reportStage({
+    actor,
+    caseId,
+    stage,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    stage: AuditStage;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    const planStep = stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan';
+    const step = stage === 'stage_1' ? 'stage_1_report' : 'stage_2_report';
+    return this.command({
+      actor,
+      role: 'auditor',
+      kind: 'stage_report',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, stage, body }),
+      execute: async (companyId) => {
+        const input =
+          stage === 'stage_1'
+            ? stageCommand(body, stage1Report)
+            : stageCommand(body, stage2Report);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        this.requireTeamLeader(actor, steps);
+        const plan = latest(steps, planStep);
+        if (!plan)
+          throw stepConflict(
+            'CERTIFICATION_STAGE_NOT_PLANNED',
+            'Record the Stage plan before its report.',
+          );
+        const planned = stagePlanVersion(plan).value;
+        if (input.payload.reportDate < planned.startDate)
+          throw stepConflict(
+            'CERTIFICATION_STAGE_DATES',
+            'A report is dated on or after the Stage start.',
+          );
+        await this.requireAttachment(
+          actor,
+          companyId,
+          targetId,
+          input.payload.reportAttachmentId,
+          ['report'],
+        );
+        if (input.payload.participantListAttachmentId)
+          await this.requireAttachment(
+            actor,
+            companyId,
+            targetId,
+            input.payload.participantListAttachmentId,
+            ['participant_list'],
+          );
+        if (
+          'annexAttachmentId' in input.payload &&
+          input.payload.annexAttachmentId
+        )
+          await this.requireAttachment(
+            actor,
+            companyId,
+            targetId,
+            input.payload.annexAttachmentId,
+            ['report', 'evidence', 'iso22000_annex'],
+          );
+        const version = (latest(steps, step)?.version ?? 0) + 1;
+        if ((version === 1) !== (input.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A new report version states its reason; a first report has none.',
+          );
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step,
+          version,
+          payload: input.payload,
+          reason: input.reason,
+          action: 'certification_case.stage_reported',
+          metadata: { stage, version },
+        });
+      },
+    });
+  }
+
   list({
     actor,
     projectId,
@@ -1024,7 +1227,9 @@ export class CertificationService {
       | 'certification_case.duration_confirmed'
       | 'certification_case.agreement_recorded'
       | 'certification_case.team_proposed'
-      | 'certification_case.team_decided';
+      | 'certification_case.team_decided'
+      | 'certification_case.stage_planned'
+      | 'certification_case.stage_reported';
     metadata: Record<string, string | number>;
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
@@ -1183,6 +1388,10 @@ export class CertificationService {
       agreement: signed ? agreementVersion(signed) : null,
       team: team ? teamVersion(team) : null,
       teamDecision: decided ? teamDecisionVersion(decided) : null,
+      stages: STAGE_STEPS.flatMap((step) => {
+        const row = latest(steps, step);
+        return row ? [stageStepVersion(row)] : [];
+      }),
     };
   }
 
@@ -1207,6 +1416,48 @@ export class CertificationService {
       },
       openedAt: row.openedAt.toISOString(),
     };
+  }
+
+  /** Refuses unless the actor is linked to the leader of the approved team. */
+  private requireTeamLeader(actor: ActorContext, steps: readonly StepRow[]) {
+    const team = approvedTeam(steps);
+    if (
+      !team?.members.some(
+        (member) =>
+          member.role === 'team_leader' &&
+          member.workspaceMembershipId === actor.workspaceMembershipId,
+      )
+    )
+      throw stepConflict(
+        'CERTIFICATION_NOT_TEAM_LEADER',
+        'Only the leader of the approved audit team records this.',
+      );
+  }
+
+  /** Refuses an attachment of this Case unless it has one of the expected roles. */
+  private async requireAttachment(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    attachmentId: string,
+    roles: readonly (typeof certificationCaseDocuments.$inferSelect)['role'][],
+  ): Promise<void> {
+    const [attached] = await this.database.connection
+      .select({ role: certificationCaseDocuments.role })
+      .from(certificationCaseDocuments)
+      .where(
+        and(
+          eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+          eq(certificationCaseDocuments.companyId, companyId),
+          eq(certificationCaseDocuments.caseId, caseId),
+          eq(certificationCaseDocuments.id, attachmentId),
+        ),
+      );
+    if (!attached || !roles.includes(attached.role))
+      throw stepConflict(
+        'CERTIFICATION_ATTACHMENT_ROLE',
+        `Attach the document with one of these roles first: ${roles.join(', ')}.`,
+      );
   }
 
   /** Whether the actor is linked to a member of any proposed team version. */
@@ -1359,7 +1610,13 @@ function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
   const decision = teamDecisionVersion(decided).value;
   if (decision.teamVersion !== team.version) return 'team_decision';
   if (decision.decision === 'returned') return 'team';
-  return 'stage_1_plan';
+  if (!latest(steps, 'stage_1_plan')) return 'stage_1_plan';
+  const stage1 = latest(steps, 'stage_1_report');
+  if (!stage1 || stage1Version(stage1).value.conclusion !== 'ready')
+    return 'stage_1_report';
+  if (!latest(steps, 'stage_2_plan')) return 'stage_2_plan';
+  if (!latest(steps, 'stage_2_report')) return 'stage_2_report';
+  return 'recommendation';
 }
 
 function stepConflict(code: string, message: string): ConflictException {
@@ -1407,6 +1664,51 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
   };
+}
+
+/** The latest team version when its latest decision approves it. */
+function approvedTeam(steps: readonly StepRow[]) {
+  const team = latest(steps, 'team');
+  const decided = latest(steps, 'team_decision');
+  if (!team || !decided) return undefined;
+  const decision = teamDecisionVersion(decided).value;
+  return decision.decision === 'approved' &&
+    decision.teamVersion === team.version
+    ? teamVersion(team).value
+    : undefined;
+}
+
+function stage1Version(
+  row: StepRow,
+): Extract<StageStepVersion, { step: 'stage_1_report' }> {
+  return {
+    ...base(row),
+    step: 'stage_1_report',
+    value: persisted(() => stage1Report(row.payload)),
+  };
+}
+
+function stagePlanVersion(row: StepRow) {
+  return { ...base(row), value: persisted(() => stagePlan(row.payload)) };
+}
+
+function stageStepVersion(row: StepRow): StageStepVersion {
+  switch (row.step) {
+    case 'stage_1_plan':
+      return { ...stagePlanVersion(row), step: 'stage_1_plan' };
+    case 'stage_2_plan':
+      return { ...stagePlanVersion(row), step: 'stage_2_plan' };
+    case 'stage_1_report':
+      return stage1Version(row);
+    case 'stage_2_report':
+      return {
+        ...base(row),
+        step: 'stage_2_report',
+        value: persisted(() => stage2Report(row.payload)),
+      };
+    default:
+      throw new InternalServerErrorException('Not a Stage step.');
+  }
 }
 
 function teamVersion(row: StepRow): TeamVersion {
@@ -1527,6 +1829,11 @@ function stepVersion(row: StepRow): CertificationStepVersion {
       return teamVersion(row);
     case 'team_decision':
       return teamDecisionVersion(row);
+    case 'stage_1_plan':
+    case 'stage_1_report':
+    case 'stage_2_plan':
+    case 'stage_2_report':
+      return stageStepVersion(row);
   }
   return unexpectedStep(row.step);
 }

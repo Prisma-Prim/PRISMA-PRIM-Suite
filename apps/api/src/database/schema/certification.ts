@@ -24,6 +24,10 @@ export const CERTIFICATION_STEPS = [
   'agreement',
   'team',
   'team_decision',
+  'stage_1_plan',
+  'stage_1_report',
+  'stage_2_plan',
+  'stage_2_report',
 ] as const;
 export const CERTIFICATION_DOCUMENT_ROLES = [
   'questionnaire',
@@ -45,6 +49,8 @@ export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.agreement_recorded',
   'certification_case.team_proposed',
   'certification_case.team_decided',
+  'certification_case.stage_planned',
+  'certification_case.stage_reported',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
@@ -55,6 +61,8 @@ export const CERTIFICATION_COMMAND_KINDS = [
   'agreement',
   'team',
   'team_decision',
+  'stage_plan',
+  'stage_report',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -210,7 +218,7 @@ export const certificationStepVersions = pgTable(
     ),
     check(
       'certification_step_versions_step_check',
-      sql`${table.step} IN ('application', 'application_review', 'duration', 'agreement', 'team', 'team_decision') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
+      sql`${table.step} IN ('application', 'application_review', 'duration', 'agreement', 'team', 'team_decision', 'stage_1_plan', 'stage_1_report', 'stage_2_plan', 'stage_2_report') AND ${table.version} > 0 AND ${table.caseRevision} > 1`,
     ),
     check(
       'certification_step_versions_payload_check',
@@ -245,7 +253,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -291,7 +299,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',

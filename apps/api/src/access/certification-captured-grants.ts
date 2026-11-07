@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
   COMPANY_CERTIFICATION_APPROVER_BUNDLE,
+  COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
   COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
   COMPANY_CERTIFICATION_READER_BUNDLE,
   companyRolePermissionsFor,
@@ -11,9 +12,11 @@ import {
 type CertificationBundle =
   | typeof COMPANY_CERTIFICATION_READER_BUNDLE
   | typeof COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE
-  | typeof COMPANY_CERTIFICATION_APPROVER_BUNDLE;
+  | typeof COMPANY_CERTIFICATION_APPROVER_BUNDLE
+  | typeof COMPANY_CERTIFICATION_AUDITOR_BUNDLE;
 
-export type CertificationRole = 'reader' | 'programme_manager' | 'approver';
+export type CertificationRole =
+  'reader' | 'programme_manager' | 'approver' | 'auditor';
 
 // Compatibility projection only. Internal grants below are complete records.
 export interface CertificationActorProjection {
@@ -32,6 +35,11 @@ export interface CertificationActorProjection {
   >[];
   certificationApproverAssignmentId?: string;
   certificationApproverPermissionSetVersion?: 'v1';
+  certificationAuditorPermissions?: CompanyRolePermission<
+    typeof COMPANY_CERTIFICATION_AUDITOR_BUNDLE
+  >[];
+  certificationAuditorAssignmentId?: string;
+  certificationAuditorPermissionSetVersion?: 'v1';
 }
 
 // This is a captured identity, not proof that the assignment is still live.
@@ -58,6 +66,7 @@ function captureCertificationGrant(
     case COMPANY_CERTIFICATION_READER_BUNDLE:
     case COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE:
     case COMPANY_CERTIFICATION_APPROVER_BUNDLE:
+    case COMPANY_CERTIFICATION_AUDITOR_BUNDLE:
       return {
         bundle: row.bundle,
         permissionSetVersion: row.permissionSetVersion,
@@ -109,6 +118,17 @@ export function projectCertificationAssignment(
         certificationApproverAssignmentId: grant.assignmentId,
         certificationApproverPermissionSetVersion: grant.permissionSetVersion,
       };
+    case COMPANY_CERTIFICATION_AUDITOR_BUNDLE:
+      return {
+        certificationAuditorPermissions: [
+          ...companyRolePermissionsFor(
+            grant.bundle,
+            grant.permissionSetVersion,
+          ),
+        ],
+        certificationAuditorAssignmentId: grant.assignmentId,
+        certificationAuditorPermissionSetVersion: grant.permissionSetVersion,
+      };
   }
   return unexpectedCertificationGrant(grant.bundle);
 }
@@ -140,6 +160,13 @@ export function requireCertificationCapturedGrant(
         permissionSetVersion: company.certificationApproverPermissionSetVersion,
         assignmentId: company.certificationApproverAssignmentId,
         permissions: company.certificationApproverPermissions,
+      });
+    case 'auditor':
+      return requireCapturedProjection({
+        bundle: COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
+        permissionSetVersion: company.certificationAuditorPermissionSetVersion,
+        assignmentId: company.certificationAuditorAssignmentId,
+        permissions: company.certificationAuditorPermissions,
       });
   }
   return unexpectedCertificationGrant(role);

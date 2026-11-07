@@ -14,10 +14,12 @@ import {
 export const CERTIFICATION_OWNER = 'certification-owner';
 export const CERTIFICATION_READER = 'certification-reader';
 export const CERTIFICATION_APPROVER = 'certification-approver';
+export const CERTIFICATION_AUDITOR = 'certification-auditor';
 const MEMBERS = [
   CERTIFICATION_OWNER,
   CERTIFICATION_READER,
   CERTIFICATION_APPROVER,
+  CERTIFICATION_AUDITOR,
 ] as const;
 export type CertificationSubject = (typeof MEMBERS)[number];
 
@@ -251,6 +253,76 @@ export async function openCertificationFixture(input: {
     );
     return caseId;
   }
+  /** Attaches a new received PDF with the role; returns the attachment id. */
+  async function attach(
+    caseId: string,
+    role: string,
+    expectedRevision: number,
+  ) {
+    const source = await receivedSource(`Fictional ${role}`);
+    await created(
+      await call(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/documents`,
+        {
+          method: 'POST',
+          body: { expectedRevision, role, ...source },
+        },
+      ),
+    );
+    const register = record(
+      await (
+        await call(
+          CERTIFICATION_OWNER,
+          `/certification-cases/${caseId}/documents`,
+        )
+      ).json(),
+    ).items;
+    if (!Array.isArray(register)) throw new Error('Expected attachments.');
+    const match = register
+      .map(record)
+      .find((item) => item.documentId === source.documentId);
+    return text(match?.id);
+  }
+  /** An agreed Case whose team, led by the auditor member, is approved (revision 8). */
+  async function approvedTeamCase() {
+    const caseId = await agreedCase();
+    await created(
+      await call(CERTIFICATION_OWNER, `/certification-cases/${caseId}/team`, {
+        method: 'POST',
+        body: {
+          expectedRevision: 6,
+          members: [
+            {
+              name: 'Auditor Demo',
+              role: 'team_leader',
+              workspaceMembershipId: memberships.get(CERTIFICATION_AUDITOR),
+              holdsCategory: true,
+              competenceNote: 'ISO 22000 lead auditor, category C',
+              declarations: {
+                noConsultancy: true,
+                noEmployment: true,
+                noManagementInvolvement: true,
+                confidentiality: true,
+              },
+              conflictNote: null,
+            },
+          ],
+        },
+      }),
+    );
+    await created(
+      await call(
+        CERTIFICATION_APPROVER,
+        `/certification-cases/${caseId}/team-decision`,
+        {
+          method: 'POST',
+          body: { expectedRevision: 7, teamVersion: 1, decision: 'approved' },
+        },
+      ),
+    );
+    return caseId;
+  }
   /** Opens a Case and records the given application; the review stays open. */
   async function caseWithApplication(facts = applicationFacts()) {
     const caseId = text(
@@ -319,7 +391,11 @@ export async function openCertificationFixture(input: {
         ACCESS_BOOTSTRAP_WORKSPACE_ID: input.workspaceId,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Certification Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify(
-          [CERTIFICATION_READER, CERTIFICATION_APPROVER].map((subject) => ({
+          [
+            CERTIFICATION_READER,
+            CERTIFICATION_APPROVER,
+            CERTIFICATION_AUDITOR,
+          ].map((subject) => ({
             provider: 'deterministic-test',
             subject,
             workspaceId: input.workspaceId,
@@ -376,6 +452,14 @@ export async function openCertificationFixture(input: {
       '/company-certification-approver-assignments',
     ])
       await grant(CERTIFICATION_APPROVER, path);
+    for (const path of [
+      '/company-context-assignments',
+      '/company-director-client-assignments',
+      '/company-project-assignments',
+      '/company-certification-reader-assignments',
+      '/company-certification-auditor-assignments',
+    ])
+      await grant(CERTIFICATION_AUDITOR, path);
     clientId = text(
       (
         await created(
@@ -435,6 +519,8 @@ export async function openCertificationFixture(input: {
     caseWithApplication,
     acceptedCase,
     agreedCase,
+    approvedTeamCase,
+    attach,
     receivedSource,
     membership(subject: CertificationSubject): string {
       const id = memberships.get(subject);

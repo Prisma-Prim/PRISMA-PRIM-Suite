@@ -44,6 +44,7 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_certification_reader',
   'company_certification_programme_manager',
   'company_certification_approver',
+  'company_certification_auditor',
   'company_working_evidence_case_reader',
   'company_working_evidence_case_recorder',
   'company_received_audit_source_access',
@@ -763,6 +764,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_certification_programme_manager_assignment.revoked',
   'company_certification_approver_assignment.granted',
   'company_certification_approver_assignment.revoked',
+  'company_certification_auditor_assignment.granted',
+  'company_certification_auditor_assignment.revoked',
   'company_working_evidence_case_reader_assignment.granted',
   'company_working_evidence_case_reader_assignment.revoked',
   'company_working_evidence_case_recorder_assignment.granted',
@@ -959,6 +962,7 @@ export const activityLogEvents = pgTable(
               | 'Company Certification Reader'
               | 'Company Certification Programme Manager'
               | 'Company Certification Approver'
+              | 'Company Certification Auditor'
               | 'Company Working Evidence Case Reader'
               | 'Company Working Evidence Case Recorder'
               | 'Company Received Audit Source Access'

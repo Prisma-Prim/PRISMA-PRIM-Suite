@@ -27,6 +27,7 @@ import {
   COMPANY_CERTIFICATION_READER_BUNDLE,
   COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
   COMPANY_CERTIFICATION_APPROVER_BUNDLE,
+  COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
 } from './company-permissions.js';
 import {
   BadRequestException,
@@ -877,6 +878,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMPANY_CERTIFICATION_APPROVER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantCertificationAuditor(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeCertificationAuditor(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,

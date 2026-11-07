@@ -3575,6 +3575,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_certification_programme_manager_assignment.revoked':
     case 'company_certification_approver_assignment.granted':
     case 'company_certification_approver_assignment.revoked':
+    case 'company_certification_auditor_assignment.granted':
+    case 'company_certification_auditor_assignment.revoked':
     case 'company_working_evidence_case_reader_assignment.granted':
     case 'company_working_evidence_case_reader_assignment.revoked':
     case 'company_working_evidence_case_recorder_assignment.granted':

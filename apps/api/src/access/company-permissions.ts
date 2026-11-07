@@ -607,6 +607,11 @@ export const COMPANY_ROLE_BUNDLES = {
     grantVersion: 'v1',
     versions: { v1: ['certification.approve'] },
   },
+  company_certification_auditor: {
+    label: 'Company Certification Auditor',
+    grantVersion: 'v1',
+    versions: { v1: ['certification.audit.record'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -1454,6 +1459,10 @@ export const COMPANY_CERTIFICATION_APPROVER_BUNDLE =
   'company_certification_approver' satisfies CompanyRoleBundle;
 export const COMPANY_CERTIFICATION_APPROVER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_certification_approver.label;
+export const COMPANY_CERTIFICATION_AUDITOR_BUNDLE =
+  'company_certification_auditor' satisfies CompanyRoleBundle;
+export const COMPANY_CERTIFICATION_AUDITOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_certification_auditor.label;
 
 export const COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE =
   'company_working_evidence_case_reader' satisfies CompanyRoleBundle;
