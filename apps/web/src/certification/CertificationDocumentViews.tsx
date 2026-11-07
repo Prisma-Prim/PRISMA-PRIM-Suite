@@ -172,6 +172,53 @@ export function DossierRegister({
   );
 }
 
+export type RegisterPdfDownload = {
+  status: 'idle' | 'pending' | 'failed' | 'unavailable';
+  disabled: boolean;
+  onDownload: () => void;
+};
+
+/**
+ * The generated, non-official dossier register of the Case: every reader
+ * may download it, in the interface language; it needs no Document right.
+ */
+export function RegisterPdfAction({
+  download,
+}: {
+  download: RegisterPdfDownload;
+}) {
+  const copy = useCertificationCopy();
+  return (
+    <>
+      <p>{copy('registerPdfHelp')}</p>
+      <div className="certification-actions">
+        <button
+          type="button"
+          disabled={download.disabled || download.status === 'pending'}
+          onClick={download.onDownload}
+        >
+          {copy('registerPdfDownload')}
+        </button>
+      </div>
+      {registerPdfMessage(download.status)}
+    </>
+  );
+
+  function registerPdfMessage(status: RegisterPdfDownload['status']) {
+    switch (status) {
+      case 'idle':
+        return null;
+      case 'pending':
+        return <p role="status">{copy('registerPdfDownloading')}</p>;
+      case 'failed':
+        return <p role="alert">{copy('registerPdfFailed')}</p>;
+      case 'unavailable':
+        return <p role="alert">{copy('registerPdfUnavailable')}</p>;
+    }
+    return unexpected(status);
+  }
+}
+
 /** The signature date and the attached signed original it refers to. */
 export function AgreementView({
   agreement,
@@ -206,5 +253,5 @@ export function AgreementView({
 }
 
 function unexpected(value: never): never {
-  throw new Error(`Unexpected Certification document role: ${String(value)}`);
+  throw new Error(`Unexpected Certification document value: ${String(value)}`);
 }

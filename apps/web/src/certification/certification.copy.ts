@@ -275,6 +275,12 @@ const keys = [
   'documentDownloading',
   'documentDownloadFailed',
   'documentDownloadUnavailable',
+  'registerPdfTitle',
+  'registerPdfHelp',
+  'registerPdfDownload',
+  'registerPdfDownloading',
+  'registerPdfFailed',
+  'registerPdfUnavailable',
   'documentsDenied',
   'documentsNoContentRights',
   'attachNoRights',
@@ -1145,6 +1151,15 @@ export const certificationMessages = defineMessages(keys, {
       'The PDF could not be downloaded, or its bytes did not match the recorded fingerprint. Try again.',
     documentDownloadUnavailable:
       'This attached PDF is no longer available. Reload the Case.',
+    registerPdfTitle: 'Dossier register PDF',
+    registerPdfHelp:
+      'A generated PDF listing every step version and every referenced Document Version of this Case, in the interface language. It is not an official certification body form and replaces none of the signed originals.',
+    registerPdfDownload: 'Download the dossier register (PDF)',
+    registerPdfDownloading: 'Generating the dossier register…',
+    registerPdfFailed:
+      'The dossier register could not be downloaded. Try again.',
+    registerPdfUnavailable:
+      'The dossier register of this Case is unavailable. Reload the Case.',
     documentsDenied:
       'Your Document rights on this Client’s received PDFs could not be confirmed. They are being checked again; the Case stays available.',
     documentsNoContentRights:
@@ -2207,6 +2222,15 @@ export const certificationMessages = defineMessages(keys, {
       'Le PDF n’a pas pu être téléchargé, ou ses octets ne correspondent pas à l’empreinte enregistrée. Réessayez.',
     documentDownloadUnavailable:
       'Ce PDF joint n’est plus disponible. Rechargez le dossier.',
+    registerPdfTitle: 'Registre du dossier en PDF',
+    registerPdfHelp:
+      'PDF généré qui liste chaque version d’étape et chaque version de document référencée de ce dossier, dans la langue de l’interface. Ce n’est pas un formulaire officiel de l’organisme de certification et il ne remplace aucun original signé.',
+    registerPdfDownload: 'Télécharger le registre du dossier (PDF)',
+    registerPdfDownloading: 'Génération du registre du dossier…',
+    registerPdfFailed:
+      'Le registre du dossier n’a pas pu être téléchargé. Réessayez.',
+    registerPdfUnavailable:
+      'Le registre de ce dossier est indisponible. Rechargez le dossier.',
     documentsDenied:
       'Vos droits Documents sur les PDF reçus de ce Client n’ont pas pu être confirmés. Ils sont vérifiés à nouveau ; le dossier reste disponible.',
     documentsNoContentRights:
@@ -3290,6 +3314,15 @@ export const certificationMessages = defineMessages(keys, {
       'PDF-ul nu a putut fi descărcat sau octeții lui nu corespund amprentei înregistrate. Reîncercați.',
     documentDownloadUnavailable:
       'Acest PDF atașat nu mai este disponibil. Reîncărcați dosarul.',
+    registerPdfTitle: 'Registrul dosarului în PDF',
+    registerPdfHelp:
+      'PDF generat care enumeră fiecare versiune de etapă și fiecare versiune de document referită în acest dosar, în limba interfeței. Nu este un formular oficial al organismului de certificare și nu înlocuiește niciun original semnat.',
+    registerPdfDownload: 'Descărcați registrul dosarului (PDF)',
+    registerPdfDownloading: 'Se generează registrul dosarului…',
+    registerPdfFailed:
+      'Registrul dosarului nu a putut fi descărcat. Reîncercați.',
+    registerPdfUnavailable:
+      'Registrul acestui dosar nu este disponibil. Reîncărcați dosarul.',
     documentsDenied:
       'Drepturile dvs. Documente asupra PDF-urilor primite de la acest Client nu au putut fi confirmate. Se verifică din nou; dosarul rămâne disponibil.',
     documentsNoContentRights:
@@ -4368,6 +4401,14 @@ export const certificationMessages = defineMessages(keys, {
       'PDF не удалось скачать, или его байты не совпали с записанным отпечатком. Повторите попытку.',
     documentDownloadUnavailable:
       'Этот приложенный PDF больше недоступен. Загрузите дело заново.',
+    registerPdfTitle: 'Реестр досье в PDF',
+    registerPdfHelp:
+      'Сформированный PDF со всеми версиями шагов и всеми версиями документов, на которые ссылается это дело, на языке интерфейса. Это не официальная форма органа по сертификации, и он не заменяет ни один подписанный оригинал.',
+    registerPdfDownload: 'Скачать реестр досье (PDF)',
+    registerPdfDownloading: 'Реестр досье формируется…',
+    registerPdfFailed: 'Не удалось скачать реестр досье. Повторите попытку.',
+    registerPdfUnavailable:
+      'Реестр этого дела недоступен. Загрузите дело заново.',
     documentsDenied:
       'Не удалось подтвердить ваши права в Документах на PDF, полученные от этого Клиента. Они проверяются повторно; дело остаётся доступным.',
     documentsNoContentRights:

@@ -151,6 +151,8 @@ export const CERTIFICATION_LIMITS = {
   attachmentNote: 1000,
   sourceTitle: 200,
   pdfBytes: 5 * 1024 * 1024,
+  /** The server's bound on the generated dossier register PDF. */
+  registerPdfBytes: 16 * 1024 * 1024,
 } as const;
 
 export interface CertificationSite {
