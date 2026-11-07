@@ -10,6 +10,8 @@ export const certificationTables = [
   'certification_case_documents',
   'certification_cases',
   'certification_events',
+  'certification_finding_records',
+  'certification_findings',
   'certification_receipts',
   'certification_step_versions',
 ];
