@@ -762,9 +762,12 @@ export class CertificationService {
         const resubmitted =
           decision?.decision === 'returned' &&
           decision.teamVersion === previous?.version;
-        // Whoever decided on any team version stays outside every later one.
+        // Whoever decided on the team, reviewed the dossier or recorded the
+        // decision stays outside every later team version.
         const deciders = steps
-          .filter((row) => row.step === 'team_decision')
+          .filter((row) =>
+            ['team_decision', 'dossier_review', 'decision'].includes(row.step),
+          )
           .map((row) => row.actorMembershipId);
         if (
           teamMembershipIds(input.team).some((membershipId) =>
@@ -773,7 +776,7 @@ export class CertificationService {
         )
           throw stepConflict(
             'CERTIFICATION_INDEPENDENCE',
-            'A member who decided on a team version cannot join the audit team.',
+            'A member who decided on the team, reviewed the dossier or recorded the decision cannot join the audit team.',
           );
         for (const membershipId of teamMembershipIds(input.team)) {
           const [member] = await this.database.connection
@@ -1530,15 +1533,7 @@ export class CertificationService {
             'CERTIFICATION_DECIDED',
             'The Certification Decision is recorded once.',
           );
-        if (
-          approvedTeam(steps)?.members.some((member) =>
-            sameName(member.name, payload.decidedBy),
-          )
-        )
-          throw stepConflict(
-            'CERTIFICATION_INDEPENDENCE',
-            'The decision maker cannot be a member of the audit team.',
-          );
+        this.requireNotNamedOnTeam(steps, payload.decidedBy);
         if (payload.decisionFormAttachmentId)
           await this.requireAttachment(
             input.actor,
@@ -1639,16 +1634,7 @@ export class CertificationService {
             'The agreed Certificate data must state exactly what the decision grants.',
           );
         const signatory = input.signedBy;
-        if (
-          signatory !== null &&
-          approvedTeam(steps)?.members.some((member) =>
-            sameName(member.name, signatory),
-          )
-        )
-          throw stepConflict(
-            'CERTIFICATION_INDEPENDENCE',
-            'A member of the audit team cannot sign the Certificate.',
-          );
+        this.requireNotNamedOnTeam(steps, signatory ?? undefined);
         await this.requireAttachment(
           actor,
           companyId,
@@ -1811,6 +1797,27 @@ export class CertificationService {
   }
 
   /** Refuses an actor linked to any member of any team version. */
+  /** Refuses a named person who is on any team version. */
+  private requireNotNamedOnTeam(
+    steps: readonly StepRow[],
+    name: string | undefined,
+  ): void {
+    if (
+      name !== undefined &&
+      steps
+        .filter((row) => row.step === 'team')
+        .some((row) =>
+          teamVersion(row).value.members.some((member) =>
+            sameName(member.name, name),
+          ),
+        )
+    )
+      throw stepConflict(
+        'CERTIFICATION_INDEPENDENCE',
+        'A member of the audit team cannot perform this act.',
+      );
+  }
+
   private requireIndependent(actor: ActorContext, steps: readonly StepRow[]) {
     if (this.onTeam(actor, steps))
       throw stepConflict(

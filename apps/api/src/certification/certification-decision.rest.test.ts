@@ -282,6 +282,81 @@ withPostgres(
       );
     });
 
+    it('keeps every team member, past ones included, apart from the review and the decision', async () => {
+      function member(name: string, role: string, membership: string | null) {
+        return {
+          name,
+          role,
+          workspaceMembershipId: membership,
+          holdsCategory: role === 'team_leader',
+          competenceNote: 'ISO 22000 auditor',
+          declarations: {
+            noConsultancy: true,
+            noEmployment: true,
+            noManagementInvolvement: true,
+            confidentiality: true,
+          },
+          conflictNote: null,
+        };
+      }
+      const leader = member(
+        'Auditor Demo',
+        'team_leader',
+        fixture.membership(CERTIFICATION_AUDITOR),
+      );
+      const caseId = await recommendedCase();
+      const base = `/certification-cases/${caseId}`;
+      // A technical expert joins (version 2), then leaves (version 3).
+      await ok(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 17,
+        reason: 'A technical expert joins.',
+        members: [leader, member('Expert Demo', 'technical_expert', null)],
+      });
+      await ok(CERTIFICATION_APPROVER, `${base}/team-decision`, {
+        expectedRevision: 18,
+        teamVersion: 2,
+        decision: 'approved',
+      });
+      await ok(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 19,
+        reason: 'The technical expert leaves.',
+        members: [leader],
+      });
+      await ok(CERTIFICATION_APPROVER, `${base}/team-decision`, {
+        expectedRevision: 20,
+        teamVersion: 3,
+        decision: 'approved',
+      });
+      await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
+        expectedRevision: 21,
+        ...review(),
+      });
+      const formerMember = await post(
+        CERTIFICATION_APPROVER,
+        `${base}/decision`,
+        decision(22, { decidedBy: 'Expert Demo' }),
+      );
+      expect(record(await formerMember.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      const reviewerJoins = await post(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 22,
+        reason: 'The dossier reviewer joins as an observer.',
+        members: [
+          leader,
+          member(
+            'Reviewer Demo',
+            'observer',
+            fixture.membership(CERTIFICATION_APPROVER),
+          ),
+        ],
+      });
+      expect(record(await reviewerJoins.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(22);
+    });
+
     it('refuses a decision with unmet preconditions, against the recommendation or by a team member', async () => {
       const caseId = await recommendedCase();
       const base = `/certification-cases/${caseId}`;

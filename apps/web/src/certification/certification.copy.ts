@@ -1236,7 +1236,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'You cannot decide on this team: you are linked to a member of one of its versions. An approver who is not on the team must decide.',
     teamMemberDecided:
-      'A member who decided on a version of this team cannot join it. Remove that link, reload the Case and propose again.',
+      'A member who approved this team, reviewed the dossier or recorded the decision cannot join the team. Remove that link, reload the Case and propose again.',
     blockedTeamNotPending:
       'No proposed team awaits a decision any more. Reload the Case.',
 
@@ -2233,7 +2233,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Vous ne pouvez pas statuer sur cette équipe : vous êtes lié à un membre de l’une de ses versions. Un approbateur qui ne fait pas partie de l’équipe doit statuer.',
     teamMemberDecided:
-      'Un membre qui a statué sur une version de cette équipe ne peut pas en faire partie. Retirez ce lien, rechargez le dossier et proposez à nouveau.',
+      'Un membre qui a approuvé cette équipe, revu le dossier ou enregistré la décision ne peut pas en faire partie. Retirez ce lien, rechargez le dossier et proposez à nouveau.',
     blockedTeamNotPending:
       'Aucune équipe proposée n’attend plus de décision. Rechargez le dossier.',
 
@@ -3244,7 +3244,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă.',
     teamMemberDecided:
-      'Un membru care a decis asupra unei versiuni a acestei echipe nu poate face parte din ea. Eliminați această legătură, reîncărcați dosarul și propuneți din nou.',
+      'Un membru care a aprobat această echipă, a analizat dosarul sau a înregistrat decizia nu poate face parte din echipă. Eliminați această legătură, reîncărcați dosarul și propuneți din nou.',
     blockedTeamNotPending:
       'Nicio echipă propusă nu mai așteaptă o decizie. Reîncărcați dosarul.',
 
@@ -4248,7 +4248,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Вы не можете принимать решение по этой группе: вы связаны с участником одной из её версий. Решение должен принять утверждающий, не входящий в группу.',
     teamMemberDecided:
-      'Участник, принявший решение по одной из версий этой группы, не может в неё входить. Удалите эту связь, загрузите дело заново и предложите снова.',
+      'Участник, утвердивший эту группу, проверивший досье или зарегистрировавший решение, не может входить в группу. Удалите эту связь, загрузите дело заново и предложите снова.',
     blockedTeamNotPending:
       'Ни одна предложенная группа больше не ожидает решения. Загрузите дело заново.',
 
