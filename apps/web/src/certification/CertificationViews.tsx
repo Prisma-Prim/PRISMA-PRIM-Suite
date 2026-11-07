@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { useCertificationCopy } from './certification.copy';
-import { VersionAttribution } from './CertificationAttribution';
+import { ActingRow, VersionAttribution } from './CertificationAttribution';
 import { AgreementView } from './CertificationDocumentViews';
 import { DurationView } from './CertificationDurationViews';
 import {
@@ -63,10 +63,20 @@ export function statusLabel(status: CaseStatus): CertificationMessageKey {
 /** Every recorded application fact, missing optional values stated as such. */
 export function FactsView({ facts }: { facts: ApplicationFacts }) {
   const copy = useCertificationCopy();
-  const { formatNumber } = useInterfaceLocale();
+  const { formatDate, formatNumber } = useInterfaceLocale();
   const optional = (value: string | null) => value ?? copy('notProvided');
   return (
     <dl className="certification-facts">
+      <dt>{copy('applicationSubmittedOn')}</dt>
+      <dd>
+        {facts.submittedOn === null ? (
+          copy('notProvided')
+        ) : (
+          <time dateTime={facts.submittedOn}>
+            {formatDate(facts.submittedOn)}
+          </time>
+        )}
+      </dd>
       <dt>{copy('declaredLegalName')}</dt>
       <dd>{facts.declaredLegalName}</dd>
       <dt>{copy('declaredAddress')}</dt>
@@ -111,8 +121,17 @@ export function FactsView({ facts }: { facts: ApplicationFacts }) {
   );
 }
 
-/** The four explicit answers with their notes, then the outcome. */
-export function ReviewView({ review }: { review: ApplicationReview }) {
+/**
+ * The four explicit answers with their notes, the outcome, and who reviewed
+ * on behalf of the certification body when the review was recorded so.
+ */
+export function ReviewView({
+  review,
+  register,
+}: {
+  review: ApplicationReview;
+  register: DocumentRegister;
+}) {
   const copy = useCertificationCopy();
   return (
     <dl className="certification-facts">
@@ -143,6 +162,11 @@ export function ReviewView({ review }: { review: ApplicationReview }) {
           <dd>{review.rejectionReason}</dd>
         </div>
       )}
+      <ActingRow
+        label="actingReviewView"
+        act={review.onBehalf}
+        register={register}
+      />
     </dl>
   );
 }
@@ -519,12 +543,12 @@ function TimelineEntry({
         formatMessage(copy('timelineReview'), {
           outcome: copy(entry.value.outcome),
         }),
-        <ReviewView review={entry.value} />,
+        <ReviewView review={entry.value} register={register} />,
       );
     case 'duration':
       return values(
         formatMessage(copy('timelineDuration'), { version: entry.version }),
-        <DurationView determination={entry.value} />,
+        <DurationView determination={entry.value} register={register} />,
       );
     case 'agreement':
       return values(
@@ -534,7 +558,7 @@ function TimelineEntry({
     case 'team':
       return values(
         formatMessage(copy('timelineTeam'), { version: entry.version }),
-        <TeamView team={entry.value} people={people} />,
+        <TeamView team={entry.value} people={people} register={register} />,
       );
     case 'team_decision':
       return values(
@@ -542,7 +566,7 @@ function TimelineEntry({
           decision: copy(decisionLabel(entry.value.decision)),
           version: entry.value.teamVersion,
         }),
-        <DecisionView decision={entry.value} />,
+        <DecisionView decision={entry.value} register={register} />,
       );
     case 'stage_1_plan':
       return values(
@@ -582,13 +606,18 @@ function TimelineEntry({
         formatMessage(copy('timelineDossierReview'), {
           version: entry.version,
         }),
-        <DossierReviewView review={entry.value} />,
+        <DossierReviewView review={entry.value} register={register} />,
       );
     case 'decision':
       return values(
-        formatMessage(copy('timelineCertificationDecision'), {
-          decision: copy(outcomeLabel(entry.value.decision)),
-        }),
+        entry.version === 1
+          ? formatMessage(copy('timelineCertificationDecision'), {
+              decision: copy(outcomeLabel(entry.value.decision)),
+            })
+          : formatMessage(copy('timelineCertificationDecisionVersion'), {
+              decision: copy(outcomeLabel(entry.value.decision)),
+              version: entry.version,
+            }),
         <CertificationDecisionView
           decision={entry.value}
           register={register}

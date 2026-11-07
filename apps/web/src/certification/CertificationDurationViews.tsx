@@ -4,6 +4,8 @@ import {
   useCertificationCopy,
   type CertificationMessageKey,
 } from './certification.copy';
+import { ActingRow } from './CertificationAttribution';
+import type { DocumentRegister } from './certification-response';
 import {
   CONFIRMED_DURATION_FIELDS,
   INCREASE_FACTORS,
@@ -183,8 +185,10 @@ export function DurationResultView({ result }: { result: DurationResult }) {
 /** A confirmed determination: values, inputs, computation and justification. */
 export function DurationView({
   determination,
+  register,
 }: {
   determination: DurationDetermination;
+  register: DocumentRegister;
 }) {
   const copy = useCertificationCopy();
   const { formatNumber } = useInterfaceLocale();
@@ -218,6 +222,11 @@ export function DurationView({
           <dt>{copy('justification')}</dt>
           <dd>{determination.justification ?? copy('notProvided')}</dd>
         </div>
+        <ActingRow
+          label="actingDurationView"
+          act={determination.onBehalf}
+          register={register}
+        />
         <div>
           <dt>{copy('computation')}</dt>
           <dd>

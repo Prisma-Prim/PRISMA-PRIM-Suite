@@ -10,6 +10,7 @@ import type {
   Stage2Report,
   StagePlan,
 } from './certification-stages';
+import { ActingRow } from './CertificationAttribution';
 import { useAttachmentReference } from './CertificationDocumentViews';
 import { useDurationFormat } from './CertificationDurationViews';
 
@@ -146,6 +147,11 @@ export function Stage1ReportView({
         <dt>{copy('stageParticipantList')}</dt>
         <dd>{attachment(report.participantListAttachmentId)}</dd>
       </div>
+      <ActingRow
+        label="actingReportApprovalView"
+        act={report.certificationBodyApproval}
+        register={register}
+      />
     </dl>
   );
 }
@@ -187,6 +193,11 @@ export function Stage2ReportView({
         <dt>{copy('stageAnnex')}</dt>
         <dd>{attachment(report.annexAttachmentId)}</dd>
       </div>
+      <ActingRow
+        label="actingReportApprovalView"
+        act={report.certificationBodyApproval}
+        register={register}
+      />
     </dl>
   );
 }

@@ -16,6 +16,7 @@ import {
   type Stage2ReportDraft,
   type StagePlanDraft,
 } from './certification-stages-draft';
+import { ActingFieldset } from './CertificationAttribution';
 import { useAttachmentReference } from './CertificationDocumentViews';
 import { useDurationFormat } from './CertificationDurationViews';
 import { conclusionLabel } from './CertificationStageViews';
@@ -200,6 +201,8 @@ export type Stage1ReportFormProps = StageFormBase<Stage1ReportDraft> & {
   reports: readonly CertificationAttachment[];
   /** The register's attachments with the participant-list role. */
   participantLists: readonly CertificationAttachment[];
+  /** The Case's attachments a signed approval form may be chosen from. */
+  documents: readonly CertificationAttachment[];
 };
 
 /**
@@ -279,6 +282,17 @@ export function Stage1ReportForm(props: Stage1ReportFormProps) {
         placeholder="stageNoParticipantList"
         attachments={props.participantLists}
       />
+      <ActingFieldset
+        idPrefix={id('approval')}
+        legend="actingReportApprovalLegend"
+        draft={draft.certificationBodyApproval}
+        documents={props.documents}
+        disabled={props.disabled}
+        feedbackId={props.feedbackId}
+        onChange={(certificationBodyApproval) =>
+          onChange({ ...draft, certificationBodyApproval })
+        }
+      />
     </StageFormFrame>
   );
 }
@@ -288,6 +302,7 @@ export type Stage2ReportFormProps = StageFormBase<Stage2ReportDraft> & {
   participantLists: readonly CertificationAttachment[];
   /** The register's attachments an annex may be: report, evidence, ISO annex. */
   annexes: readonly CertificationAttachment[];
+  documents: readonly CertificationAttachment[];
 };
 
 /** The report date, the summary, the attached report and optional attachments. */
@@ -337,6 +352,17 @@ export function Stage2ReportForm(props: Stage2ReportFormProps) {
         label="stageAnnex"
         placeholder="stageNoAnnex"
         attachments={props.annexes}
+      />
+      <ActingFieldset
+        idPrefix={id('approval')}
+        legend="actingReportApprovalLegend"
+        draft={draft.certificationBodyApproval}
+        documents={props.documents}
+        disabled={props.disabled}
+        feedbackId={props.feedbackId}
+        onChange={(certificationBodyApproval) =>
+          onChange({ ...draft, certificationBodyApproval })
+        }
       />
     </StageFormFrame>
   );

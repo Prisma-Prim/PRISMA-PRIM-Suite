@@ -1,3 +1,4 @@
+import type { ActAttribution } from './certification-attribution';
 import type { FoodChainSubcategory } from './certification-response';
 
 /**
@@ -102,6 +103,8 @@ export interface DurationDetermination {
   computation: DurationComputation;
   confirmed: ConfirmedDuration;
   justification: string | null;
+  /** The certification body's approval, when recorded on its behalf. */
+  onBehalf: ActAttribution | null;
 }
 
 // Amounts are integers in units of 1e-8 day, as the server computes them.

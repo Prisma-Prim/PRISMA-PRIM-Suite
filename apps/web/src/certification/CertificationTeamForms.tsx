@@ -2,8 +2,12 @@ import type { FormEvent } from 'react';
 import { formatMessage } from '../localization/messages';
 import { Select, type SelectOption } from '../presentation/Select';
 import { useCertificationCopy } from './certification.copy';
-import { CERTIFICATION_LIMITS } from './certification-response';
 import {
+  CERTIFICATION_LIMITS,
+  type CertificationAttachment,
+} from './certification-response';
+import {
+  DECLARATION_STATES,
   IMPARTIALITY_DECLARATIONS,
   TEAM_LIMITS,
   TEAM_ROLES,
@@ -15,7 +19,14 @@ import {
   type TeamDraft,
   type TeamMemberDraft,
 } from './certification-team-draft';
-import { declarationLabel, teamRoleLabel } from './CertificationTeamViews';
+import { toggleEvidence } from './certification-findings-draft';
+import { ActingFieldset } from './CertificationAttribution';
+import { useAttachmentReference } from './CertificationDocumentViews';
+import {
+  declarationLabel,
+  declarationStateLabel,
+  teamRoleLabel,
+} from './CertificationTeamViews';
 
 export type TeamFormProps = {
   idPrefix: string;
@@ -24,6 +35,10 @@ export type TeamFormProps = {
   correcting: boolean;
   /** The Workspace memberships a member may be linked to. */
   linkOptions: readonly SelectOption[];
+  /** The Case's attachments the impartiality analysis may cite. */
+  documents: readonly CertificationAttachment[];
+  /** The consultant the application declared, whose team needs an analysis. */
+  consultant: string | null;
   disabled: boolean;
   submitting: boolean;
   /** Saving waits for a reload of the outdated Case; the draft stays editable. */
@@ -36,14 +51,18 @@ export type TeamFormProps = {
 
 /**
  * One to ten members, each with a role, an optional link, the category, a
- * competence note and four explicit declarations; a declared conflict asks
- * for its description. A new version also states its reason.
+ * competence note and four explicit declarations, each confirmed, a
+ * conflict or to verify; anything not confirmed asks for its description.
+ * Then the documented impartiality analysis, required after a declared
+ * consultant. A new version also states its reason.
  */
 export function TeamForm({
   idPrefix,
   draft,
   correcting,
   linkOptions,
+  documents,
+  consultant,
   disabled,
   submitting,
   submitBlocked,
@@ -53,6 +72,7 @@ export function TeamForm({
   onCancel,
 }: TeamFormProps) {
   const copy = useCertificationCopy();
+  const reference = useAttachmentReference();
   const id = (name: string) => `${idPrefix}-${name}`;
   const invalid = feedbackId !== undefined;
   const update = (index: number, patch: Partial<TeamMemberDraft>) =>
@@ -165,24 +185,24 @@ export function TeamForm({
                 <fieldset key={declaration} className="certification-criterion">
                   <legend>{copy(declarationLabel(declaration))}</legend>
                   <div className="certification-answers">
-                    {(['yes', 'no'] as const).map((answer) => (
-                      <label key={answer} className="certification-choice">
+                    {DECLARATION_STATES.map((state) => (
+                      <label key={state} className="certification-choice">
                         <input
                           type="radio"
                           name={field(declaration)}
-                          value={answer}
-                          checked={member.declarations[declaration] === answer}
+                          value={state}
+                          checked={member.declarations[declaration] === state}
                           disabled={disabled}
                           onChange={() =>
                             update(index, {
                               declarations: {
                                 ...member.declarations,
-                                [declaration]: answer,
+                                [declaration]: state,
                               },
                             })
                           }
                         />
-                        {copy(answer)}
+                        {copy(declarationStateLabel(state))}
                       </label>
                     ))}
                   </div>
@@ -246,6 +266,61 @@ export function TeamForm({
           {copy('addTeamMember')}
         </button>
       )}
+      <fieldset
+        aria-describedby={
+          [id('analysis-help'), feedbackId].filter(Boolean).join(' ') ||
+          undefined
+        }
+      >
+        <legend>{copy('impartialityAnalysis')}</legend>
+        <small id={id('analysis-help')}>
+          {consultant === null
+            ? copy('impartialityAnalysisHelp')
+            : formatMessage(copy('impartialityAnalysisRequiredHelp'), {
+                consultant,
+              })}
+        </small>
+        <label htmlFor={id('analysis-note')}>
+          {copy('impartialityAnalysisNote')}
+        </label>
+        <textarea
+          id={id('analysis-note')}
+          value={draft.analysisNote}
+          maxLength={TEAM_LIMITS.analysisNote}
+          disabled={disabled}
+          required={consultant !== null}
+          aria-invalid={invalid}
+          aria-describedby={feedbackId}
+          onChange={(event) =>
+            onChange({ ...draft, analysisNote: event.target.value })
+          }
+        />
+        {documents.length > 0 && (
+          <fieldset>
+            <legend>{copy('impartialityAnalysisEvidence')}</legend>
+            {documents.map((attachment) => (
+              <label key={attachment.id} className="certification-choice">
+                <input
+                  type="checkbox"
+                  checked={draft.analysisEvidence.includes(attachment.id)}
+                  disabled={disabled}
+                  onChange={() =>
+                    onChange({
+                      ...draft,
+                      analysisEvidence: toggleEvidence(
+                        documents,
+                        draft.analysisEvidence,
+                        attachment.id,
+                      ),
+                    })
+                  }
+                />
+                {reference(attachment)}
+              </label>
+            ))}
+          </fieldset>
+        )}
+      </fieldset>
       {correcting && (
         <>
           <label htmlFor={id('reason')}>{copy('correctionReason')}</label>
@@ -288,8 +363,10 @@ export type DecisionFormProps = {
   draft: DecisionDraft;
   /** The team version awaiting this decision. */
   teamVersion: number;
-  /** A member declared a conflict: the team can only be returned. */
+  /** A declaration is not confirmed: the team can only be returned. */
   conflictDeclared: boolean;
+  /** The Case's attachments a signed decision form may be chosen from. */
+  documents: readonly CertificationAttachment[];
   disabled: boolean;
   submitting: boolean;
   submitBlocked: boolean;
@@ -298,12 +375,18 @@ export type DecisionFormProps = {
   onSubmit: (event: FormEvent) => void;
 };
 
-/** An explicit approval or return of the latest team version, a return with its reason. */
+/**
+ * An explicit approval or return of the latest team version, a return with
+ * its reason, the person deciding on behalf of the certification body and
+ * the explicit attestation of independence. Approval stays unavailable,
+ * with its reason, while a declaration is not confirmed.
+ */
 export function DecisionForm({
   idPrefix,
   draft,
   teamVersion,
   conflictDeclared,
+  documents,
   disabled,
   submitting,
   submitBlocked,
@@ -365,6 +448,28 @@ export function DecisionForm({
           />
         </>
       )}
+      <ActingFieldset
+        idPrefix={id('acting')}
+        legend="actingTeamDecisionLegend"
+        draft={draft.onBehalf}
+        documents={documents}
+        disabled={disabled}
+        feedbackId={feedbackId}
+        onChange={(onBehalf) => onChange({ ...draft, onBehalf })}
+      />
+      <label className="certification-choice">
+        <input
+          type="checkbox"
+          checked={draft.independenceAttested}
+          disabled={disabled}
+          aria-invalid={invalid}
+          aria-describedby={feedbackId}
+          onChange={(event) =>
+            onChange({ ...draft, independenceAttested: event.target.checked })
+          }
+        />
+        {copy('teamDecisionAttestation')}
+      </label>
       <button
         type="submit"
         className={

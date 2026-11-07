@@ -8,6 +8,10 @@ import {
   type DurationRefusal,
   type DurationWarning,
 } from './certification-duration';
+import type {
+  DeclarationState,
+  ImpartialityDeclaration,
+} from './certification-team';
 
 // Fictional identifiers and a fictional dairy; never real Client data.
 export const certificationIds = {
@@ -119,6 +123,7 @@ export const certificationIdentity: BrowserIdentity = {
 /** The fictional dairy's declared application, as the server returns it. */
 export function lactisFacts(overrides: Record<string, unknown> = {}) {
   return {
+    submittedOn: null,
     declaredLegalName: 'Lactis Demo SRL',
     declaredAddress: 'Str. Exemplu 1, Demo City',
     sites: [{ address: 'Str. Exemplu 1, Demo City', activity: 'Dairy plant' }],
@@ -149,11 +154,22 @@ export function reviewCriteria(answer: 'yes' | 'no' = 'yes') {
 
 /** All four impartiality declarations confirmed. */
 export const NO_CONFLICT = {
-  noConsultancy: true,
-  noEmployment: true,
-  noManagementInvolvement: true,
-  confidentiality: true,
-};
+  noConsultancy: 'confirmed',
+  noEmployment: 'confirmed',
+  noManagementInvolvement: 'confirmed',
+  confidentiality: 'confirmed',
+} satisfies Record<ImpartialityDeclaration, DeclarationState>;
+
+/** A fictional act recorded on behalf of the certification body. */
+export function actedFor(overrides: Record<string, unknown> = {}) {
+  return {
+    actedBy: 'Head of Body Demo',
+    actedByFunction: 'Head of the certification body',
+    actedOn: '2026-11-03',
+    formAttachmentId: null,
+    ...overrides,
+  };
+}
 
 /** One team member as the server records it: a leader holding the category. */
 export function teamMember(overrides: Record<string, unknown> = {}) {
@@ -200,6 +216,7 @@ export function stage1Report(
     conclusionNote: 'Documented system implemented; ready for Stage 2.',
     reportAttachmentId,
     participantListAttachmentId: null,
+    certificationBodyApproval: null,
     ...overrides,
   };
 }
@@ -215,6 +232,7 @@ export function stage2Report(
     reportAttachmentId,
     participantListAttachmentId: null,
     annexAttachmentId: null,
+    certificationBodyApproval: null,
     ...overrides,
   };
 }
@@ -295,6 +313,9 @@ export function dossierReview(missing?: string) {
       ]),
     ),
     conclusion: 'Dossier complete; the recommendation is supported.',
+    reviewedBy: null,
+    approvedBy: null,
+    independenceAttested: true,
   };
 }
 
@@ -627,15 +648,25 @@ export class FakeCertificationServer {
     return stored.id;
   }
 
-  /** A colleague proposes a team version, making earlier revisions stale. */
+  /**
+   * A colleague proposes a team version, optionally with its impartiality
+   * analysis, making earlier revisions stale.
+   */
   proposeTeamAsColleague(
     caseId: string,
     members: Record<string, unknown>[],
     reason: string | null = null,
+    impartialityAnalysis: Record<string, unknown> | null = null,
   ) {
     const stored = this.cases.get(caseId);
     if (!stored) throw new Error('Unknown Case');
-    this.append(stored, 'team', { members }, reason, colleague);
+    this.append(
+      stored,
+      'team',
+      { members, impartialityAnalysis },
+      reason,
+      colleague,
+    );
   }
 
   /** A colleague approver decides on the latest team version. */
@@ -794,9 +825,14 @@ export class FakeCertificationServer {
 
   /**
    * A colleague confirms the proposal for CI with every declared study and no
-   * factor, making any earlier expected revision stale.
+   * factor, optionally on behalf of the certification body, making any
+   * earlier expected revision stale.
    */
-  confirmDurationAsColleague(caseId: string, reason: string | null = null) {
+  confirmDurationAsColleague(
+    caseId: string,
+    reason: string | null = null,
+    onBehalf: Record<string, unknown> | null = null,
+  ) {
     const stored = this.cases.get(caseId);
     const application = stored && latestStep(stored, 'application');
     if (!stored || !application) throw new Error('Unknown Case');
@@ -827,6 +863,7 @@ export class FakeCertificationServer {
           ]),
         ),
         justification: null,
+        onBehalf,
       },
       reason,
       colleague,
@@ -1015,8 +1052,14 @@ export class FakeCertificationServer {
    */
   private recommend(stored: StoredCase, body: unknown): Response {
     if (!holdsAuditor(this.actor())) return new Response(null, { status: 403 });
-    const { expectedRevision, reason, recommendation, basis, ...rest } =
-      record(body);
+    const {
+      expectedRevision,
+      reason,
+      recommendation,
+      basis,
+      recommendedOn = null,
+      ...rest
+    } = record(body);
     if (
       Object.keys(rest).length > 0 ||
       typeof expectedRevision !== 'number' ||
@@ -1024,6 +1067,7 @@ export class FakeCertificationServer {
         recommendation !== 'do_not_grant' &&
         recommendation !== 'additional_audit') ||
       !bounded(basis, 4000) ||
+      !(recommendedOn === null || calendarDate(recommendedOn)) ||
       !optionalText(reason)
     )
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
@@ -1044,20 +1088,30 @@ export class FakeCertificationServer {
     return this.appendStage(
       stored,
       'recommendation',
-      { recommendation, basis },
+      { recommendation, basis, recommendedOn },
       reason,
     );
   }
 
   /**
    * The server's checks, in its order: the approver grant, every item
-   * answered, the revision, independence, a recommendation, no decision.
+   * answered, the revision, independence, the attestation, the acting
+   * persons outside every team version and their signed forms, a
+   * recommendation, no decision.
    */
   private reviewDossier(stored: StoredCase, body: unknown): Response {
     if (!holdsApprover(this.actor()))
       return new Response(null, { status: 403 });
-    const { expectedRevision, reason, items, conclusion, ...rest } =
-      record(body);
+    const {
+      expectedRevision,
+      reason,
+      items,
+      conclusion,
+      reviewedBy = null,
+      approvedBy = null,
+      independenceAttested,
+      ...rest
+    } = record(body);
     const answers = record(items);
     const valid = DOSSIER_ITEM_NAMES.every((item) => {
       const entry = answers[item];
@@ -1077,12 +1131,20 @@ export class FakeCertificationServer {
       !valid ||
       typeof expectedRevision !== 'number' ||
       !bounded(conclusion, 4000) ||
+      !actingInput(reviewedBy) ||
+      !actingInput(approvedBy) ||
       !optionalText(reason)
     )
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
     const closed = this.lockOpen(stored, expectedRevision);
     if (closed) return closed;
     if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (independenceAttested !== true)
+      return refusal(400, 'CERTIFICATION_INDEPENDENCE_ATTESTATION');
+    for (const act of [reviewedBy, approvedBy]) {
+      const refused = this.actingRefusal(stored, act);
+      if (refused) return refused;
+    }
     if (!latestStep(stored, 'recommendation'))
       return refusal(409, 'CERTIFICATION_RECOMMENDATION_MISSING');
     if (latestStep(stored, 'decision'))
@@ -1098,15 +1160,48 @@ export class FakeCertificationServer {
           }),
         ),
         conclusion,
+        reviewedBy,
+        approvedBy,
+        independenceAttested: true,
       },
       reason,
     );
   }
 
   /**
+   * An act on behalf of the certification body by a person named on no
+   * team version, citing a signed form attached to the Case, or nothing.
+   */
+  private actingRefusal(stored: StoredCase, act: unknown): Response | null {
+    if (act === null || act === undefined) return null;
+    const { actedBy, formAttachmentId } = record(act);
+    if (this.namedOnAnyTeam(stored, actedBy))
+      return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (
+      formAttachmentId !== null &&
+      formAttachmentId !== undefined &&
+      !stored.attachments.some((item) => item.id === formAttachmentId)
+    )
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    return null;
+  }
+
+  /** Whether a name is the name of a member of any team version. */
+  private namedOnAnyTeam(stored: StoredCase, name: unknown): boolean {
+    return stored.steps.some(
+      (step) =>
+        step.step === 'team' &&
+        list(step.value.members).some(
+          (member) => normalName(record(member).name) === normalName(name),
+        ),
+    );
+  }
+
+  /**
    * The server's checks, in its order: the approver grant, the attestation,
-   * the input, the revision, independence, one decision, the decision maker
-   * outside the approved team, the form's role, then every precondition.
+   * the input, the revision, independence, an outcome a correction keeps,
+   * the decision maker outside the approved team, the form's role, every
+   * precondition, the reason, then an unchanged correction.
    */
   private decide(stored: StoredCase, body: unknown): Response {
     if (!holdsApprover(this.actor()))
@@ -1148,8 +1243,9 @@ export class FakeCertificationServer {
     const closed = this.lockOpen(stored, expectedRevision);
     if (closed) return closed;
     if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
-    if (latestStep(stored, 'decision'))
-      return refusal(409, 'CERTIFICATION_DECIDED');
+    const previous = latestStep(stored, 'decision');
+    if (previous && previous.value.decision !== decision)
+      return refusal(409, 'CERTIFICATION_DECISION_OUTCOME_FIXED');
     if (this.namesTeamMember(stored, decidedBy))
       return refusal(409, 'CERTIFICATION_INDEPENDENCE');
     if (
@@ -1167,25 +1263,23 @@ export class FakeCertificationServer {
         },
         { status: 409 },
       );
-    if (reason !== undefined && reason !== null)
+    const value = {
+      decision,
+      grantedTexts: texts,
+      decidedOn,
+      decidedBy,
+      decidedByFunction,
+      decisionFormAttachmentId,
+      independenceAttested: true,
+      rationale,
+      additionalInformation,
+    };
+    const stated = nonblank(reason) ? reason : null;
+    if (!previous !== (stated === null))
       return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
-    this.append(
-      stored,
-      'decision',
-      {
-        decision,
-        grantedTexts: texts,
-        decidedOn,
-        decidedBy,
-        decidedByFunction,
-        decisionFormAttachmentId,
-        independenceAttested: true,
-        rationale,
-        additionalInformation,
-      },
-      null,
-      me,
-    );
+    if (previous && sameValue(previous.value, value))
+      return refusal(409, 'CERTIFICATION_CORRECTION_UNCHANGED');
+    this.append(stored, 'decision', value, stated, me);
     if (decision === 'refused') stored.status = 'refused';
     return Response.json(this.detail(stored), { status: 201 });
   }
@@ -1389,7 +1483,7 @@ export class FakeCertificationServer {
       )
     )
       failures.push('DOSSIER_REVIEW_INCOMPLETE');
-    if (decidedOn > new Date(this.clock).toISOString().slice(0, 10))
+    if (decidedOn > this.latestBusinessDate())
       failures.push('DECISION_IN_FUTURE');
     return failures;
   }
@@ -1457,7 +1551,7 @@ export class FakeCertificationServer {
     if (first !== (reason === null))
       return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
     const signedOn = String(input.signedOn);
-    if (signedOn > new Date(this.clock).toISOString().slice(0, 10))
+    if (signedOn > this.latestBusinessDate())
       return refusal(409, 'CERTIFICATION_AGREEMENT_IN_FUTURE');
     const attached = stored.attachments.find(
       (item) => item.id === input.attachmentId,
@@ -1474,11 +1568,29 @@ export class FakeCertificationServer {
     return Response.json(this.detail(stored), { status: 201 });
   }
 
-  /** The server's checks, in its order: composition, revision, agreement, reason, links. */
+  /**
+   * The server's checks, in its order: composition and analysis, revision,
+   * agreement, reason, the analysis after a declared consultant, its
+   * evidence, links.
+   */
   private proposeTeam(stored: StoredCase, body: unknown): Response {
     const input = record(body);
     const composition = teamComposition(input.members);
     if (composition !== null) return refusal(400, composition);
+    const analysis =
+      input.impartialityAnalysis === undefined
+        ? null
+        : input.impartialityAnalysis;
+    const analysisBody = analysis === null ? null : record(analysis);
+    const evidence =
+      analysisBody === null
+        ? []
+        : evidenceInput(analysisBody.evidenceAttachmentIds);
+    if (
+      analysisBody !== null &&
+      (!bounded(analysisBody.note, 4000) || evidence === undefined)
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
     const reason = input.reason === undefined ? null : input.reason;
     if (reason !== null && !nonblank(reason))
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
@@ -1491,6 +1603,14 @@ export class FakeCertificationServer {
     const first = !latestStep(stored, 'team');
     if (first !== (reason === null))
       return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    const facts = latestStep(stored, 'application')?.value;
+    if (
+      record(facts?.consultant ?? { used: false }).used === true &&
+      !analysisBody
+    )
+      return refusal(400, 'CERTIFICATION_TEAM_ANALYSIS_REQUIRED');
+    if (!this.allAttached(stored, evidence ?? []))
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
     const members = list(input.members).map(record);
     if (
       members.some(
@@ -1501,13 +1621,27 @@ export class FakeCertificationServer {
       )
     )
       return refusal(400, 'CERTIFICATION_TEAM_MEMBER_UNKNOWN');
-    this.append(stored, 'team', { members }, reason, me);
+    this.append(
+      stored,
+      'team',
+      {
+        members,
+        impartialityAnalysis:
+          analysisBody === null
+            ? null
+            : { note: analysisBody.note, evidenceAttachmentIds: evidence },
+      },
+      reason,
+      me,
+    );
     return Response.json(this.detail(stored), { status: 201 });
   }
 
   /**
-   * The server's checks, in its order: the approver grant, the input, the
-   * revision, a pending team of that version, independence, then conflicts.
+   * The server's checks, in its order: the approver grant, the input and
+   * its attestation, the revision, a pending team of that version,
+   * independence of the actor and of the person acting, the signed form,
+   * then declarations that are not confirmed.
    */
   private decideTeam(stored: StoredCase, body: unknown): Response {
     if (!holdsApprover(this.actor()))
@@ -1516,11 +1650,18 @@ export class FakeCertificationServer {
     const approved =
       input.decision === 'approved' &&
       (input.reason === undefined || input.reason === null);
+    const onBehalf = input.onBehalf === undefined ? null : input.onBehalf;
     if (
       typeof input.teamVersion !== 'number' ||
-      !(approved || (input.decision === 'returned' && nonblank(input.reason)))
+      !(
+        approved ||
+        (input.decision === 'returned' && nonblank(input.reason))
+      ) ||
+      !actingInput(onBehalf)
     )
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.independenceAttested !== true)
+      return refusal(400, 'CERTIFICATION_INDEPENDENCE_ATTESTATION');
     if (input.expectedRevision !== stored.revision)
       return refusal(409, 'STALE_VERSION');
     if (stored.status !== 'open')
@@ -1540,6 +1681,8 @@ export class FakeCertificationServer {
         ),
     );
     if (onTeam) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    const acting = this.actingRefusal(stored, onBehalf);
+    if (acting) return acting;
     if (
       approved &&
       list(team.value.members).some((member) => declaresConflict(member))
@@ -1552,6 +1695,8 @@ export class FakeCertificationServer {
         teamVersion: team.version,
         decision: input.decision,
         reason: approved ? null : input.reason,
+        onBehalf,
+        independenceAttested: true,
       },
       null,
       me,
@@ -1679,6 +1824,7 @@ export class FakeCertificationServer {
             'conclusionNote',
             'reportAttachmentId',
             'participantListAttachmentId',
+            'certificationBodyApproval',
           ]
         : [
             'reportDate',
@@ -1686,6 +1832,7 @@ export class FakeCertificationServer {
             'reportAttachmentId',
             'participantListAttachmentId',
             'annexAttachmentId',
+            'certificationBodyApproval',
           ];
     if (Object.keys(input).some((key) => !fields.includes(key)))
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
@@ -1696,6 +1843,7 @@ export class FakeCertificationServer {
       reportAttachmentId,
       participantListAttachmentId = null,
       annexAttachmentId = null,
+      certificationBodyApproval = null,
     } = input;
     const value =
       stage === 'stage_1'
@@ -1706,6 +1854,7 @@ export class FakeCertificationServer {
             conclusionNote: input.conclusionNote,
             reportAttachmentId,
             participantListAttachmentId,
+            certificationBodyApproval,
           }
         : {
             reportDate,
@@ -1713,6 +1862,7 @@ export class FakeCertificationServer {
             reportAttachmentId,
             participantListAttachmentId,
             annexAttachmentId,
+            certificationBodyApproval,
           };
     if (
       !calendarDate(reportDate) ||
@@ -1722,6 +1872,7 @@ export class FakeCertificationServer {
         nonblank(participantListAttachmentId)
       ) ||
       !(annexAttachmentId === null || nonblank(annexAttachmentId)) ||
+      !actingInput(certificationBodyApproval) ||
       (stage === 'stage_1'
         ? (input.conclusion !== 'ready' && input.conclusion !== 'not_ready') ||
           !nonblank(input.conclusionNote)
@@ -1763,7 +1914,15 @@ export class FakeCertificationServer {
           'report',
           'evidence',
           'iso22000_annex',
-        ]))
+        ])) ||
+      !this.allAttached(
+        stored,
+        certificationBodyApproval === null
+          ? []
+          : [record(certificationBodyApproval).formAttachmentId].filter(
+              nonblank,
+            ),
+      )
     )
       return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
     return this.appendStage(
@@ -2227,6 +2386,11 @@ export class FakeCertificationServer {
       typeof input.justification === 'string' ? input.justification : null;
     if ((factorsUsed || differs) && justification === null)
       return refusal(400, 'CERTIFICATION_DURATION_JUSTIFICATION_REQUIRED');
+    const onBehalf = input.onBehalf === undefined ? null : input.onBehalf;
+    if (!actingInput(onBehalf))
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const acting = this.actingFormRefusal(stored, onBehalf);
+    if (acting) return acting;
     this.append(
       stored,
       'duration',
@@ -2240,11 +2404,30 @@ export class FakeCertificationServer {
         computation: result,
         confirmed,
         justification,
+        onBehalf,
       },
       reason,
       me,
     );
     return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** A signed form of an act on behalf of the certification body is attached. */
+  private actingFormRefusal(stored: StoredCase, act: unknown): Response | null {
+    if (act === null) return null;
+    const { formAttachmentId } = record(act);
+    return formAttachmentId === null ||
+      formAttachmentId === undefined ||
+      stored.attachments.some((item) => item.id === formAttachmentId)
+      ? null
+      : refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+  }
+
+  /** The latest calendar date already reached somewhere (UTC+14). */
+  private latestBusinessDate(): string {
+    return new Date(this.clock + 14 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
   }
 
   private open(body: unknown): Response {
@@ -2303,6 +2486,11 @@ export class FakeCertificationServer {
       answers.some((value) => value !== 'yes')
     )
       return refusal(400, 'CERTIFICATION_REVIEW_CRITERIA_NOT_MET');
+    const onBehalf = input.onBehalf === undefined ? null : input.onBehalf;
+    if (!actingInput(onBehalf))
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const acting = this.actingFormRefusal(stored, onBehalf);
+    if (acting) return acting;
     const rejected = input.outcome === 'rejected';
     this.append(
       stored,
@@ -2311,6 +2499,7 @@ export class FakeCertificationServer {
         criteria,
         outcome: input.outcome,
         rejectionReason: rejected ? input.rejectionReason : null,
+        onBehalf,
       },
       null,
       me,
@@ -2480,9 +2669,49 @@ const DECLARATION_NAMES = [
   'confidentiality',
 ];
 
+/** Some declaration is a conflict or to verify; booleans are the first format. */
 function declaresConflict(member: unknown): boolean {
   const declarations = record(record(member).declarations);
-  return DECLARATION_NAMES.some((name) => declarations[name] !== true);
+  return DECLARATION_NAMES.some(
+    (name) => declarations[name] !== 'confirmed' && declarations[name] !== true,
+  );
+}
+
+const DECLARATION_VALUES: unknown[] = [
+  'confirmed',
+  'conflict',
+  'to_verify',
+  true,
+  false,
+];
+
+/** Absent, null, or an act with its person, function, date and optional form. */
+function actingInput(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value !== 'object' || Array.isArray(value)) return false;
+  const {
+    actedBy,
+    actedByFunction,
+    actedOn,
+    formAttachmentId = null,
+    ...rest
+  } = record(value);
+  return (
+    Object.keys(rest).length === 0 &&
+    bounded(actedBy, 200) &&
+    bounded(actedByFunction, 200) &&
+    calendarDate(actedOn) &&
+    (formAttachmentId === null || nonblank(formAttachmentId))
+  );
+}
+
+function normalName(value: unknown): string {
+  return String(value)
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .toLocaleLowerCase('en');
 }
 
 /** The server's composition refusal code for submitted members, if any. */
@@ -2496,7 +2725,9 @@ function teamComposition(value: unknown): string | null {
     if (
       !TEAM_ROLE_VALUES.includes(String(member.role)) ||
       typeof member.holdsCategory !== 'boolean' ||
-      DECLARATION_NAMES.some((name) => typeof declarations[name] !== 'boolean')
+      DECLARATION_NAMES.some(
+        (name) => !DECLARATION_VALUES.includes(declarations[name]),
+      )
     )
       return invalidInput;
     const note = member.conflictNote === undefined ? null : member.conflictNote;

@@ -35,7 +35,6 @@ import {
   agreementFromDraft,
   attachFromDraft,
   emptyAttachDraft,
-  utcToday,
   type AgreementCheck,
   type AgreementDraft,
 } from './certification-documents-draft';
@@ -43,6 +42,10 @@ import {
   useCertificationCopy,
   type CertificationMessageKey,
 } from './certification.copy';
+import {
+  latestBusinessDate,
+  type ActAttribution,
+} from './certification-attribution';
 import {
   correctionReason,
   draftFromFacts,
@@ -68,6 +71,7 @@ import {
   linkedToAnyTeamVersion,
   teamDraftFor,
   teamFromDraft,
+  type DecisionCheck,
   type DecisionDraft,
   type TeamCheck,
   type TeamDraft,
@@ -202,6 +206,7 @@ import {
   certificateDataDraftFor,
   certificateDataFromDraft,
   certificateFromDraft,
+  certificationDecisionDraftFor,
   certificationDecisionFromDraft,
   dossierReviewDraftFor,
   dossierReviewFromDraft,
@@ -212,6 +217,7 @@ import {
   type CertificateDataDraft,
   type CertificateDraft,
   type CertificationDecisionDraft,
+  type DossierReviewCheck,
   type DossierReviewDraft,
   type RecommendationDraft,
 } from './certification-decision-draft';
@@ -494,9 +500,12 @@ function CertificationRegistry(
     null,
   );
   const [dossierFeedback, setDossierFeedback] = useState<Feedback>(IDLE);
-  /** The decision is recorded once: its draft always starts empty. */
+  /**
+   * Null until edited or opened for a correction: a first decision then
+   * starts empty, a correction from the latest decision's values.
+   */
   const [certificationDecisionDraft, setCertificationDecisionDraft] =
-    useState<CertificationDecisionDraft>(emptyCertificationDecisionDraft);
+    useState<CertificationDecisionDraft | null>(null);
   const [certificationDecisionFeedback, setCertificationDecisionFeedback] =
     useState<Feedback>(IDLE);
   const [certificateDataDraft, setCertificateDataDraft] =
@@ -586,7 +595,7 @@ function CertificationRegistry(
       case 'dossierReview':
         return setDossierDraft(null);
       case 'certificationDecision':
-        return setCertificationDecisionDraft(emptyCertificationDecisionDraft());
+        return setCertificationDecisionDraft(null);
       case 'certificateData':
         return setCertificateDataDraft(null);
       case 'certificate':
@@ -1151,7 +1160,7 @@ function CertificationRegistry(
       {
         register: register.items,
         correcting: current.agreement !== null,
-        today: utcToday(),
+        today: latestBusinessDate(),
       },
     );
     if (check.status !== 'valid') {
@@ -1189,15 +1198,19 @@ function CertificationRegistry(
       linkable: new Set(
         linkOptions(detail.value).map((option) => option.value),
       ),
+      consultantDeclared: declaredConsultant(current) !== null,
+      register: detail.value.register.items,
     });
     if (check.status !== 'valid') {
       setTeamFeedback(refusedWith(teamMessage(check)));
       return;
     }
+    const analysis = check.team.impartialityAnalysis;
     const body = JSON.stringify({
       expectedRevision: current.revision,
       ...(check.reason === null ? {} : { reason: check.reason }),
       members: check.team.members,
+      ...(analysis === null ? {} : { impartialityAnalysis: analysis }),
     });
     void execute(
       'team',
@@ -1218,18 +1231,16 @@ function CertificationRegistry(
       blockedUntilReload(decisionFeedback)
     )
       return;
-    const current = detail.value.caseDetail;
+    const { caseDetail: current, timeline, register } = detail.value;
     const team = current.team;
     if (!team || current.nextStep !== 'team_decision') return;
-    const check = decisionFromDraft(decisionDraft, team.value);
+    const check = decisionFromDraft(decisionDraft, {
+      team: team.value,
+      timeline,
+      register: register.items,
+    });
     if (check.status !== 'valid') {
-      setDecisionFeedback(
-        refusedWith(
-          check.status === 'conflictDeclared'
-            ? 'decisionConflictOnly'
-            : 'decisionValidation',
-        ),
-      );
+      setDecisionFeedback(refusedWith(teamDecisionMessage(check.status)));
       return;
     }
     const body = JSON.stringify({
@@ -1237,6 +1248,8 @@ function CertificationRegistry(
       teamVersion: team.version,
       decision: check.decision,
       ...(check.decision === 'returned' ? { reason: check.reason } : {}),
+      ...(check.onBehalf === null ? {} : { onBehalf: check.onBehalf }),
+      independenceAttested: true,
     });
     void execute(
       'decision',
@@ -1517,16 +1530,14 @@ function CertificationRegistry(
     if (!current.recommendation) return;
     const check = dossierReviewFromDraft(
       dossierDraft ?? dossierReviewDraftFor(null),
-      current.dossierReview !== null,
+      {
+        correcting: current.dossierReview !== null,
+        register: view.register.items,
+        timeline: view.timeline,
+      },
     );
     if (check.status !== 'valid') {
-      setDossierFeedback(
-        refusedWith(
-          check.status === 'reasonRequired'
-            ? 'reasonRequired'
-            : 'dossierReviewValidation',
-        ),
-      );
+      setDossierFeedback(refusedWith(dossierReviewMessage(check.status)));
       return;
     }
     sendClosing('dossierReview', current, 'dossier-review', {
@@ -1536,24 +1547,32 @@ function CertificationRegistry(
   }
 
   /**
-   * An approver outside the team records the decision once, after the
-   * draft is complete and attested and the read Case meets every
-   * precondition the web can mirror; the server rechecks them all.
+   * An approver outside the team records the decision, or corrects its
+   * texts and references while the Case is open, after the draft is
+   * complete and attested and the read Case meets every precondition the
+   * web can mirror; the server rechecks them all and keeps the outcome.
    */
   function submitCertificationDecision(event: FormEvent) {
     event.preventDefault();
     const view = closingView('certificationDecision');
-    if (!view || !undecidedApprover(view)) return;
+    if (!view || !decisionOffered(view)) return;
+    const recorded = view.caseDetail.decision;
+    if (recorded && !certificationDecisionDraft) return;
     const check = certificationDecisionFromDraft(
-      certificationDecisionDraft,
-      view.register.items,
+      certificationDecisionDraft ?? emptyCertificationDecisionDraft(),
+      {
+        register: view.register.items,
+        correcting: recorded?.value.decision ?? null,
+      },
     );
     if (check.status !== 'valid') {
       setCertificationDecisionFeedback(
         refusedWith(
           check.status === 'attestation'
             ? 'decisionAttestationRequired'
-            : 'certificationDecisionValidation',
+            : check.status === 'reasonRequired'
+              ? 'reasonRequired'
+              : 'certificationDecisionValidation',
         ),
       );
       return;
@@ -1571,6 +1590,7 @@ function CertificationRegistry(
       return;
     }
     sendClosing('certificationDecision', view.caseDetail, 'decision', {
+      ...(check.reason === null ? {} : { reason: check.reason }),
       ...check.value,
     });
   }
@@ -1653,6 +1673,14 @@ function CertificationRegistry(
       findingRoles(view).independentApprover &&
       view.caseDetail.decision === null
     );
+  }
+
+  /**
+   * An approver linked to no team version records the decision of an open
+   * Case, or corrects it until the Certificate closes the Case.
+   */
+  function decisionOffered(view: CaseView): boolean {
+    return findingRoles(view).independentApprover;
   }
 
   /**
@@ -1842,15 +1870,17 @@ function CertificationRegistry(
       blockedUntilReload(reviewFeedback)
     )
       return;
-    const current = detail.value.caseDetail;
-    const check = reviewFromDraft(reviewDraft);
+    const { caseDetail: current, register } = detail.value;
+    const check = reviewFromDraft(reviewDraft, register.items);
     if (check.status !== 'valid') {
       // Mirrors the server: never send an acceptance with a "no" answer.
       setReviewFeedback(
         refusedWith(
           check.status === 'criteriaNotMet'
             ? 'criteriaNotMet'
-            : 'reviewValidation',
+            : check.status === 'acting'
+              ? 'actingValidation'
+              : 'reviewValidation',
         ),
       );
       return;
@@ -1863,6 +1893,7 @@ function CertificationRegistry(
       ...(review.outcome === 'rejected'
         ? { rejectionReason: review.rejectionReason }
         : {}),
+      ...(review.onBehalf === null ? {} : { onBehalf: review.onBehalf }),
     });
     void execute(
       'review',
@@ -1962,6 +1993,7 @@ function CertificationRegistry(
       inputs: check.inputs,
       computation: proposal.result,
       correcting,
+      documents: detail.value.register.items,
     });
     if (confirmation.status !== 'valid') {
       setDurationFeedback(refusedWith(confirmationMessage(confirmation)));
@@ -1975,6 +2007,9 @@ function CertificationRegistry(
       ...(confirmation.justification === null
         ? {}
         : { justification: confirmation.justification }),
+      ...(confirmation.onBehalf === null
+        ? {}
+        : { onBehalf: confirmation.onBehalf }),
     });
     void execute(
       'duration',
@@ -2376,6 +2411,7 @@ function CertificationRegistry(
                     />
                     <ReviewView
                       review={caseView.caseDetail.applicationReview.value}
+                      register={caseView.register}
                     />
                   </>
                 ) : (
@@ -2384,7 +2420,7 @@ function CertificationRegistry(
                 {authority.manage && (
                   <>
                     {feedbackMessage('review', reviewFeedback)}
-                    {reviewStep(caseView.caseDetail)}
+                    {reviewStep(caseView.caseDetail, caseView.register)}
                   </>
                 )}
               </section>
@@ -2401,6 +2437,7 @@ function CertificationRegistry(
                       />
                       <DurationView
                         determination={caseView.caseDetail.duration.value}
+                        register={caseView.register}
                       />
                     </>
                   ) : (
@@ -2409,7 +2446,7 @@ function CertificationRegistry(
                   {authority.manage && (
                     <>
                       {feedbackMessage('duration', durationFeedback)}
-                      {durationStep(caseView.caseDetail)}
+                      {durationStep(caseView.caseDetail, caseView.register)}
                     </>
                   )}
                 </section>
@@ -2474,6 +2511,7 @@ function CertificationRegistry(
                       <TeamView
                         team={caseView.caseDetail.team.value}
                         people={knownPeople(caseView)}
+                        register={caseView.register}
                       />
                     </>
                   ) : (
@@ -2499,6 +2537,7 @@ function CertificationRegistry(
                       />
                       <DecisionView
                         decision={caseView.caseDetail.teamDecision.value}
+                        register={caseView.register}
                       />
                     </>
                   ) : (
@@ -2614,7 +2653,7 @@ function CertificationRegistry(
   }
 
   /** The review form, or the plain-language reason it is unavailable. */
-  function reviewStep(current: CaseDetail) {
+  function reviewStep(current: CaseDetail, register: DocumentRegister) {
     if (current.status === 'rejected' || current.applicationReview) return null;
     if (!current.application)
       return (
@@ -2626,6 +2665,7 @@ function CertificationRegistry(
       <ReviewForm
         idPrefix={`${prefix}-review`}
         draft={reviewDraft}
+        documents={register.items}
         disabled={busy}
         submitting={reviewFeedback.status === 'saving'}
         submitBlocked={blockedUntilReload(reviewFeedback)}
@@ -2644,7 +2684,7 @@ function CertificationRegistry(
   }
 
   /** The duration inputs, proposal and confirmation, or the correction entry. */
-  function durationStep(current: CaseDetail) {
+  function durationStep(current: CaseDetail, register: DocumentRegister) {
     const application = current.application;
     const recorded = current.duration;
     if (current.status !== 'open' || !application) return null;
@@ -2682,6 +2722,7 @@ function CertificationRegistry(
         idPrefix={`${prefix}-duration`}
         facts={application.value}
         draft={draft}
+        documents={register.items}
         correcting={recorded !== null}
         disabled={busy}
         computing={proposal.status === 'computing'}
@@ -2839,6 +2880,8 @@ function CertificationRegistry(
         draft={teamDraft ?? teamDraftFor(null)}
         correcting={proposed !== null}
         linkOptions={linkOptions(view)}
+        documents={view.register.items}
+        consultant={declaredConsultant(current)}
         disabled={busy}
         submitting={teamFeedback.status === 'saving'}
         submitBlocked={blockedUntilReload(teamFeedback)}
@@ -2889,6 +2932,7 @@ function CertificationRegistry(
         draft={decisionDraft}
         teamVersion={team.version}
         conflictDeclared={!teamWithoutConflict(team.value)}
+        documents={view.register.items}
         disabled={busy}
         submitting={decisionFeedback.status === 'saving'}
         submitBlocked={blockedUntilReload(decisionFeedback)}
@@ -3377,6 +3421,7 @@ function CertificationRegistry(
       feedbackId: describedFeedback(kind, feedback),
       reports,
       participantLists: slotAttachments(view.register.items, 'participantList'),
+      documents: view.register.items,
       onSubmit: (event: FormEvent) => submitStageReport(stage, event),
       onCancel: reported
         ? () => {
@@ -3443,7 +3488,7 @@ function CertificationRegistry(
         draft={agreementDraft ?? agreementDraftFor(null)}
         attachments={attachments}
         correcting={recorded !== null}
-        today={utcToday()}
+        today={latestBusinessDate()}
         disabled={busy}
         submitting={agreementFeedback.status === 'saving'}
         submitBlocked={blockedUntilReload(agreementFeedback)}
@@ -3580,7 +3625,7 @@ function CertificationRegistry(
       recorded ? (
         <>
           <VersionAttribution version={recorded} />
-          <DossierReviewView review={recorded.value} />
+          <DossierReviewView review={recorded.value} register={view.register} />
         </>
       ) : (
         <p>{copy('dossierReviewMissing')}</p>
@@ -3620,6 +3665,7 @@ function CertificationRegistry(
         {...closingForm('dossierReview', 'dossier-review')}
         draft={dossierDraft ?? dossierReviewDraftFor(null)}
         correcting={recorded !== null}
+        documents={view.register.items}
         onChange={(draft) => {
           setDossierDraft(draft);
           edited('dossierReview');
@@ -3638,12 +3684,18 @@ function CertificationRegistry(
   }
 
   /**
-   * The immutable decision once recorded; before it, the preconditions the
-   * read Case shows unmet and the decision form for an approver outside the
-   * team, or who decides.
+   * The latest decision with its earlier versions; before it, the
+   * preconditions the read Case shows unmet and the decision form for an
+   * approver outside the team, or who decides. While the Case is open, that
+   * approver may correct the decided texts and references.
    */
   function decisionSection(view: CaseView) {
     const recorded = view.caseDetail.decision;
+    const earlier = view.timeline.entries
+      .flatMap((entry) =>
+        entry.step === 'decision' && entry.id !== recorded?.id ? [entry] : [],
+      )
+      .reverse();
     return closingSection(
       'certificationDecision',
       'certificationDecisionTitle',
@@ -3654,6 +3706,26 @@ function CertificationRegistry(
             decision={recorded.value}
             register={view.register}
           />
+          {earlier.length > 0 && (
+            <details className="certification-history">
+              <summary>
+                {formatMessage(copy('decisionEarlierVersions'), {
+                  count: earlier.length,
+                })}
+              </summary>
+              <ol>
+                {earlier.map((entry) => (
+                  <li key={entry.id}>
+                    <VersionAttribution version={entry} />
+                    <CertificationDecisionView
+                      decision={entry.value}
+                      register={view.register}
+                    />
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
         </>
       ) : (
         <p>{copy('certificationDecisionMissing')}</p>
@@ -3664,24 +3736,40 @@ function CertificationRegistry(
 
   function certificationDecisionStep(view: CaseView) {
     const current = view.caseDetail;
-    if (current.status !== 'open' || current.decision) return null;
+    const recorded = current.decision;
+    if (current.status !== 'open') return null;
     if (!authority.approve)
-      return (
+      return recorded ? null : (
         <p className="certification-note">
           {copy('certificationDecisionAwaitingApprover')}
         </p>
       );
     // The server refuses a decision by anyone linked to any team version.
-    if (!undecidedApprover(view))
-      return (
+    if (!decisionOffered(view))
+      return recorded ? null : (
         <p className="certification-blocked">
           {copy('certificationDecisionIndependence')}
         </p>
       );
-    const unmet = decisionPreconditions(
-      current,
-      certificationDecisionDraft.decision,
-    );
+    if (recorded && !certificationDecisionDraft)
+      return (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setCertificationDecisionDraft(
+              certificationDecisionDraftFor(recorded.value),
+            );
+            setCertificationDecisionFeedback(IDLE);
+          }}
+        >
+          {copy('correctDecisionTexts')}
+        </button>
+      );
+    const draft =
+      certificationDecisionDraft ?? emptyCertificationDecisionDraft();
+    const outcome = recorded?.value.decision ?? null;
+    const unmet = decisionPreconditions(current, outcome ?? draft.decision);
     return (
       <>
         {unmet.length > 0 && (
@@ -3692,14 +3780,23 @@ function CertificationRegistry(
         )}
         <CertificationDecisionForm
           {...closingForm('certificationDecision', 'certification-decision')}
-          draft={certificationDecisionDraft}
+          draft={draft}
+          correcting={outcome}
           forms={attachmentsWithRole(view.register.items, 'decision_form')}
-          today={utcToday()}
-          onChange={(draft) => {
-            setCertificationDecisionDraft(draft);
+          today={latestBusinessDate()}
+          onChange={(next) => {
+            setCertificationDecisionDraft(next);
             edited('certificationDecision');
           }}
           onSubmit={submitCertificationDecision}
+          onCancel={
+            recorded
+              ? () => {
+                  resetClosingDraft('certificationDecision');
+                  setCertificationDecisionFeedback(IDLE);
+                }
+              : undefined
+          }
         />
       </>
     );
@@ -4047,10 +4144,56 @@ function reportMessage(
       return 'stageDocumentReviewRequired';
     case 'beforePlan':
       return 'stageReportDateRule';
+    case 'acting':
+      return 'actingValidation';
     case 'reasonRequired':
       return 'reasonRequired';
   }
   return unexpected(check.status);
+}
+
+/** Why a team decision draft is refused before it is sent. */
+function teamDecisionMessage(
+  status: Exclude<DecisionCheck, { status: 'valid' }>['status'],
+): CertificationMessageKey {
+  switch (status) {
+    case 'incomplete':
+      return 'decisionValidation';
+    case 'acting':
+      return 'actingValidation';
+    case 'actingOnTeam':
+      return 'actingOnTeam';
+    case 'conflictDeclared':
+      return 'decisionConflictOnly';
+    case 'attestation':
+      return 'teamDecisionAttestationRequired';
+  }
+  return unexpected(status);
+}
+
+/** Why a dossier review draft is refused before it is sent. */
+function dossierReviewMessage(
+  status: Exclude<DossierReviewCheck, { status: 'valid' }>['status'],
+): CertificationMessageKey {
+  switch (status) {
+    case 'incomplete':
+      return 'dossierReviewValidation';
+    case 'acting':
+      return 'actingValidation';
+    case 'actingOnTeam':
+      return 'actingOnTeam';
+    case 'attestation':
+      return 'dossierAttestationRequired';
+    case 'reasonRequired':
+      return 'reasonRequired';
+  }
+  return unexpected(status);
+}
+
+/** The consultant the accepted application declared, if any. */
+function declaredConsultant(current: CaseDetail): string | null {
+  const consultant = current.application?.value.consultant;
+  return consultant?.used ? consultant.name : null;
 }
 
 function agreementMessage(
@@ -4081,6 +4224,8 @@ function teamMessage(
       return 'teamLeaderRule';
     case 'category':
       return 'teamCategoryRule';
+    case 'analysisRequired':
+      return 'teamAnalysisRequired';
     case 'reasonRequired':
       return 'reasonRequired';
   }
@@ -4187,6 +4332,35 @@ function attachmentRoleRefusal(kind: MutationKind): CertificationMessageKey {
   return unexpected(kind);
 }
 
+/** A missing attestation of independence, in the words of each command. */
+function attestationRefusal(kind: MutationKind): CertificationMessageKey {
+  switch (kind) {
+    case 'decision':
+      return 'teamDecisionAttestationRequired';
+    case 'dossierReview':
+      return 'dossierAttestationRequired';
+    case 'certificate':
+      return 'certificateAttestationRequired';
+    case 'certificationDecision':
+    case 'open':
+    case 'application':
+    case 'review':
+    case 'duration':
+    case 'attach':
+    case 'agreement':
+    case 'team':
+    case 'finding':
+    case 'stage1Plan':
+    case 'stage2Plan':
+    case 'stage1Report':
+    case 'stage2Report':
+    case 'recommendation':
+    case 'certificateData':
+      return 'decisionAttestationRequired';
+  }
+  return unexpected(kind);
+}
+
 /**
  * The server's unmet decision preconditions in plain language; an unknown
  * list is never shown as the server's reasons.
@@ -4235,6 +4409,8 @@ function confirmationMessage(
       return 'durationStagesMismatch';
     case 'justificationRequired':
       return 'durationJustificationRequired';
+    case 'acting':
+      return 'actingValidation';
     case 'reasonRequired':
       return 'reasonRequired';
   }
@@ -4305,8 +4481,10 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
  * it, every Stage record to attachments with the roles of their slots
  * attached before it, every Finding record to evidence of this Case attached
  * before it, every decision form and Certificate data form to an attachment
- * with its role attached before it, and the Certificate to an attachment
- * with the Certificate role.
+ * with its role attached before it, every signed form of an act on behalf
+ * of the certification body and every evidence of an impartiality analysis
+ * to an attachment of any role attached before it, and the Certificate to
+ * an attachment with the Certificate role.
  */
 function registerMatches(
   detail: CaseDetail,
@@ -4361,6 +4539,14 @@ function registerMatches(
         ),
       ),
     ) &&
+    timeline.entries.every((entry) =>
+      citedAttachmentsOf(entry).every((attachmentId) =>
+        register.items.some(
+          (item) =>
+            item.id === attachmentId && item.caseRevision < entry.caseRevision,
+        ),
+      ),
+    ) &&
     (detail.certificate === null ||
       register.items.some(
         (item) =>
@@ -4400,6 +4586,40 @@ function closingAttachmentsOf(
     case 'stage_2_report':
     case 'recommendation':
     case 'dossier_review':
+      return [];
+  }
+  return unexpected(entry);
+}
+
+/**
+ * The attachments of any role a timeline entry cites: the signed forms of
+ * its acts on behalf of the certification body and the evidence of a
+ * team's impartiality analysis.
+ */
+function citedAttachmentsOf(entry: CaseTimeline['entries'][number]): string[] {
+  const forms = (...acts: (ActAttribution | null)[]) =>
+    acts.flatMap((act) =>
+      act?.formAttachmentId ? [act.formAttachmentId] : [],
+    );
+  switch (entry.step) {
+    case 'application_review':
+    case 'duration':
+    case 'team_decision':
+      return forms(entry.value.onBehalf);
+    case 'stage_1_report':
+    case 'stage_2_report':
+      return forms(entry.value.certificationBodyApproval);
+    case 'dossier_review':
+      return forms(entry.value.reviewedBy, entry.value.approvedBy);
+    case 'team':
+      return entry.value.impartialityAnalysis?.evidenceAttachmentIds ?? [];
+    case 'application':
+    case 'agreement':
+    case 'stage_1_plan':
+    case 'stage_2_plan':
+    case 'recommendation':
+    case 'decision':
+    case 'certificate_data':
       return [];
   }
   return unexpected(entry);
@@ -4499,11 +4719,9 @@ function commandFeedback(
         case 'CERTIFICATION_FINDING_EVIDENCE_REQUIRED':
           return refusedWith('findingEvidenceRequired');
         case 'CERTIFICATION_INDEPENDENCE_ATTESTATION':
-          return refusedWith(
-            kind === 'certificate'
-              ? 'certificateAttestationRequired'
-              : 'decisionAttestationRequired',
-          );
+          return refusedWith(attestationRefusal(kind));
+        case 'CERTIFICATION_TEAM_ANALYSIS_REQUIRED':
+          return refusedWith('teamAnalysisRequired');
         default:
           return refusedWith('invalid');
       }
@@ -4600,6 +4818,8 @@ function commandFeedback(
           return refusedWith('blockedDossierBeforeRecommendation', true);
         case 'CERTIFICATION_DECIDED':
           return refusedWith('blockedDecided', true);
+        case 'CERTIFICATION_DECISION_OUTCOME_FIXED':
+          return refusedWith('decisionOutcomeFixedRefusal', true);
         case 'CERTIFICATION_DECISION_PRECONDITIONS':
           return preconditionsRefusal(result);
         case 'CERTIFICATION_NOT_GRANTED':

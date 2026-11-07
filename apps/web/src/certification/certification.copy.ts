@@ -759,6 +759,54 @@ const keys = [
   'roleCertificateData',
   'roleDecisionForm',
   'blockedVersionCorrectionReason',
+  'applicationSubmittedOn',
+  'applicationSubmittedOnHelp',
+  'actingOnBehalf',
+  'actingHelp',
+  'actingName',
+  'actingFunction',
+  'actingDate',
+  'actingForm',
+  'actingFormNone',
+  'actingReviewLegend',
+  'actingReviewView',
+  'actingDurationLegend',
+  'actingDurationView',
+  'actingTeamDecisionLegend',
+  'actingTeamDecisionView',
+  'actingReportApprovalLegend',
+  'actingReportApprovalView',
+  'actingValidation',
+  'actingOnTeam',
+  'independenceLabel',
+  'independenceAttested',
+  'independenceUnattested',
+  'teamDecisionAttestation',
+  'teamDecisionAttestationRequired',
+  'dossierReviewerLegend',
+  'dossierApproverLegend',
+  'dossierReviewerView',
+  'dossierApproverView',
+  'dossierAttestation',
+  'dossierAttestationRequired',
+  'declarationConfirmed',
+  'declarationConflict',
+  'declarationToVerify',
+  'declarationsToVerify',
+  'impartialityAnalysis',
+  'impartialityAnalysisHelp',
+  'impartialityAnalysisRequiredHelp',
+  'impartialityAnalysisNote',
+  'impartialityAnalysisEvidence',
+  'impartialityAnalysisNone',
+  'teamAnalysisRequired',
+  'recommendedOn',
+  'correctDecisionTexts',
+  'decisionCorrectionHelp',
+  'decisionOutcomeFixed',
+  'decisionOutcomeFixedRefusal',
+  'decisionEarlierVersions',
+  'timelineCertificationDecisionVersion',
 ] as const;
 
 export type CertificationMessageKey = (typeof keys)[number];
@@ -1181,9 +1229,9 @@ export const certificationMessages = defineMessages(keys, {
     declarationNoManagementInvolvement:
       'Has no involvement in the client’s management',
     declarationConfidentiality: 'Committed to confidentiality',
-    conflictNote: 'Description of the conflict',
+    conflictNote: 'Conflict or point to verify',
     conflictNoteHelp:
-      'Required because a declaration is answered no. A team with a declared conflict can be proposed, but it can only be returned, not approved.',
+      'Required because a declaration is a conflict or still to verify: describe the conflict or what remains to verify. The team can be proposed, but it is approved only once every declaration is confirmed.',
     conflictDeclared: 'Conflict declared',
     addTeamMember: 'Add a member',
     removeTeamMember: 'Remove member {number}',
@@ -1192,9 +1240,9 @@ export const certificationMessages = defineMessages(keys, {
     teamCorrectionHelp:
       'A new version replaces the current proposal, states its reason and needs a new decision by an approver. Earlier versions stay in the timeline.',
     teamValidation:
-      'Complete every member: a name (at most 200 characters), a role, a competence note (at most 1,000 characters) and a yes or no answer to each declaration. A team has one to ten members.',
+      'Complete every member: a name (at most 200 characters), a role, a competence note (at most 1,000 characters) and an answer to each declaration. A team has one to ten members.',
     teamConflictNoteRequired:
-      'Describe the conflict (at most 1,000 characters) for every member with a declaration answered no.',
+      'Describe the conflict or what remains to verify (at most 1,000 characters) for every member with a declaration that is not confirmed.',
     teamLinkInvalid:
       'A Workspace member can be linked to one team member only. Choose another person or leave the link empty.',
     teamLeaderRule: 'A team has exactly one team leader. Check the roles.',
@@ -1230,9 +1278,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionValidation:
       'Choose a decision. Returning the team needs a reason (at most 2,000 characters).',
     decisionConflictOnly:
-      'A member of this team declared a conflict of interest, so the team cannot be approved. Return it with a reason.',
+      'A declaration of this team is not confirmed (a conflict or a point to verify), so the team cannot be approved. Return it with a reason; it can be approved once a new version confirms every declaration.',
     teamConflictDeclared:
-      'A team with a declared conflict of interest cannot be approved. Return it with a reason.',
+      'A team with a declaration that is not confirmed cannot be approved. Return it with a reason.',
     teamIndependence:
       'You cannot decide on this team: you are linked to a member of one of its versions. An approver who is not on the team must decide.',
     teamMemberDecided:
@@ -1575,7 +1623,7 @@ export const certificationMessages = defineMessages(keys, {
     certificationDecisionMissing: 'No Certification Decision is recorded yet.',
     recordCertificationDecision: 'Record the Certification Decision',
     certificationDecisionHelp:
-      'An approver who is not on the audit team records the certification body’s decision once; it cannot be corrected. Nothing is preselected. A grant states the Certificate text granted for each Certificate language.',
+      'An approver who is not on the audit team records the certification body’s decision. Until the Certificate is recorded, a correction may change its texts and references with a reason, never its outcome. Nothing is preselected. A grant states the Certificate text granted for each Certificate language.',
     decisionOutcome: 'Decision',
     decisionGranted: 'Certification granted',
     decisionRefused: 'Certification refused',
@@ -1748,6 +1796,73 @@ export const certificationMessages = defineMessages(keys, {
     roleDecisionForm: 'Decision form',
     blockedVersionCorrectionReason:
       'A new version needs a reason and a first record has none. Reload the Case before saving again.',
+    applicationSubmittedOn: 'Date of the signed application',
+    applicationSubmittedOnHelp:
+      'Optional: the date written on the signed application, when the paper dossier has it.',
+    actingOnBehalf:
+      'A person of the certification body performed this act; I record it on their behalf.',
+    actingHelp:
+      'You stay recorded as the member who entered it. Name the person who acted, their function and the date of the act; a signed form attached to the Case is optional.',
+    actingName: 'Name of the person who acted',
+    actingFunction: 'Their function',
+    actingDate: 'Date of the act',
+    actingForm: 'Signed form',
+    actingFormNone: 'No signed form',
+    actingReviewLegend: 'Application review by the certification body',
+    actingReviewView: 'Reviewed on behalf of the certification body by',
+    actingDurationLegend: 'Duration approval by the certification body',
+    actingDurationView: 'Approved on behalf of the certification body by',
+    actingTeamDecisionLegend: 'Team decision by the certification body',
+    actingTeamDecisionView: 'Decided on behalf of the certification body by',
+    actingReportApprovalLegend: 'Report approval by the certification body',
+    actingReportApprovalView:
+      'Report approved on behalf of the certification body by',
+    actingValidation:
+      'Complete the act recorded on behalf of the certification body: the name and function of the person who acted (at most 200 characters each) and the date of the act. The signed form, when chosen, must be attached to this Case.',
+    actingOnTeam:
+      'The person named as acting for the certification body is on the audit team. A member of the audit team cannot perform this act; check the name.',
+    independenceLabel: 'Independence from the audit team',
+    independenceAttested: 'Attested by the member who recorded it',
+    independenceUnattested:
+      'Not attested: recorded before the attestation was required',
+    teamDecisionAttestation:
+      'I attest that the person deciding on this team is not a member of the audit team.',
+    teamDecisionAttestationRequired:
+      'Confirm that the person deciding on the team is not a member of the audit team.',
+    dossierReviewerLegend: 'Dossier reviewer for the certification body',
+    dossierApproverLegend: 'Approver for the certification body',
+    dossierReviewerView:
+      'Dossier reviewed on behalf of the certification body by',
+    dossierApproverView: 'Approved on behalf of the certification body by',
+    dossierAttestation:
+      'I attest that the dossier reviewer and the approver are not members of the audit team.',
+    dossierAttestationRequired:
+      'Confirm that the dossier reviewer and the approver are not members of the audit team.',
+    declarationConfirmed: 'Confirmed',
+    declarationConflict: 'Conflict',
+    declarationToVerify: 'To verify',
+    declarationsToVerify: 'Declaration to verify',
+    impartialityAnalysis: 'Impartiality analysis',
+    impartialityAnalysisHelp:
+      'Optional: document how the impartiality of the team was analysed, with evidence attached to the Case.',
+    impartialityAnalysisRequiredHelp:
+      'Required: the application declared a consultant ({consultant}). Document how the links between the consultant and the team were analysed, with evidence attached to the Case.',
+    impartialityAnalysisNote: 'Analysis',
+    impartialityAnalysisEvidence: 'Evidence attached to the Case',
+    impartialityAnalysisNone: 'Not documented',
+    teamAnalysisRequired:
+      'Write the impartiality analysis (at most 4,000 characters, at most ten attachments of this Case). It is required when the application declares a consultant or when evidence is chosen.',
+    recommendedOn: 'Date of the recommendation',
+    correctDecisionTexts: 'Correct the decision texts',
+    decisionCorrectionHelp:
+      'A correction records a new version of the decision with its reason. The decided outcome stays as recorded; only the texts and references change, and every precondition is checked again.',
+    decisionOutcomeFixed:
+      'Decision: {outcome}. A correction keeps the decided outcome.',
+    decisionOutcomeFixedRefusal:
+      'A correction keeps the decided outcome; only its texts and references change. Reload the Case.',
+    decisionEarlierVersions: 'Earlier versions of the decision ({count})',
+    timelineCertificationDecisionVersion:
+      'Certification Decision — {decision} (version {version})',
   },
   fr: {
     readerBundle: 'Lecteur de certification de la société',
@@ -2177,9 +2292,9 @@ export const certificationMessages = defineMessages(keys, {
     declarationNoManagementInvolvement:
       'N’intervient pas dans la direction du client',
     declarationConfidentiality: 'S’est engagé à la confidentialité',
-    conflictNote: 'Description du conflit',
+    conflictNote: 'Conflit ou point à vérifier',
     conflictNoteHelp:
-      'Obligatoire, car une déclaration a pour réponse non. Une équipe avec un conflit déclaré peut être proposée, mais elle ne peut qu’être renvoyée, pas approuvée.',
+      'Obligatoire, car une déclaration est un conflit ou reste à vérifier : décrivez le conflit ou ce qui reste à vérifier. L’équipe peut être proposée, mais elle n’est approuvée qu’une fois chaque déclaration confirmée.',
     conflictDeclared: 'Conflit déclaré',
     addTeamMember: 'Ajouter un membre',
     removeTeamMember: 'Retirer le membre {number}',
@@ -2188,9 +2303,9 @@ export const certificationMessages = defineMessages(keys, {
     teamCorrectionHelp:
       'Une nouvelle version remplace la proposition actuelle, indique son motif et exige une nouvelle décision d’un approbateur. Les versions antérieures restent dans la chronologie.',
     teamValidation:
-      'Complétez chaque membre : un nom (200 caractères au plus), un rôle, une note de compétence (1 000 caractères au plus) et une réponse oui ou non à chaque déclaration. Une équipe compte un à dix membres.',
+      'Complétez chaque membre : un nom (200 caractères au plus), un rôle, une note de compétence (1 000 caractères au plus) et une réponse à chaque déclaration. Une équipe compte un à dix membres.',
     teamConflictNoteRequired:
-      'Décrivez le conflit (1 000 caractères au plus) pour chaque membre ayant répondu non à une déclaration.',
+      'Décrivez le conflit ou ce qui reste à vérifier (1 000 caractères au plus) pour chaque membre ayant une déclaration non confirmée.',
     teamLinkInvalid:
       'Un membre de l’espace de travail ne peut être lié qu’à un seul membre de l’équipe. Choisissez une autre personne ou laissez le lien vide.',
     teamLeaderRule:
@@ -2227,9 +2342,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionValidation:
       'Choisissez une décision. Le renvoi de l’équipe exige un motif (2 000 caractères au plus).',
     decisionConflictOnly:
-      'Un membre de cette équipe a déclaré un conflit d’intérêts : l’équipe ne peut pas être approuvée. Renvoyez-la avec un motif.',
+      'Une déclaration de cette équipe n’est pas confirmée (un conflit ou un point à vérifier) : l’équipe ne peut pas être approuvée. Renvoyez-la avec un motif ; elle pourra être approuvée lorsqu’une nouvelle version confirmera chaque déclaration.',
     teamConflictDeclared:
-      'Une équipe avec un conflit d’intérêts déclaré ne peut pas être approuvée. Renvoyez-la avec un motif.',
+      'Une équipe ayant une déclaration non confirmée ne peut pas être approuvée. Renvoyez-la avec un motif.',
     teamIndependence:
       'Vous ne pouvez pas statuer sur cette équipe : vous êtes lié à un membre de l’une de ses versions. Un approbateur qui ne fait pas partie de l’équipe doit statuer.',
     teamMemberDecided:
@@ -2586,7 +2701,7 @@ export const certificationMessages = defineMessages(keys, {
       'Aucune décision de certification n’est encore enregistrée.',
     recordCertificationDecision: 'Enregistrer la décision de certification',
     certificationDecisionHelp:
-      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre une seule fois la décision de l’organisme de certification ; elle ne peut pas être corrigée. Rien n’est présélectionné. Un octroi indique le texte du certificat accordé pour chaque langue du certificat.',
+      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre la décision de l’organisme de certification. Jusqu’à l’enregistrement du certificat, une correction motivée peut modifier ses textes et ses références, jamais son résultat. Rien n’est présélectionné. Un octroi indique le texte du certificat accordé pour chaque langue du certificat.',
     decisionOutcome: 'Décision',
     decisionGranted: 'Certification accordée',
     decisionRefused: 'Certification refusée',
@@ -2765,6 +2880,78 @@ export const certificationMessages = defineMessages(keys, {
     roleDecisionForm: 'Formulaire de décision',
     blockedVersionCorrectionReason:
       'Une nouvelle version exige un motif, et un premier enregistrement n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
+    applicationSubmittedOn: 'Date de la demande signée',
+    applicationSubmittedOnHelp:
+      'Facultatif : la date inscrite sur la demande signée, lorsque le dossier papier l’indique.',
+    actingOnBehalf:
+      'Une personne de l’organisme de certification a accompli cet acte ; je l’enregistre en son nom.',
+    actingHelp:
+      'Vous restez enregistré comme le membre qui l’a saisi. Indiquez la personne qui a agi, sa fonction et la date de l’acte ; un formulaire signé joint au dossier est facultatif.',
+    actingName: 'Nom de la personne qui a agi',
+    actingFunction: 'Sa fonction',
+    actingDate: 'Date de l’acte',
+    actingForm: 'Formulaire signé',
+    actingFormNone: 'Aucun formulaire signé',
+    actingReviewLegend: 'Revue de la demande par l’organisme de certification',
+    actingReviewView: 'Revue au nom de l’organisme de certification par',
+    actingDurationLegend:
+      'Approbation de la durée par l’organisme de certification',
+    actingDurationView: 'Approuvée au nom de l’organisme de certification par',
+    actingTeamDecisionLegend:
+      'Décision sur l’équipe par l’organisme de certification',
+    actingTeamDecisionView:
+      'Décidée au nom de l’organisme de certification par',
+    actingReportApprovalLegend:
+      'Approbation du rapport par l’organisme de certification',
+    actingReportApprovalView:
+      'Rapport approuvé au nom de l’organisme de certification par',
+    actingValidation:
+      'Complétez l’acte enregistré au nom de l’organisme de certification : le nom et la fonction de la personne qui a agi (200 caractères au plus chacun) et la date de l’acte. Le formulaire signé, s’il est choisi, doit être joint à ce dossier.',
+    actingOnTeam:
+      'La personne indiquée comme agissant pour l’organisme de certification fait partie de l’équipe d’audit. Un membre de l’équipe d’audit ne peut pas accomplir cet acte ; vérifiez le nom.',
+    independenceLabel: 'Indépendance vis-à-vis de l’équipe d’audit',
+    independenceAttested: 'Attestée par le membre qui l’a enregistrée',
+    independenceUnattested:
+      'Non attestée : enregistrée avant que l’attestation soit exigée',
+    teamDecisionAttestation:
+      'J’atteste que la personne qui décide sur cette équipe n’est pas membre de l’équipe d’audit.',
+    teamDecisionAttestationRequired:
+      'Confirmez que la personne qui décide sur l’équipe n’est pas membre de l’équipe d’audit.',
+    dossierReviewerLegend:
+      'Examinateur du dossier pour l’organisme de certification',
+    dossierApproverLegend: 'Approbateur pour l’organisme de certification',
+    dossierReviewerView:
+      'Dossier examiné au nom de l’organisme de certification par',
+    dossierApproverView: 'Approuvé au nom de l’organisme de certification par',
+    dossierAttestation:
+      'J’atteste que l’examinateur du dossier et l’approbateur ne sont pas membres de l’équipe d’audit.',
+    dossierAttestationRequired:
+      'Confirmez que l’examinateur du dossier et l’approbateur ne sont pas membres de l’équipe d’audit.',
+    declarationConfirmed: 'Confirmée',
+    declarationConflict: 'Conflit',
+    declarationToVerify: 'À vérifier',
+    declarationsToVerify: 'Déclaration à vérifier',
+    impartialityAnalysis: 'Analyse d’impartialité',
+    impartialityAnalysisHelp:
+      'Facultatif : documentez comment l’impartialité de l’équipe a été analysée, avec des preuves jointes au dossier.',
+    impartialityAnalysisRequiredHelp:
+      'Obligatoire : la demande déclare un consultant ({consultant}). Documentez comment les liens entre le consultant et l’équipe ont été analysés, avec des preuves jointes au dossier.',
+    impartialityAnalysisNote: 'Analyse',
+    impartialityAnalysisEvidence: 'Preuves jointes au dossier',
+    impartialityAnalysisNone: 'Non documentée',
+    teamAnalysisRequired:
+      'Rédigez l’analyse d’impartialité (4 000 caractères au plus, dix pièces jointes de ce dossier au plus). Elle est obligatoire lorsque la demande déclare un consultant ou lorsque des preuves sont choisies.',
+    recommendedOn: 'Date de la recommandation',
+    correctDecisionTexts: 'Corriger les textes de la décision',
+    decisionCorrectionHelp:
+      'Une correction enregistre une nouvelle version de la décision avec son motif. Le résultat décidé reste celui enregistré ; seuls les textes et les références changent, et chaque condition préalable est de nouveau vérifiée.',
+    decisionOutcomeFixed:
+      'Décision : {outcome}. Une correction conserve le résultat décidé.',
+    decisionOutcomeFixedRefusal:
+      'Une correction conserve le résultat décidé ; seuls ses textes et ses références changent. Rechargez le dossier.',
+    decisionEarlierVersions: 'Versions antérieures de la décision ({count})',
+    timelineCertificationDecisionVersion:
+      'Décision de certification — {decision} (version {version})',
   },
   ro: {
     readerBundle: 'Cititor de certificare al companiei',
@@ -3189,9 +3376,9 @@ export const certificationMessages = defineMessages(keys, {
     declarationNoManagementInvolvement:
       'Nu este implicat în conducerea clientului',
     declarationConfidentiality: 'S-a angajat să păstreze confidențialitatea',
-    conflictNote: 'Descrierea conflictului',
+    conflictNote: 'Conflict sau punct de verificat',
     conflictNoteHelp:
-      'Obligatorie, deoarece o declarație are răspunsul nu. O echipă cu un conflict declarat poate fi propusă, dar poate fi doar returnată, nu aprobată.',
+      'Obligatorie, deoarece o declarație este un conflict sau rămâne de verificat: descrieți conflictul sau ce rămâne de verificat. Echipa poate fi propusă, dar este aprobată doar după ce fiecare declarație este confirmată.',
     conflictDeclared: 'Conflict declarat',
     addTeamMember: 'Adăugați un membru',
     removeTeamMember: 'Eliminați membrul {number}',
@@ -3200,9 +3387,9 @@ export const certificationMessages = defineMessages(keys, {
     teamCorrectionHelp:
       'O nouă versiune înlocuiește propunerea curentă, își declară motivul și necesită o nouă decizie a unui aprobator. Versiunile anterioare rămân în cronologie.',
     teamValidation:
-      'Completați fiecare membru: un nume (cel mult 200 de caractere), un rol, o notă de competență (cel mult 1.000 de caractere) și un răspuns da sau nu la fiecare declarație. O echipă are între unu și zece membri.',
+      'Completați fiecare membru: un nume (cel mult 200 de caractere), un rol, o notă de competență (cel mult 1.000 de caractere) și un răspuns la fiecare declarație. O echipă are între unu și zece membri.',
     teamConflictNoteRequired:
-      'Descrieți conflictul (cel mult 1.000 de caractere) pentru fiecare membru cu o declarație cu răspunsul nu.',
+      'Descrieți conflictul sau ce rămâne de verificat (cel mult 1.000 de caractere) pentru fiecare membru cu o declarație neconfirmată.',
     teamLinkInvalid:
       'Un membru al spațiului de lucru poate fi legat de un singur membru al echipei. Alegeți altă persoană sau lăsați legătura goală.',
     teamLeaderRule: 'O echipă are exact un șef de echipă. Verificați rolurile.',
@@ -3238,9 +3425,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionValidation:
       'Alegeți o decizie. Returnarea echipei necesită un motiv (cel mult 2.000 de caractere).',
     decisionConflictOnly:
-      'Un membru al acestei echipe a declarat un conflict de interese, deci echipa nu poate fi aprobată. Returnați-o cu un motiv.',
+      'O declarație a acestei echipe nu este confirmată (un conflict sau un punct de verificat), deci echipa nu poate fi aprobată. Returnați-o cu un motiv; poate fi aprobată când o nouă versiune confirmă fiecare declarație.',
     teamConflictDeclared:
-      'O echipă cu un conflict de interese declarat nu poate fi aprobată. Returnați-o cu un motiv.',
+      'O echipă cu o declarație neconfirmată nu poate fi aprobată. Returnați-o cu un motiv.',
     teamIndependence:
       'Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă.',
     teamMemberDecided:
@@ -3596,7 +3783,7 @@ export const certificationMessages = defineMessages(keys, {
       'Nicio decizie de certificare nu este încă înregistrată.',
     recordCertificationDecision: 'Înregistrați decizia de certificare',
     certificationDecisionHelp:
-      'Un aprobator care nu face parte din echipa de audit înregistrează o singură dată decizia organismului de certificare; ea nu poate fi corectată. Nimic nu este preselectat. O acordare indică textul certificatului acordat pentru fiecare limbă a certificatului.',
+      'Un aprobator care nu face parte din echipa de audit înregistrează decizia organismului de certificare. Până la înregistrarea certificatului, o corecție motivată îi poate schimba textele și referințele, niciodată rezultatul. Nimic nu este preselectat. O acordare indică textul certificatului acordat pentru fiecare limbă a certificatului.',
     decisionOutcome: 'Decizie',
     decisionGranted: 'Certificare acordată',
     decisionRefused: 'Certificare refuzată',
@@ -3774,6 +3961,77 @@ export const certificationMessages = defineMessages(keys, {
     roleDecisionForm: 'Formular de decizie',
     blockedVersionCorrectionReason:
       'O nouă versiune necesită un motiv, iar prima înregistrare nu are. Reîncărcați dosarul înainte de o nouă salvare.',
+    applicationSubmittedOn: 'Data cererii semnate',
+    applicationSubmittedOnHelp:
+      'Opțional: data scrisă pe cererea semnată, când dosarul pe hârtie o conține.',
+    actingOnBehalf:
+      'O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei.',
+    actingHelp:
+      'Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.',
+    actingName: 'Numele persoanei care a acționat',
+    actingFunction: 'Funcția ei',
+    actingDate: 'Data actului',
+    actingForm: 'Formular semnat',
+    actingFormNone: 'Niciun formular semnat',
+    actingReviewLegend: 'Analiza cererii de către organismul de certificare',
+    actingReviewView: 'Analizată în numele organismului de certificare de',
+    actingDurationLegend:
+      'Aprobarea duratei de către organismul de certificare',
+    actingDurationView: 'Aprobată în numele organismului de certificare de',
+    actingTeamDecisionLegend:
+      'Decizia privind echipa de către organismul de certificare',
+    actingTeamDecisionView: 'Decisă în numele organismului de certificare de',
+    actingReportApprovalLegend:
+      'Aprobarea raportului de către organismul de certificare',
+    actingReportApprovalView:
+      'Raport aprobat în numele organismului de certificare de',
+    actingValidation:
+      'Completați actul înregistrat în numele organismului de certificare: numele și funcția persoanei care a acționat (cel mult 200 de caractere fiecare) și data actului. Formularul semnat, dacă este ales, trebuie să fie atașat la acest dosar.',
+    actingOnTeam:
+      'Persoana indicată ca acționând pentru organismul de certificare face parte din echipa de audit. Un membru al echipei de audit nu poate efectua acest act; verificați numele.',
+    independenceLabel: 'Independența față de echipa de audit',
+    independenceAttested: 'Atestată de membrul care a înregistrat-o',
+    independenceUnattested:
+      'Neatestată: înregistrată înainte ca atestarea să fie cerută',
+    teamDecisionAttestation:
+      'Atest că persoana care decide asupra acestei echipe nu este membru al echipei de audit.',
+    teamDecisionAttestationRequired:
+      'Confirmați că persoana care decide asupra echipei nu este membru al echipei de audit.',
+    dossierReviewerLegend:
+      'Evaluatorul dosarului pentru organismul de certificare',
+    dossierApproverLegend: 'Aprobatorul pentru organismul de certificare',
+    dossierReviewerView:
+      'Dosar evaluat în numele organismului de certificare de',
+    dossierApproverView: 'Aprobat în numele organismului de certificare de',
+    dossierAttestation:
+      'Atest că evaluatorul dosarului și aprobatorul nu sunt membri ai echipei de audit.',
+    dossierAttestationRequired:
+      'Confirmați că evaluatorul dosarului și aprobatorul nu sunt membri ai echipei de audit.',
+    declarationConfirmed: 'Confirmată',
+    declarationConflict: 'Conflict',
+    declarationToVerify: 'De verificat',
+    declarationsToVerify: 'Declarație de verificat',
+    impartialityAnalysis: 'Analiza imparțialității',
+    impartialityAnalysisHelp:
+      'Opțional: documentați cum a fost analizată imparțialitatea echipei, cu dovezi atașate la dosar.',
+    impartialityAnalysisRequiredHelp:
+      'Obligatorie: cererea declară un consultant ({consultant}). Documentați cum au fost analizate legăturile dintre consultant și echipă, cu dovezi atașate la dosar.',
+    impartialityAnalysisNote: 'Analiză',
+    impartialityAnalysisEvidence: 'Dovezi atașate la dosar',
+    impartialityAnalysisNone: 'Nedocumentată',
+    teamAnalysisRequired:
+      'Scrieți analiza imparțialității (cel mult 4.000 de caractere, cel mult zece atașamente ale acestui dosar). Este obligatorie când cererea declară un consultant sau când sunt alese dovezi.',
+    recommendedOn: 'Data recomandării',
+    correctDecisionTexts: 'Corectați textele deciziei',
+    decisionCorrectionHelp:
+      'O corecție înregistrează o nouă versiune a deciziei cu motivul ei. Rezultatul decis rămâne cel înregistrat; se schimbă doar textele și referințele, iar fiecare condiție prealabilă este verificată din nou.',
+    decisionOutcomeFixed:
+      'Decizie: {outcome}. O corecție păstrează rezultatul decis.',
+    decisionOutcomeFixedRefusal:
+      'O corecție păstrează rezultatul decis; se schimbă doar textele și referințele. Reîncărcați dosarul.',
+    decisionEarlierVersions: 'Versiuni anterioare ale deciziei ({count})',
+    timelineCertificationDecisionVersion:
+      'Decizie de certificare — {decision} (versiunea {version})',
   },
   ru: {
     readerBundle: 'Читатель сертификации компании',
@@ -4193,9 +4451,9 @@ export const certificationMessages = defineMessages(keys, {
     declarationNoEmployment: 'Не работал(а) у клиента',
     declarationNoManagementInvolvement: 'Не участвует в управлении клиентом',
     declarationConfidentiality: 'Обязался(ась) соблюдать конфиденциальность',
-    conflictNote: 'Описание конфликта',
+    conflictNote: 'Конфликт или что требует проверки',
     conflictNoteHelp:
-      'Обязательно, так как на одно из заявлений дан ответ «нет». Группу с заявленным конфликтом можно предложить, но её можно только вернуть, а не утвердить.',
+      'Обязательно, так как одно из заявлений — конфликт или требует проверки: опишите конфликт или то, что нужно проверить. Группу можно предложить, но утвердить её можно только после подтверждения всех заявлений.',
     conflictDeclared: 'Заявлен конфликт',
     addTeamMember: 'Добавить участника',
     removeTeamMember: 'Удалить участника {number}',
@@ -4204,9 +4462,9 @@ export const certificationMessages = defineMessages(keys, {
     teamCorrectionHelp:
       'Новая версия заменяет текущее предложение, указывает причину и требует нового решения утверждающего. Прежние версии остаются в хронологии.',
     teamValidation:
-      'Заполните данные каждого участника: имя (не более 200 символов), роль, сведения о компетентности (не более 1 000 символов) и ответ «да» или «нет» на каждое заявление. В группе от одного до десяти участников.',
+      'Заполните данные каждого участника: имя (не более 200 символов), роль, сведения о компетентности (не более 1 000 символов) и ответ на каждое заявление. В группе от одного до десяти участников.',
     teamConflictNoteRequired:
-      'Опишите конфликт (не более 1 000 символов) для каждого участника, ответившего «нет» на заявление.',
+      'Опишите конфликт или то, что нужно проверить (не более 1 000 символов), для каждого участника с неподтверждённым заявлением.',
     teamLinkInvalid:
       'Участника рабочего пространства можно связать только с одним участником группы. Выберите другого человека или оставьте связь пустой.',
     teamLeaderRule: 'В группе ровно один руководитель группы. Проверьте роли.',
@@ -4242,9 +4500,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionValidation:
       'Выберите решение. Для возврата группы нужна причина (не более 2 000 символов).',
     decisionConflictOnly:
-      'Участник этой группы заявил о конфликте интересов, поэтому группу нельзя утвердить. Верните её с указанием причины.',
+      'Заявление этой группы не подтверждено (конфликт или требуется проверка), поэтому группу нельзя утвердить. Верните её с указанием причины; её можно будет утвердить, когда новая версия подтвердит все заявления.',
     teamConflictDeclared:
-      'Группу с заявленным конфликтом интересов нельзя утвердить. Верните её с указанием причины.',
+      'Группу с неподтверждённым заявлением нельзя утвердить. Верните её с указанием причины.',
     teamIndependence:
       'Вы не можете принимать решение по этой группе: вы связаны с участником одной из её версий. Решение должен принять утверждающий, не входящий в группу.',
     teamMemberDecided:
@@ -4590,7 +4848,7 @@ export const certificationMessages = defineMessages(keys, {
     certificationDecisionMissing: 'Решение о сертификации ещё не записано.',
     recordCertificationDecision: 'Записать решение о сертификации',
     certificationDecisionHelp:
-      'Утверждающий, не входящий в аудиторскую группу, один раз записывает решение органа по сертификации; исправить его нельзя. Ничего не выбрано заранее. При выдаче указывается выданный текст сертификата для каждого языка сертификата.',
+      'Утверждающий, не входящий в аудиторскую группу, записывает решение органа по сертификации. До записи сертификата исправление с указанием причины может изменить его тексты и ссылки, но не результат. Ничего не выбрано заранее. При выдаче указывается выданный текст сертификата для каждого языка сертификата.',
     decisionOutcome: 'Решение',
     decisionGranted: 'Сертификация выдана',
     decisionRefused: 'В сертификации отказано',
@@ -4762,6 +5020,74 @@ export const certificationMessages = defineMessages(keys, {
     roleDecisionForm: 'Форма решения',
     blockedVersionCorrectionReason:
       'Новой версии нужна причина, а у первой записи её нет. Загрузите дело заново перед новым сохранением.',
+    applicationSubmittedOn: 'Дата подписанной заявки',
+    applicationSubmittedOnHelp:
+      'Необязательно: дата, указанная на подписанной заявке, если она есть в бумажном деле.',
+    actingOnBehalf:
+      'Это действие совершил сотрудник органа по сертификации; я записываю его от его имени.',
+    actingHelp:
+      'Вы остаётесь записанным как участник, внёсший запись. Укажите, кто действовал, его должность и дату действия; подписанная форма, приложенная к делу, необязательна.',
+    actingName: 'Имя действовавшего лица',
+    actingFunction: 'Его должность',
+    actingDate: 'Дата действия',
+    actingForm: 'Подписанная форма',
+    actingFormNone: 'Без подписанной формы',
+    actingReviewLegend: 'Анализ заявки органом по сертификации',
+    actingReviewView: 'Проанализировано от имени органа по сертификации:',
+    actingDurationLegend:
+      'Утверждение продолжительности органом по сертификации',
+    actingDurationView: 'Утверждено от имени органа по сертификации:',
+    actingTeamDecisionLegend: 'Решение по группе органом по сертификации',
+    actingTeamDecisionView: 'Решено от имени органа по сертификации:',
+    actingReportApprovalLegend: 'Утверждение отчёта органом по сертификации',
+    actingReportApprovalView:
+      'Отчёт утверждён от имени органа по сертификации:',
+    actingValidation:
+      'Заполните действие, записываемое от имени органа по сертификации: имя и должность действовавшего лица (не более 200 символов каждое) и дату действия. Выбранная подписанная форма должна быть приложена к этому делу.',
+    actingOnTeam:
+      'Лицо, указанное как действующее от имени органа по сертификации, входит в аудиторскую группу. Член аудиторской группы не может совершать это действие; проверьте имя.',
+    independenceLabel: 'Независимость от аудиторской группы',
+    independenceAttested: 'Подтверждено участником, внёсшим запись',
+    independenceUnattested:
+      'Не подтверждено: записано до введения подтверждения',
+    teamDecisionAttestation:
+      'Я подтверждаю, что лицо, принимающее решение по этой группе, не входит в аудиторскую группу.',
+    teamDecisionAttestationRequired:
+      'Подтвердите, что лицо, принимающее решение по группе, не входит в аудиторскую группу.',
+    dossierReviewerLegend: 'Эксперт по анализу досье от органа по сертификации',
+    dossierApproverLegend: 'Утверждающий от органа по сертификации',
+    dossierReviewerView:
+      'Досье проанализировано от имени органа по сертификации:',
+    dossierApproverView: 'Утверждено от имени органа по сертификации:',
+    dossierAttestation:
+      'Я подтверждаю, что эксперт по анализу досье и утверждающий не входят в аудиторскую группу.',
+    dossierAttestationRequired:
+      'Подтвердите, что эксперт по анализу досье и утверждающий не входят в аудиторскую группу.',
+    declarationConfirmed: 'Подтверждено',
+    declarationConflict: 'Конфликт',
+    declarationToVerify: 'Требует проверки',
+    declarationsToVerify: 'Заявление требует проверки',
+    impartialityAnalysis: 'Анализ беспристрастности',
+    impartialityAnalysisHelp:
+      'Необязательно: опишите, как анализировалась беспристрастность группы, с доказательствами, приложенными к делу.',
+    impartialityAnalysisRequiredHelp:
+      'Обязательно: в заявке указан консультант ({consultant}). Опишите, как анализировались связи между консультантом и группой, с доказательствами, приложенными к делу.',
+    impartialityAnalysisNote: 'Анализ',
+    impartialityAnalysisEvidence: 'Доказательства, приложенные к делу',
+    impartialityAnalysisNone: 'Не описан',
+    teamAnalysisRequired:
+      'Опишите анализ беспристрастности (не более 4 000 символов, не более десяти вложений этого дела). Он обязателен, если в заявке указан консультант или выбраны доказательства.',
+    recommendedOn: 'Дата рекомендации',
+    correctDecisionTexts: 'Исправить тексты решения',
+    decisionCorrectionHelp:
+      'Исправление записывает новую версию решения с причиной. Принятый результат остаётся записанным; меняются только тексты и ссылки, а все предварительные условия проверяются заново.',
+    decisionOutcomeFixed:
+      'Решение: {outcome}. Исправление сохраняет принятый результат.',
+    decisionOutcomeFixedRefusal:
+      'Исправление сохраняет принятый результат; меняются только тексты и ссылки. Загрузите дело заново.',
+    decisionEarlierVersions: 'Предыдущие версии решения ({count})',
+    timelineCertificationDecisionVersion:
+      'Решение о сертификации — {decision} (версия {version})',
   },
 });
 

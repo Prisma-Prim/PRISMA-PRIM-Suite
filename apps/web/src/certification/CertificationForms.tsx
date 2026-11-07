@@ -1,12 +1,15 @@
 import type { FormEvent } from 'react';
 import { formatMessage } from '../localization/messages';
 import { useCertificationCopy } from './certification.copy';
+import { latestBusinessDate } from './certification-attribution';
 import type { ApplicationDraft, ReviewDraft } from './certification-draft';
 import {
   CERTIFICATION_LIMITS,
   FOOD_CHAIN_SUBCATEGORIES,
   REVIEW_CRITERIA,
+  type CertificationAttachment,
 } from './certification-response';
+import { ActingFieldset } from './CertificationAttribution';
 
 type FormProps<Draft> = {
   idPrefix: string;
@@ -52,6 +55,22 @@ export function ApplicationForm({
       onSubmit={onSubmit}
     >
       {correcting && <p>{copy('correctionHelp')}</p>}
+      <label htmlFor={id('submitted-on')}>
+        {copy('applicationSubmittedOn')}
+      </label>
+      <input
+        id={id('submitted-on')}
+        type="date"
+        value={draft.submittedOn}
+        max={latestBusinessDate()}
+        disabled={disabled}
+        aria-invalid={invalid}
+        aria-describedby={describedBy(id('submitted-on-help'))}
+        onChange={(event) => set({ submittedOn: event.target.value })}
+      />
+      <small id={id('submitted-on-help')}>
+        {copy('applicationSubmittedOnHelp')}
+      </small>
       <label htmlFor={id('legal-name')}>{copy('declaredLegalName')}</label>
       <input
         id={id('legal-name')}
@@ -460,13 +479,17 @@ export function NumberField({
 export function ReviewForm({
   idPrefix,
   draft,
+  documents,
   disabled,
   feedbackId,
   submitting,
   submitBlocked,
   onChange,
   onSubmit,
-}: FormProps<ReviewDraft>) {
+}: FormProps<ReviewDraft> & {
+  /** The Case's attachments a signed review form may be chosen from. */
+  documents: readonly CertificationAttachment[];
+}) {
   const copy = useCertificationCopy();
   const id = (name: string) => `${idPrefix}-${name}`;
   const invalid = feedbackId !== undefined;
@@ -560,6 +583,15 @@ export function ReviewForm({
           />
         </>
       )}
+      <ActingFieldset
+        idPrefix={id('acting')}
+        legend="actingReviewLegend"
+        draft={draft.onBehalf}
+        documents={documents}
+        disabled={disabled}
+        feedbackId={feedbackId}
+        onChange={(onBehalf) => onChange({ ...draft, onBehalf })}
+      />
       <button
         type="submit"
         className={

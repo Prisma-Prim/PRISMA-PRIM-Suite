@@ -1,4 +1,8 @@
 import {
+  ATTRIBUTION_LIMITS,
+  type ActAttribution,
+} from './certification-attribution';
+import {
   DECISION_LIMITS,
   DOSSIER_ITEMS,
   RECOMMENDATIONS,
@@ -66,6 +70,8 @@ import {
   teamCompositionRefusal,
   teamWithoutConflict,
   type AuditTeam,
+  type DeclarationState,
+  type ImpartialityAnalysis,
   type ImpartialityDeclaration,
   type TeamDecision,
   type TeamMember,
@@ -153,6 +159,8 @@ export interface CertificationSite {
 }
 
 export interface ApplicationFacts {
+  /** The business date of the signed application, when known. */
+  submittedOn: string | null;
   declaredLegalName: string;
   declaredAddress: string;
   sites: CertificationSite[];
@@ -177,6 +185,8 @@ export interface ReviewAnswer {
 
 export type ApplicationReview = {
   criteria: Record<ReviewCriterion, ReviewAnswer>;
+  /** The certification body's reviewer, when recorded on their behalf. */
+  onBehalf: ActAttribution | null;
 } & (
   | { outcome: 'accepted'; rejectionReason: null }
   | { outcome: 'rejected'; rejectionReason: string }
@@ -327,7 +337,7 @@ export interface CaseDetail extends CaseSummary {
   /** The latest version of each closing step, when recorded. */
   recommendation: RecommendationVersion | null;
   dossierReview: DossierReviewVersion | null;
-  /** Recorded once; never corrected. */
+  /** The latest version; a correction keeps the decided outcome. */
   decision: DecisionVersion | null;
   certificateData: CertificateDataVersion | null;
   /** The recorded Certificate, present exactly when the Case is certified. */
@@ -678,6 +688,13 @@ export function parseTimeline(value: unknown, caseId: string): CaseTimeline {
   }
   if (new Set(entries.map((entry) => entry.id)).size !== entries.length)
     invalid();
+  // A correction of the Certification Decision keeps its outcome.
+  const outcomes = new Set(
+    entries.flatMap((entry) =>
+      entry.step === 'decision' ? [entry.value.decision] : [],
+    ),
+  );
+  if (outcomes.size > 1) invalid();
   return { caseId, entries };
 }
 
@@ -886,9 +903,9 @@ function follows(
 /**
  * The closing steps follow their predecessors: the recommendation and the
  * Certificate data follow the Stage 2 report and the dossier review the
- * recommendation. The decision is recorded once, after every version of
- * both, which it freezes, on a review without a missing item, and grants
- * only on a recommendation to grant. A Certificate is valid from the
+ * recommendation. The decision follows every version of both, which it
+ * freezes, on a review without a missing item, and grants only on a
+ * recommendation to grant; a correction keeps its outcome. A Certificate is valid from the
  * decision date, ends after its first surveillance and states exactly the
  * agreed texts, which state what the decision grants.
  */
@@ -1109,13 +1126,9 @@ function parseStepVersion(value: unknown): StepVersion {
       value: teamDecisionValue(row.value),
     };
   }
-  if (row.step === 'decision') {
-    // The Certification Decision is recorded once and never corrected.
-    if (base.version !== 1 || base.reason !== null) invalid();
-    return { ...base, step: 'decision', value: decisionValue(row.value) };
-  }
-  // A new version of a Stage record, a recommendation, a dossier review or
-  // the Certificate data states why it replaces the latest.
+  // A new version of a Stage record, a recommendation, a dossier review,
+  // the Certification Decision or the Certificate data states why it
+  // replaces the latest.
   const stage = { ...base, reason: correctionReasonOf(base) };
   switch (row.step) {
     case 'stage_1_plan':
@@ -1154,6 +1167,8 @@ function parseStepVersion(value: unknown): StepVersion {
         step: 'dossier_review',
         value: dossierReviewValue(row.value),
       };
+    case 'decision':
+      return { ...stage, step: 'decision', value: decisionValue(row.value) };
     case 'certificate_data':
       return {
         ...stage,
@@ -1172,6 +1187,7 @@ function recommendationValue(value: unknown): Recommendation {
       RECOMMENDATIONS.find((entry) => entry === body.recommendation) ??
       invalid(),
     basis: text(body.basis, DECISION_LIMITS.basis),
+    recommendedOn: optionalDate(body.recommendedOn),
   };
 }
 
@@ -1211,6 +1227,9 @@ function dossierReviewValue(value: unknown): DossierReview {
       certificate_data: answer('certificate_data'),
     },
     conclusion: text(body.conclusion, DECISION_LIMITS.conclusion),
+    reviewedBy: actAttribution(body.reviewedBy),
+    approvedBy: actAttribution(body.approvedBy),
+    independenceAttested: attestation(body.independenceAttested),
   };
 }
 
@@ -1338,6 +1357,7 @@ function stage1ReportValue(value: unknown): Stage1Report {
       body.participantListAttachmentId,
       Number.MAX_SAFE_INTEGER,
     ),
+    certificationBodyApproval: actAttribution(body.certificationBodyApproval),
   };
 }
 
@@ -1355,6 +1375,7 @@ function stage2ReportValue(value: unknown): Stage2Report {
       body.annexAttachmentId,
       Number.MAX_SAFE_INTEGER,
     ),
+    certificationBodyApproval: actAttribution(body.certificationBodyApproval),
   };
 }
 
@@ -1609,7 +1630,26 @@ function auditTeam(value: unknown): AuditTeam {
   const body = object(value);
   const members = list(body.members, 1, TEAM_LIMITS.members).map(teamMember);
   if (teamCompositionRefusal(members) !== null) invalid();
-  return { members };
+  return {
+    members,
+    impartialityAnalysis: impartialityAnalysis(body.impartialityAnalysis),
+  };
+}
+
+/** Absent in teams proposed before it existed; otherwise a note and its evidence. */
+function impartialityAnalysis(value: unknown): ImpartialityAnalysis | null {
+  if (value === undefined || value === null) return null;
+  const body = object(value);
+  const ids = list(
+    body.evidenceAttachmentIds,
+    0,
+    TEAM_LIMITS.analysisEvidence,
+  ).map((id) => text(id));
+  if (new Set(ids).size !== ids.length) invalid();
+  return {
+    note: text(body.note, TEAM_LIMITS.analysisNote),
+    evidenceAttachmentIds: ids,
+  };
 }
 
 function teamMember(value: unknown): TeamMember {
@@ -1621,11 +1661,13 @@ function teamMember(value: unknown): TeamMember {
     )
   )
     invalid();
-  const declarations: Record<ImpartialityDeclaration, boolean> = {
-    noConsultancy: flag(declarationsBody.noConsultancy),
-    noEmployment: flag(declarationsBody.noEmployment),
-    noManagementInvolvement: flag(declarationsBody.noManagementInvolvement),
-    confidentiality: flag(declarationsBody.confidentiality),
+  const declarations: Record<ImpartialityDeclaration, DeclarationState> = {
+    noConsultancy: declarationState(declarationsBody.noConsultancy),
+    noEmployment: declarationState(declarationsBody.noEmployment),
+    noManagementInvolvement: declarationState(
+      declarationsBody.noManagementInvolvement,
+    ),
+    confidentiality: declarationState(declarationsBody.confidentiality),
   };
   return {
     name: text(row.name, TEAM_LIMITS.name),
@@ -1643,23 +1685,68 @@ function teamMember(value: unknown): TeamMember {
 
 function teamDecisionValue(value: unknown): TeamDecision {
   const body = object(value);
-  const teamVersion = positive(body.teamVersion);
+  const common = {
+    teamVersion: positive(body.teamVersion),
+    onBehalf: actAttribution(body.onBehalf),
+    independenceAttested: attestation(body.independenceAttested),
+  };
   if (body.decision === 'approved') {
     if (body.reason !== null) invalid();
-    return { teamVersion, decision: 'approved', reason: null };
+    return { ...common, decision: 'approved', reason: null };
   }
   if (body.decision === 'returned')
     return {
-      teamVersion,
+      ...common,
       decision: 'returned',
       reason: text(body.reason, CERTIFICATION_LIMITS.reason),
     };
   return invalid();
 }
 
-/** An explicit boolean: a declaration never defaults. */
+/** An explicit boolean. */
 function flag(value: unknown): boolean {
   return typeof value === 'boolean' ? value : invalid();
+}
+
+/**
+ * An explicit declaration state; it never defaults. The first format
+ * recorded booleans, which the server still reads as confirmed or conflict.
+ */
+function declarationState(value: unknown): DeclarationState {
+  if (value === true || value === 'confirmed') return 'confirmed';
+  if (value === false || value === 'conflict') return 'conflict';
+  if (value === 'to_verify') return 'to_verify';
+  return invalid();
+}
+
+/**
+ * An act on behalf of the certification body, absent in records made
+ * before it existed: who acted, in which function, on which real date, and
+ * the signed form when one is cited.
+ */
+function actAttribution(value: unknown): ActAttribution | null {
+  if (value === undefined || value === null) return null;
+  const body = object(value);
+  return {
+    actedBy: text(body.actedBy, ATTRIBUTION_LIMITS.person),
+    actedByFunction: text(body.actedByFunction, ATTRIBUTION_LIMITS.person),
+    actedOn: calendarDate(body.actedOn),
+    formAttachmentId:
+      body.formAttachmentId === undefined || body.formAttachmentId === null
+        ? null
+        : text(body.formAttachmentId),
+  };
+}
+
+/** An explicit attestation; false only in records made before it existed. */
+function attestation(value: unknown): boolean {
+  if (value === undefined || value === false) return false;
+  return value === true ? true : invalid();
+}
+
+/** An optional business date, absent in records made before it existed. */
+function optionalDate(value: unknown): string | null {
+  return value === undefined || value === null ? null : calendarDate(value);
 }
 
 function agreementValue(value: unknown): CertificationAgreement {
@@ -1744,6 +1831,7 @@ function applicationFacts(value: unknown): ApplicationFacts {
         ? { used: false }
         : invalid();
   return {
+    submittedOn: optionalDate(body.submittedOn),
     declaredLegalName: text(
       body.declaredLegalName,
       CERTIFICATION_LIMITS.declaredLegalName,
@@ -1804,17 +1892,19 @@ function applicationReview(value: unknown): ApplicationReview {
     ),
     risksAcceptable: answer(criteriaBody.risksAcceptable),
   };
+  const onBehalf = actAttribution(body.onBehalf);
   if (body.outcome === 'accepted') {
     if (
       body.rejectionReason !== null ||
       REVIEW_CRITERIA.some((criterion) => criteria[criterion].answer !== 'yes')
     )
       invalid();
-    return { criteria, outcome: 'accepted', rejectionReason: null };
+    return { criteria, onBehalf, outcome: 'accepted', rejectionReason: null };
   }
   if (body.outcome === 'rejected')
     return {
       criteria,
+      onBehalf,
       outcome: 'rejected',
       rejectionReason: text(body.rejectionReason, CERTIFICATION_LIMITS.reason),
     };
@@ -1853,6 +1943,7 @@ function durationDetermination(value: unknown): DurationDetermination {
     computation,
     confirmed,
     justification,
+    onBehalf: actAttribution(body.onBehalf),
   };
 }
 

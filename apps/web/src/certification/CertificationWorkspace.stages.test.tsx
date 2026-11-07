@@ -491,6 +491,7 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
           conclusionNote: 'Hazard analysis incomplete.',
           reportAttachmentId: report,
           participantListAttachmentId: participants,
+          certificationBodyApproval: null,
         },
       }),
     ]);
@@ -565,6 +566,7 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
       conclusionNote: 'Ready after the completed hazard analysis.',
       reportAttachmentId: report,
       participantListAttachmentId: participants,
+      certificationBodyApproval: null,
     });
     expect(corrected?.key).not.toBe(unchanged?.key);
     expect(stepState('Stage 1 audit')).toBe('Ready — report version 2');
@@ -1168,6 +1170,7 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
           reportAttachmentId: report2,
           participantListAttachmentId: null,
           annexAttachmentId: annex,
+          certificationBodyApproval: null,
         },
       }),
     ]);

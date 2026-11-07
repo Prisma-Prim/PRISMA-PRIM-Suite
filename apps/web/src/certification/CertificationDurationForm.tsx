@@ -23,7 +23,9 @@ import {
   CERTIFICATION_LIMITS,
   FOOD_CHAIN_SUBCATEGORIES,
   type ApplicationFacts,
+  type CertificationAttachment,
 } from './certification-response';
+import { ActingFieldset } from './CertificationAttribution';
 import { DurationResultView, factorLabel } from './CertificationDurationViews';
 import { NumberField } from './CertificationForms';
 
@@ -31,6 +33,8 @@ export type DurationFormProps = {
   idPrefix: string;
   facts: ApplicationFacts;
   draft: DurationDraft;
+  /** The Case's attachments a signed approval form may be chosen from. */
+  documents: readonly CertificationAttachment[];
   /** A confirmed determination exists: saving records a corrected version. */
   correcting: boolean;
   disabled: boolean;
@@ -58,6 +62,7 @@ export function DurationForm({
   idPrefix,
   facts,
   draft,
+  documents,
   correcting,
   disabled,
   computing,
@@ -205,6 +210,7 @@ export function DurationForm({
         <ConfirmationForm
           idPrefix={idPrefix}
           draft={draft}
+          documents={documents}
           correcting={correcting}
           justificationRequired={draftNeedsJustification(draft, confirmable)}
           disabled={disabled}
@@ -272,6 +278,7 @@ function FactorFields<Factor extends IncreaseFactor | ReductionFactor>({
 function ConfirmationForm({
   idPrefix,
   draft,
+  documents,
   correcting,
   justificationRequired,
   disabled,
@@ -284,6 +291,7 @@ function ConfirmationForm({
 }: {
   idPrefix: string;
   draft: DurationDraft;
+  documents: readonly CertificationAttachment[];
   correcting: boolean;
   justificationRequired: boolean;
   disabled: boolean;
@@ -348,6 +356,15 @@ function ConfirmationForm({
           )}
         </small>
       </div>
+      <ActingFieldset
+        idPrefix={id('acting')}
+        legend="actingDurationLegend"
+        draft={draft.onBehalf}
+        documents={documents}
+        disabled={disabled}
+        feedbackId={feedbackId}
+        onChange={(onBehalf) => onChange({ ...draft, onBehalf })}
+      />
       {correcting && (
         <>
           <label htmlFor={id('reason')}>{copy('correctionReason')}</label>

@@ -6,11 +6,14 @@ import {
   type CertificationMessageKey,
 } from './certification.copy';
 import { useAttachmentReference } from './CertificationDocumentViews';
+import { ActingFieldset } from './CertificationAttribution';
+import { latestBusinessDate } from './certification-attribution';
 import {
   DECISION_LIMITS,
   DOSSIER_ANSWERS,
   DOSSIER_ITEMS,
   RECOMMENDATIONS,
+  type CertificationOutcome,
 } from './certification-decision';
 import {
   emptyCertificateText,
@@ -80,6 +83,13 @@ export function RecommendationForm(
         label="recommendationBasis"
         limit={DECISION_LIMITS.basis}
       />
+      <DateField
+        {...props}
+        field="recommendedOn"
+        label="recommendedOn"
+        max={latestBusinessDate()}
+        optional
+      />
       {props.correcting && (
         <TextArea
           {...props}
@@ -94,10 +104,16 @@ export function RecommendationForm(
 
 /**
  * One explicit answer per dossier item, each with its note, then the
- * conclusion; nothing is preselected.
+ * conclusion, the dossier reviewer and approver acting on behalf of the
+ * certification body, each optional, and the explicit attestation of
+ * independence; nothing is preselected.
  */
 export function DossierReviewForm(
-  props: FormBase<DossierReviewDraft> & Correcting,
+  props: FormBase<DossierReviewDraft> &
+    Correcting & {
+      /** The Case's attachments a signed form may be chosen from. */
+      documents: readonly CertificationAttachment[];
+    },
 ) {
   const { draft, onChange } = props;
   const copy = useCertificationCopy();
@@ -153,6 +169,32 @@ export function DossierReviewForm(
         label="dossierConclusion"
         limit={DECISION_LIMITS.conclusion}
       />
+      <ActingFieldset
+        idPrefix={`${props.idPrefix}-reviewer`}
+        legend="dossierReviewerLegend"
+        draft={draft.reviewedBy}
+        documents={props.documents}
+        disabled={props.disabled}
+        feedbackId={props.feedbackId}
+        onChange={(reviewedBy) => onChange({ ...draft, reviewedBy })}
+      />
+      <ActingFieldset
+        idPrefix={`${props.idPrefix}-approver`}
+        legend="dossierApproverLegend"
+        draft={draft.approvedBy}
+        documents={props.documents}
+        disabled={props.disabled}
+        feedbackId={props.feedbackId}
+        onChange={(approvedBy) => onChange({ ...draft, approvedBy })}
+      />
+      <Attestation
+        {...props}
+        label="dossierAttestation"
+        checked={draft.independenceAttested}
+        onAttest={(independenceAttested) =>
+          onChange({ ...draft, independenceAttested })
+        }
+      />
       {props.correcting && (
         <TextArea
           {...props}
@@ -166,40 +208,63 @@ export function DossierReviewForm(
 }
 
 /**
- * The decision recorded once: an explicit outcome, the texts a grant fixes,
- * the decision maker, date and optional signed form, the rationale and the
- * explicit attestation that the decision maker is not on the audit team.
+ * The decision: an explicit outcome, the texts a grant fixes, the decision
+ * maker, date and optional signed form, the rationale and the explicit
+ * attestation that the decision maker is not on the audit team. A
+ * correction starts from the latest values, shows the recorded outcome
+ * without changing it and states its reason.
  */
 export function CertificationDecisionForm(
   props: FormBase<CertificationDecisionDraft> & {
     /** The register's attachments with the decision-form role. */
     forms: readonly CertificationAttachment[];
     today: string;
+    /** The recorded outcome when this form corrects the decision. */
+    correcting: CertificationOutcome | null;
   },
 ) {
-  const { draft, onChange } = props;
+  const { draft, onChange, correcting } = props;
   const copy = useCertificationCopy();
   const reference = useAttachmentReference();
   const formId = `${props.idPrefix}-form`;
+  const outcome = correcting ?? draft.decision;
   return (
     <FormFrame
       {...props}
-      title="recordCertificationDecision"
-      help="certificationDecisionHelp"
-      submit="certificationDecisionSubmit"
+      title={
+        correcting === null
+          ? 'recordCertificationDecision'
+          : 'correctDecisionTexts'
+      }
+      help={
+        correcting === null
+          ? 'certificationDecisionHelp'
+          : 'decisionCorrectionHelp'
+      }
+      submit={
+        correcting === null ? 'certificationDecisionSubmit' : 'saveCorrection'
+      }
     >
-      <Choice
-        {...props}
-        name="decision"
-        legend="decisionOutcome"
-        value={draft.decision}
-        options={(['granted', 'refused'] as const).map((outcome) => ({
-          value: outcome,
-          label: outcomeLabel(outcome),
-        }))}
-        onChoose={(decision) => onChange({ ...draft, decision })}
-      />
-      {draft.decision === 'granted' && (
+      {correcting === null ? (
+        <Choice
+          {...props}
+          name="decision"
+          legend="decisionOutcome"
+          value={draft.decision}
+          options={(['granted', 'refused'] as const).map((choice) => ({
+            value: choice,
+            label: outcomeLabel(choice),
+          }))}
+          onChoose={(decision) => onChange({ ...draft, decision })}
+        />
+      ) : (
+        <p className="certification-note">
+          {formatMessage(copy('decisionOutcomeFixed'), {
+            outcome: copy(outcomeLabel(correcting)),
+          })}
+        </p>
+      )}
+      {outcome === 'granted' && (
         <TextsFields
           {...props}
           legend="grantedTexts"
@@ -267,6 +332,14 @@ export function CertificationDecisionForm(
           onChange({ ...draft, independenceAttested })
         }
       />
+      {correcting !== null && (
+        <TextArea
+          {...props}
+          field="reason"
+          label="correctionReason"
+          limit={CERTIFICATION_LIMITS.reason}
+        />
+      )}
     </FormFrame>
   );
 }
@@ -628,6 +701,7 @@ function DateField<Field extends string, Draft extends Record<Field, string>>(
     field: Field;
     label: CertificationMessageKey;
     max?: string;
+    optional?: boolean;
   },
 ) {
   const copy = useCertificationCopy();
@@ -641,7 +715,7 @@ function DateField<Field extends string, Draft extends Record<Field, string>>(
         value={props.draft[props.field]}
         max={props.max}
         disabled={props.disabled}
-        required
+        required={!props.optional}
         aria-invalid={props.feedbackId !== undefined}
         aria-describedby={props.feedbackId}
         onChange={(event) =>

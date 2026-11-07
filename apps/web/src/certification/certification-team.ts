@@ -1,3 +1,5 @@
+import type { ActAttribution } from './certification-attribution';
+
 /** The roles a member plays in the audit team. */
 export const TEAM_ROLES = [
   'team_leader',
@@ -7,7 +9,7 @@ export const TEAM_ROLES = [
 ] as const;
 export type TeamRole = (typeof TEAM_ROLES)[number];
 
-/** The impartiality statements each member confirms or not, explicitly. */
+/** The impartiality statements each member answers explicitly. */
 export const IMPARTIALITY_DECLARATIONS = [
   'noConsultancy',
   'noEmployment',
@@ -17,12 +19,22 @@ export const IMPARTIALITY_DECLARATIONS = [
 export type ImpartialityDeclaration =
   (typeof IMPARTIALITY_DECLARATIONS)[number];
 
+/** A declaration is confirmed, a declared conflict, or still to verify. */
+export const DECLARATION_STATES = [
+  'confirmed',
+  'conflict',
+  'to_verify',
+] as const;
+export type DeclarationState = (typeof DECLARATION_STATES)[number];
+
 /** The server's bounds for a proposed team. */
 export const TEAM_LIMITS = {
   members: 10,
   name: 200,
   competenceNote: 1000,
   conflictNote: 1000,
+  analysisNote: 4000,
+  analysisEvidence: 10,
 } as const;
 
 export interface TeamMember {
@@ -33,16 +45,30 @@ export interface TeamMember {
   /** The member holds the competence for the client's category. */
   holdsCategory: boolean;
   competenceNote: string;
-  declarations: Record<ImpartialityDeclaration, boolean>;
+  declarations: Record<ImpartialityDeclaration, DeclarationState>;
   /** Present exactly when a declaration is not confirmed. */
   conflictNote: string | null;
 }
 
-export interface AuditTeam {
-  members: TeamMember[];
+/** A documented impartiality analysis, kept even when every declaration is confirmed. */
+export interface ImpartialityAnalysis {
+  note: string;
+  /** Attachments of the Case, each cited once. */
+  evidenceAttachmentIds: string[];
 }
 
-export type TeamDecision = { teamVersion: number } & (
+export interface AuditTeam {
+  members: TeamMember[];
+  impartialityAnalysis: ImpartialityAnalysis | null;
+}
+
+export type TeamDecision = {
+  teamVersion: number;
+  /** The certification body's decision maker, when recorded on their behalf. */
+  onBehalf: ActAttribution | null;
+  /** False only in decisions recorded before the attestation existed. */
+  independenceAttested: boolean;
+} & (
   | { decision: 'approved'; reason: null }
   | { decision: 'returned'; reason: string }
 );
@@ -51,16 +77,25 @@ export type TeamDecision = { teamVersion: number } & (
 export type TeamRule =
   'size' | 'conflictNote' | 'duplicateLink' | 'leader' | 'category';
 
-/** Some declaration of this member is not confirmed. */
+/** Some declaration of this member is a conflict or still to verify. */
 export function declaresConflict(member: {
-  declarations: Record<ImpartialityDeclaration, boolean>;
+  declarations: Record<ImpartialityDeclaration, DeclarationState>;
 }): boolean {
   return IMPARTIALITY_DECLARATIONS.some(
-    (declaration) => !member.declarations[declaration],
+    (declaration) => member.declarations[declaration] !== 'confirmed',
   );
 }
 
-/** Every declaration of every member confirms the absence of conflict. */
+/** Some declaration of this member is still to verify. */
+export function awaitsVerification(member: {
+  declarations: Record<ImpartialityDeclaration, DeclarationState>;
+}): boolean {
+  return IMPARTIALITY_DECLARATIONS.some(
+    (declaration) => member.declarations[declaration] === 'to_verify',
+  );
+}
+
+/** Every declaration of every member is confirmed: only then may the team be approved. */
 export function teamWithoutConflict(team: AuditTeam): boolean {
   return team.members.every((member) => !declaresConflict(member));
 }
