@@ -1,5 +1,6 @@
 import { types } from 'pg';
 import { expect } from 'vitest';
+import { withoutTenancyCompositeKeysSchema } from '../database/tenancy-composite-keys-schema.test-support.js';
 import {
   fixtureObjects,
   fixtureString,
@@ -33,6 +34,8 @@ const additions: Readonly<Record<string, readonly string[]>> = {
 export function withoutCertificationSchema(
   schema: Record<string, unknown>,
 ): Record<string, unknown> {
+  // Later migrations are removed first, newest to oldest.
+  schema = withoutTenancyCompositeKeysSchema(schema);
   const constraints = fixtureObjects(schema.constraints).map((entry) => {
     const name = fixtureString(entry.name);
     let definition = fixtureString(entry.definition);
