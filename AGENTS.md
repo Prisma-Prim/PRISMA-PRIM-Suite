@@ -25,7 +25,7 @@ PRISMA-PRIM Suite. One session delivers only its assigned GitHub issue, as one p
 
 ## Decision authority
 
-- Deduce open business details [from the cahier des charges](docs/product/specification-and-ticketing-standard.md#91-open-business-details); escalate only unsupported ones.
+- Deduce open business details [from the cahier des charges](docs/product/specification-and-ticketing-standard.md#91-open-business-details), or take the conservative MVP default; escalate only the unsupported categories listed there.
 - Raise major delivery trade-offs (delay, cost, architecture, verification, delivery, infrastructure, operations) through the [shared decision procedure](docs/agents/issue-execution.md#shared-decisions-for-major-trade-offs) before committing; only the owner's explicit choice authorizes them.
 - Decide reversible technical choices inside the issue yourself; record consequential ones in the PR.
 - Standing merge authorization: with merge access, run `gh pr merge <n> --squash --auto` once the [merge preconditions](docs/agents/issue-execution.md#ci-and-merge) hold; stop if one is unmet or uncertain, or the owner revokes it.

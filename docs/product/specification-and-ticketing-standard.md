@@ -201,6 +201,8 @@ When an issue and its linked PRD leave a business detail open, the agent resolve
 1. Search the cahier des charges, Sarcina v1.0. Its 855 requirement texts, in Romanian, are in the `source_text` column of [the traceability CSV](sarcina-v1-traceability.csv); [the reconciliation](sarcina-v1-reconciliation.md) describes its relation to the PRDs.
 2. Adopt a provisional, reversible choice that cites the `source_id` and a short quote. Record it in the PR, and in the owning PRD when drafting product work.
 
+When no requirement covers a detail outside the categories below, adopt the conservative MVP default as a provisional, reversible choice and record it the same way, without a citation.
+
 Canonical PRDs, the consolidated decision record and ADRs still win wherever they decide something.
 
 Escalate only what no source supports, even partially:
