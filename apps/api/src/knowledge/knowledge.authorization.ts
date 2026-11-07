@@ -7,6 +7,7 @@ import {
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
 } from '../access/company-permissions.js';
 import { DatabaseContext } from '../database/database-context.js';
+// eslint-disable-next-line no-restricted-imports -- live Knowledge grant recheck predates the Access boundary rule; #1106 moves it into Access.
 import { companyRoleAssignments } from '../database/schema/index.js';
 
 @Injectable()

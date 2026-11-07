@@ -16,7 +16,9 @@ import {
   clientUnionOperations,
   clientUnionReviews,
   clientUnionReversals,
+  // eslint-disable-next-line no-restricted-imports -- Client read authority lock predates the Access boundary rule; #1106 moves it into Access.
   companyRoleAssignments,
+  // eslint-disable-next-line no-restricted-imports -- Client read authority lock predates the Access boundary rule; #1106 moves it into Access.
   workspacePermissionGrants,
 } from '../database/schema/index.js';
 
