@@ -12,6 +12,10 @@ import { CONTRACT_MODEL_CODE } from '../contract-model/contract-model.content.js
 import { contractModelEvents } from '../database/schema/contract-model.js';
 import { offerModelEvents } from '../database/schema/offer-model.js';
 import { ideaEvents } from '../database/schema/ideas.js';
+import {
+  certificationEvents,
+  type CERTIFICATION_EVENT_ACTIONS,
+} from '../database/schema/certification.js';
 import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
 import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
@@ -1539,6 +1543,29 @@ export class AccountabilityService {
         input.action === 'idea.recorded'
           ? { revision: input.revision }
           : { revision: input.revision, disposition: input.disposition },
+    });
+  }
+
+  // Case-scoped recording only: the Case timeline is its read side.
+  async recordCertificationEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    caseId: string;
+    revision: number;
+    occurredAt: Date;
+    action: (typeof CERTIFICATION_EVENT_ACTIONS)[number];
+    metadata: Record<string, string | number>;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(certificationEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      caseId: input.caseId,
+      revision: input.revision,
+      action: input.action,
+      actorMembershipId: input.actor.workspaceMembershipId,
+      actorInternalUserId: input.actor.internalUserId,
+      occurredAt: input.occurredAt,
+      metadata: input.metadata,
     });
   }
 
@@ -3542,6 +3569,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_contract_signature_declarer_assignment.revoked':
     case 'company_received_contract_access_assignment.granted':
     case 'company_received_addendum_access_assignment.granted':
+    case 'company_certification_reader_assignment.granted':
+    case 'company_certification_reader_assignment.revoked':
+    case 'company_certification_programme_manager_assignment.granted':
+    case 'company_certification_programme_manager_assignment.revoked':
     case 'company_working_evidence_case_reader_assignment.granted':
     case 'company_working_evidence_case_reader_assignment.revoked':
     case 'company_working_evidence_case_recorder_assignment.granted':

@@ -1,0 +1,751 @@
+import {
+  ConflictException,
+  HttpException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { and, asc, count, desc, eq } from 'drizzle-orm';
+import type { ActorContext } from '../access/access.types.js';
+import {
+  requireIdempotencyKey,
+  requireUuid,
+} from '../access/access-command-validation.js';
+import type { CertificationRole } from '../access/certification-captured-grants.js';
+import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
+import { AccountabilityService } from '../accountability/accountability.service.js';
+import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
+import {
+  commandFingerprint,
+  idempotencyConflict,
+  runIdempotentCommand,
+  staleVersionConflict,
+} from '../command/idempotent-command.js';
+import { DatabaseContext } from '../database/database-context.js';
+import {
+  certificationCases,
+  certificationReceipts,
+  certificationStepVersions,
+  type CERTIFICATION_COMMAND_KINDS,
+} from '../database/schema/certification.js';
+import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
+import { ProjectService } from '../project/project.service.js';
+import type {
+  ApplicationReviewVersion,
+  ApplicationVersion,
+  CertificationCaseDetail,
+  CertificationCaseList,
+  CertificationCaseSummary,
+  CertificationLegalEntityOptions,
+  CertificationNextStep,
+  CertificationStepVersion,
+  CertificationTimeline,
+} from './certification.types.js';
+import {
+  applicationCommand,
+  applicationFacts,
+  applicationReview,
+  openCommand,
+  reviewCommand,
+} from './certification.validation.js';
+
+type CommandKind = (typeof CERTIFICATION_COMMAND_KINDS)[number];
+type CaseRow = typeof certificationCases.$inferSelect;
+type StepRow = typeof certificationStepVersions.$inferSelect;
+
+const CASE_LIST_LIMIT = 100;
+const TIMELINE_LIMIT = 500;
+
+@Injectable()
+export class CertificationService {
+  constructor(
+    private readonly database: DatabaseContext,
+    private readonly authorization: CompanyContextAuthorization,
+    private readonly accountability: AccountabilityService,
+    private readonly projects: ProjectService,
+    @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
+  ) {}
+
+  open({
+    actor,
+    projectId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    projectId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetProjectId = requireUuid(projectId);
+    return this.command({
+      actor,
+      kind: 'open',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ projectId, body }),
+      execute: async (companyId) => {
+        const input = openCommand(body);
+        const project = await this.projects.missionContextWithinTransaction({
+          actor,
+          projectId: targetProjectId,
+          lock: true,
+        });
+        const [entity] = await this.database.connection
+          .select({ id: clientLegalEntities.id })
+          .from(clientLegalEntities)
+          .where(
+            and(
+              eq(clientLegalEntities.workspaceId, actor.workspaceId),
+              eq(clientLegalEntities.clientAccountId, project.clientAccountId),
+              eq(clientLegalEntities.id, input.clientLegalEntityId),
+            ),
+          );
+        if (!entity) throw new NotFoundException();
+        const [taken] = await this.database.connection
+          .select({ id: certificationCases.id })
+          .from(certificationCases)
+          .where(
+            and(
+              eq(certificationCases.workspaceId, actor.workspaceId),
+              eq(certificationCases.companyId, companyId),
+              eq(certificationCases.orderReference, input.orderReference),
+            ),
+          );
+        if (taken)
+          throw new ConflictException({
+            code: 'CERTIFICATION_ORDER_REFERENCE_TAKEN',
+            message: 'This order reference is already used in the Company.',
+          });
+        const now = this.clock.now();
+        const [row] = await this.database.connection
+          .insert(certificationCases)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            projectId: targetProjectId,
+            clientAccountId: project.clientAccountId,
+            clientLegalEntityId: entity.id,
+            orderReference: input.orderReference,
+            standard: 'iso_22000_2018',
+            auditType: 'initial_certification',
+            status: 'open',
+            revision: 1,
+            openedByMembershipId: actor.workspaceMembershipId,
+            openedByInternalUserId: actor.internalUserId,
+            openedByDisplayName: actor.displayName,
+            openedAt: now,
+          })
+          .returning();
+        if (!row) throw new InternalServerErrorException();
+        await this.accountability.recordCertificationEvent({
+          actor,
+          companyId,
+          caseId: row.id,
+          revision: 1,
+          occurredAt: now,
+          action: 'certification_case.opened',
+          metadata: { revision: 1 },
+        });
+        return { caseId: row.id, at: now };
+      },
+    });
+  }
+
+  recordApplication({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      kind: 'application',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = applicationCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        if (latest(steps, 'application_review'))
+          throw stepConflict(
+            'CERTIFICATION_APPLICATION_REVIEWED',
+            'The application can no longer change after its review.',
+          );
+        const version = (latest(steps, 'application')?.version ?? 0) + 1;
+        if ((version === 1) !== (input.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A correction states its reason; a first application has none.',
+          );
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step: 'application',
+          version,
+          payload: input.facts,
+          reason: input.reason,
+          action: 'certification_case.application_recorded',
+          metadata: { version },
+        });
+      },
+    });
+  }
+
+  reviewApplication({
+    actor,
+    caseId,
+    body,
+    key,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    body: unknown;
+    key: string | undefined;
+  }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      kind: 'application_review',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = reviewCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        if (!latest(steps, 'application'))
+          throw stepConflict(
+            'CERTIFICATION_APPLICATION_MISSING',
+            'Record the application before reviewing it.',
+          );
+        if (latest(steps, 'application_review'))
+          throw stepConflict(
+            'CERTIFICATION_APPLICATION_ALREADY_REVIEWED',
+            'The application has already been reviewed.',
+          );
+        return this.appendStep({
+          actor,
+          companyId,
+          current,
+          step: 'application_review',
+          version: 1,
+          payload: input.review,
+          reason: null,
+          action: 'certification_case.application_reviewed',
+          metadata: { outcome: input.review.outcome },
+          status: input.review.outcome === 'rejected' ? 'rejected' : 'open',
+        });
+      },
+    });
+  }
+
+  list({
+    actor,
+    projectId,
+  }: {
+    actor: ActorContext;
+    projectId: string;
+  }): Promise<CertificationCaseList> {
+    const targetProjectId = requireUuid(projectId);
+    return this.read(actor, 'reader', async (companyId) => {
+      await this.projects.missionContextWithinTransaction({
+        actor,
+        projectId: targetProjectId,
+      });
+      const scope = and(
+        eq(certificationCases.workspaceId, actor.workspaceId),
+        eq(certificationCases.companyId, companyId),
+        eq(certificationCases.projectId, targetProjectId),
+      );
+      const [total] = await this.database.connection
+        .select({ value: count() })
+        .from(certificationCases)
+        .where(scope);
+      const rows = await this.database.connection
+        .select()
+        .from(certificationCases)
+        .where(scope)
+        .orderBy(desc(certificationCases.openedAt), desc(certificationCases.id))
+        .limit(CASE_LIST_LIMIT);
+      const cases: CertificationCaseSummary[] = [];
+      for (const row of rows)
+        cases.push(
+          this.summary(
+            row,
+            await this.legalName(actor, row),
+            await this.steps(actor, companyId, row.id),
+          ),
+        );
+      return {
+        projectId: targetProjectId,
+        cases,
+        total: total?.value ?? 0,
+      };
+    });
+  }
+
+  detail({
+    actor,
+    caseId,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+  }): Promise<CertificationCaseDetail> {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'reader', (companyId) =>
+      this.present(actor, companyId, targetId),
+    );
+  }
+
+  timeline({
+    actor,
+    caseId,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+  }): Promise<CertificationTimeline> {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'reader', async (companyId) => {
+      await this.visibleCase(actor, companyId, targetId);
+      const rows = await this.database.connection
+        .select()
+        .from(certificationStepVersions)
+        .where(
+          and(
+            eq(certificationStepVersions.workspaceId, actor.workspaceId),
+            eq(certificationStepVersions.companyId, companyId),
+            eq(certificationStepVersions.caseId, targetId),
+          ),
+        )
+        .orderBy(asc(certificationStepVersions.caseRevision))
+        .limit(TIMELINE_LIMIT);
+      return { caseId: targetId, entries: rows.map(stepVersion) };
+    });
+  }
+
+  legalEntities({
+    actor,
+    projectId,
+  }: {
+    actor: ActorContext;
+    projectId: string;
+  }): Promise<CertificationLegalEntityOptions> {
+    const targetProjectId = requireUuid(projectId);
+    return this.read(actor, 'programme_manager', async () => {
+      const project = await this.projects.missionContextWithinTransaction({
+        actor,
+        projectId: targetProjectId,
+      });
+      const rows = await this.database.connection
+        .select({
+          id: clientLegalEntities.id,
+          legalName: clientLegalEntities.legalName,
+          taxId: clientLegalEntities.taxId,
+        })
+        .from(clientLegalEntities)
+        .where(
+          and(
+            eq(clientLegalEntities.workspaceId, actor.workspaceId),
+            eq(clientLegalEntities.clientAccountId, project.clientAccountId),
+          ),
+        )
+        .orderBy(
+          asc(clientLegalEntities.legalName),
+          asc(clientLegalEntities.id),
+        )
+        .limit(CASE_LIST_LIMIT);
+      return { projectId: targetProjectId, items: rows };
+    });
+  }
+
+  /** One keyed mutation: live authority, key lock, replay, then execution. */
+  private command({
+    actor,
+    kind,
+    key,
+    fingerprint,
+    execute,
+  }: {
+    actor: ActorContext;
+    kind: CommandKind;
+    key: string;
+    fingerprint: string;
+    execute: (companyId: string) => Promise<{ caseId: string; at: Date }>;
+  }): Promise<unknown> {
+    return this.protect(() =>
+      runIdempotentCommand(this.database, {
+        fingerprint,
+        authorize: () =>
+          this.authorization.requireCertificationAccess(
+            actor,
+            'programme_manager',
+            true,
+          ),
+        lockParts: (companyId) => [
+          'certification',
+          actor.workspaceId,
+          companyId,
+          actor.workspaceMembershipId,
+          kind,
+          key,
+        ],
+        findReceipt: (companyId) => this.receipt(actor, companyId, kind, key),
+        conflict: () => idempotencyConflict(),
+        // An exact retry answers the recorded response, never a newer state.
+        replay: (_companyId, receipt) => Promise.resolve(receipt.response),
+        execute: async (companyId) => {
+          const { caseId, at } = await execute(companyId);
+          const response = await this.present(actor, companyId, caseId);
+          await this.database.connection.insert(certificationReceipts).values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            actorMembershipId: actor.workspaceMembershipId,
+            commandKind: kind,
+            idempotencyKey: key,
+            fingerprint,
+            caseId,
+            response,
+            recordedAt: at,
+          });
+          return response;
+        },
+      }),
+    );
+  }
+
+  private async appendStep(input: {
+    actor: ActorContext;
+    companyId: string;
+    current: CaseRow;
+    step: StepRow['step'];
+    version: number;
+    payload: object;
+    reason: string | null;
+    action:
+      | 'certification_case.application_recorded'
+      | 'certification_case.application_reviewed';
+    metadata: Record<string, string | number>;
+    status?: CaseRow['status'];
+  }): Promise<{ caseId: string; at: Date }> {
+    const { actor, companyId, current } = input;
+    const now = this.clock.now();
+    const revision = current.revision + 1;
+    await this.database.connection.insert(certificationStepVersions).values({
+      workspaceId: actor.workspaceId,
+      companyId,
+      caseId: current.id,
+      step: input.step,
+      version: input.version,
+      caseRevision: revision,
+      payload: input.payload,
+      reason: input.reason,
+      actorMembershipId: actor.workspaceMembershipId,
+      actorInternalUserId: actor.internalUserId,
+      actorDisplayName: actor.displayName,
+      recordedAt: now,
+    });
+    const [updated] = await this.database.connection
+      .update(certificationCases)
+      .set({ revision, status: input.status ?? current.status })
+      .where(
+        and(
+          eq(certificationCases.workspaceId, actor.workspaceId),
+          eq(certificationCases.companyId, companyId),
+          eq(certificationCases.id, current.id),
+          eq(certificationCases.revision, current.revision),
+        ),
+      )
+      .returning({ id: certificationCases.id });
+    if (!updated) throw new InternalServerErrorException();
+    await this.accountability.recordCertificationEvent({
+      actor,
+      companyId,
+      caseId: current.id,
+      revision,
+      occurredAt: now,
+      action: input.action,
+      metadata: { revision, ...input.metadata },
+    });
+    return { caseId: current.id, at: now };
+  }
+
+  private async lockOpenCase(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    expectedRevision: number,
+  ): Promise<CaseRow> {
+    const [row] = await this.database.connection
+      .select()
+      .from(certificationCases)
+      .where(
+        and(
+          eq(certificationCases.workspaceId, actor.workspaceId),
+          eq(certificationCases.companyId, companyId),
+          eq(certificationCases.id, caseId),
+        ),
+      )
+      .for('update');
+    if (!row) throw new NotFoundException();
+    await this.projects.missionContextWithinTransaction({
+      actor,
+      projectId: row.projectId,
+      lock: true,
+    });
+    if (row.revision !== expectedRevision)
+      throw staleVersionConflict(
+        'Reload the Certification Case before recording this step.',
+      );
+    if (row.status !== 'open')
+      throw stepConflict(
+        'CERTIFICATION_CASE_CLOSED',
+        'This Certification Case is closed.',
+      );
+    return row;
+  }
+
+  /** The Case in the actor's Company whose Project the actor can still read. */
+  private async visibleCase(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<CaseRow> {
+    const [row] = await this.database.connection
+      .select()
+      .from(certificationCases)
+      .where(
+        and(
+          eq(certificationCases.workspaceId, actor.workspaceId),
+          eq(certificationCases.companyId, companyId),
+          eq(certificationCases.id, caseId),
+        ),
+      );
+    if (!row) throw new NotFoundException();
+    await this.projects.missionContextWithinTransaction({
+      actor,
+      projectId: row.projectId,
+    });
+    return row;
+  }
+
+  private async present(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<CertificationCaseDetail> {
+    const row = await this.visibleCase(actor, companyId, caseId);
+    const steps = await this.steps(actor, companyId, caseId);
+    const summary = this.summary(row, await this.legalName(actor, row), steps);
+    const application = latest(steps, 'application');
+    const review = latest(steps, 'application_review');
+    return {
+      ...summary,
+      companyId: row.companyId,
+      clientAccountId: row.clientAccountId,
+      application: application ? applicationVersion(application) : null,
+      applicationReview: review ? reviewVersion(review) : null,
+    };
+  }
+
+  private summary(
+    row: CaseRow,
+    legalName: string,
+    steps: StepRow[],
+  ): CertificationCaseSummary {
+    return {
+      id: row.id,
+      projectId: row.projectId,
+      orderReference: row.orderReference,
+      clientLegalEntity: { id: row.clientLegalEntityId, legalName },
+      standard: row.standard,
+      auditType: row.auditType,
+      status: row.status,
+      revision: row.revision,
+      nextStep: nextStep(row, steps),
+      openedBy: {
+        workspaceMembershipId: row.openedByMembershipId,
+        displayName: row.openedByDisplayName,
+      },
+      openedAt: row.openedAt.toISOString(),
+    };
+  }
+
+  private async legalName(actor: ActorContext, row: CaseRow): Promise<string> {
+    const [entity] = await this.database.connection
+      .select({ legalName: clientLegalEntities.legalName })
+      .from(clientLegalEntities)
+      .where(
+        and(
+          eq(clientLegalEntities.workspaceId, actor.workspaceId),
+          eq(clientLegalEntities.clientAccountId, row.clientAccountId),
+          eq(clientLegalEntities.id, row.clientLegalEntityId),
+        ),
+      );
+    if (!entity) throw new InternalServerErrorException();
+    return entity.legalName;
+  }
+
+  private steps(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<StepRow[]> {
+    return this.database.connection
+      .select()
+      .from(certificationStepVersions)
+      .where(
+        and(
+          eq(certificationStepVersions.workspaceId, actor.workspaceId),
+          eq(certificationStepVersions.companyId, companyId),
+          eq(certificationStepVersions.caseId, caseId),
+        ),
+      )
+      .orderBy(asc(certificationStepVersions.caseRevision));
+  }
+
+  private async receipt(
+    actor: ActorContext,
+    companyId: string,
+    kind: CommandKind,
+    key: string,
+  ) {
+    const [receipt] = await this.database.connection
+      .select()
+      .from(certificationReceipts)
+      .where(
+        and(
+          eq(certificationReceipts.workspaceId, actor.workspaceId),
+          eq(certificationReceipts.companyId, companyId),
+          eq(
+            certificationReceipts.actorMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(certificationReceipts.commandKind, kind),
+          eq(certificationReceipts.idempotencyKey, key),
+        ),
+      );
+    return receipt;
+  }
+
+  private read<T>(
+    actor: ActorContext,
+    role: CertificationRole,
+    work: (companyId: string) => Promise<T>,
+  ): Promise<T> {
+    return this.protect(() =>
+      this.database.transaction(async () =>
+        work(
+          await this.authorization.requireCertificationAccess(
+            actor,
+            role,
+            true,
+          ),
+        ),
+      ),
+    );
+  }
+
+  private async protect<T>(work: () => Promise<T>): Promise<T> {
+    try {
+      return await work();
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(
+        'Certification operation is unavailable.',
+      );
+    }
+  }
+}
+
+function latest(
+  steps: readonly StepRow[],
+  step: StepRow['step'],
+): StepRow | undefined {
+  return steps.filter((row) => row.step === step).at(-1);
+}
+
+function nextStep(row: CaseRow, steps: StepRow[]): CertificationNextStep {
+  if (row.status !== 'open') return null;
+  if (!latest(steps, 'application')) return 'application';
+  if (!latest(steps, 'application_review')) return 'application_review';
+  return 'duration';
+}
+
+function stepConflict(code: string, message: string): ConflictException {
+  return new ConflictException({ code, message });
+}
+
+function base(row: StepRow) {
+  return {
+    id: row.id,
+    version: row.version,
+    caseRevision: row.caseRevision,
+    reason: row.reason,
+    recordedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    recordedAt: row.recordedAt.toISOString(),
+  };
+}
+
+function applicationVersion(row: StepRow): ApplicationVersion {
+  return {
+    ...base(row),
+    step: 'application',
+    value: persisted(() => applicationFacts(row.payload)),
+  };
+}
+
+function reviewVersion(row: StepRow): ApplicationReviewVersion {
+  return {
+    ...base(row),
+    step: 'application_review',
+    value: persisted(() => applicationReview(row.payload)),
+  };
+}
+
+/** Stored payloads were validated on write; a failure here is corruption. */
+function persisted<T>(decode: () => T): T {
+  try {
+    return decode();
+  } catch {
+    throw new InternalServerErrorException(
+      'A recorded certification step is unreadable.',
+    );
+  }
+}
+
+function stepVersion(row: StepRow): CertificationStepVersion {
+  switch (row.step) {
+    case 'application':
+      return applicationVersion(row);
+    case 'application_review':
+      return reviewVersion(row);
+  }
+  return unexpectedStep(row.step);
+}
+
+function unexpectedStep(value: never): never {
+  throw new InternalServerErrorException(`Unexpected step ${String(value)}`);
+}

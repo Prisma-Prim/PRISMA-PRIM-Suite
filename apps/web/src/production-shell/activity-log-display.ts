@@ -13,6 +13,7 @@ import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy
 import { useMissionReviewCopy } from '../project/mission-result-review.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
+import { useCertificationCopy } from '../certification/certification.copy';
 import { useContractModelCopy } from '../contract-model/contract-model.copy';
 import { useOfferModelCopy } from '../offer-model/offer-model.copy';
 import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
@@ -56,6 +57,7 @@ export function useActivityLogDisplay() {
   const externalInvoiceAssignments = useExternalInvoiceAssignmentCopy();
   const paymentAssignments = usePaymentAssignmentCopy();
   const ideas = useIdeasCopy();
+  const certification = useCertificationCopy();
   const missionPlan = useMissionPlanCopy();
   const model = useOfferModelCopy();
   const contractModel = useContractModelCopy();
@@ -178,6 +180,14 @@ export function useActivityLogDisplay() {
     'company_ideas_recorder_assignment.revoked': ideas('recorderRevoked'),
     'company_ideas_reviewer_assignment.granted': ideas('reviewerGranted'),
     'company_ideas_reviewer_assignment.revoked': ideas('reviewerRevoked'),
+    'company_certification_reader_assignment.granted':
+      certification('readerGranted'),
+    'company_certification_reader_assignment.revoked':
+      certification('readerRevoked'),
+    'company_certification_programme_manager_assignment.granted':
+      certification('managerGranted'),
+    'company_certification_programme_manager_assignment.revoked':
+      certification('managerRevoked'),
 
     'company_operational_risk_reader_assignment.granted': risk('readerGranted'),
     'company_operational_risk_reader_assignment.revoked': risk('readerRevoked'),

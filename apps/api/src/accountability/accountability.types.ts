@@ -212,6 +212,14 @@ export type CanonicalActivityEvent =
         | 'company_contract_signature_declarer_assignment.revoked'
         | 'company_received_contract_access_assignment.granted'
         | 'company_received_addendum_access_assignment.granted'
+        | 'company_certification_reader_assignment.granted'
+        | 'company_certification_reader_assignment.revoked'
+        | 'company_certification_programme_manager_assignment.granted'
+        | 'company_certification_programme_manager_assignment.revoked'
+        | 'company_certification_reader_assignment.granted'
+        | 'company_certification_reader_assignment.revoked'
+        | 'company_certification_programme_manager_assignment.granted'
+        | 'company_certification_programme_manager_assignment.revoked'
         | 'company_working_evidence_case_reader_assignment.granted'
         | 'company_working_evidence_case_reader_assignment.revoked'
         | 'company_working_evidence_case_recorder_assignment.granted'
@@ -328,6 +336,8 @@ export type CanonicalActivityEvent =
       metadata: {
         bundle:
           | 'Company Opportunity Follow-up Coordinator'
+          | 'Company Certification Reader'
+          | 'Company Certification Programme Manager'
           | 'Company Working Evidence Case Reader'
           | 'Company Working Evidence Case Recorder'
           | 'Company Received Audit Source Access'
@@ -481,6 +491,10 @@ export interface OrdinaryActivityLogEvent {
     | 'company_contract_signature_declarer_assignment.revoked'
     | 'company_received_contract_access_assignment.granted'
     | 'company_received_addendum_access_assignment.granted'
+    | 'company_certification_reader_assignment.granted'
+    | 'company_certification_reader_assignment.revoked'
+    | 'company_certification_programme_manager_assignment.granted'
+    | 'company_certification_programme_manager_assignment.revoked'
     | 'company_working_evidence_case_reader_assignment.granted'
     | 'company_working_evidence_case_reader_assignment.revoked'
     | 'company_working_evidence_case_recorder_assignment.granted'
@@ -644,6 +658,8 @@ export interface OrdinaryActivityLogEvent {
     | {
         bundle:
           | 'Company Opportunity Follow-up Coordinator'
+          | 'Company Certification Reader'
+          | 'Company Certification Programme Manager'
           | 'Company Working Evidence Case Reader'
           | 'Company Working Evidence Case Recorder'
           | 'Company Received Audit Source Access'

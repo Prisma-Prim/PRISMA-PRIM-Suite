@@ -35,6 +35,7 @@ import type {
   MissionResultReviewPermission,
 } from './company-permissions.js';
 import type { IdeasActorProjection } from './ideas-captured-grants.js';
+import type { CertificationActorProjection } from './certification-captured-grants.js';
 import type { ContractModelActorProjection } from './contract-model-captured-grants.js';
 import type { OfferModelActorProjection } from './offer-model-captured-grants.js';
 import type { OpportunityFollowUpActorProjection } from './opportunity-follow-up-captured-grants.js';
@@ -55,6 +56,7 @@ export type WorkspacePermission =
 export interface ActiveCompanyContext
   extends
     IdeasActorProjection,
+    CertificationActorProjection,
     OfferModelActorProjection,
     ContractModelActorProjection,
     OpportunityFollowUpActorProjection,

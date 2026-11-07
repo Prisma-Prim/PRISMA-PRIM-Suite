@@ -49,6 +49,12 @@ import { CompanyIdeasRecorderAssignmentController } from './access/company-ideas
 import { CompanyIdeasReviewerAssignmentController } from './access/company-ideas-reviewer-assignment.controller.js';
 import { IdeasController } from './ideas/ideas.controller.js';
 import { IdeasModule } from './ideas/ideas.module.js';
+import {
+  CompanyCertificationProgrammeManagerAssignmentController,
+  CompanyCertificationReaderAssignmentController,
+} from './access/company-certification-assignment.controller.js';
+import { CertificationController } from './certification/certification.controller.js';
+import { CertificationModule } from './certification/certification.module.js';
 import { CompanyOperationalRiskReaderAssignmentController } from './access/company-operational-risk-reader-assignment.controller.js';
 import { OperationalRiskModule } from './operational-risk/operational-risk.module.js';
 import { OperationalRiskController } from './operational-risk/operational-risk.controller.js';
@@ -192,6 +198,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ContractModelModule,
     OfferModelModule,
     IdeasModule,
+    CertificationModule,
     OperationalRiskModule,
     ProjectTemplateModule,
     MissionResultReviewModule,
@@ -245,6 +252,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyIdeasReviewerAssignmentController,
 
     IdeasController,
+    CompanyCertificationReaderAssignmentController,
+    CompanyCertificationProgrammeManagerAssignmentController,
+    CertificationController,
     OperationalRiskController,
     ProjectTemplateController,
     MissionResultReviewController,

@@ -448,6 +448,30 @@ export const activityEventsByAction = {
     action: 'company_ideas_reviewer_assignment.revoked',
     target: targets.company_role_assignment,
   },
+  'company_certification_reader_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_certification_reader_assignment.granted',
+    action: 'company_certification_reader_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_certification_reader_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_certification_reader_assignment.revoked',
+    action: 'company_certification_reader_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_certification_programme_manager_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_certification_programme_manager_assignment.granted',
+    action: 'company_certification_programme_manager_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_certification_programme_manager_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_certification_programme_manager_assignment.revoked',
+    action: 'company_certification_programme_manager_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_task_manager_assignment.revoked': {
     ...ordinary,
     id: 'event-company_task_manager_assignment.revoked',

@@ -508,6 +508,14 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Received Audit Source Access',
     versions: { v1: ['document.received_audit_source.access'] },
   },
+  company_certification_reader: {
+    label: 'Company Certification Reader',
+    versions: { v1: ['certification.read'] },
+  },
+  company_certification_programme_manager: {
+    label: 'Company Certification Programme Manager',
+    versions: { v1: ['certification.programme.manage'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -1279,6 +1287,15 @@ export const COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE =
   'company_payment_evidence_access' satisfies CompanyRoleBundle;
 export const COMPANY_PAYMENT_EVIDENCE_ACCESS_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_payment_evidence_access.label;
+
+export const COMPANY_CERTIFICATION_READER_BUNDLE =
+  'company_certification_reader' satisfies CompanyRoleBundle;
+export const COMPANY_CERTIFICATION_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_certification_reader.label;
+export const COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE =
+  'company_certification_programme_manager' satisfies CompanyRoleBundle;
+export const COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_certification_programme_manager.label;
 
 export const COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE =
   'company_working_evidence_case_reader' satisfies CompanyRoleBundle;

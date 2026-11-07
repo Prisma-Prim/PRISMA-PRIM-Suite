@@ -176,6 +176,28 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'certification-reader',
+    canonical: 'Company Certification Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Cititor de certificare al companiei',
+      ru: 'Читатель сертификации компании',
+      fr: 'Lecteur de certification de la société',
+      en: 'Company Certification Reader',
+    },
+  },
+  {
+    value: 'certification-programme-manager',
+    canonical: 'Company Certification Programme Manager',
+    version: 'v1',
+    labels: {
+      ro: 'Manager de program de certificare al companiei',
+      ru: 'Руководитель программы сертификации компании',
+      fr: 'Responsable de programme de certification de la société',
+      en: 'Company Certification Programme Manager',
+    },
+  },
+  {
     value: 'company-context',
     canonical: 'Company Context Access',
     version: null,
