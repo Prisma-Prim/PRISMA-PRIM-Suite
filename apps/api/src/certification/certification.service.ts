@@ -327,7 +327,8 @@ export class CertificationService {
         );
         const steps = await this.steps(actor, companyId, targetId);
         const facts = this.acceptedApplication(steps);
-        const version = (latest(steps, 'duration')?.version ?? 0) + 1;
+        const previous = latest(steps, 'duration');
+        const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
           throw stepConflict(
             'CERTIFICATION_CORRECTION_REASON',
@@ -369,6 +370,7 @@ export class CertificationService {
           current,
           step: 'duration',
           version,
+          replaces: previous,
           payload: determination,
           reason: input.reason,
           action: 'certification_case.duration_confirmed',
