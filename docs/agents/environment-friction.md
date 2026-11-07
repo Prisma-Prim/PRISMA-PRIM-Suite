@@ -28,4 +28,4 @@ The repository owner prioritizes friction issues. Do not implement one from insi
 
 When friction cost a session significant time, run the `retro` skill (`.agents/skills/retro/SKILL.md`) on it. Each candidate it reports becomes an `agent-friction` issue, deduplicated as above, for the owner to prioritize; candidates never become new `AGENTS.md` lines.
 
-Run `node scripts/delivery-metrics.mjs` weekly before a retro: it reports merged pull requests, reverts, review rounds, automated findings and CI first-run results.
+Every Monday the Weekly inspection workflow posts `node scripts/delivery-metrics.mjs` to the open `weekly-inspection` issue: merged pull requests, reverts, review rounds, automated findings, CI first-run results and a "To inspect" list. Read it before a retro; run the script by hand only for another window (`--since`, `--until`).

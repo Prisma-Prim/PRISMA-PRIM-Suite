@@ -1,0 +1,83 @@
+name: Weekly inspection
+
+# Every Monday, posts the delivery report for the last 7 days as a comment on
+# the open issue labelled `weekly-inspection`, and creates that issue when none
+# is open. An agent reads the comments to propose tickets. Non-blocking: no
+# pull request or required check waits on this workflow.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# No workflow concurrency: nothing may cancel a weekly run and lose its report.
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # delivery-metrics only reads pull requests, their checks and issues.
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      checks: read
+      actions: read
+    outputs:
+      report: ${{ steps.measure.outputs.report }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Measure the last 7 days
+        id: measure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/delivery-metrics.mjs > "$RUNNER_TEMP/report.md"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+          delimiter="report-$(openssl rand -hex 16)"
+          {
+            echo "report<<$delimiter"
+            cat "$RUNNER_TEMP/report.md"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+  post:
+    needs: report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    # One post at a time, so two runs never open two issues; a second post
+    # waits. Known limit: GitHub cancels a waiting post only when a third
+    # queues behind it within the same minutes.
+    concurrency:
+      group: weekly-inspection-issue
+      cancel-in-progress: false
+    steps:
+      - name: Comment on the weekly-inspection issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPORT: ${{ needs.report.outputs.report }}
+          ISSUE_BODY: >-
+            Every Monday the Weekly inspection workflow comments here with the
+            delivery report for the last 7 days, and the weekly mutation run
+            adds its results. An agent reads them and proposes at most three
+            tickets. Nothing here blocks a pull request.
+        run: |
+          issue="$(gh issue list --label weekly-inspection --state open --json number --jq '.[].number' | sort -n | sed -n '1p')"
+          if [ -z "$issue" ]; then
+            gh label create weekly-inspection --color 1d76db --description 'Weekly inspection reports for triage' --force
+            url="$(gh issue create --title 'Weekly inspection' --label weekly-inspection --body "$ISSUE_BODY")"
+            issue="${url##*/}"
+          fi
+          printf '%s\n' "$REPORT" | gh issue comment "$issue" --body-file -
