@@ -743,6 +743,13 @@
       "when": 1794029047287,
       "tag": "0105_certification_findings",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1794029833612,
+      "tag": "0106_certification_decision",
+      "breakpoints": true
     }
   ]
 }

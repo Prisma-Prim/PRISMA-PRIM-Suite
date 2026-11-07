@@ -1,6 +1,12 @@
 import type { AuditTeam, TeamDecision } from './certification-team.js';
 import type { FindingView } from './certification-findings.js';
 import type {
+  CertificateData,
+  CertificationDecision,
+  DossierReview,
+  Recommendation,
+} from './certification-decision.js';
+import type {
   Stage1Report,
   Stage2Report,
   StagePlan,
@@ -117,6 +123,7 @@ export type CertificationDocumentRole =
   | 'report'
   | 'evidence'
   | 'certificate'
+  | 'certificate_data'
   | 'other';
 
 export interface CertificationAgreement {
@@ -151,7 +158,11 @@ export type CertificationStepVersion =
   | (StepVersionBase & { step: 'stage_1_plan'; value: StagePlan })
   | (StepVersionBase & { step: 'stage_1_report'; value: Stage1Report })
   | (StepVersionBase & { step: 'stage_2_plan'; value: StagePlan })
-  | (StepVersionBase & { step: 'stage_2_report'; value: Stage2Report });
+  | (StepVersionBase & { step: 'stage_2_report'; value: Stage2Report })
+  | (StepVersionBase & { step: 'recommendation'; value: Recommendation })
+  | (StepVersionBase & { step: 'dossier_review'; value: DossierReview })
+  | (StepVersionBase & { step: 'decision'; value: CertificationDecision })
+  | (StepVersionBase & { step: 'certificate_data'; value: CertificateData });
 
 export type ApplicationVersion = Extract<
   CertificationStepVersion,
@@ -229,6 +240,10 @@ export type CertificationNextStep =
   | 'stage_2_report'
   | 'findings_follow_up'
   | 'recommendation'
+  | 'dossier_review'
+  | 'decision'
+  | 'certificate_data'
+  | 'certificate'
   | null;
 
 export interface CertificationCaseSummary {
@@ -238,7 +253,7 @@ export interface CertificationCaseSummary {
   clientLegalEntity: { id: string; legalName: string };
   standard: 'iso_22000_2018';
   auditType: 'initial_certification';
-  status: 'open' | 'rejected';
+  status: 'open' | 'rejected' | 'refused' | 'certified';
   revision: number;
   nextStep: CertificationNextStep;
   openedBy: CertificationActorReference;
@@ -256,6 +271,34 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   teamDecision: TeamDecisionVersion | null;
   stages: StageStepVersion[];
   findings: FindingView[];
+  recommendation: Extract<
+    CertificationStepVersion,
+    { step: 'recommendation' }
+  > | null;
+  dossierReview: Extract<
+    CertificationStepVersion,
+    { step: 'dossier_review' }
+  > | null;
+  decision: Extract<CertificationStepVersion, { step: 'decision' }> | null;
+  certificateData: Extract<
+    CertificationStepVersion,
+    { step: 'certificate_data' }
+  > | null;
+  certificate: CertificateRecord | null;
+}
+
+export interface CertificateRecord {
+  id: string;
+  number: string;
+  validFrom: string;
+  validUntil: string;
+  firstSurveillanceBy: string;
+  holderName: string;
+  address: string;
+  scope: { language: string; text: string }[];
+  attachmentId: string;
+  recordedBy: CertificationActorReference;
+  recordedAt: string;
 }
 
 export interface CertificationCaseList {

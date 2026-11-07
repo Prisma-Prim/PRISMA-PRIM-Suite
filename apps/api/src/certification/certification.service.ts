@@ -26,6 +26,7 @@ import {
 } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  certificationCertificates,
   certificationFindingRecords,
   certificationFindings,
   certificationCaseDocuments,
@@ -58,6 +59,16 @@ import {
   teamWithoutConflict,
 } from './certification-team.js';
 import {
+  certificateCommand,
+  certificateData,
+  certificateScope,
+  certificateValidity,
+  certificationDecision,
+  dossierComplete,
+  dossierReview,
+  recommendation,
+} from './certification-decision.js';
+import {
   allowedInStage,
   classification as findingClassificationValue,
   findingBlocks,
@@ -82,6 +93,7 @@ import {
   type AuditStage,
 } from './certification-stages.js';
 import type {
+  CertificateRecord,
   StageStepVersion,
   TeamDecisionVersion,
   TeamVersion,
@@ -1438,6 +1450,374 @@ export class CertificationService {
     });
   }
 
+  /** The team leader recommends once no Finding blocks. */
+  recordRecommendation(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'auditor',
+      kind: 'recommendation',
+      step: 'recommendation',
+      parse: recommendation,
+      action: 'certification_case.recommendation_recorded',
+      check: async ({ steps, companyId, payload }) => {
+        this.requireTeamLeader(input.actor, steps);
+        if (!latest(steps, 'stage_2_report'))
+          throw stepConflict(
+            'CERTIFICATION_STAGE_2_NOT_REPORTED',
+            'Recommend after the Stage 2 report.',
+          );
+        const findings = await this.findings(
+          input.actor,
+          companyId,
+          requireUuid(input.caseId),
+          steps,
+        );
+        if (findings.some(findingBlocks))
+          throw stepConflict(
+            'CERTIFICATION_FINDINGS_OPEN',
+            'Every nonconformity must be followed up before the recommendation.',
+          );
+        if (latest(steps, 'decision'))
+          throw stepConflict(
+            'CERTIFICATION_DECIDED',
+            'The Case is already decided.',
+          );
+        return { recommendation: payload.recommendation };
+      },
+    });
+  }
+
+  /** An approver outside the team reviews the dossier item by item. */
+  reviewDossier(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'approver',
+      kind: 'dossier_review',
+      step: 'dossier_review',
+      parse: dossierReview,
+      action: 'certification_case.dossier_reviewed',
+      check: ({ steps, payload }) => {
+        this.requireIndependent(input.actor, steps);
+        if (!latest(steps, 'recommendation'))
+          throw stepConflict(
+            'CERTIFICATION_RECOMMENDATION_MISSING',
+            'Review the dossier after the team recommendation.',
+          );
+        if (latest(steps, 'decision'))
+          throw stepConflict(
+            'CERTIFICATION_DECIDED',
+            'The Case is already decided.',
+          );
+        return Promise.resolve({ complete: dossierComplete(payload) ? 1 : 0 });
+      },
+    });
+  }
+
+  /** The immutable Certification Decision, by an approver outside the team. */
+  decide(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'approver',
+      kind: 'decision',
+      step: 'decision',
+      parse: certificationDecision,
+      action: 'certification_case.decision_recorded',
+      check: async ({ steps, companyId, payload }) => {
+        this.requireIndependent(input.actor, steps);
+        if (latest(steps, 'decision'))
+          throw stepConflict(
+            'CERTIFICATION_DECIDED',
+            'The Certification Decision is recorded once.',
+          );
+        const failures = await this.decisionFailures(
+          input.actor,
+          companyId,
+          requireUuid(input.caseId),
+          steps,
+          payload,
+        );
+        if (failures.length)
+          throw new ConflictException({
+            code: 'CERTIFICATION_DECISION_PRECONDITIONS',
+            message: 'The Certification Decision preconditions do not hold.',
+            failures,
+          });
+        return { decision: payload.decision };
+      },
+      status: (payload) =>
+        payload.decision === 'refused' ? 'refused' : undefined,
+    });
+  }
+
+  /** The Certificate data agreed with the client, after the Stage 2 report. */
+  recordCertificateData(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'programme_manager',
+      kind: 'certificate_data',
+      step: 'certificate_data',
+      parse: certificateData,
+      action: 'certification_case.certificate_data_agreed',
+      check: async ({ steps, companyId, payload }) => {
+        if (!latest(steps, 'stage_2_report'))
+          throw stepConflict(
+            'CERTIFICATION_STAGE_2_NOT_REPORTED',
+            'Agree the Certificate data after the Stage 2 report.',
+          );
+        await this.requireAttachment(
+          input.actor,
+          companyId,
+          requireUuid(input.caseId),
+          payload.agreementAttachmentId,
+          ['certificate_data'],
+        );
+        return { languages: payload.scope.length };
+      },
+    });
+  }
+
+  /** The approver records the Certificate after a granting decision. */
+  recordCertificate({
+    actor,
+    caseId,
+    body,
+    key,
+  }: CaseCommandInput): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'approver',
+      kind: 'certificate',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = certificateCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        this.requireIndependent(actor, steps);
+        const decided = latest(steps, 'decision');
+        const decision = decided ? decisionVersion(decided).value : undefined;
+        if (decision?.decision !== 'granted')
+          throw stepConflict(
+            'CERTIFICATION_NOT_GRANTED',
+            'A Certificate follows a granting Certification Decision.',
+          );
+        const agreed = latest(steps, 'certificate_data');
+        if (!agreed)
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_DATA_MISSING',
+            'Agree the Certificate data with the client first.',
+          );
+        const data = certificateDataVersion(agreed).value;
+        await this.requireAttachment(
+          actor,
+          companyId,
+          targetId,
+          input.attachmentId,
+          ['certificate'],
+        );
+        const [taken] = await this.database.connection
+          .select({ id: certificationCertificates.id })
+          .from(certificationCertificates)
+          .where(
+            and(
+              eq(certificationCertificates.workspaceId, actor.workspaceId),
+              eq(certificationCertificates.companyId, companyId),
+              eq(certificationCertificates.number, input.number),
+            ),
+          );
+        if (taken)
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN',
+            'This Certificate number is already used in the Company.',
+          );
+        const now = this.clock.now();
+        const validity = certificateValidity(decision.decidedOn);
+        await this.database.connection
+          .insert(certificationCertificates)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            caseRevision: current.revision + 1,
+            number: input.number,
+            ...validity,
+            holderName: data.holderName,
+            address: data.address,
+            scope: data.scope,
+            attachmentId: input.attachmentId,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            recordedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.certificate_recorded',
+          metadata: { validUntil: validity.validUntil },
+          status: 'certified',
+        });
+      },
+    });
+  }
+
+  /** Shared shape of a versioned step command: parse, check, append. */
+  private versionedStep<T extends object>(
+    input: CaseCommandInput & {
+      role: Exclude<CertificationRole, 'reader'>;
+      kind: CommandKind;
+      step: StepRow['step'];
+      parse: (value: unknown) => T;
+      action: Parameters<
+        AccountabilityService['recordCertificationEvent']
+      >[0]['action'];
+      check: (context: {
+        steps: StepRow[];
+        companyId: string;
+        payload: T;
+      }) => Promise<Record<string, string | number>>;
+      status?: (payload: T) => CaseRow['status'] | undefined;
+    },
+  ): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(input.key);
+    const targetId = requireUuid(input.caseId);
+    return this.command({
+      actor: input.actor,
+      role: input.role,
+      kind: input.kind,
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({
+        caseId: input.caseId,
+        body: input.body,
+      }),
+      execute: async (companyId) => {
+        const command = findingCommand(input.body, input.parse);
+        const current = await this.lockOpenCase(
+          input.actor,
+          companyId,
+          targetId,
+          command.expectedRevision,
+        );
+        const steps = await this.steps(input.actor, companyId, targetId);
+        const metadata = await input.check({
+          steps,
+          companyId,
+          payload: command.payload,
+        });
+        const version = (latest(steps, input.step)?.version ?? 0) + 1;
+        if ((version === 1) !== (command.reason === null))
+          throw stepConflict(
+            'CERTIFICATION_CORRECTION_REASON',
+            'A new version states its reason; a first record has none.',
+          );
+        const status = input.status?.(command.payload);
+        return this.appendStep({
+          actor: input.actor,
+          companyId,
+          current,
+          step: input.step,
+          version,
+          payload: command.payload,
+          reason: command.reason,
+          action: input.action,
+          metadata: { version, ...metadata },
+          ...(status ? { status } : {}),
+        });
+      },
+    });
+  }
+
+  /** Every unmet precondition of a Certification Decision, as codes. */
+  private async decisionFailures(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    steps: readonly StepRow[],
+    decision: ReturnType<typeof certificationDecision>,
+  ): Promise<string[]> {
+    const failures: string[] = [];
+    const review = latest(steps, 'application_review');
+    if (!review || reviewVersion(review).value.outcome !== 'accepted')
+      failures.push('APPLICATION_NOT_ACCEPTED');
+    if (!latest(steps, 'duration')) failures.push('DURATION_MISSING');
+    if (!latest(steps, 'agreement')) failures.push('AGREEMENT_MISSING');
+    if (!approvedTeam(steps)) failures.push('TEAM_NOT_APPROVED');
+    const stage1 = latest(steps, 'stage_1_report');
+    if (!stage1 || stage1Version(stage1).value.conclusion !== 'ready')
+      failures.push('STAGE_1_NOT_READY');
+    if (!latest(steps, 'stage_2_report')) failures.push('STAGE_2_NOT_REPORTED');
+    const findings = await this.findings(actor, companyId, caseId, steps);
+    if (findings.some(findingBlocks)) failures.push('FINDINGS_OPEN');
+    if (findings.some((finding) => finding.overdue))
+      failures.push('FINDINGS_OVERDUE');
+    const recommended = latest(steps, 'recommendation');
+    if (!recommended) failures.push('RECOMMENDATION_MISSING');
+    else if (
+      decision.decision === 'granted' &&
+      recommendationVersion(recommended).value.recommendation !== 'grant'
+    )
+      failures.push('GRANT_AGAINST_RECOMMENDATION');
+    const reviewed = latest(steps, 'dossier_review');
+    if (!reviewed || !dossierComplete(dossierReviewVersion(reviewed).value))
+      failures.push('DOSSIER_REVIEW_INCOMPLETE');
+    if (decision.decidedOn > this.clock.now().toISOString().slice(0, 10))
+      failures.push('DECISION_IN_FUTURE');
+    return failures;
+  }
+
+  /** Refuses an actor linked to any member of any team version. */
+  private requireIndependent(actor: ActorContext, steps: readonly StepRow[]) {
+    if (this.onTeam(actor, steps))
+      throw stepConflict(
+        'CERTIFICATION_INDEPENDENCE',
+        'A member of the audit team cannot review, decide or issue.',
+      );
+  }
+
+  private async certificate(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<CertificateRecord | null> {
+    const [row] = await this.database.connection
+      .select()
+      .from(certificationCertificates)
+      .where(
+        and(
+          eq(certificationCertificates.workspaceId, actor.workspaceId),
+          eq(certificationCertificates.companyId, companyId),
+          eq(certificationCertificates.caseId, caseId),
+        ),
+      );
+    if (!row) return null;
+    const scope = persisted(() => certificateScope(row.scope));
+    return {
+      id: row.id,
+      number: row.number,
+      validFrom: row.validFrom,
+      validUntil: row.validUntil,
+      firstSurveillanceBy: row.firstSurveillanceBy,
+      holderName: row.holderName,
+      address: row.address,
+      scope,
+      attachmentId: row.attachmentId,
+      recordedBy: {
+        workspaceMembershipId: row.actorMembershipId,
+        displayName: row.actorDisplayName,
+      },
+      recordedAt: row.recordedAt.toISOString(),
+    };
+  }
+
   list({
     actor,
     projectId,
@@ -1622,15 +2002,9 @@ export class CertificationService {
     replaces?: StepRow;
     payload: object;
     reason: string | null;
-    action:
-      | 'certification_case.application_recorded'
-      | 'certification_case.application_reviewed'
-      | 'certification_case.duration_confirmed'
-      | 'certification_case.agreement_recorded'
-      | 'certification_case.team_proposed'
-      | 'certification_case.team_decided'
-      | 'certification_case.stage_planned'
-      | 'certification_case.stage_reported';
+    action: Parameters<
+      AccountabilityService['recordCertificationEvent']
+    >[0]['action'];
     metadata: Record<string, string | number>;
     status?: CaseRow['status'];
   }): Promise<{ caseId: string; at: Date }> {
@@ -1793,6 +2167,23 @@ export class CertificationService {
       team: team ? teamVersion(team) : null,
       teamDecision: decided ? teamDecisionVersion(decided) : null,
       findings,
+      recommendation: optionalVersion(
+        steps,
+        'recommendation',
+        recommendationVersion,
+      ),
+      dossierReview: optionalVersion(
+        steps,
+        'dossier_review',
+        dossierReviewVersion,
+      ),
+      decision: optionalVersion(steps, 'decision', decisionVersion),
+      certificateData: optionalVersion(
+        steps,
+        'certificate_data',
+        certificateDataVersion,
+      ),
+      certificate: await this.certificate(actor, companyId, caseId),
       stages: STAGE_STEPS.flatMap((step) => {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
@@ -2173,7 +2564,11 @@ function nextStep(
   if (!latest(steps, 'stage_2_plan')) return 'stage_2_plan';
   if (!latest(steps, 'stage_2_report')) return 'stage_2_report';
   if (findings.some(findingBlocks)) return 'findings_follow_up';
-  return 'recommendation';
+  if (!latest(steps, 'recommendation')) return 'recommendation';
+  if (!latest(steps, 'dossier_review')) return 'dossier_review';
+  if (!latest(steps, 'decision')) return 'decision';
+  if (!latest(steps, 'certificate_data')) return 'certificate_data';
+  return 'certificate';
 }
 
 function stepConflict(code: string, message: string): ConflictException {
@@ -2229,6 +2624,62 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
   };
+}
+
+type CaseCommandInput = {
+  actor: ActorContext;
+  caseId: string;
+  body: unknown;
+  key: string | undefined;
+};
+
+function recommendationVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'recommendation' }> {
+  return {
+    ...base(row),
+    step: 'recommendation',
+    value: persisted(() => recommendation(row.payload)),
+  };
+}
+
+function dossierReviewVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'dossier_review' }> {
+  return {
+    ...base(row),
+    step: 'dossier_review',
+    value: persisted(() => dossierReview(row.payload)),
+  };
+}
+
+function decisionVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'decision' }> {
+  return {
+    ...base(row),
+    step: 'decision',
+    value: persisted(() => certificationDecision(row.payload)),
+  };
+}
+
+function certificateDataVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'certificate_data' }> {
+  return {
+    ...base(row),
+    step: 'certificate_data',
+    value: persisted(() => certificateData(row.payload)),
+  };
+}
+
+function optionalVersion<T>(
+  steps: readonly StepRow[],
+  step: StepRow['step'],
+  present: (row: StepRow) => T,
+): T | null {
+  const row = latest(steps, step);
+  return row ? present(row) : null;
 }
 
 /** The latest team version when its latest decision approves it. */
@@ -2399,6 +2850,14 @@ function stepVersion(row: StepRow): CertificationStepVersion {
     case 'stage_2_plan':
     case 'stage_2_report':
       return stageStepVersion(row);
+    case 'recommendation':
+      return recommendationVersion(row);
+    case 'dossier_review':
+      return dossierReviewVersion(row);
+    case 'decision':
+      return decisionVersion(row);
+    case 'certificate_data':
+      return certificateDataVersion(row);
   }
   return unexpectedStep(row.step);
 }

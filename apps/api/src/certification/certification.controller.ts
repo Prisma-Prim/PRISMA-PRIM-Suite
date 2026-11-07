@@ -297,6 +297,81 @@ export class CertificationController {
     });
   }
 
+  @Post('certification-cases/:caseId/recommendation')
+  recordRecommendation(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordRecommendation({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/dossier-review')
+  reviewDossier(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.reviewDossier({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/decision')
+  decide(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.decide({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/certificate-data')
+  recordCertificateData(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordCertificateData({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/certificate')
+  recordCertificate(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordCertificate({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
   @Post('certification-cases/:caseId/team')
   proposeTeam(
     @Req() request: ActorContextRequest,
