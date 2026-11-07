@@ -328,10 +328,10 @@ withPostgres(
           holdsCategory: role === 'team_leader',
           competenceNote: 'ISO 22000 auditor',
           declarations: {
-            noConsultancy: true,
-            noEmployment: true,
-            noManagementInvolvement: true,
-            confidentiality: true,
+            noConsultancy: 'confirmed',
+            noEmployment: 'confirmed',
+            noManagementInvolvement: 'confirmed',
+            confidentiality: 'confirmed',
           },
           conflictNote: null,
         };
@@ -353,6 +353,7 @@ withPostgres(
         expectedRevision: 18,
         teamVersion: 2,
         decision: 'approved',
+        independenceAttested: true,
       });
       await ok(CERTIFICATION_OWNER, `${base}/team`, {
         expectedRevision: 19,
@@ -363,6 +364,7 @@ withPostgres(
         expectedRevision: 20,
         teamVersion: 3,
         decision: 'approved',
+        independenceAttested: true,
       });
       await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
         expectedRevision: 21,
