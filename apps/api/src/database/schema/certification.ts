@@ -49,6 +49,7 @@ export const CERTIFICATION_DOCUMENT_ROLES = [
   'evidence',
   'certificate',
   'certificate_data',
+  'decision_form',
   'other',
 ] as const;
 export const CERTIFICATION_EVENT_ACTIONS = [
@@ -435,7 +436,7 @@ export const certificationCaseDocuments = pgTable(
     }),
     check(
       'certification_case_documents_role_check',
-      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
+      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'decision_form', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
     ),
     check(
       'certification_case_documents_note_check',

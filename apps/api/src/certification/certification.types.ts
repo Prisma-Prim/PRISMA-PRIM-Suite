@@ -124,6 +124,7 @@ export type CertificationDocumentRole =
   | 'evidence'
   | 'certificate'
   | 'certificate_data'
+  | 'decision_form'
   | 'other';
 
 export interface CertificationAgreement {

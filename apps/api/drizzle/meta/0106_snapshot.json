@@ -1,5 +1,5 @@
 {
-  "id": "6f1457f0-d96c-433f-a605-3d86df5d84b7",
+  "id": "09394e8e-14a2-425d-a496-4c09c2a3de26",
   "prevId": "762fd6d8-c912-4fed-9395-0a5b1ad94db8",
   "version": "7",
   "dialect": "postgresql",
@@ -34315,7 +34315,7 @@
       "checkConstraints": {
         "certification_case_documents_role_check": {
           "name": "certification_case_documents_role_check",
-          "value": "\"certification_case_documents\".\"role\" IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'other') AND \"certification_case_documents\".\"case_revision\" > 1 AND \"certification_case_documents\".\"version_number\" > 0 AND \"certification_case_documents\".\"size_bytes\" > 0 AND \"certification_case_documents\".\"sha256\" ~ '^[a-f0-9]{64}$'"
+          "value": "\"certification_case_documents\".\"role\" IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'decision_form', 'other') AND \"certification_case_documents\".\"case_revision\" > 1 AND \"certification_case_documents\".\"version_number\" > 0 AND \"certification_case_documents\".\"size_bytes\" > 0 AND \"certification_case_documents\".\"sha256\" ~ '^[a-f0-9]{64}$'"
         },
         "certification_case_documents_note_check": {
           "name": "certification_case_documents_note_check",

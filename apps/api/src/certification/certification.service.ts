@@ -1529,6 +1529,23 @@ export class CertificationService {
             'CERTIFICATION_DECIDED',
             'The Certification Decision is recorded once.',
           );
+        if (
+          approvedTeam(steps)?.members.some((member) =>
+            sameName(member.name, payload.decidedBy),
+          )
+        )
+          throw stepConflict(
+            'CERTIFICATION_INDEPENDENCE',
+            'The decision maker cannot be a member of the audit team.',
+          );
+        if (payload.decisionFormAttachmentId)
+          await this.requireAttachment(
+            input.actor,
+            companyId,
+            requireUuid(input.caseId),
+            payload.decisionFormAttachmentId,
+            ['decision_form'],
+          );
         const failures = await this.decisionFailures(
           input.actor,
           companyId,
@@ -2624,6 +2641,18 @@ function reviewVersion(row: StepRow): ApplicationReviewVersion {
     step: 'application_review',
     value: persisted(() => applicationReview(row.payload)),
   };
+}
+
+/** Names compared without case, accents or repeated spaces. */
+function sameName(left: string, right: string): boolean {
+  const normal = (value: string) =>
+    value
+      .normalize('NFKD')
+      .replace(/\p{M}/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .toLocaleLowerCase('en');
+  return normal(left) === normal(right);
 }
 
 type CaseCommandInput = {

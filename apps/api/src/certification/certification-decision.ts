@@ -39,6 +39,9 @@ export interface DossierReview {
 export interface CertificationDecision {
   decision: 'granted' | 'refused';
   decidedOn: string;
+  /** The certification body's decision maker, when recorded on their behalf. */
+  decidedBy: string;
+  decisionFormAttachmentId: string | null;
   rationale: string;
   additionalInformation: string | null;
 }
@@ -114,6 +117,8 @@ export function certificationDecision(value: unknown): CertificationDecision {
   const body = inputObject(value, [
     'decision',
     'decidedOn',
+    'decidedBy',
+    'decisionFormAttachmentId',
     'rationale',
     'additionalInformation',
   ]);
@@ -122,6 +127,12 @@ export function certificationDecision(value: unknown): CertificationDecision {
   return {
     decision: body.decision,
     decidedOn: date(body.decidedOn),
+    decidedBy: text(body.decidedBy, 200),
+    decisionFormAttachmentId:
+      body.decisionFormAttachmentId === undefined ||
+      body.decisionFormAttachmentId === null
+        ? null
+        : requireUuid(body.decisionFormAttachmentId),
     rationale: text(body.rationale, 4000),
     additionalInformation:
       body.additionalInformation === undefined ||

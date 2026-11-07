@@ -131,6 +131,8 @@ withPostgres(
         expectedRevision,
         decision: 'granted',
         decidedOn: '2026-11-06',
+        decidedBy: 'Decision Maker Demo',
+        decisionFormAttachmentId: null,
         rationale: 'Recommendation accepted after the dossier review.',
         additionalInformation: null,
         ...overrides,
@@ -281,6 +283,23 @@ withPostgres(
         'DOSSIER_REVIEW_INCOMPLETE',
         'DECISION_IN_FUTURE',
       ]);
+      const namedOnTeam = await post(
+        CERTIFICATION_APPROVER,
+        `${base}/decision`,
+        decision(18, { decidedBy: '  auditor   DEMO ' }),
+      );
+      expect(record(await namedOnTeam.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      const notAForm = await fixture.attach(caseId, 'report', 18);
+      const wrongForm = await post(
+        CERTIFICATION_APPROVER,
+        `${base}/decision`,
+        decision(19, { decisionFormAttachmentId: notAForm }),
+      );
+      expect(record(await wrongForm.json()).code).toBe(
+        'CERTIFICATION_ATTACHMENT_ROLE',
+      );
       await fixture.grant(
         CERTIFICATION_AUDITOR,
         '/company-certification-approver-assignments',
@@ -288,7 +307,7 @@ withPostgres(
       const teamMember = await post(
         CERTIFICATION_AUDITOR,
         `${base}/decision`,
-        decision(18),
+        decision(19),
       );
       expect(record(await teamMember.json()).code).toBe(
         'CERTIFICATION_INDEPENDENCE',
