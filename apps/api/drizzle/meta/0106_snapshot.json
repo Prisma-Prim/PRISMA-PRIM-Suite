@@ -1,5 +1,5 @@
 {
-  "id": "09394e8e-14a2-425d-a496-4c09c2a3de26",
+  "id": "2d96a0c5-8356-495d-9997-43f4520f06fb",
   "prevId": "762fd6d8-c912-4fed-9395-0a5b1ad94db8",
   "version": "7",
   "dialect": "postgresql",
@@ -34676,23 +34676,23 @@
           "primaryKey": false,
           "notNull": true
         },
-        "holder_name": {
-          "name": "holder_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scope": {
-          "name": "scope",
+        "texts": {
+          "name": "texts",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
+        },
+        "signed_by": {
+          "name": "signed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signed_by_function": {
+          "name": "signed_by_function",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "attachment_id": {
           "name": "attachment_id",
@@ -34842,7 +34842,7 @@
       "checkConstraints": {
         "certification_certificates_values_check": {
           "name": "certification_certificates_values_check",
-          "value": "length(btrim(\"certification_certificates\".\"number\")) BETWEEN 1 AND 64 AND \"certification_certificates\".\"valid_from\" < \"certification_certificates\".\"valid_until\" AND \"certification_certificates\".\"valid_from\" < \"certification_certificates\".\"first_surveillance_by\" AND \"certification_certificates\".\"case_revision\" > 1 AND jsonb_typeof(\"certification_certificates\".\"scope\") = 'array'"
+          "value": "length(btrim(\"certification_certificates\".\"number\")) BETWEEN 1 AND 64 AND \"certification_certificates\".\"valid_from\" < \"certification_certificates\".\"valid_until\" AND \"certification_certificates\".\"valid_from\" < \"certification_certificates\".\"first_surveillance_by\" AND \"certification_certificates\".\"case_revision\" > 1 AND jsonb_typeof(\"certification_certificates\".\"texts\") = 'array'"
         }
       },
       "isRLSEnabled": false

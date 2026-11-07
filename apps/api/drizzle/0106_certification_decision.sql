@@ -8,15 +8,15 @@ CREATE TABLE "certification_certificates" (
 	"valid_from" date NOT NULL,
 	"valid_until" date NOT NULL,
 	"first_surveillance_by" date NOT NULL,
-	"holder_name" text NOT NULL,
-	"address" text NOT NULL,
-	"scope" jsonb NOT NULL,
+	"texts" jsonb NOT NULL,
+	"signed_by" text,
+	"signed_by_function" text,
 	"attachment_id" uuid NOT NULL,
 	"actor_membership_id" uuid NOT NULL,
 	"actor_internal_user_id" uuid NOT NULL,
 	"actor_display_name" text NOT NULL,
 	"recorded_at" timestamp with time zone NOT NULL,
-	CONSTRAINT "certification_certificates_values_check" CHECK (length(btrim("certification_certificates"."number")) BETWEEN 1 AND 64 AND "certification_certificates"."valid_from" < "certification_certificates"."valid_until" AND "certification_certificates"."valid_from" < "certification_certificates"."first_surveillance_by" AND "certification_certificates"."case_revision" > 1 AND jsonb_typeof("certification_certificates"."scope") = 'array')
+	CONSTRAINT "certification_certificates_values_check" CHECK (length(btrim("certification_certificates"."number")) BETWEEN 1 AND 64 AND "certification_certificates"."valid_from" < "certification_certificates"."valid_until" AND "certification_certificates"."valid_from" < "certification_certificates"."first_surveillance_by" AND "certification_certificates"."case_revision" > 1 AND jsonb_typeof("certification_certificates"."texts") = 'array')
 );
 --> statement-breakpoint
 ALTER TABLE "certification_case_documents" DROP CONSTRAINT "certification_case_documents_role_check";--> statement-breakpoint

@@ -61,7 +61,8 @@ import {
 import {
   certificateCommand,
   certificateData,
-  certificateScope,
+  certificateTexts,
+  sameCertificateTexts,
   certificateValidity,
   certificationDecision,
   dossierComplete,
@@ -1588,7 +1589,7 @@ export class CertificationService {
           payload.agreementAttachmentId,
           ['certificate_data'],
         );
-        return { languages: payload.scope.length };
+        return { languages: payload.texts.length };
       },
     });
   }
@@ -1632,6 +1633,22 @@ export class CertificationService {
             'Agree the Certificate data with the client first.',
           );
         const data = certificateDataVersion(agreed).value;
+        if (!sameCertificateTexts(data.texts, decision.grantedTexts))
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
+            'The agreed Certificate data must state exactly what the decision grants.',
+          );
+        const signatory = input.signedBy;
+        if (
+          signatory !== null &&
+          approvedTeam(steps)?.members.some((member) =>
+            sameName(member.name, signatory),
+          )
+        )
+          throw stepConflict(
+            'CERTIFICATION_INDEPENDENCE',
+            'A member of the audit team cannot sign the Certificate.',
+          );
         await this.requireAttachment(
           actor,
           companyId,
@@ -1665,9 +1682,9 @@ export class CertificationService {
             caseRevision: current.revision + 1,
             number: input.number,
             ...validity,
-            holderName: data.holderName,
-            address: data.address,
-            scope: data.scope,
+            texts: data.texts,
+            signedBy: input.signedBy,
+            signedByFunction: input.signedByFunction,
             attachmentId: input.attachmentId,
             actorMembershipId: actor.workspaceMembershipId,
             actorInternalUserId: actor.internalUserId,
@@ -1816,16 +1833,16 @@ export class CertificationService {
         ),
       );
     if (!row) return null;
-    const scope = persisted(() => certificateScope(row.scope));
+    const texts = persisted(() => certificateTexts(row.texts));
     return {
       id: row.id,
       number: row.number,
       validFrom: row.validFrom,
       validUntil: row.validUntil,
       firstSurveillanceBy: row.firstSurveillanceBy,
-      holderName: row.holderName,
-      address: row.address,
-      scope,
+      texts,
+      signedBy: row.signedBy,
+      signedByFunction: row.signedByFunction,
       attachmentId: row.attachmentId,
       recordedBy: {
         workspaceMembershipId: row.actorMembershipId,

@@ -577,9 +577,9 @@ export const certificationCertificates = pgTable(
     firstSurveillanceBy: date('first_surveillance_by', {
       mode: 'string',
     }).notNull(),
-    holderName: text('holder_name').notNull(),
-    address: text('address').notNull(),
-    scope: jsonb('scope').$type<unknown>().notNull(),
+    texts: jsonb('texts').$type<unknown>().notNull(),
+    signedBy: text('signed_by'),
+    signedByFunction: text('signed_by_function'),
     attachmentId: uuid('attachment_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
@@ -636,7 +636,7 @@ export const certificationCertificates = pgTable(
     }),
     check(
       'certification_certificates_values_check',
-      sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.scope}) = 'array'`,
+      sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.texts}) = 'array'`,
     ),
   ],
 );

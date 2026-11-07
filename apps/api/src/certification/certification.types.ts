@@ -294,9 +294,14 @@ export interface CertificateRecord {
   validFrom: string;
   validUntil: string;
   firstSurveillanceBy: string;
-  holderName: string;
-  address: string;
-  scope: { language: string; text: string }[];
+  texts: {
+    language: string;
+    holderName: string;
+    address: string;
+    scope: string;
+  }[];
+  signedBy: string | null;
+  signedByFunction: string | null;
   attachmentId: string;
   recordedBy: CertificationActorReference;
   recordedAt: string;

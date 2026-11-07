@@ -15,6 +15,21 @@ type Subject =
   | typeof CERTIFICATION_AUDITOR
   | typeof CERTIFICATION_APPROVER;
 
+const TEXTS = [
+  {
+    language: 'ro',
+    holderName: 'Lactis Demo SRL',
+    address: 'Str. Exemplu 1, Demo City',
+    scope: 'Producerea laptelui pasteurizat (exemplu)',
+  },
+  {
+    language: 'en',
+    holderName: 'Lactis Demo LLC',
+    address: '1 Example Street, Demo City',
+    scope: 'Production of pasteurised milk (example)',
+  },
+];
+
 const ITEMS = [
   'application',
   'application_review',
@@ -132,7 +147,10 @@ withPostgres(
         decision: 'granted',
         decidedOn: '2026-11-06',
         decidedBy: 'Decision Maker Demo',
+        decidedByFunction: 'Head of the certification body',
         decisionFormAttachmentId: null,
+        independenceAttested: true,
+        grantedTexts: TEXTS,
         rationale: 'Recommendation accepted after the dossier review.',
         additionalInformation: null,
         ...overrides,
@@ -172,18 +190,7 @@ withPostgres(
       expect(
         await ok(CERTIFICATION_OWNER, `${base}/certificate-data`, {
           expectedRevision: 20,
-          holderName: 'Lactis Demo SRL',
-          address: 'Str. Exemplu 1, Demo City',
-          scope: [
-            {
-              language: 'ro',
-              text: 'Producerea laptelui pasteurizat (exemplu)',
-            },
-            {
-              language: 'en',
-              text: 'Production of pasteurised milk (example)',
-            },
-          ],
+          texts: TEXTS,
           agreedOn: '2026-10-21',
           agreementAttachmentId: form,
         }),
@@ -196,6 +203,9 @@ withPostgres(
           expectedRevision: 22,
           number: 'DEMO-0001',
           attachmentId: pdf,
+          signedBy: 'Decision Maker Demo',
+          signedByFunction: 'Head of the certification body',
+          independenceAttested: true,
         },
       );
       expect(certified).toMatchObject({
@@ -206,17 +216,8 @@ withPostgres(
           validFrom: '2026-11-06',
           validUntil: '2029-11-05',
           firstSurveillanceBy: '2027-11-06',
-          holderName: 'Lactis Demo SRL',
-          scope: [
-            {
-              language: 'ro',
-              text: 'Producerea laptelui pasteurizat (exemplu)',
-            },
-            {
-              language: 'en',
-              text: 'Production of pasteurised milk (example)',
-            },
-          ],
+          texts: TEXTS,
+          signedBy: 'Decision Maker Demo',
         },
       });
       expect(await fixture.eventCount(caseId)).toBe(23);
@@ -233,26 +234,48 @@ withPostgres(
         ...review(),
       });
       await ok(CERTIFICATION_APPROVER, `${otherBase}/decision`, decision(18));
+      const otherForm = await fixture.attach(other, 'certificate_data', 19);
       await ok(CERTIFICATION_OWNER, `${otherBase}/certificate-data`, {
         expectedRevision: 20,
-        holderName: 'Lactis Demo SRL',
-        address: 'Str. Exemplu 1, Demo City',
-        scope: [{ language: 'en', text: 'Production of pasteurised milk' }],
+        texts: [{ ...TEXTS[1], scope: 'Production of milk' }],
         agreedOn: '2026-10-21',
-        agreementAttachmentId: await fixture.attach(
-          other,
-          'certificate_data',
-          19,
-        ),
+        agreementAttachmentId: otherForm,
+      });
+      const otherPdf = await fixture.attach(other, 'certificate', 21);
+      const certificate = {
+        number: 'DEMO-0001',
+        attachmentId: otherPdf,
+        signedBy: null,
+        signedByFunction: null,
+        independenceAttested: true,
+      };
+      const differs = await post(
+        CERTIFICATION_APPROVER,
+        `${otherBase}/certificate`,
+        { expectedRevision: 22, ...certificate },
+      );
+      expect(record(await differs.json()).code).toBe(
+        'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
+      );
+      const unattested = await post(
+        CERTIFICATION_APPROVER,
+        `${otherBase}/certificate`,
+        { expectedRevision: 22, ...certificate, independenceAttested: false },
+      );
+      expect(record(await unattested.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE_ATTESTATION',
+      );
+      await ok(CERTIFICATION_OWNER, `${otherBase}/certificate-data`, {
+        expectedRevision: 22,
+        reason: 'Texts aligned with the decision.',
+        texts: TEXTS,
+        agreedOn: '2026-10-22',
+        agreementAttachmentId: otherForm,
       });
       const duplicate = await post(
         CERTIFICATION_APPROVER,
         `${otherBase}/certificate`,
-        {
-          expectedRevision: 22,
-          number: 'DEMO-0001',
-          attachmentId: await fixture.attach(other, 'certificate', 21),
-        },
+        { expectedRevision: 23, ...certificate },
       );
       expect(record(await duplicate.json()).code).toBe(
         'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN',
@@ -332,6 +355,7 @@ withPostgres(
         `${negativeBase}/decision`,
         decision(18, {
           decision: 'refused',
+          grantedTexts: null,
           rationale: 'Recommendation not to grant accepted.',
         }),
       );
@@ -341,9 +365,7 @@ withPostgres(
         `${negativeBase}/certificate-data`,
         {
           expectedRevision: 19,
-          holderName: 'Lactis Demo SRL',
-          address: 'Str. Exemplu 1',
-          scope: [{ language: 'en', text: 'Scope' }],
+          texts: TEXTS,
           agreedOn: '2026-10-21',
           agreementAttachmentId: '00000000-0000-4000-8000-000000000001',
         },

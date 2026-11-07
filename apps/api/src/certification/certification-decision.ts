@@ -36,25 +36,31 @@ export interface DossierReview {
   conclusion: string;
 }
 
-export interface CertificationDecision {
-  decision: 'granted' | 'refused';
+export type CertificationDecision = {
   decidedOn: string;
   /** The certification body's decision maker, when recorded on their behalf. */
   decidedBy: string;
+  decidedByFunction: string | null;
   decisionFormAttachmentId: string | null;
+  /** The recording member attests the decider is not on the audit team. */
+  independenceAttested: true;
   rationale: string;
   additionalInformation: string | null;
-}
+} & (
+  | { decision: 'granted'; grantedTexts: CertificateText[] }
+  | { decision: 'refused'; grantedTexts: null }
+);
 
-export interface CertificateScopeText {
+/** What one Certificate language states: holder, address and scope. */
+export interface CertificateText {
   language: string;
-  text: string;
+  holderName: string;
+  address: string;
+  scope: string;
 }
 
 export interface CertificateData {
-  holderName: string;
-  address: string;
-  scope: CertificateScopeText[];
+  texts: CertificateText[];
   agreedOn: string;
   agreementAttachmentId: string;
 }
@@ -118,16 +124,42 @@ export function certificationDecision(value: unknown): CertificationDecision {
     'decision',
     'decidedOn',
     'decidedBy',
+    'decidedByFunction',
     'decisionFormAttachmentId',
+    'independenceAttested',
+    'grantedTexts',
     'rationale',
     'additionalInformation',
   ]);
-  if (body.decision !== 'granted' && body.decision !== 'refused')
-    return invalid();
+  if (body.independenceAttested !== true)
+    throw new BadRequestException({
+      code: 'CERTIFICATION_INDEPENDENCE_ATTESTATION',
+      message:
+        'Attest that the decision maker is not a member of the audit team.',
+    });
+  let outcome:
+    | { decision: 'granted'; grantedTexts: CertificateText[] }
+    | { decision: 'refused'; grantedTexts: null };
+  if (body.decision === 'granted')
+    outcome = {
+      decision: 'granted',
+      grantedTexts: certificateTexts(body.grantedTexts),
+    };
+  else if (
+    body.decision === 'refused' &&
+    (body.grantedTexts === undefined || body.grantedTexts === null)
+  )
+    outcome = { decision: 'refused', grantedTexts: null };
+  else return invalid();
   return {
-    decision: body.decision,
+    ...outcome,
+    independenceAttested: true,
     decidedOn: date(body.decidedOn),
     decidedBy: text(body.decidedBy, 200),
+    decidedByFunction:
+      body.decidedByFunction === undefined || body.decidedByFunction === null
+        ? null
+        : text(body.decidedByFunction, 200),
     decisionFormAttachmentId:
       body.decisionFormAttachmentId === undefined ||
       body.decisionFormAttachmentId === null
@@ -144,48 +176,82 @@ export function certificationDecision(value: unknown): CertificationDecision {
 
 export function certificateData(value: unknown): CertificateData {
   const body = inputObject(value, [
-    'holderName',
-    'address',
-    'scope',
+    'texts',
     'agreedOn',
     'agreementAttachmentId',
   ]);
-  const scope = certificateScope(body.scope);
   return {
-    holderName: text(body.holderName, 300),
-    address: text(body.address, 500),
-    scope,
+    texts: certificateTexts(body.texts),
     agreedOn: date(body.agreedOn),
     agreementAttachmentId: requireUuid(body.agreementAttachmentId),
   };
 }
 
-/** One to four scope texts, at most one per Certificate language. */
-export function certificateScope(value: unknown): CertificateScopeText[] {
+/** One to four Certificate texts, at most one per language. */
+export function certificateTexts(value: unknown): CertificateText[] {
   if (!Array.isArray(value) || value.length < 1 || value.length > 4)
     return invalid();
-  const scope = value.map((entry) => {
-    const scopeBody = inputObject(entry, ['language', 'text']);
+  const texts = value.map((entry) => {
+    const body = inputObject(entry, [
+      'language',
+      'holderName',
+      'address',
+      'scope',
+    ]);
     return {
-      language: text(scopeBody.language, 10),
-      text: text(scopeBody.text, 2000),
+      language: text(body.language, 10).trim(),
+      holderName: text(body.holderName, 300),
+      address: text(body.address, 500),
+      scope: text(body.scope, 2000),
     };
   });
-  if (new Set(scope.map((entry) => entry.language)).size !== scope.length)
+  if (new Set(texts.map((entry) => entry.language)).size !== texts.length)
     return invalid();
-  return scope;
+  return texts;
+}
+
+/** Whether two sets of Certificate texts state the same, language by language. */
+export function sameCertificateTexts(
+  left: readonly CertificateText[],
+  right: readonly CertificateText[],
+): boolean {
+  const normal = (value: string) => value.replace(/\s+/gu, ' ').trim();
+  return (
+    left.length === right.length &&
+    left.every((entry) => {
+      const other = right.find(
+        (candidate) => candidate.language === entry.language,
+      );
+      return (
+        other !== undefined &&
+        normal(other.holderName) === normal(entry.holderName) &&
+        normal(other.address) === normal(entry.address) &&
+        normal(other.scope) === normal(entry.scope)
+      );
+    })
+  );
 }
 
 export function certificateCommand(value: unknown): {
   expectedRevision: number;
   number: string;
   attachmentId: string;
+  signedBy: string | null;
+  signedByFunction: string | null;
 } {
   const body = inputObject(value, [
     'expectedRevision',
     'number',
     'attachmentId',
+    'signedBy',
+    'signedByFunction',
+    'independenceAttested',
   ]);
+  if (body.independenceAttested !== true)
+    throw new BadRequestException({
+      code: 'CERTIFICATION_INDEPENDENCE_ATTESTATION',
+      message: 'Attest that the signatory is not a member of the audit team.',
+    });
   if (
     typeof body.expectedRevision !== 'number' ||
     !Number.isSafeInteger(body.expectedRevision) ||
@@ -196,6 +262,14 @@ export function certificateCommand(value: unknown): {
     expectedRevision: body.expectedRevision,
     number: text(body.number, 64).trim(),
     attachmentId: requireUuid(body.attachmentId),
+    signedBy:
+      body.signedBy === undefined || body.signedBy === null
+        ? null
+        : text(body.signedBy, 200),
+    signedByFunction:
+      body.signedByFunction === undefined || body.signedByFunction === null
+        ? null
+        : text(body.signedByFunction, 200),
   };
 }
 
