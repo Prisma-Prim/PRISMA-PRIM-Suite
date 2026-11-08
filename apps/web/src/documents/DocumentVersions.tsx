@@ -1,27 +1,24 @@
+import { receivedAuditSourceNativeAuthority } from './received-audit-source-access';
 import {
-  receivedAuditSourceNativeAuthority,
-  hasReceivedAuditSourceAccess,
-} from './received-audit-source-access';
-import { useReceivedAuditSourceCopy } from './received-audit-source.copy';
-import {
-  hasReceivedAddendumAccess,
   receivedAddendumNativeAuthority,
   type ReceivedAddendumNativeAuthority,
 } from './received-addendum-access';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
-import { useReceivedAddendumCopy } from './received-addendum.copy';
 import { PaymentEvidenceVersions } from '../payment-evidence/PaymentEvidenceVersions';
 import type { PaymentEvidenceOperationKeys } from '../payment-evidence/payment-evidence-authority';
 import {
   hasExternalInvoiceAccess,
   hasExternalInvoiceNativeRead,
 } from './external-invoice-access';
-import { useExternalInvoiceCopy } from './external-invoice.copy';
-import { hasReceivedContractAccess } from './received-contract-access';
-import { documentFamilyCaptureKey } from './document-family-access';
-import { useReceivedContractCopy } from './received-contract.copy';
-import { useMissionDeliverableCopy } from './mission-deliverable.copy';
-import { hasMissionDeliverableAccess } from './mission-deliverable-access';
+import {
+  documentFamilyCaptureKey,
+  hasDocumentFamilyAccess,
+} from './document-family-access';
+import {
+  familyScreen,
+  isWorkspaceFamily,
+  useDocumentFamilyCopies,
+} from './document-family-registry';
 import { DocumentPdfContent } from './DocumentPdfContent';
 import { useDocumentNavigationProtection } from './document-navigation-protection';
 import {
@@ -197,25 +194,17 @@ export function DocumentVersions({
   if (
     !company ||
     !permissions.includes('document.read') ||
-    (documentType === 'received-audit-source' &&
-      !hasReceivedAuditSourceAccess(company)) ||
-    (documentType === 'mission-deliverable' &&
-      !hasMissionDeliverableAccess(company)) ||
-    (documentType === 'received-addendum' &&
-      !hasReceivedAddendumAccess(company)) ||
-    (documentType === 'received-contract' &&
-      !hasReceivedContractAccess(company)) ||
-    (documentType === 'external-invoice' &&
-      (!hasExternalInvoiceAccess(company) ||
-        !hasExternalInvoiceNativeRead(
-          company,
-          actor.workspacePermissions.includes('client.manage'),
-        )))
+    !hasDocumentFamilyAccess(company, documentType) ||
+    (familyScreen(documentType).financial &&
+      !hasExternalInvoiceNativeRead(
+        company,
+        actor.workspacePermissions.includes('client.manage'),
+      ))
   )
     return null;
   const canReadReference = permissions.includes('document.reference.read');
   const canMutateFamily =
-    documentType !== 'external-invoice' ||
+    !familyScreen(documentType).financial ||
     hasExternalInvoiceAccess(company, true);
   return (
     <VersionsSection
@@ -980,11 +969,7 @@ function Designation({
   documentType: DocumentFamily;
 }) {
   const copy = useDocumentVersionsCopy();
-  const missionCopy = useMissionDeliverableCopy();
-  const auditSourceCopy = useReceivedAuditSourceCopy();
-  const receivedCopy = useReceivedContractCopy();
-  const addendumCopy = useReceivedAddendumCopy();
-  const invoiceCopy = useExternalInvoiceCopy();
+  const familyCopies = useDocumentFamilyCopies();
   switch (version.status) {
     case 'draft':
       return null;
@@ -1011,17 +996,9 @@ function Designation({
             />
           ) : (
             <p className="working-document-version-notice">
-              {documentType === 'received-audit-source'
-                ? auditSourceCopy('warning')
-                : documentType === 'received-addendum'
-                  ? addendumCopy.t('warning')
-                  : documentType === 'external-invoice'
-                    ? invoiceCopy.t('warning')
-                    : documentType === 'received-contract'
-                      ? receivedCopy.t('warning')
-                      : documentType === 'mission-deliverable'
-                        ? missionCopy.t('warning')
-                        : copy.frozenNotice}
+              {(isWorkspaceFamily(documentType)
+                ? familyScreen(documentType).warning(familyCopies)
+                : undefined) ?? copy.frozenNotice}
             </p>
           )}
         </>
