@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
+import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ContractDocumentReferenceService } from '../contract/contract-document-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -11,6 +12,10 @@ import type {
   ReceivedContractRelationView,
   readReceivedContractRegistration,
 } from './received-contract.js';
+import {
+  receivedSourceAttribution,
+  receivedSourceAttributionView,
+} from './received-source-registration.js';
 
 /** Joins the Document caller's transaction; owns no independent transaction. */
 @Injectable()
@@ -18,9 +23,16 @@ export class ReceivedContractRelationsService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly contracts: ContractDocumentReferenceService,
+    private readonly authorization: CompanyContextAuthorization,
   ) {}
-  requireReadAuthority(actor: ActorContext) {
-    return this.contracts.requireReadAuthority(actor, true);
+  async requireRegistrationAuthority(actor: ActorContext) {
+    if (
+      !(await this.authorization.hasReceivedContractAccess(actor, {
+        lockAssignment: true,
+      }))
+    )
+      throw new ForbiddenException();
+    await this.contracts.requireReadAuthority(actor, true);
   }
   selectableVersions(actor: ActorContext, query: unknown) {
     return this.contracts.selectableVersionsWithinTransaction(actor, query);
@@ -50,11 +62,7 @@ export class ReceivedContractRelationsService {
         ...command.selection,
         contractVersionNumber: reference.contractVersionNumber,
         illustrativeReference: reference.illustrativeReference,
-        sourceDescription: command.sourceDescription,
-        receivedOn: command.receivedOn,
-        registeredByMembershipId: actor.workspaceMembershipId,
-        registeredByInternalUserId: actor.internalUserId,
-        registeredAt: sql`(SELECT created_at FROM working_documents WHERE id=${document.id} AND workspace_id=${document.workspaceId} AND company_id=${document.companyId})`,
+        ...receivedSourceAttribution(actor, document, command),
       });
   }
   async read(
@@ -89,13 +97,7 @@ export class ReceivedContractRelationsService {
       contractVersionId: relation.contractVersionId,
       contractVersionNumber: relation.contractVersionNumber,
       illustrativeReference: relation.illustrativeReference,
-      sourceDescription: relation.sourceDescription,
-      receivedOn: relation.receivedOn,
-      registeredAt: relation.registeredAt.toISOString(),
-      registeredBy: {
-        workspaceMembershipId: relation.registeredByMembershipId,
-        internalUserId: relation.registeredByInternalUserId,
-      },
+      ...receivedSourceAttributionView(relation),
     };
   }
 }

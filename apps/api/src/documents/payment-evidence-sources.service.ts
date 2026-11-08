@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import type { ActorContext } from '../access/access.types.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -12,6 +12,10 @@ import type {
   PaymentEvidenceSourceView,
   readPaymentEvidenceRegistration,
 } from './payment-evidence.js';
+import {
+  receivedSourceAttribution,
+  receivedSourceAttributionView,
+} from './received-source-registration.js';
 
 @Injectable()
 export class PaymentEvidenceSourcesService {
@@ -68,13 +72,9 @@ export class PaymentEvidenceSourcesService {
         payerTaxId: reference.party.taxId,
         payerLegalAddress: reference.party.legalAddress,
         receivingCompanyLabel: actor.activeCompany.displayName,
-        sourceDescription: command.sourceDescription,
-        receivedOn: command.receivedOn,
         initialTitle: command.title,
         initialPurpose: command.purpose,
-        registeredByMembershipId: actor.workspaceMembershipId,
-        registeredByInternalUserId: actor.internalUserId,
-        registeredAt: sql`(SELECT created_at FROM working_documents WHERE id=${document.id} AND workspace_id=${document.workspaceId} AND company_id=${document.companyId})`,
+        ...receivedSourceAttribution(actor, document, command),
       });
   }
   async read(
@@ -95,13 +95,7 @@ export class PaymentEvidenceSourcesService {
     const common = {
       format: 'PAYMENT_EVIDENCE_SOURCE/1' as const,
       receivingCompanyLabel: source.receivingCompanyLabel,
-      sourceDescription: source.sourceDescription,
-      receivedOn: source.receivedOn,
-      registeredAt: source.registeredAt.toISOString(),
-      registeredBy: {
-        workspaceMembershipId: source.registeredByMembershipId,
-        internalUserId: source.registeredByInternalUserId,
-      },
+      ...receivedSourceAttributionView(source),
     };
     if (!(await this.access.mayReadPaymentEvidencePayer(actor)))
       return { ...common, payer: { kind: 'UNAVAILABLE' } };
