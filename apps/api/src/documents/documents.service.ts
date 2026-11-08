@@ -1,4 +1,5 @@
 import { ReceivedAddendumRelationsService } from './received-addendum-relations.service.js';
+import { isProjectLinkableDocument } from './document-family-policy.js';
 import { readReceivedAddendumRegistration } from './received-addendum.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import { readPaymentEvidenceRegistration } from './payment-evidence.js';
@@ -426,13 +427,7 @@ export class DocumentsService {
       idValue,
       undefined,
     );
-    if (
-      document.type === 'external-invoice' ||
-      document.type === 'payment-evidence' ||
-      document.type === 'received-addendum' ||
-      document.type === 'received-audit-source'
-    )
-      return document;
+    if (!isProjectLinkableDocument(document)) return document;
     const projectAssociation = await this.projectAssociation(actor, projectId);
     return projectAssociation ? { ...document, projectAssociation } : document;
   }

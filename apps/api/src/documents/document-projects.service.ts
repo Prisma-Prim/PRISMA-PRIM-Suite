@@ -1,5 +1,9 @@
 import { DocumentReadBoundary } from './document-read-boundary.js';
 import {
+  isProjectLinkableDocument,
+  type ProjectLinkableDocumentType,
+} from './document-family-policy.js';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -76,7 +80,7 @@ export class DocumentProjectsService {
                 'questionnaire',
                 ...(familyAllowed ? ['mission-deliverable' as const] : []),
                 ...(receivedAllowed ? ['received-contract' as const] : []),
-              ]),
+              ] satisfies ProjectLinkableDocumentType[]),
               eligible
                 ? isNull(workingDocuments.projectId)
                 : eq(workingDocuments.projectId, projectId),
@@ -110,10 +114,7 @@ export class DocumentProjectsService {
   }): Promise<void> {
     const { document, project, expectedRevision } = input;
     if (
-      document.type === 'external-invoice' ||
-      document.type === 'payment-evidence' ||
-      document.type === 'received-addendum' ||
-      document.type === 'received-audit-source' ||
+      !isProjectLinkableDocument(document) ||
       document.companyId !== project.companyId ||
       document.clientId !== project.clientAccountId
     )
@@ -196,13 +197,7 @@ export class DocumentProjectsService {
           'Idempotency-Key was already used for another association command.',
         );
       const document = await this.documents.read(actor, documentId);
-      if (
-        document.type === 'external-invoice' ||
-        document.type === 'payment-evidence' ||
-        document.type === 'received-addendum' ||
-        document.type === 'received-audit-source'
-      )
-        throw new NotFoundException();
+      if (!isProjectLinkableDocument(document)) throw new NotFoundException();
       const project = await this.projects.read(actor, command.projectId);
       if (
         document.clientId !== project.clientAccountId ||
