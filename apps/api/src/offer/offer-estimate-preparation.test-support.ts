@@ -18,6 +18,7 @@ export async function openEstimateOfferFixture(
   options: {
     migrationsFolder?: string;
     scannerEnvironment?: {
+      DOCUMENT_MALWARE_SCANNER_ENGINE: string;
       DOCUMENT_MALWARE_SCANNER_HOST: string;
       DOCUMENT_MALWARE_SCANNER_PORT: string;
     };

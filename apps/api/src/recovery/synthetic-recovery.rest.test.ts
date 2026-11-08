@@ -253,6 +253,7 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
       databaseUrl: source.targetUrl,
       environment: {
         ...environment,
+        DOCUMENT_MALWARE_SCANNER_ENGINE: 'clamav',
         DOCUMENT_MALWARE_SCANNER_HOST: '127.0.0.1',
         DOCUMENT_MALWARE_SCANNER_PORT: String(scanner.port),
       },
