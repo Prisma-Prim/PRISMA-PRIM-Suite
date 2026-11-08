@@ -3221,6 +3221,77 @@ withPostgres('First illustrative Offer REST', () => {
     }
   });
 
+  it('holds two identical approvals until both are waiting, then commits one decision', async () => {
+    const { fixture, offer, base } = await decisionOffer();
+    const body = { expectedOfferRevision: 1, acknowledgedWarningCodes: [] };
+    const key = 'identical-approval';
+    const barrier = await pool.connect();
+    let first: Promise<Response> | undefined;
+    let second: Promise<Response> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const [backend] = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows;
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query('SELECT id FROM offers WHERE id = $1 FOR UPDATE', [
+        offer.id,
+      ]);
+      first = decisionRequest(fixture, base + '/approve', body, key);
+      await waitForBlockedRequests(backend.pid, 1);
+      second = decisionRequest(fixture, base + '/approve', body, key);
+      await waitForBlockedRequests(backend.pid, 2);
+      await barrier.query('COMMIT');
+      const responses = await Promise.all([first, second]);
+      expect(responses.map((response) => response.status)).toEqual([201, 201]);
+      const [recorded, replay] = await Promise.all(
+        responses.map((response) => json(response)),
+      );
+      expect(replay).toEqual(recorded);
+      expect(recorded).toMatchObject({ state: 'APPROVED', offerRevision: 2 });
+      const decisionId = stringField(record(recorded), 'id');
+      expect(
+        (
+          await pool.query<{ count: number }>(
+            'SELECT count(*)::integer AS count FROM offer_decisions WHERE offer_id = $1',
+            [offer.id],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await pool.query<{ decision_id: string }>(
+            `SELECT result_decision_id::text AS decision_id
+               FROM offer_commands
+              WHERE result_offer_id = $1 AND idempotency_key = $2 AND kind = 'APPROVE'`,
+            [offer.id, key],
+          )
+        ).rows,
+      ).toEqual([{ decision_id: decisionId }]);
+      expect(
+        (
+          await pool.query<{ count: number }>(
+            `SELECT count(*)::integer AS count FROM offer_events
+              WHERE offer_id = $1 AND action = 'offer_version.approved'`,
+            [offer.id],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await pool.query<{ count: number }>(
+            'SELECT count(*)::integer AS count FROM offer_quality_runs WHERE offer_id = $1',
+            [offer.id],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      await Promise.allSettled([first, second]);
+    }
+  });
+
   it('denies a decision waiting behind a committed assignment revocation', async () => {
     const { fixture, base } = await decisionOffer();
     const { offers: service, actor } = await offerServiceContext(fixture);
