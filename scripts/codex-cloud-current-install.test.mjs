@@ -12,10 +12,8 @@ const scriptPath = fileURLToPath(
 );
 const readScript = async () =>
   (await readFile(scriptPath, 'utf8')).replaceAll('\r\n', '\n');
-
-test('the current Cloud Start skill activates what the Install script writes, at the same pins', async () => {
-  const script = await readScript();
-  const skill = (
+const readStartSkill = async () =>
+  (
     await readFile(
       new URL(
         '../docs/agents/codex-cloud-current-start-skill.txt',
@@ -24,6 +22,10 @@ test('the current Cloud Start skill activates what the Install script writes, at
       'utf8',
     )
   ).replaceAll('\r\n', '\n');
+
+test('the current Cloud Start skill activates what the Install script writes, at the same pins', async () => {
+  const script = await readScript();
+  const skill = await readStartSkill();
   assert.match(
     skill,
     /^source \/workspace\/prisma-cloud-tools\/activate-prisma-cloud\.sh$/m,
@@ -37,6 +39,18 @@ test('the current Cloud Start skill activates what the Install script writes, at
   }
   assert.match(script, /pnpm@11\.20\.0/);
   assert.match(script, /github-cli\/2\.102\.0/);
+});
+
+test('the current Cloud Start skill runs the doctor with Cloud readiness budgets', async () => {
+  // Standard budgets can misreport a slow Cloud probe as a missing tool
+  // (#611); the commands proven on 2026-11-07 pass --readiness-profile cloud.
+  const doctorRuns =
+    (await readStartSkill()).match(/agent-doctor\.mjs --profile [^\n']*/g) ??
+    [];
+  assert.ok(doctorRuns.length > 0, 'the Start skill runs the doctor');
+  for (const run of doctorRuns) {
+    assert.match(run, /--readiness-profile cloud\b/, run);
+  }
 });
 
 test('the current Cloud Install script is valid strict bash', async () => {
