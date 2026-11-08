@@ -67,6 +67,8 @@ test('the fuzz job runs every fuzzed API file as its own matrix job, none cancel
   assert.equal(new Set(legs.map((leg) => leg.module)).size, legs.length);
   for (const leg of legs) {
     assert.match(leg.test, /^src\/[a-z-]+\/[a-z-]+\.fuzz\.rest\.test\.ts$/);
+    // Each leg, and so its failure artifact, is named after its module.
+    assert.equal(leg.module, leg.test.split('/')[1]);
     await access(new URL(`../apps/api/${leg.test}`, import.meta.url));
   }
   assert.match(

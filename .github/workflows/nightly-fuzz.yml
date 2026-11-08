@@ -2,12 +2,13 @@ name: Nightly fuzz
 
 # Seeded model-based fuzzing of Company isolation, access revocation and
 # Activity Log invariants through the real API on PostgreSQL: Internal
-# Company Tasks (#1156) and manual external Invoice Records (#1211). It runs
-# on main every night with a random seed and never gates a pull request; the
-# regular API CI runs the same test files as fixed-seed smokes. Each fuzzed
-# file is one matrix job with its own budget, so a module added here never
-# shortens another's night. `report` keeps one open `fuzz-found` issue,
-# which the owner closes after triage.
+# Company Tasks (#1156), manual external Invoice Records (#1211) and manual
+# incoming Payment observations (#1218). It runs on main every night with a
+# random seed and never gates a pull request; the regular API CI runs the
+# same test files as fixed-seed smokes. Each fuzzed file is one matrix job
+# with its own budget, so a module added here never shortens another's
+# night. `report` keeps one open `fuzz-found` issue, which the owner closes
+# after triage.
 # Scheduled in the owner's Paris night, off the hour GitHub loads most (#1207).
 on:
   schedule:
@@ -31,6 +32,8 @@ jobs:
             test: src/internal-task/internal-task.fuzz.rest.test.ts
           - module: invoice-record
             test: src/invoice-record/invoice-record.fuzz.rest.test.ts
+          - module: payment
+            test: src/payment/payment.fuzz.rest.test.ts
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -53,7 +56,8 @@ jobs:
       # runs or its own 20-minute limit, whichever comes first, ending a slow
       # night cleanly before the job timeout as a pass of the runs done.
       # Measured per run: Internal Company Tasks 0.8 to 1.3 seconds, Invoice
-      # Records 0.9 seconds (#1200, #1211), so both usually finish.
+      # Records 0.9 seconds (#1200, #1211), so both usually finish; Payments
+      # ran no slower than Invoice Records on the same machine (#1218).
       - name: Fuzz the API invariants
         env:
           FUZZ_SEED: random
