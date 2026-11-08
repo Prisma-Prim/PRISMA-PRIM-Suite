@@ -124,9 +124,10 @@ export class PaymentStore {
       )
       .orderBy(desc(records.createdAt), desc(records.id))
       .limit(26);
-    const items = await Promise.all(
-      rows.slice(0, 25).map((row) => this.summary(row)),
-    );
+    // Inside the read transaction the connection is one pg client, which
+    // runs one query at a time: build the summaries one after the other.
+    const items = [];
+    for (const row of rows.slice(0, 25)) items.push(await this.summary(row));
     return { items, hasMore: rows.length > 25 };
   }
   async history(scope: PaymentScope, id: string, before?: number) {
