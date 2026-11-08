@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { IncomingMessage } from 'node:http';
+import { Socket } from 'node:net';
 import { ForbiddenException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -673,4 +675,46 @@ withPostgres('Received Addendum exact captured parent authority', () => {
       );
     },
   );
+
+  it('refuses an Actor whose exact Uploader was replaced before reading the upload body', async () => {
+    const captured = await actor();
+    await revoke('/company-document-content-uploader-assignments');
+    await grant('/company-document-content-uploader-assignments');
+    const fresh = await actor();
+    expect(fresh.activeCompany?.documentContentUploaderAssignmentId).not.toBe(
+      captured.activeCompany?.documentContentUploaderAssignmentId,
+    );
+    // A body that never completes: only a refusal made before the body is
+    // read can settle this upload, and any read attempt is reported instead.
+    const request = new IncomingMessage(new Socket());
+    request.headers = { 'content-type': 'application/pdf' };
+    const bodyRead = new Promise<'body read'>((resolve) => {
+      request._read = () => resolve('body read');
+    });
+    const before = await facts();
+    try {
+      const outcome = await Promise.race([
+        content
+          .upload(captured, {
+            documentId,
+            versionId,
+            query: {
+              expectedRevision: '2',
+              fileName: 'fictional-addendum.pdf',
+            },
+            key: randomUUID(),
+            request,
+          })
+          .then(
+            () => 'uploaded',
+            (error: unknown) => error,
+          ),
+        bodyRead,
+      ]);
+      expect(outcome).toBeInstanceOf(ForbiddenException);
+    } finally {
+      request.destroy();
+    }
+    expect(await facts()).toEqual(before);
+  });
 });

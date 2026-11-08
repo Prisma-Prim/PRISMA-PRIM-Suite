@@ -17,6 +17,7 @@ import {
 } from '../access/access-command-validation.js';
 import type { ActorContext } from '../access/access.types.js';
 import { DatabaseContext } from '../database/database-context.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
 import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentVersionsService } from './document-versions.service.js';
@@ -34,6 +35,7 @@ export class DocumentContentService {
     private readonly boundary: DocumentReadBoundary,
     private readonly storage: DocumentPdfStorage,
     private readonly versions: DocumentVersionsService,
+    private readonly familyAccess: DocumentFamilyAccess,
   ) {}
 
   async upload(
@@ -57,20 +59,10 @@ export class DocumentContentService {
         actor,
         documentId,
       );
-      if (family === 'received-audit-source')
-        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
-        });
-      if (family === 'external-invoice')
-        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
-        });
-      if (family === 'payment-evidence')
-        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
+      // The same family decision as the in-transaction recheck (#1176).
+      if (family !== undefined)
+        await this.familyAccess.requireFamilyAccess(actor, family, 'upload', {
+          lock: true,
         });
     });
     if (input.request.headers['content-type'] !== 'application/pdf')
@@ -102,26 +94,12 @@ export class DocumentContentService {
       const companyId =
         await this.authorization.requireDocumentContentRead(actor);
       const visible = await this.boundary.requireVisible(actor, documentId);
-      if (visible.document.type === 'received-audit-source')
-        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
-      if (visible.document.type === 'external-invoice')
-        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
-      if (visible.document.type === 'received-addendum')
-        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
-      if (visible.document.type === 'payment-evidence')
-        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
+      await this.familyAccess.requireFamilyAccess(
+        actor,
+        visible.document.type,
+        'content-read',
+        { lock: false },
+      );
       const [version] = await this.database.connection
         .select({ id: documentVersions.id })
         .from(documentVersions)
@@ -189,26 +167,12 @@ export class DocumentContentService {
         )
       : await this.authorization.requireDocumentContentRead(actor);
     const visible = await this.boundary.requireVisible(actor, documentId);
-    if (visible.document.type === 'received-audit-source')
-      await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-        action: 'content-read',
-        lockAssignment: false,
-      });
-    if (visible.document.type === 'external-invoice')
-      await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-        action: 'content-read',
-        lockAssignment: false,
-      });
-    if (visible.document.type === 'received-addendum')
-      await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-        action: 'content-read',
-        lockAssignment: false,
-      });
-    if (visible.document.type === 'payment-evidence')
-      await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-        action: 'content-read',
-        lockAssignment: false,
-      });
+    await this.familyAccess.requireFamilyAccess(
+      actor,
+      visible.document.type,
+      'content-read',
+      { lock: false },
+    );
     const stored = await this.storage.read({
       scope: { workspaceId: actor.workspaceId, companyId, documentId },
       versionId,

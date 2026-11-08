@@ -3,10 +3,24 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import { workingDocuments } from '../database/schema/index.js';
 import {
   DOCUMENT_FAMILY_POLICY,
+  isNativeAccessFamily,
   isProjectLinkable,
+  requiresNativeFamilyAccess,
+  type DocumentFamilyAccessDecisions,
+  type DocumentFamilyAction,
   type DocumentType,
+  type NativeAccessDocumentType,
   type ProjectLinkableDocumentType,
 } from './document-family-policy.js';
+
+const ACTIONS = [
+  'read',
+  'content-read',
+  'upload',
+  'version',
+  'designate',
+  'correct',
+] as const satisfies readonly DocumentFamilyAction[];
 
 describe('Document family policy', () => {
   it('decides every persisted Document family and no other', () => {
@@ -38,6 +52,48 @@ describe('Document family policy', () => {
     expectTypeOf<ProjectLinkableDocumentType>().toEqualTypeOf<
       'questionnaire' | 'mission-deliverable' | 'received-contract'
     >();
+  });
+
+  it('requires the family native grant for every action of the four natively granted families only', () => {
+    const native = [
+      'received-addendum',
+      'received-audit-source',
+      'external-invoice',
+      'payment-evidence',
+    ];
+    expect(
+      workingDocuments.type.enumValues
+        .filter((type) => isNativeAccessFamily(type))
+        .sort(),
+    ).toEqual([...native].sort());
+    for (const type of workingDocuments.type.enumValues)
+      for (const action of ACTIONS)
+        expect(
+          requiresNativeFamilyAccess(type, action),
+          `${type} ${action}`,
+        ).toBe(native.includes(type));
+    expectTypeOf<NativeAccessDocumentType>().toEqualTypeOf<
+      | 'received-addendum'
+      | 'received-audit-source'
+      | 'external-invoice'
+      | 'payment-evidence'
+    >();
+    expectTypeOf<DocumentFamilyAction>().toEqualTypeOf<
+      (typeof ACTIONS)[number]
+    >();
+  });
+
+  it('refuses at type level a family without a decision for one of its actions', () => {
+    const withoutUpload = {
+      read: 'native',
+      'content-read': 'native',
+      version: 'native',
+      designate: 'native',
+      correct: 'native',
+    } as const;
+    // @ts-expect-error A family must decide upload like every other action.
+    const incomplete: DocumentFamilyAccessDecisions = withoutUpload;
+    expect(incomplete).toBe(withoutUpload);
   });
 
   it('names a Document family exactly as the persisted column does', () => {

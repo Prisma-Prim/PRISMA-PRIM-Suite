@@ -1,6 +1,8 @@
 import { requireDocumentPdfStructure } from './document-pdf-validation.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
+import { requiresNativeFamilyAccess } from './document-family-policy.js';
 import type {
   DocumentPdfContent,
   ValidatedDocumentPdf,
@@ -9,7 +11,6 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -111,57 +112,13 @@ export class DocumentVersionsService {
     private readonly boundary: DocumentReadBoundary,
     private readonly pdfs: DocumentPdfStorage,
     private readonly scanner: DocumentMalwareScanner,
+    private readonly familyAccess: DocumentFamilyAccess,
   ) {}
 
   private async canReadPdf(actor: ActorContext, type: DocumentRow['type']) {
-    if (type === 'received-audit-source') {
-      try {
-        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
-        return true;
-      } catch (error) {
-        if (error instanceof ForbiddenException) return false;
-        throw error;
-      }
-    }
-    if (type === 'received-addendum') {
-      try {
-        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
-        return true;
-      } catch (error) {
-        if (error instanceof ForbiddenException) return false;
-        throw error;
-      }
-    }
-    if (type === 'payment-evidence') {
-      try {
-        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-          action: 'content-read',
-          lockAssignment: false,
-        });
-        return true;
-      } catch (error) {
-        if (error instanceof ForbiddenException) return false;
-        throw error;
-      }
-    }
-    if (type !== 'external-invoice')
+    if (!requiresNativeFamilyAccess(type, 'content-read'))
       return this.authorization.hasDocumentContentRead(actor);
-    try {
-      await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-        action: 'content-read',
-        lockAssignment: false,
-      });
-      return true;
-    } catch (error) {
-      if (error instanceof ForbiddenException) return false;
-      throw error;
-    }
+    return this.familyAccess.hasFamilyAccess(actor, type, 'content-read');
   }
 
   /** Exact scoped Version facts inside the caller's already-authorized Document read snapshot. */
@@ -534,26 +491,12 @@ export class DocumentVersionsService {
         documentId: input.documentId,
       };
       await this.requireVersionOf(scope, input.versionId);
-      if (visible.document.type === 'received-audit-source')
-        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
-        });
-      if (visible.document.type === 'external-invoice')
-        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
-        });
-      if (visible.document.type === 'received-addendum')
-        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
-        });
-      if (visible.document.type === 'payment-evidence')
-        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-          action: 'upload',
-          lockAssignment: true,
-        });
+      await this.familyAccess.requireFamilyAccess(
+        actor,
+        visible.document.type,
+        'upload',
+        { lock: true },
+      );
       if (recorded) return recorded;
       await this.clients.lockActiveReferenceClient(
         actor,
@@ -744,46 +687,16 @@ export class DocumentVersionsService {
       };
       if (command.versionId !== null)
         await this.requireVersionOf(scope, command.versionId);
-      if (visible.document.type === 'received-audit-source')
-        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-          action:
-            command.action === 'representation_added'
-              ? 'upload'
-              : command.action === 'designated_official'
-                ? 'designate'
-                : 'version',
-          lockAssignment: true,
-        });
-      if (visible.document.type === 'external-invoice')
-        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-          action:
-            command.action === 'representation_added'
-              ? 'upload'
-              : command.action === 'designated_official'
-                ? 'designate'
-                : 'version',
-          lockAssignment: true,
-        });
-      if (visible.document.type === 'received-addendum')
-        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-          action:
-            command.action === 'representation_added'
-              ? 'upload'
-              : command.action === 'designated_official'
-                ? 'designate'
-                : 'version',
-          lockAssignment: true,
-        });
-      if (visible.document.type === 'payment-evidence')
-        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-          action:
-            command.action === 'representation_added'
-              ? 'upload'
-              : command.action === 'designated_official'
-                ? 'designate'
-                : 'version',
-          lockAssignment: true,
-        });
+      await this.familyAccess.requireFamilyAccess(
+        actor,
+        visible.document.type,
+        command.action === 'representation_added'
+          ? 'upload'
+          : command.action === 'designated_official'
+            ? 'designate'
+            : 'version',
+        { lock: true },
+      );
       const fingerprint = versionCommandFingerprint(command, companyId);
       const replay = await this.replayCommand(actor, command, companyId);
       if (replay) return replay;

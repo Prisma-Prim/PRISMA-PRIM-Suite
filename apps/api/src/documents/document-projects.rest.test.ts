@@ -27,6 +27,7 @@ import { ProjectClosedGuard } from '../project/project-closed.guard.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentProjectsService } from './document-projects.service.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
 import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentVersionsService } from './document-versions.service.js';
 
@@ -955,10 +956,13 @@ describe.skipIf(!databaseUrl)(
         clients,
         accountability,
       );
+      const familyAccess = new DocumentFamilyAccess(authorization);
       const boundary = new DocumentReadBoundary(
         authorization,
         context,
         clients,
+
+        familyAccess,
       );
       const documents = new DocumentsService(
         authorization,
@@ -974,6 +978,7 @@ describe.skipIf(!databaseUrl)(
           boundary,
           new DocumentPdfStorage(context),
           new DocumentMalwareScanner(new ConfigService()),
+          familyAccess,
         ),
         receivedAddendumRelationsForTest({
           context,
@@ -994,6 +999,7 @@ describe.skipIf(!databaseUrl)(
           accountability,
         }),
         new PaymentEvidenceSourcesService(context, authorization, clients),
+        familyAccess,
       );
       return {
         documents,
