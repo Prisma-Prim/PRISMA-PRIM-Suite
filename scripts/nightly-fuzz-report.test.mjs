@@ -41,6 +41,16 @@ const invoiceReport = {
   detail: "the auditor's inventory holds two RECORDED entries of A1",
   sequence: ['create(ana source#0 replaces=none values=0)'],
 };
+const paymentReport = {
+  ...report,
+  testFile: 'src/payment/payment.fuzz.rest.test.ts',
+  seed: 1218,
+  path: '40~2:0~B',
+  invariant: 'independent-author',
+  rule: 'A draft author never confirms the same Payment.',
+  detail: 'bogdan confirmed Payment p1, whose CREATE he authored',
+  sequence: ['create(bogdan source#0 replaces=none values=0)'],
+};
 const failedMarker = '<!-- nightly-fuzz: failed -->';
 const passedMarker = '<!-- nightly-fuzz: passed -->';
 
@@ -106,6 +116,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(invoiceReport),
     "FUZZ_SEED=1211 FUZZ_PATH='40~3:1~' pnpm --filter @prisma-prim/api exec vitest run src/invoice-record/invoice-record.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(paymentReport)),
+    paymentReport,
+  );
+  assert.equal(
+    replayCommand(paymentReport),
+    "FUZZ_SEED=1218 FUZZ_PATH='40~2:0~B' pnpm --filter @prisma-prim/api exec vitest run src/payment/payment.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -113,13 +131,18 @@ test("each failing module's downloaded artifact gives one report", async () => {
   try {
     for (const [name, value] of [
       ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
+      ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
       ['nightly-fuzz-report-internal-task', JSON.stringify(report)],
       ['nightly-fuzz-report-broken', 'not json'],
     ]) {
       await mkdir(join(directory, name));
       await writeFile(join(directory, name, 'fuzz-report.json'), value);
     }
-    assert.deepEqual(readFuzzReports(directory), [report, invoiceReport]);
+    assert.deepEqual(readFuzzReports(directory), [
+      report,
+      invoiceReport,
+      paymentReport,
+    ]);
     assert.deepEqual(readFuzzReports(join(directory, 'missing')), []);
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -43,6 +43,15 @@ export function authorSourceRevision(value: unknown) {
   return value;
 }
 
+/**
+ * Another receiving Company, with an original Client related to it, for a
+ * Source outside the fixture's Company (#1218).
+ */
+export interface AuthorSourceCompany {
+  id: string;
+  clientId: string;
+}
+
 /** Uses native Source registration, scanned PDF upload and optional designation. */
 export async function prepareAuthorSource(
   fixture: PaymentEvidenceFixture,
@@ -50,8 +59,12 @@ export async function prepareAuthorSource(
     payerKind?: 'PRIMARY' | 'ADDITIONAL';
     official?: boolean;
     bytes?: Buffer;
+    company?: AuthorSourceCompany;
   } = {},
 ) {
+  // The fixture's additional entity belongs to its own Client only.
+  if (options.company && options.payerKind === 'ADDITIONAL')
+    throw new Error('Another Company has no fixture ADDITIONAL payer.');
   const payer: Parameters<typeof paymentSourceRegistration>[1] =
     options.payerKind === 'ADDITIONAL'
       ? {
@@ -59,10 +72,15 @@ export async function prepareAuthorSource(
           legalEntityId: fixture.ready.additionalLegalEntityId,
         }
       : { kind: 'PRIMARY' };
+  const company = options.company?.id;
   const document = await authorSourceJson(
     await fixture.call('/documents', {
       method: 'POST',
-      body: paymentSourceRegistration(fixture.ready.clientId, payer),
+      company,
+      body: paymentSourceRegistration(
+        options.company?.clientId ?? fixture.ready.clientId,
+        payer,
+      ),
     }),
     201,
   );
@@ -75,6 +93,7 @@ export async function prepareAuthorSource(
       versionId: documentVersionId,
       revision: 1,
       bytes,
+      company,
     }),
     201,
   );
@@ -87,7 +106,7 @@ export async function prepareAuthorSource(
     await authorSourceJson(
       await fixture.call(
         `/documents/${documentId}/versions/${documentVersionId}/official-designation`,
-        { method: 'POST', body: { expectedRevision: 2 } },
+        { method: 'POST', company, body: { expectedRevision: 2 } },
       ),
     );
   return { source, bytes, workingRevision: options.official === false ? 2 : 3 };
@@ -199,11 +218,13 @@ export async function correctLiveAuthorSourcePayer(
 export async function prepareAuthorSourceWithDraft(
   fixture: PaymentEvidenceFixture,
   bytes: Buffer,
+  company?: AuthorSourceCompany,
 ) {
-  const prepared = await prepareAuthorSource(fixture, { bytes });
+  const prepared = await prepareAuthorSource(fixture, { bytes, company });
   const drafted = await authorSourceJson(
     await fixture.call(`/documents/${prepared.source.documentId}/versions`, {
       method: 'POST',
+      company: company?.id,
       body: { expectedRevision: 3 },
     }),
     201,
@@ -215,6 +236,7 @@ export async function prepareAuthorSourceWithDraft(
       versionId: documentVersionId,
       revision: 4,
       bytes,
+      company: company?.id,
     }),
     201,
   );

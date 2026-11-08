@@ -8,6 +8,7 @@ const LABEL = 'fuzz-found';
 export const FUZZ_TEST_FILES = [
   'src/internal-task/internal-task.fuzz.rest.test.ts',
   'src/invoice-record/invoice-record.fuzz.rest.test.ts',
+  'src/payment/payment.fuzz.rest.test.ts',
 ];
 // Each report and pass comment carries one marker, so a passing night
 // comments once after the latest failure instead of every night.
