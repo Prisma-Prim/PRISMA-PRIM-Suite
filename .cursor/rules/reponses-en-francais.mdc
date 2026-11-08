@@ -1,0 +1,12 @@
+---
+description: Les réponses de chat de l'agent sont en français
+alwaysApply: true
+---
+
+Réponds à l'utilisateur en français.
+
+Cela couvre les messages de chat, les mises à jour de progression et le rapport final.
+
+Le code, les identifiants, les messages de commit et la documentation technique restent en anglais, comme l'exige AGENTS.md.
+
+Les textes visibles dans le produit restent prêts pour la localisation. Quand la langue du produit est le français, écris ces textes en français.
