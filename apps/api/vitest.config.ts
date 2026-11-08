@@ -22,5 +22,7 @@ export default defineConfig({
     // Closing a REST harness drops its database; under load that can exceed
     // the 10 s default while still finishing. A genuine hang still fails.
     hookTimeout: 30_000,
+    // Fails a test that sends a query to a busy pg client (#1231).
+    setupFiles: ['./test-support/pg-queued-query-guard.ts'],
   },
 });
