@@ -10,6 +10,7 @@ import { CompanyContextAuthorization } from '../access/company-context-authoriza
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { workingDocuments } from '../database/schema/index.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
 
 /** A Document the actor may currently read, with its original Client. */
 export interface VisibleDocument {
@@ -35,6 +36,7 @@ export class DocumentReadBoundary {
     private readonly authorization: CompanyContextAuthorization,
     private readonly database: DatabaseContext,
     private readonly clients: ClientOperationalReferenceService,
+    private readonly familyAccess: DocumentFamilyAccess,
   ) {}
 
   async requireVisible(
@@ -56,7 +58,9 @@ export class DocumentReadBoundary {
         ),
       );
     if (!document) throw new NotFoundException();
-    await this.requireFamily(actor, document.type, options.lockFamily);
+    await this.familyAccess.requireVisibleFamily(actor, document.type, {
+      lock: options.lockFamily,
+    });
     const client = await this.clients.readReferenceClient(
       actor,
       document.clientId,
@@ -85,90 +89,14 @@ export class DocumentReadBoundary {
       );
     if (!document) return undefined;
     try {
-      await this.requireFamily(actor, document.type, true);
+      await this.familyAccess.requireVisibleFamily(actor, document.type, {
+        lock: true,
+      });
     } catch (error) {
       if (error instanceof NotFoundException) return undefined;
       throw error;
     }
     return document.type;
-  }
-
-  private async requireFamily(
-    actor: ActorContext,
-    type: unknown,
-    lockAssignment: boolean,
-  ): Promise<void> {
-    if (type === 'questionnaire') return;
-    if (type === 'received-audit-source') {
-      if (
-        !(await this.authorization.hasReceivedAuditSourceAccess(actor, {
-          lockAssignment,
-        }))
-      )
-        throw new NotFoundException();
-      await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-        action: 'read',
-        lockAssignment,
-      });
-      return;
-    }
-    if (type === 'payment-evidence') {
-      if (
-        !(await this.authorization.hasPaymentEvidenceAccess(actor, {
-          manage: lockAssignment,
-          lockAssignment,
-        }))
-      )
-        throw new NotFoundException();
-      await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-        action: 'read',
-        lockAssignment,
-      });
-      return;
-    }
-    if (type === 'external-invoice') {
-      if (
-        !(await this.authorization.hasExternalInvoiceAccess(actor, {
-          manage: lockAssignment,
-          lockAssignment,
-        }))
-      )
-        throw new NotFoundException();
-      await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-        action: 'read',
-        lockAssignment,
-      });
-      return;
-    }
-    if (type === 'received-addendum') {
-      if (
-        !(await this.authorization.hasReceivedAddendumAccess(actor, {
-          lockAssignment,
-        }))
-      )
-        throw new NotFoundException();
-      await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-        action: 'read',
-        lockAssignment,
-      });
-      return;
-    }
-    if (type === 'received-contract') {
-      if (
-        !(await this.authorization.hasReceivedContractAccess(actor, {
-          lockAssignment,
-        }))
-      )
-        throw new NotFoundException();
-      return;
-    }
-    if (
-      type !== 'mission-deliverable' ||
-      !(await this.authorization.hasMissionDeliverableAccess(actor, {
-        lockAssignment,
-      }))
-    )
-      throw new NotFoundException();
   }
 }
 

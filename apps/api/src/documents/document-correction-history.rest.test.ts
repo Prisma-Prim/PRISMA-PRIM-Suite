@@ -25,6 +25,7 @@ import {
 } from '../database/postgres-rest-test-harness.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
 import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentVersionsService } from './document-versions.service.js';
 
@@ -573,10 +574,13 @@ describe.skipIf(!databaseUrl)(
       const authorization = new CompanyContextAuthorization(context);
       const clients = new ClientOperationalReferenceService(context);
       const accountability = new AccountabilityService(context);
+      const familyAccess = new DocumentFamilyAccess(authorization);
       const boundary = new DocumentReadBoundary(
         authorization,
         context,
         clients,
+
+        familyAccess,
       );
       const documents = new DocumentsService(
         authorization,
@@ -592,6 +596,7 @@ describe.skipIf(!databaseUrl)(
           boundary,
           new DocumentPdfStorage(context),
           new DocumentMalwareScanner(new ConfigService()),
+          familyAccess,
         ),
         receivedAddendumRelationsForTest({
           context,
@@ -612,6 +617,7 @@ describe.skipIf(!databaseUrl)(
           accountability,
         }),
         new PaymentEvidenceSourcesService(context, authorization, clients),
+        familyAccess,
       );
       const result = await documents.correctionHistory(metadataReader, {
         documentId,

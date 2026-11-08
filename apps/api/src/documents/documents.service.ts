@@ -1,5 +1,6 @@
 import { ReceivedAddendumRelationsService } from './received-addendum-relations.service.js';
 import { isProjectLinkableDocument } from './document-family-policy.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
 import { readReceivedAddendumRegistration } from './received-addendum.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import { readPaymentEvidenceRegistration } from './payment-evidence.js';
@@ -71,6 +72,7 @@ export class DocumentsService {
     private readonly receivedContracts: ReceivedContractRelationsService,
     private readonly externalInvoices: ExternalInvoiceRelationsService,
     private readonly paymentEvidence: PaymentEvidenceSourcesService,
+    private readonly familyAccess: DocumentFamilyAccess,
   ) {}
   async register(
     actor: ActorContext,
@@ -751,26 +753,12 @@ export class DocumentsService {
           lockFamily: true,
         })
       ).document;
-      if (visible.type === 'received-audit-source')
-        await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
-          action: 'correct',
-          lockAssignment: true,
-        });
-      if (visible.type === 'external-invoice')
-        await this.authorization.requireExternalInvoiceNativeAccess(actor, {
-          action: 'correct',
-          lockAssignment: true,
-        });
-      if (visible.type === 'received-addendum')
-        await this.authorization.requireReceivedAddendumNativeAccess(actor, {
-          action: 'correct',
-          lockAssignment: true,
-        });
-      if (visible.type === 'payment-evidence')
-        await this.authorization.requirePaymentEvidenceNativeAccess(actor, {
-          action: 'correct',
-          lockAssignment: true,
-        });
+      await this.familyAccess.requireFamilyAccess(
+        actor,
+        visible.type,
+        'correct',
+        { lock: true },
+      );
       if (visible.type !== 'questionnaire' && command.url !== undefined)
         throw new BadRequestException(
           'This Document family does not accept external references.',

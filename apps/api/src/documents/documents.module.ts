@@ -20,6 +20,7 @@ import { DatabaseModule } from '../database/database.module.js';
 import { ClientModule } from '../client/client.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentFamilyAccess } from './document-family-access.js';
 import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentVersionsService } from './document-versions.service.js';
 @Module({
@@ -41,6 +42,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     ExternalInvoiceRelationsService,
     DocumentsService,
     DocumentProjectsService,
+    DocumentFamilyAccess,
     DocumentReadBoundary,
     DocumentVersionsService,
     DocumentContentService,
