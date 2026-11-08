@@ -8,9 +8,16 @@ import {
 } from '../offer/offer-estimate-preparation.test-support.js';
 
 type Fixture = Awaited<ReturnType<typeof openEstimateOfferFixture>>;
-/** Genuine native synthetic declaration followed by explicit independent grants. */
-export async function prepareExternalInvoiceSource(fixture: Fixture) {
-  const signed = await prepareReportedSigning(fixture);
+/**
+ * Genuine native synthetic declaration followed by explicit independent
+ * grants. A distinct `clientTaxId` prepares another Company in the same
+ * Workspace.
+ */
+export async function prepareExternalInvoiceSource(
+  fixture: Fixture,
+  options: { clientTaxId?: string } = {},
+) {
+  const signed = await prepareReportedSigning(fixture, options);
   await fixture.command({
     ...signed.target,
     path: signed.path,
@@ -67,8 +74,11 @@ export async function prepareExternalInvoiceSource(fixture: Fixture) {
   };
 }
 
-export async function openExternalInvoiceDocument(fixture: Fixture) {
-  const ready = await prepareExternalInvoiceSource(fixture);
+export async function openExternalInvoiceDocument(
+  fixture: Fixture,
+  options: { clientTaxId?: string } = {},
+) {
+  const ready = await prepareExternalInvoiceSource(fixture, options);
   const document = await ready.register();
   if (typeof document.id !== 'string')
     throw new Error('Expected Document identity.');
