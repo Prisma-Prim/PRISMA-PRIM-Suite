@@ -5,9 +5,10 @@ name: Nightly fuzz
 # on main every night with a random seed and never gates a pull request; the
 # regular API CI runs the same test file as a fixed-seed smoke. `report`
 # keeps one open `fuzz-found` issue, which the owner closes after triage.
+# Scheduled in the owner's Paris night, off the hour GitHub loads most (#1207).
 on:
   schedule:
-    - cron: '30 3 * * *'
+    - cron: '30 1 * * *'
   workflow_dispatch:
 
 permissions:

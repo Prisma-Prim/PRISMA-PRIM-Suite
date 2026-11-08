@@ -33,7 +33,7 @@ test('the nightly fuzz starts at 03:30 UTC or by hand, and never on a pull reque
   const workflow = await readWorkflow();
   assert.match(
     workflow,
-    /\non:\n {2}schedule:\n {4}- cron: '30 3 \* \* \*'\n {2}workflow_dispatch:\n\n/,
+    /\non:\n {2}schedule:\n {4}- cron: '30 1 \* \* \*'\n {2}workflow_dispatch:\n\n/,
   );
   // Nothing it finds can gate a pull request or a merge.
   assert.doesNotMatch(

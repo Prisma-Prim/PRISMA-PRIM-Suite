@@ -33,7 +33,7 @@ test('the weekly mutation run starts on Mondays after the weekly report, or by h
   const workflow = await readWorkflow();
   assert.match(
     workflow,
-    /\non:\n {2}schedule:\n {4}- cron: '30 7 \* \* 1'\n {2}workflow_dispatch:\n\n/,
+    /\non:\n {2}schedule:\n {4}- cron: '35 3 \* \* 1'\n {2}workflow_dispatch:\n\n/,
   );
   // Nothing it reports can gate a pull request or a merge.
   assert.doesNotMatch(

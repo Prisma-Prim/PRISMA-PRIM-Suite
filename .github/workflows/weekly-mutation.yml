@@ -4,9 +4,10 @@ name: Weekly mutation
 # (scripts/mutation/modules.mjs) that changed on main in the last 7 days,
 # after the weekly report. It posts one comment on the open
 # `weekly-inspection` issue and never gates a pull request.
+# Scheduled in the owner's Paris night, off the hour GitHub loads most (#1207).
 on:
   schedule:
-    - cron: '30 7 * * 1'
+    - cron: '35 3 * * 1'
   workflow_dispatch:
 
 permissions:
