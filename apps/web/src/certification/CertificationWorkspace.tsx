@@ -4377,6 +4377,10 @@ function independenceRefusal(kind: MutationKind): Feedback {
       return refusedWith('decisionMakerIndependence');
     case 'certificate':
       return refusedWith('certificateIndependence');
+    // Only the person approving on behalf of the certification body is checked.
+    case 'stage1Report':
+    case 'stage2Report':
+      return refusedWith('actingOnTeam');
     case 'decision':
     case 'open':
     case 'application':
@@ -4386,8 +4390,6 @@ function independenceRefusal(kind: MutationKind): Feedback {
     case 'agreement':
     case 'stage1Plan':
     case 'stage2Plan':
-    case 'stage1Report':
-    case 'stage2Report':
     case 'recommendation':
     case 'certificateData':
       return refusedWith('teamIndependence', true);
@@ -4847,6 +4849,8 @@ function commandFeedback(
           return refusedWith('agreementDocumentRole', true);
         case 'CERTIFICATION_AGREEMENT_IN_FUTURE':
           return refusedWith('agreementInFuture');
+        case 'CERTIFICATION_ACT_IN_FUTURE':
+          return refusedWith('actInFuture');
         case 'CERTIFICATION_AGREEMENT_MISSING':
           return refusedWith('blockedTeamBeforeAgreement', true);
         case 'CERTIFICATION_TEAM_NOT_PENDING':

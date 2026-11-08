@@ -58,6 +58,7 @@ import {
   latestBusinessDate,
   requireIndependenceAttestation,
   sameName,
+  type ActAttribution,
 } from './certification-attribution.js';
 import {
   auditTeam,
@@ -350,7 +351,7 @@ export class CertificationService {
             'CERTIFICATION_APPLICATION_ALREADY_REVIEWED',
             'The application has already been reviewed.',
           );
-        await this.requireActForm(
+        await this.requireAct(
           actor,
           companyId,
           targetId,
@@ -429,7 +430,7 @@ export class CertificationService {
             'CERTIFICATION_CORRECTION_REASON',
             'A correction states its reason; a first determination has none.',
           );
-        await this.requireActForm(actor, companyId, targetId, input.onBehalf);
+        await this.requireAct(actor, companyId, targetId, input.onBehalf);
         const result = computeDuration(facts, input.inputs);
         if (result.kind === 'refused')
           throw new BadRequestException({
@@ -806,7 +807,8 @@ export class CertificationService {
             'CERTIFICATION_INDEPENDENCE',
             'A member who decided on the team, reviewed the dossier or recorded the decision cannot join the audit team.',
           );
-        // So does a person who did so on behalf of the certification body.
+        // So does a person who did so, or approved a Stage report, on behalf
+        // of the certification body.
         const actedFor = namedActingPersons(steps);
         if (
           input.team.members.some((member) =>
@@ -815,7 +817,7 @@ export class CertificationService {
         )
           throw stepConflict(
             'CERTIFICATION_INDEPENDENCE',
-            'A person who decided on the team or reviewed the dossier on behalf of the certification body cannot join the audit team.',
+            'A person who decided on the team, reviewed the dossier or approved a Stage report on behalf of the certification body cannot join the audit team.',
           );
         const facts = this.acceptedApplication(steps);
         if (facts.consultant.used && input.team.impartialityAnalysis === null)
@@ -914,7 +916,7 @@ export class CertificationService {
             'A member of the audit team cannot approve it.',
           );
         this.requireNotNamedOnTeam(steps, input.decision.onBehalf?.actedBy);
-        await this.requireActForm(
+        await this.requireAct(
           actor,
           companyId,
           targetId,
@@ -1126,7 +1128,13 @@ export class CertificationService {
             input.payload.participantListAttachmentId,
             ['participant_list'],
           );
-        await this.requireActForm(
+        // Conservative default until the certification body confirms it: the
+        // person approving a report on its behalf is not on the audit team.
+        this.requireNotNamedOnTeam(
+          steps,
+          input.payload.certificationBodyApproval?.actedBy,
+        );
+        await this.requireAct(
           actor,
           companyId,
           targetId,
@@ -1575,7 +1583,7 @@ export class CertificationService {
         requireIndependenceAttestation(payload.independenceAttested);
         for (const act of [payload.reviewedBy, payload.approvedBy]) {
           this.requireNotNamedOnTeam(steps, act?.actedBy);
-          await this.requireActForm(
+          await this.requireAct(
             input.actor,
             companyId,
             requireUuid(input.caseId),
@@ -1757,6 +1765,7 @@ export class CertificationService {
             texts: data.texts,
             signedBy: input.signedBy,
             signedByFunction: input.signedByFunction,
+            independenceAttested: input.independenceAttested,
             attachmentId: input.attachmentId,
             actorMembershipId: actor.workspaceMembershipId,
             actorInternalUserId: actor.internalUserId,
@@ -1903,13 +1912,21 @@ export class CertificationService {
       );
   }
 
-  /** The signed form of an act on behalf of the certification body belongs to the Case. */
-  private async requireActForm(
+  /**
+   * An act on behalf of the certification body is not dated after the latest
+   * calendar date already reached, and its signed form belongs to the Case.
+   */
+  private async requireAct(
     actor: ActorContext,
     companyId: string,
     caseId: string,
-    act: { formAttachmentId: string | null } | null,
+    act: ActAttribution | null,
   ): Promise<void> {
+    if (act && act.actedOn > latestBusinessDate(this.clock.now()))
+      throw stepConflict(
+        'CERTIFICATION_ACT_IN_FUTURE',
+        'An act on behalf of the certification body cannot be dated after today.',
+      );
     if (act?.formAttachmentId)
       await this.requireAttachments(actor, companyId, caseId, [
         act.formAttachmentId,
@@ -1951,6 +1968,7 @@ export class CertificationService {
       texts,
       signedBy: row.signedBy,
       signedByFunction: row.signedByFunction,
+      independenceAttested: row.independenceAttested,
       attachmentId: row.attachmentId,
       recordedBy: {
         workspaceMembershipId: row.actorMembershipId,
@@ -2992,23 +3010,31 @@ function optionalVersion<T>(
 }
 
 /**
- * The persons named as acting for the certification body on a team decision
- * or a dossier review, in every recorded version.
+ * The persons named as acting for the certification body on a team decision,
+ * a Stage report approval or a dossier review, in every recorded version.
  */
 function namedActingPersons(steps: readonly StepRow[]): string[] {
-  return steps.flatMap((row) => {
-    if (row.step === 'team_decision') {
-      const act = teamDecisionVersion(row).value.onBehalf;
-      return act ? [act.actedBy] : [];
-    }
-    if (row.step === 'dossier_review') {
+  return steps
+    .flatMap(actsOutsideTheTeam)
+    .flatMap((act) => (act ? [act.actedBy] : []));
+}
+
+/** The acts on behalf of the certification body that one version records. */
+function actsOutsideTheTeam(row: StepRow): (ActAttribution | null)[] {
+  switch (row.step) {
+    case 'team_decision':
+      return [teamDecisionVersion(row).value.onBehalf];
+    case 'stage_1_report':
+      return [stage1Version(row).value.certificationBodyApproval];
+    case 'stage_2_report':
+      return [stage2Version(row).value.certificationBodyApproval];
+    case 'dossier_review': {
       const { reviewedBy, approvedBy } = dossierReviewVersion(row).value;
-      return [reviewedBy, approvedBy].flatMap((act) =>
-        act ? [act.actedBy] : [],
-      );
+      return [reviewedBy, approvedBy];
     }
-    return [];
-  });
+    default:
+      return [];
+  }
 }
 
 /** The latest team version when its latest decision approves it. */
@@ -3033,6 +3059,16 @@ function stage1Version(
   };
 }
 
+function stage2Version(
+  row: StepRow,
+): Extract<StageStepVersion, { step: 'stage_2_report' }> {
+  return {
+    ...base(row),
+    step: 'stage_2_report',
+    value: persisted(() => stage2Report(row.payload)),
+  };
+}
+
 function stagePlanVersion(row: StepRow) {
   return { ...base(row), value: persisted(() => stagePlan(row.payload)) };
 }
@@ -3046,11 +3082,7 @@ function stageStepVersion(row: StepRow): StageStepVersion {
     case 'stage_1_report':
       return stage1Version(row);
     case 'stage_2_report':
-      return {
-        ...base(row),
-        step: 'stage_2_report',
-        value: persisted(() => stage2Report(row.payload)),
-      };
+      return stage2Version(row);
     default:
       throw new InternalServerErrorException('Not a Stage step.');
   }

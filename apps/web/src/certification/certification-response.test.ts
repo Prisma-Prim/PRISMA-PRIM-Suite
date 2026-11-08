@@ -2398,6 +2398,7 @@ const certificate = {
   texts: CERTIFICATE_TEXTS,
   signedBy: 'Decision Maker Demo',
   signedByFunction: 'Head of the certification body',
+  independenceAttested: true,
   attachmentId: 'certificate-pdf',
   recordedBy: by,
   recordedAt: '2026-11-07T10:00:00.000Z',
@@ -2535,6 +2536,19 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
         { ...scope, caseId },
       ).certificate,
     ).toMatchObject({ signedBy: null, signedByFunction: null });
+    expect(
+      parseCaseDetail(certifiedDetail({ independenceAttested: false }), {
+        ...scope,
+        caseId,
+      }).certificate,
+    ).toMatchObject({ independenceAttested: false });
+    for (const independenceAttested of [undefined, 'yes'])
+      expect(() =>
+        parseCaseDetail(certifiedDetail({ independenceAttested }), {
+          ...scope,
+          caseId,
+        }),
+      ).toThrow();
   });
 
   it('reads a refusal that closes the Case', () => {

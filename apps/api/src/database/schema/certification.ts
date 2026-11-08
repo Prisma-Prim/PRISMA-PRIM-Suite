@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   foreignKey,
@@ -580,6 +581,8 @@ export const certificationCertificates = pgTable(
     texts: jsonb('texts').$type<unknown>().notNull(),
     signedBy: text('signed_by'),
     signedByFunction: text('signed_by_function'),
+    /** False only in Certificates recorded before the attestation was stored. */
+    independenceAttested: boolean('independence_attested').notNull(),
     attachmentId: uuid('attachment_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),

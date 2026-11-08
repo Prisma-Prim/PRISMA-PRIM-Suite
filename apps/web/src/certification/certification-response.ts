@@ -1308,6 +1308,8 @@ function certificateValue(value: unknown): Certificate {
       row.signedByFunction,
       DECISION_LIMITS.person,
     ),
+    // The server stores and returns it with every Certificate.
+    independenceAttested: flag(row.independenceAttested),
     attachmentId: text(row.attachmentId),
     recordedBy: actorReference(row.recordedBy),
     recordedAt: instant(row.recordedAt),

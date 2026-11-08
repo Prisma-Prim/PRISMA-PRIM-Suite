@@ -111,6 +111,8 @@ export interface Certificate {
   texts: CertificateText[];
   signedBy: string | null;
   signedByFunction: string | null;
+  /** False only in Certificates recorded before the attestation was stored. */
+  independenceAttested: boolean;
   attachmentId: string;
   recordedBy: CertificationActorReference;
   recordedAt: string;

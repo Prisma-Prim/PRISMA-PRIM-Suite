@@ -37,14 +37,22 @@ function leader(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function onBehalf(actedBy: string, formAttachmentId: string | null = null) {
+function onBehalf(
+  actedBy: string,
+  formAttachmentId: string | null = null,
+  actedOn = '2026-11-03',
+) {
   return {
     actedBy,
     actedByFunction: 'Head of the certification body',
-    actedOn: '2026-11-03',
+    actedOn,
     formAttachmentId,
   };
 }
+
+/** The fixture clock reads 2026-11-07T08:00Z: today is already 2026-11-07 everywhere, 2026-11-08 nowhere. */
+const LATEST_BUSINESS_DATE = '2026-11-07';
+const FUTURE = '2026-11-08';
 
 withPostgres(
   'Certification acts on behalf of the certification body',
@@ -237,6 +245,94 @@ withPostgres(
         'CERTIFICATION_INDEPENDENCE',
       );
       expect(await fixture.eventCount(caseId)).toBe(9);
+    });
+
+    it('refuses an act on behalf of the certification body dated after the latest business date', async () => {
+      const caseId = await fixture.caseWithApplication();
+      const base = `/certification-cases/${caseId}`;
+      const review = (actedOn: string) => ({
+        expectedRevision: 2,
+        criteria: allCriteria(),
+        outcome: 'accepted',
+        onBehalf: onBehalf('Quality Manager Demo', null, actedOn),
+      });
+      const futureReview = await post(
+        CERTIFICATION_OWNER,
+        `${base}/application-review`,
+        review(FUTURE),
+      );
+      expect(futureReview.status).toBe(409);
+      expect(record(await futureReview.json()).code).toBe(
+        'CERTIFICATION_ACT_IN_FUTURE',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(2);
+      expect(
+        await ok(
+          CERTIFICATION_OWNER,
+          `${base}/application-review`,
+          review(LATEST_BUSINESS_DATE),
+        ),
+      ).toMatchObject({
+        revision: 3,
+        applicationReview: {
+          value: {
+            onBehalf: onBehalf(
+              'Quality Manager Demo',
+              null,
+              LATEST_BUSINESS_DATE,
+            ),
+          },
+        },
+      });
+      const futureDuration = await post(
+        CERTIFICATION_OWNER,
+        `${base}/duration`,
+        {
+          expectedRevision: 3,
+          inputs: {
+            primary: 'CI',
+            haccpStudies: { CI: 3 },
+            increases: {},
+            reductions: {},
+          },
+          confirmed: {
+            initialOnSite: '4.5',
+            stage1OnSite: '1.5',
+            stage2OnSite: '3',
+            surveillanceOnSite: '1.5',
+            recertificationOnSite: '3',
+          },
+          onBehalf: onBehalf('Head of Body Demo', null, FUTURE),
+        },
+      );
+      expect(futureDuration.status).toBe(409);
+      expect(record(await futureDuration.json()).code).toBe(
+        'CERTIFICATION_ACT_IN_FUTURE',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(3);
+
+      const teamCase = await fixture.agreedCase();
+      const teamBase = `/certification-cases/${teamCase}`;
+      await ok(CERTIFICATION_OWNER, `${teamBase}/team`, {
+        expectedRevision: 6,
+        members: [leader()],
+      });
+      const futureApproval = await post(
+        CERTIFICATION_APPROVER,
+        `${teamBase}/team-decision`,
+        {
+          expectedRevision: 7,
+          teamVersion: 1,
+          decision: 'approved',
+          independenceAttested: true,
+          onBehalf: onBehalf('Head of Body Demo', null, FUTURE),
+        },
+      );
+      expect(futureApproval.status).toBe(409);
+      expect(record(await futureApproval.json()).code).toBe(
+        'CERTIFICATION_ACT_IN_FUTURE',
+      );
+      expect(await fixture.eventCount(teamCase)).toBe(7);
     });
 
     it('keeps the duration approval made on behalf of the certification body', async () => {
