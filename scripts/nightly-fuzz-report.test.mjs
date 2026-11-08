@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
   fuzzVerdict,
   parseFuzzReport,
+  readFuzzReports,
   replayCommand,
   reportNightlyFuzz,
 } from './nightly-fuzz-report.mjs';
@@ -16,6 +20,7 @@ const run = {
   runId: '88',
 };
 const report = {
+  testFile: 'src/internal-task/internal-task.fuzz.rest.test.ts',
   seed: 546315018,
   path: '30~0:1:0~ARB:F',
   invariant: 'company-isolation',
@@ -25,6 +30,16 @@ const report = {
   runs: 1,
   shrinks: 2,
   replay: 'ignored: the script rebuilds it from the seed and path',
+};
+const invoiceReport = {
+  ...report,
+  testFile: 'src/invoice-record/invoice-record.fuzz.rest.test.ts',
+  seed: 1211,
+  path: '40~3:1~',
+  invariant: 'single-active-entry',
+  rule: 'At most one RECORDED entry names a given financial Document.',
+  detail: "the auditor's inventory holds two RECORDED entries of A1",
+  sequence: ['create(ana source#0 replaces=none values=0)'],
 };
 const failedMarker = '<!-- nightly-fuzz: failed -->';
 const passedMarker = '<!-- nightly-fuzz: passed -->';
@@ -68,22 +83,54 @@ test('a malformed or foreign report is no counterexample', () => {
     parseFuzzReport(JSON.stringify({ ...report, sequence: [1] })),
     null,
   );
-  // The path reaches a shell command: anything but the printed shape is refused.
+  // The path and test file reach a shell command: anything but the printed
+  // shape and the fuzzed files is refused.
   assert.equal(
     parseFuzzReport(JSON.stringify({ ...report, path: "1~0~A'; rm -rf ~" })),
     null,
   );
+  for (const testFile of [
+    undefined,
+    'src/internal-task/internal-task.rest.test.ts',
+    'src/internal-task/internal-task.fuzz.rest.test.ts; rm -rf ~',
+  ])
+    assert.equal(
+      parseFuzzReport(JSON.stringify({ ...report, testFile })),
+      null,
+    );
   assert.equal(
     replayCommand(report),
     "FUZZ_SEED=546315018 FUZZ_PATH='30~0:1:0~ARB:F' pnpm --filter @prisma-prim/api exec vitest run src/internal-task/internal-task.fuzz.rest.test.ts",
   );
+  assert.equal(
+    replayCommand(invoiceReport),
+    "FUZZ_SEED=1211 FUZZ_PATH='40~3:1~' pnpm --filter @prisma-prim/api exec vitest run src/invoice-record/invoice-record.fuzz.rest.test.ts",
+  );
+});
+
+test("each failing module's downloaded artifact gives one report", async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'nightly-fuzz-reports-'));
+  try {
+    for (const [name, value] of [
+      ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
+      ['nightly-fuzz-report-internal-task', JSON.stringify(report)],
+      ['nightly-fuzz-report-broken', 'not json'],
+    ]) {
+      await mkdir(join(directory, name));
+      await writeFile(join(directory, name, 'fuzz-report.json'), value);
+    }
+    assert.deepEqual(readFuzzReports(directory), [report, invoiceReport]);
+    assert.deepEqual(readFuzzReports(join(directory, 'missing')), []);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('a failing night with no open issue opens one labelled fuzz-found with the seed, sequence, invariant and run', async () => {
   const fake = github();
   await reportNightlyFuzz({
     result: 'failure',
-    report,
+    reports: [report],
     run,
     api: fake.api,
     log: quiet,
@@ -98,6 +145,7 @@ test('a failing night with no open issue opens one labelled fuzz-found with the 
   assert.deepEqual(issue.labels, ['fuzz-found']);
   assert.equal(issue.title, 'Nightly fuzz broke company-isolation at c0ffee1');
   for (const fact of [
+    '`src/internal-task/internal-task.fuzz.rest.test.ts`',
     '`company-isolation`',
     report.detail,
     '`546315018`',
@@ -111,11 +159,40 @@ test('a failing night with no open issue opens one labelled fuzz-found with the 
     assert.ok(issue.body.includes(fact), fact);
 });
 
+test('a night where two modules fail reports both in the one issue', async () => {
+  const fake = github();
+  await reportNightlyFuzz({
+    result: 'failure',
+    reports: [report, invoiceReport],
+    run,
+    api: fake.api,
+    log: quiet,
+  });
+  const writes = fake.writes();
+  assert.deepEqual(
+    writes.map(({ method, path }) => `${method} ${path}`),
+    ['POST labels', 'POST issues'],
+  );
+  const issue = writes[1].body;
+  assert.equal(
+    issue.title,
+    'Nightly fuzz broke company-isolation, single-active-entry at c0ffee1',
+  );
+  for (const fact of [
+    replayCommand(report),
+    replayCommand(invoiceReport),
+    invoiceReport.detail,
+    '1. `create(ana source#0 replaces=none values=0)`',
+  ])
+    assert.ok(issue.body.includes(fact), fact);
+  assert.equal(issue.body.match(/<!-- nightly-fuzz: failed -->/gu).length, 1);
+});
+
 test('a failing night without a report still opens the issue and says so', async () => {
   const fake = github();
   await reportNightlyFuzz({
     result: 'failure',
-    report: null,
+    reports: [],
     run,
     api: fake.api,
     log: quiet,
@@ -134,7 +211,7 @@ test('a failing night with an open issue comments on the oldest one only', async
   });
   await reportNightlyFuzz({
     result: 'failure',
-    report,
+    reports: [report],
     run,
     api: fake.api,
     log: quiet,
@@ -189,7 +266,7 @@ test('cancelled runs and other branches report nothing', async () => {
     const fake = github({ issues: [{ number: 9, body: failedMarker }] });
     await reportNightlyFuzz({
       result,
-      report,
+      reports: [report],
       run: { ...run, ref },
       api: fake.api,
       log: quiet,
@@ -202,11 +279,13 @@ test('report text cannot mention anyone or close its code block', async () => {
   const fake = github();
   await reportNightlyFuzz({
     result: 'failure',
-    report: {
-      ...report,
-      detail: 'got 403 for ana@example.test ``` (at)team',
-      sequence: ['create(@someone)'],
-    },
+    reports: [
+      {
+        ...report,
+        detail: 'got 403 for ana@example.test ``` (at)team',
+        sequence: ['create(@someone)'],
+      },
+    ],
     run,
     api: fake.api,
     log: quiet,

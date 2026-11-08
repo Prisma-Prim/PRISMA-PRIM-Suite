@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { FUZZ_TEST_FILES } from './nightly-fuzz-report.mjs';
 
 async function readWorkflow() {
   return (
@@ -53,6 +54,27 @@ test('the nightly fuzz starts at 03:30 UTC or by hand, and never on a pull reque
   assert.doesNotMatch(workflow, /cancel-in-progress: true/);
 });
 
+test('the fuzz job runs every fuzzed API file as its own matrix job, none cancelling another', async () => {
+  const { fuzz } = jobsIn(await readWorkflow());
+  assert.match(fuzz, /\n {4}strategy:\n(?: {6}#.*\n)* {6}fail-fast: false\n/);
+  const legs = [
+    ...fuzz.matchAll(/^ {10}- module: ([a-z-]+)\n {12}test: (\S+)$/gm),
+  ].map((match) => ({ module: match[1], test: match[2] }));
+  assert.deepEqual(
+    legs.map((leg) => leg.test),
+    FUZZ_TEST_FILES,
+  );
+  assert.equal(new Set(legs.map((leg) => leg.module)).size, legs.length);
+  for (const leg of legs) {
+    assert.match(leg.test, /^src\/[a-z-]+\/[a-z-]+\.fuzz\.rest\.test\.ts$/);
+    await access(new URL(`../apps/api/${leg.test}`, import.meta.url));
+  }
+  assert.match(
+    stepBody(fuzz, 'Upload the failure report'),
+    /\n {10}name: nightly-fuzz-report-\$\{\{ matrix\.module \}\}\n/,
+  );
+});
+
 test('the fuzz job runs the API fuzz test on PostgreSQL with a random seed inside its timeout', async () => {
   const { fuzz } = jobsIn(await readWorkflow());
   assert.match(fuzz, /^ {4}timeout-minutes: 30$/m);
@@ -82,9 +104,11 @@ test('the fuzz job runs the API fuzz test on PostgreSQL with a random seed insid
     step,
     /\n {10}FUZZ_REPORT: \$\{\{ runner\.temp \}\}\/fuzz-report\.json\n/,
   );
+  // The matrix value reaches the shell as data, never as script text.
+  assert.match(step, /\n {10}FUZZ_TEST_FILE: \$\{\{ matrix\.test \}\}\n/);
   assert.match(
     step.trimEnd(),
-    /\n {8}run: pnpm --filter @prisma-prim\/api exec vitest run src\/internal-task\/internal-task\.fuzz\.rest\.test\.ts$/,
+    /\n {8}run: pnpm --filter @prisma-prim\/api exec vitest run "\$FUZZ_TEST_FILE"$/,
   );
   assert.match(
     stepBody(fuzz, 'Upload the failure report'),
@@ -107,11 +131,25 @@ test('only the report job writes issues, after every finished fuzz, one at a tim
     report,
     /\n {4}concurrency:\n {6}group: fuzz-found-report\n {6}cancel-in-progress: false\n/,
   );
+  const download = stepBody(report, 'Download the failure reports');
+  assert.match(
+    download,
+    /\n {8}if: \$\{\{ needs\.fuzz\.result == 'failure' \}\}\n/,
+  );
+  assert.match(download, /\n {10}pattern: nightly-fuzz-report-\*\n/);
+  assert.match(
+    download,
+    /\n {10}path: \$\{\{ runner\.temp \}\}\/fuzz-reports\n/,
+  );
   const step = stepBody(
     report,
     'Open, update or comment on the fuzz-found issue',
   );
   assert.match(step, /\n {10}FUZZ_RESULT: \$\{\{ needs\.fuzz\.result \}\}\n/);
+  assert.match(
+    step,
+    /\n {10}FUZZ_REPORTS: \$\{\{ runner\.temp \}\}\/fuzz-reports\n/,
+  );
   assert.match(
     step.trimEnd(),
     /\n {8}run: node scripts\/nightly-fuzz-report\.mjs$/,

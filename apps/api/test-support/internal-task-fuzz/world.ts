@@ -4,6 +4,13 @@ import {
   string,
   type InternalTaskFixture,
 } from '../../src/internal-task/internal-task.test-support.js';
+import {
+  canonical,
+  InvariantViolation as ModelInvariantViolation,
+  readReply,
+  short,
+  type Reply,
+} from '../model-fuzz/checks.js';
 
 /**
  * The invariants checked after every fuzz step, each with its authority.
@@ -30,14 +37,7 @@ export const INVARIANTS = {
 } as const;
 export type Invariant = keyof typeof INVARIANTS;
 
-export class InvariantViolation extends Error {
-  readonly invariant: Invariant;
-  constructor(invariant: Invariant, detail: string) {
-    super(`${invariant}: ${detail}`);
-    this.name = 'InvariantViolation';
-    this.invariant = invariant;
-  }
-}
+export class InvariantViolation extends ModelInvariantViolation<Invariant> {}
 
 export const COMPANIES = ['A', 'B'] as const;
 export type CompanyKey = (typeof COMPANIES)[number];
@@ -130,12 +130,6 @@ export interface StepOutcome {
   events: ExpectedEvent[];
 }
 
-export interface Reply {
-  status: number;
-  text: string;
-  body: unknown;
-}
-
 export class FuzzApi {
   private keys = 0;
   constructor(
@@ -170,33 +164,12 @@ export class FuzzApi {
           : this.companyIds[options.company],
       subject: actor === 'owner' ? undefined : SUBJECTS[actor],
     });
-    const text = await response.text();
-    return { status: response.status, text, body: parse(text) };
+    return readReply(response);
   }
 
   companyOf(companyId: string): CompanyKey | undefined {
     return COMPANIES.find((company) => this.companyIds[company] === companyId);
   }
-}
-
-function parse(text: string): unknown {
-  try {
-    const value: unknown = JSON.parse(text);
-    return value;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Order-insensitive JSON, to compare a replayed receipt with the original. */
-export function canonical(value: unknown): string {
-  return JSON.stringify(value, (_key, item: unknown) =>
-    item && typeof item === 'object' && !Array.isArray(item)
-      ? Object.fromEntries(
-          Object.entries(item).sort(([a], [b]) => a.localeCompare(b)),
-        )
-      : item,
-  );
 }
 
 export function grantKey(
@@ -256,35 +229,6 @@ export function denialInvariant(
 
 export function isOpen(status: Status) {
   return status === 'todo' || status === 'in_progress' || status === 'blocked';
-}
-
-export function short(reply: Reply) {
-  return `${reply.status} ${reply.text.slice(0, 200)}`;
-}
-
-/**
- * Expects `reply` to be the denial `status` and, for a request aimed at a
- * record, its twin aimed at a missing record to be byte-identical.
- */
-export async function expectDenial(input: {
-  reply: Reply;
-  status: 403 | 404;
-  invariant: Invariant;
-  what: string;
-  twin?: () => Promise<Reply>;
-}) {
-  if (input.reply.status !== input.status)
-    throw new InvariantViolation(
-      input.invariant,
-      `${input.what}: expected ${input.status}, got ${short(input.reply)}`,
-    );
-  if (!input.twin) return;
-  const twin = await input.twin();
-  if (twin.status !== input.reply.status || twin.text !== input.reply.text)
-    throw new InvariantViolation(
-      'identical-denial',
-      `${input.what}: the existing record got ${short(input.reply)}, a missing one got ${short(twin)}`,
-    );
 }
 
 export interface TaskView {

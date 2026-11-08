@@ -29,11 +29,15 @@ export function fictionalInvoiceValues() {
   };
 }
 
-/** All eligible source facts and assignments are produced by native commands. */
+/**
+ * All eligible source facts and assignments are produced by native commands.
+ * A distinct `clientTaxId` prepares another Company in the same Workspace.
+ */
 export async function prepareInvoiceRecordSource(
   fixture: InvoiceRecordProofFixture,
+  options: { clientTaxId?: string } = {},
 ) {
-  const document = await openExternalInvoiceDocument(fixture);
+  const document = await openExternalInvoiceDocument(fixture, options);
   const documentVersionId = responseString(
     responseRecord(document.document.version),
     'id',

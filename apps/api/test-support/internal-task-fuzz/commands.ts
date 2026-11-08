@@ -4,14 +4,18 @@ import {
   string,
 } from '../../src/internal-task/internal-task.test-support.js';
 import {
+  canonical,
+  expectDenial,
+  short,
+  type Reply,
+} from '../model-fuzz/checks.js';
+import {
   BUNDLES,
   canEnter,
-  canonical,
   canWork,
   checkStep,
   COMPANIES,
   denialInvariant,
-  expectDenial,
   expectList,
   expectTask,
   grantKey,
@@ -23,7 +27,6 @@ import {
   PRIORITIES,
   readList,
   SESSION_REVOCATION_OUTCOME,
-  short,
   STATUSES,
   taskView,
   TITLES,
@@ -34,7 +37,6 @@ import {
   type MemberKey,
   type Model,
   type Priority,
-  type Reply,
   type Status,
   type StepOutcome,
   type TaskModel,
