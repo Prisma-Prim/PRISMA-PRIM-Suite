@@ -10,6 +10,10 @@ import {
   createPostgresRestTestHarness,
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
+import {
+  GUARDDUTY_DEMO_AWS_ENVIRONMENT,
+  openGuardDutyS3Fake,
+} from './document-guardduty-s3.test-support.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
@@ -73,7 +77,9 @@ withPostgres('Preserved questionnaire PDF content REST', () => {
   let scanMode: 'clean' | 'unsafe' | 'unavailable' | 'malformed' = 'clean';
   let scanCount = 0;
   let holdScan: ((complete: () => void) => void) | undefined;
-  async function startApiHarness(): Promise<PostgresRestTestHarness> {
+  async function startApiHarness(
+    scannerEnvironment?: Readonly<Record<string, string>>,
+  ): Promise<PostgresRestTestHarness> {
     const address = scanner.address();
     if (!address || typeof address === 'string')
       throw new Error('Expected scanner TCP address.');
@@ -86,8 +92,11 @@ withPostgres('Preserved questionnaire PDF content REST', () => {
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'pdf-owner',
         ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'PDF content DEMO',
-        DOCUMENT_MALWARE_SCANNER_HOST: '127.0.0.1',
-        DOCUMENT_MALWARE_SCANNER_PORT: String(address.port),
+        ...(scannerEnvironment ?? {
+          DOCUMENT_MALWARE_SCANNER_ENGINE: 'clamav',
+          DOCUMENT_MALWARE_SCANNER_HOST: '127.0.0.1',
+          DOCUMENT_MALWARE_SCANNER_PORT: String(address.port),
+        }),
       },
     });
   }
@@ -492,6 +501,74 @@ withPostgres('Preserved questionnaire PDF content REST', () => {
         )
       ).rows,
     ).toEqual([{ count: 0 }]);
+  });
+  it('stores a GuardDuty-cleaned PDF with that engine as scan provenance, refuses threat and failed verdicts and deletes every scan object', async () => {
+    await grant('/company-document-content-reader-assignments');
+    await grant('/company-document-content-uploader-assignments');
+    const s3 = await openGuardDutyS3Fake();
+    try {
+      await harness.close();
+      harness = await startApiHarness({
+        ...s3.settings,
+        ...GUARDDUTY_DEMO_AWS_ENVIRONMENT,
+      });
+      expect((await uploadPdf()).status).toBe(201);
+      const listed = await json(
+        await call(`/documents/${documentId}/versions`),
+      );
+      expect(listed.versions).toEqual([
+        expect.objectContaining({
+          pdfContent: expect.objectContaining({
+            state: 'stored',
+            sha256: PDF_A_SHA256,
+            scan: expect.objectContaining({
+              outcome: 'clean',
+              engine: 'Amazon GuardDuty Malware Protection for S3',
+            }),
+          }),
+        }),
+      ]);
+      s3.reportStatus('THREATS_FOUND');
+      const unsafe = await uploadPdf({ revision: 2 });
+      expect(unsafe.status).toBe(400);
+      expect(await json(unsafe)).toMatchObject({ code: 'document_pdf_unsafe' });
+      s3.reportStatus('FAILED');
+      const unavailable = await uploadPdf({ revision: 2 });
+      expect(unavailable.status).toBe(503);
+      expect(await json(unavailable)).toMatchObject({
+        code: 'document_pdf_scanner_unavailable',
+      });
+      expect(scanCount).toBe(0);
+      const puts = s3.requests.filter(({ operation }) => operation === 'put');
+      expect(puts).toHaveLength(3);
+      for (const put of puts) {
+        expect(put.key).toMatch(
+          /^document-scans\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+        );
+        expect(put.body.equals(PDF_A)).toBe(true);
+        expect(put.serverSideEncryption).toBe('AES256');
+      }
+      expect(
+        s3.requests
+          .filter(({ operation }) => operation === 'delete')
+          .map(({ key }) => key),
+      ).toEqual(puts.map(({ key }) => key));
+      expect(s3.storedKeys).toEqual([]);
+      expect(
+        (
+          await harness.pool.query(
+            'SELECT scan_engine FROM document_pdfs WHERE version_id=$1',
+            [versionId],
+          )
+        ).rows,
+      ).toEqual([
+        { scan_engine: 'Amazon GuardDuty Malware Protection for S3' },
+      ]);
+    } finally {
+      await harness.close();
+      harness = await startApiHarness();
+      await s3.close();
+    }
   });
   it('freezes the selected official PDF and starts a successor draft without copying stored bytes', async () => {
     await grant('/company-document-content-reader-assignments');
