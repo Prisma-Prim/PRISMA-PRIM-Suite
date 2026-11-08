@@ -9009,6 +9009,16 @@ withPostgres('First illustrative Contract REST', () => {
       expectedContractRevision: 1,
       acknowledgedWarningCodes: [],
     };
+    const contractId = stringField(created, 'id');
+    const receiptCount = async (idempotencyKey: string) =>
+      (
+        await pool.query<{ count: string }>(
+          `SELECT count(*)::text AS count FROM contract_commands
+            WHERE result_contract_id = $1 AND idempotency_key = $2`,
+          [contractId, idempotencyKey],
+        )
+      ).rows[0]?.count;
+    const receiptsBeforeFailure = await receiptCount('atomic');
     await pool.query(
       "CREATE FUNCTION fail_c4_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic decision event failure'; END; $$; CREATE TRIGGER fail_c4_event BEFORE INSERT ON contract_events FOR EACH ROW EXECUTE FUNCTION fail_c4_event()",
     );
@@ -9039,6 +9049,7 @@ withPostgres('First illustrative Contract REST', () => {
           )
         ).rows[0]?.count,
       ).toBe('0');
+      expect(await receiptCount('atomic')).toBe(receiptsBeforeFailure);
     } finally {
       await pool.query(
         'DROP TRIGGER fail_c4_event ON contract_events; DROP FUNCTION fail_c4_event()',
@@ -9081,6 +9092,44 @@ withPostgres('First illustrative Contract REST', () => {
       (
         await pool.query<{ count: string }>(
           'SELECT count(*)::text AS count FROM contract_decisions',
+        )
+      ).rows[0]?.count,
+    ).toBe('1');
+    const decisionId = stringField(recorded, 'id');
+    const decisionKind = stringField(recorded, 'kind');
+    const losingKey = key === 'atomic' ? 'competing' : 'atomic';
+    expect(await receiptCount(losingKey)).toBe(
+      losingKey === 'atomic' ? receiptsBeforeFailure : '0',
+    );
+    expect(
+      (
+        await pool.query<{ decision_id: string; kind: string }>(
+          `SELECT result_decision_id::text AS decision_id, kind
+             FROM contract_commands
+            WHERE result_contract_id = $1 AND idempotency_key = $2`,
+          [contractId, key],
+        )
+      ).rows,
+    ).toEqual([{ decision_id: decisionId, kind: decisionKind }]);
+    expect(
+      (
+        await pool.query<{ id: string }>(
+          'SELECT id::text AS id FROM contract_decisions WHERE contract_id = $1',
+          [contractId],
+        )
+      ).rows,
+    ).toEqual([{ id: decisionId }]);
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          `SELECT count(*)::text AS count FROM contract_events
+            WHERE contract_id = $1 AND action = $2`,
+          [
+            contractId,
+            decisionKind === 'APPROVE'
+              ? 'contract_version.approved'
+              : 'contract_version.rejected',
+          ],
         )
       ).rows[0]?.count,
     ).toBe('1');
