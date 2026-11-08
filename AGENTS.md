@@ -48,3 +48,7 @@ CI enforces format, lint, types and the mechanical rules listed in [review rule 
 
 - Event outside the change's transaction, or for a denied, failed, no-op or replayed command: false history. Safe: the PRD's event in the same transaction.
 - Actor, scope or target from client input, or metadata wider than target visibility: leaks activity. Safe: server-established fields, minimal metadata.
+
+## Build the lever
+
+- For any non-trivial work: do the first unit by hand to learn the recipe, then build the smallest rerunnable tool adapted to that work. The tool does or proves the work. Compare its result with the hand-done unit, and make the tool safe to rerun. Only a trivial task is exempt. "The bar is triviality, not repetition. A one-off still earns a lever when the lever is what makes the work checkable." ([Build the lever](https://github.com/cursor/plugins/blob/6b0300214a09fd6029cfb7077043125758cd1fd2/pstack/skills/principle-build-the-lever/SKILL.md))
