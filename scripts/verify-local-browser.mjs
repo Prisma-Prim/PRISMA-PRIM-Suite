@@ -39,7 +39,8 @@ const assert = (condition, message) => {
 };
 
 // A closed local startup protocol, not a configurable command runner.
-function plan(root, output, family) {
+// verify-journey.mjs reuses it so one journey builds and previews the same way.
+export function plan(root, output, family) {
   assert(
     ['browser', 'acceptance'].includes(family),
     'Expected browser or acceptance.',
