@@ -180,6 +180,45 @@ export async function openCertificationFixture(input: {
       client.release();
     }
   }
+  /**
+   * Holds every access to one table from another transaction until released,
+   * to pin a concurrent request at its first statement on that table; what
+   * that transaction writes meanwhile commits on release.
+   */
+  async function holdTable(table: string) {
+    if (!harness) throw new Error('Fixture is closed.');
+    if (!/^[a-z_]+$/.test(table)) throw new Error('Not a table name.');
+    const pool = harness.pool;
+    const client = await pool.connect();
+    await client.query('BEGIN');
+    await client.query(`LOCK TABLE ${table} IN ACCESS EXCLUSIVE MODE`);
+    let released = false;
+    return {
+      /** Whether a request now waits on the held table. */
+      async waiting(): Promise<boolean> {
+        const result = await pool.query<{ total: string }>(
+          `SELECT count(*)::text AS total FROM pg_locks
+            WHERE relation = $1::regclass AND NOT granted
+              AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
+          [table],
+        );
+        return Number(result.rows[0]?.total) > 0;
+      },
+      /** Writes in the holding transaction, visible to others on release. */
+      async write(statement: string, values: unknown[]): Promise<void> {
+        await client.query(statement, values);
+      },
+      async release(): Promise<void> {
+        if (released) return;
+        released = true;
+        try {
+          await client.query('COMMIT');
+        } finally {
+          client.release();
+        }
+      },
+    };
+  }
   /** Registers, uploads and designates one received audit source PDF of the Client. */
   async function receivedSource(title = 'Fictional signed original') {
     const document = await created(
@@ -561,6 +600,7 @@ export async function openCertificationFixture(input: {
     grant,
     eventCount,
     storeAsEarlierRelease,
+    holdTable,
     caseWithApplication,
     acceptedCase,
     agreedCase,
@@ -574,6 +614,9 @@ export async function openCertificationFixture(input: {
     },
     get projectId() {
       return projectId;
+    },
+    get companyId() {
+      return companyId;
     },
     async close() {
       await harness?.close();

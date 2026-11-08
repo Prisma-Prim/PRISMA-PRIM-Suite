@@ -1,8 +1,4 @@
-import { setImmediate } from 'node:timers/promises';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import fontkit from '@pdf-lib/fontkit';
 import {
   PDFDocument,
@@ -17,20 +13,15 @@ import {
   projectCommercialPdfSource,
   type CommercialPdfSource,
 } from './commercial-pdf-source.js';
+import {
+  PDF_TEXT_SHAPING as shaping,
+  pdfCheckpoint as checkpoint,
+  pdfGraphemes as segmenter,
+  qualifyPdfText,
+  readBundledPdfFonts,
+} from './bundled-pdf-fonts.js';
 
-const assets = [
-  {
-    name: 'DejaVuSans.ttf',
-    sha256: '57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e',
-  },
-  {
-    name: 'DejaVuSans-Bold.ttf',
-    sha256: 'a4c5bc453ca281d90ea079e596da7ae0dfeb5777497c29ec254e76d97ff6f890',
-  },
-];
 const maximumPdfBytes = 16 * 1024 * 1024;
-const shaping = { liga: false, clig: false };
-const segmenter = new Intl.Segmenter('ro', { granularity: 'grapheme' });
 export const COMMERCIAL_PDF_RENDERER = 'COMMERCIAL_MODEL_PDF';
 export function commercialPdfRendererCode(
   source: Pick<CommercialPdfSource, 'provenance'>,
@@ -121,64 +112,11 @@ async function render(
       block.kind === 'text' ? [block.text] : block.rows.flat(),
     ),
   ].join('');
-  const license = await readFile(
-    join(__dirname, 'assets', 'font-license.txt'),
-    { encoding: 'utf8', signal },
-  );
-  if (
-    !license.includes('Bitstream Vera is a trademark') ||
-    !license.includes('DejaVu changes are in public domain.')
-  )
-    throw new Error('Invalid bundled font license.');
-  const fontAssets = await Promise.all(
-    assets.map(async (asset) => {
-      const bytes = await readFile(join(__dirname, 'assets', asset.name), {
-        signal,
-      });
-      await checkpoint(signal);
-      if (createHash('sha256').update(bytes).digest('hex') !== asset.sha256)
-        throw new Error('Invalid bundled font.');
-      const font = fontkit.create(bytes);
-      // Qualify both full document font mappings before creating any page. Fontkit's
-      // cached glyph codepoints can conflict across runs (e.g. sun and sun+VS16).
-      let checked = 0;
-      for (const character of text) {
-        if (++checked % 4096 === 0) await checkpoint(signal);
-        if (/[\t\r\n]/u.test(character)) continue;
-        const point = character.codePointAt(0);
-        if (
-          point === undefined ||
-          /[\p{Cc}\p{Cf}\p{Cs}]/u.test(character) ||
-          !/[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Common}\p{Script=Inherited}]/u.test(
-            character,
-          ) ||
-          !font.hasGlyphForCodePoint(point)
-        )
-          pdfRefusal('PDF_TEXT_UNSUPPORTED');
-      }
-      for (const { segment } of segmenter.segment(text)) {
-        const points = [...segment];
-        if (
-          points.length > 2 ||
-          (/^\p{M}/u.test(segment) && segment !== '\r\n')
-        )
-          pdfRefusal('PDF_TEXT_UNSUPPORTED');
-      }
-      await checkpoint(signal);
-      const plain = text.replace(/[\t\r\n]/gu, '');
-      const mapped = font
-        .layout(plain, shaping)
-        .glyphs.map((glyph) =>
-          glyph.codePoints.map((point) => String.fromCodePoint(point)).join(''),
-        )
-        .join('');
-      if (mapped !== plain) pdfRefusal('PDF_TEXT_UNSUPPORTED');
-      return bytes;
-    }),
-  );
-  const regularBytes = fontAssets[0],
-    boldBytes = fontAssets[1];
-  if (!regularBytes || !boldBytes) throw new Error('Missing bundled fonts.');
+  const { regular: regularBytes, bold: boldBytes } =
+    await readBundledPdfFonts(signal);
+  // Qualify both full document font mappings before creating any page.
+  for (const bytes of [regularBytes, boldBytes])
+    await qualifyPdfText(bytes, text, signal);
   await checkpoint(signal);
   const document = await PDFDocument.create();
   document.registerFontkit(fontkit);
@@ -384,11 +322,6 @@ async function render(
   if (!bytes.length || bytes.length > maximumPdfBytes)
     pdfRefusal('PDF_CONTENT_LIMIT');
   return bytes;
-}
-
-async function checkpoint(signal?: AbortSignal) {
-  await setImmediate(undefined, { signal });
-  signal?.throwIfAborted();
 }
 
 /** Exact decoded strings enter layout unchanged; only CR/LF/tab layout is projected. */
