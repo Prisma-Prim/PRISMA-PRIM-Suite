@@ -463,6 +463,8 @@ type StoredAttachment = {
 export type RecordedRequest = {
   method: string;
   path: string;
+  /** The query string, with its leading `?`, or empty. */
+  search: string;
   key: string | null;
   contentType: string | null;
   company: string | null;
@@ -889,6 +891,7 @@ export class FakeCertificationServer {
     const request: RecordedRequest = {
       method: init?.method ?? 'GET',
       path: url.pathname,
+      search: url.search,
       key: headers.get('idempotency-key'),
       contentType: headers.get('content-type'),
       company: headers.get('x-company-context-id'),
@@ -953,6 +956,10 @@ export class FakeCertificationServer {
         request.path,
       );
     if (content) return this.content(content[1], content[2]);
+    const register = /^\/api\/certification-cases\/([^/]+)\/register$/u.exec(
+      request.path,
+    );
+    if (register) return this.register(register[1], request.search);
     const stage =
       /^\/api\/certification-cases\/([^/]+)\/stages\/([^/]+)\/(plan|report)$/u.exec(
         request.path,
@@ -1507,6 +1514,33 @@ export class FakeCertificationServer {
       headers: {
         'content-type': 'application/pdf',
         'content-length': String(source.bytes.length),
+      },
+    });
+  }
+
+  /**
+   * The generated register: a fictional PDF naming the Case and language. The
+   * server accepts only one `language` of the closed set, or none (English).
+   */
+  private register(caseId: string | undefined, search: string): Response {
+    const stored = caseId ? this.cases.get(caseId) : undefined;
+    if (!stored) return new Response(null, { status: 404 });
+    const query = new URLSearchParams(search);
+    const languages = query.getAll('language');
+    const language = languages[0] ?? 'en';
+    if (
+      [...query.keys()].some((key) => key !== 'language') ||
+      languages.length > 1 ||
+      !['en', 'fr', 'ro', 'ru'].includes(language)
+    )
+      return refusal(400, 'CERTIFICATION_REGISTER_QUERY_INVALID');
+    const bytes = new TextEncoder().encode(
+      `%PDF-1.7\n% Fictional dossier register of ${stored.orderReference} at revision ${stored.revision} (${language})\n%%EOF\n`,
+    );
+    return new Response(bytes, {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-length': String(bytes.length),
       },
     });
   }

@@ -22,7 +22,10 @@ import {
   type ScopedOperation,
 } from '../api/use-scoped-operation';
 import { receivedAuditSourceNativeAuthority } from '../documents/received-audit-source-access';
-import { useInterfaceLocale } from '../localization/interface-locale';
+import {
+  useInterfaceLocale,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { Select } from '../presentation/Select';
 import {
@@ -150,7 +153,9 @@ import { AgreementForm, AttachForm } from './CertificationDocumentForms';
 import {
   AgreementView,
   DossierRegister,
+  RegisterPdfAction,
   type RegisterDownload,
+  type RegisterPdfDownload,
 } from './CertificationDocumentViews';
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
@@ -342,6 +347,8 @@ type Download =
       attachmentId: string;
       rights: string;
     };
+/** The download of the generated dossier register of the open Case. */
+type RegisterPdf = { status: RegisterPdfDownload['status'] };
 /**
  * The duration-proposal read, keyed by the serialized inputs it computed so a
  * later edit of the inputs makes it outdated instead of confirmable.
@@ -368,6 +375,15 @@ const CLOSING_KINDS: readonly ClosingKind[] = [
 ];
 const NO_PROPOSAL: Proposal = { status: 'idle' };
 const NO_DOWNLOAD: Download = { status: 'idle' };
+const NO_REGISTER_PDF: RegisterPdf = { status: 'idle' };
+/** The register's closed language set, one per interface locale. */
+const REGISTER_LANGUAGE = {
+  en: 'en',
+  fr: 'fr',
+  ro: 'ro',
+  ru: 'ru',
+} as const satisfies Record<InterfaceLocale, 'en' | 'fr' | 'ro' | 'ru'>;
+const PDF_SIGNATURE = '%PDF-';
 const ABANDONED: ApiResult<unknown> = { status: 'error' };
 
 /**
@@ -393,7 +409,7 @@ function CertificationRegistry(
   const companyId = actor.activeCompany?.id ?? '';
   const authority = certificationAuthority(actor);
   const copy = useCertificationCopy();
-  const { formatDateTime, formatNumber } = useInterfaceLocale();
+  const { locale, formatDateTime, formatNumber } = useInterfaceLocale();
   const prefix = useId();
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -402,6 +418,7 @@ function CertificationRegistry(
   const entitiesOperation = useScopedOperation(props.scope);
   const mutationOperation = useScopedOperation(props.scope);
   const proposalOperation = useScopedOperation(props.scope);
+  const registerOperation = useScopedOperation(props.scope);
   /**
    * The captured right to read received-source content, which reading,
    * listing and attaching the Client's PDFs need. Its change retires their
@@ -525,6 +542,7 @@ function CertificationRegistry(
     certificate: certificateFeedback,
   };
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
+  const [registerPdf, setRegisterPdf] = useState<RegisterPdf>(NO_REGISTER_PDF);
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const openingTrigger = useRef<Element | null>(null);
@@ -671,6 +689,8 @@ function CertificationRegistry(
     }
     contentOperation.retire();
     setDownload(NO_DOWNLOAD);
+    registerOperation.retire();
+    setRegisterPdf(NO_REGISTER_PDF);
   }
 
   /** Access loss retires every private value before authority is rechecked. */
@@ -743,6 +763,7 @@ function CertificationRegistry(
         entitiesOperation,
         mutationOperation,
         proposalOperation,
+        registerOperation,
         eligibleOperation,
         contentOperation,
       ])
@@ -1101,6 +1122,65 @@ function CertificationRegistry(
       setDownload(NO_DOWNLOAD);
     } catch {
       if (!signal.aborted) settle('failed');
+    }
+  }
+
+  /**
+   * Saves the generated register of the Case in the interface language,
+   * released only once the reply is a non-empty PDF within the server's bound.
+   */
+  async function downloadRegisterPdf(caseId: string) {
+    const signal = registerOperation.begin();
+    if (!signal) return;
+    setRegisterPdf({ status: 'pending' });
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (signal.aborted) return;
+      const result = await api.download(
+        `/certification-cases/${encodeURIComponent(caseId)}/register?language=${REGISTER_LANGUAGE[locale]}`,
+        {
+          companyContextId: companyId,
+          signal,
+          cache: 'no-store',
+          maximumBytes: CERTIFICATION_LIMITS.registerPdfBytes,
+        },
+      );
+      if (signal.aborted) return;
+      if (result.status !== 'ok') {
+        // A refused read retires the Case like any Case read.
+        rejectAccess(registerOperation, signal, result, 'certification');
+        if (result.status === 'unauthorized' || result.status === 'forbidden')
+          return;
+        setRegisterPdf({
+          status: result.status === 'notFound' ? 'unavailable' : 'failed',
+        });
+        return;
+      }
+      const pdf = result.value;
+      const signature = new TextDecoder().decode(
+        await pdf.slice(0, PDF_SIGNATURE.length).arrayBuffer(),
+      );
+      if (signal.aborted) return;
+      if (
+        pdf.type.split(';')[0] !== 'application/pdf' ||
+        signature !== PDF_SIGNATURE
+      ) {
+        setRegisterPdf({ status: 'failed' });
+        return;
+      }
+      const url = URL.createObjectURL(pdf);
+      try {
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        // The server's name for the register of this Case.
+        anchor.download = `certification-case-register-${caseId.slice(0, 8)}.pdf`;
+        anchor.click();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+      setRegisterPdf(NO_REGISTER_PDF);
+    } catch {
+      if (!signal.aborted) setRegisterPdf({ status: 'failed' });
     }
   }
 
@@ -2577,6 +2657,19 @@ function CertificationRegistry(
                 certificateDataSection(caseView)}
               {caseView.caseDetail.decision?.value.decision === 'granted' &&
                 certificateSection(caseView)}
+              <section aria-labelledby={`${prefix}-register-pdf-title`}>
+                <h5 id={`${prefix}-register-pdf-title`}>
+                  {copy('registerPdfTitle')}
+                </h5>
+                <RegisterPdfAction
+                  download={{
+                    status: registerPdf.status,
+                    disabled: busy,
+                    onDownload: () =>
+                      void downloadRegisterPdf(caseView.caseDetail.id),
+                  }}
+                />
+              </section>
               <section aria-labelledby={`${prefix}-timeline-title`}>
                 <h5 id={`${prefix}-timeline-title`}>{copy('timelineTitle')}</h5>
                 <TimelineView
