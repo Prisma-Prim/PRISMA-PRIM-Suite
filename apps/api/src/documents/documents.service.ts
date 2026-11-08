@@ -1,6 +1,11 @@
 import { ReceivedAddendumRelationsService } from './received-addendum-relations.service.js';
 import { isProjectLinkableDocument } from './document-family-policy.js';
 import { DocumentFamilyAccess } from './document-family-access.js';
+import {
+  isReceivedSourceCommand,
+  receivedSourceRegistration,
+} from './received-source-families.js';
+import type { QualifiedReceivedSource } from './received-source-registration.js';
 import { readReceivedAddendumRegistration } from './received-addendum.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import { readPaymentEvidenceRegistration } from './payment-evidence.js';
@@ -73,7 +78,18 @@ export class DocumentsService {
     private readonly externalInvoices: ExternalInvoiceRelationsService,
     private readonly paymentEvidence: PaymentEvidenceSourcesService,
     private readonly familyAccess: DocumentFamilyAccess,
-  ) {}
+  ) {
+    this.receivedSources = receivedSourceRegistration({
+      'received-contract': receivedContracts,
+      'received-addendum': receivedAddenda,
+      'external-invoice': externalInvoices,
+      'payment-evidence': paymentEvidence,
+    });
+  }
+  /** Registration of every preserved received source family (#1177). */
+  private readonly receivedSources: ReturnType<
+    typeof receivedSourceRegistration
+  >;
   async register(
     actor: ActorContext,
     value: unknown,
@@ -109,21 +125,11 @@ export class DocumentsService {
         }))
       )
         throw new ForbiddenException();
-      if (command.type === 'received-addendum')
-        await this.receivedAddenda.requireRegistrationAuthority(actor);
-      if (command.type === 'payment-evidence')
-        await this.paymentEvidence.requireRegistrationAuthority(actor);
-      if (command.type === 'external-invoice')
-        await this.externalInvoices.requireRegistrationAuthority(actor);
-      if (command.type === 'received-contract') {
-        if (
-          !(await this.authorization.hasReceivedContractAccess(actor, {
-            lockAssignment: true,
-          }))
-        )
-          throw new ForbiddenException();
-        await this.receivedContracts.requireReadAuthority(actor);
-      }
+      if (isReceivedSourceCommand(command))
+        await this.receivedSources.requireRegistrationAuthority(
+          actor,
+          command.type,
+        );
       // Serialize retries before looking up the actor-owned command. A failed
       // mutation rolls back the identity, content, Client fence and history.
       await this.database.connection.execute(
@@ -149,42 +155,16 @@ export class DocumentsService {
           );
         return this.readDetail(actor, existing.id);
       }
-      const binding =
-        command.type === 'received-addendum'
-          ? {
-              kind: 'received-addendum' as const,
-              command,
-              reference: await this.receivedAddenda.qualify(actor, command),
-            }
-          : command.type === 'payment-evidence'
-            ? {
-                kind: 'payment-evidence' as const,
-                command,
-                reference: await this.paymentEvidence.qualify(actor, command),
-              }
-            : command.type === 'external-invoice'
-              ? {
-                  kind: 'external-invoice' as const,
-                  command,
-                  reference: await this.externalInvoices.qualify(
-                    actor,
-                    command,
-                  ),
-                }
-              : command.type === 'received-contract'
-                ? {
-                    kind: 'contract-version' as const,
-                    command,
-                    reference: await this.receivedContracts.qualify(
-                      actor,
-                      command,
-                    ),
-                  }
-                : { kind: 'client' as const, clientId: command.clientId };
-      const clientId =
-        binding.kind !== 'client'
-          ? binding.reference.originalClientAccountId
-          : binding.clientId;
+      let received: QualifiedReceivedSource | undefined;
+      let clientId: string;
+      if (isReceivedSourceCommand(command)) {
+        received = await this.receivedSources.qualify(
+          actor,
+          command.type,
+          command,
+        );
+        clientId = received.originalClientAccountId;
+      } else clientId = command.clientId;
       if (
         command.type === 'mission-deliverable' ||
         command.type === 'received-audit-source'
@@ -234,34 +214,7 @@ export class DocumentsService {
             originalTitle: command.title,
             originalPurpose: command.purpose,
           });
-      if (binding.kind === 'received-addendum')
-        await this.receivedAddenda.attach({
-          actor,
-          document,
-          command: binding.command,
-          reference: binding.reference,
-        });
-      if (binding.kind === 'payment-evidence')
-        await this.paymentEvidence.attach({
-          actor,
-          document,
-          command: binding.command,
-          reference: binding.reference,
-        });
-      if (binding.kind === 'external-invoice')
-        await this.externalInvoices.attach({
-          actor,
-          document,
-          command: binding.command,
-          reference: binding.reference,
-        });
-      if (binding.kind === 'contract-version')
-        await this.receivedContracts.attach({
-          actor,
-          document,
-          command: binding.command,
-          reference: binding.reference,
-        });
+      await received?.attach(document);
       if (command.type === 'questionnaire')
         await this.database.connection.insert(documentRepresentations).values({
           workspaceId: actor.workspaceId,

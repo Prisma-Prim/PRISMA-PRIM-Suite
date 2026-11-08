@@ -35,6 +35,7 @@ export function receivedContractRelationsForTest(input: {
       ),
       clients,
     ),
+    authorization,
   );
 }
 

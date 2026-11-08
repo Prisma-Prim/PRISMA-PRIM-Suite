@@ -1,11 +1,8 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
-import {
-  ContractExternalInvoiceReferenceService,
-  type ExternalInvoiceRecordedRecipient,
-} from '../contract/contract-external-invoice-reference.service.js';
+import { ContractExternalInvoiceReferenceService } from '../contract/contract-external-invoice-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   externalInvoiceDocumentRelations,
@@ -15,6 +12,12 @@ import type {
   ExternalInvoiceRelationView,
   readExternalInvoiceRegistration,
 } from './external-invoice.js';
+import {
+  readRecordedRecipient,
+  receivedSourceAttribution,
+  receivedSourceAttributionView,
+  recordedRecipientColumns,
+} from './received-source-registration.js';
 
 /** Owns immutable financial Document context within its caller's transaction. */
 @Injectable()
@@ -67,17 +70,8 @@ export class ExternalInvoiceRelationsService {
         ...command.selection,
         contractVersionNumber: reference.contractVersionNumber,
         illustrativeReference: reference.illustrativeReference,
-        recipientKind: party.kind,
-        recipientAdditionalLegalEntityId:
-          party.kind === 'ADDITIONAL' ? party.additionalLegalEntityId : null,
-        recipientLegalName: party.legalName,
-        recipientTaxId: party.taxId,
-        recipientLegalAddress: party.legalAddress,
-        sourceDescription: command.sourceDescription,
-        receivedOn: command.receivedOn,
-        registeredByMembershipId: actor.workspaceMembershipId,
-        registeredByInternalUserId: actor.internalUserId,
-        registeredAt: sql`(SELECT created_at FROM working_documents WHERE id=${document.id} AND workspace_id=${document.workspaceId} AND company_id=${document.companyId})`,
+        ...recordedRecipientColumns(party),
+        ...receivedSourceAttribution(actor, document, command),
       });
   }
   async read(
@@ -105,15 +99,10 @@ export class ExternalInvoiceRelationsService {
       }))
     )
       return { access: 'denied' };
-    const recordedRecipient: ExternalInvoiceRecordedRecipient =
-      relation.recipientKind === 'PRIMARY'
-        ? {
-            kind: 'PRIMARY',
-            legalName: relation.recipientLegalName,
-            taxId: relation.recipientTaxId,
-            legalAddress: relation.recipientLegalAddress,
-          }
-        : additionalRecipient(relation);
+    const recordedRecipient = readRecordedRecipient(
+      relation,
+      'Invalid conserved external invoice party.',
+    );
     return {
       access: 'granted',
       opportunityId: relation.opportunityId,
@@ -122,29 +111,7 @@ export class ExternalInvoiceRelationsService {
       contractVersionNumber: relation.contractVersionNumber,
       illustrativeReference: relation.illustrativeReference,
       recordedRecipient,
-      sourceDescription: relation.sourceDescription,
-      receivedOn: relation.receivedOn,
-      registeredAt: relation.registeredAt.toISOString(),
-      registeredBy: {
-        workspaceMembershipId: relation.registeredByMembershipId,
-        internalUserId: relation.registeredByInternalUserId,
-      },
+      ...receivedSourceAttributionView(relation),
     };
   }
-}
-function additionalRecipient(
-  relation: typeof externalInvoiceDocumentRelations.$inferSelect,
-): ExternalInvoiceRecordedRecipient {
-  if (
-    relation.recipientKind !== 'ADDITIONAL' ||
-    !relation.recipientAdditionalLegalEntityId
-  )
-    throw new Error('Invalid conserved external invoice party.');
-  return {
-    kind: 'ADDITIONAL',
-    additionalLegalEntityId: relation.recipientAdditionalLegalEntityId,
-    legalName: relation.recipientLegalName,
-    taxId: relation.recipientTaxId,
-    legalAddress: relation.recipientLegalAddress,
-  };
 }
