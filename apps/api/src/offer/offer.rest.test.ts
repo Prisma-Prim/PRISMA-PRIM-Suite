@@ -3334,6 +3334,116 @@ withPostgres('First illustrative Offer REST', () => {
     }
   });
 
+  it('waits on the advisory lock after the approver share lock while revocation waits', async () => {
+    // OfferService.decide share-locks authorization, then waits on
+    // pg_advisory_xact_lock. This session holds that same command lock.
+    // Contract decisions share the source order, requireContractAccess(..., true)
+    // before openContractCommandReceipt, and this test does not run that path.
+    // The previous test is the other order: revocation commits first and the
+    // decision is denied. Replay below is denied after revocation, so the
+    // receipt is not a permanent grant. A relation RowShareLock is not the
+    // proof. The revocation request blocked by this approval is the proof.
+    const { fixture, offer, base } = await decisionOffer();
+    const body = { expectedOfferRevision: 1, acknowledgedWarningCodes: [] };
+    const key = 'locked-approval';
+    const lockKey = `${WORKSPACE_ID}:${fixture.companyId}:${fixture.actorMembershipId}:${key}`;
+    const barrier = await pool.connect();
+    let approval: Promise<Response> | undefined;
+    let revocation: Promise<Response> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const [backend] = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows;
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [lockKey],
+      );
+      approval = decisionRequest(fixture, base + '/approve', body, key);
+      await waitForBlockedRequests(backend.pid, 1);
+      const waiting = await pool.query<{
+        pid: number;
+        blockers: number[];
+        wait_event: string;
+      }>(
+        `SELECT pid, pg_blocking_pids(pid) AS blockers, wait_event
+           FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      );
+      const decision = waiting.rows.find(
+        (row) =>
+          row.wait_event === 'advisory' && row.blockers.includes(backend.pid),
+      );
+      if (!decision)
+        throw new Error(
+          `Expected the approval to wait on the advisory lock: ${JSON.stringify(waiting.rows)}`,
+        );
+      const grantedAdvisory = await pool.query<{ granted: boolean }>(
+        `SELECT granted FROM pg_locks
+          WHERE pid = $1 AND locktype = 'advisory'`,
+        [decision.pid],
+      );
+      expect(grantedAdvisory.rows).toEqual([{ granted: false }]);
+      revocation = request(
+        `/company-offer-approver-assignments/${fixture.actorMembershipId}/${fixture.companyId}`,
+        fixture.companyId,
+        {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'revoke-while-locked' },
+        },
+      );
+      await waitForBlockedRequests(backend.pid, 2);
+      const blocked = await pool.query<{
+        pid: number;
+        blockers: number[];
+        wait_event: string;
+      }>(
+        `SELECT pid, pg_blocking_pids(pid) AS blockers, wait_event
+           FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      );
+      const stillDeciding = blocked.rows.find(
+        (row) => row.pid === decision.pid,
+      );
+      const blockedRevocation = blocked.rows.find(
+        (row) =>
+          row.pid !== decision.pid && row.blockers.includes(decision.pid),
+      );
+      expect(stillDeciding?.wait_event).toBe('advisory');
+      expect(blockedRevocation).toBeTruthy();
+      expect(
+        (
+          await pool.query(
+            `SELECT revoked_at FROM company_role_assignments
+              WHERE company_id = $1 AND workspace_membership_id = $2
+                AND bundle::text = 'company_offer_approver'`,
+            [fixture.companyId, fixture.actorMembershipId],
+          )
+        ).rows,
+      ).toEqual([{ revoked_at: null }]);
+      await barrier.query('COMMIT');
+      const [approved, revoked] = await Promise.all([approval, revocation]);
+      expect(approved.status).toBe(201);
+      expect(revoked.status).toBe(200);
+      expect(
+        (await decisionRequest(fixture, base + '/approve', body, key)).status,
+      ).toBe(403);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_decisions WHERE offer_id = $1',
+            [offer.id],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      await Promise.allSettled([approval, revocation]);
+    }
+  });
+
   it.each(['offer_commands', 'offer_events'])(
     'rolls back approval, run, revision and receipt when %s insertion fails and accepts the identical retry',
     async (table) => {
