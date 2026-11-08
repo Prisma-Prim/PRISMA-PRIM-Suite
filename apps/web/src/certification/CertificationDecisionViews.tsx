@@ -383,8 +383,9 @@ export function CertificateDataView({
 }
 
 /**
- * The recorded Certificate: its number, exact PDF, signatory and texts,
- * and the validity dates exactly as the server computed them.
+ * The recorded Certificate: its number, exact PDF, signatory, attestation of
+ * independence and texts, and the validity dates exactly as the server
+ * computed them.
  */
 export function CertificateView({
   certificate,
@@ -431,6 +432,7 @@ export function CertificateView({
           <dt>{copy('certificateSignedByFunction')}</dt>
           <dd>{optional(certificate.signedByFunction)}</dd>
         </div>
+        <IndependenceRow attested={certificate.independenceAttested} />
         <div>
           <dt>{copy('certificateValidFrom')}</dt>
           <dd>{date(certificate.validFrom)}</dd>

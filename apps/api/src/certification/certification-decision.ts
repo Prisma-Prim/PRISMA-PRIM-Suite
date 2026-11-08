@@ -264,6 +264,8 @@ export function certificateCommand(value: unknown): {
   attachmentId: string;
   signedBy: string | null;
   signedByFunction: string | null;
+  /** The recording approver attests the signatory is not on the audit team. */
+  independenceAttested: true;
 } {
   const body = inputObject(value, [
     'expectedRevision',
@@ -296,6 +298,7 @@ export function certificateCommand(value: unknown): {
       body.signedByFunction === undefined || body.signedByFunction === null
         ? null
         : text(body.signedByFunction, 200),
+    independenceAttested: true,
   };
 }
 

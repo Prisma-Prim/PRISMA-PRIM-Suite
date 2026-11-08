@@ -648,6 +648,9 @@ describe('Certification recommendation, decision and Certificate', () => {
     const certificate = region(CERTIFICATE);
     expect(definition(certificate, 'Certificate number')).toBe('DEMO-0001');
     expect(definition(certificate, 'Certificate PDF')).toBe(CERTIFICATE_PDF);
+    expect(definition(certificate, 'Independence from the audit team')).toBe(
+      'Attested by the member who recorded it',
+    );
     expect(definition(certificate, 'Valid from')).toBe('Nov 6, 2026');
     expect(definition(certificate, 'Valid until')).toBe('Nov 5, 2029');
     expect(definition(certificate, 'First surveillance to start by')).toBe(
@@ -1026,9 +1029,11 @@ describe('Certification recommendation, decision and Certificate', () => {
       agreedOn: '2026-10-21',
       agreementAttachmentId: dataForm,
     });
+    // Recorded before the Certificate stored its attestation.
     server.recordCertificateAsColleague(caseId, {
       number: 'DEMO-0002',
       attachmentId: pdf,
+      independenceAttested: false,
     });
     server.install();
     renderWorkspace(actor);
@@ -1050,6 +1055,9 @@ describe('Certification recommendation, decision and Certificate', () => {
     const certificate = region(CERTIFICATE);
     expect(definition(certificate, 'Certificate number')).toBe('DEMO-0002');
     expect(definition(certificate, 'Signed by')).toBe('Not provided');
+    expect(definition(certificate, 'Independence from the audit team')).toBe(
+      'Not attested: recorded before the attestation was stored',
+    );
     expect(definition(certificate, 'Valid until')).toBe('Nov 5, 2029');
     expect(
       within(certificate).getByText(/^Recorded by: Boris Demo/u),

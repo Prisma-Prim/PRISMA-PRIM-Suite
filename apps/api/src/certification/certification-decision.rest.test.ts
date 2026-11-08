@@ -255,9 +255,16 @@ withPostgres(
           firstSurveillanceBy: '2027-11-06',
           texts: TEXTS,
           signedBy: 'Decision Maker Demo',
+          independenceAttested: true,
         },
       });
       expect(await fixture.eventCount(caseId)).toBe(24);
+      const read = record(
+        await (await fixture.call(CERTIFICATION_OWNER, base)).json(),
+      );
+      expect(read).toMatchObject({
+        certificate: { number: 'DEMO-0001', independenceAttested: true },
+      });
       const second = await post(
         CERTIFICATION_APPROVER,
         `${base}/decision`,
@@ -444,6 +451,126 @@ withPostgres(
           }),
         ]),
       });
+    });
+
+    it('keeps the Stage report approver on behalf of the certification body off the audit team and out of the future', async () => {
+      const approval = {
+        actedBy: 'Head of Body Demo',
+        actedByFunction: 'Head of the certification body',
+        actedOn: '2026-10-22',
+        formAttachmentId: null,
+      };
+      const caseId = await reportedCase(approval);
+      const base = `/certification-cases/${caseId}`;
+      const view = record(
+        await (await fixture.call(CERTIFICATION_OWNER, base)).json(),
+      );
+      const reported = Array.isArray(view.stages)
+        ? view.stages.map(record).find((row) => row.step === 'stage_2_report')
+        : undefined;
+      const reportAttachmentId = record(reported?.value).reportAttachmentId;
+      function correction(act: Record<string, unknown>) {
+        return {
+          expectedRevision: 16,
+          reason: 'The approval form was transcribed again.',
+          reportDate: '2026-10-21',
+          summary: 'Stage 2 completed.',
+          reportAttachmentId,
+          certificationBodyApproval: { ...approval, ...act },
+        };
+      }
+      const namedOnTeam = await post(
+        CERTIFICATION_AUDITOR,
+        `${base}/stages/stage-2/report`,
+        correction({ actedBy: ' auditor  DEMO' }),
+      );
+      expect(namedOnTeam.status).toBe(409);
+      expect(record(await namedOnTeam.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      const future = await post(
+        CERTIFICATION_AUDITOR,
+        `${base}/stages/stage-2/report`,
+        correction({ actedOn: '2026-11-08' }),
+      );
+      expect(future.status).toBe(409);
+      expect(record(await future.json()).code).toBe(
+        'CERTIFICATION_ACT_IN_FUTURE',
+      );
+      const approverJoins = await post(CERTIFICATION_OWNER, `${base}/team`, {
+        expectedRevision: 16,
+        reason: 'The head of the body joins as an observer.',
+        members: [
+          {
+            name: 'Auditor Demo',
+            role: 'team_leader',
+            workspaceMembershipId: fixture.membership(CERTIFICATION_AUDITOR),
+            holdsCategory: true,
+            competenceNote: 'ISO 22000 lead auditor, category C',
+            declarations: {
+              noConsultancy: 'confirmed',
+              noEmployment: 'confirmed',
+              noManagementInvolvement: 'confirmed',
+              confidentiality: 'confirmed',
+            },
+            conflictNote: null,
+          },
+          {
+            name: 'HEAD of body  demo',
+            role: 'observer',
+            workspaceMembershipId: null,
+            holdsCategory: false,
+            competenceNote: 'Observer',
+            declarations: {
+              noConsultancy: 'confirmed',
+              noEmployment: 'confirmed',
+              noManagementInvolvement: 'confirmed',
+              confidentiality: 'confirmed',
+            },
+            conflictNote: null,
+          },
+        ],
+      });
+      expect(approverJoins.status).toBe(409);
+      expect(record(await approverJoins.json()).code).toBe(
+        'CERTIFICATION_INDEPENDENCE',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(16);
+      expect(
+        await ok(
+          CERTIFICATION_AUDITOR,
+          `${base}/stages/stage-2/report`,
+          correction({ actedOn: '2026-11-07' }),
+        ),
+      ).toMatchObject({ revision: 17 });
+    });
+
+    it('refuses a dossier review on behalf of the certification body dated after the latest business date', async () => {
+      const caseId = await recommendedCase();
+      const base = `/certification-cases/${caseId}`;
+      const act = {
+        actedByFunction: 'Dossier reviewer of the certification body',
+        formAttachmentId: null,
+      };
+      for (const [role, actedBy] of [
+        ['reviewedBy', 'Quality Reviewer Demo'],
+        ['approvedBy', 'Head of Body Demo'],
+      ] as const) {
+        const future = await post(
+          CERTIFICATION_APPROVER,
+          `${base}/dossier-review`,
+          {
+            expectedRevision: 17,
+            ...review(),
+            [role]: { ...act, actedBy, actedOn: '2026-11-08' },
+          },
+        );
+        expect(future.status).toBe(409);
+        expect(record(await future.json()).code).toBe(
+          'CERTIFICATION_ACT_IN_FUTURE',
+        );
+      }
+      expect(await fixture.eventCount(caseId)).toBe(17);
     });
 
     it('corrects the decided texts with a reason and keeps the decided outcome', async () => {

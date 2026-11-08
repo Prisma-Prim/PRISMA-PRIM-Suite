@@ -784,6 +784,7 @@ const keys = [
   'actingReportApprovalView',
   'actingValidation',
   'actingOnTeam',
+  'actInFuture',
   'independenceLabel',
   'independenceAttested',
   'independenceUnattested',
@@ -1299,7 +1300,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'You cannot decide on this team: you are linked to a member of one of its versions. An approver who is not on the team must decide.',
     teamMemberDecided:
-      'A person who approved this team, reviewed the dossier or recorded the decision, directly or on behalf of the certification body, cannot join the team. Remove that person or that link, reload the Case and propose again.',
+      'A person who approved this team, approved a Stage report, reviewed the dossier or recorded the decision, directly or on behalf of the certification body, cannot join the team. Remove that person or that link, reload the Case and propose again.',
     blockedTeamNotPending:
       'No proposed team awaits a decision any more. Reload the Case.',
 
@@ -1836,10 +1837,12 @@ export const certificationMessages = defineMessages(keys, {
       'Complete the act recorded on behalf of the certification body: the name and function of the person who acted (at most 200 characters each) and the date of the act. The signed form, when chosen, must be attached to this Case.',
     actingOnTeam:
       'The person named as acting for the certification body is on the audit team. A member of the audit team cannot perform this act; check the name.',
+    actInFuture:
+      'The act on behalf of the certification body cannot be dated after today. Check the date of the act.',
     independenceLabel: 'Independence from the audit team',
     independenceAttested: 'Attested by the member who recorded it',
     independenceUnattested:
-      'Not attested: recorded before the attestation was required',
+      'Not attested: recorded before the attestation was stored',
     teamDecisionAttestation:
       'I attest that the person deciding on this team is not a member of the audit team.',
     teamDecisionAttestationRequired:
@@ -2372,7 +2375,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Vous ne pouvez pas statuer sur cette équipe : vous êtes lié à un membre de l’une de ses versions. Un approbateur qui ne fait pas partie de l’équipe doit statuer.',
     teamMemberDecided:
-      'Une personne qui a approuvé cette équipe, revu le dossier ou enregistré la décision, directement ou au nom de l’organisme de certification, ne peut pas en faire partie. Retirez cette personne ou ce lien, rechargez le dossier et proposez à nouveau.',
+      'Une personne qui a approuvé cette équipe, approuvé un rapport d’étape, revu le dossier ou enregistré la décision, directement ou au nom de l’organisme de certification, ne peut pas en faire partie. Retirez cette personne ou ce lien, rechargez le dossier et proposez à nouveau.',
     blockedTeamNotPending:
       'Aucune équipe proposée n’attend plus de décision. Rechargez le dossier.',
 
@@ -2933,10 +2936,12 @@ export const certificationMessages = defineMessages(keys, {
       'Complétez l’acte enregistré au nom de l’organisme de certification : le nom et la fonction de la personne qui a agi (200 caractères au plus chacun) et la date de l’acte. Le formulaire signé, s’il est choisi, doit être joint à ce dossier.',
     actingOnTeam:
       'La personne indiquée comme agissant pour l’organisme de certification fait partie de l’équipe d’audit. Un membre de l’équipe d’audit ne peut pas accomplir cet acte ; vérifiez le nom.',
+    actInFuture:
+      'L’acte au nom de l’organisme de certification ne peut pas être daté après aujourd’hui. Vérifiez la date de l’acte.',
     independenceLabel: 'Indépendance vis-à-vis de l’équipe d’audit',
     independenceAttested: 'Attestée par le membre qui l’a enregistrée',
     independenceUnattested:
-      'Non attestée : enregistrée avant que l’attestation soit exigée',
+      'Non attestée : enregistrée avant que l’attestation soit conservée',
     teamDecisionAttestation:
       'J’atteste que la personne qui décide sur cette équipe n’est pas membre de l’équipe d’audit.',
     teamDecisionAttestationRequired:
@@ -3464,7 +3469,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă.',
     teamMemberDecided:
-      'O persoană care a aprobat această echipă, a analizat dosarul sau a înregistrat decizia, direct sau în numele organismului de certificare, nu poate face parte din echipă. Eliminați această persoană sau această legătură, reîncărcați dosarul și propuneți din nou.',
+      'O persoană care a aprobat această echipă, a aprobat un raport de etapă, a analizat dosarul sau a înregistrat decizia, direct sau în numele organismului de certificare, nu poate face parte din echipă. Eliminați această persoană sau această legătură, reîncărcați dosarul și propuneți din nou.',
     blockedTeamNotPending:
       'Nicio echipă propusă nu mai așteaptă o decizie. Reîncărcați dosarul.',
 
@@ -4022,10 +4027,12 @@ export const certificationMessages = defineMessages(keys, {
       'Completați actul înregistrat în numele organismului de certificare: numele și funcția persoanei care a acționat (cel mult 200 de caractere fiecare) și data actului. Formularul semnat, dacă este ales, trebuie să fie atașat la acest dosar.',
     actingOnTeam:
       'Persoana indicată ca acționând pentru organismul de certificare face parte din echipa de audit. Un membru al echipei de audit nu poate efectua acest act; verificați numele.',
+    actInFuture:
+      'Actul în numele organismului de certificare nu poate fi datat după ziua de azi. Verificați data actului.',
     independenceLabel: 'Independența față de echipa de audit',
     independenceAttested: 'Atestată de membrul care a înregistrat-o',
     independenceUnattested:
-      'Neatestată: înregistrată înainte ca atestarea să fie cerută',
+      'Neatestată: înregistrată înainte ca atestarea să fie păstrată',
     teamDecisionAttestation:
       'Atest că persoana care decide asupra acestei echipe nu este membru al echipei de audit.',
     teamDecisionAttestationRequired:
@@ -4547,7 +4554,7 @@ export const certificationMessages = defineMessages(keys, {
     teamIndependence:
       'Вы не можете принимать решение по этой группе: вы связаны с участником одной из её версий. Решение должен принять утверждающий, не входящий в группу.',
     teamMemberDecided:
-      'Лицо, утвердившее эту группу, проверившее досье или зарегистрировавшее решение лично или от имени органа по сертификации, не может входить в группу. Удалите это лицо или эту связь, загрузите дело заново и предложите снова.',
+      'Лицо, утвердившее эту группу, утвердившее отчёт об этапе, проверившее досье или зарегистрировавшее решение лично или от имени органа по сертификации, не может входить в группу. Удалите это лицо или эту связь, загрузите дело заново и предложите снова.',
     blockedTeamNotPending:
       'Ни одна предложенная группа больше не ожидает решения. Загрузите дело заново.',
 
@@ -5087,10 +5094,12 @@ export const certificationMessages = defineMessages(keys, {
       'Заполните действие, записываемое от имени органа по сертификации: имя и должность действовавшего лица (не более 200 символов каждое) и дату действия. Выбранная подписанная форма должна быть приложена к этому делу.',
     actingOnTeam:
       'Лицо, указанное как действующее от имени органа по сертификации, входит в аудиторскую группу. Член аудиторской группы не может совершать это действие; проверьте имя.',
+    actInFuture:
+      'Действие от имени органа по сертификации не может быть датировано позже сегодняшнего дня. Проверьте дату действия.',
     independenceLabel: 'Независимость от аудиторской группы',
     independenceAttested: 'Подтверждено участником, внёсшим запись',
     independenceUnattested:
-      'Не подтверждено: записано до введения подтверждения',
+      'Не подтверждено: записано до того, как подтверждение стало сохраняться',
     teamDecisionAttestation:
       'Я подтверждаю, что лицо, принимающее решение по этой группе, не входит в аудиторскую группу.',
     teamDecisionAttestationRequired:

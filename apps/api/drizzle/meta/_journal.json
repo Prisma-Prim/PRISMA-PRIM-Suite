@@ -757,6 +757,13 @@
       "when": 1794077742868,
       "tag": "0107_certification_decision",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1794130980316,
+      "tag": "0108_certification_certificate_attestation",
+      "breakpoints": true
     }
   ]
 }

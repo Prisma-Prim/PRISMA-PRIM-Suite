@@ -416,6 +416,7 @@ type StoredCertificate = {
   texts: unknown[];
   signedBy: string | null;
   signedByFunction: string | null;
+  independenceAttested: boolean;
   attachmentId: string;
   recordedBy: Actor;
   recordedAt: string;
@@ -752,11 +753,14 @@ export class FakeCertificationServer {
       attachmentId,
       signedBy = null,
       signedByFunction = null,
+      independenceAttested = true,
     }: {
       number: string;
       attachmentId: string;
       signedBy?: string | null;
       signedByFunction?: string | null;
+      /** False for a Certificate recorded before the attestation was stored. */
+      independenceAttested?: boolean;
     },
   ) {
     const stored = this.cases.get(caseId);
@@ -771,6 +775,7 @@ export class FakeCertificationServer {
         attachmentId,
         signedBy,
         signedByFunction,
+        independenceAttested,
         texts: list(agreed.value.texts),
       },
       colleague,
@@ -1391,6 +1396,7 @@ export class FakeCertificationServer {
         attachmentId,
         signedBy,
         signedByFunction,
+        independenceAttested,
         texts,
       },
       me,
@@ -1407,6 +1413,7 @@ export class FakeCertificationServer {
       attachmentId: string;
       signedBy: string | null;
       signedByFunction: string | null;
+      independenceAttested: boolean;
       texts: unknown[];
     },
     by: Actor,

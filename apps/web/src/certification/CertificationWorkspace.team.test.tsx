@@ -468,7 +468,7 @@ describe('Certification audit team and its approval', () => {
     [
       409,
       'CERTIFICATION_INDEPENDENCE',
-      'A person who approved this team, reviewed the dossier or recorded the decision, directly or on behalf of the certification body, cannot join the team. Remove that person or that link, reload the Case and propose again.',
+      'A person who approved this team, approved a Stage report, reviewed the dossier or recorded the decision, directly or on behalf of the certification body, cannot join the team. Remove that person or that link, reload the Case and propose again.',
       true,
     ],
   ] as const)(

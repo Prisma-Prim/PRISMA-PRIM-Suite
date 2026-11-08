@@ -997,6 +997,20 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
         'A new report version needs a reason and a first report has none. Reload the Case before saving again.',
       reload: true,
     },
+    {
+      status: 409,
+      code: 'CERTIFICATION_INDEPENDENCE',
+      message:
+        'The person named as acting for the certification body is on the audit team. A member of the audit team cannot perform this act; check the name.',
+      reload: false,
+    },
+    {
+      status: 409,
+      code: 'CERTIFICATION_ACT_IN_FUTURE',
+      message:
+        'The act on behalf of the certification body cannot be dated after today. Check the date of the act.',
+      reload: false,
+    },
   ];
   it.each(reportRefusals)(
     'explains the report refusal $status $code in plain language',
