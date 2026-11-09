@@ -152,7 +152,10 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(documentsReport),
     "FUZZ_SEED=1241 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/documents/documents.fuzz.rest.test.ts",
   );
-  assert.deepEqual(parseFuzzReport(JSON.stringify(contractReport)), contractReport);
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(contractReport)),
+    contractReport,
+  );
   assert.equal(
     replayCommand(contractReport),
     "FUZZ_SEED=1245 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/contract/contract.fuzz.rest.test.ts",
