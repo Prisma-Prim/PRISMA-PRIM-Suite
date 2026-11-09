@@ -6,13 +6,14 @@ PRISMA-PRIM Suite. One session delivers only its assigned GitHub issue, as one p
 
 - Issues and pull requests: [issue tracker](docs/agents/issue-tracker.md).
 - Domain: `CONTEXT.md` terms everywhere, decisions in `docs/adr/`, [domain docs](docs/agents/domain.md) for a missing concept.
-- Before writing logic: [derive types from real caller usage, trace access, and match the dominant path](docs/agents/domain-structure.md).
-- Product behaviour: the PRD the issue links; in `docs/product/consolidated-product-decision-record.md`, only the DEC sections the issue links.
+- Before writing logic: [derive types from caller usage and match the access path](docs/agents/domain-structure.md).
+- Before claiming done, publishing prose, or a repeated mistake: [delivery proof](docs/agents/delivery-proof.md).
+- Product behaviour: the linked PRD, and only its linked DEC sections in `docs/product/consolidated-product-decision-record.md`.
 - Drafting or decomposing product work: `docs/product/prd-index.md`, `docs/product/specification-and-ticketing-standard.md`.
 - Documentation changes: [repository knowledge system](docs/agents/repository-knowledge-system.md).
 - TypeScript: before reading or editing any `.ts` or `.tsx` file, apply the [mandatory TypeScript discipline](docs/agents/typescript-discipline.md), the default for every implementation and review.
-- Product UI: follow the Prisme & lumière direction ([#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225), [frame provenance](apps/web/src/production-shell/prisme/README.md)); `/ui-baseline` stays a synthetic snapshot. Neither proves business behaviour.
-- Skills: `.agents/skills/<name>/SKILL.md`. Run `thermos`, `thermo-nuclear-code-quality-review` and `improve-codebase-architecture` only at structural checkpoints; their findings become candidate issues.
+- Product UI: Prisme & lumière ([#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225), [frame provenance](apps/web/src/production-shell/prisme/README.md)). `/ui-baseline` is synthetic and does not prove business behaviour.
+- Skills: `.agents/skills/<name>/SKILL.md`. `thermos`, `thermo-nuclear-code-quality-review` and `improve-codebase-architecture` only at structural checkpoints; findings are candidate issues.
 
 ## Guardrails
 
