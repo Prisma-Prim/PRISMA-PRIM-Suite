@@ -51,6 +51,16 @@ const paymentReport = {
   detail: 'bogdan confirmed Payment p1, whose CREATE he authored',
   sequence: ['create(bogdan source#0 replaces=none values=0)'],
 };
+const documentsReport = {
+  ...report,
+  testFile: 'src/documents/documents.fuzz.rest.test.ts',
+  seed: 1241,
+  path: '40~1:0~',
+  invariant: 'single-project',
+  rule: 'A Document is linked to at most one Project of its own Company.',
+  detail: 'Document d1 of Company A is stored on a Project of Company B',
+  sequence: ['link(ana fit document#0 project=foreign)'],
+};
 const failedMarker = '<!-- nightly-fuzz: failed -->';
 const passedMarker = '<!-- nightly-fuzz: passed -->';
 
@@ -124,6 +134,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(paymentReport),
     "FUZZ_SEED=1218 FUZZ_PATH='40~2:0~B' pnpm --filter @prisma-prim/api exec vitest run src/payment/payment.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(documentsReport)),
+    documentsReport,
+  );
+  assert.equal(
+    replayCommand(documentsReport),
+    "FUZZ_SEED=1241 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/documents/documents.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -132,6 +150,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
     for (const [name, value] of [
       ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
       ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
+      ['nightly-fuzz-report-documents', JSON.stringify(documentsReport)],
       ['nightly-fuzz-report-internal-task', JSON.stringify(report)],
       ['nightly-fuzz-report-broken', 'not json'],
     ]) {
@@ -139,6 +158,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
       await writeFile(join(directory, name, 'fuzz-report.json'), value);
     }
     assert.deepEqual(readFuzzReports(directory), [
+      documentsReport,
       report,
       invoiceReport,
       paymentReport,
