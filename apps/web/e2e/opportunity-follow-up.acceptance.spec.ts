@@ -420,16 +420,23 @@ for (const frame of ['prisme', 'classic'] as const) {
       const row = intake
         .locator('.commercial-intake-list > li')
         .filter({ hasText: target.subject });
+      const older = intake.getByRole('button', {
+        name: 'Show older Requests',
+        exact: true,
+      });
+      // A row can be attached before it is visible. Counting it as progress
+      // and then waiting only for the next page leaves the case unopened
+      // when that page button is not there (#1243).
       while (!(await row.isVisible())) {
-        const older = intake.getByRole('button', {
-          name: 'Show older Requests',
-          exact: true,
-        });
         await expect
-          .poll(async () => (await row.count()) + (await older.count()))
-          .toBeGreaterThan(0);
+          .poll(async () => {
+            if (await row.isVisible()) return 'row';
+            return (await older.isVisible()) && (await older.isEnabled())
+              ? 'older'
+              : 'waiting';
+          })
+          .not.toBe('waiting');
         if (await row.isVisible()) break;
-        await expect(older).toBeEnabled();
         await activate(older);
       }
       await activate(row.getByRole('button').first());
