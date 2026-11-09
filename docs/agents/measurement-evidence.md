@@ -52,6 +52,12 @@ node scripts/pilot-evaluation.mjs --cases scripts/fixtures/pilot-evaluation/one.
 
 Revision: `ce738e1a61496894dd65b26e4a31236b40642164`
 
+Blob `scripts/pilot-evaluation.mjs`: `03e6e537856c6363420ddccaa1febed06108660b`
+
+Blob `scripts/pilot-evaluation/compare.mjs`: `012ee1213583dc14b2140466e56fb1713885494b`
+
+Blob `scripts/pilot-evaluation/report.mjs`: `a2b899ee7d4d8342fa844cc75bba1654553193d6`
+
 Inputs: `scripts/fixtures/pilot-evaluation/one.cases.json` and `scripts/fixtures/pilot-evaluation/one.runs.json`. The case set is `DEMO-ONE`, `dataKind` synthetic, one case `A`. The runs declare manual elapsed `60000` ms and assisted elapsed `30000` ms.
 
 Execution status: exit 0.

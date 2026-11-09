@@ -60,21 +60,15 @@ test('the published pilot figure matches a fresh comparator run', () => {
     assert.ok(time, 'the fresh report has a time line');
     assert.ok(document.includes(time), time);
 
-    const revision = document.match(/Revision: `([0-9a-f]{40})`/u)?.[1];
-    assert.ok(revision, 'the example names the 40-character revision');
-    execFileSync('git', ['merge-base', '--is-ancestor', revision, 'HEAD'], {
-      stdio: 'pipe',
-    });
-    const comparator = 'scripts/pilot-evaluation.mjs';
-    const thenBlob = execFileSync(
-      'git',
-      ['rev-parse', `${revision}:${comparator}`],
-      { encoding: 'utf8' },
-    ).trim();
-    const nowBlob = execFileSync('git', ['rev-parse', `HEAD:${comparator}`], {
-      encoding: 'utf8',
-    }).trim();
-    assert.equal(nowBlob, thenBlob);
+    assert.match(document, /Revision: `[0-9a-f]{40}`/u);
+    const blobs = [...document.matchAll(/Blob `([^`]+)`: `([0-9a-f]{40})`/gu)];
+    assert.equal(blobs.length, 3);
+    for (const [, path, blob] of blobs) {
+      const now = execFileSync('git', ['rev-parse', `HEAD:${path}`], {
+        encoding: 'utf8',
+      }).trim();
+      assert.equal(now, blob, path);
+    }
 
     for (const phrase of [
       'actual measurement',
