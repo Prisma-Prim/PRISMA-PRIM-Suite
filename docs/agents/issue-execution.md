@@ -21,6 +21,10 @@ One session owns one issue and delivers it as one focused pull request. One Code
 
 A handoff between sessions, such as Codex to Claude Code, is compact: issue and branch, current commit, decisions with source links, checks run with their results, unresolved findings and the next action. Link evidence instead of copying transcripts or logs. The receiving session works from the issue, the PR and this procedure, without private conversation history.
 
+## Structural decisions
+
+On long-running work, append a structural decision to `.audit/<issue-number>.tsv` and commit that file on the issue branch before a step that depends on it. Checked against upstream, that per-issue file is the place. Structural means a change to the data model, a responsibility boundary, a public contract, compatibility, a migration, or a hard-to-reverse trade-off. On resume, read the file with the issue and check each row against the current code. Columns and the table-move illustration: [structural decisions](structural-decisions.md).
+
 ## Shared decisions for major trade-offs
 
 Use this procedure for the major delivery decisions that [AGENTS.md](../../AGENTS.md#decision-authority) escalates, and as soon as an unexpectedly large impact emerges; pause further consequential commitments meanwhile.
