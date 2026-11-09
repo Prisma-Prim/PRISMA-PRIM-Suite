@@ -19,6 +19,7 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 | Company leak, lasting access or false history in manual Invoice Records  | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1211  |
 | Company leak, self-confirmation or false history in manual Payments      | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1218  |
 | Company leak, a cross-Project link or false history in Documents         | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1241  |
+| Company leak, a second Contract or false history in illustrative Contracts | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage            | #1205, #1245  |
 | Request-supplied or missing scope in a query or command                  | Review only                                                                              | ADR 0006      |
 | Hidden and missing records answered differently                          | Review only                                                                              | ADR 0006      |
 | Authority from payload, role names or controller conditions              | Review only                                                                              | Access module |
