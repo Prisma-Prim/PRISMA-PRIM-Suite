@@ -2,7 +2,7 @@
 
 **Status:** Local repository rule  
 **Owner:** Dan Popescu  
-**Issues:** [#1234](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1234), [#1235](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1235), [#1236](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1236)
+**Issues:** [#1234](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1234), [#1235](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1235), [#1236](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1236), [#1219](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1219)
 
 This file is the active rule. Quoted upstream sentences stay labeled. [Issue execution](issue-execution.md) still owns which checks to run and how to name a check that could not run.
 
@@ -49,3 +49,11 @@ Local procedure:
 On 2026-11-08 the subjects of the last 200 commits on `origin/main` at `0ddc70322435f81be903e7a5df1cfc9f6ee57057`, and the commits whose subject matches revert, did not establish two occurrences of one class. That search does not prove older history has no class. This change adds no lint, type, or CI check, and no model judge.
 
 An exception needs its reason beside the check.
+
+## A reported number
+
+Upstream, same revision, [Explain the Number](https://github.com/cursor/plugins/blob/6b0300214a09fd6029cfb7077043125758cd1fd2/pstack/skills/principle-explain-the-number/SKILL.md):
+
+> Keep the evidence with the number. Put the run count, the spread, and the limiter in the notes or a linked artifact.
+
+Local rule: [measurement evidence](measurement-evidence.md). Label every reported figure as an actual measurement, a result on prepared examples, unverified declared data, or an estimate. An estimate is not an actual measurement. A prepared or declared result is not validation of the system. A failed, interrupted, or partial run stays visible and is not a complete result.
