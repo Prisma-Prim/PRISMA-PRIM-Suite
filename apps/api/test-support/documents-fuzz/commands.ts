@@ -1356,6 +1356,11 @@ class ReplayCommand extends Step {
   }
 }
 
+/** True when the command path names an existing Version, not a new draft. */
+function namesExistingVersion(committed: Committed) {
+  return /\/versions\/[^/]+/u.test(committed.path);
+}
+
 function bundlesOf(committed: Committed): readonly Bundle[] {
   if (committed.kind === 'associate') return ['registrar', 'organizer'];
   if (
@@ -1414,14 +1419,17 @@ class ReuseKey extends Step {
       return NOTHING;
     }
     // A Version or correction aimed at another Company cannot see the
-    // Document, so the refusal is the safe not-found. Association and
-    // registration compare the key before that, and so does a changed body.
+    // Document, so the refusal is the safe not-found. A command that names
+    // a Version id also misses that Version on another Document. Starting
+    // a draft names no Version, so the same key on another visible Document
+    // conflicts (#1242 review). Association and registration compare the
+    // key before visibility, and so does a changed body.
     const unseen =
       this.reuse !== 'input' &&
       committed.kind !== 'register' &&
       committed.kind !== 'associate' &&
       (this.reuse === 'company' ||
-        committed.kind === 'version' ||
+        namesExistingVersion(committed) ||
         otherDocument(model, committed) === undefined);
     if (unseen) {
       await refuse({
@@ -1562,6 +1570,11 @@ async function settleRace(input: {
     }
     return { touched: [document], events: [] };
   }
+  if (!canRead(input.model, winner.member, company))
+    throw new InvariantViolation(
+      denialInvariant(input.model, winner.member, company, ['registrar']),
+      `${winner.member} corrected Document ${document.id} without Registrar`,
+    );
   for (const attempt of input.attempts) {
     if (attempt === winner) continue;
     const able = canRead(input.model, attempt.member, company);
@@ -1657,6 +1670,14 @@ class RaceLink extends Step {
         );
       return { touched: [document], events: [] };
     }
+    if (!canLink(model, winner.member, company))
+      throw new InvariantViolation(
+        denialInvariant(model, winner.member, company, [
+          'registrar',
+          'organizer',
+        ]),
+        `${winner.member} linked Document ${document.id} without Registrar and Project Organizer`,
+      );
     if (document.projectId !== null)
       throw new InvariantViolation(
         'single-project',
