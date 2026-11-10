@@ -6,7 +6,8 @@ name: Nightly fuzz
 # incoming Payment observations (#1218), Documents and official Versions
 # (#1241), illustrative Contracts (#1245), Certification Cases (#1247) and
 # Access grants (#1249), the Company registry (#1251), Projects (#1253) and
-# mission plans (#1255), mission result reviews (#1257) and Offers (#1259).
+# mission plans (#1255), mission result reviews (#1257), Offers (#1259) and
+# pricing configuration (#1261).
 # It runs on main every night with a random seed and never gates a pull
 # request; the regular API CI runs the
 # same test files as fixed-seed smokes. Each fuzzed file is one matrix job
@@ -56,6 +57,8 @@ jobs:
             test: src/project-mission-review/project-mission-review.fuzz.rest.test.ts
           - module: offer
             test: src/offer/offer.fuzz.rest.test.ts
+          - module: pricing-configuration
+            test: src/pricing-configuration/pricing-configuration.fuzz.rest.test.ts
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -84,8 +87,9 @@ jobs:
       # (#1247), Access grants 0.4 seconds locally (#1249) and the Company
       # registry 0.2 seconds locally (#1251) and Projects 0.4 seconds locally
       # (#1253), mission plans 0.4 seconds locally (#1255) and mission result
-      # reviews 0.9 seconds locally (#1257) and Offers 0.3 seconds locally
-      # (#1259), so all usually finish.
+      # reviews 0.9 seconds locally (#1257), Offers 0.3 seconds locally (#1259)
+      # and pricing configuration 0.3 seconds locally (#1261), so all usually
+      # finish.
       - name: Fuzz the API invariants
         env:
           FUZZ_SEED: random

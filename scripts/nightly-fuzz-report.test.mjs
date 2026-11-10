@@ -71,6 +71,16 @@ const companyReport = {
   detail: 'ana sees a Company she does not hold',
   sequence: ['list(ana)'],
 };
+const pricingReport = {
+  ...report,
+  testFile: 'src/pricing-configuration/pricing-configuration.fuzz.rest.test.ts',
+  seed: 1261,
+  path: '40~1:0~',
+  invariant: 'versions-grow',
+  rule: 'A successor requires the current head number.',
+  detail: 'Company A accepted rule version 3 while the head was 1',
+  sequence: ['stale-rule(ana A)'],
+};
 const offerReport = {
   ...report,
   testFile: 'src/offer/offer.fuzz.rest.test.ts',
@@ -281,6 +291,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(offerReport),
     "FUZZ_SEED=1259 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/offer/offer.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(pricingReport)),
+    pricingReport,
+  );
+  assert.equal(
+    replayCommand(pricingReport),
+    "FUZZ_SEED=1261 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/pricing-configuration/pricing-configuration.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -296,6 +314,10 @@ test("each failing module's downloaded artifact gives one report", async () => {
       ['nightly-fuzz-report-mission-plan', JSON.stringify(missionPlanReport)],
       ['nightly-fuzz-report-offer', JSON.stringify(offerReport)],
       ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
+      [
+        'nightly-fuzz-report-pricing-configuration',
+        JSON.stringify(pricingReport),
+      ],
       ['nightly-fuzz-report-company', JSON.stringify(companyReport)],
       ['nightly-fuzz-report-access', JSON.stringify(accessReport)],
       [
@@ -321,6 +343,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
       missionPlanReport,
       offerReport,
       paymentReport,
+      pricingReport,
       missionReviewReport,
       projectReport,
     ]);
