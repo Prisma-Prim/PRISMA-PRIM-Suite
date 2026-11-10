@@ -287,6 +287,19 @@ class ListProjects extends Step {
         'model-agreement',
         `project list failed: ${short(reply)}`,
       );
+    if (!Array.isArray(reply.body))
+      throw new InvariantViolation(
+        'model-agreement',
+        'project list is not a list',
+      );
+    const titles = reply.body.map((item) => object(item, 'a project').title);
+    const own = `Fictional Access Project ${company}`;
+    const other = `Fictional Access Project ${company === 'A' ? 'B' : 'A'}`;
+    if (!titles.includes(own) || titles.includes(other))
+      throw new InvariantViolation(
+        'company-isolation',
+        `${this.member} in Company ${company} sees [${titles.join(', ')}]`,
+      );
     return NOTHING;
   }
   toString() {
