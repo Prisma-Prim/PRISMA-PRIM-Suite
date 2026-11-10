@@ -52,6 +52,10 @@ import {
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
+import {
   COMPANY_ROLE_BUNDLES,
   COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE,
@@ -102,6 +106,7 @@ import { assignmentRecord } from './company-context-assignment-record.js';
 import type {
   CompanyAccessAdministrationState,
   CompanyContextAssignmentRecord,
+  CompanyAssignmentTarget,
   GrantCompanyContextAssignmentCommand,
 } from './company-context-assignment.types.js';
 
@@ -2132,19 +2137,20 @@ export class CompanyContextAssignmentService {
     idempotencyKeyValue: string | undefined,
   ): Promise<CompanyContextAssignmentRecord> {
     requireWorkspacePermission(actor, 'company.assignment.manage');
-    const workspaceMembershipId = requireUuid(workspaceMembershipIdValue);
-    const companyId = requireUuid(companyIdValue);
+    const workspaceMembershipId = parseWorkspaceMembershipId(
+      requireUuid(workspaceMembershipIdValue),
+    );
+    const companyId = parseCompanyId(requireUuid(companyIdValue));
+    const assignmentTarget: CompanyAssignmentTarget = {
+      workspaceId: actor.workspaceId,
+      workspaceMembershipId,
+      companyId,
+    };
     const idempotencyKey = requireIdempotencyKey(idempotencyKeyValue);
     return this.databaseContext.transaction(async () => {
       const replay = await this.findCommand(actor, idempotencyKey);
       if (replay) {
-        assertSameCommand(
-          replay,
-          bundle,
-          operation,
-          workspaceMembershipId,
-          companyId,
-        );
+        assertSameCommand(replay, bundle, operation, assignmentTarget);
         return this.commandResult(replay, bundle);
       }
       // Preserve administration's per-target serialization independently of
@@ -2160,11 +2166,7 @@ export class CompanyContextAssignmentService {
       await this.databaseContext.connection.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetLock}, 0))`,
       );
-      const target = await this.requireActiveTargets(
-        actor.workspaceId,
-        workspaceMembershipId,
-        companyId,
-      );
+      const target = await this.requireActiveTargets(assignmentTarget);
       const [reserved] = await this.databaseContext.connection
         .insert(companyContextAssignmentCommands)
         .values({
@@ -2182,29 +2184,13 @@ export class CompanyContextAssignmentService {
         const raced = await this.findCommand(actor, idempotencyKey);
         if (!raced)
           throw new Error('The idempotent command could not be resolved.');
-        assertSameCommand(
-          raced,
-          bundle,
-          operation,
-          workspaceMembershipId,
-          companyId,
-        );
+        assertSameCommand(raced, bundle, operation, assignmentTarget);
         return this.commandResult(raced, bundle);
       }
       const assignment =
         operation === 'grant'
-          ? await this.applyGrant(
-              actor.workspaceId,
-              workspaceMembershipId,
-              companyId,
-              bundle,
-            )
-          : await this.applyRevoke(
-              actor.workspaceId,
-              workspaceMembershipId,
-              companyId,
-              bundle,
-            );
+          ? await this.applyGrant(assignmentTarget, bundle)
+          : await this.applyRevoke(assignmentTarget, bundle);
       await this.databaseContext.connection
         .update(companyContextAssignmentCommands)
         .set({ resultAssignmentId: assignment.id })
@@ -2228,11 +2214,11 @@ export class CompanyContextAssignmentService {
     });
   }
 
-  private async requireActiveTargets(
-    workspaceId: string,
-    workspaceMembershipId: string,
-    companyId: string,
-  ): Promise<{ internalUserId: string }> {
+  private async requireActiveTargets({
+    workspaceId,
+    workspaceMembershipId,
+    companyId,
+  }: CompanyAssignmentTarget): Promise<{ internalUserId: string }> {
     const [target] = await this.databaseContext.connection
       .select({ internalUserId: workspaceMemberships.internalUserId })
       .from(workspaceMemberships)
@@ -2264,18 +2250,9 @@ export class CompanyContextAssignmentService {
     return target;
   }
 
-  private async applyGrant(
-    workspaceId: string,
-    workspaceMembershipId: string,
-    companyId: string,
-    bundle: Bundle,
-  ) {
-    const active = await this.findActiveAssignment(
-      workspaceId,
-      workspaceMembershipId,
-      companyId,
-      bundle,
-    );
+  private async applyGrant(target: CompanyAssignmentTarget, bundle: Bundle) {
+    const { workspaceId, workspaceMembershipId, companyId } = target;
+    const active = await this.findActiveAssignment(target, bundle);
     if (active) return { ...active, changed: false };
 
     const [changed] = await this.databaseContext.connection
@@ -2298,22 +2275,13 @@ export class CompanyContextAssignmentService {
       })
       .returning();
     if (changed) return { ...changed, changed: true };
-    const raced = await this.findActiveAssignment(
-      workspaceId,
-      workspaceMembershipId,
-      companyId,
-      bundle,
-    );
+    const raced = await this.findActiveAssignment(target, bundle);
     if (!raced) throw new Error('The fresh assignment could not be resolved.');
     return { ...raced, changed: false };
   }
 
-  private async applyRevoke(
-    workspaceId: string,
-    workspaceMembershipId: string,
-    companyId: string,
-    bundle: Bundle,
-  ) {
+  private async applyRevoke(target: CompanyAssignmentTarget, bundle: Bundle) {
+    const { workspaceId, workspaceMembershipId, companyId } = target;
     const [changed] = await this.databaseContext.connection
       .update(companyRoleAssignments)
       .set({ revokedAt: sql`now()`, updatedAt: sql`now()` })
@@ -2331,13 +2299,7 @@ export class CompanyContextAssignmentService {
       )
       .returning();
     const assignment =
-      changed ??
-      (await this.findLatestAssignment(
-        workspaceId,
-        workspaceMembershipId,
-        companyId,
-        bundle,
-      ));
+      changed ?? (await this.findLatestAssignment(target, bundle));
     if (!assignment) throw new ForbiddenException();
     return { ...assignment, changed: Boolean(changed) };
   }
@@ -2361,11 +2323,10 @@ export class CompanyContextAssignmentService {
   }
 
   private async findActiveAssignment(
-    workspaceId: string,
-    workspaceMembershipId: string,
-    companyId: string,
+    target: CompanyAssignmentTarget,
     bundle: Bundle,
   ) {
+    const { workspaceId, workspaceMembershipId, companyId } = target;
     const [assignment] = await this.databaseContext.connection
       .select()
       .from(companyRoleAssignments)
@@ -2386,11 +2347,10 @@ export class CompanyContextAssignmentService {
   }
 
   private async findLatestAssignment(
-    workspaceId: string,
-    workspaceMembershipId: string,
-    companyId: string,
+    target: CompanyAssignmentTarget,
     bundle: Bundle,
   ) {
+    const { workspaceId, workspaceMembershipId, companyId } = target;
     const [assignment] = await this.databaseContext.connection
       .select()
       .from(companyRoleAssignments)
@@ -2440,14 +2400,13 @@ function assertSameCommand(
   command: CommandRow,
   bundle: Bundle,
   operation: Operation,
-  workspaceMembershipId: string,
-  companyId: string,
+  target: CompanyAssignmentTarget,
 ): void {
   if (
     command.bundle !== bundle ||
     command.operation !== operation ||
-    command.targetWorkspaceMembershipId !== workspaceMembershipId ||
-    command.companyId !== companyId
+    command.targetWorkspaceMembershipId !== target.workspaceMembershipId ||
+    command.companyId !== target.companyId
   ) {
     throw new BadRequestException(
       'Idempotency-Key was already used for another command.',

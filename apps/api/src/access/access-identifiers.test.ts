@@ -1,6 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
 import type { ActiveAuthoritySelection, ActorContext } from './access.types.js';
 
 describe('Access identity boundaries', () => {
@@ -32,7 +37,12 @@ describe('Access identity boundaries', () => {
     }).toMatchTypeOf<ActiveAuthoritySelection>();
   });
 
-  it.each([parseInternalUserId, parseWorkspaceId])(
+  it.each([
+    parseInternalUserId,
+    parseWorkspaceId,
+    parseCompanyId,
+    parseWorkspaceMembershipId,
+  ])(
     '%s validates and normalizes UUIDs without changing their string transport',
     (parse) => {
       const id = parse('AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA');
@@ -49,6 +59,8 @@ describe('Access identity boundaries', () => {
   ])('preserves persisted UUID representation %s', (value) => {
     expect(parseInternalUserId(value)).toBe(value);
     expect(parseWorkspaceId(value)).toBe(value);
+    expect(parseCompanyId(value)).toBe(value);
+    expect(parseWorkspaceMembershipId(value)).toBe(value);
   });
 
   it.each([
@@ -64,5 +76,9 @@ describe('Access identity boundaries', () => {
   ])('rejects an invalid identifier %j at construction', (value) => {
     expect(() => parseInternalUserId(value)).toThrow(BadRequestException);
     expect(() => parseWorkspaceId(value)).toThrow(BadRequestException);
+    expect(() => parseCompanyId(value)).toThrow(BadRequestException);
+    expect(() => parseWorkspaceMembershipId(value)).toThrow(
+      BadRequestException,
+    );
   });
 });

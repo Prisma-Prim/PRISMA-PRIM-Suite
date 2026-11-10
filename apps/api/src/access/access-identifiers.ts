@@ -1,5 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
-import type { InternalUserId, WorkspaceId } from './access.types.js';
+import type {
+  InternalUserId,
+  WorkspaceId,
+  WorkspaceMembershipId,
+  CompanyId,
+} from './access.types.js';
 
 /** Parse representation at an identity boundary; Access still checks authority. */
 export function parseInternalUserId(value: unknown): InternalUserId {
@@ -10,6 +15,18 @@ export function parseInternalUserId(value: unknown): InternalUserId {
 export function parseWorkspaceId(value: unknown): WorkspaceId {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- #1220: parsePersistedUuid validates and normalizes the UUID; this constructor assigns its role, not authority.
   return parsePersistedUuid(value) as WorkspaceId;
+}
+
+export function parseWorkspaceMembershipId(
+  value: unknown,
+): WorkspaceMembershipId {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- #1265: the shared parser proves the UUID representation; this constructor assigns only the Membership role.
+  return parsePersistedUuid(value) as WorkspaceMembershipId;
+}
+
+export function parseCompanyId(value: unknown): CompanyId {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- #1265: the shared parser proves the UUID representation; this constructor assigns only the Company role.
+  return parsePersistedUuid(value) as CompanyId;
 }
 
 function parsePersistedUuid(value: unknown): string {

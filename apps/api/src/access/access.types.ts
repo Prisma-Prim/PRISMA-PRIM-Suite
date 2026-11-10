@@ -197,6 +197,10 @@ export type { CompanyClientPermission } from './company-permissions.js';
 /** UUID representation only; neither existence nor authorization is implied. */
 export type InternalUserId = string & { readonly __brand: 'InternalUserId' };
 export type WorkspaceId = string & { readonly __brand: 'WorkspaceId' };
+export type WorkspaceMembershipId = string & {
+  readonly __brand: 'WorkspaceMembershipId';
+};
+export type CompanyId = string & { readonly __brand: 'CompanyId' };
 
 /** The identity pair used to resolve an active Workspace Membership. */
 export interface ActiveAuthoritySelection {

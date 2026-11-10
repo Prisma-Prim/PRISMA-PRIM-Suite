@@ -3,6 +3,18 @@ import type {
   CompanyRoleBundle,
   CompanyRoleCapturedVersion,
 } from './company-permissions.js';
+import type {
+  CompanyId,
+  WorkspaceId,
+  WorkspaceMembershipId,
+} from './access.types.js';
+
+/** The validated identity categories of one Company role assignment target. */
+export interface CompanyAssignmentTarget {
+  workspaceId: WorkspaceId;
+  workspaceMembershipId: WorkspaceMembershipId;
+  companyId: CompanyId;
+}
 
 export type CompanyAssignmentBundleLabel =
   (typeof COMPANY_ROLE_BUNDLES)[CompanyRoleBundle]['label'];
