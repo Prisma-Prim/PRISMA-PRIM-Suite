@@ -12,7 +12,15 @@ import {
 } from '../database/schema/index.js';
 import { requireUuid } from './access-command-validation.js';
 import { requireWorkspacePermission } from './access-policy.js';
-import type { ActorContext } from './access.types.js';
+import {
+  parseInternalUserId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
+import type {
+  ActorContext,
+  WorkspaceId,
+  WorkspaceMembershipId,
+} from './access.types.js';
 import {
   IDENTITY_SESSION_REVOKER,
   type IdentitySessionRevoker,
@@ -80,13 +88,17 @@ export class WorkspaceSessionRevocationService {
 
   async retry(actor: ActorContext, membershipId: unknown): Promise<void> {
     requireWorkspacePermission(actor, 'company.assignment.manage');
-    await this.run(actor, requireUuid(membershipId), false);
+    await this.run(
+      actor,
+      parseWorkspaceMembershipId(requireUuid(membershipId)),
+      false,
+    );
   }
 
   /** Called only after the originating suspension transaction has committed. */
   async afterSuspension(
     actor: ActorContext,
-    membershipId: string,
+    membershipId: WorkspaceMembershipId,
   ): Promise<void> {
     // A provider or outcome-persistence failure cannot change the already
     // committed suspension response. The durable pending/lease state is retriable.
@@ -99,7 +111,7 @@ export class WorkspaceSessionRevocationService {
 
   private async run(
     actor: ActorContext,
-    membershipId: string,
+    membershipId: WorkspaceMembershipId,
     committedSuspension: boolean,
   ): Promise<void> {
     const claim = await this.database.transaction(async () => {
@@ -155,7 +167,7 @@ export class WorkspaceSessionRevocationService {
       return {
         commandId: row.command.id,
         attemptId,
-        internalUserId: row.user.id,
+        internalUserId: parseInternalUserId(row.user.id),
         identity: {
           provider: row.user.externalProvider,
           subject: row.user.externalSubject,
@@ -204,7 +216,7 @@ export class WorkspaceSessionRevocationService {
     });
   }
 
-  private async lockWorkspace(workspaceId: string) {
+  private async lockWorkspace(workspaceId: WorkspaceId) {
     const [workspace] = await this.database.connection
       .select({ id: workspaces.id })
       .from(workspaces)

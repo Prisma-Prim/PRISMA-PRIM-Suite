@@ -81,6 +81,38 @@ run('Suspended member session revocation REST journey', () => {
     );
   });
 
+  it.each([
+    'not-a-uuid',
+    '00000000-0000-0000-0000-000000000000',
+    '11111111-1111-7111-8111-111111111111',
+  ])('retains strict HTTP target validation for %s', async (membershipId) => {
+    expect(
+      (
+        await request('/workspace-membership-suspensions', 'POST', {
+          workspaceMembershipId: membershipId,
+        })
+      ).status,
+    ).toBe(400);
+    expect((await retry(membershipId)).status).toBe(400);
+    expect(provider.revoke).not.toHaveBeenCalled();
+    const unchanged = await harness.pool.query<{
+      status: string;
+      commands: string;
+      events: string;
+    }>(
+      `SELECT status,
+        (SELECT count(*) FROM workspace_membership_suspension_commands) AS commands,
+        (SELECT count(*) FROM activity_log_events
+          WHERE action::text IN ('workspace_membership.suspended',
+            'workspace_sessions.revoked', 'workspace_sessions.revocation_retry_required')) AS events
+       FROM workspace_memberships WHERE id = $1`,
+      [targetId],
+    );
+    expect(unchanged.rows).toEqual([
+      { status: 'active', commands: '0', events: '0' },
+    ]);
+  });
+
   it('commits denial before calling Clerk, uses verified provider/subject, and records one successful outcome under concurrent replays', async () => {
     provider.revoke.mockImplementation(async (identity) => {
       expect(identity).toEqual({ provider: 'clerk', subject: 'user_target' });
