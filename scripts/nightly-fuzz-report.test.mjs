@@ -51,6 +51,16 @@ const paymentReport = {
   detail: 'bogdan confirmed Payment p1, whose CREATE he authored',
   sequence: ['create(bogdan source#0 replaces=none values=0)'],
 };
+const contractReport = {
+  ...report,
+  testFile: 'src/contract/contract.fuzz.rest.test.ts',
+  seed: 1245,
+  path: '40~1:0~',
+  invariant: 'one-contract',
+  rule: 'An Opportunity has at most one Contract.',
+  detail: 'Opportunity o1 accepted a second Contract',
+  sequence: ['create(ana offer #0)'],
+};
 const documentsReport = {
   ...report,
   testFile: 'src/documents/documents.fuzz.rest.test.ts',
@@ -142,6 +152,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(documentsReport),
     "FUZZ_SEED=1241 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/documents/documents.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(contractReport)),
+    contractReport,
+  );
+  assert.equal(
+    replayCommand(contractReport),
+    "FUZZ_SEED=1245 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/contract/contract.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -150,6 +168,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
     for (const [name, value] of [
       ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
       ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
+      ['nightly-fuzz-report-contract', JSON.stringify(contractReport)],
       ['nightly-fuzz-report-documents', JSON.stringify(documentsReport)],
       ['nightly-fuzz-report-internal-task', JSON.stringify(report)],
       ['nightly-fuzz-report-broken', 'not json'],
@@ -158,6 +177,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
       await writeFile(join(directory, name, 'fuzz-report.json'), value);
     }
     assert.deepEqual(readFuzzReports(directory), [
+      contractReport,
       documentsReport,
       report,
       invoiceReport,
