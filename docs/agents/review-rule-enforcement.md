@@ -23,6 +23,7 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 | Company leak, a skipped step or false history in Certification Cases       | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1247  |
 | Company leak, lasting access or false history in Access grants             | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1249  |
 | Company leak or false history in the Company registry                      | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1251  |
+| Company leak, an illegal lifecycle step or false history in Projects       | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1253  |
 | Request-supplied or missing scope in a query or command                    | Review only                                                                              | ADR 0006      |
 | Hidden and missing records answered differently                            | Review only                                                                              | ADR 0006      |
 | Authority from payload, role names or controller conditions                | Review only                                                                              | Access module |
