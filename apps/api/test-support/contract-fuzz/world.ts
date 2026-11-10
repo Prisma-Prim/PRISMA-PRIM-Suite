@@ -107,6 +107,8 @@ export interface SourceModel {
   clientId: string;
   snapshotId: string;
   acceptedOfferVersionId: string | null;
+  /** An Offer version that exists and is not accepted. */
+  pendingOfferVersionId: string | null;
   projectId: string;
 }
 
@@ -598,7 +600,7 @@ async function prepareSource(
   companyId: string,
   company: CompanyKey,
   index: number,
-  accept: boolean,
+  offerState: 'none' | 'pending' | 'accepted',
   catalogue: Catalogue,
 ): Promise<SourceModel> {
   const suffix = `${company}${index}`;
@@ -649,8 +651,9 @@ async function prepareSource(
     },
   );
   let acceptedOfferVersionId: string | null = null;
-  if (accept) {
-    const offer = await must(
+  let pendingOfferVersionId: string | null = null;
+  if (offerState !== 'none') {
+    const createdOffer = await must(
       harness,
       `/offers/opportunities/${opportunityId}`,
       {
@@ -665,30 +668,33 @@ async function prepareSource(
       },
     );
     const versionId = idOf(
-      object(offer.version, 'offer version'),
+      object(createdOffer.version, 'offer version'),
       'offer version',
     );
+    if (offerState === 'pending') pendingOfferVersionId = versionId;
     const base = `/offers/opportunities/${opportunityId}/versions/${versionId}`;
-    await must(harness, `${base}/approve`, {
-      company: companyId,
-      key: `offer-approve-${suffix}`,
-      body: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
-    });
-    await must(harness, `${base}/transmission`, {
-      company: companyId,
-      key: `offer-send-${suffix}`,
-      body: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
-    });
-    await must(harness, `${base}/client-response`, {
-      company: companyId,
-      key: `offer-accept-${suffix}`,
-      body: {
-        expectedOfferRevision: 3,
-        outcome: 'ACCEPTED',
-        receivedAt: CLOCK.toISOString(),
-      },
-    });
-    acceptedOfferVersionId = versionId;
+    if (offerState === 'accepted') {
+      await must(harness, `${base}/approve`, {
+        company: companyId,
+        key: `offer-approve-${suffix}`,
+        body: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+      });
+      await must(harness, `${base}/transmission`, {
+        company: companyId,
+        key: `offer-send-${suffix}`,
+        body: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      });
+      await must(harness, `${base}/client-response`, {
+        company: companyId,
+        key: `offer-accept-${suffix}`,
+        body: {
+          expectedOfferRevision: 3,
+          outcome: 'ACCEPTED',
+          receivedAt: CLOCK.toISOString(),
+        },
+      });
+      acceptedOfferVersionId = versionId;
+    }
   }
   const project = await must(harness, '/projects', {
     company: companyId,
@@ -704,6 +710,7 @@ async function prepareSource(
     clientId: idOf(client, 'client'),
     snapshotId: idOf(snapshot, 'snapshot'),
     acceptedOfferVersionId,
+    pendingOfferVersionId,
     projectId: idOf(project, 'project'),
   };
 }
@@ -782,14 +789,16 @@ export async function openContractWorld(
       companyIds[company],
       company,
     );
-    for (const [index, accept] of [false, false, true].entries())
+    for (const [index, offer] of (
+      ['none', 'pending', 'accepted'] as const
+    ).entries())
       sources.push(
         await prepareSource(
           harness,
           companyIds[company],
           company,
           index,
-          accept,
+          offer,
           catalogue,
         ),
       );

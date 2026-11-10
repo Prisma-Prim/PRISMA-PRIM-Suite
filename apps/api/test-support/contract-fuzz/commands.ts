@@ -67,15 +67,18 @@ function pickSource(
   api: ContractApi,
   company: CompanyKey,
   aim: Aim,
-  accept: boolean,
+  want: 'direct' | 'accepted' | 'pending',
 ) {
-  const pool = api.world.sources.filter(
-    (source) =>
-      (source.company === company) !== aim.foreign &&
-      (source.acceptedOfferVersionId !== null) === accept,
-  );
-  const chosen = pool.length > 0 ? pool : api.world.sources;
-  const source = chosen[aim.index % chosen.length];
+  const pool = api.world.sources.filter((source) => {
+    if ((source.company === company) === aim.foreign) return false;
+    if (want === 'accepted') return source.acceptedOfferVersionId !== null;
+    if (want === 'pending') return source.pendingOfferVersionId !== null;
+    return (
+      source.acceptedOfferVersionId === null &&
+      source.pendingOfferVersionId === null
+    );
+  });
+  const source = pool[aim.index % pool.length];
   if (!source) throw new Error('No source.');
   return source;
 }
@@ -203,6 +206,7 @@ class CreateContract extends Step {
     private readonly who: Who,
     private readonly aim: Aim,
     private readonly direct: boolean,
+    private readonly mismatch: boolean,
     private readonly keySlot: number | null,
   ) {
     super();
@@ -210,9 +214,25 @@ class CreateContract extends Step {
   protected async act(model: Model, api: ContractApi) {
     const member = resolveWho(model, this.who, 'preparer');
     const company = model.context[member];
-    const source = pickSource(api, company, this.aim, !this.direct);
+    const source = pickSource(
+      api,
+      company,
+      this.aim,
+      this.direct
+        ? this.mismatch
+          ? 'accepted'
+          : 'direct'
+        : this.mismatch
+          ? 'pending'
+          : 'accepted',
+    );
     const key = issueKey(model, api, member, this.keySlot);
     const path = `/contracts/opportunities/${source.opportunityId}${this.direct ? '/direct' : ''}`;
+    const offerVersionId = this.direct
+      ? null
+      : this.mismatch
+        ? source.pendingOfferVersionId
+        : source.acceptedOfferVersionId;
     const body = this.direct
       ? {
           recipient: { kind: 'PRIMARY' },
@@ -221,7 +241,7 @@ class CreateContract extends Step {
           scopeNote: 'Fictional direct scope',
           commercialConditions: 'Fictional direct conditions',
         }
-      : { acceptedOfferVersionId: source.acceptedOfferVersionId };
+      : { acceptedOfferVersionId: offerVersionId };
     const reply = await api.send(member, path, {
       method: 'POST',
       company,
@@ -257,10 +277,12 @@ class CreateContract extends Step {
     const existing = model.contracts.find(
       (contract) => contract.opportunityId === source.opportunityId,
     );
-    const wrongOrigin =
-      (this.direct && source.acceptedOfferVersionId !== null) ||
-      (!this.direct && source.acceptedOfferVersionId === null);
-    if (existing || wrongOrigin) {
+    // Offer resolution refuses an unaccepted version before the existing
+    // Contract is considered. A direct command sees the existing Contract
+    // before the Accepted Offer.
+    const pendingOffer = !this.direct && this.mismatch;
+    const acceptedOffer = this.direct && source.acceptedOfferVersionId !== null;
+    if (pendingOffer || existing || acceptedOffer) {
       await refuse({
         model,
         reply,
@@ -269,12 +291,11 @@ class CreateContract extends Step {
         what,
         member,
         key,
-        code:
-          this.direct && source.acceptedOfferVersionId !== null
-            ? 'ACCEPTED_OFFER_EXISTS'
-            : existing
-              ? 'CONTRACT_ALREADY_EXISTS'
-              : 'OFFER_NOT_ACCEPTED',
+        code: pendingOffer
+          ? 'OFFER_NOT_ACCEPTED'
+          : existing
+            ? 'CONTRACT_ALREADY_EXISTS'
+            : 'ACCEPTED_OFFER_EXISTS',
       });
       return NOTHING;
     }
@@ -289,7 +310,7 @@ class CreateContract extends Step {
     return { touched: [contract], events: [] };
   }
   toString() {
-    return `create(${describeWho(this.who)} ${this.direct ? 'direct' : 'offer'} #${this.aim.index}${this.aim.foreign ? ' foreign' : ''})`;
+    return `create(${describeWho(this.who)} ${this.direct ? 'direct' : 'offer'}${this.mismatch ? ' mismatch' : ''} #${this.aim.index}${this.aim.foreign ? ' foreign' : ''})`;
   }
 }
 
@@ -714,8 +735,9 @@ class Replay extends Step {
     const saved = object(committed.receipt, 'saved receipt');
     const again = object(reply.body, 'replay');
     // Creation replay confirms the same Contract. A later version changes
-    // the head the read returns, so that body is not frozen.
-    if (!committed.path.includes('/versions/')) {
+    // the head the read returns, so that body is not frozen. Version
+    // creation ends in `/versions` and returns its own receipt.
+    if (!committed.path.includes('/versions')) {
       if (again.id !== saved.id)
         throw new InvariantViolation(
           'replay-receipt',
@@ -1034,7 +1056,7 @@ export function fuzzCommands(options: {
     [
       4,
       fc
-        .tuple(who, aim, fc.boolean(), slot)
+        .tuple(who, aim, fc.boolean(), fc.boolean(), slot)
         .map((args) => new CreateContract(...args)),
     ],
     [
