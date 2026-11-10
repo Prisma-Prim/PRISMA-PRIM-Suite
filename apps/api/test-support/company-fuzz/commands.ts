@@ -195,12 +195,11 @@ class ListCompanies extends Step {
     const ids = reply.body
       .map((item) => text(object(item, 'a company').id, 'id'))
       .sort();
+    const member = this.member;
     const wanted = (
-      this.member === 'owner'
+      member === 'owner'
         ? model.companies
-        : model.companies.filter((company) =>
-            company.holders.includes(this.member),
-          )
+        : model.companies.filter((company) => company.holders.includes(member))
     )
       .map((company) => company.id)
       .sort();
