@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import {
   receivedContractRelationsForTest,
@@ -928,9 +932,9 @@ describe.skipIf(!databaseUrl)(
     /** The owner's identity with a metadata-only context no bundle grants. */
     function metadataOnlyActor(): ActorContext {
       return {
-        internalUserId,
+        internalUserId: parseInternalUserId(internalUserId),
         workspaceMembershipId: membershipId,
-        workspaceId,
+        workspaceId: parseWorkspaceId(workspaceId),
         workspaceName: 'Document Projects',
         displayName: 'Document Project Organizer',
         email: 'document-project-owner@example.test',

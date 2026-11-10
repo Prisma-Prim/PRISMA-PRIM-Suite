@@ -20,6 +20,7 @@ import {
   requireUuid,
 } from './access-command-validation.js';
 import type { ActorContext, ExternalPrincipal } from './access.types.js';
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import {
   INVITATION_ACCEPTANCE_PROVIDER,
   type InvitationAcceptanceProvider,
@@ -188,9 +189,9 @@ export class WorkspaceInvitationAcceptanceService {
         })
         .where(eq(workspaceInvitations.id, live.id));
       const actor: ActorContext = {
-        internalUserId: user.id,
+        internalUserId: parseInternalUserId(user.id),
         workspaceMembershipId: membership.id,
-        workspaceId: workspace.id,
+        workspaceId: parseWorkspaceId(workspace.id),
         workspaceName: workspace.name,
         displayName: user.displayName,
         email: user.email,

@@ -1,0 +1,2 @@
+ts	phase	decision	why	evidence	result
+2026-11-10T18:40:03.804376+00:00	design	Distinguish only InternalUserId and WorkspaceId in ActorContext and the active-authority lookup; use named lookup arguments	The selected verified-principal to current-actor journey must not invert user and workspace; keep all other identifiers and transport/storage contracts unchanged	https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1220; apps/api/src/access/access.service.ts#findActiveAuthority	Scope chosen before extending types; runtime authorization remains mandatory

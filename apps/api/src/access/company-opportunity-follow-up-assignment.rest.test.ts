@@ -1,3 +1,4 @@
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -86,12 +87,14 @@ withPostgres(
         }),
       );
       const actor: ActorContext = {
-        internalUserId: responseString(identity, 'internalUserId'),
+        internalUserId: parseInternalUserId(
+          responseString(identity, 'internalUserId'),
+        ),
         workspaceMembershipId: responseString(
           identity,
           'workspaceMembershipId',
         ),
-        workspaceId: responseString(identity, 'workspaceId'),
+        workspaceId: parseWorkspaceId(responseString(identity, 'workspaceId')),
         workspaceName: responseString(identity, 'workspaceName'),
         displayName: responseString(identity, 'displayName'),
         email: responseString(identity, 'email'),
@@ -323,8 +326,8 @@ withPostgres(
         ),
       ).rejects.toMatchObject({ status: 403 });
       for (const changedIdentity of [
-        { workspaceId: randomUUID() },
-        { internalUserId: randomUUID() },
+        { workspaceId: parseWorkspaceId(randomUUID()) },
+        { internalUserId: parseInternalUserId(randomUUID()) },
       ])
         await expect(
           authorization.requireOpportunityFollowUpAccess(

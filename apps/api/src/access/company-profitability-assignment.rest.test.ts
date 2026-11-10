@@ -1,3 +1,4 @@
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { ForbiddenException } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -336,9 +337,9 @@ withPostgres(
       expect(response.status).toBe(200);
       const value = record(await response.json());
       return {
-        internalUserId: string(value.internalUserId),
+        internalUserId: parseInternalUserId(string(value.internalUserId)),
         workspaceMembershipId: string(value.workspaceMembershipId),
-        workspaceId: string(value.workspaceId),
+        workspaceId: parseWorkspaceId(string(value.workspaceId)),
         workspaceName: string(value.workspaceName),
         displayName: string(value.displayName),
         email: string(value.email),

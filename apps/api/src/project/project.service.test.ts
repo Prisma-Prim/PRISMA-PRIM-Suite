@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access/access.types.js';
@@ -72,9 +76,9 @@ describe('ProjectService', () => {
 });
 
 const actor: ActorContext = {
-  internalUserId: '11111111-1111-4111-8111-111111111111',
+  internalUserId: parseInternalUserId('11111111-1111-4111-8111-111111111111'),
   workspaceMembershipId: '22222222-2222-4222-8222-222222222222',
-  workspaceId: '00000000-0000-4000-8000-000000000000',
+  workspaceId: parseWorkspaceId('00000000-0000-4000-8000-000000000000'),
   workspaceName: 'Workspace',
   displayName: 'Director',
   email: 'director@example.test',

@@ -1,3 +1,4 @@
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -443,12 +444,14 @@ withPostgres(
         workspacePermissions.push(permission);
       }
       const actor: ActorContext = {
-        workspaceId: responseString(identity, 'workspaceId'),
+        workspaceId: parseWorkspaceId(responseString(identity, 'workspaceId')),
         workspaceMembershipId: responseString(
           identity,
           'workspaceMembershipId',
         ),
-        internalUserId: responseString(identity, 'internalUserId'),
+        internalUserId: parseInternalUserId(
+          responseString(identity, 'internalUserId'),
+        ),
         workspaceName: responseString(identity, 'workspaceName'),
         displayName: responseString(identity, 'displayName'),
         email: responseString(identity, 'email'),

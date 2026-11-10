@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,9 +20,9 @@ import { KnowledgeService } from './knowledge.service.js';
 
 const id = '00000000-0000-4000-8000-000000008101';
 const actor: ActorContext = {
-  internalUserId: id,
+  internalUserId: parseInternalUserId(id),
   workspaceMembershipId: id,
-  workspaceId: id,
+  workspaceId: parseWorkspaceId(id),
   workspaceName: 'Fictional boundary fixture',
   displayName: 'Fictional authorized reader',
   email: 'fixture@example.test',

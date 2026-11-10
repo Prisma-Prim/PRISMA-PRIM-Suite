@@ -4,6 +4,7 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { DatabaseContext } from '../database/database-context.js';
 import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
 import type { ActorContext } from './access.types.js';
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 
 describe('CompanyContextAssignmentService', () => {
   it('reads administration state from one repeatable-read snapshot', async () => {
@@ -53,9 +54,9 @@ function query(rows: unknown[]) {
 }
 
 const actor: ActorContext = {
-  internalUserId: '11111111-1111-4111-8111-111111111111',
+  internalUserId: parseInternalUserId('11111111-1111-4111-8111-111111111111'),
   workspaceMembershipId: '22222222-2222-4222-8222-222222222222',
-  workspaceId: '00000000-0000-4000-8000-000000000000',
+  workspaceId: parseWorkspaceId('00000000-0000-4000-8000-000000000000'),
   workspaceName: 'Workspace',
   displayName: 'Workspace Owner',
   email: 'owner@example.test',

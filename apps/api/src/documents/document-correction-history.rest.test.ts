@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { PaymentEvidenceSourcesService } from './payment-evidence-sources.service.js';
 import {
   receivedContractRelationsForTest,
@@ -553,9 +557,9 @@ describe.skipIf(!databaseUrl)(
       });
       const current = await body(await request('/access/current-actor'));
       const metadataReader: ActorContext = {
-        internalUserId: text(current.internalUserId),
+        internalUserId: parseInternalUserId(text(current.internalUserId)),
         workspaceMembershipId: membershipId,
-        workspaceId: text(current.workspaceId),
+        workspaceId: parseWorkspaceId(text(current.workspaceId)),
         workspaceName: 'Document history',
         displayName: 'Document Registrar',
         email: owner['x-test-email'],

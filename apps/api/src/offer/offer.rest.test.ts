@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { Logger } from '@nestjs/common';
 import { vi } from 'vitest';
 import { createHash } from 'node:crypto';
@@ -1733,7 +1737,7 @@ withPostgres('First illustrative Offer REST', () => {
     if (!offerVersionId) throw new Error('Expected version');
     await expect(
       service.recordClientResponse({
-        actor: { ...actor, workspaceId: unknown },
+        actor: { ...actor, workspaceId: parseWorkspaceId(unknown) },
         opportunityId: fixture.opportunityId,
         offerVersionId,
         payload: body,
@@ -3626,7 +3630,7 @@ withPostgres('First illustrative Offer REST', () => {
     if (!versionId) throw new Error('Expected version');
     await expect(
       service.decide({
-        actor: { ...actor, workspaceId: unknown },
+        actor: { ...actor, workspaceId: parseWorkspaceId(unknown) },
         opportunityId: fixture.opportunityId,
         offerVersionId: versionId,
         payload: { expectedOfferRevision: 1, reason: 'Synthetic' },
@@ -4000,7 +4004,7 @@ withPostgres('First illustrative Offer REST', () => {
     const { offers: service, actor } = await offerServiceContext(fixture);
     await expect(
       service.runQualityChecks({
-        actor: { ...actor, workspaceId: unknownId },
+        actor: { ...actor, workspaceId: parseWorkspaceId(unknownId) },
         opportunityId: fixture.opportunityId,
         offerVersionId: versionId,
         payload: {},
@@ -6463,9 +6467,9 @@ withPostgres('First illustrative Offer REST', () => {
     ).rows;
     if (!member) throw new Error('Expected the synthetic membership.');
     const actor: ActorContext = {
-      internalUserId: member.internal_user_id,
+      internalUserId: parseInternalUserId(member.internal_user_id),
       workspaceMembershipId: fixture.actorMembershipId,
-      workspaceId: WORKSPACE_ID,
+      workspaceId: parseWorkspaceId(WORKSPACE_ID),
       workspaceName: 'Synthetic',
       displayName: 'Synthetic',
       email: 'synthetic@example.test',

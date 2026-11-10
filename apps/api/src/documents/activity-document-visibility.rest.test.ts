@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -68,9 +72,11 @@ withPostgres('Activity-readable Documents through real PostgreSQL', () => {
     ({ companyId, clientId } = received.ready.source);
     const resolved = responseRecord(await read('/access/current-actor'));
     actor = {
-      internalUserId: responseString(resolved, 'internalUserId'),
+      internalUserId: parseInternalUserId(
+        responseString(resolved, 'internalUserId'),
+      ),
       workspaceMembershipId: responseString(resolved, 'workspaceMembershipId'),
-      workspaceId: responseString(resolved, 'workspaceId'),
+      workspaceId: parseWorkspaceId(responseString(resolved, 'workspaceId')),
       workspaceName: responseString(resolved, 'workspaceName'),
       displayName: responseString(resolved, 'displayName'),
       email: responseString(resolved, 'email'),
@@ -412,7 +418,10 @@ withPostgres('Activity-readable Documents through real PostgreSQL', () => {
       responseString(ordinary, 'id'),
     );
     expect(
-      await service().documentEvents({ ...actor, workspaceId: randomUUID() }),
+      await service().documentEvents({
+        ...actor,
+        workspaceId: parseWorkspaceId(randomUUID()),
+      }),
     ).toEqual([]);
     expect(
       await service().documentEvents({
@@ -616,7 +625,7 @@ withPostgres('Activity-readable Documents through real PostgreSQL', () => {
       }),
     );
     for (const supplied of [
-      { ...actor, workspaceId: randomUUID() },
+      { ...actor, workspaceId: parseWorkspaceId(randomUUID()) },
       {
         ...actor,
         activeCompany: { ...company, id: responseString(foreignCompany, 'id') },
