@@ -61,6 +61,16 @@ const contractReport = {
   detail: 'Opportunity o1 accepted a second Contract',
   sequence: ['create(ana offer #0)'],
 };
+const companyReport = {
+  ...report,
+  testFile: 'src/company/company.fuzz.rest.test.ts',
+  seed: 1251,
+  path: '40~1:0~',
+  invariant: 'company-isolation',
+  rule: 'A member lists only the Companies whose context they hold.',
+  detail: 'ana sees a Company she does not hold',
+  sequence: ['list(ana)'],
+};
 const accessReport = {
   ...report,
   testFile: 'src/access/access.fuzz.rest.test.ts',
@@ -193,6 +203,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(accessReport),
     "FUZZ_SEED=1249 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/access/access.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(companyReport)),
+    companyReport,
+  );
+  assert.equal(
+    replayCommand(companyReport),
+    "FUZZ_SEED=1251 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/company/company.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -201,6 +219,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
     for (const [name, value] of [
       ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
       ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
+      ['nightly-fuzz-report-company', JSON.stringify(companyReport)],
       ['nightly-fuzz-report-access', JSON.stringify(accessReport)],
       [
         'nightly-fuzz-report-certification',
@@ -217,6 +236,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
     assert.deepEqual(readFuzzReports(directory), [
       accessReport,
       certificationReport,
+      companyReport,
       contractReport,
       documentsReport,
       report,
