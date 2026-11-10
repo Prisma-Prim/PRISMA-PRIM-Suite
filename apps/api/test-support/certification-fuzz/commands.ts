@@ -98,6 +98,9 @@ function holders(
   return MEMBERS.filter(
     (member) =>
       member !== exclude &&
+      // Every generated team names Cora as its only leader. Stage reports
+      // and the recommendation refuse anyone else, even with the Auditor bundle.
+      (role !== 'auditor' || member === 'cora') &&
       granted(model, member, company, 'reader') &&
       granted(model, member, company, role),
   );
