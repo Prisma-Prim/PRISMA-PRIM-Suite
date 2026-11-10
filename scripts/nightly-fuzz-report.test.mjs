@@ -61,6 +61,16 @@ const contractReport = {
   detail: 'Opportunity o1 accepted a second Contract',
   sequence: ['create(ana offer #0)'],
 };
+const certificationReport = {
+  ...report,
+  testFile: 'src/certification/certification.fuzz.rest.test.ts',
+  seed: 1247,
+  path: '40~1:0~',
+  invariant: 'step-order',
+  rule: 'A step is refused until its predecessors hold.',
+  detail: 'Case c1 accepted a dossier review before the recommendation',
+  sequence: ['early(#0)'],
+};
 const documentsReport = {
   ...report,
   testFile: 'src/documents/documents.fuzz.rest.test.ts',
@@ -160,6 +170,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(contractReport),
     "FUZZ_SEED=1245 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/contract/contract.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(certificationReport)),
+    certificationReport,
+  );
+  assert.equal(
+    replayCommand(certificationReport),
+    "FUZZ_SEED=1247 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/certification/certification.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -168,6 +186,10 @@ test("each failing module's downloaded artifact gives one report", async () => {
     for (const [name, value] of [
       ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
       ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
+      [
+        'nightly-fuzz-report-certification',
+        JSON.stringify(certificationReport),
+      ],
       ['nightly-fuzz-report-contract', JSON.stringify(contractReport)],
       ['nightly-fuzz-report-documents', JSON.stringify(documentsReport)],
       ['nightly-fuzz-report-internal-task', JSON.stringify(report)],
@@ -177,6 +199,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
       await writeFile(join(directory, name, 'fuzz-report.json'), value);
     }
     assert.deepEqual(readFuzzReports(directory), [
+      certificationReport,
       contractReport,
       documentsReport,
       report,
