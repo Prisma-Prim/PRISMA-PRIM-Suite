@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import type {
   CanActivate,
   ExecutionContext,
@@ -22,9 +26,9 @@ import { ClientDuplicateReviewController } from './client-duplicate-review.contr
 import { ClientDuplicateReviewService } from './client-duplicate-review.service.js';
 
 const actor: ActorContext = {
-  internalUserId: 'internal-user',
+  internalUserId: parseInternalUserId('11111111-1111-4111-8111-111111111111'),
   workspaceMembershipId: 'workspace-membership',
-  workspaceId: 'workspace',
+  workspaceId: parseWorkspaceId('22222222-2222-4222-8222-222222222222'),
   workspaceName: 'Workspace',
   displayName: 'Resolver',
   email: 'resolver@example.test',

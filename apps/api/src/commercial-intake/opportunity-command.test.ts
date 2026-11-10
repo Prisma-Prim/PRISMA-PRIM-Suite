@@ -153,7 +153,7 @@ describe('Opportunity command fingerprints', () => {
 
 describe('Opportunity command lock keys', () => {
   const actor = {
-    workspaceId: '00000000-0000-4000-8000-000000000399',
+    workspaceId: parseWorkspaceId('00000000-0000-4000-8000-000000000399'),
     workspaceMembershipId: '7b1d2c3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
   };
   const companyId = '5c4b3a29-1807-4f6e-9d5c-4b3a29180716';
@@ -177,3 +177,4 @@ describe('Opportunity command lock keys', () => {
         ).toBe(previous.lockKey(command, actor, companyId, idempotencyKey));
   });
 });
+import { parseWorkspaceId } from '../access/access-identifiers.js';

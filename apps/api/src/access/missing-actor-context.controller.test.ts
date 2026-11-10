@@ -1,3 +1,4 @@
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import type {
   CanActivate,
   ExecutionContext,
@@ -34,9 +35,9 @@ import { WorkspaceMembershipSuspensionController } from './workspace-membership-
 import { WorkspaceMembershipSuspensionService } from './workspace-membership-suspension.service.js';
 
 const actor: ActorContext = {
-  internalUserId: 'internal-user',
+  internalUserId: parseInternalUserId('11111111-1111-4111-8111-111111111111'),
   workspaceMembershipId: 'workspace-membership',
-  workspaceId: 'workspace',
+  workspaceId: parseWorkspaceId('22222222-2222-4222-8222-222222222222'),
   workspaceName: 'Workspace',
   displayName: 'Actor',
   email: 'actor@example.test',

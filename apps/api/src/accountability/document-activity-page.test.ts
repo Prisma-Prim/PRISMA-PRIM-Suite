@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { expect, it, vi } from 'vitest';
@@ -26,7 +30,7 @@ it('merges Document and ordinary events into one newest-first dated page', async
             'ordinary-event',
             'company.registered',
             '2026-09-18T12:00:00.000Z',
-            'user',
+            '11111111-1111-4111-8111-111111111111',
             'Registrar',
             'company',
             null,
@@ -51,7 +55,7 @@ it('merges Document and ordinary events into one newest-first dated page', async
           index === 49
             ? '2026-09-17T12:00:00.000Z'
             : '2026-09-19T12:00:00.000Z',
-          'user',
+          '11111111-1111-4111-8111-111111111111',
           'Registrar',
         ]);
       else if (query.text.includes('from "document_correction_commands"'))
@@ -70,9 +74,9 @@ it('merges Document and ordinary events into one newest-first dated page', async
       };
     });
   const actor: ActorContext = {
-    internalUserId: 'user',
+    internalUserId: parseInternalUserId('11111111-1111-4111-8111-111111111111'),
     workspaceMembershipId: 'member',
-    workspaceId: 'workspace',
+    workspaceId: parseWorkspaceId('22222222-2222-4222-8222-222222222222'),
     workspaceName: 'Workspace',
     displayName: 'Registrar',
     email: 'registrar@example.test',

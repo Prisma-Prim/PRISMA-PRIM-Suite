@@ -298,12 +298,14 @@ withPostgres(
         }),
       );
       const actor = {
-        workspaceId: responseString(identity, 'workspaceId'),
+        workspaceId: parseWorkspaceId(responseString(identity, 'workspaceId')),
         workspaceMembershipId: responseString(
           identity,
           'workspaceMembershipId',
         ),
-        internalUserId: responseString(identity, 'internalUserId'),
+        internalUserId: parseInternalUserId(
+          responseString(identity, 'internalUserId'),
+        ),
         workspaceName: responseString(identity, 'workspaceName'),
         displayName: responseString(identity, 'displayName'),
         email: responseString(identity, 'email'),
@@ -319,3 +321,4 @@ withPostgres(
     }
   },
 );
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';

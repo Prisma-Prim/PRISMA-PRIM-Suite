@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
@@ -279,9 +283,11 @@ withPostgres('External invoice exact Contract source public REST', () => {
         expect(value.workspacePermissions).toEqual([]);
         expect(value.active).toBe(true);
         const base: ActorContext = {
-          internalUserId: responseString(value, 'internalUserId'),
+          internalUserId: parseInternalUserId(
+            responseString(value, 'internalUserId'),
+          ),
           workspaceMembershipId: responseString(value, 'workspaceMembershipId'),
-          workspaceId: responseString(value, 'workspaceId'),
+          workspaceId: parseWorkspaceId(responseString(value, 'workspaceId')),
           workspaceName: responseString(value, 'workspaceName'),
           displayName: responseString(value, 'displayName'),
           email: responseString(value, 'email'),

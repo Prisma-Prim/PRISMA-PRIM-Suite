@@ -11,6 +11,7 @@ import {
 } from '../database/schema/index.js';
 import type {
   ActorContext,
+  ActiveAuthoritySelection,
   ExternalPrincipal,
   WorkspacePermission,
 } from './access.types.js';
@@ -20,6 +21,7 @@ import {
   type AccessAdmissionDecision,
 } from './access-admission.js';
 import { CompanyContextAuthorization } from './company-context-authorization.js';
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { requireUuid } from './access-command-validation.js';
 
 const bootstrapWorkspacePermissions = [
@@ -127,10 +129,16 @@ export class AccessService {
           })
           .onConflictDoNothing();
       }
-      const authority = await this.findActiveAuthority(
-        internalUser.id,
-        selection.workspaceId ?? admissionWorkspace?.id,
-      );
+      const userId = parseInternalUserId(internalUser.id);
+      const selectedWorkspaceId =
+        selection.workspaceId ?? admissionWorkspace?.id;
+      const authority = await this.findActiveAuthority({
+        internalUserId: userId,
+        workspaceId:
+          selectedWorkspaceId === undefined
+            ? undefined
+            : parseWorkspaceId(selectedWorkspaceId),
+      });
       if (!authority) throw new ForbiddenException();
 
       if (
@@ -163,9 +171,9 @@ export class AccessService {
       }
 
       const actor: ActorContext = {
-        internalUserId: internalUser.id,
+        internalUserId: userId,
         workspaceMembershipId: authority.membership.id,
-        workspaceId: authority.workspace.id,
+        workspaceId: parseWorkspaceId(authority.workspace.id),
         workspaceName: authority.workspace.name,
         displayName: internalUser.displayName,
         email: internalUser.email,
@@ -229,10 +237,10 @@ export class AccessService {
     return workspace;
   }
 
-  private async findActiveAuthority(
-    internalUserId: string,
-    workspaceId?: string,
-  ) {
+  private async findActiveAuthority({
+    internalUserId,
+    workspaceId,
+  }: ActiveAuthoritySelection) {
     const conditions = [
       eq(workspaceMemberships.internalUserId, internalUserId),
       eq(workspaceMemberships.status, 'active'),

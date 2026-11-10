@@ -1,3 +1,7 @@
+import {
+  parseInternalUserId,
+  parseWorkspaceId,
+} from '../access/access-identifiers.js';
 import { Client, Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -15,9 +19,9 @@ import { OfferService } from './offer.service.js';
 
 const opportunityId = '00000000-0000-4000-8000-000000000003';
 const actor: ActorContext = {
-  internalUserId: '00000000-0000-4000-8000-000000000001',
+  internalUserId: parseInternalUserId('00000000-0000-4000-8000-000000000001'),
   workspaceMembershipId: '00000000-0000-4000-8000-000000000002',
-  workspaceId: '00000000-0000-4000-8000-000000000456',
+  workspaceId: parseWorkspaceId('00000000-0000-4000-8000-000000000456'),
   workspaceName: 'Synthetic Workspace',
   displayName: 'Synthetic Reader',
   email: 'reader@example.test',

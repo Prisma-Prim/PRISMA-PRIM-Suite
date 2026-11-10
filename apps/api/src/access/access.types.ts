@@ -194,10 +194,20 @@ export interface ActiveCompanyContext
 
 export type { CompanyClientPermission } from './company-permissions.js';
 
+/** UUID representation only; neither existence nor authorization is implied. */
+export type InternalUserId = string & { readonly __brand: 'InternalUserId' };
+export type WorkspaceId = string & { readonly __brand: 'WorkspaceId' };
+
+/** The identity pair used to resolve an active Workspace Membership. */
+export interface ActiveAuthoritySelection {
+  internalUserId: InternalUserId;
+  workspaceId?: WorkspaceId;
+}
+
 export interface ActorContext {
-  internalUserId: string;
+  internalUserId: InternalUserId;
   workspaceMembershipId: string;
-  workspaceId: string;
+  workspaceId: WorkspaceId;
   workspaceName: string;
   displayName: string;
   email: string;
