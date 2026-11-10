@@ -5,7 +5,7 @@ name: Nightly fuzz
 # Company Tasks (#1156), manual external Invoice Records (#1211), manual
 # incoming Payment observations (#1218), Documents and official Versions
 # (#1241), illustrative Contracts (#1245), Certification Cases (#1247) and
-# Access grants (#1249).
+# Access grants (#1249) and the Company registry (#1251).
 # It runs on main every night with a random seed and never gates a pull
 # request; the regular API CI runs the
 # same test files as fixed-seed smokes. Each fuzzed file is one matrix job
@@ -45,6 +45,8 @@ jobs:
             test: src/certification/certification.fuzz.rest.test.ts
           - module: access
             test: src/access/access.fuzz.rest.test.ts
+          - module: company
+            test: src/company/company.fuzz.rest.test.ts
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -70,8 +72,8 @@ jobs:
       # Records 0.9 seconds, Payments 0.8 seconds (#1200, #1211, #1218) and
       # Documents 1.3 seconds locally (#1241), illustrative Contracts 0.6
       # seconds locally (#1245) and Certification Cases 0.8 seconds locally
-      # (#1247) and Access grants 0.4 seconds locally (#1249), so all usually
-      # finish.
+      # (#1247), Access grants 0.4 seconds locally (#1249) and the Company
+      # registry 0.2 seconds locally (#1251), so all usually finish.
       - name: Fuzz the API invariants
         env:
           FUZZ_SEED: random
