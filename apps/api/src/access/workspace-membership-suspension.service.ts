@@ -19,10 +19,20 @@ import {
   requireUuid,
 } from './access-command-validation.js';
 import { requireWorkspacePermission } from './access-policy.js';
-import type { ActorContext } from './access.types.js';
+import {
+  parseInternalUserId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
+import type {
+  ActorContext,
+  InternalUserId,
+  WorkspaceId,
+  WorkspaceMembershipId,
+} from './access.types.js';
 import type {
   SuspendWorkspaceMembershipCommand,
   WorkspaceMembershipSuspensionRecord,
+  WorkspaceMembershipSuspensionTarget,
 } from './workspace-membership-suspension.types.js';
 
 import { WorkspaceSessionRevocationService } from './workspace-session-revocation.service.js';
@@ -42,8 +52,14 @@ export class WorkspaceMembershipSuspensionService {
     command: SuspendWorkspaceMembershipCommand,
   ): Promise<WorkspaceMembershipSuspensionRecord> {
     requireWorkspacePermission(actor, 'company.assignment.manage');
-    const workspaceMembershipId = requireUuid(command.workspaceMembershipId);
+    const workspaceMembershipId = parseWorkspaceMembershipId(
+      requireUuid(command.workspaceMembershipId),
+    );
     const idempotencyKey = requireIdempotencyKey(command.idempotencyKey);
+    const selection: WorkspaceMembershipSuspensionTarget = {
+      workspaceId: actor.workspaceId,
+      workspaceMembershipId,
+    };
 
     const result = await this.databaseContext.transaction(async () => {
       await this.lockWorkspace(actor.workspaceId);
@@ -55,13 +71,9 @@ export class WorkspaceMembershipSuspensionService {
         return { record: commandResult(replay), newlyCommitted: false };
       }
 
-      const target = await this.requireActiveTarget(
-        actor.workspaceId,
-        workspaceMembershipId,
-      );
+      const target = await this.requireActiveTarget(selection);
       await this.requireAnotherAccessAdministrationAuthorityHolderIfTargetHoldsAuthority(
-        actor.workspaceId,
-        workspaceMembershipId,
+        selection,
       );
 
       const [reserved] = await this.databaseContext.connection
@@ -119,7 +131,7 @@ export class WorkspaceMembershipSuspensionService {
     return result.record;
   }
 
-  private async lockWorkspace(workspaceId: string): Promise<void> {
+  private async lockWorkspace(workspaceId: WorkspaceId): Promise<void> {
     const [workspace] = await this.databaseContext.connection
       .select({ id: workspaces.id })
       .from(workspaces)
@@ -168,10 +180,12 @@ export class WorkspaceMembershipSuspensionService {
     if (!liveActor) throw new ForbiddenException();
   }
 
-  private async requireActiveTarget(
-    workspaceId: string,
-    workspaceMembershipId: string,
-  ): Promise<{ internalUserId: string }> {
+  private async requireActiveTarget({
+    workspaceId,
+    workspaceMembershipId,
+  }: WorkspaceMembershipSuspensionTarget): Promise<{
+    internalUserId: InternalUserId;
+  }> {
     const [target] = await this.databaseContext.connection
       .select({ internalUserId: workspaceMemberships.internalUserId })
       .from(workspaceMemberships)
@@ -192,13 +206,13 @@ export class WorkspaceMembershipSuspensionService {
       .for('update')
       .limit(1);
     if (!target) throw new ForbiddenException();
-    return target;
+    return { internalUserId: parseInternalUserId(target.internalUserId) };
   }
 
-  private async requireAnotherAccessAdministrationAuthorityHolderIfTargetHoldsAuthority(
-    workspaceId: string,
-    workspaceMembershipId: string,
-  ): Promise<void> {
+  private async requireAnotherAccessAdministrationAuthorityHolderIfTargetHoldsAuthority({
+    workspaceId,
+    workspaceMembershipId,
+  }: WorkspaceMembershipSuspensionTarget): Promise<void> {
     const [targetGrant] = await this.databaseContext.connection
       .select({ id: workspacePermissionGrants.id })
       .from(workspacePermissionGrants)
@@ -275,7 +289,7 @@ export class WorkspaceMembershipSuspensionService {
 
 function assertSameSuspension(
   command: CommandRow,
-  workspaceMembershipId: string,
+  workspaceMembershipId: WorkspaceMembershipId,
 ): void {
   if (command.targetWorkspaceMembershipId !== workspaceMembershipId) {
     throw new BadRequestException(
@@ -288,7 +302,9 @@ function commandResult(
   command: CommandRow,
 ): WorkspaceMembershipSuspensionRecord {
   return {
-    workspaceMembershipId: command.targetWorkspaceMembershipId,
+    workspaceMembershipId: parseWorkspaceMembershipId(
+      command.targetWorkspaceMembershipId,
+    ),
     status: 'inactive',
   };
 }
