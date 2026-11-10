@@ -71,6 +71,17 @@ const companyReport = {
   detail: 'ana sees a Company she does not hold',
   sequence: ['list(ana)'],
 };
+const missionReviewReport = {
+  ...report,
+  testFile:
+    'src/project-mission-review/project-mission-review.fuzz.rest.test.ts',
+  seed: 1257,
+  path: '40~1:0~',
+  invariant: 'review-state',
+  rule: 'A review names a mapped activity whose Task is done.',
+  detail: 'Project p1 accepted a review of a Task that is not done',
+  sequence: ['review(#0)'],
+};
 const missionPlanReport = {
   ...report,
   testFile: 'src/mission-plan/mission-plan.fuzz.rest.test.ts',
@@ -247,6 +258,14 @@ test('a malformed or foreign report is no counterexample', () => {
     replayCommand(missionPlanReport),
     "FUZZ_SEED=1255 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/mission-plan/mission-plan.fuzz.rest.test.ts",
   );
+  assert.deepEqual(
+    parseFuzzReport(JSON.stringify(missionReviewReport)),
+    missionReviewReport,
+  );
+  assert.equal(
+    replayCommand(missionReviewReport),
+    "FUZZ_SEED=1257 FUZZ_PATH='40~1:0~' pnpm --filter @prisma-prim/api exec vitest run src/project-mission-review/project-mission-review.fuzz.rest.test.ts",
+  );
 });
 
 test("each failing module's downloaded artifact gives one report", async () => {
@@ -254,6 +273,10 @@ test("each failing module's downloaded artifact gives one report", async () => {
   try {
     for (const [name, value] of [
       ['nightly-fuzz-report-invoice-record', JSON.stringify(invoiceReport)],
+      [
+        'nightly-fuzz-report-project-mission-review',
+        JSON.stringify(missionReviewReport),
+      ],
       ['nightly-fuzz-report-project', JSON.stringify(projectReport)],
       ['nightly-fuzz-report-mission-plan', JSON.stringify(missionPlanReport)],
       ['nightly-fuzz-report-payment', JSON.stringify(paymentReport)],
@@ -281,6 +304,7 @@ test("each failing module's downloaded artifact gives one report", async () => {
       invoiceReport,
       missionPlanReport,
       paymentReport,
+      missionReviewReport,
       projectReport,
     ]);
     assert.deepEqual(readFuzzReports(join(directory, 'missing')), []);
