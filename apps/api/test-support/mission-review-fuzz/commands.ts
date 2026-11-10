@@ -10,6 +10,7 @@ import {
   checkStep,
   COMPANIES,
   granted,
+  grantKey,
   InvariantViolation,
   MEMBERS,
   MISSING_ID,
@@ -41,6 +42,15 @@ abstract class Step implements FuzzCommand {
 
 function reviewers(model: Readonly<Model>, company: CompanyKey) {
   return MEMBERS.filter((member) => granted(model, member, company));
+}
+function reviewDenial(
+  model: Readonly<Model>,
+  member: MemberKey,
+  company: CompanyKey,
+) {
+  return model.grants.get(grantKey(member, company)) === 'revoked'
+    ? 'revocation-denies'
+    : 'command-authority';
 }
 function event(
   action: string,
@@ -109,22 +119,19 @@ class CompleteTask extends Step {
 }
 
 class RecordReview extends Step {
-  constructor(private readonly index: number) {
+  constructor(
+    private readonly member: MemberKey,
+    private readonly index: number,
+  ) {
     super();
   }
   override check(model: Readonly<Model>): boolean {
-    return model.cases.some(
-      (item) => reviewers(model, item.company).length > 0,
-    );
+    return model.cases.length > 0;
   }
   protected async act(model: Model, api: ReviewApi) {
-    const ready = model.cases.filter(
-      (item) => reviewers(model, item.company).length > 0,
-    );
-    const item = ready[this.index % ready.length];
+    const item = model.cases[this.index % model.cases.length];
     if (!item) return NOTHING;
-    const member = reviewers(model, item.company)[0];
-    if (!member) return NOTHING;
+    const member = this.member;
     const key = api.nextKey();
     const path = `/projects/${item.projectId}/mission-result-reviews`;
     const body = reviewBody(item);
@@ -134,6 +141,15 @@ class RecordReview extends Step {
       key,
       body,
     });
+    if (!granted(model, member, item.company)) {
+      await expectDenial({
+        reply,
+        status: 403,
+        invariant: reviewDenial(model, member, item.company),
+        what: `${member} reviews ${item.projectId}`,
+      });
+      return NOTHING;
+    }
     if (!item.done) {
       if (
         reply.status !== 409 ||
@@ -172,7 +188,7 @@ class RecordReview extends Step {
     return NOTHING;
   }
   toString() {
-    return `review(#${this.index})`;
+    return `review(${this.member} #${this.index})`;
   }
 }
 
@@ -465,7 +481,12 @@ export function fuzzCommands(options: {
   const company = fc.constantFrom(...COMPANIES);
   const weighted: Array<[number, fc.Arbitrary<FuzzCommand>]> = [
     [2, fc.nat({ max: 3 }).map((index) => new CompleteTask(index))],
-    [4, fc.nat({ max: 3 }).map((index) => new RecordReview(index))],
+    [
+      4,
+      fc
+        .tuple(member, fc.nat({ max: 3 }))
+        .map((args) => new RecordReview(...args)),
+    ],
     [1, fc.nat({ max: 3 }).map((index) => new StaleReview(index))],
     [
       1,
