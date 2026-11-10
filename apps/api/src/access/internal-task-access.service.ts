@@ -1,4 +1,8 @@
 import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
+import {
   BadRequestException,
   Injectable,
   NotFoundException,
@@ -26,8 +30,8 @@ export class InternalTaskAccessService {
       throw new BadRequestException('The responsible member is unavailable.');
     return readMemberAuthority(this.database.connection, {
       workspaceId: actor.workspaceId,
-      companyId,
-      membershipId,
+      companyId: parseCompanyId(companyId),
+      membershipId: parseWorkspaceMembershipId(membershipId),
       lock,
     });
   }

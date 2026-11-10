@@ -1,3 +1,7 @@
+import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
@@ -28,8 +32,8 @@ export class MissionPlanAccessService {
     }
     const authority = await readMemberAuthority(this.database.connection, {
       workspaceId: actor.workspaceId,
-      companyId,
-      membershipId: actor.workspaceMembershipId,
+      companyId: parseCompanyId(companyId),
+      membershipId: parseWorkspaceMembershipId(actor.workspaceMembershipId),
       lock,
     });
     if (

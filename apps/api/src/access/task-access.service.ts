@@ -10,8 +10,15 @@ import {
   workspaceMemberships,
   companyRoleAssignments,
 } from '../database/schema/index.js';
-import type { ActorContext } from './access.types.js';
-import { readMemberAuthority } from './member-authority.js';
+import type { ActorContext, CompanyId } from './access.types.js';
+import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
+import {
+  readMemberAuthority,
+  type MemberAuthoritySelection,
+} from './member-authority.js';
 
 /** Access owns candidate evaluation. A candidate is never impersonated as an actor. */
 @Injectable()
@@ -21,13 +28,14 @@ export class TaskAccessService {
     actor: ActorContext,
     manage = false,
     lock = false,
-  ): Promise<string> {
+  ): Promise<CompanyId> {
     const companyId = actor.activeCompany?.id;
     if (!companyId) throw new ForbiddenException();
+    const selectedCompanyId = parseCompanyId(companyId);
     const authority = await this.memberAuthority({
       workspaceId: actor.workspaceId,
-      companyId,
-      membershipId: actor.workspaceMembershipId,
+      companyId: selectedCompanyId,
+      membershipId: parseWorkspaceMembershipId(actor.workspaceMembershipId),
       lock,
     });
     if (
@@ -37,7 +45,7 @@ export class TaskAccessService {
       (manage && !authority.manage)
     )
       throw new ForbiddenException();
-    return companyId;
+    return selectedCompanyId;
   }
   /** Captured native Task read inside a caller-owned readonly snapshot. */
   async requireActorWithinReadTransaction(
@@ -90,7 +98,7 @@ export class TaskAccessService {
       const authority = await this.memberAuthority({
         workspaceId: actor.workspaceId,
         companyId,
-        membershipId: member.id,
+        membershipId: parseWorkspaceMembershipId(member.id),
         lock: false,
       });
       if (authority?.read)
@@ -106,8 +114,8 @@ export class TaskAccessService {
     if (!companyId) throw new ForbiddenException();
     const authority = await this.memberAuthority({
       workspaceId: actor.workspaceId,
-      companyId,
-      membershipId,
+      companyId: parseCompanyId(companyId),
+      membershipId: parseWorkspaceMembershipId(membershipId),
       lock: true,
     });
     if (!authority?.read)
@@ -117,12 +125,7 @@ export class TaskAccessService {
       displayLabel: authority.displayLabel,
     };
   }
-  private async memberAuthority(input: {
-    workspaceId: string;
-    companyId: string;
-    membershipId: string;
-    lock: boolean;
-  }) {
+  private async memberAuthority(input: MemberAuthoritySelection) {
     const authority = await readMemberAuthority(
       this.database.connection,
       input,

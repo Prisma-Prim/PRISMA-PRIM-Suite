@@ -3,6 +3,13 @@ import {
   COMPANY_MISSION_PLAN_USER_BUNDLE,
 } from './company-permissions.js';
 import { and, eq, isNull } from 'drizzle-orm';
+import type {
+  CompanyId,
+  InternalUserId,
+  WorkspaceId,
+  WorkspaceMembershipId,
+} from './access.types.js';
+import { parseInternalUserId } from './access-identifiers.js';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   companies,
@@ -37,7 +44,7 @@ import {
 } from './company-permissions.js';
 
 export interface MemberAuthority {
-  internalUserId: string;
+  internalUserId: InternalUserId;
   displayLabel: string;
   /** Effective Company context, Project read and Client read in the Company. */
   projectReader: boolean;
@@ -59,6 +66,14 @@ export interface MemberAuthority {
   missionPlanUser: boolean;
 }
 
+/** Identity categories only; live membership and grants are checked below. */
+export interface MemberAuthoritySelection {
+  workspaceId: WorkspaceId;
+  companyId: CompanyId;
+  membershipId: WorkspaceMembershipId;
+  lock: boolean;
+}
+
 /**
  * Access-internal evaluation of one candidate membership's live grants in one
  * Company. A candidate is never impersonated as an actor. A locked read
@@ -67,12 +82,7 @@ export interface MemberAuthority {
  */
 export async function readMemberAuthority(
   connection: NodePgDatabase,
-  input: {
-    workspaceId: string;
-    companyId: string;
-    membershipId: string;
-    lock: boolean;
-  },
+  input: MemberAuthoritySelection,
 ): Promise<MemberAuthority | undefined> {
   const query = connection
     .select({
@@ -245,7 +255,7 @@ export async function readMemberAuthority(
     }
   }
   return {
-    internalUserId: member.internalUserId,
+    internalUserId: parseInternalUserId(member.internalUserId),
     displayLabel: memberDisplayLabel(member.displayName, input.membershipId),
     projectReader: context && client && project,
     commercialIntakeReader: context && intakeRead,

@@ -1,3 +1,7 @@
+import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { DatabaseContext } from '../database/database-context.js';
 import type { ActorContext } from './access.types.js';
@@ -21,8 +25,8 @@ export class OperationalRiskAccessService {
     if (!companyId) throw new ForbiddenException();
     const authority = await readMemberAuthority(this.database.connection, {
       workspaceId: actor.workspaceId,
-      companyId,
-      membershipId: actor.workspaceMembershipId,
+      companyId: parseCompanyId(companyId),
+      membershipId: parseWorkspaceMembershipId(actor.workspaceMembershipId),
       lock,
     });
     if (

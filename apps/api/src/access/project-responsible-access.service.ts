@@ -6,7 +6,11 @@ import {
 import { and, asc, eq } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import { workspaceMemberships } from '../database/schema/index.js';
-import type { ActorContext } from './access.types.js';
+import type { ActorContext, CompanyId } from './access.types.js';
+import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
 import { readMemberAuthority } from './member-authority.js';
 
 /** Only a membership identifier and label; never email or exclusion reasons. */
@@ -45,7 +49,7 @@ export class ProjectResponsibleAccessService {
       const authority = await readMemberAuthority(this.database.connection, {
         workspaceId: actor.workspaceId,
         companyId,
-        membershipId: member.id,
+        membershipId: parseWorkspaceMembershipId(member.id),
         lock: false,
       });
       if (authority?.projectReader)
@@ -65,7 +69,7 @@ export class ProjectResponsibleAccessService {
     const authority = await readMemberAuthority(this.database.connection, {
       workspaceId: actor.workspaceId,
       companyId: requireCompany(actor),
-      membershipId,
+      membershipId: parseWorkspaceMembershipId(membershipId),
       lock: true,
     });
     if (!authority?.projectReader)
@@ -77,8 +81,8 @@ export class ProjectResponsibleAccessService {
   }
 }
 
-function requireCompany(actor: ActorContext): string {
+function requireCompany(actor: ActorContext): CompanyId {
   const companyId = actor.activeCompany?.id;
   if (!companyId) throw new ForbiddenException();
-  return companyId;
+  return parseCompanyId(companyId);
 }
