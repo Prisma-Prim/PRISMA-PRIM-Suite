@@ -7,6 +7,10 @@ import { knowledgeSourceEvents } from '../database/schema/index.js';
 import { activityReadableDocuments } from './activity-readable-documents.js';
 import { missionPlanVersions } from '../database/schema/mission-plan.js';
 import { readMemberAuthority } from '../access/member-authority.js';
+import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from '../access/access-identifiers.js';
 import type { MissionPlanVersionPublishedActivityEvent } from '../mission-plan/mission-plan.activity.js';
 import { CONTRACT_MODEL_CODE } from '../contract-model/contract-model.content.js';
 import { contractModelEvents } from '../database/schema/contract-model.js';
@@ -990,8 +994,10 @@ export class AccountabilityService {
           this.databaseContext.connection,
           {
             workspaceId: actor.workspaceId,
-            companyId,
-            membershipId: actor.workspaceMembershipId,
+            companyId: parseCompanyId(companyId),
+            membershipId: parseWorkspaceMembershipId(
+              actor.workspaceMembershipId,
+            ),
             lock: false,
           },
         );

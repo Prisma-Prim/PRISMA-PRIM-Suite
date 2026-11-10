@@ -6,6 +6,10 @@ import {
   workspaceMemberships,
 } from '../database/schema/index.js';
 import type { ActorContext } from './access.types.js';
+import {
+  parseCompanyId,
+  parseWorkspaceMembershipId,
+} from './access-identifiers.js';
 import { memberDisplayLabel, readMemberAuthority } from './member-authority.js';
 
 /** Only a membership identifier and label; never email or exclusion reasons. */
@@ -34,6 +38,7 @@ export class CommercialResponsibleAccessService {
     actor: ActorContext,
     companyId: string,
   ): Promise<OpportunityResponsibleCandidate[]> {
+    const selectedCompanyId = parseCompanyId(companyId);
     const memberships = await this.database.connection
       .select({ id: workspaceMemberships.id })
       .from(workspaceMemberships)
@@ -48,8 +53,8 @@ export class CommercialResponsibleAccessService {
     for (const member of memberships) {
       const authority = await readMemberAuthority(this.database.connection, {
         workspaceId: actor.workspaceId,
-        companyId,
-        membershipId: member.id,
+        companyId: selectedCompanyId,
+        membershipId: parseWorkspaceMembershipId(member.id),
         lock: false,
       });
       if (authority?.commercialIntakeReader)
@@ -73,8 +78,8 @@ export class CommercialResponsibleAccessService {
   ): Promise<EligibleOpportunityResponsible> {
     const authority = await readMemberAuthority(this.database.connection, {
       workspaceId: actor.workspaceId,
-      companyId,
-      membershipId: workspaceMembershipId,
+      companyId: parseCompanyId(companyId),
+      membershipId: parseWorkspaceMembershipId(workspaceMembershipId),
       lock: true,
     });
     if (!authority?.commercialIntakeReader)
