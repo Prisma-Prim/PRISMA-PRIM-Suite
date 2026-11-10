@@ -11,6 +11,7 @@ export const FUZZ_TEST_FILES = [
   'src/payment/payment.fuzz.rest.test.ts',
   'src/documents/documents.fuzz.rest.test.ts',
   'src/contract/contract.fuzz.rest.test.ts',
+  'src/certification/certification.fuzz.rest.test.ts',
 ];
 // Each report and pass comment carries one marker, so a passing night
 // comments once after the latest failure instead of every night.
