@@ -14,6 +14,7 @@ import {
   COMPANIES,
   denialInvariant,
   granted,
+  grantKey,
   integer,
   InvariantViolation,
   MEMBERS,
@@ -53,6 +54,17 @@ function event(
   member: MemberKey,
 ): ExpectedEvent {
   return { action, company, member };
+}
+function readDenial(
+  model: Readonly<Model>,
+  member: MemberKey,
+  company: CompanyKey,
+) {
+  const preparer = model.grants.get(grantKey(member, company, 'preparer'));
+  const approver = model.grants.get(grantKey(member, company, 'approver'));
+  return preparer === 'revoked' || approver === 'revoked'
+    ? 'revocation-denies'
+    : 'command-authority';
 }
 function codeOf(reply: Reply) {
   if (
@@ -482,24 +494,28 @@ class ReadOffer extends Step {
     const canRead =
       granted(model, this.member, company, 'preparer') ||
       granted(model, this.member, company, 'approver');
-    if (item.company !== company || !canRead) {
-      const hidden = item.company !== company;
+    const missing = () =>
+      api.send(this.member, `/offers/opportunities/${MISSING_ID}`, {
+        company,
+        key: api.nextKey(),
+      });
+    if (!canRead) {
       await expectDenial({
         reply,
-        status: hidden ? 404 : 403,
-        invariant: hidden
-          ? 'identical-denial'
-          : denialInvariant(model, this.member, company, 'preparer'),
+        status: 403,
+        invariant: readDenial(model, this.member, company),
         what: `${this.member} reads ${item.offerId}`,
-        ...(hidden
-          ? {
-              twin: () =>
-                api.send(this.member, `/offers/opportunities/${MISSING_ID}`, {
-                  company,
-                  key: api.nextKey(),
-                }),
-            }
-          : {}),
+        twin: missing,
+      });
+      return NOTHING;
+    }
+    if (item.company !== company) {
+      await expectDenial({
+        reply,
+        status: 404,
+        invariant: 'identical-denial',
+        what: `${this.member} reads ${item.offerId}`,
+        twin: missing,
       });
       return NOTHING;
     }
@@ -553,10 +569,30 @@ class Replay extends Step {
       });
       return NOTHING;
     }
-    if (
-      reply.status !== committed.status ||
-      canonical(reply.body) !== canonical(committed.receipt)
-    )
+    if (reply.status !== committed.status)
+      throw new InvariantViolation(
+        'replay-receipt',
+        `replay returned ${short(reply)}`,
+      );
+    if (committed.kind === 'create') {
+      const again = object(reply.body, 'creation replay');
+      const saved = object(committed.receipt, 'saved creation');
+      const againVersion = text(
+        object(again.version, 'replay version').id,
+        'replay version id',
+      );
+      const savedVersion = text(
+        object(saved.version, 'saved version').id,
+        'saved version id',
+      );
+      if (again.id !== saved.id || againVersion !== savedVersion)
+        throw new InvariantViolation(
+          'replay-receipt',
+          `creation replay returned ${short(reply)}`,
+        );
+      return NOTHING;
+    }
+    if (canonical(reply.body) !== canonical(committed.receipt))
       throw new InvariantViolation(
         'replay-receipt',
         `replay returned ${short(reply)}`,
