@@ -18,6 +18,7 @@ export const FUZZ_TEST_FILES = [
   'src/mission-plan/mission-plan.fuzz.rest.test.ts',
   'src/project-mission-review/project-mission-review.fuzz.rest.test.ts',
   'src/offer/offer.fuzz.rest.test.ts',
+  'src/pricing-configuration/pricing-configuration.fuzz.rest.test.ts',
 ];
 // Each report and pass comment carries one marker, so a passing night
 // comments once after the latest failure instead of every night.
