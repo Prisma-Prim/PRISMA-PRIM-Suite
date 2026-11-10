@@ -243,16 +243,22 @@ class StaleHead extends Step {
     const ready = model.plans.filter(
       (plan) => holders(model, plan.company, 'configuration').length > 0,
     );
-    const plan = ready[this.index % ready.length];
+    const older = ready.filter((plan) => plan.headNumber > 1);
+    const pool = older.length > 0 ? older : ready;
+    const plan = pool[this.index % pool.length];
     if (!plan) return NOTHING;
     const member = holders(model, plan.company, 'configuration')[0];
     if (!member) return NOTHING;
+    // An older head is the lost-update case. A future number covers a plan
+    // that still has only Version 1.
+    const expectedHeadVersion =
+      plan.headNumber > 1 ? plan.headNumber - 1 : plan.headNumber + 1;
     const reply = await api.send(member, `/mission-plans/${plan.id}/versions`, {
       method: 'POST',
       company: plan.company,
       key: api.nextKey(),
       body: {
-        expectedHeadVersion: plan.headNumber + 1,
+        expectedHeadVersion,
         ...content('Fictional stale head'),
       },
     });
