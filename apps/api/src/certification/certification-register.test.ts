@@ -400,7 +400,14 @@ describe('Certification Case dossier register', () => {
       },
     };
     exchanges.records[0]?.versions.push(
-      { ...exchanges.records[0].current, version: 1, reason: null },
+      {
+        ...exchanges.records[0].current,
+        id: id(19),
+        version: 1,
+        businessDate: '2026-09-17',
+        reference: 'OUT-5',
+        reason: null,
+      },
       exchanges.records[0].current,
     );
     const states = {
@@ -445,6 +452,9 @@ describe('Certification Case dossier register', () => {
         'Stage 1 audit plan',
         '2026-09-21',
         'Fictional date corrected.',
+        // The earlier version's own values stay readable.
+        '2026-09-17',
+        'OUT-5',
         'Fictional allergen labelling at dispatch.',
         'Fictional duplicate item.',
         '2027-10-20',

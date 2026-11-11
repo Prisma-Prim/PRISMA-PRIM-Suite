@@ -24,6 +24,7 @@ import {
   type ExchangeFilter,
   type ExchangeItemKind,
   type ExchangeRecord,
+  type ExchangeVersion,
   type Exchanges,
   type ReverificationDraft,
   type ReverificationItem,
@@ -109,6 +110,53 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
       : attachmentId;
   };
 
+  /** The recorded values of one version of an Exchange Record. */
+  function values(version: ExchangeVersion) {
+    return (
+      <dl className="certification-summary">
+        <div>
+          <dt>{t('fieldDate')}</dt>
+          <dd>
+            <time dateTime={version.businessDate}>{version.businessDate}</time>
+          </dd>
+        </div>
+        <div>
+          <dt>{t('fieldCounterpart')}</dt>
+          <dd>
+            {t(counterpartLabel(version.counterpart.kind))}:{' '}
+            {version.counterpart.name}
+          </dd>
+        </div>
+        <div>
+          <dt>{t('fieldChannel')}</dt>
+          <dd>{t(channelLabel(version.channel))}</dd>
+        </div>
+        {version.reference !== null && (
+          <div>
+            <dt>{t('fieldReference')}</dt>
+            <dd>{version.reference}</dd>
+          </div>
+        )}
+        <div>
+          <dt>{t('fieldDocuments')}</dt>
+          <dd>
+            <ul>
+              {version.attachmentIds.map((id) => (
+                <li key={id}>{documentLabel(id)}</li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+        {version.note !== null && (
+          <div>
+            <dt>{t('fieldNote')}</dt>
+            <dd>{version.note}</dd>
+          </div>
+        )}
+      </dl>
+    );
+  }
+
   function record(entry: ExchangeRecord) {
     const current = entry.current;
     const headingId = `${props.prefix}-exchange-${String(entry.sequence)}`;
@@ -124,49 +172,7 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
             })}
           </strong>
         </p>
-        <dl className="certification-summary">
-          <div>
-            <dt>{t('fieldDate')}</dt>
-            <dd>
-              <time dateTime={current.businessDate}>
-                {current.businessDate}
-              </time>
-            </dd>
-          </div>
-          <div>
-            <dt>{t('fieldCounterpart')}</dt>
-            <dd>
-              {t(counterpartLabel(current.counterpart.kind))}:{' '}
-              {current.counterpart.name}
-            </dd>
-          </div>
-          <div>
-            <dt>{t('fieldChannel')}</dt>
-            <dd>{t(channelLabel(current.channel))}</dd>
-          </div>
-          {current.reference !== null && (
-            <div>
-              <dt>{t('fieldReference')}</dt>
-              <dd>{current.reference}</dd>
-            </div>
-          )}
-          <div>
-            <dt>{t('fieldDocuments')}</dt>
-            <dd>
-              <ul>
-                {current.attachmentIds.map((id) => (
-                  <li key={id}>{documentLabel(id)}</li>
-                ))}
-              </ul>
-            </dd>
-          </div>
-          {current.note !== null && (
-            <div>
-              <dt>{t('fieldNote')}</dt>
-              <dd>{current.note}</dd>
-            </div>
-          )}
-        </dl>
+        {values(current)}
         <ol className="certification-versions">
           {entry.versions.map((version) => (
             <li key={version.id}>
@@ -182,6 +188,19 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
                     reason: version.reason,
                   })}
                 </>
+              )}
+              {/* An earlier version stays readable with its own values. */}
+              {version.id !== current.id && (
+                <details>
+                  <summary>
+                    {formatMessage(t('versionValues'), {
+                      version: version.version,
+                      direction: t(directionLabel(version.direction)),
+                      kind: t(kindLabel(version.itemKind)),
+                    })}
+                  </summary>
+                  {values(version)}
+                </details>
               )}
             </li>
           ))}

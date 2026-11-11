@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   currentExchanges,
+  deadlineExchanges,
   deadlineStates,
   type DeadlineCaseFacts,
   type DeadlineDays,
@@ -233,6 +234,81 @@ describe('Procedure deadline states (PRD §9.2, fixed clock)', () => {
         state: 'due',
       },
     ]);
+  });
+});
+
+describe('Exchange chronology across corrections', () => {
+  const version = (
+    number: number,
+    caseRevision: number,
+    overrides: Partial<ExchangeRecordVersion> = {},
+  ): ExchangeRecordVersion => ({
+    id: `1-${String(number)}`,
+    sequence: 1,
+    version: number,
+    caseRevision,
+    direction: 'sent',
+    itemKind: 'stage_report',
+    counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+    businessDate: D,
+    channel: 'email',
+    reference: null,
+    note: null,
+    attachmentIds: ['report-2-v1'],
+    reason: number > 1 ? 'Fictional correction' : null,
+    recordedBy: { workspaceMembershipId: 'manager', displayName: 'Ada' },
+    recordedAt: '2026-11-01T00:00:00.000Z',
+    ...overrides,
+  });
+  const attachments = [
+    {
+      id: 'report-2-v1',
+      caseRevision: 30,
+      role: 'report' as const,
+      documentId: 'report-2',
+      versionId: 'report-2-version-1',
+      representationId: 'report-2-pdf-1',
+      versionNumber: 1,
+      sourceTitle: 'Stage 2 audit report',
+      fileName: 'report.pdf',
+      sizeBytes: 10,
+      sha256: 'a'.repeat(64),
+      note: null,
+      attachedBy: { workspaceMembershipId: 'manager', displayName: 'Ada' },
+      attachedAt: '2026-10-21T00:00:00.000Z',
+    },
+  ];
+  const release = (versions: ExchangeRecordVersion[]) =>
+    deadlineStates({
+      facts: facts(),
+      exchanges: deadlineExchanges(versions, attachments),
+      days: FICTIONAL,
+      today: '2026-11-08',
+    }).find((entry) => entry.kind === 'stage_2_report_released');
+
+  it('keeps a sending recorded before the decision early after a correction of its reference or note only', () => {
+    const corrected = [
+      version(1, 35),
+      version(2, 45, { reference: 'OUT-9', note: 'Fictional cover letter.' }),
+    ];
+    expect(deadlineExchanges(corrected, attachments)).toEqual([
+      expect.objectContaining({ version: 2, caseRevision: 35 }),
+    ]);
+    expect(release(corrected)).toMatchObject({
+      state: 'sent_too_early',
+      record: { sequence: 1, version: 2 },
+    });
+  });
+
+  it('dates the sending from the correction that changes a transmission fact', () => {
+    const corrected = [
+      version(1, 35, { businessDate: '2026-11-03' }),
+      version(2, 45),
+    ];
+    expect(deadlineExchanges(corrected, attachments)).toEqual([
+      expect.objectContaining({ version: 2, caseRevision: 45 }),
+    ]);
+    expect(release(corrected)).toMatchObject({ state: 'met' });
   });
 });
 

@@ -6,6 +6,7 @@ import type {
   ExchangeCounterpartKind,
   ExchangeDirection,
   ExchangeItemKind,
+  ExchangeRecordVersion,
   ExchangeRegister,
 } from './certification-exchanges.js';
 import type {
@@ -60,6 +61,7 @@ interface ExchangeLabels {
     documents: string;
     note: string;
     recorded: string;
+    values: string;
     reason: string;
     origin: string;
     text: string;
@@ -152,6 +154,7 @@ const LABELS: Record<RegisterLanguage, ExchangeLabels> = {
       documents: 'Documents',
       note: 'Note',
       recorded: 'Recorded',
+      values: 'Recorded values',
       reason: 'Reason',
       origin: 'Origin',
       text: 'To verify',
@@ -242,6 +245,7 @@ const LABELS: Record<RegisterLanguage, ExchangeLabels> = {
       documents: 'Documents',
       note: 'Note',
       recorded: 'Enregistré',
+      values: 'Valeurs enregistrées',
       reason: 'Motif',
       origin: 'Origine',
       text: 'À vérifier',
@@ -332,6 +336,7 @@ const LABELS: Record<RegisterLanguage, ExchangeLabels> = {
       documents: 'Documente',
       note: 'Notă',
       recorded: 'Înregistrat',
+      values: 'Valori înregistrate',
       reason: 'Motiv',
       origin: 'Origine',
       text: 'De verificat',
@@ -421,6 +426,7 @@ const LABELS: Record<RegisterLanguage, ExchangeLabels> = {
       documents: 'Документы',
       note: 'Примечание',
       recorded: 'Записано',
+      values: 'Записанные значения',
       reason: 'Причина',
       origin: 'Происхождение',
       text: 'Проверить',
@@ -501,22 +507,26 @@ export function exchangeRegisterBlocks(
           : []),
         {
           label: f.documents,
-          value: current.attachmentIds
-            .map((id) => {
-              const document = documents.find((entry) => entry.id === id);
-              return document
-                ? `${document.sourceTitle}, ${l.version} ${String(document.versionNumber)}`
-                : id;
-            })
-            .join('; '),
+          value: documentList(current.attachmentIds, documents, l),
         },
         ...(current.note ? [{ label: f.note, value: current.note }] : []),
-        ...record.versions.map((version) => ({
-          label: `${f.recorded} (${l.version} ${String(version.version)})`,
-          value: `${version.recordedBy.displayName}, ${utc(version.recordedAt)}${
-            version.reason ? ` — ${f.reason}: ${version.reason}` : ''
-          }`,
-        })),
+        ...record.versions.flatMap((version) => [
+          {
+            label: `${f.recorded} (${l.version} ${String(version.version)})`,
+            value: `${version.recordedBy.displayName}, ${utc(version.recordedAt)}${
+              version.reason ? ` — ${f.reason}: ${version.reason}` : ''
+            }`,
+          },
+          // An earlier version stays readable with its own recorded values.
+          ...(version.id === current.id
+            ? []
+            : [
+                {
+                  label: `${f.values} (${l.version} ${String(version.version)})`,
+                  value: versionValues(version, documents, l),
+                },
+              ]),
+        ]),
       ],
     });
   }
@@ -540,6 +550,39 @@ export function exchangeRegisterBlocks(
       fields: itemFields(item, l),
     });
   return blocks;
+}
+
+/** Every recorded value of one Exchange Record version, on one line. */
+function versionValues(
+  version: ExchangeRecordVersion,
+  documents: readonly CertificationAttachment[],
+  l: ExchangeLabels,
+): string {
+  const f = l.fields;
+  return [
+    `${l.directions[version.direction]} — ${l.itemKinds[version.itemKind]}`,
+    `${f.date}: ${version.businessDate}`,
+    `${f.counterpart}: ${l.counterparts[version.counterpart.kind]}: ${version.counterpart.name}`,
+    `${f.channel}: ${l.channels[version.channel]}`,
+    ...(version.reference ? [`${f.reference}: ${version.reference}`] : []),
+    `${f.documents}: ${documentList(version.attachmentIds, documents, l)}`,
+    ...(version.note ? [`${f.note}: ${version.note}`] : []),
+  ].join('; ');
+}
+
+function documentList(
+  attachmentIds: readonly string[],
+  documents: readonly CertificationAttachment[],
+  l: ExchangeLabels,
+): string {
+  return attachmentIds
+    .map((id) => {
+      const document = documents.find((entry) => entry.id === id);
+      return document
+        ? `${document.sourceTitle}, ${l.version} ${String(document.versionNumber)}`
+        : id;
+    })
+    .join(', ');
 }
 
 function itemFields(

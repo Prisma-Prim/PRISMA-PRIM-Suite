@@ -427,6 +427,16 @@ describe('Exchanges and deadlines region', () => {
     expect(corrected).toHaveTextContent('2026-10-29');
     expect(corrected).toHaveTextContent('Version 1 recorded by Ana Demo');
     expect(corrected).toHaveTextContent('Version 2 recorded by Ana Demo');
+    // The earlier version stays readable with its own recorded values.
+    const earlier = within(corrected).getByText(
+      'Values recorded in version 1: Sent — Stage plan',
+    );
+    fireEvent.click(earlier);
+    const details = earlier.closest('details');
+    if (!details) throw new Error('Expected the earlier version details.');
+    expect(within(details).getByText('2026-10-27')).toBeVisible();
+    expect(details).toHaveTextContent('Client: Lactis Demo SRL');
+    expect(details).toHaveTextContent('Stage 1 audit plan, version 1');
     expect(server.mutations()[1]).toMatchObject({
       path: `/api/certification-cases/${caseId}/exchanges/1`,
       body: {

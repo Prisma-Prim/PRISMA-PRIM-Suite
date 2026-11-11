@@ -153,6 +153,10 @@ export interface DeadlineCaseFacts {
 export interface DeadlineExchange {
   sequence: number;
   version: number;
+  /**
+   * The Case revision at which its current transmission facts were first
+   * recorded: a correction of only its reference or note keeps it.
+   */
   caseRevision: number;
   direction: ExchangeDirection;
   itemKind: ExchangeItemKind;
@@ -372,7 +376,7 @@ export function deadlineExchanges(
   return currentExchanges(versions).map((exchange) => ({
     sequence: exchange.sequence,
     version: exchange.version,
-    caseRevision: exchange.caseRevision,
+    caseRevision: transmittedAt(exchange, versions),
     direction: exchange.direction,
     itemKind: exchange.itemKind,
     counterpartKind: exchange.counterpart.kind,
@@ -382,6 +386,43 @@ export function deadlineExchanges(
       return attachment ? [attachment.documentId] : [];
     }),
   }));
+}
+
+/**
+ * The revision of the earliest version in the unbroken run of versions,
+ * ending with the current one, that state the same transmission facts:
+ * direction, item kind, exact Versions, counterpart, date and channel.
+ */
+function transmittedAt(
+  current: ExchangeRecordVersion,
+  versions: readonly ExchangeRecordVersion[],
+): number {
+  const history = versions
+    .filter((version) => version.sequence === current.sequence)
+    .sort((left, right) => left.version - right.version);
+  let revision = current.caseRevision;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const version = history[index];
+    if (!version || !sameTransmission(version, current)) break;
+    revision = version.caseRevision;
+  }
+  return revision;
+}
+
+function sameTransmission(
+  left: ExchangeRecordVersion,
+  right: ExchangeRecordVersion,
+): boolean {
+  return (
+    left.direction === right.direction &&
+    left.itemKind === right.itemKind &&
+    left.counterpart.kind === right.counterpart.kind &&
+    left.counterpart.name === right.counterpart.name &&
+    left.businessDate === right.businessDate &&
+    left.channel === right.channel &&
+    left.attachmentIds.length === right.attachmentIds.length &&
+    left.attachmentIds.every((id) => right.attachmentIds.includes(id))
+  );
 }
 
 /** A calendar date moved by whole days, in UTC. */

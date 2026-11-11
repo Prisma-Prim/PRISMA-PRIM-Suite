@@ -858,6 +858,35 @@ withPostgres(
           (entry) => entry.kind === 'stage_2_report_released',
         ),
       ).toMatchObject({ anchor: '2026-11-06', state: 'sent_too_early' });
+
+      // A later correction of the note only keeps the sending's chronology:
+      // still recorded before the decision, still accepted, nothing reopens.
+      const noted = await step(CERTIFICATION_OWNER, base, '/exchanges/1', {
+        ...exchange([report2], {
+          itemKind: 'stage_report',
+          businessDate: '2026-10-28',
+          note: 'Fictional: released with its cover letter.',
+        }),
+        reason: 'Fictional: the cover letter is now noted.',
+      });
+      expect(
+        records(record(noted.consistency).open).filter(
+          (entry) => entry.rule === 'R16',
+        ),
+      ).toEqual([]);
+      expect(
+        records(record(noted.consistency).resolved).find(
+          (entry) => entry.rule === 'R16',
+        ),
+      ).toMatchObject({ id: r16?.id, resolution: { kind: 'accepted' } });
+      expect(
+        records(record(section(noted).deadlines).entries).find(
+          (entry) => entry.kind === 'stage_2_report_released',
+        ),
+      ).toMatchObject({
+        state: 'sent_too_early',
+        record: { sequence: 1, version: 2 },
+      });
     });
 
     it('records exchanges on certified and refused Cases', async () => {

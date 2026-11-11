@@ -1323,6 +1323,40 @@ describe('Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16)', () =>
     expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
   });
 
+  it('R16 keeps a sending recorded before the decision early when a later correction changes only its note or reference', () => {
+    const builder = reportedCase();
+    builder.deadlineDays = FICTIONAL;
+    const sending: Pick<
+      ExchangeRecordVersion,
+      'itemKind' | 'businessDate' | 'attachmentIds'
+    > = {
+      itemKind: 'stage_report',
+      businessDate: '2026-11-04',
+      attachmentIds: ['report-2-v1'],
+    };
+    builder.exchange(sending);
+    const [before] = only(checkConsistency(builder.snapshot()), 'R16');
+    builder.record({ step: 'dossier_review', value: review() });
+    builder.record({ step: 'decision', value: decision('2026-11-04') });
+    builder.exchange({ ...sending, reference: 'OUT-9' }, 1);
+    const latest = builder.exchanges.at(-1);
+    if (latest) latest.note = 'Fictional: the cover letter is OUT-9.';
+    // The transmission facts are unchanged: still sent while no decision
+    // existed, on the same compared values.
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([
+      expect.objectContaining({
+        subject: before?.subject,
+        left: expect.objectContaining({ value: before?.left.value }),
+        right: expect.objectContaining({
+          value: { kind: 'state', state: 'not_recorded' },
+        }),
+      }),
+    ]);
+    // A correction of the date is a new sending fact, compared with D.
+    builder.exchange({ ...sending, businessDate: '2026-11-05' }, 1);
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
+  });
+
   it('R16 is not raised while the deadline is not configured', () => {
     const builder = reportedCase();
     builder.deadlineDays = { ...FICTIONAL, stage_2_report_released: null };
