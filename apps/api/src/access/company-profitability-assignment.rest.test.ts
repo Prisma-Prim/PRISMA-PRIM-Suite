@@ -1,3 +1,4 @@
+import type { CompanyPermission } from './captured-company-permissions.js';
 import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { ForbiddenException } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -14,6 +15,21 @@ import {
 } from '../database/postgres-rest-test-harness.js';
 import type { ActorContext } from './access.types.js';
 import { CompanyContextAuthorization } from './company-context-authorization.js';
+
+const PROFITABILITY_REQUIRED_PERMISSIONS: Record<
+  'read' | 'create' | 'decide',
+  readonly CompanyPermission[]
+> = {
+  read: ['commercial.profitability_estimate.read'],
+  create: [
+    'commercial.profitability_estimate.read',
+    'commercial.profitability_estimate.create',
+  ],
+  decide: [
+    'commercial.profitability_estimate.read',
+    'commercial.profitability_estimate.decide',
+  ],
+};
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
@@ -204,51 +220,106 @@ withPostgres(
       );
       const captured: ActorContext = {
         ...member,
-        activeCompany: {
-          id: companyId,
-          displayName: 'Synthetic Company',
-          clientPermissions: [],
-          profitabilityContributorPermissions: [
-            'commercial.profitability_estimate.read',
-            'commercial.profitability_estimate.create',
-          ],
-          profitabilityDirectorPermissions: [
-            'commercial.profitability_estimate.read',
-            'commercial.profitability_estimate.decide',
-          ],
-        },
+        activeCompany: await authorization.resolveAuthorizedActiveCompany(
+          member,
+          companyId,
+        ),
       };
       for (const operation of ['read', 'create', 'decide'] as const)
         await expect(
-          authorization.requireProfitabilityEstimateAccess(captured, operation),
+          authorization
+            .requirePermissions(captured, {
+              permissions: PROFITABILITY_REQUIRED_PERMISSIONS[operation],
+              lock: false,
+            })
+            .then((access) => access.companyId),
         ).rejects.toBeInstanceOf(ForbiddenException);
       await grant(BUNDLES[0].path, member.workspaceMembershipId, companyId);
+      // A new request captures the newly granted identity; prior captures never acquire it.
+      captured.activeCompany =
+        await authorization.resolveAuthorizedActiveCompany(member, companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'read'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: ['commercial.profitability_estimate.read'],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'create'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: [
+              'commercial.profitability_estimate.read',
+              'commercial.profitability_estimate.create',
+            ],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'decide'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: [
+              'commercial.profitability_estimate.read',
+              'commercial.profitability_estimate.decide',
+            ],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).rejects.toBeInstanceOf(ForbiddenException);
       await request(
         `${BUNDLES[0].path}/${member.workspaceMembershipId}/${companyId}`,
         'DELETE',
       );
       await grant(BUNDLES[1].path, member.workspaceMembershipId, companyId);
+      // A new request captures the newly granted identity; prior captures never acquire it.
+      captured.activeCompany =
+        await authorization.resolveAuthorizedActiveCompany(member, companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'read'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: ['commercial.profitability_estimate.read'],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'decide'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: [
+              'commercial.profitability_estimate.read',
+              'commercial.profitability_estimate.decide',
+            ],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'create'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: [
+              'commercial.profitability_estimate.read',
+              'commercial.profitability_estimate.create',
+            ],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).rejects.toBeInstanceOf(ForbiddenException);
       await grant(BUNDLES[0].path, member.workspaceMembershipId, companyId);
+      // A new request captures the newly granted identity; prior captures never acquire it.
+      captured.activeCompany =
+        await authorization.resolveAuthorizedActiveCompany(member, companyId);
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'create'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: [
+              'commercial.profitability_estimate.read',
+              'commercial.profitability_estimate.create',
+            ],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
       await request(
         `company-context-assignments/${member.workspaceMembershipId}/${companyId}`,
@@ -256,7 +327,12 @@ withPostgres(
       );
       for (const operation of ['read', 'create', 'decide'] as const)
         await expect(
-          authorization.requireProfitabilityEstimateAccess(captured, operation),
+          authorization
+            .requirePermissions(captured, {
+              permissions: PROFITABILITY_REQUIRED_PERMISSIONS[operation],
+              lock: false,
+            })
+            .then((access) => access.companyId),
         ).rejects.toBeInstanceOf(ForbiddenException);
       await grant(
         'company-context-assignments',
@@ -268,7 +344,12 @@ withPostgres(
         [member.workspaceMembershipId],
       );
       await expect(
-        authorization.requireProfitabilityEstimateAccess(captured, 'read'),
+        authorization
+          .requirePermissions(captured, {
+            permissions: ['commercial.profitability_estimate.read'],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 

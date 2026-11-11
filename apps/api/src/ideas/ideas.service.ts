@@ -64,7 +64,13 @@ export class IdeasService {
       runIdempotentCommand(this.database, {
         fingerprint: commandFingerprint({ body }),
         authorize: () =>
-          this.authorization.requireIdeasAccess(actor, 'record', true),
+          this.authorization
+            .requirePermissions(actor, {
+              permissions: ['idea.record'],
+              prerequisites: [{ permissions: ['idea.read'] }],
+              lock: true,
+            })
+            .then((access) => access.companyId),
         lockParts: (companyId) => [
           'ideas',
           actor.workspaceId,
@@ -139,7 +145,13 @@ export class IdeasService {
       runIdempotentCommand(this.database, {
         fingerprint,
         authorize: () =>
-          this.authorization.requireIdeasAccess(actor, 'disposition', true),
+          this.authorization
+            .requirePermissions(actor, {
+              permissions: ['idea.disposition.record'],
+              prerequisites: [{ permissions: ['idea.read'] }],
+              lock: true,
+            })
+            .then((access) => access.companyId),
         lockParts: (companyId) => [
           'ideas',
           actor.workspaceId,
@@ -235,11 +247,13 @@ export class IdeasService {
   }): Promise<IdeaHistory> {
     return this.protect(() =>
       this.database.transaction(async () => {
-        const companyId = await this.authorization.requireIdeasAccess(
-          actor,
-          'read',
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['idea.read'],
+            prerequisites: [{ permissions: ['idea.read'] }],
+            lock: true,
+          })
+        ).companyId;
         const targetId = requireUuid(ideaId);
         await this.findIdea(actor, companyId, targetId);
         const cursor = historyCursor(query);
@@ -310,11 +324,13 @@ export class IdeasService {
   }): Promise<IdeaRecord> {
     return this.protect(() =>
       this.database.transaction(async () => {
-        const companyId = await this.authorization.requireIdeasAccess(
-          actor,
-          'read',
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['idea.read'],
+            prerequisites: [{ permissions: ['idea.read'] }],
+            lock: true,
+          })
+        ).companyId;
         return this.present(
           await this.findIdea(actor, companyId, requireUuid(ideaId)),
         );
@@ -331,11 +347,13 @@ export class IdeasService {
   }): Promise<IdeaPage> {
     return this.protect(() =>
       this.database.transaction(async () => {
-        const companyId = await this.authorization.requireIdeasAccess(
-          actor,
-          'read',
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['idea.read'],
+            prerequisites: [{ permissions: ['idea.read'] }],
+            lock: true,
+          })
+        ).companyId;
         const cursor = listCursor(query);
         const scope = and(
           eq(ideas.workspaceId, actor.workspaceId),

@@ -350,9 +350,17 @@ export class DocumentInvoiceRecordSource {
       if (v && (v.status === 'official' || v.status === 'superseded')) {
         let content: DocumentInvoiceContent = { kind: 'UNAVAILABLE' };
         try {
-          await this.access.requireDocumentContentReadWithinReadTransaction(
-            actor,
-          );
+          await this.access.requirePermissions(actor, {
+            permissions: ['document.content.read'],
+            lock: false,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          });
           await this.access.requireExternalInvoiceNativeAccess(actor, {
             action: 'content-read',
             lockAssignment: false,

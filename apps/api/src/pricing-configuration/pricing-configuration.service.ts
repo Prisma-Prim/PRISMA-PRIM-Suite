@@ -69,12 +69,12 @@ export class PricingConfigurationService {
     key: string | undefined,
   ): Promise<PublishPricingRuleVersionResult> {
     return this.databaseContext.transaction(async () => {
-      const companyId =
-        await this.authorization.requirePricingConfigurationAccess(
-          actor,
-          ['commercial.pricing.configuration.manage'],
-          true,
-        );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.pricing.configuration.manage'],
+          lock: true,
+        })
+      ).companyId;
       const idempotencyKey = requireIdempotencyKey(key);
       const fingerprint = commandFingerprint({ companyId, payload: value });
       // The rule scope is the active Company itself, whose liveness the
@@ -222,10 +222,12 @@ export class PricingConfigurationService {
 
   async readRuleScope(actor: ActorContext): Promise<PricingRuleScope> {
     return this.databaseContext.transaction(async () => {
-      const companyId =
-        await this.authorization.requirePricingConfigurationAccess(actor, [
-          'commercial.pricing.configuration.read',
-        ]);
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.pricing.configuration.read'],
+          lock: false,
+        })
+      ).companyId;
       const now = await this.observeRuleScope(actor, companyId);
       // One statement returns the head and the version CURRENT at the request
       // instant, so both answers come from the same snapshot.
@@ -270,10 +272,12 @@ export class PricingConfigurationService {
     limitInput: unknown,
   ): Promise<PricingRuleVersionPage> {
     return this.databaseContext.transaction(async () => {
-      const companyId =
-        await this.authorization.requirePricingConfigurationAccess(actor, [
-          'commercial.pricing.configuration.read',
-        ]);
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.pricing.configuration.read'],
+          lock: false,
+        })
+      ).companyId;
       const limit = readPricingConfigurationLimit(
         limitInput,
         'Pricing Rule Versions',
@@ -311,10 +315,12 @@ export class PricingConfigurationService {
     versionId: string,
   ): Promise<PricingRuleVersionRecord> {
     return this.databaseContext.transaction(async () => {
-      const companyId =
-        await this.authorization.requirePricingConfigurationAccess(actor, [
-          'commercial.pricing.configuration.read',
-        ]);
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.pricing.configuration.read'],
+          lock: false,
+        })
+      ).companyId;
       // A malformed, unknown, cross-Company or cross-Workspace identifier gets
       // the same safe not-found, after authority so nothing is disclosed first.
       if (!UUID_GRAMMAR.test(versionId)) throw new NotFoundException();

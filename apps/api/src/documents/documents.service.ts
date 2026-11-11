@@ -112,7 +112,16 @@ export class DocumentsService {
       .update(JSON.stringify({ companyId, ...payload }))
       .digest('hex');
     return this.database.transaction(async () => {
-      await this.authorization.requireDocumentAccess(actor, true);
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['document.read'],
+        lock: true,
+        prerequisites: [
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      });
       if (command.type === 'received-audit-source')
         await this.authorization.requireReceivedAuditSourceNativeAccess(actor, {
           action: 'register',
@@ -120,8 +129,11 @@ export class DocumentsService {
         });
       if (
         command.type === 'mission-deliverable' &&
-        !(await this.authorization.hasMissionDeliverableAccess(actor, {
-          lockAssignment: true,
+        !(await this.authorization.hasPermissions(actor, {
+          permissions: ['document.mission_deliverable.access'],
+          lock: {
+            lockAssignment: true,
+          }.lockAssignment,
         }))
       )
         throw new ForbiddenException();
@@ -237,7 +249,16 @@ export class DocumentsService {
     requireDocumentPermission(actor, 'document.read');
     return this.database.transaction(
       async () => {
-        await this.authorization.requireDocumentAccess(actor);
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['document.read'],
+          lock: false,
+          prerequisites: [
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        });
         if (!(await this.authorization.hasReceivedAddendumAccess(actor)))
           throw new ForbiddenException();
         return this.receivedAddenda.selectableVersions(actor, query);
@@ -250,8 +271,22 @@ export class DocumentsService {
     requireDocumentPermission(actor, 'document.read');
     return this.database.transaction(
       async () => {
-        await this.authorization.requireDocumentAccess(actor);
-        if (!(await this.authorization.hasReceivedContractAccess(actor)))
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['document.read'],
+          lock: false,
+          prerequisites: [
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        });
+        if (
+          !(await this.authorization.hasPermissions(actor, {
+            permissions: ['document.received_contract.access'],
+            lock: false,
+          }))
+        )
           throw new ForbiddenException();
         return this.receivedContracts.selectableVersions(actor, query);
       },
@@ -282,9 +317,20 @@ export class DocumentsService {
   }
   async list(actor: ActorContext): Promise<WorkingDocument[]> {
     const companyId = requireDocumentPermission(actor, 'document.read');
-    await this.authorization.requireDocumentAccess(actor);
-    const familyAllowed =
-      await this.authorization.hasMissionDeliverableAccess(actor);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['document.read'],
+      lock: false,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
+    const familyAllowed = await this.authorization.hasPermissions(actor, {
+      permissions: ['document.mission_deliverable.access'],
+      lock: false,
+    });
     const externalAllowed = await this.authorization.hasExternalInvoiceAccess(
       actor,
       { manage: false, lockAssignment: false },
@@ -293,8 +339,10 @@ export class DocumentsService {
       await this.authorization.hasPaymentEvidenceAccess(actor);
     const addendumAllowed =
       await this.authorization.hasReceivedAddendumAccess(actor);
-    const receivedAllowed =
-      await this.authorization.hasReceivedContractAccess(actor);
+    const receivedAllowed = await this.authorization.hasPermissions(actor, {
+      permissions: ['document.received_contract.access'],
+      lock: false,
+    });
     const auditSourceAllowed =
       await this.authorization.hasReceivedAuditSourceAccess(actor);
     const rows = await this.database.connection
@@ -399,7 +447,16 @@ export class DocumentsService {
       return undefined;
     try {
       if (projectId === null) {
-        await this.authorization.requireProjectAccess(actor);
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['project.read'],
+          lock: false,
+          prerequisites: [
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        });
         return { state: 'unlinked' };
       }
       const project = await this.projects.read(actor, projectId);
@@ -689,8 +746,19 @@ export class DocumentsService {
     const command = correction(value);
     const idempotencyKey = requireIdempotencyKey(key);
     return this.database.transaction(async () => {
-      const companyId =
-        await this.authorization.requireDocumentCorrection(actor);
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['document.correct'],
+          lock: true,
+          prerequisites: [
+            { permissions: ['document.read', 'document.reference.read'] },
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        })
+      ).companyId;
       const lockKey = JSON.stringify([
         'document.correction',
         actor.workspaceId,

@@ -1,3 +1,4 @@
+import type { CompanyPermission } from '../access/captured-company-permissions.js';
 import {
   BadRequestException,
   ConflictException,
@@ -146,6 +147,13 @@ import {
   openCommand,
   reviewCommand,
 } from './certification.validation.js';
+
+const CERTIFICATION_REQUIRED_PERMISSION = {
+  reader: 'certification.read',
+  programme_manager: 'certification.programme.manage',
+  approver: 'certification.approve',
+  auditor: 'certification.audit.record',
+} satisfies Record<CertificationRole, CompanyPermission>;
 
 type CommandKind = (typeof CERTIFICATION_COMMAND_KINDS)[number];
 type CaseRow = typeof certificationCases.$inferSelect;
@@ -2814,13 +2822,26 @@ export class CertificationService {
     actor: ActorContext,
     role: CertificationRole,
   ): Promise<string> {
-    const companyId = await this.authorization.requireCertificationAccess(
-      actor,
-      role,
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: [CERTIFICATION_REQUIRED_PERMISSION[role]],
+        prerequisites: [{ permissions: ['certification.read'] }],
+        lock: true,
+      })
+    ).companyId;
     if (
-      (await this.authorization.requireProjectAccess(actor, true)) !== companyId
+      (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['project.read'],
+          lock: true,
+          prerequisites: [
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        })
+      ).companyId !== companyId
     )
       throw new ForbiddenException();
     return companyId;

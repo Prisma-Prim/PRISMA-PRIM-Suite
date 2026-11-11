@@ -31,9 +31,9 @@ describe('ProjectService', () => {
     query.from.mockReturnValue(query);
     query.where.mockReturnValue(query);
     const select = vi.fn().mockReturnValue(query);
-    const requireProjectAccess = vi
+    const requirePermissions = vi
       .fn()
-      .mockResolvedValue(actor.activeCompany?.id);
+      .mockResolvedValue({ companyId: actor.activeCompany?.id });
     const readProjectReferences = vi.fn().mockResolvedValue(
       new Map([
         [
@@ -55,7 +55,7 @@ describe('ProjectService', () => {
         },
         {
           provide: CompanyContextAuthorization,
-          useValue: { requireProjectAccess },
+          useValue: { requirePermissions },
         },
         {
           provide: ClientOperationalReferenceService,

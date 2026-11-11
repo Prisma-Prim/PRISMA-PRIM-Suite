@@ -57,19 +57,21 @@ export async function createDirectContract(
   },
   dependencies: DirectContractDependencies,
 ) {
-  await dependencies.authorization.requireContractAccess(input.actor, [
-    'commercial.contract.prepare',
-  ]);
+  await dependencies.authorization.requirePermissions(input.actor, {
+    permissions: ['commercial.contract.prepare'],
+    lock: false,
+  });
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
   return runClientReferenceTransaction({
     database: dependencies.databaseContext,
     work: async () => {
       const { actor } = input;
-      const companyId = await dependencies.authorization.requireContractAccess(
-        actor,
-        ['commercial.contract.prepare'],
-        true,
-      );
+      const companyId = (
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: ['commercial.contract.prepare'],
+          lock: true,
+        })
+      ).companyId;
       const opportunity =
         await dependencies.intake.requireReadableOfferOpportunity(
           actor,

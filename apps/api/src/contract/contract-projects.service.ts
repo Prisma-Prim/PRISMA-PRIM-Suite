@@ -55,11 +55,12 @@ export class ContractProjectsService {
   }) {
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireContractAccess(
-          input.actor,
-          LINK_PERMISSIONS,
-          false,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(input.actor, {
+            permissions: LINK_PERMISSIONS,
+            lock: false,
+          })
+        ).companyId;
         await this.intake.requireReadableOfferOpportunity(
           input.actor,
           input.opportunityId,
@@ -137,20 +138,21 @@ export class ContractProjectsService {
     payload: unknown;
     idempotencyKey: string | undefined;
   }) {
-    await this.authorization.requireContractAccess(
-      input.actor,
-      LINK_PERMISSIONS,
-    );
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: LINK_PERMISSIONS,
+      lock: false,
+    });
     const key = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.database,
       work: async () => {
         const { actor } = input;
-        const companyId = await this.authorization.requireContractAccess(
-          actor,
-          LINK_PERMISSIONS,
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: LINK_PERMISSIONS,
+            lock: true,
+          })
+        ).companyId;
         await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -305,11 +307,12 @@ export class ContractProjectsService {
   private async readableContracts(actor: ActorContext, projectId: string) {
     let companyId: string;
     try {
-      companyId = await this.authorization.requireContractAccess(
-        actor,
-        ['commercial.contract.read'],
-        false,
-      );
+      companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.contract.read'],
+          lock: false,
+        })
+      ).companyId;
     } catch (error: unknown) {
       if (error instanceof ForbiddenException) return [];
       throw error;

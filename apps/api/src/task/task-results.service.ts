@@ -300,7 +300,10 @@ export class TaskResultsService {
     const idempotencyKey = requireIdempotencyKey(request.idempotencyKey);
     return this.database.transaction(async () => {
       const companyId = await this.access.requireActor(actor, true, true);
-      await this.authorization.requireTaskResultRecorder(actor);
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['task.result.record'],
+        lock: true,
+      });
       const { task: visible } = await this.tasks.readWithinTransaction({
         actor,
         taskId,

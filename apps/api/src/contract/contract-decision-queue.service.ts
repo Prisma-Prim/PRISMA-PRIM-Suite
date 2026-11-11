@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
@@ -24,11 +25,19 @@ export class ContractDecisionQueueService {
   list({ actor, query }: { actor: ActorContext; query: unknown }) {
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireContractAccess(
-          actor,
-          ['commercial.contract.read', 'commercial.contract.approve'],
-        );
-        await this.authorization.requireCommercialIntakeAccess(actor, 'read');
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
+              'commercial.contract.read',
+              'commercial.contract.approve',
+            ],
+            lock: false,
+          })
+        ).companyId;
+        await this.authorization.requirePermissions(actor, {
+          permissions: commercialIntakeRequiredPermissions('read'),
+          lock: false,
+        });
         const scope = { workspaceId: actor.workspaceId, companyId };
         const cursor = readDecisionQueueCursor({
           query,
@@ -37,14 +46,18 @@ export class ContractDecisionQueueService {
         });
         let modelDecision = false;
         try {
-          await this.authorization.requireContractAccess(actor, [
-            'commercial.contract.read',
-            'commercial.contract.approve',
-            'commercial.contract.model_based.approve',
-          ]);
-          await this.authorization.requireOfferAccess(actor, [
-            'commercial.offer.read',
-          ]);
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
+              'commercial.contract.read',
+              'commercial.contract.approve',
+              'commercial.contract.model_based.approve',
+            ],
+            lock: false,
+          });
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.read'],
+            lock: false,
+          });
           modelDecision = true;
         } catch (error) {
           // Optional source/model rights never become a prerequisite for legacy work.

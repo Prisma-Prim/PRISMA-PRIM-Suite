@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import {
   BadRequestException,
   ConflictException,
@@ -46,10 +47,12 @@ export class SalesStageService {
 
   /** The stage list requires only Commercial Intake read in the Company. */
   async list(actor: ActorContext): Promise<SalesStageList> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     return this.databaseContext.transaction(
       () => this.readList(actor.workspaceId, companyId),
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
@@ -66,7 +69,19 @@ export class SalesStageService {
     value: unknown,
     key: string | undefined,
   ): Promise<SalesStageCreateResult> {
-    await this.authorization.requireSalesStageConfiguration(actor);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.sales_stage.configure'],
+      lock: false,
+      lockCompany: false,
+      prerequisites: [
+        {
+          permissions: [
+            'commercial.request.read',
+            'commercial.opportunity.read',
+          ],
+        },
+      ],
+    });
     const command = readCreateSalesStageCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = commandFingerprint({
@@ -76,7 +91,21 @@ export class SalesStageService {
     return runIdempotentCommand(this.databaseContext, {
       fingerprint,
       authorize: () =>
-        this.authorization.requireSalesStageConfiguration(actor, true),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['commercial.sales_stage.configure'],
+            lock: true,
+            lockCompany: false,
+            prerequisites: [
+              {
+                permissions: [
+                  'commercial.request.read',
+                  'commercial.opportunity.read',
+                ],
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       lockParts: (companyId) => [
         'sales-stage.create',
         actor.workspaceId,

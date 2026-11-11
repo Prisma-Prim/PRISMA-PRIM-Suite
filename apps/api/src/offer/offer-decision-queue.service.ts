@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
@@ -25,11 +26,16 @@ export class OfferDecisionQueueService {
   list({ actor, query }: { actor: ActorContext; query: unknown }) {
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireOfferAccess(actor, [
-          'commercial.offer.read',
-          'commercial.offer.approve',
-        ]);
-        await this.authorization.requireCommercialIntakeAccess(actor, 'read');
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.read', 'commercial.offer.approve'],
+            lock: false,
+          })
+        ).companyId;
+        await this.authorization.requirePermissions(actor, {
+          permissions: commercialIntakeRequiredPermissions('read'),
+          lock: false,
+        });
         const scope = { workspaceId: actor.workspaceId, companyId };
         const cursor = readDecisionQueueCursor({
           query,
@@ -38,11 +44,14 @@ export class OfferDecisionQueueService {
         });
         let modelDecision = false;
         try {
-          await this.authorization.requireOfferAccess(actor, [
-            'commercial.offer.read',
-            'commercial.offer.approve',
-            'commercial.offer.model_based.approve',
-          ]);
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
+              'commercial.offer.read',
+              'commercial.offer.approve',
+              'commercial.offer.model_based.approve',
+            ],
+            lock: false,
+          });
           modelDecision = true;
         } catch (error) {
           // The opt-in model grant never becomes a prerequisite for v1 work.

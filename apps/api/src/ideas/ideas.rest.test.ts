@@ -841,6 +841,44 @@ withPostgres('Company Ideas public REST boundary', () => {
     }
   }, 15000);
 
+  it('denies an exact captured Ideas grant when revocation commits during its assignment lock wait', async () => {
+    const fixture = await prepared();
+    const mutation = authorityLoss('recorder', fixture);
+    const lock = await hold(async (connection) => {
+      await connection.query(mutation.sql, mutation.values);
+    });
+    let pending: Promise<Response> | undefined;
+    try {
+      pending = request('POST', '/ideas', {
+        companyId: fixture.companyId,
+        subject: 'ideas-recorder',
+        body: {
+          description: 'Revoked while waiting',
+          origin: 'Synthetic source',
+        },
+      });
+      await blockedBy(lock.pid);
+      await lock.release();
+      expect((await pending).status).toBe(403);
+      const page = await request('GET', '/ideas', {
+        companyId: fixture.companyId,
+        subject: 'ideas-recorder',
+      });
+      expect(page.status).toBe(200);
+      expect(await page.json()).toMatchObject({ ideas: [], total: 0 });
+      const events = await request('GET', '/activity-log', {
+        companyId: fixture.companyId,
+      });
+      expect(events.status).toBe(200);
+      expect(JSON.stringify(await events.json())).not.toContain(
+        'idea.recorded',
+      );
+    } finally {
+      await lock.release();
+      await pending;
+    }
+  });
+
   it('orders live authority loss before new commands and cached receipt replay under observed PostgreSQL locks', async () => {
     for (const loss of [
       'reader',

@@ -121,11 +121,10 @@ export class EstimateOfferPreparationService {
         database: this.database,
         work: async () => {
           const companyId = await this.requireAccess(actor, kind, true);
-          await this.authorization.requireProfitabilityEstimateAccess(
-            actor,
-            'read',
-            true,
-          );
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.profitability_estimate.read'],
+            lock: true,
+          });
           const opportunity = await this.intake.requireReadableOfferOpportunity(
             actor,
             opportunityId,
@@ -590,22 +589,24 @@ export class EstimateOfferPreparationService {
     kind: PreparationKind,
     lock = false,
   ) {
-    return this.authorization.requireOfferAccess(
-      actor,
-      kind === 'CREATE_MODEL_OFFER' || kind === 'CREATE_MODEL_OFFER_VERSION'
-        ? [
-            'commercial.offer.read',
-            'commercial.offer.prepare',
-            'commercial.offer.model.select',
-            'commercial.offer.model_based.prepare',
-          ]
-        : [
-            'commercial.offer.read',
-            'commercial.offer.prepare',
-            'commercial.offer.estimate.prepare',
-          ],
-      lock,
-    );
+    return this.authorization
+      .requirePermissions(actor, {
+        permissions:
+          kind === 'CREATE_MODEL_OFFER' || kind === 'CREATE_MODEL_OFFER_VERSION'
+            ? [
+                'commercial.offer.read',
+                'commercial.offer.prepare',
+                'commercial.offer.model.select',
+                'commercial.offer.model_based.prepare',
+              ]
+            : [
+                'commercial.offer.read',
+                'commercial.offer.prepare',
+                'commercial.offer.estimate.prepare',
+              ],
+        lock: lock,
+      })
+      .then((access) => access.companyId);
   }
 }
 

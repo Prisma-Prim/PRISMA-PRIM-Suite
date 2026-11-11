@@ -22,7 +22,12 @@ export class InternalTaskAccessService {
     private readonly authorization: CompanyContextAuthorization,
   ) {}
   requireActor(actor: ActorContext, lock: boolean) {
-    return this.authorization.requireInternalTaskAccess(actor, lock);
+    return this.authorization
+      .requirePermissions(actor, {
+        permissions: ['internal_task.read', 'internal_task.manage'],
+        lock: lock,
+      })
+      .then((access) => access.grant('internal_task.manage'));
   }
   private candidate(actor: ActorContext, membershipId: string, lock: boolean) {
     const companyId = actor.activeCompany?.id;

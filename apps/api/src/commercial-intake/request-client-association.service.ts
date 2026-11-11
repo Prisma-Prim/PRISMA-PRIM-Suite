@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import { createHash } from 'node:crypto';
 import {
   BadRequestException,
@@ -47,21 +48,22 @@ export class RequestClientAssociationService {
     value: unknown,
     key: string | undefined,
   ): Promise<ClientAssociationResult> {
-    await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'associate-client',
-    );
+    await this.authorization.requirePermissions(actor, {
+      permissions: commercialIntakeRequiredPermissions('associate-client'),
+      lock: false,
+    });
     const requestId = requestIdentifier(requestIdInput);
     const command = readAssociateClientCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = associationFingerprint(requestId, command);
 
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireCommercialIntakeAccess(
-        actor,
-        'associate-client',
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: commercialIntakeRequiredPermissions('associate-client'),
+          lock: true,
+        })
+      ).companyId;
       await this.requireRequest(actor, companyId, requestId, false);
       await this.lockCommand(actor, companyId, idempotencyKey);
       const replay = await this.findCommand(actor, companyId, idempotencyKey);

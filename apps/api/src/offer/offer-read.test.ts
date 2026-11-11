@@ -53,12 +53,12 @@ describe('Offer read transaction recovery', () => {
 
   it('reads successfully after concurrent profile writes settle', async () => {
     vi.useFakeTimers();
-    const fixture = reader({
+    const fixture = await reader({
       failures: 10,
       code: '40001',
       contentionUntil: Date.now() + 25,
     });
-    const outcome = fixture.service.read(actor, opportunityId).then(
+    const outcome = fixture.service.read(fixture.actor, opportunityId).then(
       (value) => ({ value }),
       (error: unknown) => ({ error }),
     );
@@ -81,8 +81,8 @@ describe('Offer read transaction recovery', () => {
 
   it('denies access when Offer authority is revoked during the retry wait', async () => {
     vi.useFakeTimers();
-    const fixture = reader({ failures: 1, code: '40001' });
-    const outcome = fixture.service.read(actor, opportunityId).then(
+    const fixture = await reader({ failures: 1, code: '40001' });
+    const outcome = fixture.service.read(fixture.actor, opportunityId).then(
       (value) => ({ value }),
       (error: unknown) => ({ error }),
     );
@@ -103,9 +103,9 @@ describe('Offer read transaction recovery', () => {
   });
 
   it('restarts the whole coherent read after a serialization failure', async () => {
-    const fixture = reader({ failures: 1, code: '40001' });
+    const fixture = await reader({ failures: 1, code: '40001' });
     await expect(
-      fixture.service.read(actor, opportunityId),
+      fixture.service.read(fixture.actor, opportunityId),
     ).resolves.toBeNull();
     expect(fixture.transactions()).toEqual([
       'begin isolation level repeatable read',
@@ -116,13 +116,13 @@ describe('Offer read transaction recovery', () => {
   });
 
   it('denies the retried read when current Offer authority was revoked', async () => {
-    const fixture = reader({
+    const fixture = await reader({
       failures: 1,
       code: '40001',
       revokeAfterFailure: true,
     });
     await expect(
-      fixture.service.read(actor, opportunityId),
+      fixture.service.read(fixture.actor, opportunityId),
     ).rejects.toMatchObject({ status: 403 });
     expect(fixture.transactions()).toEqual([
       'begin isolation level repeatable read',
@@ -133,9 +133,9 @@ describe('Offer read transaction recovery', () => {
   });
 
   it('stops after eight failed read attempts and releases each transaction', async () => {
-    const fixture = reader({ failures: 10, code: '40001' });
+    const fixture = await reader({ failures: 10, code: '40001' });
     await expect(
-      fixture.service.read(actor, opportunityId),
+      fixture.service.read(fixture.actor, opportunityId),
     ).rejects.toMatchObject({ cause: { code: '40001' } });
     expect(fixture.transactions()).toEqual(
       Array.from({ length: 8 }, () => [
@@ -147,9 +147,9 @@ describe('Offer read transaction recovery', () => {
   });
 
   it('does not retry a different database failure', async () => {
-    const fixture = reader({ failures: 1, code: '08006' });
+    const fixture = await reader({ failures: 1, code: '08006' });
     await expect(
-      fixture.service.read(actor, opportunityId),
+      fixture.service.read(fixture.actor, opportunityId),
     ).rejects.toMatchObject({ cause: { code: '08006' } });
     expect(fixture.transactions()).toEqual([
       'begin isolation level repeatable read',
@@ -160,7 +160,7 @@ describe('Offer read transaction recovery', () => {
 
 // Substitute only the PostgreSQL driver boundary. Drizzle, DatabaseContext,
 // Offer and its authorization/read collaborators are the real implementations.
-function reader({
+async function reader({
   failures,
   code,
   revokeAfterFailure = false,
@@ -178,9 +178,28 @@ function reader({
       releases += 1;
     },
   });
+  const companyId = actor.activeCompany?.id;
+  if (!companyId) throw new Error('Expected a Company in the synthetic actor.');
+  const grants = [
+    {
+      id: '00000000-0000-4000-8000-000000000010',
+      bundle: 'company_context_access',
+      version: null,
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000011',
+      bundle: 'company_offer_preparer',
+      version: 'v1',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000012',
+      bundle: 'company_commercial_intake',
+      version: 'v1',
+    },
+  ];
   const transactions: string[] = [];
   let revoked = false;
-  async function query(config: unknown) {
+  async function query(config: unknown, values: unknown = []) {
     const text =
       typeof config === 'string'
         ? config
@@ -195,7 +214,41 @@ function reader({
       transactions.push(text);
       return { rows: [] };
     }
+    const parameters: readonly unknown[] =
+      Array.isArray(values) && values.length
+        ? values
+        : typeof config === 'object' &&
+            config !== null &&
+            'values' in config &&
+            Array.isArray(config.values)
+          ? config.values
+          : [];
     if (text.includes('from "company_role_assignments"')) {
+      if (
+        text.startsWith('select "companies"."id", "companies"."display_name"')
+      )
+        return {
+          rows: grants.map((grant) => [
+            companyId,
+            'Synthetic Company',
+            grant.bundle,
+            grant.id,
+            grant.version,
+          ]),
+        };
+      if (
+        text.startsWith(
+          'select "company_role_assignments"."id", "company_role_assignments"."bundle"',
+        )
+      )
+        return {
+          rows: grants.map((grant) => [
+            grant.id,
+            grant.bundle,
+            grant.version,
+            actor.displayName,
+          ]),
+        };
       if (
         text.endsWith('for share') &&
         failures > 0 &&
@@ -205,7 +258,14 @@ function reader({
         revoked = revokeAfterFailure;
         throw Object.assign(new Error('Synthetic database failure'), { code });
       }
-      return { rows: revoked ? [] : [['assignment']] };
+      const selected = grants.find((grant) =>
+        parameters.some(
+          (value) => typeof value === 'string' && value.includes(grant.id),
+        ),
+      );
+      if (!selected)
+        throw new Error('Expected a query for a captured synthetic grant.');
+      return { rows: revoked ? [] : [[selected.id]] };
     }
     if (text.includes('from "opportunities"'))
       return { rows: [[opportunityId, 'request', null, 'OPEN']] };
@@ -237,7 +297,15 @@ function reader({
     accountability,
     clock,
   );
+  const activeCompany = await authorization.resolveAuthorizedActiveCompany(
+    actor,
+    companyId,
+  );
+  if (!activeCompany)
+    throw new Error('Expected a server-resolved synthetic Company.');
+  const capturedActor: ActorContext = { ...actor, activeCompany };
   return {
+    actor: capturedActor,
     service: new OfferService(
       context,
       authorization,

@@ -54,7 +54,19 @@ export class DocumentContentService {
     const { expectedRevision, fileName } = uploadQuery(input.query);
     // Check current authority before allocating or consuming confidential bytes.
     await this.database.transaction(async () => {
-      await this.authorization.requireDocumentContentUpload(actor);
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['document.content.upload'],
+        lock: true,
+        prerequisites: [
+          { permissions: ['document.read', 'document.reference.read'] },
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+          { permissions: ['document.content.read'] },
+          { permissions: ['document.version.manage'] },
+        ],
+      });
       const family = await this.boundary.lockFamilyForCommand(
         actor,
         documentId,
@@ -91,8 +103,19 @@ export class DocumentContentService {
     const versionId = requireUuid(input.versionId);
     const beforeRevision = historyQuery(input.query);
     return this.database.transaction(async () => {
-      const companyId =
-        await this.authorization.requireDocumentContentRead(actor);
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['document.content.read'],
+          lock: true,
+          prerequisites: [
+            { permissions: ['document.read', 'document.reference.read'] },
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        })
+      ).companyId;
       const visible = await this.boundary.requireVisible(actor, documentId);
       await this.familyAccess.requireFamilyAccess(
         actor,
@@ -162,10 +185,32 @@ export class DocumentContentService {
   ) {
     const { documentId, versionId, representationId } = input;
     const companyId = readOnly
-      ? await this.authorization.requireDocumentContentReadWithinReadTransaction(
-          actor,
-        )
-      : await this.authorization.requireDocumentContentRead(actor);
+      ? (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['document.content.read'],
+            lock: false,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId
+      : (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['document.content.read'],
+            lock: true,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
     const visible = await this.boundary.requireVisible(actor, documentId);
     await this.familyAccess.requireFamilyAccess(
       actor,

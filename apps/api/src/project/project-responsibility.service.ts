@@ -57,7 +57,18 @@ export class ProjectResponsibilityService {
   ): Promise<ProjectResponsibilityView> {
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireProjectAccess(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.read'],
+            lock: false,
+            prerequisites: [
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
         const { row, clientActive } = await this.visible(
           actor,
           companyId,
@@ -80,7 +91,18 @@ export class ProjectResponsibilityService {
   ): Promise<{ members: ProjectResponsibleCandidate[] }> {
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireProjectUpdate(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.update'],
+            lock: false,
+            prerequisites: [
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
         const { row, clientActive } = await this.visible(
           actor,
           companyId,
@@ -108,10 +130,18 @@ export class ProjectResponsibilityService {
     const command = responsibilityCommand(body);
     const idempotencyKey = requireIdempotencyKey(key);
     return this.database.transaction(async () => {
-      const companyId = await this.authorization.requireProjectUpdate(
-        actor,
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['project.update'],
+          lock: true,
+          prerequisites: [
+            {
+              permissions: ['client.read'],
+              workspaceAlternative: 'client.manage',
+            },
+          ],
+        })
+      ).companyId;
       await this.lockCommand(actor, idempotencyKey);
       const { row: visible } = await this.visible(actor, companyId, projectId);
       // An exact replay is resolved after live authority and visibility, and

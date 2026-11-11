@@ -27,8 +27,11 @@ export class ReceivedContractRelationsService {
   ) {}
   async requireRegistrationAuthority(actor: ActorContext) {
     if (
-      !(await this.authorization.hasReceivedContractAccess(actor, {
-        lockAssignment: true,
+      !(await this.authorization.hasPermissions(actor, {
+        permissions: ['document.received_contract.access'],
+        lock: {
+          lockAssignment: true,
+        }.lockAssignment,
       }))
     )
       throw new ForbiddenException();

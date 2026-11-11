@@ -77,11 +77,12 @@ export class PricingSnapshotService {
     opportunityId: string;
     offerVersionId: string;
   }): Promise<PricingSnapshotRecord> {
-    const companyId = await this.authorization.requireOfferAccess(
-      input.actor,
-      ['commercial.offer.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.offer.read'],
+        lock: true,
+      })
+    ).companyId;
     if (companyId !== input.companyId) throw new NotFoundException();
     const [row] = await this.databaseContext.connection
       .select({ snapshot: pricingSnapshots })
@@ -113,11 +114,12 @@ export class PricingSnapshotService {
     opportunityId: string;
     contractVersionId: string;
   }): Promise<PricingSnapshotRecord> {
-    const companyId = await this.authorization.requireContractAccess(
-      input.actor,
-      ['commercial.contract.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.contract.read'],
+        lock: true,
+      })
+    ).companyId;
     if (companyId !== input.companyId) throw new NotFoundException();
     const [row] = await this.databaseContext.connection
       .select({ snapshot: pricingSnapshots })
@@ -161,17 +163,17 @@ export class PricingSnapshotService {
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requirePricingUserAccess(
-          actor,
-          ['commercial.pricing.calculate'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.pricing.calculate'],
+            lock: true,
+          })
+        ).companyId;
         if (requestsPricingAdjustment(value))
-          await this.authorization.requirePricingAdjustmentAccess(
-            actor,
-            ['commercial.pricing.adjustment.apply'],
-            true,
-          );
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.pricing.adjustment.apply'],
+            lock: true,
+          });
         const opportunity = await this.intake.requireReadablePricingOpportunity(
           actor,
           opportunityIdInput,
@@ -441,11 +443,12 @@ export class PricingSnapshotService {
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId =
-          await this.authorization.requirePricingSnapshotReadAccess(
-            actor,
-            true,
-          );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.pricing.snapshot.read'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadablePricingOpportunity(
           actor,
           opportunityId,
@@ -503,11 +506,12 @@ export class PricingSnapshotService {
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId =
-          await this.authorization.requirePricingSnapshotReadAccess(
-            actor,
-            true,
-          );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.pricing.snapshot.read'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadablePricingOpportunity(
           actor,
           opportunityId,
@@ -539,8 +543,12 @@ export class PricingSnapshotService {
     opportunityId: string;
     snapshotId: string;
   }): Promise<PricingSnapshotRecord> {
-    const authorizedCompanyId =
-      await this.authorization.requirePricingSnapshotReadAccess(actor, true);
+    const authorizedCompanyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['commercial.pricing.snapshot.read'],
+        lock: true,
+      })
+    ).companyId;
     if (authorizedCompanyId !== companyId || !UUID_GRAMMAR.test(snapshotId))
       throw new NotFoundException();
     const [snapshot] = await this.databaseContext.connection
@@ -573,10 +581,12 @@ export class PricingSnapshotService {
     snapshot: PricingSnapshotRecord;
     originalClientAccountId: string | null;
   }> {
-    const companyId = await this.authorization.requireOfferQualityAccess(
-      input.actor,
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        anyOf: [['commercial.offer.prepare'], ['commercial.offer.approve']],
+        lock: true,
+      })
+    ).companyId;
     if (companyId !== input.companyId) throw new NotFoundException();
     const [row] = await this.databaseContext.connection
       .select()

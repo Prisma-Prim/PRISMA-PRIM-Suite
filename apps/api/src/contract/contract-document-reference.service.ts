@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import {
   BadRequestException,
   ForbiddenException,
@@ -36,12 +37,16 @@ export class ContractDocumentReferenceService {
   ) {}
 
   async requireReadAuthority(actor: ActorContext, lock = false) {
-    const companyId = await this.authorization.requireContractAccess(
-      actor,
-      ['commercial.contract.read'],
-      lock,
-    );
-    await this.authorization.requireCommercialIntakeAccess(actor, 'read', lock);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['commercial.contract.read'],
+        lock: lock,
+      })
+    ).companyId;
+    await this.authorization.requirePermissions(actor, {
+      permissions: commercialIntakeRequiredPermissions('read'),
+      lock: lock,
+    });
     return companyId;
   }
 

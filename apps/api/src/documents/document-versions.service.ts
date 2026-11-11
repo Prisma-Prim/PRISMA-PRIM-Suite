@@ -117,7 +117,10 @@ export class DocumentVersionsService {
 
   private async canReadPdf(actor: ActorContext, type: DocumentRow['type']) {
     if (!requiresNativeFamilyAccess(type, 'content-read'))
-      return this.authorization.hasDocumentContentRead(actor);
+      return this.authorization.hasPermissions(actor, {
+        permissions: ['document.content.read'],
+        lock: false,
+      });
     return this.familyAccess.hasFamilyAccess(actor, type, 'content-read');
   }
 
@@ -419,7 +422,19 @@ export class DocumentVersionsService {
       expectedRevision,
       idempotencyKey,
       authorize: () =>
-        this.authorization.requireDocumentVersionDesignation(actor),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['document.version.designate_official'],
+            lock: true,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       apply: (scope, document) =>
         this.applyDesignation(actor, scope, document, versionId),
     });
@@ -443,7 +458,19 @@ export class DocumentVersionsService {
       expectedRevision,
       idempotencyKey,
       authorize: () =>
-        this.authorization.requireDocumentVersionManagement(actor),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['document.version.manage'],
+            lock: true,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       apply: (scope, document) => this.applyDraft(actor, scope, document),
     });
   }
@@ -548,8 +575,21 @@ export class DocumentVersionsService {
     companyId: string;
     recorded: DocumentVersionReceipt | null;
   }> {
-    const companyId =
-      await this.authorization.requireDocumentContentUpload(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['document.content.upload'],
+        lock: true,
+        prerequisites: [
+          { permissions: ['document.read', 'document.reference.read'] },
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+          { permissions: ['document.content.read'] },
+          { permissions: ['document.version.manage'] },
+        ],
+      })
+    ).companyId;
     await this.boundary.lockFamilyForCommand(actor, command.documentId);
     const recorded = await this.replayCommand(actor, command, companyId);
     return { companyId, recorded };
@@ -584,7 +624,19 @@ export class DocumentVersionsService {
       idempotencyKey,
       fingerprintBody: { form: body.form, url: body.url },
       authorize: () =>
-        this.authorization.requireDocumentVersionManagement(actor),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['document.version.manage'],
+            lock: true,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       apply: (scope, document) => {
         if (document.type !== 'questionnaire')
           throw new BadRequestException(
@@ -618,7 +670,19 @@ export class DocumentVersionsService {
       idempotencyKey,
       fingerprintBody: { representationId },
       authorize: () =>
-        this.authorization.requireDocumentVersionManagement(actor),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['document.version.manage'],
+            lock: true,
+            prerequisites: [
+              { permissions: ['document.read', 'document.reference.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       apply: (scope, document) => {
         if (document.type !== 'questionnaire')
           throw new BadRequestException(

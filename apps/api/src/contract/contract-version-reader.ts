@@ -73,11 +73,12 @@ export class ContractVersionReader {
     input: ContractReadInput,
     recheckConsumedClientAuthority: boolean,
   ) {
-    const companyId = await this.authorization.requireContractAccess(
-      input.actor,
-      ['commercial.contract.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.contract.read'],
+        lock: true,
+      })
+    ).companyId;
     const opportunity = await this.intake.requireReadableOfferOpportunity(
       input.actor,
       input.opportunityId,
@@ -114,11 +115,12 @@ export class ContractVersionReader {
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireContractAccess(
-          input.actor,
-          ['commercial.contract.read'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(input.actor, {
+            permissions: ['commercial.contract.read'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           input.actor,
           input.opportunityId,
@@ -168,11 +170,12 @@ export class ContractVersionReader {
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireContractAccess(
-          input.actor,
-          ['commercial.contract.read'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(input.actor, {
+            permissions: ['commercial.contract.read'],
+            lock: true,
+          })
+        ).companyId;
         await this.intake.requireReadableOfferOpportunity(
           input.actor,
           input.opportunityId,

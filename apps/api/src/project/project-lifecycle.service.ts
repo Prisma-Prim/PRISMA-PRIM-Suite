@@ -75,7 +75,18 @@ export class ProjectLifecycleService {
   ): Promise<ProjectLifecycleView> {
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireProjectAccess(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.read'],
+            lock: false,
+            prerequisites: [
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
         const { row, clientActive } = await this.visible(
           actor,
           companyId,
@@ -124,8 +135,19 @@ export class ProjectLifecycleService {
   ): Promise<{ members: ProjectResponsibleCandidate[] }> {
     return this.database.transaction(
       async () => {
-        const companyId =
-          await this.authorization.requireProjectLifecycleTransition(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.lifecycle.transition'],
+            lock: false,
+            prerequisites: [
+              { permissions: ['project.read'] },
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
         const { row, clientActive } = await this.visible(
           actor,
           companyId,
@@ -156,11 +178,32 @@ export class ProjectLifecycleService {
       await this.lockCommand(actor, idempotencyKey);
       const companyId =
         command.action === 'complete' || command.action === 'cancel'
-          ? await this.authorization.requireProjectClose(actor, true)
-          : await this.authorization.requireProjectLifecycleTransition(
-              actor,
-              true,
-            );
+          ? (
+              await this.authorization.requirePermissions(actor, {
+                permissions: ['project.close'],
+                lock: true,
+                prerequisites: [
+                  { permissions: ['project.read'] },
+                  {
+                    permissions: ['client.read'],
+                    workspaceAlternative: 'client.manage',
+                  },
+                ],
+              })
+            ).companyId
+          : (
+              await this.authorization.requirePermissions(actor, {
+                permissions: ['project.lifecycle.transition'],
+                lock: true,
+                prerequisites: [
+                  { permissions: ['project.read'] },
+                  {
+                    permissions: ['client.read'],
+                    workspaceAlternative: 'client.manage',
+                  },
+                ],
+              })
+            ).companyId;
       const { row: visible, clientVersion: observedClientVersion } =
         await this.visible(actor, companyId, projectId);
       const fingerprint = JSON.stringify({ companyId, projectId, ...command });

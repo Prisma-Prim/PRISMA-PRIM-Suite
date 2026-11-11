@@ -62,21 +62,20 @@ export class ReportedContractSigningService {
   ) {}
 
   private async readableTarget(input: SigningTarget) {
-    const companyId =
-      await this.authorization.requireContractSignatureDeclaration(
-        input.actor,
-        true,
-      );
-    await this.authorization.requireContractAccess(
-      input.actor,
-      permissions,
-      true,
-    );
-    await this.authorization.requireOfferAccess(
-      input.actor,
-      ['commercial.offer.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.contract.signature.declare_external'],
+        lock: true,
+      })
+    ).companyId;
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: permissions,
+      lock: true,
+    });
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: ['commercial.offer.read'],
+      lock: true,
+    });
     await this.clients.lockRecipientReadAuthority(input.actor);
     await this.intake.requireReadableOfferOpportunity(
       input.actor,

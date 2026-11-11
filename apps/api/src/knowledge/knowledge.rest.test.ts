@@ -801,19 +801,16 @@ withPostgres('Governed Knowledge source public REST', () => {
       const source = await admitted();
       await grant('readers');
       const paused = checkpoint();
-      const original =
-        CompanyContextAuthorization.prototype.requireDocumentContentRead;
+      const original = CompanyContextAuthorization.prototype.requirePermissions;
       let waiting = true;
       const gate = vi
-        .spyOn(
-          CompanyContextAuthorization.prototype,
-          'requireDocumentContentRead',
-        )
+        .spyOn(CompanyContextAuthorization.prototype, 'requirePermissions')
         .mockImplementation(async function (
           this: CompanyContextAuthorization,
           actor,
+          request,
         ) {
-          const gatedCompanyId = await original.call(this, actor);
+          const gatedCompanyId = await original.call(this, actor, request);
           if (waiting) {
             waiting = false;
             paused.reach();

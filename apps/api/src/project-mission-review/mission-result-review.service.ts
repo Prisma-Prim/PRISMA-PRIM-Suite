@@ -181,8 +181,12 @@ export class MissionResultReviewService {
     return this.database.transaction(async () => {
       // Parent/role authority precedes the original Client mutex and Task locks.
       await this.templates.requirePilotReviewWithinTransaction(actor);
-      const capture =
-        await this.authorization.requireMissionResultReviewer(actor);
+      const capture = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['project.mission_result.review'],
+          lock: true,
+        })
+      ).grant('project.mission_result.review');
       const scope = this.scope(actor, projectId);
       const source = await this.source(actor, projectId);
       if (!source)

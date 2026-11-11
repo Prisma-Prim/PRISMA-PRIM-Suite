@@ -53,9 +53,10 @@ export class ProjectNextActionService {
     return this.database
       .transaction(
         async () => {
-          await this.authorization.requireProjectReadWithinReadTransaction(
-            actor,
-          );
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.read'],
+            lock: false,
+          });
           await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
             actor,
           );
@@ -82,14 +83,19 @@ export class ProjectNextActionService {
         await this.database.connection.execute(
           sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['project.next-action.command', actor.workspaceId, actor.workspaceMembershipId, normalizedKey])},0))`,
         );
-        await this.authorization.requireCapturedProjectReadWithinTransaction(
-          actor,
-        );
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['project.read'],
+          lock: true,
+        });
         await this.clients.requireCapturedReferenceReadAuthorityWithinTransaction(
           actor,
         );
-        const capture =
-          await this.authorization.requireProjectNextActionCoordinator(actor);
+        const capture = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.next_action.update'],
+            lock: true,
+          })
+        ).grant('project.next_action.update');
         const { project, scope } = await this.context(actor, projectId);
         const fingerprint = JSON.stringify({
           format: 'project-next-action-command-v1',

@@ -35,7 +35,10 @@ export class MissionPlanCurrentWorkService {
           lock: false,
         });
         await this.taskAccess.requireActor(actor);
-        await this.authorization.requireProjectReadPermission(actor);
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['project.read'],
+          lock: false,
+        });
         await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
           actor,
         );

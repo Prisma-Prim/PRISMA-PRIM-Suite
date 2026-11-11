@@ -52,12 +52,18 @@ export class DocumentFamilyAccess {
   private readonly visibility: Record<DocumentType, FamilyVisibility> = {
     questionnaire: () => Promise.resolve(true),
     'mission-deliverable': (actor, lock) =>
-      this.authorization.hasMissionDeliverableAccess(actor, {
-        lockAssignment: lock,
+      this.authorization.hasPermissions(actor, {
+        permissions: ['document.mission_deliverable.access'],
+        lock: {
+          lockAssignment: lock,
+        }.lockAssignment,
       }),
     'received-contract': (actor, lock) =>
-      this.authorization.hasReceivedContractAccess(actor, {
-        lockAssignment: lock,
+      this.authorization.hasPermissions(actor, {
+        permissions: ['document.received_contract.access'],
+        lock: {
+          lockAssignment: lock,
+        }.lockAssignment,
       }),
     'received-addendum': (actor, lock) =>
       this.authorization.hasReceivedAddendumAccess(actor, {
