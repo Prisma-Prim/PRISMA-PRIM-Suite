@@ -9,7 +9,12 @@ import {
   CERTIFICATION_LIMITS,
   type CertificationAttachment,
 } from './certification-response';
-import { STAGE_LIMITS, type AuditStage } from './certification-stages';
+import { blank, invalidField, wrongDate } from './certification-fields';
+import {
+  STAGE_LIMITS,
+  stageDayCents,
+  type AuditStage,
+} from './certification-stages';
 import {
   draftDeviates,
   type Stage1ReportDraft,
@@ -75,7 +80,6 @@ export function StagePlanForm(props: StagePlanFormProps) {
   const format = useDurationFormat();
   const reference = useAttachmentReference();
   const id = (name: string) => `${props.idPrefix}-${name}`;
-  const invalid = props.feedbackId !== undefined;
   const described = (...ids: string[]) =>
     [...ids, props.feedbackId].filter(Boolean).join(' ') || undefined;
   const text = (
@@ -86,7 +90,9 @@ export function StagePlanForm(props: StagePlanFormProps) {
       inputMode?: 'decimal';
       help?: string[];
       required?: boolean;
-    } = {},
+      /** The field's own value is wrong. */
+      wrong: boolean;
+    },
   ) => (
     <div className="certification-field">
       <label htmlFor={id(field)}>{copy(label)}</label>
@@ -97,7 +103,7 @@ export function StagePlanForm(props: StagePlanFormProps) {
         value={draft[field]}
         disabled={props.disabled}
         required={options.required ?? true}
-        aria-invalid={invalid}
+        aria-invalid={invalidField(props.feedbackId, options.wrong)}
         aria-describedby={described(...(options.help ?? []))}
         onChange={(event) =>
           onChange({ ...draft, [field]: event.target.value })
@@ -117,7 +123,7 @@ export function StagePlanForm(props: StagePlanFormProps) {
         maxLength={STAGE_LIMITS[field]}
         disabled={props.disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalidField(props.feedbackId, blank(draft[field]))}
         aria-describedby={described()}
         onChange={(event) =>
           onChange({ ...draft, [field]: event.target.value })
@@ -131,11 +137,20 @@ export function StagePlanForm(props: StagePlanFormProps) {
       record="plan"
       help={<p>{copy('stagePlanHelp')}</p>}
     >
-      {text('startDate', 'stageStartDate', { type: 'date' })}
-      {text('endDate', 'stageEndDate', { type: 'date' })}
+      {text('startDate', 'stageStartDate', {
+        type: 'date',
+        wrong: wrongDate(draft.startDate, { required: true }),
+      })}
+      {text('endDate', 'stageEndDate', {
+        type: 'date',
+        wrong: wrongDate(draft.endDate, { required: true }),
+      })}
       {text('onSiteDays', 'stageOnSiteDays', {
         inputMode: 'decimal',
         help: [id('on-site-help'), id('days-help')],
+        wrong:
+          stageDayCents(draft.onSiteDays.trim(), { zeroAllowed: false }) ===
+          undefined,
       })}
       <small id={id('on-site-help')}>
         {formatMessage(copy('stageOnSiteDaysHelp'), {
@@ -145,6 +160,9 @@ export function StagePlanForm(props: StagePlanFormProps) {
       {text('remoteDays', 'stageRemoteDays', {
         inputMode: 'decimal',
         help: [id('days-help')],
+        wrong:
+          stageDayCents(draft.remoteDays.trim(), { zeroAllowed: true }) ===
+          undefined,
       })}
       <small id={id('days-help')}>{copy('stageDaysFormatHelp')}</small>
       {area('objectives', 'stageObjectives')}
@@ -156,7 +174,7 @@ export function StagePlanForm(props: StagePlanFormProps) {
         placeholder={copy('selectStagePlanDocument')}
         disabled={props.disabled}
         required
-        invalid={invalid}
+        invalid={invalidField(props.feedbackId, draft.planAttachmentId === '')}
         describedBy={described()}
         options={attachments.map((attachment) => ({
           value: attachment.id,
@@ -170,6 +188,7 @@ export function StagePlanForm(props: StagePlanFormProps) {
         type: 'date',
         required: false,
         help: [id('sent-help')],
+        wrong: wrongDate(draft.sentToClientOn, { required: false }),
       })}
       <small id={id('sent-help')}>{copy('stageSentToClientOnHelp')}</small>
       {draftDeviates(draft.onSiteDays, confirmedOnSite) && (
@@ -181,7 +200,10 @@ export function StagePlanForm(props: StagePlanFormProps) {
             maxLength={STAGE_LIMITS.deviationNote}
             disabled={props.disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalidField(
+              props.feedbackId,
+              blank(draft.deviationNote),
+            )}
             aria-describedby={described(id('deviation-help'))}
             onChange={(event) =>
               onChange({ ...draft, deviationNote: event.target.value })
@@ -214,7 +236,6 @@ export function Stage1ReportForm(props: Stage1ReportFormProps) {
   const { draft, onChange } = props;
   const copy = useCertificationCopy();
   const id = (name: string) => `${props.idPrefix}-${name}`;
-  const invalid = props.feedbackId !== undefined;
   return (
     <StageFormFrame
       {...props}
@@ -261,7 +282,10 @@ export function Stage1ReportForm(props: Stage1ReportFormProps) {
         maxLength={STAGE_LIMITS.conclusionNote}
         disabled={props.disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          blank(draft.conclusionNote),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           onChange({ ...draft, conclusionNote: event.target.value })
@@ -310,7 +334,6 @@ export function Stage2ReportForm(props: Stage2ReportFormProps) {
   const { draft, onChange } = props;
   const copy = useCertificationCopy();
   const id = (name: string) => `${props.idPrefix}-${name}`;
-  const invalid = props.feedbackId !== undefined;
   return (
     <StageFormFrame
       {...props}
@@ -325,7 +348,7 @@ export function Stage2ReportForm(props: Stage2ReportFormProps) {
         maxLength={STAGE_LIMITS.summary}
         disabled={props.disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalidField(props.feedbackId, blank(draft.summary))}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           onChange({ ...draft, summary: event.target.value })
@@ -383,7 +406,10 @@ function ReportDate<Draft extends { reportDate: string }>(
         value={props.draft.reportDate}
         disabled={props.disabled}
         required
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          wrongDate(props.draft.reportDate, { required: true }),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           props.onChange({ ...props.draft, reportDate: event.target.value })
@@ -418,7 +444,10 @@ function AttachmentChoice<
         placeholder={copy(props.placeholder)}
         disabled={props.disabled}
         required={props.required ?? false}
-        invalid={props.feedbackId !== undefined}
+        invalid={invalidField(
+          props.feedbackId,
+          (props.required ?? false) && props.draft[props.field] === '',
+        )}
         describedBy={props.feedbackId}
         options={props.attachments.map((attachment) => ({
           value: attachment.id,
@@ -467,7 +496,7 @@ function StageFormFrame<Draft extends { reason: string }>(
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={props.disabled}
             required
-            aria-invalid={props.feedbackId !== undefined}
+            aria-invalid={invalidField(props.feedbackId, blank(draft.reason))}
             aria-describedby={props.feedbackId}
             onChange={(event) =>
               props.onChange({ ...draft, reason: event.target.value })

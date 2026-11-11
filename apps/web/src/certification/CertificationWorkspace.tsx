@@ -2363,7 +2363,6 @@ function CertificationRegistry(
       draft,
       feedback: feedbackMessage(kind, feedback),
       saving: feedback.status === 'saving',
-      invalid: feedback.status === 'refused',
       describedBy: describedFeedback(kind, feedback),
     });
     const clearRefusal = (

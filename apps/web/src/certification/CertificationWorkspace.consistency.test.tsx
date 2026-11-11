@@ -88,6 +88,18 @@ function change(element: HTMLElement, value: string) {
   fireEvent.change(element, { target: { value } });
 }
 
+/** The labels of the fields a form shows and announces invalid. */
+function invalidFields(container: HTMLElement) {
+  return [...container.querySelectorAll('[aria-invalid="true"]')].map(
+    (field) =>
+      field instanceof HTMLInputElement ||
+      field instanceof HTMLTextAreaElement ||
+      field instanceof HTMLButtonElement
+        ? field.labels?.[0]?.textContent
+        : field.id,
+  );
+}
+
 /** A rule Discrepancy as the server's Case read shows it. */
 function ruleDiscrepancy(
   rule: 'R01' | 'R04' | 'R08',
@@ -562,6 +574,113 @@ describe('Dossier consistency region', () => {
       within(r04).getByRole('button', { name: 'Record the acceptance' }),
     );
     expect(server.requests).toHaveLength(count);
+  });
+
+  it('marks only the blank reason of an acceptance invalid, and no field after a stale refusal', async () => {
+    const { server, actor } = serve({ manager: true });
+    seededCase(server, 'CERT-ACCEPT-FIELDS', ['R04']);
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-ACCEPT-FIELDS');
+    const r04 = within(region()).getByRole('listitem', { name: /^R04 — / });
+    fireEvent.click(
+      within(r04).getByRole('button', { name: 'Accept this Discrepancy' }),
+    );
+    const form = within(r04).getByRole('form', {
+      name: 'Accept the Discrepancy',
+    });
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the acceptance' }),
+    );
+    expect(
+      await within(form).findByText(
+        'State the reason (at most 2,000 characters).',
+      ),
+    ).toBeVisible();
+    expect(invalidFields(form)).toEqual(['Reason']);
+
+    change(within(form).getByLabelText('Reason'), 'Fictional reason.');
+    server.interceptions.push({
+      match: (request) => request.path.endsWith('/discrepancy-resolutions'),
+      respond: () => Response.json({ code: 'STALE_VERSION' }, { status: 409 }),
+    });
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the acceptance' }),
+    );
+    expect(await within(region()).findByRole('alert')).toHaveTextContent(
+      /reload/iu,
+    );
+    expect(invalidFields(form)).toEqual([]);
+  });
+
+  it('marks only the document left unchosen of a manual Discrepancy invalid, and no field after a stale refusal', async () => {
+    const { server, actor } = serve({ manager: false, auditor: true });
+    const caseId = server.seedApprovedTeam({
+      orderReference: 'CERT-MANUAL-FIELDS',
+      leader: certificationIds.member,
+    });
+    server.attachAsColleague(
+      caseId,
+      server.addSource('Editable Stage 2 report draft'),
+      'other',
+    );
+    server.attachAsColleague(
+      caseId,
+      server.addSource('Signed Stage 2 report'),
+      'report',
+    );
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-MANUAL-FIELDS');
+    fireEvent.click(
+      within(region()).getByRole('button', {
+        name: 'Record a manual Discrepancy',
+      }),
+    );
+    const form = within(region()).getByRole('form', {
+      name: 'Manual Discrepancy',
+    });
+    change(within(form).getByLabelText('Compared fields'), 'Stage type');
+    fireEvent.click(within(form).getByRole('radio', { name: 'To clarify' }));
+    const first = within(form).getByRole('group', {
+      name: 'First stated value',
+    });
+    change(within(first).getByLabelText('Stated value'), 'Stage 1');
+    selectOptionByLabel(
+      within(first).getByLabelText('Document Version'),
+      'Editable Stage 2 report draft, version 1',
+    );
+    const second = within(form).getByRole('group', {
+      name: 'Second stated value',
+    });
+    change(within(second).getByLabelText('Stated value'), 'Stage 2');
+    const record = () =>
+      fireEvent.click(
+        within(form).getByRole('button', {
+          name: 'Record the manual Discrepancy',
+        }),
+      );
+    record();
+    expect(
+      await within(form).findByText(/State the compared fields/u),
+    ).toBeVisible();
+    // The optional, empty locations and note stay valid.
+    expect(invalidFields(form)).toEqual(['Document Version']);
+    expect(invalidFields(second)).toEqual(['Document Version']);
+
+    selectOptionByLabel(
+      within(second).getByLabelText('Document Version'),
+      'Signed Stage 2 report, version 1',
+    );
+    server.interceptions.push({
+      match: (request) => request.path.endsWith('/discrepancies'),
+      respond: () => Response.json({ code: 'STALE_VERSION' }, { status: 409 }),
+    });
+    record();
+    expect(await within(region()).findByRole('alert')).toHaveTextContent(
+      /reload/iu,
+    );
+    expect(invalidFields(form)).toEqual([]);
   });
 
   it('shows the reader the region without any command, and names the blocking Discrepancies among the decision preconditions', async () => {

@@ -11,6 +11,7 @@ import {
   type ActAttribution,
   type ActingDraft,
 } from './certification-attribution';
+import { blank, invalidField, wrongDate } from './certification-fields';
 import { useAttachmentReference } from './CertificationDocumentViews';
 import type {
   CertificationActorReference,
@@ -79,7 +80,7 @@ export function ActingFieldset({
   const copy = useCertificationCopy();
   const reference = useAttachmentReference();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const latest = latestBusinessDate();
   const text = (
     field: 'actedBy' | 'actedByFunction',
     label: CertificationMessageKey,
@@ -92,7 +93,7 @@ export function ActingFieldset({
         maxLength={ATTRIBUTION_LIMITS.person}
         disabled={disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalidField(feedbackId, blank(draft[field]))}
         aria-describedby={feedbackId}
         onChange={(event) =>
           onChange({ ...draft, [field]: event.target.value })
@@ -130,10 +131,13 @@ export function ActingFieldset({
               id={id('actedOn')}
               type="date"
               value={draft.actedOn}
-              max={latestBusinessDate()}
+              max={latest}
               disabled={disabled}
               required
-              aria-invalid={invalid}
+              aria-invalid={invalidField(
+                feedbackId,
+                wrongDate(draft.actedOn, { required: true, max: latest }),
+              )}
               aria-describedby={feedbackId}
               onChange={(event) =>
                 onChange({ ...draft, actedOn: event.target.value })
@@ -148,7 +152,6 @@ export function ActingFieldset({
                 value={draft.formAttachmentId}
                 placeholder={copy('actingFormNone')}
                 disabled={disabled}
-                invalid={invalid}
                 describedBy={feedbackId}
                 options={documents.map((attachment) => ({
                   value: attachment.id,
