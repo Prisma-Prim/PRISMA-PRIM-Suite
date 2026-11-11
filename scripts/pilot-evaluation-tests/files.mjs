@@ -74,6 +74,115 @@ function recover(input) {
   conserved(input);
 }
 
+function collidingIdentities(field, body) {
+  return `
+const cases=process.argv[process.argv.indexOf('--cases')+1];
+const runs=process.argv[process.argv.indexOf('--runs')+1];
+const first=9223372036856382032n, second=9223372036856382038n;
+assert.notEqual(first,second);assert.equal(Number(first),Number(second));
+const key=stat=>stat.dev+':'+stat.ino;
+const identities=new Map();
+function register(path,value){identities.set(key(native.lstatSync(path,{bigint:true})),value);}
+function remap(stat,exact){
+ const value=identities.get(key(exact));
+ if(value===undefined)return stat;
+ for(const name of ['dev','ino']){
+  const identity=name===${JSON.stringify(field)}?value:27n;
+  stat[name]=typeof stat[name]==='bigint'?identity:Number(identity);
+ }
+ return stat;
+}
+fs.lstatSync=(path,options)=>remap(native.lstatSync(path,options),native.lstatSync(path,{bigint:true}));
+fs.fstatSync=(fd,options)=>remap(native.fstatSync(fd,options),native.fstatSync(fd,{bigint:true}));
+${body}
+`;
+}
+
+test('accepts distinct files whose device or inode identities collide after numeric conversion', (t) => {
+  for (const field of ['dev', 'ino']) {
+    const input = setup(t);
+    const { child } = traced(
+      input,
+      collidingIdentities(
+        field,
+        'register(cases,first);register(runs,second);',
+      ),
+    );
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, receipt);
+    readContainer(input.output);
+  }
+});
+
+test('rejects an input replaced before open even when numeric identities collide', (t) => {
+  const input = setup(t);
+  const { child } = traced(
+    input,
+    collidingIdentities(
+      'ino',
+      `
+register(cases,first);
+const open=fs.openSync;let changed=false;
+fs.openSync=(path,...args)=>{
+ if(path===cases&&!changed){changed=true;const bytes=native.readFileSync(cases);native.renameSync(cases,cases+'.original');native.writeFileSync(cases,bytes);register(cases,second);}
+ const fd=open(path,...args);if(path===cases)handles.add(fd);return fd;
+};
+`,
+    ),
+  );
+  diagnostic(child, 'E_INPUT_FILE', 'cases');
+  assert.equal(existsSync(input.output), false);
+  assert.deepEqual(readFileSync(input.casesPath + '.original'), input.cases);
+});
+
+test('rejects an output replaced during writing even when numeric identities collide', (t) => {
+  const input = setup(t);
+  const { child } = traced(
+    input,
+    collidingIdentities(
+      'ino',
+      `
+const open=fs.openSync;
+fs.openSync=(path,flags,mode)=>{const fd=open(path,flags,mode);if(path===target&&flags==='wx+')register(target,first);return fd;};
+const write=fs.writeSync;let changed=false;
+fs.writeSync=(fd,...args)=>{const count=write(fd,...args);if(fd===outputFd&&!changed){changed=true;native.renameSync(target,target+'.original');native.writeFileSync(target,'FOREIGN-REPLACEMENT',{mode:0o600});register(target,second);}return count;};
+`,
+    ),
+  );
+  writeFailure(input, child);
+  assert.equal(readFileSync(input.output, 'utf8'), 'FOREIGN-REPLACEMENT');
+  assert.ok(readFileSync(input.output + '.original').length > 0);
+  recover(input);
+});
+
+test('rejects a replaced parent with the owned output moved into it under colliding numeric identities', (t) => {
+  const input = setup(t);
+  const parent = join(input.directory, 'private');
+  mkdirSync(parent);
+  input.output = join(parent, 'result.tar');
+  input.args[input.args.length - 1] = input.output;
+  writeFileSync(join(parent, 'sentinel'), 'ORIGINAL-PARENT');
+  const { child } = traced(
+    input,
+    collidingIdentities(
+      'ino',
+      `
+register(parent,first);
+const write=fs.writeSync;let changed=false;
+fs.writeSync=(fd,...args)=>{const count=write(fd,...args);if(fd===outputFd&&!changed){changed=true;native.renameSync(parent,parent+'.original');native.mkdirSync(parent);native.renameSync(parent+'.original/result.tar',target);native.writeFileSync(parent+'/sentinel','NEW-PARENT');register(parent,second);}return count;};
+`,
+    ),
+  );
+  writeFailure(input, child);
+  assert.equal(
+    readFileSync(join(parent + '.original', 'sentinel'), 'utf8'),
+    'ORIGINAL-PARENT',
+  );
+  assert.equal(readFileSync(join(parent, 'sentinel'), 'utf8'), 'NEW-PARENT');
+  assert.ok(readFileSync(input.output).length > 0);
+  recover(input);
+});
+
 test('input byte limits include a one-byte overflow probe for both files', (t) => {
   for (const side of ['cases', 'runs'])
     for (const size of [1048576, 1048577]) {
@@ -111,6 +220,7 @@ test('inputs must be distinct captured regular files with no observed symlink co
     if (variant === 'hardlink') {
       bad = join(input.directory, 'linked');
       linkSync(input.casesPath, bad);
+      assert.notEqual(input.casesPath, bad);
     }
     if (variant === 'directory') bad = input.directory;
     if (variant === 'symlink' || variant === 'dangling') {
@@ -133,7 +243,7 @@ test('inputs must be distinct captured regular files with no observed symlink co
     if (variant === 'device') bad = '/dev/null';
     const args = [
       '--cases',
-      bad,
+      variant === 'hardlink' ? input.casesPath : bad,
       '--runs',
       variant === 'same' || variant === 'hardlink' ? bad : input.runsPath,
       '--output',
@@ -252,7 +362,7 @@ test('private creation precedes descriptor chmod and final0600 is verified under
       `
 process.umask(${mask}); let checked=false;
 const stat=fs.fstatSync;
-fs.fstatSync=fd=>{const result=stat(fd);if(fd===outputFd&&!checked){assert.equal(result.mode&0o077,0);assert.equal(result.mode&0o7777,${0o600 & ~mask});checked=true;events.push(['initial-private']);}return result;};
+fs.fstatSync=(fd,...args)=>{const result=stat(fd,...args);if(fd===outputFd&&!checked){assert.equal(BigInt(result.mode)&0o077n,0n);assert.equal(BigInt(result.mode)&0o7777n,${0o600 & ~mask}n);checked=true;events.push(['initial-private']);}return result;};
 const chmod=fs.fchmodSync;
 fs.fchmodSync=(fd,mode)=>{assert.ok(checked);assert.equal(fd,outputFd);assert.equal(mode,0o600);events.push(['descriptor-chmod']);return chmod(fd,mode);};
 fs.chmodSync=()=>{throw new Error('Pathname chmod forbidden');};
@@ -358,8 +468,8 @@ test('zero writes, truncation, corrupt readback, read failure and close failure 
 
 test('all captured descriptors close even when output verification or parent opening fails', (t) => {
   for (const body of [
-    `const stat=fs.fstatSync;fs.fstatSync=fd=>{if(fd===outputFd)throw new Error('stat failure');return stat(fd);};`,
-    `const stat=fs.fstatSync;let count=0;fs.fstatSync=fd=>{if(handles.has(fd)&&fd!==outputFd&&++count===1)throw new Error('parent failure');return stat(fd);};`,
+    `const stat=fs.fstatSync;fs.fstatSync=(fd,...args)=>{if(fd===outputFd)throw new Error('stat failure');return stat(fd,...args);};`,
+    `const stat=fs.fstatSync;let count=0;fs.fstatSync=(fd,...args)=>{if(handles.has(fd)&&fd!==outputFd&&++count===1)throw new Error('parent failure');return stat(fd,...args);};`,
   ]) {
     const input = setup(t);
     const { child } = traced(input, body);

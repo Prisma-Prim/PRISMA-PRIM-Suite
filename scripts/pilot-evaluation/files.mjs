@@ -24,23 +24,24 @@ import { EvaluationError, fail } from './diagnostic.mjs';
 const inputLimit = 1048576;
 const outputLimit = 16777216;
 const repository = fileURLToPath(new URL('../../', import.meta.url));
+// Device and inode values may exceed Number's exact integer range.
 const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino;
 
 function existingPath(path) {
   // Inspect before normalization so a symlink followed by /.. cannot disappear.
   const absolute = isAbsolute(path) ? path : `${process.cwd()}${sep}${path}`;
   let current = sep;
-  let stat = lstatSync(current);
+  let stat = lstatSync(current, { bigint: true });
   for (const part of absolute.split(sep)) {
     if (part === '') continue;
     if (!stat.isDirectory()) throw new Error('Non-directory path component');
     if (part === '.') continue;
     current = part === '..' ? dirname(current) : join(current, part);
-    stat = lstatSync(current);
+    stat = lstatSync(current, { bigint: true });
     if (stat.isSymbolicLink()) throw new Error('Unsafe path');
   }
   // Retain the operating system's trailing-slash and traversal semantics.
-  return { path: current, stat: lstatSync(absolute) };
+  return { path: current, stat: lstatSync(absolute, { bigint: true }) };
 }
 
 export function readInput(path, input, previous = null) {
@@ -53,7 +54,7 @@ export function readInput(path, input, previous = null) {
       inspected.path,
       constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
     );
-    const stat = fstatSync(descriptor);
+    const stat = fstatSync(descriptor, { bigint: true });
     if (
       !stat.isFile() ||
       !sameFile(stat, inspected.stat) ||
@@ -150,7 +151,7 @@ export function outputPath(path, inputs) {
       'Choose an output outside this worktree and both input paths, without overlap.',
     );
   try {
-    lstatSync(target);
+    lstatSync(target, { bigint: true });
   } catch (error) {
     if (error.code === 'ENOENT') return { target, parent };
     fail(
@@ -184,7 +185,7 @@ const writeFailure =
 
 function parentUnchanged(parent) {
   const current = existingPath(parent.path);
-  const opened = fstatSync(parent.descriptor);
+  const opened = fstatSync(parent.descriptor, { bigint: true });
   if (
     !current.stat.isDirectory() ||
     !opened.isDirectory() ||
@@ -197,14 +198,14 @@ function parentUnchanged(parent) {
 function ownedUnchanged(output, owned) {
   parentUnchanged(output.parent);
   const current = existingPath(output.target).stat;
-  const opened = fstatSync(owned.descriptor);
+  const opened = fstatSync(owned.descriptor, { bigint: true });
   if (
     !current.isFile() ||
     !opened.isFile() ||
-    opened.nlink !== 1 ||
+    opened.nlink !== 1n ||
     !sameFile(opened, owned.stat) ||
     !sameFile(current, owned.stat) ||
-    (opened.mode & 0o7777) !== 0o600
+    (opened.mode & 0o7777n) !== 0o600n
   )
     throw new Error('Owned output changed');
 }
@@ -233,13 +234,13 @@ export function writeArtifacts(output, bytes) {
     }
     const owned = { descriptor: created, closed: false };
     handles.push(owned);
-    owned.stat = fstatSync(created);
+    owned.stat = fstatSync(created, { bigint: true });
     // Check initial privacy BEFORE any chmod. Restrictive umasks may remove
     // owner permissions; they may never grant permissions outside 0600.
     if (
       !owned.stat.isFile() ||
-      owned.stat.nlink !== 1 ||
-      (owned.stat.mode & 0o7777 & ~0o600) !== 0
+      owned.stat.nlink !== 1n ||
+      (owned.stat.mode & 0o7777n & ~0o600n) !== 0n
     )
       throw new Error('Initial privacy unavailable');
     fchmodSync(created, 0o600);
@@ -262,7 +263,7 @@ export function writeArtifacts(output, bytes) {
       offset += count;
     }
     ownedUnchanged(output, owned);
-    if (fstatSync(created).size !== bytes.length)
+    if (fstatSync(created, { bigint: true }).size !== BigInt(bytes.length))
       throw new Error('Wrong length');
     const readback = Buffer.alloc(bytes.length);
     offset = 0;
@@ -282,7 +283,10 @@ export function writeArtifacts(output, bytes) {
         throw new Error('Incomplete readback');
       offset += count;
     }
-    if (!readback.equals(bytes) || fstatSync(created).size !== bytes.length)
+    if (
+      !readback.equals(bytes) ||
+      fstatSync(created, { bigint: true }).size !== BigInt(bytes.length)
+    )
       throw new Error('Readback mismatch');
     ownedUnchanged(output, owned);
     // These are observed final checks, not atomic content publication, a
