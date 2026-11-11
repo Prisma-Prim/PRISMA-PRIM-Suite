@@ -83,6 +83,7 @@ test('acceptance specs repeat as whole Playwright runs, each with its own fresh 
   assert.deepEqual(
     repeatInvocations({
       family: 'acceptance',
+      project: 'operational-acceptance-desktop',
       files: ['apps/web/e2e/mission-plan.acceptance.spec.ts'],
     }),
     Array(3).fill({
@@ -91,6 +92,7 @@ test('acceptance specs repeat as whole Playwright runs, each with its own fresh 
         '--filter',
         '@prisma-prim/web',
         'test:browser:acceptance',
+        '--project=operational-acceptance-desktop',
         'e2e/mission-plan.acceptance.spec.ts',
       ],
     }),
@@ -98,6 +100,7 @@ test('acceptance specs repeat as whole Playwright runs, each with its own fresh 
   const calls = [];
   const result = runRepeats({
     family: 'acceptance',
+    project: 'operational-acceptance-desktop',
     files: ['apps/web/e2e/mission-plan.acceptance.spec.ts'],
     run: () => {
       calls.push(1);
@@ -131,6 +134,44 @@ test('a file outside the declared family, an empty list or an unknown family is 
   assert.throws(
     () => repeatInvocations({ family: 'scripts', files: ['a.test.mjs'] }),
     /unknown test family/u,
+  );
+});
+
+test('each canonical acceptance project repeats three times and an absent or unknown project fails closed', () => {
+  for (const project of [
+    'operational-acceptance-desktop',
+    'operational-acceptance-narrow',
+  ]) {
+    const invocations = repeatInvocations({
+      family: 'acceptance',
+      files: ['apps/web/e2e/mission-plan.acceptance.spec.ts'],
+      project,
+    });
+    assert.equal(invocations.length, 3);
+    for (const { args } of invocations)
+      assert.deepEqual(args.slice(-2), [
+        `--project=${project}`,
+        'e2e/mission-plan.acceptance.spec.ts',
+      ]);
+  }
+  for (const project of [undefined, 'missing', '--timeout=0'])
+    assert.throws(
+      () =>
+        repeatInvocations({
+          family: 'acceptance',
+          files: ['apps/web/e2e/mission-plan.acceptance.spec.ts'],
+          project,
+        }),
+      /canonical acceptance project/u,
+    );
+  assert.throws(
+    () =>
+      repeatInvocations({
+        family: 'web',
+        files: ['apps/web/src/App.test.tsx'],
+        project: 'operational-acceptance-desktop',
+      }),
+    /only supported for acceptance/u,
   );
 });
 

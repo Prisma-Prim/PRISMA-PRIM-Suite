@@ -391,8 +391,9 @@ jobs:
         run: bash scripts/railway-packaging-smoke.sh
 
   # Repeats the test files a pull request adds or modifies, one matrix job per
-  # family, in parallel with the heavy suites. The matrix is empty (and the
-  # job skipped) unless a test file changed; `quality` accepts that skip only
+  # family slice and acceptance project, in parallel with the heavy suites.
+  # The matrix is empty (and the job skipped) unless a test file changed;
+  # `quality` accepts that skip only
   # when the scope proved it.
   flaky_guard:
     name: flaky_guard (${{ matrix.label }})
@@ -427,6 +428,7 @@ jobs:
         env:
           REPEAT_FAMILY: ${{ matrix.family }}
           REPEAT_FILES: ${{ toJSON(matrix.files) }}
+          REPEAT_PROJECT: ${{ matrix.project }}
         run: node scripts/ci-repeat-tests.mjs
 
   quality:

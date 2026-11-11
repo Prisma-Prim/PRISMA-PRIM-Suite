@@ -4,7 +4,9 @@ import { changedFiles } from './ci-change-scope.mjs';
 
 // The one owner of what counts as a repeatable test file. Vitest files run
 // in fresh processes (api, web); Playwright specs run with --repeat-each
-// (browser, acceptance). `filesPerJob` bounds each parallel matrix job, and
+// (browser). Acceptance repeats fresh runs, partitioned by project so three
+// passes of the larger journeys fit the existing job budget (#1098).
+// `filesPerJob` bounds each parallel matrix job, and
 // the environment fields are what that family needs from the CI setup.
 export const testFamilies = {
   api: {
@@ -35,6 +37,10 @@ export const testFamilies = {
     root: 'apps/web/',
     pattern: /^apps\/web\/e2e\/[^/]+\.acceptance\.spec\.ts$/u,
     filesPerJob: 6,
+    projects: [
+      'operational-acceptance-desktop',
+      'operational-acceptance-narrow',
+    ],
     postgres: 'true',
     chromium: 'true',
     doctor: 'agent:doctor:web-postgres',
@@ -78,17 +84,21 @@ export function repeatMatrix(grouped) {
     const files = grouped[family] ?? [];
     const jobs = Math.ceil(files.length / definition.filesPerJob);
     for (let index = 0; index < jobs; index += 1)
-      include.push({
-        label: jobs === 1 ? family : `${family} ${index + 1}/${jobs}`,
-        family,
-        files: files.slice(
-          index * definition.filesPerJob,
-          (index + 1) * definition.filesPerJob,
-        ),
-        postgres: definition.postgres,
-        chromium: definition.chromium,
-        doctor: definition.doctor,
-      });
+      for (const project of definition.projects ?? [undefined]) {
+        const group = jobs === 1 ? family : `${family} ${index + 1}/${jobs}`;
+        include.push({
+          label: project ? `${group} ${project}` : group,
+          family,
+          files: files.slice(
+            index * definition.filesPerJob,
+            (index + 1) * definition.filesPerJob,
+          ),
+          ...(project ? { project } : {}),
+          postgres: definition.postgres,
+          chromium: definition.chromium,
+          doctor: definition.doctor,
+        });
+      }
   }
   return { include };
 }
