@@ -812,6 +812,19 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
         exact: true,
       }),
     ).toHaveText(copy('preconditionDossierReviewIncomplete'));
+    // Once: the standing notice yields to the alert.
+    await expect(
+      panel.getByRole('list', {
+        name: copy('decisionPreconditionsList'),
+        exact: true,
+      }),
+    ).toHaveCount(1);
+    await expect(
+      panel.getByText(copy('decisionPreconditionsTitle'), { exact: true }),
+    ).toHaveCount(1);
+    await panel.screenshot({
+      path: info.outputPath(`decision-preconditions-blocked-${width}.png`),
+    });
     expect(decisionPosts).toEqual([]);
 
     // The programme manager records the Certificate data after the
