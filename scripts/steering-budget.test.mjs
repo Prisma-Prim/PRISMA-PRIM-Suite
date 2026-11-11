@@ -10,7 +10,9 @@ const steeringBudgets = {
   'CLAUDE.md': 500,
   // 13600: #1223 records where a long-running structural decision lives.
   // The columns and illustration stay in structural-decisions.md.
-  'docs/agents/issue-execution.md': 13_600,
+  // 13700: #1278 asks the final report for the verification cost record;
+  // how to build it stays in verification-cost.md.
+  'docs/agents/issue-execution.md': 13_700,
   'docs/agents/typescript-discipline.md': 4_500,
   'docs/agents/issue-tracker.md': 2_200,
   '.github/pull_request_template.md': 900,

@@ -23,6 +23,7 @@ How to revert: <!-- e.g. "revert this commit; the migration is reversible", or "
 ## CI and review
 
 - CI run:
+- Cost record:
 - Review: <!-- self-review done; automated review used, requested or not applicable; blocking findings fixed -->
 
 ## Environment friction

@@ -1,0 +1,45 @@
+{
+  "version": "fixture-a",
+  "currency": "USD",
+  "unit": "per million tokens",
+  "source": "Synthetic prices for script tests only.",
+  "models": {
+    "claude-opus-5-5": {
+      "input": 4,
+      "output": 20,
+      "cacheWrite5m": 5,
+      "cacheWrite1h": 8,
+      "cacheRead": 0.2
+    },
+    "claude-sonnet-5-5": {
+      "input": 2,
+      "output": 10,
+      "cacheWrite5m": 2.5,
+      "cacheWrite1h": 4,
+      "cacheRead": 0.1
+    },
+    "claude-haiku-5-5": {
+      "input": 0.1,
+      "output": 0.5,
+      "cacheWrite5m": 0.125,
+      "cacheWrite1h": 0.2,
+      "cacheRead": 0.01,
+      "longContext": {
+        "abovePromptTokens": 100000,
+        "input": 0.5,
+        "output": 2.5,
+        "cacheWrite5m": 0.625,
+        "cacheWrite1h": 1,
+        "cacheRead": 0.05
+      }
+    },
+    "gpt-synthetic-a": {
+      "input": null,
+      "output": null,
+      "cacheWrite5m": null,
+      "cacheWrite1h": null,
+      "cacheRead": null,
+      "note": "Synthetic model without a verified price."
+    }
+  }
+}
