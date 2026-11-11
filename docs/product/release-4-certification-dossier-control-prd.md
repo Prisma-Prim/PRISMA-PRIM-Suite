@@ -397,7 +397,7 @@ The programme manager records draft Version 1 showing DEMO-0001 and sends it; th
 
 ### 20.2 Negative criteria
 
-A critical Discrepancy cannot be accepted; an error accepted by the programme manager or by an approver on the team is refused; the decision is refused while R01 is open; a granting decision is refused without Certificate data; a decision version that changes the outcome is refused; the approval is refused for an outdated draft, without a client opinion or skip, after "changes requested" with no new draft, and while R11 is open; issuance with another number than the approved draft is refused; a revision that changes the number or validity, has no reason or lacks the revision confirmation is refused; an Exchange Record with channel "other" and no note, with a Version not attached to the Case, or dated after today is refused; another Company receives the missing-Case denial.
+A critical Discrepancy cannot be accepted; an error accepted by the programme manager or by an approver on the team is refused; the decision is refused while R01 is open; a granting decision is refused without Certificate data; a decision version that changes the outcome is refused; the approval is refused for an outdated draft, without a client opinion or skip, after "changes requested" with no new draft, and while R11 is open; issuance with another number than the approved draft is refused; a revision that changes the number or validity, has no reason or lacks the explicit visible-revision answer is refused; an Exchange Record with channel "other" and no note, with a Version not attached to the Case, or dated after today is refused; another Company receives the missing-Case denial.
 
 ### 20.3 Private pilot demonstration
 
