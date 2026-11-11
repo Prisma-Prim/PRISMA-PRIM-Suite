@@ -15,7 +15,10 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     contextOptions: { reducedMotion: 'reduce' },
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    // A final screenshot per journey and width, passing or failing: the
+    // acceptance-proof check needs desktop and narrow screenshots of the
+    // journey a pull request cites as visual proof.
+    screenshot: 'on',
     storageState: {
       cookies: [],
       origins: [

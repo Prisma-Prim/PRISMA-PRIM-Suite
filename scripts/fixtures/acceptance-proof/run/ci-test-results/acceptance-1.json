@@ -1,0 +1,163 @@
+{
+  "config": {
+    "rootDir": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/e2e"
+  },
+  "suites": [
+    {
+      "title": "client-registration.acceptance.spec.ts",
+      "file": "client-registration.acceptance.spec.ts",
+      "specs": [],
+      "suites": [
+        {
+          "title": "Client registration",
+          "file": "client-registration.acceptance.spec.ts",
+          "specs": [
+            {
+              "title": "registers a Client and shows it in the directory",
+              "file": "client-registration.acceptance.spec.ts",
+              "tests": [
+                {
+                  "projectName": "operational-acceptance-desktop",
+                  "status": "expected",
+                  "results": [
+                    {
+                      "status": "passed",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-registration-registers-desktop/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "projectName": "operational-acceptance-narrow",
+                  "status": "expected",
+                  "results": [
+                    {
+                      "status": "passed",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-registration-registers-narrow/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "warns about a duplicate legal identifier",
+              "file": "client-registration.acceptance.spec.ts",
+              "tests": [
+                {
+                  "projectName": "operational-acceptance-desktop",
+                  "status": "expected",
+                  "results": [
+                    {
+                      "status": "passed",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-registration-duplicate-desktop/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "projectName": "operational-acceptance-narrow",
+                  "status": "expected",
+                  "results": [
+                    {
+                      "status": "passed",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-registration-duplicate-narrow/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "client-directory.acceptance.spec.ts",
+      "file": "client-directory.acceptance.spec.ts",
+      "specs": [
+        {
+          "title": "filters Clients by status",
+          "file": "client-directory.acceptance.spec.ts",
+          "tests": [
+            {
+              "projectName": "operational-acceptance-desktop",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "failed",
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-directory-filters-desktop/test-failed-1.png"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "projectName": "operational-acceptance-narrow",
+              "status": "expected",
+              "results": [
+                {
+                  "status": "passed",
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-directory-filters-narrow/test-finished-1.png"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "exports the directory",
+          "file": "client-directory.acceptance.spec.ts",
+          "tests": [
+            {
+              "projectName": "operational-acceptance-desktop",
+              "status": "skipped",
+              "results": [{ "status": "skipped", "attachments": [] }]
+            },
+            {
+              "projectName": "operational-acceptance-narrow",
+              "status": "skipped",
+              "results": [{ "status": "skipped", "attachments": [] }]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "expected": 5,
+    "skipped": 2,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

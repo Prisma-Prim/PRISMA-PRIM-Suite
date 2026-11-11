@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -170,6 +170,9 @@ function jobsIn(workflow) {
   );
 }
 
+const proofReadPermissions =
+  /\n {4}permissions:\n {6}contents: read\n {6}actions: read\n {6}pull-requests: read\n {6}issues: read\n/;
+
 function stepBody(job, step) {
   const start = job.indexOf(`- name: ${step}\n`);
   assert.notEqual(start, -1, `missing step ${step}`);
@@ -205,7 +208,12 @@ test('independent test families and packaging share only the fast prerequisite a
     'flaky_guard',
     'quality',
   ]);
-  assert.doesNotMatch(jobs.checks, /\bneeds:|\bif:/);
+  // The job itself is unconditional; only its result upload is step-gated.
+  assert.doesNotMatch(jobs.checks, /^ {4}(?:needs|if):/m);
+  assert.deepEqual(
+    [...jobs.checks.matchAll(/^ {8}if: (.+)$/gm)].map((match) => match[1]),
+    ["${{ always() && github.event_name == 'pull_request' }}"],
+  );
   assert.doesNotMatch(jobs.scope, /^ {4}(?:needs:|if:)/m);
   // One job per run acquires the PostgreSQL image for the database jobs.
   assert.match(jobs.postgres_image, /^ {4}needs: scope$/m);
@@ -265,9 +273,17 @@ test('CI runs on pull requests, the merge queue and the nightly main call, prese
   );
   assert.doesNotMatch(workflow, /^ {2}(?:push|schedule|pull_request_target):/m);
   assert.match(workflow, /permissions:\n {2}contents: read\n/);
-  assert.doesNotMatch(workflow, /\bissues:|: write\b/);
+  assert.doesNotMatch(workflow, /: write\b/);
   const concurrencyStart = workflow.indexOf('\nconcurrency:\n');
   const jobsStart = workflow.indexOf('\njobs:\n');
+  assert.doesNotMatch(workflow.slice(0, jobsStart), /\bissues:|pull-requests:/);
+  // Only the aggregate reads the pull request, its comments and the issues it
+  // closes, for the acceptance-proof check; every other job keeps the
+  // workflow's contents and actions read access.
+  const { quality, ...others } = jobsIn(workflow);
+  assert.match(quality, proofReadPermissions);
+  for (const [name, job] of Object.entries(others))
+    assert.doesNotMatch(job, /permissions:|\bissues:|pull-requests:/, name);
   assert.notEqual(concurrencyStart, -1);
   assert.ok(jobsStart > concurrencyStart);
   const concurrency = workflow
@@ -324,11 +340,24 @@ test('main health reruns the CI fast checks on every main push and the complete 
     stepsOf(jobs.checks),
     stepsOf(jobsIn(await readWorkflow()).checks),
   );
-  // The nightly run is the complete CI itself, unnarrowed.
+  // The nightly run is the complete CI itself, unnarrowed, with the read
+  // access its aggregate needs for the acceptance-proof check.
   assert.equal(
     jobs.ci.trimEnd(),
-    "  ci:\n    if: ${{ github.event_name == 'schedule' }}\n    uses: ./.github/workflows/ci.yml",
+    [
+      '  ci:',
+      "    if: ${{ github.event_name == 'schedule' }}",
+      '    uses: ./.github/workflows/ci.yml',
+      "    # A called workflow cannot exceed its caller's permissions; the CI",
+      '    # aggregate reads pull requests and issues for the acceptance proof.',
+      '    permissions:',
+      '      contents: read',
+      '      actions: read',
+      '      pull-requests: read',
+      '      issues: read',
+    ].join('\n'),
   );
+  assert.match(jobs.ci, proofReadPermissions);
 });
 
 test('nothing cancels a main health run, and its reports run one at a time', async () => {
@@ -350,7 +379,8 @@ test('only the main health report job writes issues, after every finished main r
     /\npermissions:\n {2}contents: read\n {2}actions: read\n\n/,
   );
   const { checks, ci, report } = jobsIn(health);
-  for (const job of [checks, ci]) assert.doesNotMatch(job, /permissions:/);
+  assert.doesNotMatch(checks, /permissions:/);
+  assert.match(ci, proofReadPermissions);
   assert.match(
     report,
     /\n {4}permissions:\n {6}contents: read\n {6}actions: read\n {6}issues: write\n {6}pull-requests: read\n/,
@@ -435,6 +465,126 @@ test('CI fails formatting first, then lint, types and the complete script suite'
     positions,
     'fast verification steps must keep their documented order',
   );
+});
+
+test('every test family records its results for the acceptance-proof check on pull requests', async () => {
+  const jobs = jobsIn(await readWorkflow());
+  for (const [job, step, file, upload, artifact] of [
+    [
+      'checks',
+      'Test scripts',
+      'scripts.json',
+      'Upload script test results',
+      'scripts',
+    ],
+    [
+      'api',
+      'Test API',
+      'api-${{ strategy.job-index }}.json',
+      'Upload API test results',
+      'api-${{ strategy.job-index }}',
+    ],
+    [
+      'web_unit',
+      'Test Web unit',
+      'web_unit.json',
+      'Upload Web unit test results',
+      'web_unit',
+    ],
+    [
+      'browser',
+      'Test browser',
+      'browser-${{ matrix.shard }}.json',
+      'Upload browser test results',
+      'browser-${{ matrix.shard }}',
+    ],
+    [
+      'acceptance',
+      'Test acceptance',
+      'acceptance-${{ matrix.shard }}.json',
+      'Upload acceptance test results',
+      'acceptance-${{ matrix.shard }}',
+    ],
+  ]) {
+    assert.ok(
+      stepBody(jobs[job], step).includes(
+        `CI_TEST_RESULTS_FILE: \${{ runner.temp }}/ci-test-results/${file}\n`,
+      ),
+      `${job} writes ${file}`,
+    );
+    const body = stepBody(jobs[job], upload);
+    assert.ok(
+      jobs[job].indexOf(`- name: ${step}\n`) <
+        jobs[job].indexOf(`- name: ${upload}\n`),
+    );
+    // Failed tests are results too: the check names them.
+    assert.match(
+      body,
+      /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+    );
+    assert.match(body, /uses: actions\/upload-artifact@v4/u);
+    assert.ok(
+      body.includes(
+        `name: ci-test-results-${artifact}-\${{ github.run_id }}\n`,
+      ),
+    );
+    assert.ok(body.includes('path: ${{ runner.temp }}/ci-test-results/\n'));
+    assert.match(body, /overwrite: true/u);
+    assert.doesNotMatch(body, /github\.run_attempt/u);
+    assert.match(body, /retention-days: 14/u);
+  }
+});
+
+test('quality verifies the acceptance proof after every result, and no workflow starts Claude', async () => {
+  const workflow = await readWorkflow();
+  const { quality } = jobsIn(workflow);
+  const download = stepBody(quality, 'Download test results');
+  assert.match(
+    download,
+    /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+  );
+  assert.match(download, /uses: actions\/download-artifact@v4/u);
+  assert.match(
+    download,
+    /pattern: ci-test-results-\*-\$\{\{ github\.run_id \}\}/u,
+  );
+  assert.match(download, /path: ci-test-results\/\n {10}merge-multiple: true/u);
+
+  const verify = stepBody(quality, 'Verify acceptance proof');
+  // It runs even when another job failed, so the author sees every finding.
+  assert.match(verify, /if: \$\{\{ !cancelled\(\) \}\}/u);
+  for (const variable of [
+    'GH_TOKEN: ${{ github.token }}',
+    'PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}',
+    'CI_JOB_RESULTS: ${{ toJSON(needs) }}',
+    'PROOF_EXCEPTION_APPROVERS: ${{ vars.PROOF_EXCEPTION_APPROVERS }}',
+  ])
+    assert.ok(verify.includes(`${variable}\n`), variable);
+  assert.match(verify, /run: node scripts\/verify-acceptance-proof\.mjs\n/u);
+  const order = [
+    'Require every verification result',
+    'Download complete browser evidence',
+    'Download test results',
+    'Verify acceptance proof',
+    'Upload complete browser evidence',
+  ].map((step) => quality.indexOf(`- name: ${step}\n`));
+  assert.ok(order.every((index) => index !== -1));
+  assert.deepEqual(
+    [...order].sort((left, right) => left - right),
+    order,
+  );
+  for (const line of quality.split('\n'))
+    if (/^\s*(?:- )?run:/.test(line))
+      assert.doesNotMatch(line, /\$\{\{/, 'no expression inside a command');
+
+  // The owner's rule: no workflow, comment, label or schedule starts Claude.
+  const directory = new URL('../.github/workflows/', import.meta.url);
+  for (const name of await readdir(directory))
+    assert.doesNotMatch(
+      await readFile(new URL(name, directory), 'utf8'),
+      /claude|anthropic/iu,
+      name,
+    );
 });
 
 test('every test family, host build and production packaging remains unconditional', async () => {

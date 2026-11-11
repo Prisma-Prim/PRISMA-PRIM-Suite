@@ -1,0 +1,14 @@
+{
+  "repository": "Prisma-Prim/PRISMA-PRIM-Suite",
+  "pullRequest": 900,
+  "workspace": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite",
+  "approvers": "owner-login",
+  "issues": "../../issues",
+  "results": "../../run/ci-test-results",
+  "evidence": "../../run/browser-evidence",
+  "changedFiles": [
+    "apps/web/src/client/client-registration-form.tsx",
+    "apps/api/src/client/client-registration.service.ts"
+  ],
+  "comments": []
+}

@@ -10,9 +10,15 @@ Closes #
 - Excluded:
 - Follow-ups (issues created, nonblocking review findings):
 
-## Tests added
+## Acceptance proof
 
-<!-- The tests that prove the behaviour, or "none (documentation)". Name each relevant check that could not run locally. -->
+<!-- Required by CI; format in docs/agents/acceptance-proof.md. One row per criterion, citing `<file> :: <test title>`. Name below any relevant check that could not run locally. -->
+
+| Criterion | Kind | Functional proof | Visual proof |
+| --------- | ---- | ---------------- | ------------ |
+
+- Red-green:
+- Exception:
 
 ## Risks and merge danger
 

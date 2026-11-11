@@ -1,0 +1,25 @@
+{
+  "schema": "prisma-prim-node-test-results/v1",
+  "tests": [
+    {
+      "file": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/scripts/example-tool.test.mjs",
+      "titlePath": ["the tool reports every changed file"],
+      "status": "passed"
+    },
+    {
+      "file": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/scripts/example-tool.test.mjs",
+      "titlePath": ["options", "rejects an unknown flag"],
+      "status": "passed"
+    },
+    {
+      "file": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/scripts/example-tool.test.mjs",
+      "titlePath": ["options", "reads a configuration file"],
+      "status": "skipped"
+    },
+    {
+      "file": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/scripts/example-tool-tests/paths.mjs",
+      "titlePath": ["normalizes Windows separators"],
+      "status": "passed"
+    }
+  ]
+}

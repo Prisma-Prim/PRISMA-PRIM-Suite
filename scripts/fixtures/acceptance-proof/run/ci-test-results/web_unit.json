@@ -1,0 +1,19 @@
+{
+  "numTotalTestSuites": 1,
+  "numTotalTests": 1,
+  "success": true,
+  "testResults": [
+    {
+      "name": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/web/src/client/client-registration-form.test.tsx",
+      "status": "passed",
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Client registration form"],
+          "title": "shows the duplicate legal identifier error",
+          "fullName": "Client registration form shows the duplicate legal identifier error",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

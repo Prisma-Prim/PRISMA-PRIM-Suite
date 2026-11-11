@@ -9,6 +9,7 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 | Table without `workspace_id`, or Company-owned without composite keys         | `apps/api/src/database/tenancy-schema.test.ts`; reasoned exemptions only (#1105)         | #1103, #1107  |
 | Schema change without its generated migration                                 | `pnpm db:check-drift` in CI `checks`                                                     | #1068, #1072  |
 | Drop, rename, retype or truncate in one migration step                        | `scripts/destructive-migrations.test.mjs`; needs a `destructive-change` approval comment | #1101, #1104  |
+| Acceptance criterion without a passing test, or UI change without screenshots | `scripts/verify-acceptance-proof.mjs` in CI `quality`; exceptions need an approver       | #1275, #1276  |
 | Activity Log event updated or deleted                                         | ESLint `no-restricted-syntax` on `*Events` tables, plus database triggers                | #1102, #1108  |
 | Access tables queried outside the Access module                               | ESLint `no-restricted-imports`                                                           | #1102, #1108  |
 | Non-null `!` and type assertions in TypeScript                                | ESLint with the shrinking `eslint-suppressions.json` baseline                            | #1077, #1079  |

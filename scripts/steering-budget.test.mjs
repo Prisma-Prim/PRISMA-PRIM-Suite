@@ -12,10 +12,14 @@ const steeringBudgets = {
   // The columns and illustration stay in structural-decisions.md.
   // 13700: #1278 asks the final report for the verification cost record;
   // how to build it stays in verification-cost.md.
-  'docs/agents/issue-execution.md': 13_700,
+  // 14200: #1276 states the blocking acceptance proof and that no workflow
+  // starts Claude; the row format and details stay in acceptance-proof.md.
+  'docs/agents/issue-execution.md': 14_200,
   'docs/agents/typescript-discipline.md': 4_500,
   'docs/agents/issue-tracker.md': 2_200,
-  '.github/pull_request_template.md': 900,
+  // 1100: #1276 replaces "Tests added" with the Acceptance proof table the
+  // CI check parses; its format stays in acceptance-proof.md.
+  '.github/pull_request_template.md': 1_100,
 };
 
 for (const [path, budget] of Object.entries(steeringBudgets)) {

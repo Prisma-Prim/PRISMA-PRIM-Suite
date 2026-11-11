@@ -52,6 +52,10 @@ A repository procedure never justifies hiding an unexpectedly large cost from th
 4. Self-review the final diff twice: against repository Standards and the originating issue. Standards review must report all material violations of the TypeScript discipline when the diff contains TypeScript. Check every acceptance criterion against the complete change; for browser or asynchronous work, audit the journey's reads, writes and readiness conditions before assertions, with permissions and state transitions where relevant, and keep assertion strength. For documentation, check the requested outcomes, links and consistency with the owning instructions. Fix what you find.
 5. Publish one focused commit; squash intermediate commits before the first push.
 
+## Acceptance proof
+
+The PR body's Acceptance proof section gives each acceptance criterion, or each claim when no issue closes, a test that passed in the same CI run, plus desktop and narrow acceptance screenshots for UI; `quality` blocks the merge otherwise. An exception needs an approver's comment; rerun the failed job after any edit. No workflow, comment or label may start Claude for proof. [Acceptance proof](acceptance-proof.md) has the format and details.
+
 ## CI and merge
 
 CI runs automatically on every pull request update. A ruleset protects `main`: pull request required, squash merge only, required check `quality`, no deletion or force push. No merge queue (owner decision, 2026-11-07): the PR's green `quality` gates the merge; an advancing base needs no refresh, re-verification or SHA binding. Manual `workflow_dispatch` serves diagnosis only and does not count toward a pull request's required check.

@@ -48,10 +48,24 @@ jobs:
         run: pnpm db:check-drift
 
       - name: Test scripts
+        env:
+          CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/scripts.json
         run: pnpm test:scripts
 
       - name: Test documentation contracts
         run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration
+
+      # Each test family keeps its results for the acceptance-proof check in
+      # `quality` (scripts/verify-acceptance-proof.mjs).
+      - name: Upload script test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-scripts-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/ci-test-results/
+          if-no-files-found: warn
+          retention-days: 14
 
   scope:
     runs-on: ubuntu-24.04
@@ -176,12 +190,23 @@ jobs:
       - name: Test API
         env:
           API_TEST_PART: ${{ matrix.part }}
+          CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/api-${{ strategy.job-index }}.json
         run: |
           if [ "$API_TEST_PART" = serial ]; then
             pnpm --filter @prisma-prim/api test:postgres:serial
           else
             pnpm --filter @prisma-prim/api test:parallel --shard="$API_TEST_PART"
           fi
+
+      - name: Upload API test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-api-${{ strategy.job-index }}-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/ci-test-results/
+          if-no-files-found: warn
+          retention-days: 14
 
   web_unit:
     needs: [checks, scope]
@@ -202,7 +227,19 @@ jobs:
         run: pnpm agent:doctor
 
       - name: Test Web unit
+        env:
+          CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/web_unit.json
         run: pnpm --filter @prisma-prim/web exec vitest run
+
+      - name: Upload Web unit test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-web_unit-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/ci-test-results/
+          if-no-files-found: warn
+          retention-days: 14
 
   browser:
     needs: [checks, scope]
@@ -225,7 +262,19 @@ jobs:
         run: pnpm agent:doctor:web
 
       - name: Test browser
+        env:
+          CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/browser-${{ matrix.shard }}.json
         run: pnpm --filter @prisma-prim/web test:browser --shard=${{ matrix.shard }}/3
+
+      - name: Upload browser test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-browser-${{ matrix.shard }}-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/ci-test-results/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Namespace browser run metadata
         if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
@@ -274,7 +323,19 @@ jobs:
 
       - name: Test acceptance
         id: repository_tests
+        env:
+          CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/acceptance-${{ matrix.shard }}.json
         run: pnpm --filter @prisma-prim/web test:browser:acceptance --shard=${{ matrix.shard }}/2
+
+      - name: Upload acceptance test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-acceptance-${{ matrix.shard }}-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/ci-test-results/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Verify acceptance failure evidence
         # One probe per run: two shards would write the same probe paths and
@@ -448,6 +509,13 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Read-only access for the acceptance-proof check: the current pull
+    # request body, its changed files and comments, and the issues it closes.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -469,6 +537,27 @@ jobs:
           pattern: browser-evidence-part-*-${{ github.run_id }}
           path: browser-evidence/
           merge-multiple: true
+
+      - name: Download test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ci-test-results-*-${{ github.run_id }}
+          path: ci-test-results/
+          merge-multiple: true
+
+      # A deterministic reader of the pull request, its comments and this
+      # run's results; it starts no model. It reads the current body and
+      # comments, so rerunning this job picks up an edited section or a new
+      # exception comment (docs/agents/acceptance-proof.md).
+      - name: Verify acceptance proof
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+          PROOF_EXCEPTION_APPROVERS: ${{ vars.PROOF_EXCEPTION_APPROVERS }}
+        run: node scripts/verify-acceptance-proof.mjs
 
       - name: Upload complete browser evidence
         if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
