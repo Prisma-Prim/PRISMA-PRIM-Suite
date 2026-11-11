@@ -27,23 +27,33 @@ import { selectOption } from './select-option';
 const copy = (key: CertificationMessageKey) =>
   resolveMessage(certificationMessages, 'en', key);
 
-/** The English step labels the dossier register prints with each version. */
-const STEP_LABELS = new Map([
-  ['application', 'Application'],
-  ['application_review', 'Application review'],
-  ['duration', 'Audit duration'],
-  ['agreement', 'Certification agreement'],
-  ['team', 'Audit team'],
-  ['team_decision', 'Audit team decision'],
-  ['stage_1_plan', 'Stage 1 plan'],
-  ['stage_1_report', 'Stage 1 report'],
-  ['stage_2_plan', 'Stage 2 plan'],
-  ['stage_2_report', 'Stage 2 report'],
-  ['recommendation', 'Team recommendation'],
-  ['dossier_review', 'Dossier review'],
-  ['decision', 'Certification decision'],
-  ['certificate_data', 'Certificate data'],
+/**
+ * The Case page's timeline title of each step version. The dossier register
+ * prints every version under the step name its title starts with (#1287).
+ */
+const STEP_TITLES = new Map<string, CertificationMessageKey>([
+  ['application', 'timelineApplication'],
+  ['application_review', 'timelineReview'],
+  ['duration', 'timelineDuration'],
+  ['agreement', 'timelineAgreement'],
+  ['team', 'timelineTeam'],
+  ['team_decision', 'timelineTeamDecision'],
+  ['stage_1_plan', 'timelineStage1Plan'],
+  ['stage_1_report', 'timelineStage1Report'],
+  ['stage_2_plan', 'timelineStage2Plan'],
+  ['stage_2_report', 'timelineStage2Report'],
+  ['recommendation', 'timelineRecommendation'],
+  ['dossier_review', 'timelineDossierReview'],
+  ['decision', 'timelineCertificationDecision'],
+  ['certificate_data', 'timelineCertificateData'],
 ]);
+/** The step name a timeline title starts with, before its dash. */
+function stepNameOf(title: string): string {
+  const dash = title.indexOf(' — ');
+  if (dash < 1)
+    throw new Error(`Timeline title without a leading step name: ${title}`);
+  return title.slice(0, dash);
+}
 /** Buttons that would record or change something; a reader sees none. */
 const COMMAND =
   /^(Record|Correct|Change|Reclassify|Judge|Verify|Attach|Add|Remove|Open a|Propose|Approve)\b/u;
@@ -383,12 +393,31 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       (await journey.read(reader, `${journey.base}/timeline`)).entries,
     );
     expect(timeline.map((entry) => entry.step)).toEqual([
-      ...STEP_LABELS.keys(),
+      ...STEP_TITLES.keys(),
     ]);
+    // The reader's timeline is complete once it ends with the Certificate.
+    const titles = region(article, 'timelineTitle').locator(
+      ':scope > ol > li > strong',
+    );
+    await expect(titles.last()).toHaveText(
+      formatMessage(copy('timelineCertificate'), {
+        number: `DEMO-${journey.orderReference}`,
+      }),
+    );
+    const shown = await titles.allTextContents();
     for (const entry of timeline) {
-      const label = STEP_LABELS.get(text(entry.step));
-      if (!label) throw new Error(`Unlabelled step ${String(entry.step)}`);
-      expected.push(`${label} — version ${String(entry.version)}`);
+      const title = STEP_TITLES.get(text(entry.step));
+      if (!title) throw new Error(`Untitled step ${String(entry.step)}`);
+      const name = stepNameOf(copy(title));
+      // The page shows every version of the step under the name the register
+      // prints with it.
+      expect(
+        shown.filter((line) => line.startsWith(`${name} — `)),
+        name,
+      ).toHaveLength(
+        timeline.filter((other) => other.step === entry.step).length,
+      );
+      expected.push(`${name} — version ${String(entry.version)}`);
     }
     const documents = records(
       (await journey.read(reader, `${journey.base}/documents`)).items,

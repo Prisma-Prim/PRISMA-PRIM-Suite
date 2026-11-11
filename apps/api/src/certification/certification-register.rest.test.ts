@@ -36,14 +36,14 @@ const STEP_LABELS: Record<string, string> = {
   duration: 'Audit duration',
   agreement: 'Certification agreement',
   team: 'Audit team',
-  team_decision: 'Audit team decision',
+  team_decision: 'Team decision',
   stage_1_plan: 'Stage 1 plan',
   stage_1_report: 'Stage 1 report',
   stage_2_plan: 'Stage 2 plan',
   stage_2_report: 'Stage 2 report',
   recommendation: 'Team recommendation',
   dossier_review: 'Dossier review',
-  decision: 'Certification decision',
+  decision: 'Certification Decision',
   certificate_data: 'Certificate data',
 };
 
@@ -313,7 +313,7 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
     for (const value of [
       'Реестр досье',
       'Решение о сертификации — версия 2',
-      'Отчёт по этапу 1 — версия 1',
+      'Отчёт этапа 1 — версия 1',
       'Lactis Demo SRL',
     ])
       expect(ru).toContain(compactPdfText(value));
