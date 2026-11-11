@@ -379,6 +379,36 @@ export class CertificationController {
     });
   }
 
+  @Post('certification-cases/:caseId/discrepancies')
+  recordDiscrepancy(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordDiscrepancy({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/discrepancy-resolutions')
+  resolveDiscrepancy(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.resolveDiscrepancy({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
   @Post('certification-cases/:caseId/certificate')
   recordCertificate(
     @Req() request: ActorContextRequest,

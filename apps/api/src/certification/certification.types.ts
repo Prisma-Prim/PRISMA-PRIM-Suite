@@ -19,6 +19,7 @@ import type {
 } from './certification-duration.js';
 
 import type { ActAttribution } from './certification-attribution.js';
+import type { ConsistencySection } from './certification-consistency.js';
 
 /** ISO 22003-1 food chain subcategories used by ISO 22000 certification. */
 export const FOOD_CHAIN_SUBCATEGORIES = [
@@ -292,6 +293,8 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
     { step: 'certificate_data' }
   > | null;
   certificate: CertificateRecord | null;
+  /** The Dossier Consistency Check over the Case's current records. */
+  consistency: ConsistencySection;
 }
 
 export interface CertificateRecord {

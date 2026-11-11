@@ -23,6 +23,11 @@ export type ApiResult<T> =
        * states one; its owner parses it.
        */
       failures?: unknown;
+      /**
+       * The unparsed records a conflict names, such as the Discrepancies a
+       * certification gate refused for; its owner parses them.
+       */
+      discrepancies?: unknown;
     }
   | { status: 'validation'; message?: string; code?: string };
 
@@ -37,6 +42,13 @@ export function conflictCode(result: ApiResult<unknown>): string | undefined {
 export function conflictFailures(result: ApiResult<unknown>): unknown {
   return result.status === 'conflict' && result.reason === undefined
     ? result.failures
+    : undefined;
+}
+
+/** The unparsed records a conflict names, if any. */
+export function conflictDiscrepancies(result: ApiResult<unknown>): unknown {
+  return result.status === 'conflict' && result.reason === undefined
+    ? result.discrepancies
     : undefined;
 }
 
@@ -154,10 +166,12 @@ export async function createAuthenticatedApiClient(
             };
           const code = codeFrom(body);
           const failures = isRecord(body) ? body.failures : undefined;
+          const discrepancies = isRecord(body) ? body.discrepancies : undefined;
           return {
             status: 'conflict',
             ...(code === undefined ? {} : { code }),
             ...(failures === undefined ? {} : { failures }),
+            ...(discrepancies === undefined ? {} : { discrepancies }),
           };
         }
         if (response.status === 400) {

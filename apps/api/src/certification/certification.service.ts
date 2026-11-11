@@ -30,22 +30,39 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   CERTIFICATION_STEPS,
   certificationCertificates,
+  certificationDiscrepancyResolutions,
   certificationEvents,
   certificationFindingRecords,
   certificationFindings,
   certificationCaseDocuments,
   certificationCases,
+  certificationManualDiscrepancies,
   certificationReceipts,
   certificationStepVersions,
   type CERTIFICATION_COMMAND_KINDS,
 } from '../database/schema/certification.js';
+import {
+  CONSISTENCY_RULE_SET_VERSION,
+  blockingDiscrepancies,
+  consistencySection,
+  type BlockingDiscrepancy,
+  type ConsistencyCertificate,
+  type ConsistencyInput,
+  type ConsistencySnapshot,
+  type ManualDiscrepancyRecord,
+  type ResolutionRecord,
+} from './certification-consistency.js';
+import {
+  manualDiscrepancyCommand,
+  resolutionCommand,
+} from './certification-consistency.validation.js';
 import { pdfRefusal } from '../commercial-pdf/commercial-pdf-source.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
 import { workspaceMemberships } from '../database/schema/core.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentWorkingEvidenceReferenceService } from '../documents/document-working-evidence-reference.service.js';
 import {
-  proposeDuration,
+  proposeForApplication,
   roundToHundredths,
   type DurationResult,
 } from './certification-duration.js';
@@ -124,7 +141,6 @@ import type {
   ApplicationFacts,
   ApplicationReviewVersion,
   DurationDetermination,
-  DurationFactorInputs,
   DurationVersion,
   ApplicationVersion,
   CertificationCaseDetail,
@@ -294,11 +310,9 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
-        if (latest(steps, 'application_review'))
-          throw stepConflict(
-            'CERTIFICATION_APPLICATION_REVIEWED',
-            'The application can no longer change after its review.',
-          );
+        // An accepted application stays correctable, with a reason, until the
+        // decision: the Dossier Consistency Check compares what changed (R01).
+        requireUndecided(steps);
         const previous = latest(steps, 'application');
         const version = (previous?.version ?? 0) + 1;
         if ((version === 1) !== (input.reason === null))
@@ -398,7 +412,7 @@ export class CertificationService {
       const facts = this.acceptedApplication(
         await this.steps(actor, companyId, targetId),
       );
-      return computeDuration(facts, factors);
+      return proposeForApplication(facts, factors);
     });
   }
 
@@ -439,7 +453,7 @@ export class CertificationService {
             'A correction states its reason; a first determination has none.',
           );
         await this.requireAct(actor, companyId, targetId, input.onBehalf);
-        const result = computeDuration(facts, input.inputs);
+        const result = proposeForApplication(facts, input.inputs);
         if (result.kind === 'refused')
           throw new BadRequestException({
             code: 'CERTIFICATION_DURATION_REFUSED',
@@ -1622,7 +1636,7 @@ export class CertificationService {
       step: 'decision',
       parse: certificationDecision,
       action: 'certification_case.decision_recorded',
-      check: async ({ steps, companyId, payload }) => {
+      check: async ({ steps, companyId, payload, current }) => {
         this.requireIndependent(input.actor, steps);
         // A later version corrects the texts or references of the same
         // outcome, with its reason, until the Certificate is recorded.
@@ -1651,11 +1665,40 @@ export class CertificationService {
           steps,
           payload,
         );
+        // The check runs again here, on the Case as this decision would leave
+        // it: its dates and granted texts are compared too (R05, R11).
+        const discrepancies = await this.blocking(
+          input.actor,
+          companyId,
+          current,
+          steps,
+          (snapshot) => ({
+            ...snapshot,
+            steps: [
+              ...snapshot.steps,
+              {
+                id: 'candidate-decision',
+                version: (previous?.version ?? 0) + 1,
+                caseRevision: current.revision + 1,
+                reason: null,
+                recordedBy: {
+                  workspaceMembershipId: input.actor.workspaceMembershipId,
+                  displayName: input.actor.displayName,
+                },
+                recordedAt: this.clock.now().toISOString(),
+                step: 'decision',
+                value: payload,
+              },
+            ],
+          }),
+        );
+        if (discrepancies.length) failures.push('DISCREPANCIES_OPEN');
         if (failures.length)
           throw new ConflictException({
             code: 'CERTIFICATION_DECISION_PRECONDITIONS',
             message: 'The Certification Decision preconditions do not hold.',
             failures,
+            discrepancies,
           });
         return { decision: payload.decision };
       },
@@ -1735,6 +1778,21 @@ export class CertificationService {
             'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
             'The agreed Certificate data must state exactly what the decision grants.',
           );
+        // Until the draft approval carries this gate (#1294), the Certificate
+        // is refused while a critical or unaccepted error Discrepancy is open.
+        const discrepancies = await this.blocking(
+          actor,
+          companyId,
+          current,
+          steps,
+        );
+        if (discrepancies.length)
+          throw new ConflictException({
+            code: 'CERTIFICATION_DISCREPANCIES_OPEN',
+            message:
+              'Resolve the open critical and error Discrepancies before recording the Certificate.',
+            discrepancies,
+          });
         const signatory = input.signedBy;
         this.requireNotNamedOnTeam(steps, signatory ?? undefined);
         await this.requireAttachment(
@@ -1807,6 +1865,7 @@ export class CertificationService {
         steps: StepRow[];
         companyId: string;
         payload: T;
+        current: CaseRow;
       }) => Promise<Record<string, string | number>>;
       status?: (payload: T) => CaseRow['status'] | undefined;
     },
@@ -1835,6 +1894,7 @@ export class CertificationService {
           steps,
           companyId,
           payload: command.payload,
+          current,
         });
         const previous = latest(steps, input.step);
         const version = (previous?.version ?? 0) + 1;
@@ -2150,7 +2210,8 @@ export class CertificationService {
     role = 'programme_manager',
   }: {
     actor: ActorContext;
-    role?: Exclude<CertificationRole, 'reader'>;
+    /** `contributor`: any mutating bundle; the command then checks which. */
+    role?: Exclude<CertificationRole, 'reader'> | 'contributor';
     kind: CommandKind;
     key: string;
     fingerprint: string;
@@ -2159,7 +2220,13 @@ export class CertificationService {
     return this.protect(() =>
       runIdempotentCommand(this.database, {
         fingerprint,
-        authorize: () => this.authorize(actor, role),
+        authorize: async () => {
+          if (role !== 'contributor') return this.authorize(actor, role);
+          const companyId = await this.authorize(actor, 'reader');
+          if ((await this.contributorRoles(actor)).size === 0)
+            throw new ForbiddenException();
+          return companyId;
+        },
         lockParts: (companyId) => [
           'certification',
           actor.workspaceId,
@@ -2282,6 +2349,7 @@ export class CertificationService {
     companyId: string,
     caseId: string,
     expectedRevision: number,
+    statuses: readonly CaseRow['status'][] = ['open'],
   ): Promise<CaseRow> {
     const [row] = await this.database.connection
       .select()
@@ -2304,7 +2372,7 @@ export class CertificationService {
       throw staleVersionConflict(
         'Reload the Certification Case before recording this step.',
       );
-    if (row.status !== 'open')
+    if (!statuses.includes(row.status))
       throw stepConflict(
         'CERTIFICATION_CASE_CLOSED',
         'This Certification Case is closed.',
@@ -2388,7 +2456,359 @@ export class CertificationService {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
       }),
+      consistency: consistencySection(
+        await this.consistencyInput(actor, companyId, row, steps, findings),
+      ),
     };
+  }
+
+  /** Every record the Dossier Consistency Check reads, at the Case's revision. */
+  private async consistencyInput(
+    actor: ActorContext,
+    companyId: string,
+    row: CaseRow,
+    steps: readonly StepRow[],
+    findings: readonly FindingView[],
+  ): Promise<ConsistencyInput> {
+    const scope = <
+      T extends
+        | typeof certificationCaseDocuments
+        | typeof certificationCertificates
+        | typeof certificationManualDiscrepancies
+        | typeof certificationDiscrepancyResolutions,
+    >(
+      table: T,
+    ) =>
+      and(
+        eq(table.workspaceId, actor.workspaceId),
+        eq(table.companyId, companyId),
+        eq(table.caseId, row.id),
+      );
+    const documents = await this.database.connection
+      .select()
+      .from(certificationCaseDocuments)
+      .where(scope(certificationCaseDocuments))
+      .orderBy(asc(certificationCaseDocuments.caseRevision));
+    const [issued] = await this.database.connection
+      .select()
+      .from(certificationCertificates)
+      .where(scope(certificationCertificates));
+    const certificate: ConsistencyCertificate | null = issued
+      ? {
+          number: issued.number,
+          attachmentId: issued.attachmentId,
+          caseRevision: issued.caseRevision,
+          recordedBy: {
+            workspaceMembershipId: issued.actorMembershipId,
+            displayName: issued.actorDisplayName,
+          },
+          recordedAt: issued.recordedAt.toISOString(),
+        }
+      : null;
+    const manual = await this.database.connection
+      .select()
+      .from(certificationManualDiscrepancies)
+      .where(scope(certificationManualDiscrepancies))
+      .orderBy(asc(certificationManualDiscrepancies.sequence));
+    const resolutions = await this.database.connection
+      .select()
+      .from(certificationDiscrepancyResolutions)
+      .where(scope(certificationDiscrepancyResolutions))
+      .orderBy(asc(certificationDiscrepancyResolutions.caseRevision));
+    return {
+      steps: steps.map(stepVersion),
+      attachments: documents.map(attachment),
+      findings: findings.map((finding) => ({
+        id: finding.id,
+        sequence: finding.sequence,
+        records: finding.records,
+      })),
+      certificate,
+      revision: row.revision,
+      status: row.status,
+      manual: manual.map(manualDiscrepancyRecord),
+      resolutions: resolutions.map(resolutionRecord),
+    };
+  }
+
+  /** The open critical and unaccepted error Discrepancies a gate refuses for. */
+  private async blocking(
+    actor: ActorContext,
+    companyId: string,
+    row: CaseRow,
+    steps: readonly StepRow[],
+    candidate?: (snapshot: ConsistencySnapshot) => ConsistencySnapshot,
+  ): Promise<BlockingDiscrepancy[]> {
+    const input = await this.consistencyInput(
+      actor,
+      companyId,
+      row,
+      steps,
+      await this.findings(actor, companyId, row.id, steps),
+    );
+    return blockingDiscrepancies(
+      candidate ? candidate(input) : input,
+      input.manual,
+      input.resolutions,
+    );
+  }
+
+  /**
+   * The mutating certification bundles the actor holds, rechecked live
+   * inside the command's transaction.
+   */
+  private async contributorRoles(
+    actor: ActorContext,
+  ): Promise<Set<Exclude<CertificationRole, 'reader'>>> {
+    const roles = new Set<Exclude<CertificationRole, 'reader'>>();
+    for (const role of ['programme_manager', 'approver', 'auditor'] as const)
+      if (
+        await this.authorization.hasPermissions(actor, {
+          permissions: [CERTIFICATION_REQUIRED_PERMISSION[role]],
+          prerequisites: [{ permissions: ['certification.read'] }],
+          lock: true,
+        })
+      )
+        roles.add(role);
+    return roles;
+  }
+
+  /** A programme manager, an auditor on the team or an approver outside it records a manual Discrepancy. */
+  recordDiscrepancy({
+    actor,
+    caseId,
+    body,
+    key,
+  }: CaseCommandInput): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'contributor',
+      kind: 'discrepancy',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = manualDiscrepancyCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        const roles = await this.contributorRoles(actor);
+        const onTeam = this.onTeam(actor, steps);
+        if (
+          !roles.has('programme_manager') &&
+          !(roles.has('auditor') && onTeam) &&
+          !(roles.has('approver') && !onTeam)
+        )
+          throw roles.has('approver')
+            ? stepConflict(
+                'CERTIFICATION_INDEPENDENCE',
+                'A member of the audit team records a Discrepancy as its auditor, not as an approver.',
+              )
+            : stepConflict(
+                'CERTIFICATION_NOT_ON_TEAM',
+                'An auditor records Discrepancies on the Cases whose audit team includes them.',
+              );
+        for (const side of [input.left, input.right])
+          await this.requireAttachment(
+            actor,
+            companyId,
+            targetId,
+            side.attachmentId,
+            DOCUMENT_ROLES,
+          );
+        const [recorded] = await this.database.connection
+          .select({ value: count() })
+          .from(certificationManualDiscrepancies)
+          .where(
+            and(
+              eq(
+                certificationManualDiscrepancies.workspaceId,
+                actor.workspaceId,
+              ),
+              eq(certificationManualDiscrepancies.companyId, companyId),
+              eq(certificationManualDiscrepancies.caseId, targetId),
+            ),
+          );
+        const now = this.clock.now();
+        await this.database.connection
+          .insert(certificationManualDiscrepancies)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            caseRevision: current.revision + 1,
+            sequence: (recorded?.value ?? 0) + 1,
+            verdict: input.verdict,
+            subject: input.subject,
+            leftValue: input.left.value,
+            leftAttachmentId: input.left.attachmentId,
+            leftLocation: input.left.location,
+            rightValue: input.right.value,
+            rightAttachmentId: input.right.attachmentId,
+            rightLocation: input.right.location,
+            note: input.note,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            recordedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.discrepancy_recorded',
+          metadata: { verdict: input.verdict },
+        });
+      },
+    });
+  }
+
+  /**
+   * Accepts an open Discrepancy with a reason, or closes a manual one as
+   * corrected. "To clarify": a programme manager or an approver outside the
+   * team; "error": only such an approver; critical: never, only a correction.
+   */
+  resolveDiscrepancy({
+    actor,
+    caseId,
+    body,
+    key,
+  }: CaseCommandInput): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'contributor',
+      kind: 'discrepancy_resolution',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = resolutionCommand(body);
+        // Resolutions remain possible on a refused or certified Case.
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+          ['open', 'refused', 'certified'],
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        const findings = await this.findings(actor, companyId, targetId, steps);
+        const section = consistencySection(
+          await this.consistencyInput(
+            actor,
+            companyId,
+            current,
+            steps,
+            findings,
+          ),
+        );
+        const target = section.open.find(
+          (view) => view.id === input.discrepancyId,
+        );
+        if (!target)
+          throw stepConflict(
+            'CERTIFICATION_DISCREPANCY_NOT_OPEN',
+            'This Discrepancy is not open on the current Case; reload it.',
+          );
+        const roles = await this.contributorRoles(actor);
+        const onTeam = this.onTeam(actor, steps);
+        const approver = roles.has('approver') && !onTeam;
+        const manager = roles.has('programme_manager');
+        const refuse = () =>
+          roles.has('approver') && onTeam
+            ? stepConflict(
+                'CERTIFICATION_INDEPENDENCE',
+                'A member of the audit team cannot resolve this Discrepancy.',
+              )
+            : new ForbiddenException();
+        let correctedByAttachmentId: string | null = null;
+        let correctedByStepVersionId: string | null = null;
+        if (input.resolution === 'accepted') {
+          if (target.verdict === 'critical')
+            throw stepConflict(
+              'CERTIFICATION_DISCREPANCY_CRITICAL',
+              'A critical Discrepancy is resolved only by correcting the records.',
+            );
+          if (target.verdict === 'error' ? !approver : !approver && !manager)
+            throw refuse();
+        } else {
+          if (target.origin !== 'manual')
+            throw stepConflict(
+              'CERTIFICATION_DISCREPANCY_CORRECTED_BY_RECORD',
+              'A rule Discrepancy closes when a new record version makes its values agree.',
+            );
+          if (!approver && !manager) throw refuse();
+          const reference = input.correctedBy;
+          if (reference.kind === 'attachment') {
+            await this.requireAttachment(
+              actor,
+              companyId,
+              targetId,
+              reference.attachmentId,
+              DOCUMENT_ROLES,
+            );
+            correctedByAttachmentId = reference.attachmentId;
+          } else {
+            if (!steps.some((step) => step.id === reference.versionId))
+              throw stepConflict(
+                'CERTIFICATION_CORRECTING_RECORD_UNKNOWN',
+                'Name a record version of this Case as the correction.',
+              );
+            correctedByStepVersionId = reference.versionId;
+          }
+        }
+        const rule = target.origin === 'rule' ? target.rule : 'manual';
+        const now = this.clock.now();
+        await this.database.connection
+          .insert(certificationDiscrepancyResolutions)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            caseRevision: current.revision + 1,
+            discrepancyId: target.id,
+            ruleCode: rule,
+            manualDiscrepancyId:
+              target.origin === 'manual'
+                ? target.id.slice('manual:'.length)
+                : null,
+            kind: input.resolution,
+            verdict: target.verdict,
+            reason: input.reason,
+            comparedValues: {
+              subject: target.subject,
+              left: target.left.value,
+              right: target.right.value,
+            },
+            correctedByAttachmentId,
+            correctedByStepVersionId,
+            ruleSetVersion: CONSISTENCY_RULE_SET_VERSION,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            recordedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.discrepancy_resolved',
+          metadata: {
+            rule,
+            verdict: target.verdict,
+            resolution: input.resolution,
+          },
+        });
+      },
+    });
   }
 
   /** Every recorded version and referenced Document Version of a visible Case. */
@@ -2499,6 +2919,15 @@ export class CertificationService {
         ...(certificate ? [{ kind: 'certificate' as const, certificate }] : []),
       ],
       documents: documents.map(attachment),
+      consistency: consistencySection(
+        await this.consistencyInput(
+          actor,
+          companyId,
+          row,
+          steps,
+          await this.findings(actor, companyId, caseId, steps),
+        ),
+      ),
     };
   }
 
@@ -3157,33 +3586,66 @@ function attachment(
   };
 }
 
+function manualDiscrepancyRecord(
+  row: typeof certificationManualDiscrepancies.$inferSelect,
+): ManualDiscrepancyRecord {
+  return {
+    id: row.id,
+    sequence: row.sequence,
+    caseRevision: row.caseRevision,
+    verdict: row.verdict,
+    subject: row.subject,
+    left: {
+      value: row.leftValue,
+      attachmentId: row.leftAttachmentId,
+      location: row.leftLocation,
+    },
+    right: {
+      value: row.rightValue,
+      attachmentId: row.rightAttachmentId,
+      location: row.rightLocation,
+    },
+    note: row.note,
+    recordedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    recordedAt: row.recordedAt.toISOString(),
+  };
+}
+
+function resolutionRecord(
+  row: typeof certificationDiscrepancyResolutions.$inferSelect,
+): ResolutionRecord {
+  return {
+    id: row.id,
+    discrepancyId: row.discrepancyId,
+    manualDiscrepancyId: row.manualDiscrepancyId,
+    kind: row.kind,
+    verdict: row.verdict,
+    reason: row.reason,
+    correctedBy:
+      row.correctedByAttachmentId !== null
+        ? { kind: 'attachment', attachmentId: row.correctedByAttachmentId }
+        : row.correctedByStepVersionId !== null
+          ? { kind: 'step', versionId: row.correctedByStepVersionId }
+          : null,
+    ruleSetVersion: row.ruleSetVersion,
+    caseRevision: row.caseRevision,
+    recordedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    recordedAt: row.recordedAt.toISOString(),
+  };
+}
+
 function durationVersion(row: StepRow): DurationVersion {
   return {
     ...base(row),
     step: 'duration',
     value: persisted(() => durationDetermination(row.payload)),
   };
-}
-
-/** The proposal for the accepted application, or why none exists. */
-function computeDuration(
-  facts: ApplicationFacts,
-  factors: DurationFactorInputs,
-): DurationResult {
-  const studies = Object.values(factors.haccpStudies).reduce(
-    (total, value) => total + value,
-    0,
-  );
-  if (studies !== facts.haccpStudyCount)
-    return { kind: 'refused', refusals: ['HACCP_STUDIES_MISMATCH'] };
-  return proposeDuration({
-    subcategories: facts.foodChainSubcategories,
-    primary: factors.primary,
-    haccpStudies: factors.haccpStudies,
-    effectiveFte: facts.effectiveFte,
-    increases: factors.increases,
-    reductions: factors.reductions,
-  });
 }
 
 function differsFromProposal(

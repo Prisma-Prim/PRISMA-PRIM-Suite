@@ -1,4 +1,8 @@
-import type { FoodChainSubcategory } from './certification.types.js';
+import type {
+  ApplicationFacts,
+  DurationFactorInputs,
+  FoodChainSubcategory,
+} from './certification.types.js';
 
 /**
  * Deterministic ISO 22000 audit-duration proposal: the basic method of the
@@ -196,6 +200,31 @@ export function proposeDuration(input: DurationInputs): DurationResult {
       warnings,
     },
   };
+}
+
+/**
+ * The proposal for an application's facts and the programme manager's
+ * factors, or why none exists: the confirmation and the Dossier Consistency
+ * Check use this one function, so a recomputation is always like with like.
+ */
+export function proposeForApplication(
+  facts: ApplicationFacts,
+  factors: DurationFactorInputs,
+): DurationResult {
+  const studies = Object.values(factors.haccpStudies).reduce(
+    (total, value) => total + value,
+    0,
+  );
+  if (studies !== facts.haccpStudyCount)
+    return { kind: 'refused', refusals: ['HACCP_STUDIES_MISMATCH'] };
+  return proposeDuration({
+    subcategories: facts.foodChainSubcategories,
+    primary: factors.primary,
+    haccpStudies: factors.haccpStudies,
+    effectiveFte: facts.effectiveFte,
+    increases: factors.increases,
+    reductions: factors.reductions,
+  });
 }
 
 /** Rounds an exact amount half up to two decimals, as the calculator displays it. */
