@@ -4093,9 +4093,11 @@ function CertificationRegistry(
       certificationDecisionDraft ?? emptyCertificationDecisionDraft();
     const outcome = recorded?.value.decision ?? null;
     const unmet = decisionPreconditions(current, outcome ?? draft.decision);
+    // A blocked submit's alert lists them; the standing notice then yields.
+    const announced = closingFeedback.certificationDecision.status === 'unmet';
     return (
       <>
-        {unmet.length > 0 && (
+        {unmet.length > 0 && !announced && (
           <div className="certification-blocked">
             <p>{copy('decisionPreconditionsTitle')}</p>
             <PreconditionList failures={unmet} />

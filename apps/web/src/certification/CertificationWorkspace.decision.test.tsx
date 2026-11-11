@@ -1096,6 +1096,39 @@ describe('Certification recommendation, decision and Certificate', () => {
     ).toBeVisible();
   });
 
+  it('names the attached PDFs the document archive, apart from the generated dossier register, on the Case page and in the dossier review form', async () => {
+    const { server, actor } = serve({ manager: true, approver: true });
+    const caseId = reportedCase(server, {
+      reference: 'CERT-NAMES',
+      leader: certificationIds.colleague,
+    });
+    recommend(server, caseId);
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-NAMES');
+
+    // The attached signed PDFs and the generated PDF carry distinct names.
+    expect(
+      within(region('Document archive')).getByText('Stage 1 plan — version 1', {
+        selector: 'strong',
+      }),
+    ).toBeVisible();
+    expect(
+      within(region('Dossier register PDF')).getByRole('button', {
+        name: 'Download the dossier register (PDF)',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('region', { name: 'Dossier register' }),
+    ).not.toBeInTheDocument();
+    // The dossier review form names the archive it is distinct from.
+    expect(
+      within(form(DOSSIER, 'Record the dossier review')).getByText(
+        'An approver who is not on the audit team answers every dossier item: present, missing or not applicable. Nothing is preselected; a missing item needs a note. This review is distinct from the document archive.',
+      ),
+    ).toBeVisible();
+  });
+
   it('shows a reader the recorded recommendation, review, decision, data and Certificate without any command', async () => {
     const { server, actor } = serve({ manager: false });
     const caseId = reportedCase(server, {
