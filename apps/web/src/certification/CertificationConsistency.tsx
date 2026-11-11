@@ -28,6 +28,7 @@ import {
   useConsistencyCopy,
   type ConsistencyMessageKey,
 } from './certification-consistency.copy';
+import { blank, invalidField } from './certification-fields';
 import type {
   CaseDetail,
   CaseTimeline,
@@ -40,7 +41,6 @@ type FormState<Draft> = {
   /** The rendered refusal, uncertainty or saving message, if any. */
   feedback: ReactNode;
   saving: boolean;
-  invalid: boolean;
   describedBy: string | undefined;
 };
 
@@ -427,7 +427,10 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
               value={draft.correctedBy}
               placeholder={t('selectCorrection')}
               disabled={props.busy}
-              invalid={props.resolution.invalid}
+              invalid={invalidField(
+                props.resolution.describedBy,
+                draft.correctedBy === '',
+              )}
               describedBy={props.resolution.describedBy}
               options={corrections}
               onValueChange={(correctedBy) =>
@@ -443,7 +446,10 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
           maxLength={CONSISTENCY_LIMITS.reason}
           required
           disabled={props.busy}
-          aria-invalid={props.resolution.invalid}
+          aria-invalid={invalidField(
+            props.resolution.describedBy,
+            blank(draft.reason),
+          )}
           aria-describedby={props.resolution.describedBy}
           onChange={(event) =>
             props.onResolutionDraft({ ...draft, reason: event.target.value })
@@ -525,7 +531,7 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
             maxLength={CONSISTENCY_LIMITS.value}
             required
             disabled={props.busy}
-            aria-invalid={manual.invalid}
+            aria-invalid={invalidField(manual.describedBy, blank(side.value))}
             aria-describedby={manual.describedBy}
             onChange={(event) => setSide({ value: event.target.value })}
           />
@@ -537,7 +543,7 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
             value={side.attachmentId}
             placeholder={t('selectDocument')}
             disabled={props.busy}
-            invalid={manual.invalid}
+            invalid={invalidField(manual.describedBy, side.attachmentId === '')}
             describedBy={manual.describedBy}
             options={documents}
             onValueChange={(attachmentId) => setSide({ attachmentId })}
@@ -572,7 +578,7 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
           maxLength={CONSISTENCY_LIMITS.subject}
           required
           disabled={props.busy}
-          aria-invalid={manual.invalid}
+          aria-invalid={invalidField(manual.describedBy, blank(draft.subject))}
           aria-describedby={manual.describedBy}
           onChange={(event) => set({ subject: event.target.value })}
         />
