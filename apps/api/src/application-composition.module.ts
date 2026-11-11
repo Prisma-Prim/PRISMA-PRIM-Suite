@@ -1,15 +1,8 @@
+import { CompanyRoleAssignmentController } from './access/company-role-assignment.controller.js';
 import { WorkingEvidenceModule } from './working-evidence/working-evidence.module.js';
 import { WorkingEvidenceController } from './working-evidence/working-evidence.controller.js';
-import { CompanyWorkingEvidenceCaseReaderAssignmentController } from './access/company-working-evidence-case-reader-assignment.controller.js';
-import { CompanyWorkingEvidenceCaseRecorderAssignmentController } from './access/company-working-evidence-case-recorder-assignment.controller.js';
-import { CompanyReceivedAuditSourceAccessAssignmentController } from './access/company-received-audit-source-access-assignment.controller.js';
 import { PaymentModule } from './payment/payment.module.js';
 import { PaymentController } from './payment/payment.controller.js';
-import { CompanyPaymentReaderAssignmentController } from './access/company-payment-reader-assignment.controller.js';
-import { CompanyPaymentRecorderAssignmentController } from './access/company-payment-recorder-assignment.controller.js';
-import { CompanyPaymentConfirmerAssignmentController } from './access/company-payment-confirmer-assignment.controller.js';
-import { CompanyPaymentReverserAssignmentController } from './access/company-payment-reverser-assignment.controller.js';
-import { CompanyPaymentEvidenceAccessAssignmentController } from './access/company-payment-evidence-access-assignment.controller.js';
 import { InvoiceRecordModule } from './invoice-record/invoice-record.module.js';
 import { InvoiceRecordController } from './invoice-record/invoice-record.controller.js';
 import { OpportunityFollowUpModule } from './opportunity-follow-up/opportunity-follow-up.module.js';
@@ -17,13 +10,8 @@ import {
   OpportunityFollowUpController,
   OpportunityFollowUpDiscoveryController,
 } from './opportunity-follow-up/opportunity-follow-up.controller.js';
-import { CompanyOpportunityFollowUpCoordinatorAssignmentController } from './access/company-opportunity-follow-up-coordinator-assignment.controller.js';
-import { CompanyInvoiceReaderAssignmentController } from './access/company-invoice-reader-assignment.controller.js';
-import { CompanyInvoiceRecorderAssignmentController } from './access/company-invoice-recorder-assignment.controller.js';
-import { CompanyExternalInvoiceAccessAssignmentController } from './access/company-external-invoice-access-assignment.controller.js';
 import { InternalTaskModule } from './internal-task/internal-task.module.js';
 import { InternalTaskController } from './internal-task/internal-task.controller.js';
-import { CompanyInternalTaskManagerAssignmentController } from './access/company-internal-task-manager-assignment.controller.js';
 import { ProjectNextActionModule } from './project-next-action/project-next-action.module.js';
 import { ProjectNextActionController } from './project-next-action/project-next-action.controller.js';
 import { MissionApplicabilityModule } from './project-mission-applicability/mission-applicability.module.js';
@@ -43,45 +31,18 @@ import { ProjectPdfBundleController } from './documents/project-pdf-bundle.contr
 import { MissionPlanCopyController } from './mission-plan/mission-plan-copy.controller.js';
 import { MissionPlanModule } from './mission-plan/mission-plan.module.js';
 import { MissionPlanController } from './mission-plan/mission-plan.controller.js';
-import { CompanyMissionPlanAssignmentController } from './access/company-mission-plan-assignment.controller.js';
-import { CompanyIdeasReaderAssignmentController } from './access/company-ideas-reader-assignment.controller.js';
-import { CompanyIdeasRecorderAssignmentController } from './access/company-ideas-recorder-assignment.controller.js';
-import { CompanyIdeasReviewerAssignmentController } from './access/company-ideas-reviewer-assignment.controller.js';
 import { IdeasController } from './ideas/ideas.controller.js';
 import { IdeasModule } from './ideas/ideas.module.js';
-import {
-  CompanyCertificationApproverAssignmentController,
-  CompanyCertificationAuditorAssignmentController,
-  CompanyCertificationProgrammeManagerAssignmentController,
-  CompanyCertificationReaderAssignmentController,
-} from './access/company-certification-assignment.controller.js';
 import { CertificationController } from './certification/certification.controller.js';
 import { CertificationModule } from './certification/certification.module.js';
-import { CompanyOperationalRiskReaderAssignmentController } from './access/company-operational-risk-reader-assignment.controller.js';
 import { OperationalRiskModule } from './operational-risk/operational-risk.module.js';
 import { OperationalRiskController } from './operational-risk/operational-risk.controller.js';
-import { CompanyOperationalRiskRecorderAssignmentController } from './access/company-operational-risk-recorder-assignment.controller.js';
-import { CompanyProjectTemplateConfigurationAssignmentController } from './access/company-project-template-configuration-assignment.controller.js';
-import { CompanyProjectStageAdvancerAssignmentController } from './access/company-project-stage-advancer-assignment.controller.js';
 import { DocumentContentController } from './documents/document-content.controller.js';
-import { CompanyMissionDeliverableAccessAssignmentController } from './access/company-mission-deliverable-access-assignment.controller.js';
-import { CompanyContractSignatureDeclarerAssignmentController } from './access/company-contract-signature-declarer-assignment.controller.js';
-import { CompanyReceivedContractAccessAssignmentController } from './access/company-received-contract-access-assignment.controller.js';
-import { CompanyReceivedAddendumAccessAssignmentController } from './access/company-received-addendum-access-assignment.controller.js';
 import { TaskResultsController } from './task/task-results.controller.js';
-import { CompanyTaskResultRecorderAssignmentController } from './access/company-task-result-recorder-assignment.controller.js';
-import { CompanyMissionResultReviewerAssignmentController } from './access/company-mission-result-reviewer-assignment.controller.js';
-import { CompanyProjectNextActionCoordinatorAssignmentController } from './access/company-project-next-action-coordinator-assignment.controller.js';
-import { CompanyMissionApplicabilityCoordinatorAssignmentController } from './access/company-mission-applicability-coordinator-assignment.controller.js';
-import { CompanyMissionApplicabilityApproverAssignmentController } from './access/company-mission-applicability-approver-assignment.controller.js';
-
-import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
-import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
 import { MissionResultReviewModule } from './project-mission-review/mission-result-review.module.js';
 import { MissionResultReviewController } from './project-mission-review/mission-result-review.controller.js';
 import { ProjectTemplateModule } from './project-template/project-template.module.js';
 import { ProjectTemplateController } from './project-template/project-template.controller.js';
-import { CompanyProjectTemplateUserAssignmentController } from './access/company-project-template-user-assignment.controller.js';
 import { ContractAgreementsController } from './contract/contract-agreements.controller.js';
 import { ContractModule } from './contract/contract.module.js';
 import { ContractDecisionQueueController } from './contract/contract-decision-queue.controller.js';
@@ -89,38 +50,22 @@ import {
   ContractController,
   ProjectContractsController,
 } from './contract/contract.controller.js';
-import { CompanyContractApproverAssignmentController } from './access/company-contract-approver-assignment.controller.js';
-import { CompanyContractEarlyPreparationAssignmentController } from './access/company-contract-early-preparation-assignment.controller.js';
 import { OfferModelController } from './offer-model/offer-model.controller.js';
 import { OfferModelModule } from './offer-model/offer-model.module.js';
-import {
-  CompanyOfferModelEditorAssignmentController,
-  CompanyOfferModelApproverAssignmentController,
-} from './access/company-offer-model-assignment.controller.js';
 import { ContractModelController } from './contract-model/contract-model.controller.js';
 import { ContractModelModule } from './contract-model/contract-model.module.js';
-import {
-  CompanyContractModelEditorAssignmentController,
-  CompanyContractModelApproverAssignmentController,
-} from './access/company-contract-model-assignment.controller.js';
-import { CompanyContractPreparerAssignmentController } from './access/company-contract-preparer-assignment.controller.js';
 import { TaskModule } from './task/task.module.js';
 import { TaskController } from './task/task.controller.js';
-import { CompanyTaskManagerAssignmentController } from './access/company-task-manager-assignment.controller.js';
 import { DocumentProjectsController } from './documents/document-projects.controller.js';
-import { CompanyDocumentProjectOrganizerAssignmentController } from './access/company-document-project-organizer-assignment.controller.js';
 import { ProjectController } from './project/project.controller.js';
 import { ProjectResponsibilityController } from './project/project-responsibility.controller.js';
 import { ProjectModule } from './project/project.module.js';
 import { ProjectLifecycleController } from './project/project-lifecycle.controller.js';
 import { ProjectLifecycleModule } from './project/project-lifecycle.module.js';
-import { CompanyProjectAssignmentController } from './access/company-project-assignment.controller.js';
 import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
 import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
-import { CompanyDocumentRegistrarAssignmentController } from './access/company-document-registrar-assignment.controller.js';
 import { DocumentsController } from './documents/documents.controller.js';
 import { DocumentVersionsController } from './documents/document-versions.controller.js';
-import { CompanyDocumentApproverAssignmentController } from './access/company-document-approver-assignment.controller.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { Module } from '@nestjs/common';
 import { VerifiedPrincipalAdapter } from './access/verified-principal.adapter.js';
@@ -139,8 +84,6 @@ import {
   SYNCHRONIZE_ACCESS_IDENTITY_PROFILE,
 } from './access/access.service.js';
 import { ActorContextAdapter } from './access/actor-context.adapter.js';
-import { CompanyContextAssignmentController } from './access/company-context-assignment.controller.js';
-import { CompanyDirectorClientAssignmentController } from './access/company-director-client-assignment.controller.js';
 import {
   CompanyContextAssignmentService,
   INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION,
@@ -163,24 +106,11 @@ import {
   CommercialIntakeController,
   CommercialIntakeOpportunityController,
 } from './commercial-intake/commercial-intake.controller.js';
-import { CompanyCommercialIntakeAssignmentController } from './access/company-commercial-intake-assignment.controller.js';
 import { CommercialCatalogueModule } from './commercial-catalogue/commercial-catalogue.module.js';
 import { CommercialCatalogueController } from './commercial-catalogue/commercial-catalogue.controller.js';
-import { CompanyServiceCatalogueAssignmentController } from './access/company-service-catalogue-assignment.controller.js';
 import { PricingConfigurationModule } from './pricing-configuration/pricing-configuration.module.js';
 import { PricingConfigurationController } from './pricing-configuration/pricing-configuration.controller.js';
 import { PricingSnapshotController } from './pricing-configuration/pricing-snapshot.controller.js';
-import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
-import { CompanyPricingUserAssignmentController } from './access/company-pricing-user-assignment.controller.js';
-import { CompanyPricingAdjustmentAssignmentController } from './access/company-pricing-adjustment-assignment.controller.js';
-import { CompanyProfitabilityContributorAssignmentController } from './access/company-profitability-contributor-assignment.controller.js';
-import { CompanyProfitabilityDirectorAssignmentController } from './access/company-profitability-director-assignment.controller.js';
-import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
-import { CompanyOfferPreparerAssignmentController } from './access/company-offer-preparer-assignment.controller.js';
-import { CompanyOfferApproverAssignmentController } from './access/company-offer-approver-assignment.controller.js';
-import { CompanyOpportunityManagerAssignmentController } from './access/company-opportunity-manager-assignment.controller.js';
-import { CompanySalesStageConfigurationAssignmentController } from './access/company-sales-stage-configuration-assignment.controller.js';
-import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 import { OperationalHomeModule } from './operational-home/operational-home.module.js';
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
 import { OfferDecisionQueueController } from './offer/offer-decision-queue.controller.js';
@@ -189,7 +119,6 @@ import { OfferModule } from './offer/offer.module.js';
 import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
 import { ProfitabilityDecisionQueueController } from './profitability-estimate/profitability-decision-queue.controller.js';
 import { ProfitabilityEstimateController } from './profitability-estimate/profitability-estimate.controller.js';
-
 @Module({
   imports: [
     WorkingEvidenceModule,
@@ -230,15 +159,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     WorkingEvidenceController,
     PaymentController,
     InvoiceRecordController,
-    CompanyPaymentReaderAssignmentController,
-    CompanyPaymentRecorderAssignmentController,
-    CompanyPaymentConfirmerAssignmentController,
-    CompanyPaymentReverserAssignmentController,
-    CompanyPaymentEvidenceAccessAssignmentController,
-    CompanyInvoiceReaderAssignmentController,
-    CompanyInvoiceRecorderAssignmentController,
-    CompanyExternalInvoiceAccessAssignmentController,
-
+    CompanyRoleAssignmentController,
     KnowledgeWebController,
     KnowledgeController,
     KnowledgeReadController,
@@ -246,63 +167,28 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProjectPdfBundleController,
     MissionPlanController,
     MissionPlanCopyController,
-    CompanyMissionPlanAssignmentController,
     ContractModelController,
     OfferModelController,
-    CompanyIdeasReaderAssignmentController,
-    CompanyIdeasRecorderAssignmentController,
-    CompanyIdeasReviewerAssignmentController,
-
     IdeasController,
-    CompanyCertificationReaderAssignmentController,
-    CompanyCertificationProgrammeManagerAssignmentController,
-    CompanyCertificationApproverAssignmentController,
-    CompanyCertificationAuditorAssignmentController,
     CertificationController,
     OperationalRiskController,
     ProjectTemplateController,
     MissionResultReviewController,
     OpportunityFollowUpController,
     OpportunityFollowUpDiscoveryController,
-    CompanyOpportunityFollowUpCoordinatorAssignmentController,
     ProjectNextActionController,
     MissionApplicabilityController,
-    CompanyProjectTemplateUserAssignmentController,
-    CompanyProjectTemplateConfigurationAssignmentController,
-    CompanyProjectStageAdvancerAssignmentController,
     ProjectContractsController,
     TaskController,
     TaskResultsController,
     InternalTaskController,
-    CompanyInternalTaskManagerAssignmentController,
-    CompanyTaskManagerAssignmentController,
     DocumentsController,
     DocumentVersionsController,
     DocumentContentController,
     DocumentProjectsController,
-    CompanyDocumentRegistrarAssignmentController,
-    CompanyDocumentApproverAssignmentController,
-    CompanyDocumentContentReaderAssignmentController,
-    CompanyMissionDeliverableAccessAssignmentController,
-    CompanyContractSignatureDeclarerAssignmentController,
-    CompanyReceivedContractAccessAssignmentController,
-    CompanyReceivedAddendumAccessAssignmentController,
-    CompanyWorkingEvidenceCaseReaderAssignmentController,
-    CompanyWorkingEvidenceCaseRecorderAssignmentController,
-    CompanyReceivedAuditSourceAccessAssignmentController,
-    CompanyTaskResultRecorderAssignmentController,
-    CompanyMissionResultReviewerAssignmentController,
-    CompanyProjectNextActionCoordinatorAssignmentController,
-    CompanyMissionApplicabilityCoordinatorAssignmentController,
-    CompanyMissionApplicabilityApproverAssignmentController,
-
-    CompanyDocumentContentUploaderAssignmentController,
-    CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
     ProjectResponsibilityController,
     ProjectLifecycleController,
-    CompanyProjectAssignmentController,
-    CompanyProjectApproverAssignmentController,
     WorkspaceInvitationAcceptanceController,
     WorkspaceInvitationController,
     ClientUnionController,
@@ -311,37 +197,14 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ClientDuplicateReviewController,
     ClientController,
     CompanyController,
-    CompanyContextAssignmentController,
-    CompanyDirectorClientAssignmentController,
     WorkspaceMembershipSuspensionController,
     WorkspaceSessionRevocationController,
     CommercialIntakeController,
     SalesStageController,
     CommercialIntakeOpportunityController,
-    CompanyCommercialIntakeAssignmentController,
     CommercialCatalogueController,
-    CompanyServiceCatalogueAssignmentController,
     PricingConfigurationController,
     PricingSnapshotController,
-    CompanyPricingConfigurationAssignmentController,
-    CompanyPricingUserAssignmentController,
-    CompanyPricingAdjustmentAssignmentController,
-    CompanyCommercialActivityReaderAssignmentController,
-    CompanyProfitabilityContributorAssignmentController,
-    CompanyOperationalRiskReaderAssignmentController,
-    CompanyOperationalRiskRecorderAssignmentController,
-    CompanyProfitabilityDirectorAssignmentController,
-    CompanyOfferPreparerAssignmentController,
-    CompanyContractPreparerAssignmentController,
-    CompanyContractEarlyPreparationAssignmentController,
-    CompanyContractModelEditorAssignmentController,
-    CompanyContractModelApproverAssignmentController,
-    CompanyOfferModelEditorAssignmentController,
-    CompanyOfferModelApproverAssignmentController,
-    CompanyContractApproverAssignmentController,
-    CompanyOfferApproverAssignmentController,
-    CompanyOpportunityManagerAssignmentController,
-    CompanySalesStageConfigurationAssignmentController,
     OperationalHomeController,
     OfferController,
     OfferDecisionQueueController,

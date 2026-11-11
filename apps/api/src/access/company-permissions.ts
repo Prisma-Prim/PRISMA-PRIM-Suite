@@ -14,8 +14,9 @@
  *    three oldest bundles keep an earlier `assignmentNoun` in their names.
  * 2. Add the bundle and those two actions to the database enums, then run
  *    `pnpm --filter @prisma-prim/api db:generate` and review the migration.
- * 3. Add its assignment controller, its web option, route and labels, and its
- *    Activity entries. `company-role-bundle-registry.test.ts` and the web
+ * 3. The registry assignment controller derives its route from the id or
+ *    legacy noun. Knowledge alone keeps its separately owned routes. Add the
+ *    web option, route, labels and Activity entries. The registry and web
  *    fixture guard name anything still missing.
  *
  * A captured version is immutable: an assignment keeps the permission set of
@@ -516,11 +517,13 @@ export const COMPANY_ROLE_BUNDLES = {
     },
   },
   company_knowledge_source_administrator: {
+    assignmentRouting: 'knowledge',
     label: 'Company Knowledge Source Administrator',
     grantVersion: 'v1',
     versions: { v1: ['knowledge.source.manage'] },
   },
   company_knowledge_evidence_reader: {
+    assignmentRouting: 'knowledge',
     label: 'Company Knowledge Evidence Reader',
     grantVersion: 'v1',
     versions: { v1: ['knowledge.evidence.read'] },
@@ -618,6 +621,7 @@ export const COMPANY_ROLE_BUNDLES = {
     {
       readonly label: string;
       readonly assignmentNoun?: string;
+      readonly assignmentRouting?: 'knowledge';
       readonly grantVersion: string | null;
       readonly confersCompanyContext?: true;
       readonly versions: Readonly<Record<string, readonly string[]>>;
@@ -693,6 +697,19 @@ export function companyRoleAssignmentNoun(
   return hasLegacyAssignmentNoun(bundle)
     ? COMPANY_ROLE_BUNDLES[bundle].assignmentNoun
     : bundle;
+}
+
+/** The generic HTTP route noun, except for Knowledge's separately owned routes. */
+export function companyRoleAssignmentRouteNoun(bundle: CompanyRoleBundle) {
+  const definition = COMPANY_ROLE_BUNDLES[bundle];
+  if (
+    'assignmentRouting' in definition &&
+    definition.assignmentRouting === 'knowledge'
+  )
+    return null;
+  return companyRoleAssignmentNoun(bundle)
+    .slice('company_'.length)
+    .replaceAll('_', '-');
 }
 
 /** The Activity Log action recording a grant or revoke of `bundle`. */
