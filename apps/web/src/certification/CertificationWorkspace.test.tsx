@@ -773,7 +773,7 @@ describe('Certification Case workspace', () => {
       within(
         screen.getByRole('region', { name: 'Certification agreement' }),
       ).getByText(
-        'No document is attached with the role Certification agreement yet. Attach the signed original in the dossier register first.',
+        'No document is attached with the role Certification agreement yet. Attach the signed original in the document archive first.',
       ),
     ).toBeVisible();
     expect(timelineTitles()).toEqual([

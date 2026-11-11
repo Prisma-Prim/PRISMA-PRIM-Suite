@@ -16,7 +16,7 @@ import {
   certificationIds,
 } from './certification.test-fixture';
 
-const REGISTER = 'Dossier register';
+const ARCHIVE = 'Document archive';
 const AGREEMENT = 'Certification agreement';
 const SIGNED = 'Signed certification agreement — version 1';
 const SIGNED_REFERENCE = `${SIGNED} (signed-certification-agreement.pdf)`;
@@ -69,11 +69,11 @@ function definition(container: HTMLElement, term: string) {
   return first?.nextElementSibling?.textContent;
 }
 
-/** Waits for an attachment heading in the register, which a reload re-renders. */
+/** Waits for an attachment heading in the document archive, which a reload re-renders. */
 async function expectAttached(title: string) {
   await waitFor(() =>
     expect(
-      within(region(REGISTER)).getByText(title, { selector: 'strong' }),
+      within(region(ARCHIVE)).getByText(title, { selector: 'strong' }),
     ).toBeVisible(),
   );
 }
@@ -105,9 +105,9 @@ function agreementCase(server: FakeCertificationServer, reference: string) {
 /** Opens the attach form and waits for the eligible PDFs. */
 async function openAttachForm() {
   fireEvent.click(
-    within(region(REGISTER)).getByRole('button', { name: 'Attach a document' }),
+    within(region(ARCHIVE)).getByRole('button', { name: 'Attach a document' }),
   );
-  const form = await within(region(REGISTER)).findByRole('form', {
+  const form = await within(region(ARCHIVE)).findByRole('form', {
     name: 'Attach a document',
   });
   await waitFor(() =>
@@ -151,7 +151,7 @@ function installDownload() {
 }
 
 describe('Certification signed originals and agreement', () => {
-  it('shows a reader the register, the recorded agreement and its version without any form', async () => {
+  it('shows a reader the document archive, the recorded agreement and its version without any form', async () => {
     const { server, actor } = serve({ manager: false, documents: false });
     const { caseId, agreementId, signed } = agreementCase(
       server,
@@ -162,8 +162,8 @@ describe('Certification signed originals and agreement', () => {
     renderWorkspace(actor);
     await openSeededCase('CERT-READ-DOSSIER');
 
-    const register = region(REGISTER);
-    const [first, second] = within(register).getAllByRole('listitem');
+    const archive = region(ARCHIVE);
+    const [first, second] = within(archive).getAllByRole('listitem');
     if (!first || !second) throw new Error('Expected two attachments.');
     expect(within(first).getByText(SIGNED)).toBeVisible();
     expect(definition(first, 'Role')).toBe('Certification agreement');
@@ -186,10 +186,10 @@ describe('Certification signed originals and agreement', () => {
     expect(definition(second, 'Role')).toBe('Application questionnaire');
     expect(definition(second, 'Note')).toBe('Signed by the director.');
     expect(
-      within(register).queryByRole('button', { name: /^Download/u }),
+      within(archive).queryByRole('button', { name: /^Download/u }),
     ).not.toBeInTheDocument();
     expect(
-      within(register).getByText(
+      within(archive).getByText(
         'Opening the attached PDFs requires the right to read the content of this Client’s received audit sources (Documents).',
       ),
     ).toBeVisible();
@@ -233,7 +233,7 @@ describe('Certification signed originals and agreement', () => {
     renderWorkspace(actor);
     await openSeededCase('CERT-DOWNLOAD');
     fireEvent.click(
-      within(region(REGISTER)).getByRole('button', {
+      within(region(ARCHIVE)).getByRole('button', {
         name: `Download ${SIGNED}`,
       }),
     );
@@ -263,12 +263,12 @@ describe('Certification signed originals and agreement', () => {
       },
     });
     fireEvent.click(
-      within(region(REGISTER)).getByRole('button', {
+      within(region(ARCHIVE)).getByRole('button', {
         name: `Download ${SIGNED}`,
       }),
     );
     expect(
-      await within(region(REGISTER)).findByText(
+      await within(region(ARCHIVE)).findByText(
         'The PDF could not be downloaded, or its bytes did not match the recorded fingerprint. Try again.',
       ),
     ).toBeVisible();
@@ -287,7 +287,7 @@ describe('Certification signed originals and agreement', () => {
     renderWorkspace(actor);
     await openSeededCase('CERT-ATTACH');
     expect(
-      within(region(REGISTER)).getByText(
+      within(region(ARCHIVE)).getByText(
         'No document is attached to this Case yet.',
       ),
     ).toBeVisible();
@@ -304,7 +304,7 @@ describe('Certification signed originals and agreement', () => {
       within(form).getByRole('button', { name: 'Attach the document' }),
     );
     expect(
-      await within(region(REGISTER)).findByText(
+      await within(region(ARCHIVE)).findByText(
         'Choose a received PDF that is not attached yet and its role. A note has at most 1,000 characters.',
       ),
     ).toBeVisible();
@@ -341,7 +341,7 @@ describe('Certification signed originals and agreement', () => {
         'Saved. The confirmed result remains recorded even if a later refresh fails.',
       ),
     ).toBeVisible();
-    expect(definition(region(REGISTER), 'Attached by')).toBe('Ana Demo');
+    expect(definition(region(ARCHIVE), 'Attached by')).toBe('Ana Demo');
 
     // The attached PDF stays listed for reference but cannot be chosen again.
     const again = await openAttachForm();
@@ -383,7 +383,7 @@ describe('Certification signed originals and agreement', () => {
     });
     fireEvent.click(submit);
     expect(
-      await within(region(REGISTER)).findByText(
+      await within(region(ARCHIVE)).findByText(
         'This exact document version is already attached to the Case. Reload the Case and choose another document.',
       ),
     ).toBeVisible();
@@ -392,13 +392,13 @@ describe('Certification signed originals and agreement', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
     await waitFor(() =>
       expect(
-        within(region(REGISTER)).getByRole('button', {
+        within(region(ARCHIVE)).getByRole('button', {
           name: 'Attach the document',
         }),
       ).toBeEnabled(),
     );
     fireEvent.click(
-      within(region(REGISTER)).getByRole('button', {
+      within(region(ARCHIVE)).getByRole('button', {
         name: 'Attach the document',
       }),
     );
@@ -468,7 +468,7 @@ describe('Certification signed originals and agreement', () => {
     renderWorkspace(actor);
     await openSeededCase('CERT-AGREEMENT');
     expect(
-      within(region(REGISTER)).getByText(
+      within(region(ARCHIVE)).getByText(
         'Attaching a document requires the right to read the content of this Client’s received audit sources (Documents).',
       ),
     ).toBeVisible();
