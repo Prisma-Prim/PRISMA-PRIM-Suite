@@ -8,6 +8,7 @@ import {
 import { useAttachmentReference } from './CertificationDocumentViews';
 import { ActingFieldset } from './CertificationAttribution';
 import { latestBusinessDate } from './certification-attribution';
+import { blank, invalidField, wrongDate } from './certification-fields';
 import {
   DECISION_LIMITS,
   DOSSIER_ANSWERS,
@@ -155,7 +156,10 @@ export function DossierReviewForm(
                 value={entry.note}
                 maxLength={DECISION_LIMITS.note}
                 disabled={props.disabled}
-                aria-invalid={props.feedbackId !== undefined}
+                aria-invalid={invalidField(
+                  props.feedbackId,
+                  entry.answer === 'missing' && blank(entry.note),
+                )}
                 aria-describedby={props.feedbackId}
                 onChange={(event) => edit({ note: event.target.value })}
               />
@@ -299,7 +303,6 @@ export function CertificationDecisionForm(
             value={draft.decisionFormAttachmentId}
             placeholder={copy('decisionFormNone')}
             disabled={props.disabled}
-            invalid={props.feedbackId !== undefined}
             describedBy={props.feedbackId}
             options={props.forms.map((attachment) => ({
               value: attachment.id,
@@ -379,7 +382,10 @@ export function CertificateDataForm(
         placeholder={copy('selectCertificateDataDocument')}
         disabled={props.disabled}
         required
-        invalid={props.feedbackId !== undefined}
+        invalid={invalidField(
+          props.feedbackId,
+          draft.agreementAttachmentId === '',
+        )}
         describedBy={props.feedbackId}
         options={props.forms.map((attachment) => ({
           value: attachment.id,
@@ -437,7 +443,7 @@ export function CertificateForm(
         placeholder={copy('selectCertificatePdf')}
         disabled={props.disabled}
         required
-        invalid={props.feedbackId !== undefined}
+        invalid={invalidField(props.feedbackId, draft.attachmentId === '')}
         describedBy={props.feedbackId}
         options={props.pdfs.map((attachment) => ({
           value: attachment.id,
@@ -483,7 +489,6 @@ function TextsFields<Draft>(
 ) {
   const copy = useCertificationCopy();
   const { texts, onTexts } = props;
-  const invalid = props.feedbackId !== undefined;
   const edit = (
     index: number,
     name: keyof CertificateTextDraft,
@@ -501,6 +506,10 @@ function TextsFields<Draft>(
         const position = index + 1;
         const id = (name: string) =>
           `${props.idPrefix}-text-${String(position)}-${name}`;
+        // One text per language: a repeated language is the wrong one.
+        const repeated = texts
+          .slice(0, index)
+          .some((other) => other.language.trim() === text.language.trim());
         const field = (
           name: 'language' | 'holderName' | 'address',
           label: CertificationMessageKey,
@@ -515,7 +524,10 @@ function TextsFields<Draft>(
               maxLength={limit}
               disabled={props.disabled}
               required
-              aria-invalid={invalid}
+              aria-invalid={invalidField(
+                props.feedbackId,
+                blank(text[name]) || (name === 'language' && repeated),
+              )}
               aria-describedby={
                 [help, props.feedbackId].filter(Boolean).join(' ') || undefined
               }
@@ -551,7 +563,7 @@ function TextsFields<Draft>(
                 maxLength={DECISION_LIMITS.scope}
                 disabled={props.disabled}
                 required
-                aria-invalid={invalid}
+                aria-invalid={invalidField(props.feedbackId, blank(text.scope))}
                 aria-describedby={props.feedbackId}
                 onChange={(event) => edit(index, 'scope', event.target.value)}
               />
@@ -629,7 +641,7 @@ function Attestation<Draft>(
         type="checkbox"
         checked={props.checked}
         disabled={props.disabled}
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(props.feedbackId, !props.checked)}
         aria-describedby={props.feedbackId}
         onChange={(event) => props.onAttest(event.target.checked)}
       />
@@ -657,7 +669,10 @@ function TextArea<Field extends string, Draft extends Record<Field, string>>(
         maxLength={props.limit}
         disabled={props.disabled}
         required={!props.optional}
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          !props.optional && blank(props.draft[props.field]),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           props.onChange({ ...props.draft, [props.field]: event.target.value })
@@ -686,7 +701,10 @@ function TextInput<Field extends string, Draft extends Record<Field, string>>(
         maxLength={props.limit}
         disabled={props.disabled}
         required={props.required ?? false}
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          (props.required ?? false) && blank(props.draft[props.field]),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           props.onChange({ ...props.draft, [props.field]: event.target.value })
@@ -716,7 +734,13 @@ function DateField<Field extends string, Draft extends Record<Field, string>>(
         max={props.max}
         disabled={props.disabled}
         required={!props.optional}
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          wrongDate(props.draft[props.field], {
+            required: !props.optional,
+            max: props.max,
+          }),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           props.onChange({ ...props.draft, [props.field]: event.target.value })
