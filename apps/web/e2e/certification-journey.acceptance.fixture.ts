@@ -464,8 +464,10 @@ export async function prepareCertificationJourney(
   });
 
   // Stage 2: one minor nonconformity on one PDF and one opportunity for
-  // improvement; the auditor records the client's plan, judged adequate.
-  const stage2 = { start: addDays(today, -20), end: addDays(today, -19) };
+  // improvement; the auditor records the client's plan, judged adequate. Its
+  // plan states 2 auditor-days over one calendar day with Ion Popa as the
+  // only auditor on site, which the consistency check asks to clarify (R04).
+  const stage2 = { start: addDays(today, -20), end: addDays(today, -20) };
   await step(
     manager,
     `${base}/stages/stage-2/plan`,
@@ -548,13 +550,21 @@ export async function prepareCertificationJourney(
     step,
     attach,
     decision,
+    /** The duration inputs and confirmed values of the first determination. */
+    durationInputs: inputs,
+    confirmedDuration: confirmed,
     /** The approver outside the team reviews a complete dossier. */
     async reviewDossier() {
       return step(approver, `${base}/dossier-review`, {
         items: Object.fromEntries(
           DOSSIER_ITEMS.map((item) => [
             item,
-            { answer: 'present', note: null },
+            {
+              // No participant list is attached in this fictional dossier.
+              answer:
+                item === 'participant_lists' ? 'not_applicable' : 'present',
+              note: null,
+            },
           ]),
         ),
         conclusion: 'Fictional dossier complete; recommendation supported.',

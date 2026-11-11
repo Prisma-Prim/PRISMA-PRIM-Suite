@@ -3,6 +3,10 @@ import {
   type ActAttribution,
 } from './certification-attribution';
 import {
+  parseConsistency,
+  type Consistency,
+} from './certification-consistency';
+import {
   DECISION_LIMITS,
   DOSSIER_ITEMS,
   RECOMMENDATIONS,
@@ -344,6 +348,8 @@ export interface CaseDetail extends CaseSummary {
   certificateData: CertificateDataVersion | null;
   /** The recorded Certificate, present exactly when the Case is certified. */
   certificate: Certificate | null;
+  /** The Dossier Consistency Check over the Case's current records. */
+  consistency: Consistency;
 }
 
 /** One exact frozen PDF of the Case's Client, attached with its role. */
@@ -473,6 +479,7 @@ export function parseCaseDetail(
         : certificateDataVersion(body.certificateData),
     certificate:
       body.certificate === null ? null : certificateValue(body.certificate),
+    consistency: parseConsistency(body.consistency),
   };
   if (!consistent(detail)) invalid();
   return detail;
@@ -806,16 +813,21 @@ function consistent(detail: CaseDetail): boolean {
   if (review && !application) return false;
   // A duration is determined only once the review accepted the application.
   if (duration && review?.value.outcome !== 'accepted') return false;
-  // Steps are recorded in order, each at a revision the Case has reached.
-  const revisions = [application, review, duration].flatMap((version) =>
-    version ? [version.caseRevision] : [],
-  );
+  // Steps are recorded in order, each at a revision the Case has reached:
+  // the first application precedes the review, which precedes every
+  // duration. A later application version may correct the facts after the
+  // review, until the decision; the consistency check compares them (R01).
   if (
-    revisions.some(
-      (revision, index) =>
-        revision > detail.revision ||
-        revision <= (revisions[index - 1] ?? Number.NEGATIVE_INFINITY),
-    )
+    [application, review, duration].some(
+      (version) => version !== null && version.caseRevision > detail.revision,
+    ) ||
+    (application !== null &&
+      review !== null &&
+      application.version === 1 &&
+      application.caseRevision >= review.caseRevision) ||
+    (review !== null &&
+      duration !== null &&
+      duration.caseRevision <= review.caseRevision)
   )
     return false;
   if (agreement) {

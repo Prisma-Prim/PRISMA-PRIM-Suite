@@ -362,20 +362,42 @@ withPostgres('Certification Case public REST boundary', () => {
       { step: 'application_review', version: 1, caseRevision: 4 },
     ]);
     expect(await eventCount(caseId)).toBe(4);
-    const late = await call(
+    // The accepted application stays correctable, with a reason, until the
+    // decision: the Dossier Consistency Check compares what changed (R01).
+    const unchanged = await call(
       OWNER,
       `/certification-cases/${caseId}/application`,
       {
         method: 'POST',
         body: {
           expectedRevision: 4,
-          reason: 'Too late',
-          facts: facts(),
+          reason: 'Nothing changed',
+          facts: facts({ haccpStudyCount: 3 }),
         },
       },
     );
-    expect(late.status).toBe(409);
+    expect(record(await unchanged.json()).code).toBe(
+      'CERTIFICATION_CORRECTION_UNCHANGED',
+    );
     expect(await eventCount(caseId)).toBe(4);
+    const late = await created(
+      await call(OWNER, `/certification-cases/${caseId}/application`, {
+        method: 'POST',
+        body: {
+          expectedRevision: 4,
+          reason: 'Headcount corrected after the review',
+          facts: facts({ haccpStudyCount: 3, totalHeadcount: 60 }),
+        },
+      }),
+    );
+    expect(late).toMatchObject({
+      revision: 5,
+      application: {
+        version: 3,
+        reason: 'Headcount corrected after the review',
+      },
+    });
+    expect(await eventCount(caseId)).toBe(5);
   });
 
   it('closes the Case when the review rejects the application with a reason', async () => {
