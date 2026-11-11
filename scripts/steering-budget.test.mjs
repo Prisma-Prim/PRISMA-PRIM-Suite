@@ -14,7 +14,9 @@ const steeringBudgets = {
   // how to build it stays in verification-cost.md.
   // 14200: #1276 states the blocking acceptance proof and that no workflow
   // starts Claude; the row format and details stay in acceptance-proof.md.
-  'docs/agents/issue-execution.md': 14_200,
+  // 14400: #1277 says when to run a journey audit and who may start Claude
+  // for it; the procedure stays in the journey-audit skill.
+  'docs/agents/issue-execution.md': 14_400,
   'docs/agents/typescript-discipline.md': 4_500,
   'docs/agents/issue-tracker.md': 2_200,
   // 1100: #1276 replaces "Tests added" with the Acceptance proof table the

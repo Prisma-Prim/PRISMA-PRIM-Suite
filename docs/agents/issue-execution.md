@@ -56,6 +56,8 @@ A repository procedure never justifies hiding an unexpectedly large cost from th
 
 The PR body's Acceptance proof section gives each acceptance criterion, or each claim when no issue closes, a test that passed in the same CI run, plus desktop and narrow acceptance screenshots for UI; `quality` blocks the merge otherwise. An exception needs an approver's comment; rerun the failed job after any edit. No workflow, comment or label may start Claude for proof. [Acceptance proof](acceptance-proof.md) has the format and details.
 
+Run a [journey audit](../../.agents/skills/journey-audit/SKILL.md) after a batch of features and before a delivery is shown to the first tenant. Only a person starts Claude for it, never a CI step, workflow, comment, label, schedule or webhook.
+
 ## CI and merge
 
 CI runs automatically on every pull request update. A ruleset protects `main`: pull request required, squash merge only, required check `quality`, no deletion or force push. No merge queue (owner decision, 2026-11-07): the PR's green `quality` gates the merge; an advancing base needs no refresh, re-verification or SHA binding. Manual `workflow_dispatch` serves diagnosis only and does not count toward a pull request's required check.
