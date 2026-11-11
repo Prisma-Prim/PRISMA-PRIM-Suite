@@ -38,6 +38,8 @@ const STAGE_2_NOT_READY =
   'The Stage 1 report concludes that the client is not ready. Stage 2 can be planned once a corrected Stage 1 report concludes that the client is ready.';
 const NOT_LEADER =
   'Only the leader of the approved audit team records this report. You are not linked to that team leader.';
+const STALE =
+  'This Case changed since you opened it. Reload it before saving; your draft is kept.';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -114,6 +116,18 @@ function form(stage: string, name: string) {
 
 function submit(container: HTMLElement, name: string) {
   fireEvent.click(within(container).getByRole('button', { name }));
+}
+
+/** The labels of the fields a form shows and announces invalid. */
+function invalidFields(container: HTMLElement) {
+  return [...container.querySelectorAll('[aria-invalid="true"]')].map(
+    (field) =>
+      field instanceof HTMLInputElement ||
+      field instanceof HTMLTextAreaElement ||
+      field instanceof HTMLButtonElement
+        ? field.labels?.[0]?.textContent
+        : field.id,
+  );
 }
 
 type PlanInput = {
@@ -1098,6 +1112,46 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
     expect(stale?.body).toMatchObject({ expectedRevision: 9 });
     expect(saved?.body).toMatchObject({ expectedRevision: 10 });
     expect(saved?.key).not.toBe(stale?.key);
+  });
+
+  it('marks only the plan field left blank invalid, and no field after a stale refusal', async () => {
+    const { server, actor } = serve({ manager: true });
+    const caseId = server.seedApprovedTeam({
+      orderReference: 'CERT-STAGE-FIELDS',
+    });
+    server.attachAsColleague(caseId, server.addSource('Stage 1 plan'), 'plan');
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-STAGE-FIELDS');
+    const plan = form(STAGE_1, 'Record the Stage 1 plan');
+    fillPlan(plan, {
+      start: '2026-11-10',
+      end: '2026-11-10',
+      onSite: '1',
+      remote: '0',
+      document: 'Stage 1 plan — version 1 (stage-1-plan.pdf)',
+    });
+    change(within(plan).getByLabelText('Audit scope'), ' ');
+    submit(plan, 'Record the Stage 1 plan');
+    expect(
+      await within(region(STAGE_1)).findByText(PLAN_VALIDATION),
+    ).toBeVisible();
+    // The optional, empty sending date stays valid.
+    expect(invalidFields(plan)).toEqual(['Audit scope']);
+
+    change(
+      within(plan).getByLabelText('Audit scope'),
+      'Production of pasteurised milk and yoghurt',
+    );
+    server.attachAsColleague(
+      caseId,
+      server.addSource('Readiness report'),
+      'report',
+    );
+    submit(plan, 'Record the Stage 1 plan');
+    expect(await within(region(STAGE_1)).findByText(STALE)).toBeVisible();
+    expect(server.mutations()).toHaveLength(1);
+    expect(invalidFields(plan)).toEqual([]);
   });
 
   it('records the Stage 2 report with its optional annex', async () => {

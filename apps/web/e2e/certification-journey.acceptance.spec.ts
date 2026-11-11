@@ -487,9 +487,6 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       .getByLabel(copy('decidedByFunction'), { exact: true })
       .fill(DECISION_FACTS.decidedByFunction);
     await form
-      .getByLabel(copy('decisionRationale'), { exact: true })
-      .fill(DECISION_FACTS.rationale);
-    await form
       .getByRole('checkbox', {
         name: copy('decisionIndependenceAttestation'),
         exact: true,
@@ -499,11 +496,44 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       name: copy('certificationDecisionSubmit'),
       exact: true,
     });
+    // Only the field left blank is shown and announced invalid. Its border
+    // takes the invalid colour; the other fields keep the field colour.
+    const fieldBorder = 'rgb(217, 209, 237)';
+    const invalidBorder = 'rgb(167, 51, 73)';
+    const scope = granted.getByLabel(copy('certificateScope'), {
+      exact: true,
+    });
+    const rationale = form.getByLabel(copy('decisionRationale'), {
+      exact: true,
+    });
+    const additional = form.getByLabel(copy('decisionAdditionalInformation'), {
+      exact: true,
+    });
+    await submit.focus();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByRole('alert')).toHaveText(
+      copy('certificationDecisionValidation'),
+    );
+    await expect(form.locator('[aria-invalid="true"]')).toHaveCount(1);
+    await expect(rationale).toHaveAttribute('aria-invalid', 'true');
+    await expect(rationale).toHaveCSS('border-top-color', invalidBorder);
+    await expect(scope).toHaveCSS('border-top-color', fieldBorder);
+    await panel.screenshot({
+      path: info.outputPath(`decision-blank-rationale-${width}.png`),
+    });
+    await rationale.fill(DECISION_FACTS.rationale);
     await submit.focus();
     await page.keyboard.press('Enter');
     // The reason is announced and nothing is sent.
     const blocked = panel.getByRole('alert');
     await expect(blocked).toContainText(copy('decisionPreconditionsTitle'));
+    // A blocked precondition is a state of the Case, not a field error.
+    await expect(form.locator('[aria-invalid="true"]')).toHaveCount(0);
+    for (const field of [scope, rationale, additional])
+      await expect(field).toHaveCSS('border-top-color', fieldBorder);
+    await panel.screenshot({
+      path: info.outputPath(`decision-blocked-${width}.png`),
+    });
     await expect(
       blocked.getByRole('list', {
         name: copy('decisionPreconditionsList'),

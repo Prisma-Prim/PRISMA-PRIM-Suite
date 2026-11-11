@@ -4,6 +4,7 @@ import {
   type CertificationMessageKey,
 } from './certification.copy';
 import { useAttachmentReference } from './CertificationDocumentViews';
+import { blank, invalidField, wrongDate } from './certification-fields';
 import {
   FINDING_LIMITS,
   stageClassifications,
@@ -269,9 +270,9 @@ function StatementFields<Draft extends FindingStatementDraft>(
   const { draft, onChange } = props;
   const copy = useCertificationCopy();
   const id = (name: string) => `${props.idPrefix}-${name}`;
-  const invalid = props.feedbackId !== undefined;
   const described = (...ids: string[]) =>
     [...ids, props.feedbackId].filter(Boolean).join(' ') || undefined;
+  // Optional on their own: the alert says when a classification needs them.
   const text = (
     field: 'clause' | 'area',
     label: CertificationMessageKey,
@@ -285,7 +286,6 @@ function StatementFields<Draft extends FindingStatementDraft>(
         value={draft[field]}
         maxLength={limit}
         disabled={props.disabled}
-        aria-invalid={invalid}
         aria-describedby={described(...(help ? [help] : []))}
         onChange={(event) =>
           onChange({ ...draft, [field]: event.target.value })
@@ -418,7 +418,10 @@ function TextArea<Field extends string, Draft extends Record<Field, string>>(
         maxLength={props.limit}
         disabled={props.disabled}
         required
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          blank(props.draft[props.field]),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           props.onChange({ ...props.draft, [props.field]: event.target.value })
@@ -446,7 +449,10 @@ function DateField<Field extends string, Draft extends Record<Field, string>>(
         value={props.draft[props.field]}
         disabled={props.disabled}
         required={!props.optional}
-        aria-invalid={props.feedbackId !== undefined}
+        aria-invalid={invalidField(
+          props.feedbackId,
+          wrongDate(props.draft[props.field], { required: !props.optional }),
+        )}
         aria-describedby={props.feedbackId}
         onChange={(event) =>
           props.onChange({ ...props.draft, [props.field]: event.target.value })

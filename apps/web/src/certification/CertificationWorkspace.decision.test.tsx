@@ -59,6 +59,10 @@ const GRANT_AGAINST =
   'Certification cannot be granted against a team recommendation that is not to grant.';
 const CERTIFIED_NOTE =
   'This Case is certified: its Certificate is recorded. Every record is now read-only.';
+const DECISION_VALIDATION =
+  'Complete the decision: choose the outcome and state the decision date, the decision maker and function (at most 200 characters each) and the rationale (at most 4,000 characters). A grant states one to four Certificate texts, one per language, each with the holder name, address and scope.';
+const STALE =
+  'This Case changed since you opened it. Reload it before saving; your draft is kept.';
 const REFUSED_NOTE =
   'This Case is closed: certification was refused. Every record is now read-only; a new application needs a new Case.';
 
@@ -181,6 +185,33 @@ function fillDecision(
   change(
     within(container).getByLabelText('Rationale'),
     'Recommendation accepted after the dossier review.',
+  );
+}
+
+/**
+ * A complete grant with one Certificate text, attested, without the
+ * optional additional information.
+ */
+function fillGrant(container: HTMLElement) {
+  choose(container, 'Decision', 'Certification granted');
+  fillText(container, 1, CERTIFICATE_TEXTS[0]);
+  fillDecision(container);
+  fireEvent.click(
+    within(container).getByRole('checkbox', {
+      name: 'I attest that the decision maker is not a member of the audit team.',
+    }),
+  );
+}
+
+/** The labels of the fields a form shows and announces invalid. */
+function invalidFields(container: HTMLElement) {
+  return [...container.querySelectorAll('[aria-invalid="true"]')].map(
+    (field) =>
+      field instanceof HTMLInputElement ||
+      field instanceof HTMLTextAreaElement ||
+      field instanceof HTMLButtonElement
+        ? field.labels?.[0]?.textContent
+        : field.id,
   );
 }
 
@@ -899,6 +930,64 @@ describe('Certification recommendation, decision and Certificate', () => {
       ),
     );
     expect(caseDefinition('Next step')).toBe(DATA);
+  });
+
+  it('marks no decision field invalid when preconditions block the decision, and marks only the field left blank', async () => {
+    const { server, actor } = serve({ manager: false, approver: true });
+    const caseId = reportedCase(server, {
+      reference: 'CERT-BLOCKED-FIELDS',
+      leader: certificationIds.colleague,
+    });
+    recommend(server, caseId);
+    server.recordStepAsColleague(
+      caseId,
+      'dossier_review',
+      dossierReview('participant_lists'),
+    );
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-BLOCKED-FIELDS');
+    const decisionForm = form(DECISION, 'Record the Certification Decision');
+    fillGrant(decisionForm);
+    click(decisionForm, 'Record the decision');
+    const blocked = await within(region(DECISION)).findByRole('alert');
+    expect(listed(blocked, 'Unmet decision preconditions')).toEqual([
+      DOSSIER_INCOMPLETE,
+    ]);
+    // The filled fields and the optional, empty one are valid.
+    expect(invalidFields(decisionForm)).toEqual([]);
+
+    change(within(decisionForm).getByLabelText('Rationale'), ' ');
+    click(decisionForm, 'Record the decision');
+    expect(
+      await within(region(DECISION)).findByText(DECISION_VALIDATION),
+    ).toBeVisible();
+    expect(invalidFields(decisionForm)).toEqual(['Rationale']);
+    expect(server.mutations()).toEqual([]);
+  });
+
+  it('marks no decision field invalid when the Case changed since it was opened', async () => {
+    const { server, actor } = serve({ manager: false, approver: true });
+    const caseId = reportedCase(server, {
+      reference: 'CERT-STALE-FIELDS',
+      leader: certificationIds.colleague,
+    });
+    recommend(server, caseId);
+    server.recordStepAsColleague(caseId, 'dossier_review', dossierReview());
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-STALE-FIELDS');
+    const decisionForm = form(DECISION, 'Record the Certification Decision');
+    fillGrant(decisionForm);
+    server.attachAsColleague(
+      caseId,
+      server.addSource('Decision form'),
+      'decision_form',
+    );
+    click(decisionForm, 'Record the decision');
+    expect(await within(region(DECISION)).findByText(STALE)).toBeVisible();
+    expect(server.mutations()).toHaveLength(1);
+    expect(invalidFields(decisionForm)).toEqual([]);
   });
 
   it('shows how the agreed Certificate data differ from the decision and holds the Certificate until they are corrected', async () => {

@@ -32,6 +32,8 @@ const CLAUSE_REQUIRED =
   'State the requirement clause and the process or area. Only an opportunity for improvement may omit them.';
 const EVIDENCE_REQUIRED =
   'A nonconformity cites at least one exact evidence PDF attached to this Case.';
+const STALE =
+  'This Case changed since you opened it. Reload it before saving; your draft is kept.';
 const NOT_LEADER =
   'Only the leader of the approved audit team records Findings and their follow-up. You are not linked to that team leader.';
 const INDEPENDENCE =
@@ -130,6 +132,18 @@ function click(container: HTMLElement, name: string) {
 
 function form(panel: string, name: string) {
   return within(region(panel)).getByRole('form', { name });
+}
+
+/** The labels of the fields a form shows and announces invalid. */
+function invalidFields(container: HTMLElement) {
+  return [...container.querySelectorAll('[aria-invalid="true"]')].map(
+    (field) =>
+      field instanceof HTMLInputElement ||
+      field instanceof HTMLTextAreaElement ||
+      field instanceof HTMLButtonElement
+        ? field.labels?.[0]?.textContent
+        : field.id,
+  );
 }
 
 function choose(container: HTMLElement, group: string, option: string) {
@@ -1206,6 +1220,39 @@ describe('Certification Findings and nonconformity follow-up', () => {
       ]);
     },
   );
+
+  it('marks only the Finding field left blank invalid, and no field after a stale refusal', async () => {
+    const { server, actor } = serve({ manager: false, auditor: true });
+    const { caseId } = stage1Planned(server, {
+      reference: 'CERT-FINDING-FIELDS',
+      leader: certificationIds.member,
+    });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-FINDING-FIELDS');
+    const panel = region(STAGE_1_FINDINGS);
+    click(panel, 'Record a Stage 1 Finding');
+    const recordForm = form(STAGE_1_FINDINGS, 'Record a Stage 1 Finding');
+    choose(recordForm, 'Classification', 'Opportunity for improvement');
+    click(recordForm, 'Record the Finding');
+    expect(await within(panel).findByText(FINDING_VALIDATION)).toBeVisible();
+    // The optional, empty clause and area stay valid.
+    expect(invalidFields(recordForm)).toEqual(['Statement']);
+
+    change(
+      within(recordForm).getByLabelText('Statement'),
+      'Allergen labels at receiving could name the supplier lot.',
+    );
+    server.attachAsColleague(
+      caseId,
+      server.addSource('Stage 1 report'),
+      'report',
+    );
+    click(recordForm, 'Record the Finding');
+    expect(await within(panel).findByText(STALE)).toBeVisible();
+    expect(server.mutations()).toHaveLength(1);
+    expect(invalidFields(recordForm)).toEqual([]);
+  });
 
   it('explains that an approver on the team cannot reclassify when the server refuses it', async () => {
     const { server, actor } = serve({ manager: false, approver: true });
