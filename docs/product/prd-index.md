@@ -281,11 +281,14 @@ proof, without new governance rules or whole-MVP completion credit.
 
 ## 6.1 Release 4 capability PRDs
 
-| Capability PRD                                            | Document status                          | Depends on                                                                                         |
-| --------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| [Certification Case](release-4-certification-case-prd.md) | Approved — bounded first journey (#1129) | Tenant/Company/Client Authorization; Activity Log; Governed Documents; Shared Client; Project/Task |
+| Capability PRD                                                                  | Document status                           | Depends on                                                                                                                     |
+| ------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| [Certification Case](release-4-certification-case-prd.md)                       | Approved — bounded first journey (#1129)  | Tenant/Company/Client Authorization; Activity Log; Governed Documents; Shared Client; Project/Task                             |
+| [Certification dossier control](release-4-certification-dossier-control-prd.md) | Approved — delegated agent review (#1280) | Certification Case; Governed Documents; Document Registry; Activity Log; Tenant/Company/Client Authorization; UX/Configuration |
 
 The Certification Case PRD owns the first ISO 22000 initial certification journey of the BIC pilot ([Product Vision §11.1](product-vision-prd.md#111-first-working-version-priorities--2026-11-06)) and its ordered implementation slices. Surveillance, recertification and the rest of Release 4 remain unready.
+
+The Certification dossier control PRD adds to that journey the consistency check with verdicts and human resolution, the exchange register with the certification body's procedure deadlines and the items to re-verify at the next Audit, and the Certificate release from draft to transmission with later revisions. Its implementation tickets are created only after it merges; tracker [#1279](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1279) records its state.
 
 ## 7. Other later releases
 

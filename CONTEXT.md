@@ -243,6 +243,32 @@ _Avoid_: Recommendation, Approval of a document version, Certificate
 The recorded credential issued after a granting Certification Decision, with its number, agreed data and computed validity.
 _Avoid_: Certification Decision, Certificate PDF alone
 
+Dossier control: [Certification dossier control PRD](docs/product/release-4-certification-dossier-control-prd.md).
+
+**Dossier Consistency Check**:
+The deterministic comparison of values recorded across one Certification Case, which produces Discrepancies.
+_Avoid_: Quality Check, Finding, AI contradiction detection
+
+**Discrepancy**:
+A disagreement between two recorded values of one Certification Case, with a verdict (critical, error or to clarify) and a human resolution, either a correction or an acceptance with a reason.
+_Avoid_: Finding, nonconformity, contradiction
+
+**Exchange Record**:
+One dated item received or sent for a Certification Case, with its exact Document Versions, counterpart and channel.
+_Avoid_: correspondence log, e-mail thread
+
+**Re-verification Item**:
+A point recorded in a Certification Case to verify at the next Audit of the same Client Legal Entity.
+_Avoid_: Finding, Task, corrective action
+
+**Certificate Release**:
+The dated and attributed steps that take a Certificate from its draft, through the client's opinion, approval and issuance, to its transmission to the client.
+_Avoid_: Certification Decision, Certificate data agreement
+
+**Certificate Revision**:
+A correction of an issued Certificate that keeps its number and validity and shows its revision index, date and reason.
+_Avoid_: reissue, new Certificate, scope change
+
 ## Ideas and review history
 
 **Idea**:
