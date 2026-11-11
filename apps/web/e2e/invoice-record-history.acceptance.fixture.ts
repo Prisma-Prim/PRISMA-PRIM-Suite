@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import {
   expect,
@@ -335,7 +336,7 @@ export async function exerciseInvoiceRecordHistoryOwnership({
         }),
       ).toBeVisible();
       expect(attempts).toHaveLength(2);
-      await page.unroute(commandPath);
-      await page.unroute(historyPath);
+      await removeRoute(page, commandPath);
+      await removeRoute(page, historyPath);
     }
 }

@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
@@ -326,7 +327,7 @@ for (const frame of ['prisme', 'classic'] as const)
       expect(attempts).toHaveLength(2);
       expect(attempts[1]).toEqual(attempts[0]);
       expect(originalReceipt?.applicabilityRevision).toBe(1);
-      await page.unroute('**/api' + path);
+      await removeRoute(page, '**/api' + path);
       await expect(
         panel.getByRole('button', {
           name: copy('reviewCorrection'),

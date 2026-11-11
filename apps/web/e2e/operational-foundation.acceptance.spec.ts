@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import {
@@ -236,7 +237,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     tasks.getByRole('button', { name: 'Retry pending Task change' }),
   ).toBeVisible();
-  await page.unroute(completionPath);
+  await removeRoute(page, completionPath);
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();

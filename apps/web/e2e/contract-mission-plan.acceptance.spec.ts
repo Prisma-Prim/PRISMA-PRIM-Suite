@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import {
@@ -255,7 +256,10 @@ test('creates a configured mission from the eligible Contract, recovers after re
   ).toBeVisible();
   expect(attempts).toHaveLength(2);
   expect(attempts[1]).toEqual(attempts[0]);
-  await page.unroute('**/api' + base + '/projects/create-from-mission-plan');
+  await removeRoute(
+    page,
+    '**/api' + base + '/projects/create-from-mission-plan',
+  );
   expect(JSON.parse(attempts[0]?.body ?? 'null')).toEqual({
     title: projectTitle,
     expectedContractRevision: 3,

@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
@@ -369,7 +370,7 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await workspace
     .getByRole('button', { name: 'Reload the current model', exact: true })
     .click();
-  await page.unroute(unavailableHistory);
+  await removeRoute(page, unavailableHistory);
   await expect(
     workspace.getByText(
       'No approved version is currently available for new use.',

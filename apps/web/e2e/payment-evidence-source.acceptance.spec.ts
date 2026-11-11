@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import {
   expect,
@@ -326,7 +327,7 @@ for (const kind of ['PRIMARY', 'ADDITIONAL'] as const) {
     } finally {
       if (kind === 'PRIMARY') {
         page.off('response', observeCorrection);
-        await page.unroute(detailRoute, failCommittedRefresh);
+        await removeRoute(page, detailRoute, failCommittedRefresh);
       }
     }
     expect(

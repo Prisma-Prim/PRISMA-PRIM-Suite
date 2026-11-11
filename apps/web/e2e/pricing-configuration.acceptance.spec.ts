@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
@@ -966,7 +967,7 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     ).toBeVisible();
     expect(attempts).toHaveLength(2);
     expect(attempts[1]).toEqual(attempts[0]);
-    await page.unroute(snapshotCommand);
+    await removeRoute(page, snapshotCommand);
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
       path: testInfo.outputPath(`pricing-adjustment-created-${suffix}.png`),

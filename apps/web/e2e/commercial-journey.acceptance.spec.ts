@@ -390,6 +390,7 @@ for (const previousRead of ['cancelled', 'completed'] as const) {
         body: JSON.stringify(events, null, 2),
         contentType: 'application/json',
       });
+      // eslint-disable-next-line no-restricted-syntax -- Teardown only: page.close() follows; no read is awaited.
       await page.unrouteAll({ behavior: 'ignoreErrors' });
       await page.close();
       relay.closeAllConnections();

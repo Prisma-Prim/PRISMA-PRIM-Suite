@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page, type Locator } from '@playwright/test';
@@ -611,7 +612,7 @@ test('inspects mission readiness without accepting work and preserves independen
     ).toBeVisible();
     expect(sent).toHaveLength(2);
     expect(sent[1]).toEqual(sent[0]);
-    await page.unroute(reviewPattern);
+    await removeRoute(page, reviewPattern);
     await expect(
       reviewRegion.getByText('Observed app facts still match', { exact: true }),
     ).toHaveCount(2);

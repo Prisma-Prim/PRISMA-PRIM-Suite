@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import {
   expect,
@@ -617,7 +618,7 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
       expect(writes).toHaveLength(1);
     } finally {
       release.release();
-      await page.unroute(taskPath, hold);
+      await removeRoute(page, taskPath, hold);
     }
 
     // Each Continue uses the real selection owner and then the existing native
