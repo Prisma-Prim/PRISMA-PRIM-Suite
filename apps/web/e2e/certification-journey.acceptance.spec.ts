@@ -9,6 +9,10 @@ import {
   certificationMessages,
   type CertificationMessageKey,
 } from '../src/certification/certification.copy';
+import {
+  consistencyMessages,
+  type ConsistencyMessageKey,
+} from '../src/certification/certification-consistency.copy';
 import { formatMessage, resolveMessage } from '../src/localization/messages';
 import {
   CERTIFICATE_TEXT,
@@ -26,6 +30,8 @@ import { selectOption } from './select-option';
 
 const copy = (key: CertificationMessageKey) =>
   resolveMessage(certificationMessages, 'en', key);
+const consistencyCopy = (key: ConsistencyMessageKey) =>
+  resolveMessage(consistencyMessages, 'en', key);
 
 /**
  * The Case page's timeline title of each step version. The dossier register
@@ -56,7 +62,11 @@ function stepNameOf(title: string): string {
 }
 /** Buttons that would record or change something; a reader sees none. */
 const COMMAND =
-  /^(Record|Correct|Change|Reclassify|Judge|Verify|Attach|Add|Remove|Open a|Propose|Approve)\b/u;
+  /^(Record|Correct|Change|Reclassify|Judge|Verify|Attach|Add|Remove|Open a|Propose|Approve|Accept|Resolve)\b/u;
+/** The fictional reasons of the consistency part of the journey. */
+const R04_REASON = 'Fictional long audit day agreed with the client.';
+const MANUAL_REASON =
+  'The signed PDF prevails; the editable draft is not part of the dossier.';
 
 test('runs the fictional Lactis Demo SRL Case from the application to the Certificate and downloads its dossier register', async ({
   page,
@@ -135,6 +145,226 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
   function region(article: Locator, title: CertificationMessageKey) {
     return article.getByRole('region', { name: copy(title), exact: true });
   }
+  function consistency(article: Locator) {
+    return article.getByRole('region', {
+      name: consistencyCopy('title'),
+      exact: true,
+    });
+  }
+  /**
+   * The Discrepancy of a rule, or the manual one, by its heading; its
+   * accessible name continues with the verdict.
+   */
+  function discrepancy(article: Locator, heading: string) {
+    return consistency(article).getByRole('listitem', { name: heading });
+  }
+  function ruleHeading(rule: 'R01' | 'R04') {
+    return `${rule} — ${consistencyCopy(rule === 'R01' ? 'ruleR01' : 'ruleR04')}`;
+  }
+  async function reload(article: Locator) {
+    await article
+      .getByRole('button', { name: copy('reload'), exact: true })
+      .click();
+    await expect(consistency(article)).toBeVisible();
+  }
+
+  await test.step('the headcount corrected to 60 opens R01, which blocks the decision until a new duration closes it as corrected', async () => {
+    const article = await openCase(manager);
+    const application = region(article, 'applicationTitle');
+    await application
+      .getByRole('button', { name: copy('correctApplication'), exact: true })
+      .click();
+    const form = application.getByRole('form', {
+      name: copy('correctApplication'),
+      exact: true,
+    });
+    await form.getByLabel(copy('totalHeadcount'), { exact: true }).fill('60');
+    await form.getByLabel(copy('effectiveFte'), { exact: true }).fill('60');
+    await form
+      .getByLabel(copy('correctionReason'), { exact: true })
+      .fill('Fictional: the client corrected its headcount to 60.');
+    await form
+      .getByRole('button', { name: copy('saveCorrection'), exact: true })
+      .click();
+    const r01 = discrepancy(article, ruleHeading('R01'));
+    await expect(r01).toContainText(
+      formatMessage(consistencyCopy('valueDays'), { days: '3.5' }),
+    );
+    await expect(r01).toContainText(
+      formatMessage(consistencyCopy('valueDays'), { days: '3' }),
+    );
+    await expect(r01).toContainText(consistencyCopy('blocksDecision'));
+    await expect(r01).toContainText(consistencyCopy('verdictError'));
+    // R04 is open too: 2 auditor-days over one calendar day, one auditor.
+    await expect(discrepancy(article, ruleHeading('R04'))).toContainText(
+      consistencyCopy('neverBlocks'),
+    );
+    await consistency(article).screenshot({
+      path: info.outputPath(`dossier-consistency-open-${width}.png`),
+    });
+    expect(record(await journey.read(manager, journey.base))).toMatchObject({
+      consistency: { counts: { critical: 0, error: 1, toClarify: 1 } },
+    });
+
+    // The programme manager confirms a new duration on the corrected facts.
+    await journey.step(manager, `${journey.base}/duration`, {
+      reason: 'Fictional headcount corrected to 60; 3 auditor-days kept.',
+      inputs: journey.durationInputs,
+      confirmed: journey.confirmedDuration,
+      justification:
+        'Fictional single site; the change of band is absorbed by the plan.',
+    });
+    await reload(article);
+    await expect(discrepancy(article, ruleHeading('R01'))).toContainText(
+      formatMessage(consistencyCopy('sourceStep'), {
+        step: consistencyCopy('stepDuration'),
+        version: 2,
+      }),
+    );
+    await expect(
+      consistency(article).getByRole('heading', {
+        name: consistencyCopy('resolvedTitle'),
+        exact: true,
+      }),
+    ).toBeVisible();
+  });
+
+  await test.step('the programme manager accepts R04 with a reason; it stays resolved after a reload', async () => {
+    const article = await openCase(manager);
+    const r04 = discrepancy(article, ruleHeading('R04'));
+    await r04
+      .getByRole('button', {
+        name: consistencyCopy('acceptAction'),
+        exact: true,
+      })
+      .click();
+    const form = r04.getByRole('form', {
+      name: consistencyCopy('acceptFormTitle'),
+      exact: true,
+    });
+    await form
+      .getByLabel(consistencyCopy('reason'), { exact: true })
+      .fill(R04_REASON);
+    await form
+      .getByRole('button', {
+        name: consistencyCopy('acceptSubmit'),
+        exact: true,
+      })
+      .click();
+    const reason = formatMessage(consistencyCopy('resolvedReason'), {
+      reason: R04_REASON,
+    });
+    await expect(r04).toContainText(reason);
+    await reload(article);
+    await expect(r04).toContainText(reason);
+    await expect(r04).toContainText(consistencyCopy('resolvedAccepted'));
+    await expect(
+      consistency(article).getByText(consistencyCopy('noneOpen'), {
+        exact: true,
+      }),
+    ).toBeVisible();
+  });
+
+  await test.step('the auditor records a manual Discrepancy that the approver accepts', async () => {
+    const draft = await journey.attach(
+      'other',
+      'Editable Stage 2 report draft',
+    );
+    expect(draft).toBeTruthy();
+    const article = await openCase(auditor);
+    await consistency(article)
+      .getByRole('button', {
+        name: consistencyCopy('manualToggle'),
+        exact: true,
+      })
+      .click();
+    const form = consistency(article).getByRole('form', {
+      name: consistencyCopy('manualFormTitle'),
+      exact: true,
+    });
+    await form
+      .getByLabel(consistencyCopy('manualSubject'), { exact: true })
+      .fill('Stage type');
+    await form
+      .getByRole('radio', {
+        name: consistencyCopy('verdictToClarify'),
+        exact: true,
+      })
+      .check();
+    for (const [legend, value, document] of [
+      ['manualFirstValue', 'Stage 1', 'Editable Stage 2 report draft'],
+      ['manualSecondValue', 'Stage 2', 'Stage 2 audit report'],
+    ] as const) {
+      const group = form.getByRole('group', {
+        name: consistencyCopy(legend),
+        exact: true,
+      });
+      await group
+        .getByLabel(consistencyCopy('manualValue'), { exact: true })
+        .fill(value);
+      await selectOption(
+        group.getByLabel(consistencyCopy('manualDocument'), { exact: true }),
+        {
+          label: formatMessage(consistencyCopy('sourceDocument'), {
+            title: document,
+            version: 1,
+          }),
+        },
+      );
+      await group
+        .getByLabel(consistencyCopy('manualLocation'), { exact: true })
+        .fill('page 1');
+    }
+    await form
+      .getByRole('button', {
+        name: consistencyCopy('manualSubmit'),
+        exact: true,
+      })
+      .click();
+    const heading = formatMessage(consistencyCopy('manualHeading'), {
+      sequence: 1,
+      subject: 'Stage type',
+    });
+    await expect(discrepancy(article, heading)).toContainText(
+      consistencyCopy('neverBlocks'),
+    );
+    // The auditor records it; accepting it is the approver's act.
+    await expect(discrepancy(article, heading).getByRole('button')).toHaveCount(
+      0,
+    );
+
+    const approverCase = await openCase(approver);
+    const manual = discrepancy(approverCase, heading);
+    await manual
+      .getByRole('button', {
+        name: consistencyCopy('acceptAction'),
+        exact: true,
+      })
+      .click();
+    await manual
+      .getByLabel(consistencyCopy('reason'), { exact: true })
+      .fill(MANUAL_REASON);
+    await manual
+      .getByRole('button', {
+        name: consistencyCopy('acceptSubmit'),
+        exact: true,
+      })
+      .click();
+    await expect(manual).toContainText(
+      formatMessage(consistencyCopy('resolvedReason'), {
+        reason: MANUAL_REASON,
+      }),
+    );
+    await consistency(approverCase).screenshot({
+      path: info.outputPath(`dossier-consistency-resolved-${width}.png`),
+    });
+    expect(record(await journey.read(approver, journey.base))).toMatchObject({
+      consistency: {
+        counts: { critical: 0, error: 0, toClarify: 0 },
+        resolvedTotal: 3,
+      },
+    });
+  });
 
   await test.step('the team leader records the recommendation by keyboard', async () => {
     const article = await openCase(auditor);
@@ -264,7 +494,18 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     ).toHaveText(copy('preconditionDossierReviewIncomplete'));
     expect(decisionPosts).toEqual([]);
 
-    // The approver reviews the dossier; the kept draft is then recorded.
+    // The programme manager records the Certificate data after the
+    // recommendation; the approver reviews the dossier; the kept draft is
+    // then recorded.
+    const data = await journey.attach(
+      'certificate_data',
+      'Signed Certificate data form',
+    );
+    await journey.step(manager, `${journey.base}/certificate-data`, {
+      texts: [CERTIFICATE_TEXT],
+      agreedOn: journey.today,
+      agreementAttachmentId: data,
+    });
     await journey.reviewDossier();
     await article
       .getByRole('button', { name: copy('reload'), exact: true })
@@ -288,7 +529,7 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     ).toBeVisible();
     expect(decisionPosts).toHaveLength(1);
     expect(record(await journey.read(approver, journey.base))).toMatchObject({
-      nextStep: 'certificate_data',
+      nextStep: 'certificate',
       decision: {
         value: {
           decision: 'granted',
@@ -315,15 +556,6 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
   });
 
   await test.step('the Certificate is recorded, valid three years minus one day', async () => {
-    const data = await journey.attach(
-      'certificate_data',
-      'Signed Certificate data form',
-    );
-    await journey.step(manager, `${journey.base}/certificate-data`, {
-      texts: [CERTIFICATE_TEXT],
-      agreedOn: journey.today,
-      agreementAttachmentId: data,
-    });
     const issued = await journey.attach('certificate', 'Issued Certificate');
     const certified = await journey.step(
       approver,
@@ -392,8 +624,25 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     const timeline = records(
       (await journey.read(reader, `${journey.base}/timeline`)).entries,
     );
+    // The corrected application and duration, then the Certificate data
+    // before the dossier review.
     expect(timeline.map((entry) => entry.step)).toEqual([
-      ...STEP_TITLES.keys(),
+      'application',
+      'application_review',
+      'duration',
+      'agreement',
+      'team',
+      'team_decision',
+      'stage_1_plan',
+      'stage_1_report',
+      'stage_2_plan',
+      'stage_2_report',
+      'application',
+      'duration',
+      'recommendation',
+      'certificate_data',
+      'dossier_review',
+      'decision',
     ]);
     // The reader's timeline is complete once it ends with the Certificate.
     const titles = region(article, 'timelineTitle').locator(
@@ -422,7 +671,16 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     const documents = records(
       (await journey.read(reader, `${journey.base}/documents`)).items,
     );
-    expect(documents).toHaveLength(8);
+    expect(documents).toHaveLength(9);
+    // The dossier consistency section lists the resolved Discrepancies.
+    expected.push(
+      'Dossier consistency',
+      'R01 — Audit duration against the current application — Error — Resolved',
+      'R04 — Stage plan days against calendar days and auditors on site — To clarify — Resolved',
+      'Manual Discrepancy 1 — Stage type — To clarify — Resolved',
+      R04_REASON,
+      MANUAL_REASON,
+    );
     for (const document of documents)
       expected.push(text(document.versionId), text(document.sourceTitle));
     for (const value of expected)

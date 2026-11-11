@@ -173,7 +173,7 @@ const keys = [
   'criteriaNotMet',
 
   'blockedReviewBeforeApplication',
-  'blockedApplicationReviewed',
+  'blockedApplicationDecided',
   'blockedAlreadyReviewed',
   'blockedClosed',
   'blockedCorrectionReason',
@@ -724,6 +724,18 @@ const keys = [
   'certificateApproverIndependence',
   'certificateIndependence',
   'certificateNumberTaken',
+  'preconditionDiscrepanciesOpen',
+  'certificateDiscrepanciesOpen',
+  'discrepancyNotOpen',
+  'discrepancyValidation',
+  'discrepancyReasonRequired',
+  'discrepancyCorrectionRequired',
+  'discrepancyCritical',
+  'discrepancyCorrectedByRecord',
+  'discrepancyNotOnTeam',
+  'discrepancyIndependence',
+  'discrepancyCorrectionUnknown',
+  'discrepancyDocumentUnavailable',
   'certificateDataDiffers',
   'blockedCertificateDataDiffers',
   'blockedCertificateNotGranted',
@@ -1019,8 +1031,8 @@ export const certificationMessages = defineMessages(keys, {
 
     blockedReviewBeforeApplication:
       'The review becomes available once the application is recorded.',
-    blockedApplicationReviewed:
-      'The application can no longer be corrected: it has been reviewed.',
+    blockedApplicationDecided:
+      'The application can no longer be corrected: the Certification Decision is recorded.',
     blockedAlreadyReviewed:
       'This application has already been reviewed. Reload the Case.',
     blockedClosed:
@@ -1761,6 +1773,29 @@ export const certificationMessages = defineMessages(keys, {
       'A member of the audit team cannot record or sign the Certificate: you are linked to one, or the signatory named is on the approved team.',
     certificateNumberTaken:
       'This Certificate number is already used in the Company. Check the number on the issued Certificate.',
+    preconditionDiscrepanciesOpen:
+      'A critical Discrepancy or an unaccepted error is open in the dossier consistency.',
+    certificateDiscrepanciesOpen:
+      'A critical Discrepancy or an unaccepted error is open: resolve it under "Dossier consistency" before recording the Certificate. Reload the Case.',
+    discrepancyNotOpen:
+      'This Discrepancy is no longer open on the current Case. Reload the Case.',
+    discrepancyValidation:
+      'State the compared fields (at most 200 characters), the verdict and both values (at most 1,000 characters each), each on a document attached to this Case; locations take at most 200 characters and the note 2,000.',
+    discrepancyReasonRequired: 'State the reason (at most 2,000 characters).',
+    discrepancyCorrectionRequired:
+      'Select the record version or Document Version that corrects it, and state the reason.',
+    discrepancyCritical:
+      'A critical Discrepancy cannot be accepted; only a correction of the records resolves it.',
+    discrepancyCorrectedByRecord:
+      'A Discrepancy raised by a rule closes when a new record version makes its values agree; it cannot be closed by hand.',
+    discrepancyNotOnTeam:
+      'An auditor records a Discrepancy only on a Case whose audit team includes them.',
+    discrepancyIndependence:
+      'A member of the audit team cannot resolve this Discrepancy, nor record one as an approver.',
+    discrepancyCorrectionUnknown:
+      'The named correction is not a record version of this Case. Reload the Case.',
+    discrepancyDocumentUnavailable:
+      'A selected document is no longer attached to this Case. Reload the Case.',
     certificateDataDiffers:
       'The agreed Certificate data must state exactly what the decision grants. Reload the Case and correct the Certificate data first.',
     blockedCertificateDataDiffers:
@@ -2089,8 +2124,8 @@ export const certificationMessages = defineMessages(keys, {
 
     blockedReviewBeforeApplication:
       'La revue devient disponible une fois la demande enregistrée.',
-    blockedApplicationReviewed:
-      'La demande ne peut plus être corrigée : elle a été revue.',
+    blockedApplicationDecided:
+      'La demande ne peut plus être corrigée : la décision de certification est enregistrée.',
     blockedAlreadyReviewed:
       'Cette demande a déjà été revue. Rechargez le dossier.',
     blockedClosed:
@@ -2854,6 +2889,29 @@ export const certificationMessages = defineMessages(keys, {
       'Un membre de l’équipe d’audit ne peut ni enregistrer ni signer le certificat : vous êtes lié à l’un d’eux, ou le signataire indiqué fait partie de l’équipe approuvée.',
     certificateNumberTaken:
       'Ce numéro de certificat est déjà utilisé dans la Société. Vérifiez le numéro du certificat émis.',
+    preconditionDiscrepanciesOpen:
+      'Une divergence critique ou une erreur non acceptée est ouverte dans la cohérence du dossier.',
+    certificateDiscrepanciesOpen:
+      'Une divergence critique ou une erreur non acceptée est ouverte : résolvez-la sous « Cohérence du dossier » avant d’enregistrer le certificat. Rechargez le dossier.',
+    discrepancyNotOpen:
+      'Cette divergence n’est plus ouverte dans le dossier actuel. Rechargez le dossier.',
+    discrepancyValidation:
+      'Indiquez les champs comparés (200 caractères au plus), le verdict et les deux valeurs (1 000 caractères au plus chacune), chacune sur un document joint à ce dossier ; les emplacements comptent 200 caractères au plus et la note 2 000.',
+    discrepancyReasonRequired: 'Indiquez le motif (2 000 caractères au plus).',
+    discrepancyCorrectionRequired:
+      'Sélectionnez la version d’enregistrement ou de document qui corrige, et indiquez le motif.',
+    discrepancyCritical:
+      'Une divergence critique ne peut pas être acceptée ; seule une correction des enregistrements la résout.',
+    discrepancyCorrectedByRecord:
+      'Une divergence levée par une règle se clôt quand une nouvelle version d’enregistrement accorde ses valeurs ; elle ne se clôt pas à la main.',
+    discrepancyNotOnTeam:
+      'Un auditeur n’enregistre une divergence que dans un dossier dont l’équipe d’audit l’inclut.',
+    discrepancyIndependence:
+      'Un membre de l’équipe d’audit ne peut pas résoudre cette divergence, ni en enregistrer une comme approbateur.',
+    discrepancyCorrectionUnknown:
+      'La correction indiquée n’est pas une version d’enregistrement de ce dossier. Rechargez le dossier.',
+    discrepancyDocumentUnavailable:
+      'Un document sélectionné n’est plus joint à ce dossier. Rechargez le dossier.',
     certificateDataDiffers:
       'Les données du certificat convenues doivent indiquer exactement ce que la décision accorde. Rechargez le dossier et corrigez d’abord les données du certificat.',
     blockedCertificateDataDiffers:
@@ -3186,8 +3244,8 @@ export const certificationMessages = defineMessages(keys, {
 
     blockedReviewBeforeApplication:
       'Analiza devine disponibilă după înregistrarea cererii.',
-    blockedApplicationReviewed:
-      'Cererea nu mai poate fi corectată: a fost analizată.',
+    blockedApplicationDecided:
+      'Cererea nu mai poate fi corectată: decizia de certificare este înregistrată.',
     blockedAlreadyReviewed:
       'Această cerere a fost deja analizată. Reîncărcați dosarul.',
     blockedClosed:
@@ -3946,6 +4004,30 @@ export const certificationMessages = defineMessages(keys, {
       'Un membru al echipei de audit nu poate înregistra și nici semna certificatul: sunteți legat de unul dintre ei sau semnatarul indicat face parte din echipa aprobată.',
     certificateNumberTaken:
       'Acest număr de certificat este deja folosit în Companie. Verificați numărul de pe certificatul emis.',
+    preconditionDiscrepanciesOpen:
+      'O neconcordanță critică sau o eroare neacceptată este deschisă în coerența dosarului.',
+    certificateDiscrepanciesOpen:
+      'O neconcordanță critică sau o eroare neacceptată este deschisă: rezolvați-o la „Coerența dosarului” înainte de a înregistra certificatul. Reîncărcați dosarul.',
+    discrepancyNotOpen:
+      'Această neconcordanță nu mai este deschisă în dosarul actual. Reîncărcați dosarul.',
+    discrepancyValidation:
+      'Indicați câmpurile comparate (cel mult 200 de caractere), verdictul și ambele valori (cel mult 1 000 de caractere fiecare), fiecare pe un document atașat acestui dosar; locurile au cel mult 200 de caractere, iar nota cel mult 2 000.',
+    discrepancyReasonRequired:
+      'Indicați motivul (cel mult 2 000 de caractere).',
+    discrepancyCorrectionRequired:
+      'Selectați versiunea înregistrării sau a documentului care corectează și indicați motivul.',
+    discrepancyCritical:
+      'O neconcordanță critică nu poate fi acceptată; doar o corectare a înregistrărilor o rezolvă.',
+    discrepancyCorrectedByRecord:
+      'O neconcordanță semnalată de o regulă se închide când o nouă versiune a înregistrării face valorile să concorde; nu se închide manual.',
+    discrepancyNotOnTeam:
+      'Un auditor înregistrează o neconcordanță doar într-un dosar a cărui echipă de audit îl include.',
+    discrepancyIndependence:
+      'Un membru al echipei de audit nu poate rezolva această neconcordanță și nici nu poate înregistra una ca aprobator.',
+    discrepancyCorrectionUnknown:
+      'Corectarea indicată nu este o versiune a unei înregistrări din acest dosar. Reîncărcați dosarul.',
+    discrepancyDocumentUnavailable:
+      'Un document selectat nu mai este atașat acestui dosar. Reîncărcați dosarul.',
     certificateDataDiffers:
       'Datele certificatului convenite trebuie să indice exact ce acordă decizia. Reîncărcați dosarul și corectați mai întâi datele certificatului.',
     blockedCertificateDataDiffers:
@@ -4274,8 +4356,8 @@ export const certificationMessages = defineMessages(keys, {
 
     blockedReviewBeforeApplication:
       'Анализ станет доступен после записи заявки.',
-    blockedApplicationReviewed:
-      'Заявку больше нельзя исправить: она уже проанализирована.',
+    blockedApplicationDecided:
+      'Заявку больше нельзя исправить: решение о сертификации записано.',
     blockedAlreadyReviewed:
       'Эта заявка уже проанализирована. Загрузите дело заново.',
     blockedClosed:
@@ -5016,6 +5098,29 @@ export const certificationMessages = defineMessages(keys, {
       'Участник аудиторской группы не может записать или подписать сертификат: вы связаны с одним из них или указанный подписант входит в утверждённую группу.',
     certificateNumberTaken:
       'Этот номер сертификата уже используется в Компании. Проверьте номер на выданном сертификате.',
+    preconditionDiscrepanciesOpen:
+      'В согласованности досье открыто критическое расхождение или непринятая ошибка.',
+    certificateDiscrepanciesOpen:
+      'Открыто критическое расхождение или непринятая ошибка: устраните его в разделе «Согласованность досье» до записи сертификата. Загрузите дело заново.',
+    discrepancyNotOpen:
+      'Это расхождение больше не открыто в текущем деле. Загрузите дело заново.',
+    discrepancyValidation:
+      'Укажите сравниваемые поля (не более 200 символов), вердикт и оба значения (не более 1 000 символов каждое), каждое в документе, приложенном к этому делу; место — не более 200 символов, примечание — не более 2 000.',
+    discrepancyReasonRequired: 'Укажите причину (не более 2 000 символов).',
+    discrepancyCorrectionRequired:
+      'Выберите версию записи или документа, которая исправляет, и укажите причину.',
+    discrepancyCritical:
+      'Критическое расхождение нельзя принять; его устраняет только исправление записей.',
+    discrepancyCorrectedByRecord:
+      'Расхождение, выявленное правилом, закрывается, когда новая версия записи согласует значения; вручную оно не закрывается.',
+    discrepancyNotOnTeam:
+      'Аудитор вносит расхождение только в дело, аудиторская группа которого включает его.',
+    discrepancyIndependence:
+      'Член аудиторской группы не может устранить это расхождение или внести его как утверждающий.',
+    discrepancyCorrectionUnknown:
+      'Указанное исправление не является версией записи этого дела. Загрузите дело заново.',
+    discrepancyDocumentUnavailable:
+      'Выбранный документ больше не приложен к этому делу. Загрузите дело заново.',
     certificateDataDiffers:
       'Согласованные данные сертификата должны точно совпадать с выданным решением. Загрузите дело заново и сначала исправьте данные сертификата.',
     blockedCertificateDataDiffers:

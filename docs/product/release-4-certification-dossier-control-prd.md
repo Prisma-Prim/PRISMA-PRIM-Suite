@@ -42,6 +42,7 @@ Its downstream consumers are the implementation tickets of section 23, the priva
 - The Certificate data are agreed before the dossier review, and a granting decision requires them (section 9.3).
 - A Certification Decision keeps its outcome; later versions correct its texts ([#1152](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1152)), restated in section 9.3.
 - The Certification Decision is also refused while a critical Discrepancy or an unaccepted error is open (section 9.1).
+- The accepted application stays correctable, with a reason, until the Certification Decision, so that R01 compares the current facts (section 20.1).
 - The `certificate` step becomes the Certificate Release (section 9.4) and accepts later Certificate Revisions (section 9.5).
 - Exchanges, Re-verification Items and Discrepancy resolutions can be recorded on a certified or refused Case, and revisions on a certified one.
 

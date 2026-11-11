@@ -124,7 +124,7 @@ Finding classifications for this journey: **major nonconformity**, **minor nonco
 
 Steps, in order:
 
-1. `application` — recorded, correctable until the review is accepted.
+1. `application` — recorded, correctable until the review is accepted; the [certification dossier control PRD](release-4-certification-dossier-control-prd.md#12-what-changes-in-the-certification-case) keeps it correctable, with a reason, until the decision.
 2. `application_review` — accepted or rejected. Rejection closes the Case; a new application opens a new Case.
 3. `duration` — confirmed determination; a correction after confirmation requires a reason.
 4. `agreement` — recorded signed agreement.
