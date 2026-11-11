@@ -123,6 +123,8 @@ export function preconditionLabel(
       return 'preconditionDossierReviewIncomplete';
     case 'DECISION_IN_FUTURE':
       return 'preconditionDecisionInFuture';
+    case 'DISCREPANCIES_OPEN':
+      return 'preconditionDiscrepanciesOpen';
   }
   return unexpected(code);
 }

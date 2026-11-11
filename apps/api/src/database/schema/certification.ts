@@ -75,6 +75,8 @@ export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.decision_recorded',
   'certification_case.certificate_data_agreed',
   'certification_case.certificate_recorded',
+  'certification_case.discrepancy_recorded',
+  'certification_case.discrepancy_resolved',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
@@ -94,6 +96,8 @@ export const CERTIFICATION_COMMAND_KINDS = [
   'decision',
   'certificate_data',
   'certificate',
+  'discrepancy',
+  'discrepancy_resolution',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -208,6 +212,12 @@ export const certificationStepVersions = pgTable(
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
   },
   (table) => [
+    uniqueIndex('certification_step_versions_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.id,
+    ),
     uniqueIndex('certification_step_versions_number_unique').on(
       table.workspaceId,
       table.companyId,
@@ -284,7 +294,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate', 'discrepancy', 'discrepancy_resolution')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -330,7 +340,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded', 'certification_case.discrepancy_recorded', 'certification_case.discrepancy_resolved') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',
@@ -640,6 +650,244 @@ export const certificationCertificates = pgTable(
     check(
       'certification_certificates_values_check',
       sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.texts}) = 'array'`,
+    ),
+  ],
+);
+
+export const CERTIFICATION_DISCREPANCY_VERDICTS = [
+  'critical',
+  'error',
+  'to_clarify',
+] as const;
+/** The rule codes of the dossier consistency rule set, and manual Discrepancies. */
+export const CERTIFICATION_DISCREPANCY_RULE_CODES = [
+  'R01',
+  'R02',
+  'R03',
+  'R04',
+  'R05',
+  'R08',
+  'R09',
+  'R10',
+  'R11',
+  'R12',
+  'R14',
+  'manual',
+] as const;
+
+/** A Discrepancy a member found by reading the Case's documents; append-only. */
+export const certificationManualDiscrepancies = pgTable(
+  'certification_manual_discrepancies',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    sequence: integer('sequence').notNull(),
+    verdict: text('verdict', {
+      enum: CERTIFICATION_DISCREPANCY_VERDICTS,
+    }).notNull(),
+    subject: text('subject').notNull(),
+    leftValue: text('left_value').notNull(),
+    leftAttachmentId: uuid('left_attachment_id').notNull(),
+    leftLocation: text('left_location'),
+    rightValue: text('right_value').notNull(),
+    rightAttachmentId: uuid('right_attachment_id').notNull(),
+    rightLocation: text('right_location'),
+    note: text('note'),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_manual_discrepancies_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.id,
+    ),
+    uniqueIndex('certification_manual_discrepancies_sequence_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.sequence,
+    ),
+    foreignKey({
+      name: 'certification_manual_discrepancies_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_manual_discrepancies_left_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.leftAttachmentId,
+      ],
+      foreignColumns: [
+        certificationCaseDocuments.workspaceId,
+        certificationCaseDocuments.companyId,
+        certificationCaseDocuments.caseId,
+        certificationCaseDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_manual_discrepancies_right_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.rightAttachmentId,
+      ],
+      foreignColumns: [
+        certificationCaseDocuments.workspaceId,
+        certificationCaseDocuments.companyId,
+        certificationCaseDocuments.caseId,
+        certificationCaseDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_manual_discrepancies_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_manual_discrepancies_values_check',
+      sql`${table.verdict} IN ('critical', 'error', 'to_clarify') AND ${table.sequence} > 0 AND ${table.caseRevision} > 1 AND length(btrim(${table.subject})) BETWEEN 1 AND 200 AND length(btrim(${table.leftValue})) BETWEEN 1 AND 1000 AND length(btrim(${table.rightValue})) BETWEEN 1 AND 1000 AND (${table.leftLocation} IS NULL OR length(btrim(${table.leftLocation})) BETWEEN 1 AND 200) AND (${table.rightLocation} IS NULL OR length(btrim(${table.rightLocation})) BETWEEN 1 AND 200) AND (${table.note} IS NULL OR length(btrim(${table.note})) BETWEEN 1 AND 2000)`,
+    ),
+  ],
+);
+
+/**
+ * A human resolution of one Discrepancy: an acceptance with its reason,
+ * bound to the rule, subject and exact compared values it accepted, or the
+ * correction of a manual Discrepancy naming what corrected it. Append-only;
+ * at most one per Discrepancy identity.
+ */
+export const certificationDiscrepancyResolutions = pgTable(
+  'certification_discrepancy_resolutions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    discrepancyId: text('discrepancy_id').notNull(),
+    ruleCode: text('rule_code', {
+      enum: CERTIFICATION_DISCREPANCY_RULE_CODES,
+    }).notNull(),
+    manualDiscrepancyId: uuid('manual_discrepancy_id'),
+    kind: text('kind', { enum: ['accepted', 'corrected'] }).notNull(),
+    verdict: text('verdict', {
+      enum: CERTIFICATION_DISCREPANCY_VERDICTS,
+    }).notNull(),
+    reason: text('reason').notNull(),
+    /** The subject and values accepted, kept as compared at that time. */
+    comparedValues: jsonb('compared_values').$type<unknown>().notNull(),
+    correctedByAttachmentId: uuid('corrected_by_attachment_id'),
+    correctedByStepVersionId: uuid('corrected_by_step_version_id'),
+    ruleSetVersion: text('rule_set_version').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_discrepancy_resolutions_identity_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.discrepancyId,
+    ),
+    foreignKey({
+      name: 'certification_discrepancy_resolutions_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_discrepancy_resolutions_manual_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.manualDiscrepancyId,
+      ],
+      foreignColumns: [
+        certificationManualDiscrepancies.workspaceId,
+        certificationManualDiscrepancies.companyId,
+        certificationManualDiscrepancies.caseId,
+        certificationManualDiscrepancies.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_discrepancy_resolutions_attachment_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.correctedByAttachmentId,
+      ],
+      foreignColumns: [
+        certificationCaseDocuments.workspaceId,
+        certificationCaseDocuments.companyId,
+        certificationCaseDocuments.caseId,
+        certificationCaseDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_discrepancy_resolutions_step_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.correctedByStepVersionId,
+      ],
+      foreignColumns: [
+        certificationStepVersions.workspaceId,
+        certificationStepVersions.companyId,
+        certificationStepVersions.caseId,
+        certificationStepVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_discrepancy_resolutions_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_discrepancy_resolutions_values_check',
+      sql`${table.ruleCode} IN ('R01', 'R02', 'R03', 'R04', 'R05', 'R08', 'R09', 'R10', 'R11', 'R12', 'R14', 'manual') AND ${table.kind} IN ('accepted', 'corrected') AND ${table.verdict} IN ('critical', 'error', 'to_clarify') AND ${table.caseRevision} > 1 AND length(btrim(${table.reason})) BETWEEN 1 AND 2000 AND length(btrim(${table.ruleSetVersion})) BETWEEN 1 AND 64 AND jsonb_typeof(${table.comparedValues}) = 'object' AND ${table.discrepancyId} ~ '^(R[0-9]{2}:[0-9a-f]{32}|manual:[0-9a-f-]{36})$'`,
+    ),
+    check(
+      'certification_discrepancy_resolutions_kind_check',
+      sql`((${table.ruleCode} = 'manual') = (${table.manualDiscrepancyId} IS NOT NULL)) AND (${table.kind} = 'accepted' OR (${table.ruleCode} = 'manual' AND num_nonnulls(${table.correctedByAttachmentId}, ${table.correctedByStepVersionId}) = 1)) AND (${table.kind} = 'corrected' OR num_nonnulls(${table.correctedByAttachmentId}, ${table.correctedByStepVersionId}) = 0) AND (${table.kind} = 'corrected' OR ${table.verdict} <> 'critical')`,
     ),
   ],
 );

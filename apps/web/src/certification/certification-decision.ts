@@ -1,4 +1,8 @@
 import type { ActAttribution } from './certification-attribution';
+import {
+  blockingDecision,
+  type Consistency,
+} from './certification-consistency';
 import { findingBlocks, type Finding } from './certification-findings';
 import type { CertificationActorReference } from './certification-response';
 import { approvedTeam } from './certification-stages';
@@ -148,6 +152,7 @@ export const DECISION_PRECONDITIONS = [
   'GRANT_AGAINST_RECOMMENDATION',
   'DOSSIER_REVIEW_INCOMPLETE',
   'DECISION_IN_FUTURE',
+  'DISCREPANCIES_OPEN',
 ] as const;
 export type DecisionPrecondition = (typeof DECISION_PRECONDITIONS)[number];
 
@@ -174,6 +179,7 @@ export type DecisionContext = {
   findings: readonly Finding[];
   recommendation: { value: Recommendation } | null;
   dossierReview: { value: DossierReview } | null;
+  consistency: Consistency;
 };
 
 /**
@@ -204,6 +210,9 @@ export function decisionPreconditions(
     failures.push('GRANT_AGAINST_RECOMMENDATION');
   if (!current.dossierReview || !dossierComplete(current.dossierReview.value))
     failures.push('DOSSIER_REVIEW_INCOMPLETE');
+  // The decision itself may raise more (its date, its texts): the server says.
+  if (blockingDecision(current.consistency).length)
+    failures.push('DISCREPANCIES_OPEN');
   return failures;
 }
 

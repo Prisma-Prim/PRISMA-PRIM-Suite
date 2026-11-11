@@ -83,9 +83,18 @@ function detail(overrides: Record<string, unknown> = {}) {
     decision: null,
     certificateData: null,
     certificate: null,
+    consistency: noDiscrepancy,
     ...overrides,
   };
 }
+
+const noDiscrepancy = {
+  ruleSetVersion: 'dossier-consistency-2026-11',
+  counts: { critical: 0, error: 0, toClarify: 0 },
+  open: [],
+  resolved: [],
+  resolvedTotal: 0,
+};
 
 /** The fictional dairy's vector: CI, three studies, 120 FTE, +15 % −5 %. */
 const proposal = {
@@ -160,6 +169,36 @@ describe('Certification response parsers', () => {
     const parsed = parseCaseDetail(detail(), { ...scope, caseId });
     expect(parsed.application?.value).toEqual(lactisFacts());
     expect(parsed.applicationReview?.value.outcome).toBe('accepted');
+  });
+
+  it('reads an application corrected after its review and its duration, and refuses a first application after the review', () => {
+    const corrected = durationDetail(
+      {},
+      {
+        revision: 5,
+        application: {
+          ...application,
+          id: 'step-4',
+          version: 2,
+          caseRevision: 5,
+          reason: 'The client corrected its headcount to 60.',
+          value: lactisFacts({
+            haccpStudyCount: 3,
+            totalHeadcount: 60,
+            effectiveFte: 60,
+          }),
+        },
+      },
+    );
+    expect(
+      parseCaseDetail(corrected, { ...scope, caseId }).application?.version,
+    ).toBe(2);
+    expect(() =>
+      parseCaseDetail(
+        detail({ application: { ...application, caseRevision: 3 } }),
+        { ...scope, caseId },
+      ),
+    ).toThrow();
   });
 
   it.each([
