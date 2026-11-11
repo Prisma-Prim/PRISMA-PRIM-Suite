@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { ActAttribution } from './certification-attribution.js';
 import type { ConsistencySection } from './certification-consistency.js';
 import { consistencyRegisterBlocks } from './certification-consistency-register.js';
+import { exchangeRegisterBlocks } from './certification-exchanges-register.js';
 import type { FindingRecordView } from './certification-findings.js';
 import type { AuditStage } from './certification-stages.js';
 import {
@@ -14,6 +15,7 @@ import {
 import type {
   CertificateRecord,
   CertificationAttachment,
+  CertificationCaseDetail,
   CertificationCaseSummary,
   CertificationStepVersion,
 } from './certification.types.js';
@@ -54,6 +56,8 @@ export interface CertificationRegisterSource {
   documents: CertificationAttachment[];
   /** The Dossier Consistency Check at the same revision. */
   consistency: ConsistencySection;
+  /** The exchange register with its deadline states at generation time. */
+  exchanges: CertificationCaseDetail['exchanges'];
 }
 
 export interface RegisterField {
@@ -133,6 +137,7 @@ export function certificationRegister(
     { kind: 'section', text: labels.sections.history },
     ...source.entries.map((entry) => entryBlock(entry, labels)),
     ...consistencyRegisterBlocks(source.consistency, language),
+    ...exchangeRegisterBlocks(source.exchanges, source.documents, language),
     { kind: 'section', text: labels.sections.documents },
   ];
   if (source.documents.length === 0)

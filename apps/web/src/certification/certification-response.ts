@@ -6,6 +6,7 @@ import {
   parseConsistency,
   type Consistency,
 } from './certification-consistency';
+import { parseExchanges, type Exchanges } from './certification-exchanges';
 import {
   DECISION_LIMITS,
   DOSSIER_ITEMS,
@@ -125,6 +126,7 @@ export const CERTIFICATION_DOCUMENT_ROLES = [
   'certificate',
   'certificate_data',
   'decision_form',
+  'correspondence',
   'other',
 ] as const;
 export type CertificationDocumentRole =
@@ -350,6 +352,8 @@ export interface CaseDetail extends CaseSummary {
   certificate: Certificate | null;
   /** The Dossier Consistency Check over the Case's current records. */
   consistency: Consistency;
+  /** The exchange register, its deadline states and the Re-verification Items. */
+  exchanges: Exchanges;
 }
 
 /** One exact frozen PDF of the Case's Client, attached with its role. */
@@ -480,6 +484,7 @@ export function parseCaseDetail(
     certificate:
       body.certificate === null ? null : certificateValue(body.certificate),
     consistency: parseConsistency(body.consistency),
+    exchanges: parseExchanges(body.exchanges),
   };
   if (!consistent(detail)) invalid();
   return detail;

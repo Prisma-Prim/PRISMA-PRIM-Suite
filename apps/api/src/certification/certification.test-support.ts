@@ -155,6 +155,19 @@ export async function openCertificationFixture(input: {
     );
     return result.rows;
   }
+  /** The Company-scoped certification Activity of one Company, in version order. */
+  async function procedureEvents(companyId: string) {
+    if (!harness) throw new Error('Fixture is closed.');
+    const result = await harness.pool.query<{
+      action: string;
+      version: number;
+      metadata: unknown;
+    }>(
+      'SELECT action, version, metadata FROM certification_procedure_events WHERE company_id = $1 ORDER BY version',
+      [companyId],
+    );
+    return result.rows;
+  }
   /**
    * Rewrites the latest recorded version of a step into the shape an earlier
    * release stored, bypassing the immutability trigger in this isolated
@@ -614,6 +627,7 @@ export async function openCertificationFixture(input: {
     grant,
     eventCount,
     eventMetadata,
+    procedureEvents,
     storeAsEarlierRelease,
     holdTable,
     caseWithApplication,

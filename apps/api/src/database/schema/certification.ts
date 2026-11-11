@@ -51,6 +51,7 @@ export const CERTIFICATION_DOCUMENT_ROLES = [
   'certificate',
   'certificate_data',
   'decision_form',
+  'correspondence',
   'other',
 ] as const;
 export const CERTIFICATION_EVENT_ACTIONS = [
@@ -77,6 +78,9 @@ export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.certificate_recorded',
   'certification_case.discrepancy_recorded',
   'certification_case.discrepancy_resolved',
+  'certification_case.exchange_recorded',
+  'certification_case.reverification_item_added',
+  'certification_case.reverification_item_withdrawn',
 ] as const;
 export const CERTIFICATION_COMMAND_KINDS = [
   'open',
@@ -98,6 +102,9 @@ export const CERTIFICATION_COMMAND_KINDS = [
   'certificate',
   'discrepancy',
   'discrepancy_resolution',
+  'exchange',
+  'reverification_item',
+  'reverification_withdrawal',
 ] as const;
 
 /** One initial certification of one Client Legal Entity, carried out under one Project. */
@@ -294,7 +301,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate', 'discrepancy', 'discrepancy_resolution')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate', 'discrepancy', 'discrepancy_resolution', 'exchange', 'reverification_item', 'reverification_withdrawal')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -340,7 +347,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded', 'certification_case.discrepancy_recorded', 'certification_case.discrepancy_resolved') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded', 'certification_case.discrepancy_recorded', 'certification_case.discrepancy_resolved', 'certification_case.exchange_recorded', 'certification_case.reverification_item_added', 'certification_case.reverification_item_withdrawn') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',
@@ -447,7 +454,7 @@ export const certificationCaseDocuments = pgTable(
     }),
     check(
       'certification_case_documents_role_check',
-      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'decision_form', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
+      sql`${table.role} IN ('questionnaire', 'iso22000_annex', 'agreement', 'plan', 'participant_list', 'report', 'evidence', 'certificate', 'certificate_data', 'decision_form', 'correspondence', 'other') AND ${table.caseRevision} > 1 AND ${table.versionNumber} > 0 AND ${table.sizeBytes} > 0 AND ${table.sha256} ~ '^[a-f0-9]{64}$'`,
     ),
     check(
       'certification_case_documents_note_check',
@@ -666,12 +673,16 @@ export const CERTIFICATION_DISCREPANCY_RULE_CODES = [
   'R03',
   'R04',
   'R05',
+  'R06',
+  'R07',
   'R08',
   'R09',
   'R10',
   'R11',
   'R12',
   'R14',
+  'R15',
+  'R16',
   'manual',
 ] as const;
 
@@ -883,11 +894,405 @@ export const certificationDiscrepancyResolutions = pgTable(
     }),
     check(
       'certification_discrepancy_resolutions_values_check',
-      sql`${table.ruleCode} IN ('R01', 'R02', 'R03', 'R04', 'R05', 'R08', 'R09', 'R10', 'R11', 'R12', 'R14', 'manual') AND ${table.kind} IN ('accepted', 'corrected') AND ${table.verdict} IN ('critical', 'error', 'to_clarify') AND ${table.caseRevision} > 1 AND length(btrim(${table.reason})) BETWEEN 1 AND 2000 AND length(btrim(${table.ruleSetVersion})) BETWEEN 1 AND 64 AND jsonb_typeof(${table.comparedValues}) = 'object' AND ${table.discrepancyId} ~ '^(R[0-9]{2}:[0-9a-f]{32}|manual:[0-9a-f-]{36})$'`,
+      sql`${table.ruleCode} IN ('R01', 'R02', 'R03', 'R04', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10', 'R11', 'R12', 'R14', 'R15', 'R16', 'manual') AND ${table.kind} IN ('accepted', 'corrected') AND ${table.verdict} IN ('critical', 'error', 'to_clarify') AND ${table.caseRevision} > 1 AND length(btrim(${table.reason})) BETWEEN 1 AND 2000 AND length(btrim(${table.ruleSetVersion})) BETWEEN 1 AND 64 AND jsonb_typeof(${table.comparedValues}) = 'object' AND ${table.discrepancyId} ~ '^(R[0-9]{2}:[0-9a-f]{32}|manual:[0-9a-f-]{36})$'`,
     ),
     check(
       'certification_discrepancy_resolutions_kind_check',
       sql`((${table.ruleCode} = 'manual') = (${table.manualDiscrepancyId} IS NOT NULL)) AND (${table.kind} = 'accepted' OR (${table.ruleCode} = 'manual' AND num_nonnulls(${table.correctedByAttachmentId}, ${table.correctedByStepVersionId}) = 1)) AND (${table.kind} = 'corrected' OR num_nonnulls(${table.correctedByAttachmentId}, ${table.correctedByStepVersionId}) = 0) AND (${table.kind} = 'corrected' OR ${table.verdict} <> 'critical')`,
+    ),
+  ],
+);
+
+export const CERTIFICATION_EXCHANGE_DIRECTIONS = ['received', 'sent'] as const;
+export const CERTIFICATION_EXCHANGE_ITEM_KINDS = [
+  'application',
+  'agreement',
+  'team_notice',
+  'stage_plan',
+  'stage_report',
+  'participant_list',
+  'nonconformity_response',
+  'client_data_confirmation',
+  'audit_dossier',
+  'certificate_data_form',
+  'certificate_draft',
+  'client_opinion',
+  'decision_form',
+  'certificate',
+  'other',
+] as const;
+export const CERTIFICATION_EXCHANGE_COUNTERPART_KINDS = [
+  'client',
+  'certification_body',
+  'audit_team_member',
+  'other',
+] as const;
+export const CERTIFICATION_EXCHANGE_CHANNELS = [
+  'email',
+  'platform',
+  'courier',
+  'hand_delivery',
+  'other',
+] as const;
+
+/**
+ * One version of an Exchange Record: a human declaration of what was
+ * received or sent, with the exact attached Document Versions exchanged.
+ * A correction appends the next version with its reason; append-only.
+ */
+export const certificationExchangeRecords = pgTable(
+  'certification_exchange_records',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    sequence: integer('sequence').notNull(),
+    version: integer('version').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    direction: text('direction', {
+      enum: CERTIFICATION_EXCHANGE_DIRECTIONS,
+    }).notNull(),
+    itemKind: text('item_kind', {
+      enum: CERTIFICATION_EXCHANGE_ITEM_KINDS,
+    }).notNull(),
+    counterpartKind: text('counterpart_kind', {
+      enum: CERTIFICATION_EXCHANGE_COUNTERPART_KINDS,
+    }).notNull(),
+    counterpartName: text('counterpart_name').notNull(),
+    businessDate: date('business_date', { mode: 'string' }).notNull(),
+    channel: text('channel', {
+      enum: CERTIFICATION_EXCHANGE_CHANNELS,
+    }).notNull(),
+    reference: text('reference'),
+    note: text('note'),
+    /** The exchanged attachments of this Case, validated by the command. */
+    attachmentIds: jsonb('attachment_ids').$type<unknown>().notNull(),
+    reason: text('reason'),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_exchange_records_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.id,
+    ),
+    uniqueIndex('certification_exchange_records_number_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.sequence,
+      table.version,
+    ),
+    foreignKey({
+      name: 'certification_exchange_records_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_exchange_records_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_exchange_records_values_check',
+      sql`${table.direction} IN ('received', 'sent') AND ${table.itemKind} IN ('application', 'agreement', 'team_notice', 'stage_plan', 'stage_report', 'participant_list', 'nonconformity_response', 'client_data_confirmation', 'audit_dossier', 'certificate_data_form', 'certificate_draft', 'client_opinion', 'decision_form', 'certificate', 'other') AND ${table.counterpartKind} IN ('client', 'certification_body', 'audit_team_member', 'other') AND ${table.channel} IN ('email', 'platform', 'courier', 'hand_delivery', 'other') AND ${table.sequence} > 0 AND ${table.version} > 0 AND ${table.caseRevision} > 1 AND length(btrim(${table.counterpartName})) BETWEEN 1 AND 200 AND (${table.reference} IS NULL OR length(btrim(${table.reference})) BETWEEN 1 AND 64) AND (${table.note} IS NULL OR length(btrim(${table.note})) BETWEEN 1 AND 2000) AND (${table.channel} <> 'other' OR ${table.note} IS NOT NULL) AND jsonb_typeof(${table.attachmentIds}) = 'array' AND jsonb_array_length(${table.attachmentIds}) BETWEEN 1 AND 20`,
+    ),
+    check(
+      'certification_exchange_records_reason_check',
+      sql`(${table.version} = 1 AND ${table.reason} IS NULL) OR (${table.version} > 1 AND length(btrim(${table.reason})) BETWEEN 1 AND 2000)`,
+    ),
+  ],
+);
+
+/**
+ * A manual Re-verification Item: what to verify at the next Audit, added by
+ * a member or by an acceptance with the re-verification flag. Automatic
+ * items (minor nonconformities with an adequate plan) are derived on read.
+ */
+export const certificationReverificationItems = pgTable(
+  'certification_reverification_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    sequence: integer('sequence').notNull(),
+    origin: text('origin', { enum: ['manual', 'discrepancy'] }).notNull(),
+    text: text('text').notNull(),
+    sourceKind: text('source_kind', {
+      enum: ['finding', 'discrepancy', 'exchange', 'attachment'],
+    }),
+    sourceFindingId: uuid('source_finding_id'),
+    sourceDiscrepancyId: text('source_discrepancy_id'),
+    sourceExchangeSequence: integer('source_exchange_sequence'),
+    sourceAttachmentId: uuid('source_attachment_id'),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_reverification_items_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.id,
+    ),
+    uniqueIndex('certification_reverification_items_sequence_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.sequence,
+    ),
+    foreignKey({
+      name: 'certification_reverification_items_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_reverification_items_finding_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.sourceFindingId,
+      ],
+      foreignColumns: [
+        certificationFindings.workspaceId,
+        certificationFindings.companyId,
+        certificationFindings.caseId,
+        certificationFindings.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_reverification_items_attachment_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.sourceAttachmentId,
+      ],
+      foreignColumns: [
+        certificationCaseDocuments.workspaceId,
+        certificationCaseDocuments.companyId,
+        certificationCaseDocuments.caseId,
+        certificationCaseDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_reverification_items_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_reverification_items_values_check',
+      sql`${table.origin} IN ('manual', 'discrepancy') AND ${table.sequence} > 0 AND ${table.caseRevision} > 1 AND length(btrim(${table.text})) BETWEEN 1 AND 2000 AND (${table.sourceExchangeSequence} IS NULL OR ${table.sourceExchangeSequence} > 0) AND (${table.sourceDiscrepancyId} IS NULL OR ${table.sourceDiscrepancyId} ~ '^(R[0-9]{2}:[0-9a-f]{32}|manual:[0-9a-f-]{36})$')`,
+    ),
+    check(
+      'certification_reverification_items_source_check',
+      sql`num_nonnulls(${table.sourceFindingId}, ${table.sourceDiscrepancyId}, ${table.sourceExchangeSequence}, ${table.sourceAttachmentId}) = (CASE WHEN ${table.sourceKind} IS NULL THEN 0 ELSE 1 END) AND (${table.sourceKind} IS NULL OR (${table.sourceKind} = 'finding' AND ${table.sourceFindingId} IS NOT NULL) OR (${table.sourceKind} = 'discrepancy' AND ${table.sourceDiscrepancyId} IS NOT NULL) OR (${table.sourceKind} = 'exchange' AND ${table.sourceExchangeSequence} IS NOT NULL) OR (${table.sourceKind} = 'attachment' AND ${table.sourceAttachmentId} IS NOT NULL)) AND (${table.origin} = 'manual' OR ${table.sourceKind} = 'discrepancy')`,
+    ),
+  ],
+);
+
+/** The withdrawal of one manual Re-verification Item, with its reason; append-only. */
+export const certificationReverificationWithdrawals = pgTable(
+  'certification_reverification_withdrawals',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    itemId: uuid('item_id').notNull(),
+    reason: text('reason').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_reverification_withdrawals_item_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.itemId,
+    ),
+    foreignKey({
+      name: 'certification_reverification_withdrawals_case_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCases.workspaceId,
+        certificationCases.companyId,
+        certificationCases.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_reverification_withdrawals_item_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId, table.itemId],
+      foreignColumns: [
+        certificationReverificationItems.workspaceId,
+        certificationReverificationItems.companyId,
+        certificationReverificationItems.caseId,
+        certificationReverificationItems.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_reverification_withdrawals_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_reverification_withdrawals_values_check',
+      sql`${table.caseRevision} > 1 AND length(btrim(${table.reason})) BETWEEN 1 AND 2000`,
+    ),
+  ],
+);
+
+/**
+ * One version of a certifying Company's procedure deadline set: whole
+ * calendar days per kind, or not configured. Nothing is seeded; the
+ * command's idempotency key and fingerprint replay it. Append-only.
+ */
+export const certificationDeadlineSets = pgTable(
+  'certification_deadline_sets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    version: integer('version').notNull(),
+    stagePlanSentDays: integer('stage_plan_sent_days'),
+    auditDossierTransmittedDays: integer('audit_dossier_transmitted_days'),
+    stage2ReportReleasedDays: integer('stage_2_report_released_days'),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_deadline_sets_version_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.version,
+    ),
+    uniqueIndex('certification_deadline_sets_actor_key_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.actorMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'certification_deadline_sets_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'certification_deadline_sets_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_deadline_sets_values_check',
+      sql`${table.version} > 0 AND (${table.stagePlanSentDays} IS NULL OR ${table.stagePlanSentDays} BETWEEN 0 AND 365) AND (${table.auditDossierTransmittedDays} IS NULL OR ${table.auditDossierTransmittedDays} BETWEEN 0 AND 365) AND (${table.stage2ReportReleasedDays} IS NULL OR ${table.stage2ReportReleasedDays} BETWEEN 0 AND 365) AND length(${table.idempotencyKey}) BETWEEN 1 AND 255 AND ${table.fingerprint} ~ '^[a-f0-9]{64}$'`,
+    ),
+  ],
+);
+
+export const CERTIFICATION_PROCEDURE_EVENT_ACTIONS = [
+  'certification_procedure.deadlines_configured',
+] as const;
+
+// Company-scoped certification Activity: one event per deadline set version.
+export const certificationProcedureEvents = pgTable(
+  'certification_procedure_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    version: integer('version').notNull(),
+    action: text('action', {
+      enum: CERTIFICATION_PROCEDURE_EVENT_ACTIONS,
+    }).notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    metadata: jsonb('metadata').$type<unknown>().notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_procedure_events_version_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.version,
+    ),
+    foreignKey({
+      name: 'certification_procedure_events_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'certification_procedure_events_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_procedure_events_values_check',
+      sql`${table.action} IN ('certification_procedure.deadlines_configured') AND ${table.version} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
   ],
 );

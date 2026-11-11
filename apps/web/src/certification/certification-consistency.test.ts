@@ -221,6 +221,7 @@ describe('Dossier consistency section', () => {
           resolution: 'accepted',
           reason: ' ',
           correctedBy: '',
+          reverify: false,
         },
         options,
       ),
@@ -232,6 +233,7 @@ describe('Dossier consistency section', () => {
           resolution: 'corrected',
           reason: 'Fixed',
           correctedBy: 'step:unknown',
+          reverify: false,
         },
         options,
       ),
@@ -243,6 +245,7 @@ describe('Dossier consistency section', () => {
           resolution: 'corrected',
           reason: 'Fixed',
           correctedBy: 'step:plan-version',
+          reverify: false,
         },
         options,
       ),
@@ -253,6 +256,30 @@ describe('Dossier consistency section', () => {
         resolution: 'corrected',
         reason: 'Fixed',
         correctedBy: { stepVersionId: 'plan-version' },
+      },
+    });
+  });
+
+  it('adds the re-verification flag to an acceptance only when asked', () => {
+    const options = { attachments: [], versions: [] };
+    expect(
+      resolutionFromDraft(
+        {
+          discrepancyId: RULE_ID,
+          resolution: 'accepted',
+          reason: 'Fictional reason',
+          correctedBy: '',
+          reverify: true,
+        },
+        options,
+      ),
+    ).toEqual({
+      status: 'valid',
+      body: {
+        discrepancyId: RULE_ID,
+        resolution: 'accepted',
+        reason: 'Fictional reason',
+        reverify: true,
       },
     });
   });

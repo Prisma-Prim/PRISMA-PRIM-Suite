@@ -5,6 +5,7 @@ import { ServerClockModule } from '../clock/server-clock.js';
 import { DatabaseModule } from '../database/database.module.js';
 import { DocumentsModule } from '../documents/documents.module.js';
 import { ProjectModule } from '../project/project.module.js';
+import { CertificationProcedureService } from './certification-procedure.service.js';
 import { CertificationService } from './certification.service.js';
 
 @Module({
@@ -16,7 +17,7 @@ import { CertificationService } from './certification.service.js';
     ProjectModule,
     ServerClockModule,
   ],
-  providers: [CertificationService],
-  exports: [CertificationService],
+  providers: [CertificationService, CertificationProcedureService],
+  exports: [CertificationService, CertificationProcedureService],
 })
 export class CertificationModule {}

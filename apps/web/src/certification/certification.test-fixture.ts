@@ -37,11 +37,14 @@ export function certificationActor({
   documents = false,
   approver = false,
   auditor = false,
+  administrator = false,
 }: {
   manager: boolean;
   documents?: boolean;
   approver?: boolean;
   auditor?: boolean;
+  /** Holds the Company administration right that assigns the bundles. */
+  administrator?: boolean;
 }): ActorContext {
   return {
     internalUserId: 'certification-person',
@@ -51,7 +54,7 @@ export function certificationActor({
     displayName: 'Ana Demo',
     email: 'ana@example.test',
     active: true,
-    workspacePermissions: [],
+    workspacePermissions: administrator ? ['company.assignment.manage'] : [],
     activeCompany: {
       id: certificationIds.company,
       displayName: 'Synthetic Certification Body',
@@ -438,6 +441,12 @@ type StoredCase = {
     open: Record<string, unknown>[];
     resolved: Record<string, unknown>[];
   };
+  /** The exchange register: its records, seeded deadline states and items. */
+  exchanges: {
+    records: { sequence: number; versions: Record<string, unknown>[] }[];
+    entries: Record<string, unknown>[];
+    items: Record<string, unknown>[];
+  };
 };
 /** A frozen received PDF of the Case's Client, with its exact bytes. */
 export type FakeSource = {
@@ -504,6 +513,8 @@ export class FakeCertificationServer {
   >();
   private clock = Date.parse('2026-11-07T08:00:00.000Z');
   private sequence = 0;
+  /** The Company's procedure deadline set versions, latest first. */
+  readonly deadlineSets: Record<string, unknown>[] = [];
   /** The Client's frozen received PDFs, newest first like the server. */
   readonly sources: FakeSource[] = [];
   /** Whether the actor holds the Document rights the server rechecks. */
@@ -915,6 +926,8 @@ export class FakeCertificationServer {
     }
     if (request.path === '/api/access/current-actor')
       return Response.json(this.actor());
+    if (request.path === '/api/certification-procedure-deadlines')
+      return this.deadlines(request);
     const rawBody = typeof init?.body === 'string' ? init.body : '';
     if (request.method === 'POST' && request.key) {
       const receipt = this.receipts.get(`${request.path}:${request.key}`);
@@ -970,6 +983,29 @@ export class FakeCertificationServer {
       request.path,
     );
     if (register) return this.register(register[1], request.search);
+    const registerPath =
+      /^\/api\/certification-cases\/([^/]+)\/(exchanges|reverification-items)(?:\/([^/]+)(\/withdrawal)?)?$/u.exec(
+        request.path,
+      );
+    if (registerPath) {
+      const staged = registerPath[1]
+        ? this.cases.get(registerPath[1])
+        : undefined;
+      if (!staged || request.method !== 'POST')
+        return new Response(null, { status: 404 });
+      const [, , collection, target, withdrawal] = registerPath;
+      if (collection === 'exchanges' && withdrawal === undefined)
+        return this.recordExchange(staged, request.body, target);
+      if (collection === 'reverification-items' && target === undefined)
+        return this.addItem(staged, request.body);
+      if (
+        collection === 'reverification-items' &&
+        target !== undefined &&
+        withdrawal
+      )
+        return this.withdrawItem(staged, target, request.body);
+      return new Response(null, { status: 404 });
+    }
     const stage =
       /^\/api\/certification-cases\/([^/]+)\/stages\/([^/]+)\/(plan|report)$/u.exec(
         request.path,
@@ -2572,6 +2608,7 @@ export class FakeCertificationServer {
       findings: [],
       certificate: null,
       consistency: { open: [], resolved: [] },
+      exchanges: { records: [], entries: [], items: [] },
     };
     this.cases.set(stored.id, stored);
     return stored;
@@ -2700,7 +2737,231 @@ export class FakeCertificationServer {
         resolved: stored.consistency.resolved,
         resolvedTotal: stored.consistency.resolved.length,
       },
+      exchanges: {
+        records: stored.exchanges.records.map((entry) => ({
+          sequence: entry.sequence,
+          current: entry.versions.at(-1),
+          versions: entry.versions,
+        })),
+        total: stored.exchanges.records.length,
+        deadlines: {
+          set: this.deadlineSets[0] ?? null,
+          entries: this.deadlineSets.length ? stored.exchanges.entries : [],
+        },
+        reverification: {
+          items: stored.exchanges.items,
+          firstSurveillanceBy: stored.certificate?.firstSurveillanceBy ?? null,
+        },
+      },
     };
+  }
+
+  /** Sets the deadline states the server would derive for a Case. */
+  seedDeadlineStates(caseId: string, entries: Record<string, unknown>[]) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case.');
+    stored.exchanges.entries = entries;
+  }
+
+  /** Adds a Re-verification Item as the server would show it. */
+  seedReverificationItem(caseId: string, item: Record<string, unknown>) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case.');
+    stored.exchanges.items.push(item);
+  }
+
+  /** Records the Company's deadline set as its administrator would. */
+  seedDeadlineSet(days: Record<string, number | null>) {
+    this.deadlineSets.unshift({
+      version: this.deadlineSets.length + 1,
+      days,
+      configuredBy: me,
+      configuredAt: this.tick(),
+    });
+  }
+
+  /** The Company's procedure deadline set, for its administrator only. */
+  private deadlines(request: RecordedRequest): Response {
+    const actor = record(this.actor());
+    const permissions = actor.workspacePermissions;
+    if (
+      !Array.isArray(permissions) ||
+      !permissions.includes('company.assignment.manage')
+    )
+      return new Response(null, { status: 403 });
+    if (request.method !== 'POST')
+      return Response.json({
+        current: this.deadlineSets[0] ?? null,
+        history: this.deadlineSets,
+      });
+    const input = record(request.body);
+    const days = record(input.days);
+    const values = [
+      'stage_plan_sent',
+      'audit_dossier_transmitted',
+      'stage_2_report_released',
+    ];
+    if (
+      values.some((kind) => {
+        const value = days[kind];
+        return (
+          value !== null &&
+          (typeof value !== 'number' || value < 0 || value > 365)
+        );
+      })
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const current = this.deadlineSets[0];
+    if (input.expectedVersion !== (current ? current.version : 0))
+      return refusal(409, 'STALE_VERSION');
+    if (
+      current &&
+      values.every((kind) => record(current.days)[kind] === days[kind])
+    )
+      return refusal(409, 'CERTIFICATION_DEADLINES_UNCHANGED');
+    const saved = {
+      version: this.deadlineSets.length + 1,
+      days: Object.fromEntries(values.map((kind) => [kind, days[kind]])),
+      configuredBy: me,
+      configuredAt: this.tick(),
+    };
+    this.deadlineSets.unshift(saved);
+    return Response.json(saved, { status: 201 });
+  }
+
+  /** Records or corrects an Exchange Record as the server would. */
+  private recordExchange(
+    stored: StoredCase,
+    body: unknown,
+    target: string | undefined,
+  ): Response {
+    if (!holdsManager(this.actor())) return new Response(null, { status: 403 });
+    const input = record(body);
+    const counterpart = record(input.counterpart);
+    const ids = input.attachmentIds;
+    if (!Array.isArray(ids) || ids.length === 0)
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.channel === 'other' && !input.note)
+      return refusal(400, 'CERTIFICATION_EXCHANGE_NOTE_REQUIRED');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status === 'rejected')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    const existing =
+      target === undefined
+        ? undefined
+        : stored.exchanges.records.find(
+            (entry) => String(entry.sequence) === target,
+          );
+    if (target !== undefined && !existing)
+      return new Response(null, { status: 404 });
+    if ((existing !== undefined) !== (typeof input.reason === 'string'))
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    if (
+      ids.some(
+        (id) => !stored.attachments.some((attachment) => attachment.id === id),
+      )
+    )
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    if (
+      typeof input.businessDate !== 'string' ||
+      input.businessDate > '2026-11-07'
+    )
+      return refusal(409, 'CERTIFICATION_EXCHANGE_IN_FUTURE');
+    stored.revision += 1;
+    const sequence = existing?.sequence ?? stored.exchanges.records.length + 1;
+    const version = (existing?.versions.length ?? 0) + 1;
+    const value = {
+      id: `11310000-0000-4000-8000-7000000000${String(++this.sequence).padStart(2, '0')}`,
+      sequence,
+      version,
+      caseRevision: stored.revision,
+      direction: input.direction,
+      itemKind: input.itemKind,
+      counterpart: { kind: counterpart.kind, name: counterpart.name },
+      businessDate: input.businessDate,
+      channel: input.channel,
+      reference: input.reference ?? null,
+      note: input.note ?? null,
+      attachmentIds: ids,
+      reason: existing ? input.reason : null,
+      recordedBy: me,
+      recordedAt: this.tick(),
+    };
+    if (existing) existing.versions.push(value);
+    else stored.exchanges.records.push({ sequence, versions: [value] });
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** Adds a manual Re-verification Item as the server would. */
+  private addItem(stored: StoredCase, body: unknown): Response {
+    const actor = this.actor();
+    if (!holdsManager(actor) && !holdsAuditor(actor) && !holdsApprover(actor))
+      return new Response(null, { status: 403 });
+    const input = record(body);
+    if (typeof input.text !== 'string' || !input.text.trim())
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    stored.revision += 1;
+    const source = input.source === null ? null : record(input.source);
+    const attached = source
+      ? stored.attachments.find((entry) => entry.id === source.attachmentId)
+      : undefined;
+    stored.exchanges.items.push({
+      id: `11310000-0000-4000-8000-8000000000${String(++this.sequence).padStart(2, '0')}`,
+      origin: 'manual',
+      sequence:
+        stored.exchanges.items.filter((item) => item.origin !== 'automatic')
+          .length + 1,
+      text: input.text,
+      caseRevision: stored.revision,
+      source: attached
+        ? {
+            kind: 'attachment',
+            attachmentId: attached.id,
+            sourceTitle: attached.sourceTitle,
+            versionNumber: attached.versionNumber,
+          }
+        : null,
+      addedBy: me,
+      addedAt: this.tick(),
+      status: 'open',
+      withdrawal: null,
+    });
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** Withdraws a manual Re-verification Item as the server would. */
+  private withdrawItem(
+    stored: StoredCase,
+    itemId: string,
+    body: unknown,
+  ): Response {
+    if (!holdsManager(this.actor())) return new Response(null, { status: 403 });
+    const input = record(body);
+    if (typeof input.reason !== 'string' || !input.reason.trim())
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    const item = stored.exchanges.items.find((entry) => entry.id === itemId);
+    if (!item) return new Response(null, { status: 404 });
+    if (item.origin === 'automatic' || item.status !== 'open')
+      return refusal(
+        409,
+        item.origin === 'automatic'
+          ? 'CERTIFICATION_REVERIFICATION_AUTOMATIC'
+          : 'CERTIFICATION_REVERIFICATION_WITHDRAWN',
+      );
+    stored.revision += 1;
+    item.status = 'withdrawn';
+    item.withdrawal = {
+      caseRevision: stored.revision,
+      reason: input.reason,
+      by: me,
+      at: this.tick(),
+    };
+    return Response.json(this.detail(stored), { status: 201 });
   }
 
   /** Adds an open Discrepancy the rule set would raise, as the server shows it. */

@@ -778,6 +778,13 @@
       "when": 1794420109044,
       "tag": "0110_certification_consistency",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1794424196332,
+      "tag": "0111_certification_exchange_register",
+      "breakpoints": true
     }
   ]
 }

@@ -18,7 +18,9 @@ import { offerModelEvents } from '../database/schema/offer-model.js';
 import { ideaEvents } from '../database/schema/ideas.js';
 import {
   certificationEvents,
+  certificationProcedureEvents,
   type CERTIFICATION_EVENT_ACTIONS,
+  type CERTIFICATION_PROCEDURE_EVENT_ACTIONS,
 } from '../database/schema/certification.js';
 import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
@@ -1573,6 +1575,29 @@ export class AccountabilityService {
       occurredAt: input.occurredAt,
       metadata: input.metadata,
     });
+  }
+
+  /** The Company-scoped certification event of one procedure deadline set version. */
+  async recordCertificationProcedureEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    version: number;
+    occurredAt: Date;
+    action: (typeof CERTIFICATION_PROCEDURE_EVENT_ACTIONS)[number];
+    metadata: Record<string, string | number>;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(certificationProcedureEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        version: input.version,
+        action: input.action,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorInternalUserId: input.actor.internalUserId,
+        occurredAt: input.occurredAt,
+        metadata: input.metadata,
+      });
   }
 
   // Internal restricted recording only: no generic Activity/Home target exists.

@@ -7,6 +7,14 @@ import {
 } from './certification-decision.js';
 import type { FindingRecordView } from './certification-findings.js';
 import { dayCents, type AuditStage } from './certification-stages.js';
+import {
+  currentExchanges,
+  deadlineExchanges,
+  deadlineFacts,
+  stage2Releases,
+  type DeadlineDays,
+  type ExchangeRecordVersion,
+} from './certification-exchanges.js';
 import type {
   CertificationActorReference,
   CertificationAttachment,
@@ -18,7 +26,7 @@ import type {
  * versioned rule set over one Case's recorded facts. It never reads PDF
  * content and never changes a record; a person resolves what it raises.
  */
-export const CONSISTENCY_RULE_SET_VERSION = 'dossier-consistency-2026-11';
+export const CONSISTENCY_RULE_SET_VERSION = 'dossier-consistency-2026-11.2';
 
 export const CONSISTENCY_RULES = [
   'R01',
@@ -26,12 +34,16 @@ export const CONSISTENCY_RULES = [
   'R03',
   'R04',
   'R05',
+  'R06',
+  'R07',
   'R08',
   'R09',
   'R10',
   'R11',
   'R12',
   'R14',
+  'R15',
+  'R16',
 ] as const;
 export type ConsistencyRule = (typeof CONSISTENCY_RULES)[number];
 
@@ -96,7 +108,19 @@ export type DiscrepancySubject =
       field: CertificateTextField;
     }
   | { kind: 'address_numbers'; language: string }
-  | { kind: 'document_version'; documentId: string };
+  | { kind: 'document_version'; documentId: string }
+  | { kind: 'plan_sending'; stage: AuditStage }
+  | {
+      kind: 'exchange_reference';
+      reference: string;
+      first: number;
+      second: number;
+    }
+  | {
+      kind: 'exchange_deadline';
+      deadline: 'stage_2_report_released';
+      sequence: number;
+    };
 
 export interface AttachmentReference {
   attachmentId: string;
@@ -129,6 +153,12 @@ export type DiscrepancySource =
   | {
       kind: 'certificate';
       number: string;
+      attachment: AttachmentReference | null;
+    }
+  | {
+      kind: 'exchange';
+      sequence: number;
+      version: number;
       attachment: AttachmentReference | null;
     }
   | { kind: 'attachment'; attachment: AttachmentReference };
@@ -179,6 +209,10 @@ export interface ConsistencySnapshot {
   attachments: readonly CertificationAttachment[];
   findings: readonly ConsistencyFinding[];
   certificate: ConsistencyCertificate | null;
+  /** Every version of the Case's Exchange Records. */
+  exchanges: readonly ExchangeRecordVersion[];
+  /** The Company's current procedure deadlines, read with the Case. */
+  deadlineDays: DeadlineDays | null;
 }
 
 export interface ManualStatedValue {
@@ -329,6 +363,10 @@ export function checkConsistency(
     ...certificateTexts(facts),
     ...addressNumbersRule(facts),
     ...laterDocumentVersions(facts),
+    ...planSendingDates(facts),
+    ...planSendings(facts),
+    ...sentReferences(facts),
+    ...earlyReleases(facts),
   ];
 }
 
@@ -651,6 +689,25 @@ class Facts {
       version: version.version,
       versionId: version.id,
       attachment: this.reference(primaryAttachment(version)),
+    };
+  }
+
+  /** The current version of an Exchange Record, with the exchanged PDF shown. */
+  exchangeSource(
+    exchange: ExchangeRecordVersion,
+    documentId: string | null = null,
+  ): DiscrepancySource {
+    const attachmentId =
+      exchange.attachmentIds.find(
+        (id) =>
+          documentId === null ||
+          this.attachments.get(id)?.documentId === documentId,
+      ) ?? null;
+    return {
+      kind: 'exchange',
+      sequence: exchange.sequence,
+      version: exchange.version,
+      attachment: this.reference(attachmentId),
     };
   }
 
@@ -1183,7 +1240,14 @@ function attachmentUses(facts: Facts): AttachmentUse[] {
 /** R14: a record on an older Version while a later one lies unused. */
 function laterDocumentVersions(facts: Facts): RuleDiscrepancy[] {
   const uses = attachmentUses(facts);
-  const used = new Set(uses.map((use) => use.attachmentId));
+  // A Version an Exchange Record sent or received is used, though no record
+  // relies on its content; R07 compares the Version the client received.
+  const used = new Set([
+    ...uses.map((use) => use.attachmentId),
+    ...currentExchanges(facts.snapshot.exchanges).flatMap(
+      (exchange) => exchange.attachmentIds,
+    ),
+  ]);
   const relied = new Map<string, { number: number; use: AttachmentUse }>();
   for (const use of uses) {
     const attachment = facts.attachments.get(use.attachmentId);
@@ -1221,6 +1285,209 @@ function laterDocumentVersions(facts: Facts): RuleDiscrepancy[] {
       );
   }
   return found;
+}
+
+/** R06: a Stage plan sent to the client after the Stage's first day. */
+function planSendingDates(facts: Facts): RuleDiscrepancy[] {
+  return STAGES.flatMap((stage) => {
+    const plan = stagePlanOf(facts, stage);
+    const sentOn = plan?.value.sentToClientOn ?? null;
+    if (!plan || sentOn === null || sentOn <= plan.value.startDate) return [];
+    const source = facts.source(plan);
+    return [
+      raise(
+        'R06',
+        'to_clarify',
+        { kind: 'plan_sending', stage },
+        side({ kind: 'date', date: sentOn }, source),
+        side({ kind: 'date', date: plan.value.startDate }, source),
+      ),
+    ];
+  });
+}
+
+/**
+ * R07: the sending date and Version a Stage plan states, against the sent
+ * Exchange Records of that plan to the client. Nothing is compared before a
+ * sending is recorded: the deadline state shows it.
+ */
+function planSendings(facts: Facts): RuleDiscrepancy[] {
+  const exchanges = currentExchanges(facts.snapshot.exchanges);
+  return STAGES.flatMap((stage) => {
+    const plan = stagePlanOf(facts, stage);
+    if (!plan) return [];
+    const planned = facts.attachments.get(plan.value.planAttachmentId);
+    if (!planned) return [];
+    const versionsOf = (exchange: ExchangeRecordVersion) =>
+      exchange.attachmentIds.flatMap((id) => {
+        const attachment = facts.attachments.get(id);
+        return attachment?.documentId === planned.documentId
+          ? [attachment]
+          : [];
+      });
+    const sendings = exchanges
+      .filter(
+        (exchange) =>
+          exchange.direction === 'sent' &&
+          exchange.counterpart.kind === 'client' &&
+          versionsOf(exchange).length > 0,
+      )
+      .sort(
+        (left, right) =>
+          left.businessDate.localeCompare(right.businessDate) ||
+          left.sequence - right.sequence,
+      );
+    const first = sendings[0];
+    if (!first) return [];
+    const found: RuleDiscrepancy[] = [];
+    const source = facts.source(plan);
+    const sentOn = plan.value.sentToClientOn;
+    if (
+      sentOn !== null &&
+      !sendings.some((exchange) => exchange.businessDate === sentOn)
+    )
+      found.push(
+        raise(
+          'R07',
+          'error',
+          { kind: 'plan_sending', stage },
+          side({ kind: 'date', date: sentOn }, source),
+          side(
+            { kind: 'date', date: first.businessDate },
+            facts.exchangeSource(first, planned.documentId),
+          ),
+        ),
+      );
+    const received = sendings.flatMap((exchange) =>
+      versionsOf(exchange).map((attachment) => ({ exchange, attachment })),
+    );
+    if (
+      !received.some(
+        ({ attachment }) => attachment.versionId === planned.versionId,
+      )
+    ) {
+      let latest = received[0];
+      for (const entry of received)
+        if (
+          latest === undefined ||
+          entry.attachment.versionNumber > latest.attachment.versionNumber
+        )
+          latest = entry;
+      if (latest)
+        found.push(
+          raise(
+            'R07',
+            'to_clarify',
+            { kind: 'plan_sending', stage },
+            side({ kind: 'version', version: planned.versionNumber }, source),
+            side(
+              { kind: 'version', version: latest.attachment.versionNumber },
+              facts.exchangeSource(latest.exchange, planned.documentId),
+            ),
+          ),
+        );
+    }
+    return found;
+  });
+}
+
+/** R15: one outgoing reference carried by sent records of different dates. */
+function sentReferences(facts: Facts): RuleDiscrepancy[] {
+  const groups = new Map<string, ExchangeRecordVersion[]>();
+  for (const exchange of currentExchanges(facts.snapshot.exchanges)) {
+    if (exchange.direction !== 'sent' || exchange.reference === null) continue;
+    const key = normalReference(exchange.reference);
+    groups.set(key, [...(groups.get(key) ?? []), exchange]);
+  }
+  const found: RuleDiscrepancy[] = [];
+  for (const [reference, group] of groups) {
+    const ordered = [...group].sort(
+      (left, right) =>
+        left.businessDate.localeCompare(right.businessDate) ||
+        left.sequence - right.sequence,
+    );
+    const first = ordered[0];
+    if (!first) continue;
+    for (const other of ordered.slice(1)) {
+      // One letter sent the same day through two channels is one sending.
+      if (other.businessDate === first.businessDate) continue;
+      found.push(
+        raise(
+          'R15',
+          'to_clarify',
+          {
+            kind: 'exchange_reference',
+            reference,
+            first: first.sequence,
+            second: other.sequence,
+          },
+          side(
+            { kind: 'date', date: first.businessDate },
+            facts.exchangeSource(first),
+            first.reference,
+          ),
+          side(
+            { kind: 'date', date: other.businessDate },
+            facts.exchangeSource(other),
+            other.reference,
+          ),
+        ),
+      );
+    }
+  }
+  return found;
+}
+
+/**
+ * R16: a sending of the Stage 2 report to the client before the "not
+ * before" deadline. One recorded while no decision existed compares with
+ * that absence, so its acceptance holds once the decision is recorded.
+ */
+function earlyReleases(facts: Facts): RuleDiscrepancy[] {
+  const days = facts.snapshot.deadlineDays?.stage_2_report_released ?? null;
+  if (days === null) return [];
+  const anchors = deadlineFacts(
+    facts.snapshot.steps,
+    facts.snapshot.attachments,
+  );
+  const decision = facts.first('decision');
+  const exchanges = currentExchanges(facts.snapshot.exchanges);
+  return stage2Releases(
+    anchors,
+    deadlineExchanges(facts.snapshot.exchanges, facts.snapshot.attachments),
+    days,
+  ).flatMap((release) => {
+    const exchange = exchanges.find(
+      (entry) => entry.sequence === release.exchange.sequence,
+    );
+    if (!release.early || !exchange) return [];
+    return [
+      raise(
+        'R16',
+        'error',
+        {
+          kind: 'exchange_deadline',
+          deadline: 'stage_2_report_released',
+          sequence: exchange.sequence,
+        },
+        side(
+          { kind: 'date', date: exchange.businessDate },
+          facts.exchangeSource(exchange, anchors.stage2ReportDocumentId),
+        ),
+        release.recordedBeforeDecision || release.earliestOn === null
+          ? side({ kind: 'state', state: 'not_recorded' }, null)
+          : side(
+              { kind: 'date', date: release.earliestOn },
+              decision ? facts.source(decision) : null,
+            ),
+      ),
+    ];
+  });
+}
+
+/** References compared without case or repeated spaces. */
+function normalReference(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim().toLocaleUpperCase('en');
 }
 
 /** The attachment a step version's value names first, shown as its source. */
@@ -1341,6 +1608,7 @@ function replay(input: ConsistencyInput): Occurrence[] {
   for (const finding of input.findings)
     for (const record of finding.records) revisions.add(record.caseRevision);
   if (input.certificate) revisions.add(input.certificate.caseRevision);
+  for (const exchange of input.exchanges) revisions.add(exchange.caseRevision);
   const occurrences: Occurrence[] = [];
   const current = new Map<string, Occurrence>();
   for (const revision of [...revisions].sort((left, right) => left - right)) {
@@ -1390,6 +1658,10 @@ function asOf(
       input.certificate && input.certificate.caseRevision <= revision
         ? input.certificate
         : null,
+    exchanges: input.exchanges.filter(
+      (exchange) => exchange.caseRevision <= revision,
+    ),
+    deadlineDays: input.deadlineDays,
   };
 }
 
@@ -1444,6 +1716,12 @@ function revisionMarks(input: ConsistencyInput): Map<number, RevisionCause> {
         number: input.certificate.number,
         attachment: facts.reference(input.certificate.attachmentId),
       },
+    });
+  for (const exchange of input.exchanges)
+    marks.set(exchange.caseRevision, {
+      mark: { by: exchange.recordedBy, at: exchange.recordedAt },
+      reason: exchange.reason,
+      source: facts.exchangeSource(exchange),
     });
   return marks;
 }

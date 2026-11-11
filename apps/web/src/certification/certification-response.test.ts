@@ -84,9 +84,17 @@ function detail(overrides: Record<string, unknown> = {}) {
     certificateData: null,
     certificate: null,
     consistency: noDiscrepancy,
+    exchanges: noExchange,
     ...overrides,
   };
 }
+
+const noExchange = {
+  records: [],
+  total: 0,
+  deadlines: { set: null, entries: [] },
+  reverification: { items: [], firstSurveillanceBy: null },
+};
 
 const noDiscrepancy = {
   ruleSetVersion: 'dossier-consistency-2026-11',

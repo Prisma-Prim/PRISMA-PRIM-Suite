@@ -256,6 +256,26 @@ import {
 } from './certification-consistency';
 import { useConsistencyCopy } from './certification-consistency.copy';
 import { ConsistencyRegion, ruleLabel } from './CertificationConsistency';
+import {
+  deadlinesFromDraft,
+  draftFromDeadlines,
+  draftFromExchange,
+  emptyExchangeDraft,
+  exchangeFromDraft,
+  parseDeadlineHistory,
+  parseDeadlineSet,
+  reverificationFromDraft,
+  type DeadlineDraft,
+  type ExchangeDraft,
+  type ReverificationDraft,
+} from './certification-exchanges';
+import {
+  DeadlineAdministration,
+  ExchangesRegion,
+  StepSendings,
+  type DeadlineAdministrationView,
+  type DeadlineFeedback,
+} from './CertificationExchanges';
 
 export interface CertificationWorkspaceProps {
   actor: ActorContext;
@@ -312,6 +332,9 @@ type MutationKind =
   | 'finding'
   | 'discrepancy'
   | 'discrepancyResolution'
+  | 'exchange'
+  | 'reverification'
+  | 'withdrawal'
   | StageKind
   | ClosingKind;
 /** The closing steps, each with its own form and feedback. */
@@ -352,7 +375,11 @@ type CasePerson = CertificationActorReference & { self: boolean };
  * Whose authority a call needs. Reading the Case needs none of the Document
  * rights, so a refused Document call leaves the Case to the authority recheck.
  */
-type Access = 'certification' | 'documents';
+/**
+ * Which rights a request uses: a refused Certification call retires the
+ * Case; a refused Document or administration call keeps it.
+ */
+type Access = 'certification' | 'documents' | 'administration';
 /** The eligible PDFs of one Case, read under the Document rights captured. */
 type Eligible = {
   caseId: string;
@@ -439,6 +466,7 @@ function CertificationRegistry(
   const mutationOperation = useScopedOperation(props.scope);
   const proposalOperation = useScopedOperation(props.scope);
   const registerOperation = useScopedOperation(props.scope);
+  const deadlineOperation = useScopedOperation(props.scope);
   /**
    * The captured right to read received-source content, which reading,
    * listing and attaching the Client's PDFs need. Its change retires their
@@ -562,6 +590,37 @@ function CertificationRegistry(
   const [resolutionDraft, setResolutionDraft] =
     useState<ResolutionDraft | null>(null);
   const [resolutionFeedback, setResolutionFeedback] = useState<Feedback>(IDLE);
+  /** The Exchange Record form: closed, a new record or a correction. */
+  const [exchangeOpen, setExchangeOpen] = useState<{
+    correcting: number | null;
+  } | null>(null);
+  const [exchangeDraft, setExchangeDraft] =
+    useState<ExchangeDraft>(emptyExchangeDraft);
+  const [exchangeFeedback, setExchangeFeedback] = useState<Feedback>(IDLE);
+  const [itemOpen, setItemOpen] = useState(false);
+  const [itemDraft, setItemDraft] = useState<ReverificationDraft>({
+    text: '',
+    source: '',
+  });
+  const [itemFeedback, setItemFeedback] = useState<Feedback>(IDLE);
+  const [withdrawalDraft, setWithdrawalDraft] = useState<{
+    itemId: string;
+    reason: string;
+  } | null>(null);
+  const [withdrawalFeedback, setWithdrawalFeedback] = useState<Feedback>(IDLE);
+  /** The Company's procedure deadline configuration, for its administrator. */
+  const [deadlineView, setDeadlineView] = useState<DeadlineAdministrationView>({
+    status: 'closed',
+  });
+  const [deadlineDraft, setDeadlineDraft] = useState<DeadlineDraft>(() =>
+    draftFromDeadlines(null),
+  );
+  const [deadlineFeedback, setDeadlineFeedback] = useState<DeadlineFeedback>({
+    status: 'idle',
+  });
+  const administersDeadlines = actor.workspacePermissions.includes(
+    'company.assignment.manage',
+  );
   const consistencyCopy = useConsistencyCopy();
   const closingFeedback: Record<ClosingKind, Feedback> = {
     recommendation: recommendationFeedback,
@@ -589,9 +648,13 @@ function CertificationRegistry(
       findingFeedback,
       manualFeedback,
       resolutionFeedback,
+      exchangeFeedback,
+      itemFeedback,
+      withdrawalFeedback,
       ...Object.values(stageFeedback),
       ...Object.values(closingFeedback),
-    ].some((feedback) => feedback.status === 'saving');
+    ].some((feedback) => feedback.status === 'saving') ||
+    deadlineFeedback.status === 'saving';
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
   function feedbackSetter(kind: MutationKind) {
@@ -618,6 +681,12 @@ function CertificationRegistry(
         return setManualFeedback;
       case 'discrepancyResolution':
         return setResolutionFeedback;
+      case 'exchange':
+        return setExchangeFeedback;
+      case 'reverification':
+        return setItemFeedback;
+      case 'withdrawal':
+        return setWithdrawalFeedback;
       case 'stage1Plan':
         return setStage1PlanFeedback;
       case 'stage2Plan':
@@ -723,6 +792,14 @@ function CertificationRegistry(
     setManualFeedback(IDLE);
     setResolutionDraft(null);
     setResolutionFeedback(IDLE);
+    setExchangeOpen(null);
+    setExchangeDraft(emptyExchangeDraft());
+    setExchangeFeedback(IDLE);
+    setItemOpen(false);
+    setItemDraft({ text: '', source: '' });
+    setItemFeedback(IDLE);
+    setWithdrawalDraft(null);
+    setWithdrawalFeedback(IDLE);
     for (const kind of CLOSING_KINDS) {
       resetClosingDraft(kind);
       feedbackSetter(kind)(IDLE);
@@ -887,6 +964,9 @@ function CertificationRegistry(
       setFindingFeedback(clear);
       setManualFeedback(clear);
       setResolutionFeedback(clear);
+      setExchangeFeedback(clear);
+      setItemFeedback(clear);
+      setWithdrawalFeedback(clear);
       for (const kind of STAGE_KINDS) feedbackSetter(kind)(clear);
       for (const kind of CLOSING_KINDS) feedbackSetter(kind)(clear);
     }
@@ -1042,6 +1122,17 @@ function CertificationRegistry(
         break;
       case 'discrepancyResolution':
         setResolutionDraft(null);
+        break;
+      case 'exchange':
+        setExchangeDraft(emptyExchangeDraft());
+        setExchangeOpen(null);
+        break;
+      case 'reverification':
+        setItemDraft({ text: '', source: '' });
+        setItemOpen(false);
+        break;
+      case 'withdrawal':
+        setWithdrawalDraft(null);
         break;
       case 'stage1Plan':
       case 'stage2Plan':
@@ -2326,6 +2417,326 @@ function CertificationRegistry(
     );
   }
 
+  /** Records an Exchange Record, or corrects one with a reason. */
+  function submitExchange(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      detail?.status !== 'ready' ||
+      exchangeOpen === null ||
+      blockedUntilReload(exchangeFeedback)
+    )
+      return;
+    const { caseDetail: current, register } = detail.value;
+    const correcting = exchangeOpen.correcting;
+    const check = exchangeFromDraft(exchangeDraft, {
+      attachments: register.items,
+      correcting: correcting !== null,
+    });
+    if (check.status !== 'valid') {
+      setExchangeFeedback(
+        refusedWith(
+          check.status === 'noteRequired'
+            ? 'exchangeNoteRequired'
+            : check.status === 'reasonRequired'
+              ? 'exchangeReasonRequired'
+              : 'exchangeValidation',
+        ),
+      );
+      return;
+    }
+    const base = `/certification-cases/${encodeURIComponent(current.id)}/exchanges`;
+    void execute(
+      'exchange',
+      reuse(exchangeFeedback, {
+        path: correcting === null ? base : `${base}/${String(correcting)}`,
+        body: JSON.stringify({
+          expectedRevision: current.revision,
+          ...check.body,
+        }),
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** Adds a manual Re-verification Item. */
+  function submitItem(event: FormEvent) {
+    event.preventDefault();
+    if (busy || detail?.status !== 'ready' || blockedUntilReload(itemFeedback))
+      return;
+    const current = detail.value.caseDetail;
+    const check = reverificationFromDraft(itemDraft);
+    if (check.status !== 'valid') {
+      setItemFeedback(refusedWith('reverificationValidation'));
+      return;
+    }
+    void execute(
+      'reverification',
+      reuse(itemFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/reverification-items`,
+        body: JSON.stringify({
+          expectedRevision: current.revision,
+          ...check.body,
+        }),
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** Withdraws a manual Re-verification Item with its reason. */
+  function submitWithdrawal(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      detail?.status !== 'ready' ||
+      withdrawalDraft === null ||
+      blockedUntilReload(withdrawalFeedback)
+    )
+      return;
+    const current = detail.value.caseDetail;
+    if (!withdrawalDraft.reason.trim()) {
+      setWithdrawalFeedback(refusedWith('withdrawalReasonRequired'));
+      return;
+    }
+    void execute(
+      'withdrawal',
+      reuse(withdrawalFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/reverification-items/${encodeURIComponent(withdrawalDraft.itemId)}/withdrawal`,
+        body: JSON.stringify({
+          expectedRevision: current.revision,
+          reason: withdrawalDraft.reason,
+        }),
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** Reads the Company's procedure deadline set and its history. */
+  async function loadDeadlines() {
+    const signal = deadlineOperation.begin();
+    if (!signal) return;
+    setDeadlineView({ status: 'loading' });
+    setDeadlineFeedback({ status: 'idle' });
+    try {
+      const result = await query(
+        deadlineOperation,
+        signal,
+        '/certification-procedure-deadlines',
+        undefined,
+        'administration',
+      );
+      if (signal.aborted) return;
+      if (result.status !== 'ok') {
+        setDeadlineView({
+          status:
+            result.status === 'forbidden' || result.status === 'unauthorized'
+              ? 'denied'
+              : 'unavailable',
+        });
+        return;
+      }
+      const history = parseDeadlineHistory(result.value);
+      setDeadlineView({ status: 'ready', history });
+      setDeadlineDraft(draftFromDeadlines(history.current));
+    } catch {
+      if (!signal.aborted) setDeadlineView({ status: 'unavailable' });
+    }
+  }
+
+  /**
+   * Saves the next version of the deadline set. An unanswered request is
+   * retried with the same key; the Case then reads the new states.
+   */
+  async function saveDeadlines(retry: boolean) {
+    if (busy || deadlineView.status !== 'ready') return;
+    const check = deadlinesFromDraft(
+      deadlineDraft,
+      deadlineView.history.current?.version ?? 0,
+    );
+    if (check.status !== 'valid') {
+      setDeadlineFeedback({ status: 'invalid' });
+      return;
+    }
+    const body = JSON.stringify(check.body);
+    // Only an unanswered save of the same values is sent again unchanged.
+    const key =
+      retry &&
+      deadlineFeedback.status === 'uncertain' &&
+      deadlineFeedback.body === body
+        ? deadlineFeedback.key
+        : crypto.randomUUID();
+    const signal = deadlineOperation.begin();
+    if (!signal) return;
+    setDeadlineFeedback({ status: 'saving', key, body });
+    try {
+      const result = await query(
+        deadlineOperation,
+        signal,
+        '/certification-procedure-deadlines',
+        { body, key },
+        'administration',
+      );
+      if (signal.aborted) return;
+      if (result.status === 'ok') {
+        const saved = parseDeadlineSet(result.value);
+        setDeadlineFeedback({ status: 'saved', version: saved.version });
+        const history = deadlineView.history;
+        setDeadlineView({
+          status: 'ready',
+          history: {
+            current: saved,
+            history: [
+              saved,
+              ...history.history.filter(
+                (entry) => entry.version !== saved.version,
+              ),
+            ],
+          },
+        });
+        if (detail?.status === 'ready')
+          void openCase(detail.value.caseDetail.id, { reload: true });
+        return;
+      }
+      if (result.status === 'forbidden' || result.status === 'unauthorized') {
+        setDeadlineView({ status: 'denied' });
+        setDeadlineFeedback({ status: 'idle' });
+      } else if (result.status === 'conflict')
+        setDeadlineFeedback({
+          status:
+            conflictCode(result) === 'CERTIFICATION_DEADLINES_UNCHANGED'
+              ? 'unchanged'
+              : 'stale',
+        });
+      else if (result.status === 'validation')
+        setDeadlineFeedback({ status: 'invalid' });
+      else setDeadlineFeedback({ status: 'uncertain', key, body });
+    } catch {
+      if (!signal.aborted)
+        setDeadlineFeedback({ status: 'uncertain', key, body });
+    }
+  }
+
+  /** The Exchanges and deadlines region of the read Case. */
+  function exchangesSection(view: CaseView) {
+    const roles = consistencyRoles(view);
+    const formState = <Draft,>(
+      kind: 'exchange' | 'reverification' | 'withdrawal',
+      feedback: Feedback,
+      draft: Draft,
+    ) => ({
+      draft,
+      feedback: feedbackMessage(kind, feedback),
+      saving: feedback.status === 'saving',
+      invalid: feedback.status === 'refused',
+      describedBy: describedFeedback(kind, feedback),
+    });
+    const clearRefusal = (
+      feedback: Feedback,
+      set: (next: Feedback) => void,
+    ) => {
+      if (
+        feedback.status === 'saved' ||
+        (feedback.status === 'refused' && !feedback.reload)
+      )
+        set(IDLE);
+    };
+    const records = view.caseDetail.exchanges.records;
+    return (
+      <ExchangesRegion
+        prefix={prefix}
+        detail={view.caseDetail}
+        register={view.register}
+        roles={{
+          manager: authority.manage,
+          contributor:
+            roles.manager || roles.auditorOnTeam || roles.independentApprover,
+        }}
+        busy={busy}
+        exchange={{
+          ...formState('exchange', exchangeFeedback, exchangeDraft),
+          open: exchangeOpen,
+        }}
+        onExchangeOpen={(open) => {
+          setExchangeOpen(open);
+          const corrected =
+            open?.correcting === null || open === null
+              ? undefined
+              : records.find((entry) => entry.sequence === open.correcting);
+          setExchangeDraft(
+            corrected
+              ? draftFromExchange(corrected.current)
+              : emptyExchangeDraft(),
+          );
+          setExchangeFeedback(IDLE);
+        }}
+        onExchangeDraft={(draft) => {
+          setExchangeDraft(draft);
+          clearRefusal(exchangeFeedback, setExchangeFeedback);
+        }}
+        onExchangeSubmit={submitExchange}
+        item={{
+          ...formState('reverification', itemFeedback, itemDraft),
+          open: itemOpen,
+        }}
+        onItemOpen={(open) => {
+          setItemOpen(open);
+          if (!open) setItemDraft({ text: '', source: '' });
+          setItemFeedback(IDLE);
+        }}
+        onItemDraft={(draft) => {
+          setItemDraft(draft);
+          clearRefusal(itemFeedback, setItemFeedback);
+        }}
+        onItemSubmit={submitItem}
+        withdrawal={formState(
+          'withdrawal',
+          withdrawalFeedback,
+          withdrawalDraft,
+        )}
+        onWithdrawalDraft={(draft) => {
+          const reopened =
+            draft === null || draft.itemId !== withdrawalDraft?.itemId;
+          setWithdrawalDraft(draft);
+          if (reopened) setWithdrawalFeedback(IDLE);
+          else clearRefusal(withdrawalFeedback, setWithdrawalFeedback);
+        }}
+        onWithdrawalSubmit={submitWithdrawal}
+        administration={
+          administersDeadlines ? (
+            <DeadlineAdministration
+              prefix={prefix}
+              view={deadlineView}
+              feedback={deadlineFeedback}
+              draft={deadlineDraft}
+              busy={busy}
+              onOpen={() => void loadDeadlines()}
+              onClose={() => {
+                deadlineOperation.retire();
+                setDeadlineView({ status: 'closed' });
+                setDeadlineFeedback({ status: 'idle' });
+              }}
+              onReload={() => void loadDeadlines()}
+              onDraft={(draft) => {
+                setDeadlineDraft(draft);
+                if (
+                  deadlineFeedback.status === 'invalid' ||
+                  deadlineFeedback.status === 'unchanged' ||
+                  deadlineFeedback.status === 'saved'
+                )
+                  setDeadlineFeedback({ status: 'idle' });
+              }}
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveDeadlines(false);
+              }}
+              onRetry={() => void saveDeadlines(true)}
+            />
+          ) : null
+        }
+      />
+    );
+  }
+
   function retry(kind: MutationKind, feedback: Feedback) {
     if (feedback.status === 'uncertain') void execute(kind, feedback.intent);
   }
@@ -2342,6 +2753,9 @@ function CertificationRegistry(
     finding: `${prefix}-finding-feedback`,
     discrepancy: `${prefix}-discrepancy-feedback`,
     discrepancyResolution: `${prefix}-discrepancy-resolution-feedback`,
+    exchange: `${prefix}-exchange-feedback`,
+    reverification: `${prefix}-reverification-feedback`,
+    withdrawal: `${prefix}-withdrawal-feedback`,
     stage1Plan: `${prefix}-stage-1-plan-feedback`,
     stage2Plan: `${prefix}-stage-2-plan-feedback`,
     stage1Report: `${prefix}-stage-1-report-feedback`,
@@ -2596,6 +3010,9 @@ function CertificationRegistry(
             findingFeedback,
             manualFeedback,
             resolutionFeedback,
+            exchangeFeedback,
+            itemFeedback,
+            withdrawalFeedback,
             ...Object.values(stageFeedback),
             ...Object.values(closingFeedback),
           ].some((feedback) => feedback.status === 'saved') && (
@@ -2692,6 +3109,7 @@ function CertificationRegistry(
                 </p>
               )}
               {consistencySection(caseView)}
+              {exchangesSection(caseView)}
               <section aria-labelledby={`${prefix}-application-title`}>
                 <h5 id={`${prefix}-application-title`}>
                   {copy('applicationTitle')}
@@ -3289,6 +3707,11 @@ function CertificationRegistry(
           <>
             <VersionAttribution version={plan} />
             <StagePlanView plan={plan.value} register={view.register} />
+            <StepSendings
+              attachmentId={plan.value.planAttachmentId}
+              exchanges={current.exchanges}
+              register={view.register}
+            />
           </>
         ) : (
           <p>{copy('stagePlanMissing')}</p>
@@ -3583,6 +4006,11 @@ function CertificationRegistry(
             report={stage1Report.value}
             register={view.register}
           />
+          <StepSendings
+            attachmentId={stage1Report.value.reportAttachmentId}
+            exchanges={view.caseDetail.exchanges}
+            register={view.register}
+          />
         </>
       );
     if (stage === 'stage_2' && stage2Report)
@@ -3591,6 +4019,11 @@ function CertificationRegistry(
           <VersionAttribution version={stage2Report} />
           <Stage2ReportView
             report={stage2Report.value}
+            register={view.register}
+          />
+          <StepSendings
+            attachmentId={stage2Report.value.reportAttachmentId}
+            exchanges={view.caseDetail.exchanges}
             register={view.register}
           />
         </>
@@ -4579,6 +5012,8 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
       return 'blockedStageReportCorrectionReason';
     case 'finding':
       return 'blockedFindingCorrectionReason';
+    case 'exchange':
+      return 'exchangeReasonRequired';
     case 'recommendation':
     case 'dossierReview':
     case 'certificationDecision':
@@ -4592,6 +5027,8 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
     case 'decision':
     case 'discrepancy':
     case 'discrepancyResolution':
+    case 'reverification':
+    case 'withdrawal':
       return 'blockedCorrectionReason';
   }
   return unexpected(kind);
@@ -4622,6 +5059,7 @@ function independenceRefusal(kind: MutationKind): Feedback {
       return refusedWith('actingOnTeam');
     case 'discrepancy':
     case 'discrepancyResolution':
+    case 'reverification':
       return refusedWith('discrepancyIndependence', true);
     case 'decision':
     case 'open':
@@ -4634,6 +5072,8 @@ function independenceRefusal(kind: MutationKind): Feedback {
     case 'stage2Plan':
     case 'recommendation':
     case 'certificateData':
+    case 'exchange':
+    case 'withdrawal':
       return refusedWith('teamIndependence', true);
   }
   return unexpected(kind);
@@ -4668,6 +5108,10 @@ function attachmentRoleRefusal(kind: MutationKind): CertificationMessageKey {
     case 'recommendation':
     case 'dossierReview':
       return 'stageAttachmentRole';
+    case 'exchange':
+    case 'reverification':
+    case 'withdrawal':
+      return 'discrepancyDocumentUnavailable';
   }
   return unexpected(kind);
 }
@@ -4698,6 +5142,9 @@ function attestationRefusal(kind: MutationKind): CertificationMessageKey {
     case 'certificateData':
     case 'discrepancy':
     case 'discrepancyResolution':
+    case 'exchange':
+    case 'reverification':
+    case 'withdrawal':
       return 'decisionAttestationRequired';
   }
   return unexpected(kind);
@@ -5070,6 +5517,8 @@ function commandFeedback(
           return refusedWith(attestationRefusal(kind));
         case 'CERTIFICATION_TEAM_ANALYSIS_REQUIRED':
           return refusedWith('teamAnalysisRequired');
+        case 'CERTIFICATION_EXCHANGE_NOTE_REQUIRED':
+          return refusedWith('exchangeNoteRequired');
         default:
           return refusedWith('invalid');
       }
@@ -5190,6 +5639,13 @@ function commandFeedback(
           return refusedWith('certificateDataDiffers', true);
         case 'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN':
           return refusedWith('certificateNumberTaken');
+        case 'CERTIFICATION_EXCHANGE_IN_FUTURE':
+          return refusedWith('exchangeInFuture');
+        case 'CERTIFICATION_REVERIFICATION_SOURCE_UNKNOWN':
+          return refusedWith('reverificationSourceUnknown', true);
+        case 'CERTIFICATION_REVERIFICATION_AUTOMATIC':
+        case 'CERTIFICATION_REVERIFICATION_WITHDRAWN':
+          return refusedWith('reverificationNotWithdrawable', true);
         default:
           return refusedWith('conflict', kind !== 'open');
       }
