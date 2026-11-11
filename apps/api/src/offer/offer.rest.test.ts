@@ -3341,7 +3341,7 @@ withPostgres('First illustrative Offer REST', () => {
   it('waits on the advisory lock after the approver share lock while revocation waits', async () => {
     // OfferService.decide share-locks authorization, then waits on
     // pg_advisory_xact_lock. This session holds that same command lock.
-    // Contract decisions share the source order, requireContractAccess(..., true)
+    // Contract decisions share the source order, locking captured permissions
     // before openContractCommandReceipt, and this test does not run that path.
     // The previous test is the other order: revocation commits first and the
     // decision is denied. Replay below is denied after revocation, so the

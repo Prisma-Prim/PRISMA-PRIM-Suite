@@ -46,20 +46,21 @@ export async function recordContractSignature(
     'commercial.contract.read',
     'commercial.contract.signature.record',
   ] as const;
-  await dependencies.authorization.requireContractAccess(
-    input.actor,
-    permissions,
-  );
+  await dependencies.authorization.requirePermissions(input.actor, {
+    permissions: permissions,
+    lock: false,
+  });
   const key = requireIdempotencyKey(input.idempotencyKey);
   return runClientReferenceTransaction({
     database: dependencies.databaseContext,
     work: async () => {
       const { actor } = input;
-      const companyId = await dependencies.authorization.requireContractAccess(
-        actor,
-        permissions,
-        true,
-      );
+      const companyId = (
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: permissions,
+          lock: true,
+        })
+      ).companyId;
       await dependencies.intake.requireReadableOfferOpportunity(
         actor,
         input.opportunityId,

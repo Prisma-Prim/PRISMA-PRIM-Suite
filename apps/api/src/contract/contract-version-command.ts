@@ -71,20 +71,21 @@ export async function createContractVersion(
     'commercial.contract.read',
     'commercial.contract.prepare',
   ] as const;
-  await dependencies.authorization.requireContractAccess(
-    input.actor,
-    permissions,
-  );
+  await dependencies.authorization.requirePermissions(input.actor, {
+    permissions: permissions,
+    lock: false,
+  });
   const key = requireIdempotencyKey(input.idempotencyKey);
   return runClientReferenceTransaction({
     database: dependencies.databaseContext,
     work: async () => {
       const { actor } = input;
-      const companyId = await dependencies.authorization.requireContractAccess(
-        actor,
-        permissions,
-        true,
-      );
+      const companyId = (
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: permissions,
+          lock: true,
+        })
+      ).companyId;
       await dependencies.intake.requireReadableOfferOpportunity(
         actor,
         input.opportunityId,
@@ -103,16 +104,14 @@ export async function createContractVersion(
         throw conflict('CONTRACT_MODEL_SOURCE_REQUIRED');
       const early = found.contract.origin === 'OFFER_PREPARATION';
       if (early) {
-        await dependencies.authorization.requireContractAccess(
-          actor,
-          ['commercial.contract.prepare_pending_offer'],
-          true,
-        );
-        await dependencies.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.read'],
-          true,
-        );
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: ['commercial.contract.prepare_pending_offer'],
+          lock: true,
+        });
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: ['commercial.offer.read'],
+          lock: true,
+        });
         await dependencies.clients.lockRecipientReadAuthority(actor);
       }
       const earlyCommand = early

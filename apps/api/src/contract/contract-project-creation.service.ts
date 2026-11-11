@@ -65,17 +65,21 @@ export class ContractProjectCreationService {
     return this.createCommand(input, 'missionPlan');
   }
   private async createCommand(input: CreationRequest, kind: CreationKind) {
-    await this.authorization.requireContractAccess(input.actor, PERMISSIONS);
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: PERMISSIONS,
+      lock: false,
+    });
     const key = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.database,
       work: async () => {
         const { actor } = input;
-        const companyId = await this.authorization.requireContractAccess(
-          actor,
-          PERMISSIONS,
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: PERMISSIONS,
+            lock: true,
+          })
+        ).companyId;
         if (kind === 'missionPlan')
           await this.missionPlans.requireUseWithinTransaction(actor);
         await this.intake.requireReadableOfferOpportunity(
@@ -84,7 +88,17 @@ export class ContractProjectCreationService {
           true,
         );
         if (kind === 'manual') await this.projects.requireCreationAccess(actor);
-        else await this.authorization.requireProjectAccess(actor, true);
+        else
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.read'],
+            lock: true,
+            prerequisites: [
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          });
         const found = await this.links.find({
           actor,
           companyId,

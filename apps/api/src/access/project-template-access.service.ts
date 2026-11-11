@@ -42,8 +42,24 @@ export class ProjectTemplateAccessService {
     }
     const companyId =
       options.instantiate || options.copiedPlan
-        ? await this.company.requireProjectAccess(actor, options.lock)
-        : await this.company.requireProjectReadPermission(actor, options.lock);
+        ? (
+            await this.company.requirePermissions(actor, {
+              permissions: ['project.read'],
+              lock: options.lock,
+              prerequisites: [
+                {
+                  permissions: ['client.read'],
+                  workspaceAlternative: 'client.manage',
+                },
+              ],
+            })
+          ).companyId
+        : (
+            await this.company.requirePermissions(actor, {
+              permissions: ['project.read'],
+              lock: options.lock,
+            })
+          ).companyId;
     const query = this.database.connection
       .select({
         id: companyRoleAssignments.id,

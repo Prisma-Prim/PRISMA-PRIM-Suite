@@ -56,11 +56,12 @@ export class CommercialCatalogueService {
     key: string | undefined,
   ): Promise<CreateServiceDefinitionResult> {
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireServiceCatalogueAccess(
-        actor,
-        ['service.definition.create'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['service.definition.create'],
+          lock: true,
+        })
+      ).companyId;
       const idempotencyKey = requireIdempotencyKey(key);
       const fingerprint = commandFingerprint({ companyId, payload: value });
       // A Service Definition creation has no target record: the Workspace
@@ -160,9 +161,10 @@ export class CommercialCatalogueService {
     cursorInput: unknown,
     limitInput: unknown,
   ): Promise<ServiceDefinitionPage> {
-    await this.authorization.requireServiceCatalogueAccess(actor, [
-      'service.definition.read',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['service.definition.read'],
+      lock: false,
+    });
     const limit = readCatalogueLimit(limitInput);
     const cursor = readCatalogueCursor(cursorInput);
     const rows = await this.databaseContext.connection
@@ -203,11 +205,12 @@ export class CommercialCatalogueService {
     key: string | undefined,
   ): Promise<CreateCompanyServiceOfferingResult> {
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireServiceCatalogueAccess(
-        actor,
-        ['commercial.offering.manage'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.offering.manage'],
+          lock: true,
+        })
+      ).companyId;
       const idempotencyKey = requireIdempotencyKey(key);
       const fingerprint = commandFingerprint({ companyId, payload: value });
       // The command's target is the Service Definition it names. Its current
@@ -324,7 +327,12 @@ export class CommercialCatalogueService {
     cursorInput: unknown,
     limitInput: unknown,
   ): Promise<CompanyServiceOfferingPage> {
-    const companyId = await this.authorization.requireOfferingReadAccess(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['commercial.offering.read'],
+        lock: false,
+      })
+    ).companyId;
     const limit = readCatalogueLimit(limitInput);
     const cursor = readCatalogueCursor(cursorInput);
     const rows = await this.databaseContext.connection
@@ -371,7 +379,12 @@ export class CommercialCatalogueService {
     actor: ActorContext,
     offeringId: string,
   ): Promise<CompanyServiceOfferingRecord> {
-    const companyId = await this.authorization.requireOfferingReadAccess(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['commercial.offering.read'],
+        lock: false,
+      })
+    ).companyId;
     const offering = await this.findOffering(
       actor.workspaceId,
       companyId,
@@ -387,7 +400,12 @@ export class CommercialCatalogueService {
     actor: ActorContext,
     offeringIds: readonly string[],
   ): Promise<ReadonlyMap<string, CompanyServiceOfferingRecord>> {
-    const companyId = await this.authorization.requireOfferingReadAccess(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['commercial.offering.read'],
+        lock: false,
+      })
+    ).companyId;
     const ids = [...new Set(offeringIds)];
     if (ids.length === 0) return new Map();
     const rows = await this.databaseContext.connection

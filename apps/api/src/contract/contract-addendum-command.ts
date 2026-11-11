@@ -64,17 +64,21 @@ export async function createContractAddendum(
     'commercial.contract.read',
     'commercial.contract.prepare',
   ] as const;
-  await authorization.requireContractAccess(input.actor, permissions);
+  await authorization.requirePermissions(input.actor, {
+    permissions: permissions,
+    lock: false,
+  });
   const key = requireIdempotencyKey(input.idempotencyKey);
   return runClientReferenceTransaction({
     database: database,
     work: async () => {
       const { actor } = input;
-      const companyId = await authorization.requireContractAccess(
-        actor,
-        permissions,
-        true,
-      );
+      const companyId = (
+        await authorization.requirePermissions(actor, {
+          permissions: permissions,
+          lock: true,
+        })
+      ).companyId;
       await intake.requireReadableOfferOpportunity(
         actor,
         input.opportunityId,

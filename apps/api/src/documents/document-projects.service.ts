@@ -46,7 +46,18 @@ export class DocumentProjectsService {
     // Keep authority, original Client state and association revisions in one read snapshot.
     return this.database.transaction(
       async () => {
-        const companyId = await this.authorization.requireDocumentAccess(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['document.read'],
+            lock: false,
+            prerequisites: [
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
         const project = await this.projects.read(actor, projectId);
         const client = await this.clients.readReferenceClient(
           actor,
@@ -61,10 +72,14 @@ export class DocumentProjectsService {
             closedAs: 'not_found',
           });
         }
-        const familyAllowed =
-          await this.authorization.hasMissionDeliverableAccess(actor);
-        const receivedAllowed =
-          await this.authorization.hasReceivedContractAccess(actor);
+        const familyAllowed = await this.authorization.hasPermissions(actor, {
+          permissions: ['document.mission_deliverable.access'],
+          lock: false,
+        });
+        const receivedAllowed = await this.authorization.hasPermissions(actor, {
+          permissions: ['document.received_contract.access'],
+          lock: false,
+        });
         const rows = await this.database.connection
           .select({
             id: workingDocuments.id,
@@ -159,7 +174,18 @@ export class DocumentProjectsService {
     const command = parseCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     return this.database.transaction(async () => {
-      await this.authorization.requireDocumentProjectManage(actor);
+      void (await this.authorization.requirePermissions(actor, {
+        permissions: ['document.project.manage'],
+        lock: true,
+        prerequisites: [
+          { permissions: ['document.read'] },
+          { permissions: ['project.read'] },
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      }));
       const companyId = actor.activeCompany?.id;
       if (!companyId) throw new ForbiddenException();
       await this.boundary.lockFamilyForCommand(actor, documentId);

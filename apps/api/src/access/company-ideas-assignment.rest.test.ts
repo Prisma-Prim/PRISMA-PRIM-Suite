@@ -1,3 +1,4 @@
+import type { CompanyPermission } from './captured-company-permissions.js';
 import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { ForbiddenException } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -14,6 +15,15 @@ import {
 import type { ActorContext } from './access.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { CompanyContextAuthorization } from './company-context-authorization.js';
+
+const IDEAS_REQUIRED_PERMISSIONS: Record<
+  'read' | 'record' | 'disposition',
+  readonly CompanyPermission[]
+> = {
+  read: ['idea.read'],
+  record: ['idea.record'],
+  disposition: ['idea.disposition.record'],
+};
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
@@ -241,7 +251,13 @@ withPostgres('Ideas assignment administration and live authorization', () => {
       if (!activeCompany) throw new Error('Expected authorized Company.');
       const captured: ActorContext = { ...member, activeCompany };
       await expect(
-        authorization.requireIdeasAccess(captured, bundle.operation),
+        authorization
+          .requirePermissions(captured, {
+            permissions: IDEAS_REQUIRED_PERMISSIONS[bundle.operation],
+            prerequisites: [{ permissions: ['idea.read'] }],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
 
       const additionalPermission = { ...activeCompany };
@@ -253,10 +269,16 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         },
       );
       await expect(
-        authorization.requireIdeasAccess(
-          { ...captured, activeCompany: additionalPermission },
-          bundle.operation,
-        ),
+        authorization
+          .requirePermissions(
+            { ...captured, activeCompany: additionalPermission },
+            {
+              permissions: IDEAS_REQUIRED_PERMISSIONS[bundle.operation],
+              prerequisites: [{ permissions: ['idea.read'] }],
+              lock: false,
+            },
+          )
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
 
       const invalidFields = [
@@ -278,10 +300,16 @@ withPostgres('Ideas assignment administration and live authorization', () => {
             value,
           });
           await expect(
-            authorization.requireIdeasAccess(
-              { ...captured, activeCompany: malformedCompany },
-              bundle.operation,
-            ),
+            authorization
+              .requirePermissions(
+                { ...captured, activeCompany: malformedCompany },
+                {
+                  permissions: IDEAS_REQUIRED_PERMISSIONS[bundle.operation],
+                  prerequisites: [{ permissions: ['idea.read'] }],
+                  lock: false,
+                },
+              )
+              .then((access) => access.companyId),
           ).rejects.toBeInstanceOf(ForbiddenException);
         }
       }
@@ -293,15 +321,27 @@ withPostgres('Ideas assignment administration and live authorization', () => {
       expect(revoked.status).toBe(200);
       await grant(bundle.path, member.workspaceMembershipId, companyId);
       await expect(
-        authorization.requireIdeasAccess(captured, bundle.operation),
+        authorization
+          .requirePermissions(captured, {
+            permissions: IDEAS_REQUIRED_PERMISSIONS[bundle.operation],
+            prerequisites: [{ permissions: ['idea.read'] }],
+            lock: false,
+          })
+          .then((access) => access.companyId),
       ).rejects.toBeInstanceOf(ForbiddenException);
       const refreshedCompany =
         await authorization.resolveAuthorizedActiveCompany(member, companyId);
       await expect(
-        authorization.requireIdeasAccess(
-          { ...member, activeCompany: refreshedCompany },
-          bundle.operation,
-        ),
+        authorization
+          .requirePermissions(
+            { ...member, activeCompany: refreshedCompany },
+            {
+              permissions: IDEAS_REQUIRED_PERMISSIONS[bundle.operation],
+              prerequisites: [{ permissions: ['idea.read'] }],
+              lock: false,
+            },
+          )
+          .then((access) => access.companyId),
       ).resolves.toBe(companyId);
     },
   );

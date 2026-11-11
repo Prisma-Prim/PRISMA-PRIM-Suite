@@ -60,7 +60,16 @@ export class MissionApplicabilityAccessService {
       )
     )
       throw new ForbiddenException();
-    await this.companies.requireProjectAccess(actor, lock);
+    await this.companies.requirePermissions(actor, {
+      permissions: ['project.read'],
+      lock: lock,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     for (const capture of [
       {
         id: company.projectPermissionAssignmentId,

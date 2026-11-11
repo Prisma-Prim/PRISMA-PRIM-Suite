@@ -9,6 +9,7 @@ import {
   externalInvoiceRelationsForTest,
 } from './document-read.test-support.js';
 import { ConfigService } from '@nestjs/config';
+import { ForbiddenException } from '@nestjs/common';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -760,7 +761,7 @@ describe.skipIf(!databaseUrl)(
       if (reversal.status === 409)
         expect((await reverse(reference)).status).toBe(409);
     });
-    it('does not serialize a Representation URL for a metadata-only module actor', async () => {
+    it('keeps URLs hidden and refuses correction without Representation-read permission', async () => {
       await grant();
       const registered = await body(
         await request('/documents', 'POST', input()),
@@ -775,17 +776,21 @@ describe.skipIf(!databaseUrl)(
         email: 'document@example.test',
         active: true,
         workspacePermissions: ['client.manage'],
-        activeCompany: {
-          id: companyId,
-          displayName: 'PRISMA-PRIM',
-          clientPermissions: [],
-          documentPermissions: ['document.read'],
-        },
       };
       // No metadata-only bundle is introduced. This public Documents seam proves
       // the separate representation permission even before another bundle exists.
       const context = new DatabaseContext(drizzle(harness.pool));
       const authorization = new CompanyContextAuthorization(context);
+      const company = await authorization.resolveAuthorizedActiveCompany(
+        actor,
+        companyId,
+      );
+      if (!company)
+        throw new Error('Expected a server-captured Document reader.');
+      actor.activeCompany = {
+        ...company,
+        documentPermissions: ['document.read'],
+      };
       const clients = new ClientOperationalReferenceService(context);
       const accountability = new AccountabilityService(context);
       const familyAccess = new DocumentFamilyAccess(authorization);
@@ -839,6 +844,21 @@ describe.skipIf(!databaseUrl)(
       expect(JSON.stringify(await documents.list(actor))).not.toContain(
         'https://',
       );
+      actor.activeCompany = {
+        ...company,
+        documentPermissions: ['document.read', 'document.correct'],
+      };
+      await expect(
+        documents.correct(
+          actor,
+          text(registered.id),
+          {
+            expectedRevision: 1,
+            title: 'Forbidden correction',
+          },
+          'missing-reference-read',
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
     it('does not expose another Company or Workspace even when the actor has grants in both Companies', async () => {
       await grant();

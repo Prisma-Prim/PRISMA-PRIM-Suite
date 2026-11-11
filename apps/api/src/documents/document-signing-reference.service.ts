@@ -49,20 +49,46 @@ export class DocumentSigningReferenceService {
   ) {
     if (requireDocumentPermission(actor, 'document.read') !== context.companyId)
       throw new NotFoundException();
-    await this.authorization.requireDocumentAccess(actor, lock);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['document.read'],
+      lock: lock,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     await this.clients.requireReferenceReadAuthority(actor, lock);
     await this.clients.readReferenceClient(
       actor,
       context.originalClientAccountId,
     );
     if (
-      !(await this.authorization.hasReceivedContractAccess(actor, {
-        lockAssignment: lock,
+      !(await this.authorization.hasPermissions(actor, {
+        permissions: ['document.received_contract.access'],
+        lock: {
+          lockAssignment: lock,
+        }.lockAssignment,
       })) ||
-      !(await this.authorization.hasDocumentContentRead(actor))
+      !(await this.authorization.hasPermissions(actor, {
+        permissions: ['document.content.read'],
+        lock: false,
+      }))
     )
       throw new ForbiddenException();
-    if (lock) await this.authorization.requireDocumentContentRead(actor);
+    if (lock)
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['document.content.read'],
+        lock: true,
+        prerequisites: [
+          { permissions: ['document.read', 'document.reference.read'] },
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      });
   }
 
   async eligibleWithinTransaction(input: {

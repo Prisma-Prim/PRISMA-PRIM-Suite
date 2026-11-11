@@ -120,11 +120,12 @@ export class OfferService {
     contractVersionId?: string;
     opportunityId: string;
   }) {
-    const companyId = await this.authorization.requireContractAccess(
-      input.actor,
-      ['commercial.contract.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.contract.read'],
+        lock: true,
+      })
+    ).companyId;
     await this.intake.requireReadableOfferOpportunity(
       input.actor,
       input.opportunityId,
@@ -210,11 +211,12 @@ export class OfferService {
     contractId: string;
     contractVersionId?: string;
   }) {
-    const companyId = await this.authorization.requireContractAccess(
-      input.actor,
-      ['commercial.contract.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.contract.read'],
+        lock: true,
+      })
+    ).companyId;
     await this.intake.requireReadableOfferOpportunity(
       input.actor,
       input.opportunityId,
@@ -316,11 +318,12 @@ export class OfferService {
     offerVersionId: string;
     requireEligible: boolean;
   }) {
-    const companyId = await this.authorization.requireOfferAccess(
-      input.actor,
-      ['commercial.offer.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.offer.read'],
+        lock: true,
+      })
+    ).companyId;
     const opportunity = await this.intake.requireReadableOfferOpportunity(
       input.actor,
       input.opportunityId,
@@ -428,11 +431,12 @@ export class OfferService {
     offerVersionId: string;
     lock: boolean;
   }) {
-    const companyId = await this.authorization.requireOfferAccess(
-      input.actor,
-      ['commercial.offer.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.offer.read'],
+        lock: true,
+      })
+    ).companyId;
     const query = this.databaseContext.connection
       .select()
       .from(offers)
@@ -488,11 +492,12 @@ export class OfferService {
     lock: boolean;
     allowAccepted: boolean;
   }) {
-    const companyId = await this.authorization.requireOfferAccess(
-      input.actor,
-      ['commercial.offer.read'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.offer.read'],
+        lock: true,
+      })
+    ).companyId;
     const query = this.databaseContext.connection
       .select()
       .from(offers)
@@ -579,18 +584,20 @@ export class OfferService {
     value: unknown,
     key: string | undefined,
   ): Promise<OfferRecord> {
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.prepare',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.prepare'],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(key);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.prepare'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.prepare'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           opportunityId,
@@ -773,18 +780,20 @@ export class OfferService {
     idempotencyKey: string | undefined;
   }): Promise<OfferRecord> {
     const { actor } = input;
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.prepare',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.prepare'],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.prepare'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.prepare'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -1002,15 +1011,17 @@ export class OfferService {
     limit?: string;
   }) {
     const { actor } = input;
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.read',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.read'],
+      lock: false,
+    });
     return this.readConsistently(async () => {
-      const companyId = await this.authorization.requireOfferAccess(
-        actor,
-        ['commercial.offer.read'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.offer.read'],
+          lock: true,
+        })
+      ).companyId;
       const opportunity = await this.intake.requireReadableOfferOpportunity(
         actor,
         input.opportunityId,
@@ -1140,9 +1151,10 @@ export class OfferService {
     opportunityId: string,
     offerVersionId?: string,
   ): Promise<OfferReadRecord | null> {
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.read',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.read'],
+      lock: false,
+    });
     if (
       offerVersionId !== undefined &&
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
@@ -1151,11 +1163,12 @@ export class OfferService {
     )
       throw new NotFoundException();
     return this.readConsistently(async () => {
-      const companyId = await this.authorization.requireOfferAccess(
-        actor,
-        ['commercial.offer.read'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.offer.read'],
+          lock: true,
+        })
+      ).companyId;
       return this.readInTransaction(
         actor,
         companyId,
@@ -1234,11 +1247,12 @@ export class OfferService {
     requirePdfIds(input.opportunityId, input.versionId);
     const expected = readPdfQuery(input.query);
     return this.readConsistently(async () => {
-      const companyId = await this.authorization.requireOfferAccess(
-        input.actor,
-        ['commercial.offer.read'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(input.actor, {
+          permissions: ['commercial.offer.read'],
+          lock: true,
+        })
+      ).companyId;
       // Consume and lock Access-owned identities before observing the source.
       const observation =
         await this.authorization.requireOfferMessageReadObservation(
@@ -1261,11 +1275,10 @@ export class OfferService {
       };
       const selected = await readSource();
       // Final native source and capture fence shares the same locked snapshot.
-      await this.authorization.requireOfferAccess(
-        input.actor,
-        ['commercial.offer.read'],
-        true,
-      );
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.offer.read'],
+        lock: true,
+      });
       const current =
         await this.authorization.requireOfferMessageReadObservation(
           input.actor,
@@ -1325,15 +1338,20 @@ export class OfferService {
     idempotencyKey: string | undefined;
   }): Promise<OfferQualityRun> {
     const { actor } = input;
-    await this.authorization.requireOfferQualityAccess(actor);
+    await this.authorization.requirePermissions(actor, {
+      anyOf: [['commercial.offer.prepare'], ['commercial.offer.approve']],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireOfferQualityAccess(
-          actor,
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            anyOf: [['commercial.offer.prepare'], ['commercial.offer.approve']],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -1364,7 +1382,19 @@ export class OfferService {
           );
         if (!target) throw new NotFoundException();
         if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
-          await this.authorization.requireOfferQualityAccess(actor, true, true);
+          await this.authorization.requirePermissions(actor, {
+            anyOf: [
+              [
+                'commercial.offer.prepare',
+                'commercial.offer.model_based.prepare',
+              ],
+              [
+                'commercial.offer.approve',
+                'commercial.offer.model_based.approve',
+              ],
+            ],
+            lock: true,
+          });
         const fingerprint = commandFingerprint({
           kind: 'RUN_QUALITY_CHECKS',
           opportunityId: opportunity.id,
@@ -1488,18 +1518,20 @@ export class OfferService {
     kind: 'APPROVE' | 'REJECT';
   }): Promise<OfferDecision> {
     const { actor } = input;
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.approve',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.approve'],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.approve'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.approve'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -1530,14 +1562,13 @@ export class OfferService {
           );
         if (!target) throw new NotFoundException();
         if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
-          await this.authorization.requireOfferAccess(
-            actor,
-            [
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
               'commercial.offer.approve',
               'commercial.offer.model_based.approve',
             ],
-            true,
-          );
+            lock: true,
+          });
         const fingerprint = commandFingerprint({
           kind: input.kind,
           opportunityId: opportunity.id,
@@ -1750,17 +1781,19 @@ export class OfferService {
     idempotencyKey: string | undefined;
   }): Promise<OfferClientResponse> {
     const { actor } = input;
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.response.record',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.response.record'],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
     return this.databaseContext
       .transaction(async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.response.record'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.response.record'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -1791,14 +1824,13 @@ export class OfferService {
           );
         if (!target) throw new NotFoundException();
         if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
-          await this.authorization.requireOfferAccess(
-            actor,
-            [
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
               'commercial.offer.response.record',
               'commercial.offer.model_based.response.record',
             ],
-            true,
-          );
+            lock: true,
+          });
         await this.lockCommand(actor, companyId, idempotencyKey);
         const recipient = offerRecipientCopy(target);
         // The response selects no new entity. Fence recorded references through
@@ -2053,18 +2085,20 @@ export class OfferService {
     idempotencyKey: string | undefined;
   }): Promise<OfferTransmission> {
     const { actor } = input;
-    await this.authorization.requireOfferAccess(actor, [
-      'commercial.offer.transmission.record',
-    ]);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.transmission.record'],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.transmission.record'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.transmission.record'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -2095,14 +2129,13 @@ export class OfferService {
           );
         if (!target) throw new NotFoundException();
         if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
-          await this.authorization.requireOfferAccess(
-            actor,
-            [
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
               'commercial.offer.transmission.record',
               'commercial.offer.model_based.transmission.record',
             ],
-            true,
-          );
+            lock: true,
+          });
         const fingerprint = commandFingerprint({
           kind: 'RECORD_TRANSMISSION',
           opportunityId: opportunity.id,

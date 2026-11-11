@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
@@ -24,13 +25,20 @@ export class ProfitabilityDecisionQueueService {
   list({ actor, query }: { actor: ActorContext; query: unknown }) {
     return this.database.transaction(
       async () => {
-        const companyId =
-          await this.authorization.requireProfitabilityEstimateAccess(
-            actor,
-            'decide',
-          );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
+              'commercial.profitability_estimate.read',
+              'commercial.profitability_estimate.decide',
+            ],
+            lock: false,
+          })
+        ).companyId;
         // Check independent Opportunity authority even for an empty queue.
-        await this.authorization.requireCommercialIntakeAccess(actor, 'read');
+        await this.authorization.requirePermissions(actor, {
+          permissions: commercialIntakeRequiredPermissions('read'),
+          lock: false,
+        });
         const scope = { workspaceId: actor.workspaceId, companyId };
         const cursor = readDecisionQueueCursor(query, scope);
         const rows = await this.database.connection

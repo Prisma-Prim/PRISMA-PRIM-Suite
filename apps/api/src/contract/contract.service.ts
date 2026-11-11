@@ -102,38 +102,39 @@ export class ContractService {
   ) {
     const early = origin === 'OFFER_PREPARATION';
     if (early)
-      await this.authorization.requireContractAccess(input.actor, [
-        'commercial.contract.prepare_pending_offer',
-      ]);
-    await this.authorization.requireContractAccess(input.actor, [
-      'commercial.contract.prepare',
-    ]);
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['commercial.contract.prepare_pending_offer'],
+        lock: false,
+      });
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: ['commercial.contract.prepare'],
+      lock: false,
+    });
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
         const { actor } = input;
-        const companyId = await this.authorization.requireContractAccess(
-          actor,
-          ['commercial.contract.prepare'],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.contract.prepare'],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
           true,
         );
         if (early) {
-          await this.authorization.requireContractAccess(
-            actor,
-            ['commercial.contract.prepare_pending_offer'],
-            true,
-          );
-          await this.authorization.requireOfferAccess(
-            actor,
-            ['commercial.offer.read'],
-            true,
-          );
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.contract.prepare_pending_offer'],
+            lock: true,
+          });
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.read'],
+            lock: true,
+          });
           await this.clients.lockRecipientReadAuthority(actor);
         }
         const command = early
@@ -464,15 +465,23 @@ export class ContractService {
     payload: unknown;
     idempotencyKey: string | undefined;
   }): Promise<ContractQualityRun> {
-    await this.authorization.requireContractQualityAccess(input.actor);
+    await this.authorization.requirePermissions(input.actor, {
+      anyOf: [['commercial.contract.prepare'], ['commercial.contract.approve']],
+      lock: false,
+    });
     const key = requireIdempotencyKey(input.idempotencyKey);
     return this.databaseContext
       .transaction(async () => {
         const { actor } = input;
-        const companyId = await this.authorization.requireContractQualityAccess(
-          actor,
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            anyOf: [
+              ['commercial.contract.prepare'],
+              ['commercial.contract.approve'],
+            ],
+            lock: true,
+          })
+        ).companyId;
         await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
@@ -489,16 +498,23 @@ export class ContractService {
           throw new NotFoundException();
         const { contract, version } = found;
         if (version.provenance === 'COMPANY_MODEL_OFFER') {
-          await this.authorization.requireContractQualityAccess(
-            actor,
-            true,
-            true,
-          );
-          await this.authorization.requireOfferAccess(
-            actor,
-            ['commercial.offer.read'],
-            true,
-          );
+          await this.authorization.requirePermissions(actor, {
+            anyOf: [
+              [
+                'commercial.contract.prepare',
+                'commercial.contract.model_based.prepare',
+              ],
+              [
+                'commercial.contract.approve',
+                'commercial.contract.model_based.approve',
+              ],
+            ],
+            lock: true,
+          });
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.offer.read'],
+            lock: true,
+          });
         }
 
         const fingerprint = commandFingerprint({
@@ -789,11 +805,12 @@ export class ContractService {
     cursor: string | undefined;
   }) {
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireContractAccess(
-        input.actor,
-        ['commercial.contract.read'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(input.actor, {
+          permissions: ['commercial.contract.read'],
+          lock: true,
+        })
+      ).companyId;
       await this.intake.requireReadableOfferOpportunity(
         input.actor,
         input.opportunityId,
@@ -870,11 +887,12 @@ export class ContractService {
     runId: string;
   }): Promise<ContractQualityRun> {
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireContractAccess(
-        input.actor,
-        ['commercial.contract.read'],
-        true,
-      );
+      const companyId = (
+        await this.authorization.requirePermissions(input.actor, {
+          permissions: ['commercial.contract.read'],
+          lock: true,
+        })
+      ).companyId;
       await this.intake.requireReadableOfferOpportunity(
         input.actor,
         input.opportunityId,

@@ -1,3 +1,4 @@
+import { commercialIntakeRequiredPermissions } from '../access/company-context-authorization.js';
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { createHash } from 'node:crypto';
 import {
@@ -121,19 +122,22 @@ export class CommercialIntakeService {
     value: unknown,
     key: string | undefined,
   ): Promise<CommercialIntakeDetail> {
-    await this.authorization.requireCommercialIntakeAccess(actor, 'create');
+    await this.authorization.requirePermissions(actor, {
+      permissions: commercialIntakeRequiredPermissions('create'),
+      lock: false,
+    });
     const command = readCreateCommercialIntakeCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = commandFingerprint(command);
     return runClientReferenceTransaction({
       database: this.databaseContext,
       work: async () => {
-        const companyId =
-          await this.authorization.requireCommercialIntakeAccess(
-            actor,
-            'create',
-            true,
-          );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: commercialIntakeRequiredPermissions('create'),
+            lock: true,
+          })
+        ).companyId;
         await this.lockCommand(actor, companyId, idempotencyKey);
         const replay = await this.findCommand(actor, companyId, idempotencyKey);
         if (replay) {
@@ -221,10 +225,12 @@ export class CommercialIntakeService {
     actor: ActorContext,
     requestId: string,
   ): Promise<CommercialIntakeDetail> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     return this.loadDetail(actor, companyId, requestId, false);
   }
 
@@ -238,11 +244,12 @@ export class CommercialIntakeService {
     actor: ActorContext,
     requestId: string,
   ): Promise<CommercialIntakeDetail> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: true,
+      })
+    ).companyId;
     return this.loadDetail(actor, companyId, requestId, false);
   }
 
@@ -254,11 +261,12 @@ export class CommercialIntakeService {
     actor: ActorContext,
     opportunityId: string,
   ): Promise<ReadablePricingOpportunity> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: true,
+      })
+    ).companyId;
     if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
     const [target] = await this.databaseContext.connection
       .select({
@@ -325,11 +333,12 @@ export class CommercialIntakeService {
     opportunityId: string,
     lock: boolean,
   ): Promise<ReadableOfferOpportunity> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-      lock,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: lock,
+      })
+    ).companyId;
     if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
     const query = this.databaseContext.connection
       .select({
@@ -389,10 +398,12 @@ export class CommercialIntakeService {
     actor: ActorContext,
     opportunityIds: readonly string[],
   ) {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     if (opportunityIds.length > 26) throw new BadRequestException();
     if (opportunityIds.length === 0) return new Map<string, string>();
     const rows = await this.databaseContext.connection
@@ -419,10 +430,12 @@ export class CommercialIntakeService {
 
   /** Only live native target readability precedes a past date receipt. */
   async requireFollowUpTarget(actor: ActorContext, opportunityId: string) {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
     const opportunity = await this.requireVisibleOpportunity(
       actor,
@@ -443,11 +456,12 @@ export class CommercialIntakeService {
     opportunityId: string,
     lock: boolean,
   ) {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-      lock,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: lock,
+      })
+    ).companyId;
     if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
     const opportunity = lock
       ? await this.lockRequestThenOpportunity(actor, companyId, opportunityId)
@@ -507,21 +521,23 @@ export class CommercialIntakeService {
     value: unknown,
     key: string | undefined,
   ): Promise<OpportunityNextActionUpdateResult> {
-    await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'update-next-action',
-    );
+    await this.authorization.requirePermissions(actor, {
+      permissions: commercialIntakeRequiredPermissions('update-next-action'),
+      lock: false,
+    });
     const command = readUpdateOpportunityNextActionCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = nextActionFingerprint(opportunityId, command);
     return runIdempotentCommand(this.databaseContext, {
       fingerprint,
       authorize: () =>
-        this.authorization.requireCommercialIntakeAccess(
-          actor,
-          'update-next-action',
-          true,
-        ),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions:
+              commercialIntakeRequiredPermissions('update-next-action'),
+            lock: true,
+          })
+          .then((access) => access.companyId),
       lockParts: (companyId) =>
         opportunityCommandLockParts({
           command: 'commercial-intake.update-next-action',
@@ -638,13 +654,40 @@ export class CommercialIntakeService {
     value: unknown,
     key: string | undefined,
   ): Promise<OpportunityResponsibleChangeResult> {
-    await this.authorization.requireOpportunityAssign(actor);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.opportunity.assign'],
+      lock: false,
+      lockCompany: false,
+      prerequisites: [
+        {
+          permissions: [
+            'commercial.request.read',
+            'commercial.opportunity.read',
+          ],
+        },
+      ],
+    });
     const command = readChangeOpportunityResponsibleCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = responsibleFingerprint(opportunityId, command);
     return runIdempotentCommand(this.databaseContext, {
       fingerprint,
-      authorize: () => this.authorization.requireOpportunityAssign(actor, true),
+      authorize: () =>
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['commercial.opportunity.assign'],
+            lock: true,
+            lockCompany: false,
+            prerequisites: [
+              {
+                permissions: [
+                  'commercial.request.read',
+                  'commercial.opportunity.read',
+                ],
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       lockParts: (companyId) =>
         opportunityCommandLockParts({
           command: 'commercial-intake.change-responsible',
@@ -784,14 +827,40 @@ export class CommercialIntakeService {
     value: unknown,
     key: string | undefined,
   ): Promise<OpportunityOutcomeChangeResult> {
-    await this.authorization.requireOpportunityOutcomeChange(actor);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.opportunity.outcome.change'],
+      lock: false,
+      lockCompany: false,
+      prerequisites: [
+        {
+          permissions: [
+            'commercial.request.read',
+            'commercial.opportunity.read',
+          ],
+        },
+      ],
+    });
     const command = readChangeOpportunityOutcomeCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = outcomeFingerprint(opportunityId, command);
     return runIdempotentCommand(this.databaseContext, {
       fingerprint,
       authorize: () =>
-        this.authorization.requireOpportunityOutcomeChange(actor, true),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: ['commercial.opportunity.outcome.change'],
+            lock: true,
+            lockCompany: false,
+            prerequisites: [
+              {
+                permissions: [
+                  'commercial.request.read',
+                  'commercial.opportunity.read',
+                ],
+              },
+            ],
+          })
+          .then((access) => access.companyId),
       lockParts: (companyId) =>
         opportunityCommandLockParts({
           command: 'commercial-intake.change-outcome',
@@ -931,10 +1000,12 @@ export class CommercialIntakeService {
     opportunityId: string,
     cursorInput: unknown,
   ): Promise<OpportunityOutcomeHistoryPage> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     const beforeVersion = readOpportunityHistoryCursor(cursorInput);
     return this.databaseContext.transaction(
       async () => {
@@ -970,18 +1041,22 @@ export class CommercialIntakeService {
     value: unknown,
     key: string | undefined,
   ): Promise<OpportunityStageChangeResult> {
-    await this.authorization.requireCommercialIntakeAccess(actor, 'set-stage');
+    await this.authorization.requirePermissions(actor, {
+      permissions: commercialIntakeRequiredPermissions('set-stage'),
+      lock: false,
+    });
     const command = readSetOpportunityStageCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = stageFingerprint(opportunityId, command);
     return runIdempotentCommand(this.databaseContext, {
       fingerprint,
       authorize: () =>
-        this.authorization.requireCommercialIntakeAccess(
-          actor,
-          'set-stage',
-          true,
-        ),
+        this.authorization
+          .requirePermissions(actor, {
+            permissions: commercialIntakeRequiredPermissions('set-stage'),
+            lock: true,
+          })
+          .then((access) => access.companyId),
       lockParts: (companyId) =>
         opportunityCommandLockParts({
           command: 'commercial-intake.set-stage',
@@ -1147,10 +1222,12 @@ export class CommercialIntakeService {
     opportunityId: string,
     cursorInput: unknown,
   ): Promise<OpportunityStageHistoryPage> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     const beforeVersion = readOpportunityHistoryCursor(cursorInput);
     return this.databaseContext.transaction(
       async () => {
@@ -1183,8 +1260,21 @@ export class CommercialIntakeService {
   ): Promise<OpportunityResponsibleCandidatePage> {
     return this.databaseContext.transaction(
       async () => {
-        const companyId =
-          await this.authorization.requireOpportunityAssign(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['commercial.opportunity.assign'],
+            lock: false,
+            lockCompany: false,
+            prerequisites: [
+              {
+                permissions: [
+                  'commercial.request.read',
+                  'commercial.opportunity.read',
+                ],
+              },
+            ],
+          })
+        ).companyId;
         await this.requireVisibleOpportunity(
           actor,
           companyId,
@@ -1220,10 +1310,12 @@ export class CommercialIntakeService {
     actor: ActorContext,
     query: Parameters<CommercialIntakeService['list']>[1],
   ): Promise<CommercialIntakeListPage> {
-    const companyId = await this.authorization.requireCommercialIntakeAccess(
-      actor,
-      'read',
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: commercialIntakeRequiredPermissions('read'),
+        lock: false,
+      })
+    ).companyId;
     const limit = readCommercialIntakeLimit(query.limit);
     const cursor = readCommercialIntakeCursor(query.cursor);
     const scope = readCommercialIntakeScope(query.viewQuery);

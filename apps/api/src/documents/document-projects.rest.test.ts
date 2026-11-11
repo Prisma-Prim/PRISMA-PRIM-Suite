@@ -929,9 +929,9 @@ describe.skipIf(!databaseUrl)(
       },
     );
 
-    /** The owner's identity with a metadata-only context no bundle grants. */
-    function metadataOnlyActor(): ActorContext {
-      return {
+    /** A real server capture narrowed to the existing metadata-only module seam. */
+    async function metadataOnlyActor(): Promise<ActorContext> {
+      const actor: ActorContext = {
         internalUserId: parseInternalUserId(internalUserId),
         workspaceMembershipId: membershipId,
         workspaceId: parseWorkspaceId(workspaceId),
@@ -940,14 +940,21 @@ describe.skipIf(!databaseUrl)(
         email: 'document-project-owner@example.test',
         active: true,
         workspacePermissions: ['client.manage'],
-        activeCompany: {
-          id: companyId,
-          displayName: 'PRISMA-PRIM',
-          clientPermissions: [],
-          documentPermissions: ['document.read'],
-          projectPermissions: ['project.read'],
-        },
       };
+      const authorization = new CompanyContextAuthorization(
+        new DatabaseContext(drizzle(harness.pool)),
+      );
+      const company = await authorization.resolveAuthorizedActiveCompany(
+        actor,
+        companyId,
+      );
+      if (!company) throw new Error('Expected a server-captured Company.');
+      actor.activeCompany = {
+        ...company,
+        documentPermissions: ['document.read'],
+        projectPermissions: ['project.read'],
+      };
+      return actor;
     }
     function moduleServices() {
       const context = new DatabaseContext(drizzle(harness.pool));
@@ -1023,7 +1030,7 @@ describe.skipIf(!databaseUrl)(
       await grant('organizer');
       expect((await mutate('link', 0)).status).toBe(201);
       const unlinked = await createDocument();
-      const actor = metadataOnlyActor();
+      const actor = await metadataOnlyActor();
       // No metadata-only bundle is introduced; the public module seam proves the
       // separate URL permission while live persisted grants still authorize reads.
       const { documents, associations } = moduleServices();
@@ -1054,6 +1061,7 @@ describe.skipIf(!databaseUrl)(
       await grant('organizer');
       expect((await mutate('link', 0)).status).toBe(201);
       const unlinked = await createDocument();
+      const actor = await metadataOnlyActor();
       await revoke('project');
       // The captured context still claims project.read; the Project module's
       // live read refuses it without hiding the readable Document.
@@ -1062,7 +1070,7 @@ describe.skipIf(!databaseUrl)(
         [documentId, document],
         [text(unlinked.id), unlinked],
       ] satisfies Array<[string, Record<string, unknown>]>) {
-        const read = await documents.detail(metadataOnlyActor(), id);
+        const read = await documents.detail(actor, id);
         expect(read).toMatchObject({ id, title: 'Working questionnaire' });
         expect(read).not.toHaveProperty('projectAssociation');
         expect(JSON.stringify(read)).not.toContain(projectId);

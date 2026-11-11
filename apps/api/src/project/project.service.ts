@@ -33,7 +33,18 @@ export class ProjectService {
   ) {}
 
   async list(actor: ActorContext, selection?: { view: 'mine_open' }) {
-    const companyId = await this.authorization.requireProjectAccess(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['project.read'],
+        lock: false,
+        prerequisites: [
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      })
+    ).companyId;
     return this.readList(actor, companyId, selection);
   }
 
@@ -75,8 +86,12 @@ export class ProjectService {
 
   /** Join the caller's readonly snapshot, preserving native original-Client visibility and labels. */
   async listWithinReadTransaction(actor: ActorContext) {
-    const companyId =
-      await this.authorization.requireProjectReadWithinReadTransaction(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['project.read'],
+        lock: false,
+      })
+    ).companyId;
     await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
       actor,
     );
@@ -90,7 +105,18 @@ export class ProjectService {
   ) {
     return this.databaseContext.transaction(
       async () => {
-        const companyId = await this.authorization.requireProjectAccess(actor);
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.read'],
+            lock: false,
+            prerequisites: [
+              {
+                permissions: ['client.read'],
+                workspaceAlternative: 'client.manage',
+              },
+            ],
+          })
+        ).companyId;
         const originalIds = await this.clients.readDossierOriginalReferenceIds(
           actor,
           selection.clientDossierId,
@@ -154,7 +180,18 @@ export class ProjectService {
   }
 
   async read(actor: ActorContext, id: string) {
-    const companyId = await this.authorization.requireProjectAccess(actor);
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['project.read'],
+        lock: false,
+        prerequisites: [
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      })
+    ).companyId;
     const [row] = await this.databaseContext.connection
       .select()
       .from(projects)
@@ -175,10 +212,18 @@ export class ProjectService {
     projectId: string;
     lock?: boolean;
   }) {
-    const companyId = await this.authorization.requireProjectAccess(
-      input.actor,
-      input.lock ?? false,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['project.read'],
+        lock: input.lock ?? false,
+        prerequisites: [
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      })
+    ).companyId;
     const query = this.databaseContext.connection
       .select()
       .from(projects)
@@ -238,10 +283,18 @@ export class ProjectService {
     const title = readProjectTitle(body.title);
     const clientAccountId = requireUuid(body.clientAccountId);
     const idempotencyKey = requireIdempotencyKey(key);
-    const companyId = await this.authorization.requireProjectAccess(
-      actor,
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['project.read'],
+        lock: true,
+        prerequisites: [
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      })
+    ).companyId;
     const lockKey = JSON.stringify(projectCreationLock(actor, idempotencyKey));
     await this.databaseContext.connection.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
@@ -320,7 +373,18 @@ export class ProjectService {
 
   /** Independent current creation authority; Contract authority supplies no Project grant. */
   async requireCreationAccess(actor: ActorContext) {
-    return this.authorization.requireProjectAccess(actor, true);
+    return this.authorization
+      .requirePermissions(actor, {
+        permissions: ['project.read'],
+        lock: true,
+        prerequisites: [
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      })
+      .then((access) => access.companyId);
   }
 
   /** Current candidates are decided after this Client-owner operational fence. */
@@ -345,7 +409,16 @@ export class ProjectService {
     actor: ActorContext,
     projectId: string,
   ) {
-    await this.authorization.requireProjectAccess(actor, true);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['project.read'],
+      lock: true,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     const project = await this.read(actor, projectId);
     await this.clients.lockReadableProjectReferences(actor, [
       project.clientAccountId,
@@ -359,7 +432,16 @@ export class ProjectService {
     projectId: string;
     contractOriginalClientAccountId: string;
   }) {
-    await this.authorization.requireProjectAccess(input.actor, true);
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: ['project.read'],
+      lock: true,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     const project = await this.read(input.actor, input.projectId);
     const references = await this.clients.resolveProjectLinkClients(
       input.actor,

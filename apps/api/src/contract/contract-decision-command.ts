@@ -70,20 +70,24 @@ export async function decideContractVersion(
   input: DecideContractVersionInput,
   dependencies: DecisionDependencies,
 ): Promise<ContractDecision> {
-  await dependencies.authorization.requireContractAccess(input.actor, [
-    'commercial.contract.read',
-    'commercial.contract.approve',
-  ]);
+  await dependencies.authorization.requirePermissions(input.actor, {
+    permissions: ['commercial.contract.read', 'commercial.contract.approve'],
+    lock: false,
+  });
   const key = requireIdempotencyKey(input.idempotencyKey);
   return runClientReferenceTransaction({
     database: dependencies.databaseContext,
     work: async () => {
       const { actor } = input;
-      const companyId = await dependencies.authorization.requireContractAccess(
-        actor,
-        ['commercial.contract.read', 'commercial.contract.approve'],
-        true,
-      );
+      const companyId = (
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: [
+            'commercial.contract.read',
+            'commercial.contract.approve',
+          ],
+          lock: true,
+        })
+      ).companyId;
       await dependencies.intake.requireReadableOfferOpportunity(
         actor,
         input.opportunityId,
@@ -101,19 +105,17 @@ export async function decideContractVersion(
       if (!found || found.version.id !== input.versionId)
         throw new NotFoundException();
       if (found.version.provenance === 'COMPANY_MODEL_OFFER') {
-        await dependencies.authorization.requireContractAccess(
-          actor,
-          [
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: [
             'commercial.contract.approve',
             'commercial.contract.model_based.approve',
           ],
-          true,
-        );
-        await dependencies.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.read'],
-          true,
-        );
+          lock: true,
+        });
+        await dependencies.authorization.requirePermissions(actor, {
+          permissions: ['commercial.offer.read'],
+          lock: true,
+        });
       }
       const fingerprint = commandFingerprint({
         kind: input.kind,

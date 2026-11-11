@@ -45,7 +45,16 @@ export class DocumentReadBoundary {
     options: { lockFamily: boolean } = { lockFamily: false },
   ): Promise<VisibleDocument> {
     const companyId = requireDocumentPermission(actor, 'document.read');
-    await this.authorization.requireDocumentAccess(actor);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['document.read'],
+      lock: false,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     const id = requireUuid(idValue);
     const [document] = await this.database.connection
       .select()
@@ -76,7 +85,16 @@ export class DocumentReadBoundary {
    */
   async lockFamilyForCommand(actor: ActorContext, documentId: string) {
     const companyId = requireDocumentPermission(actor, 'document.read');
-    await this.authorization.requireDocumentAccess(actor, true);
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['document.read'],
+      lock: true,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     const [document] = await this.database.connection
       .select({ type: workingDocuments.type })
       .from(workingDocuments)

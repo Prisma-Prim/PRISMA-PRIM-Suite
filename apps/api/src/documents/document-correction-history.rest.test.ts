@@ -565,17 +565,21 @@ describe.skipIf(!databaseUrl)(
         email: owner['x-test-email'],
         active: true,
         workspacePermissions: ['client.manage'],
-        activeCompany: {
-          id: companyId,
-          displayName: 'PRISMA-PRIM',
-          clientPermissions: [],
-          documentPermissions: ['document.read'],
-        },
       };
       // No metadata-only bundle exists yet; the owning service seam proves the
       // separate Representation-read gate, as for the detail read.
       const context = new DatabaseContext(drizzle(harness.pool));
       const authorization = new CompanyContextAuthorization(context);
+      const company = await authorization.resolveAuthorizedActiveCompany(
+        metadataReader,
+        companyId,
+      );
+      if (!company)
+        throw new Error('Expected a server-captured Document reader.');
+      metadataReader.activeCompany = {
+        ...company,
+        documentPermissions: ['document.read'],
+      };
       const clients = new ClientOperationalReferenceService(context);
       const accountability = new AccountabilityService(context);
       const familyAccess = new DocumentFamilyAccess(authorization);

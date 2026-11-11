@@ -74,11 +74,19 @@ export class ModelContractService {
     contract: ContractRow;
     version: typeof contractVersions.$inferSelect;
   }): Promise<ContractQualityEvaluation> {
-    await this.authorization.requireContractQualityAccess(
-      input.actor,
-      true,
-      true,
-    );
+    await this.authorization.requirePermissions(input.actor, {
+      anyOf: [
+        [
+          'commercial.contract.prepare',
+          'commercial.contract.model_based.prepare',
+        ],
+        [
+          'commercial.contract.approve',
+          'commercial.contract.model_based.approve',
+        ],
+      ],
+      lock: true,
+    });
     return this.evaluateBoundQualityWithinTransaction(input);
   }
 
@@ -89,11 +97,13 @@ export class ModelContractService {
     contract: ContractRow;
     version: typeof contractVersions.$inferSelect;
   }): Promise<ContractQualityEvaluation> {
-    await this.authorization.requireContractAccess(
-      input.actor,
-      ['commercial.contract.read', 'commercial.contract.signature.record'],
-      true,
-    );
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: [
+        'commercial.contract.read',
+        'commercial.contract.signature.record',
+      ],
+      lock: true,
+    });
     return this.evaluateBoundQualityWithinTransaction(input);
   }
 
@@ -104,11 +114,10 @@ export class ModelContractService {
     version: typeof contractVersions.$inferSelect;
   }): Promise<ContractQualityEvaluation> {
     const { actor, companyId, contract, version } = input;
-    await this.authorization.requireOfferAccess(
-      actor,
-      ['commercial.offer.read'],
-      true,
-    );
+    await this.authorization.requirePermissions(actor, {
+      permissions: ['commercial.offer.read'],
+      lock: true,
+    });
     const snapshot = storedModelContractSnapshot(contract, version),
       recipient = recordedRecipient(version);
     const current = await this.clients.inspectOfferQualityContext({
@@ -154,36 +163,39 @@ export class ModelContractService {
   }
 
   private async prepareCommand(input: PreparationInput, successor: boolean) {
-    await this.authorization.requireContractAccess(input.actor, [
-      'commercial.contract.prepare',
-      'commercial.contract.model.select',
-      'commercial.contract.model_based.prepare',
-    ]);
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: [
+        'commercial.contract.prepare',
+        'commercial.contract.model.select',
+        'commercial.contract.model_based.prepare',
+      ],
+      lock: false,
+    });
     const key = requireIdempotencyKey(input.idempotencyKey),
       command = readModelContractPreparation(input.payload, successor);
     return runClientReferenceTransaction({
       database: this.database,
       work: async () => {
         const { actor } = input;
-        const companyId = await this.authorization.requireContractAccess(
-          actor,
-          [
-            'commercial.contract.prepare',
-            'commercial.contract.model.select',
-            'commercial.contract.model_based.prepare',
-          ],
-          true,
-        );
+        const companyId = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: [
+              'commercial.contract.prepare',
+              'commercial.contract.model.select',
+              'commercial.contract.model_based.prepare',
+            ],
+            lock: true,
+          })
+        ).companyId;
         const opportunity = await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
           true,
         );
-        await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.read'],
-          true,
-        );
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.offer.read'],
+          lock: true,
+        });
         await this.clients.lockRecipientReadAuthority(actor);
         const kind = successor ? 'CREATE_VERSION' : 'CREATE';
         const fingerprint = commandFingerprint({

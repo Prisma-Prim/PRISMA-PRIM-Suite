@@ -74,12 +74,15 @@ export class ProfitabilityEstimateService {
     key: string | undefined;
   }): Promise<ProfitabilityVersionRecord> {
     return this.protectedTransaction(async () => {
-      const companyId =
-        await this.authorization.requireProfitabilityEstimateAccess(
-          actor,
-          'create',
-          true,
-        );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: [
+            'commercial.profitability_estimate.read',
+            'commercial.profitability_estimate.create',
+          ],
+          lock: true,
+        })
+      ).companyId;
       // The Opportunity owner protects both its row and the actor's live
       // read authority before any cached confidential outcome is considered.
       const target = await this.intake.requireReadableProfitabilityOpportunity(
@@ -227,12 +230,15 @@ export class ProfitabilityEstimateService {
     key: string | undefined;
   }): Promise<ProfitabilityVersionRecord> {
     return this.protectedTransaction(async () => {
-      const companyId =
-        await this.authorization.requireProfitabilityEstimateAccess(
-          actor,
-          'decide',
-          true,
-        );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: [
+            'commercial.profitability_estimate.read',
+            'commercial.profitability_estimate.decide',
+          ],
+          lock: true,
+        })
+      ).companyId;
       const target = await this.intake.requireReadableProfitabilityOpportunity(
         actor,
         opportunityId,
@@ -347,12 +353,12 @@ export class ProfitabilityEstimateService {
     opportunityId: string;
     versionId: string;
   }): Promise<ProfitabilityVersionRecord> {
-    const companyId =
-      await this.authorization.requireProfitabilityEstimateAccess(
-        actor,
-        'read',
-        true,
-      );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: ['commercial.profitability_estimate.read'],
+        lock: true,
+      })
+    ).companyId;
     const target = await this.intake.requireReadableProfitabilityOpportunity(
       actor,
       opportunityId,
@@ -419,12 +425,12 @@ export class ProfitabilityEstimateService {
     query: unknown;
   }): Promise<ProfitabilityVersionPage> {
     return this.protectedTransaction(async () => {
-      const companyId =
-        await this.authorization.requireProfitabilityEstimateAccess(
-          actor,
-          'read',
-          true,
-        );
+      const companyId = (
+        await this.authorization.requirePermissions(actor, {
+          permissions: ['commercial.profitability_estimate.read'],
+          lock: true,
+        })
+      ).companyId;
       const target = await this.intake.requireReadableProfitabilityOpportunity(
         actor,
         opportunityId,

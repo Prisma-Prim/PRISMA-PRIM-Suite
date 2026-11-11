@@ -90,20 +90,45 @@ export class DocumentTaskResultReferenceService {
       input.context.companyId
     )
       throw new NotFoundException();
-    await this.authorization.requireDocumentAccess(input.actor, input.lock);
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: ['document.read'],
+      lock: input.lock,
+      prerequisites: [
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     await this.clients.readReferenceClient(
       input.actor,
       input.context.clientAccountId,
     );
     if (
-      !(await this.authorization.hasMissionDeliverableAccess(input.actor, {
-        lockAssignment: input.lock,
+      !(await this.authorization.hasPermissions(input.actor, {
+        permissions: ['document.mission_deliverable.access'],
+        lock: {
+          lockAssignment: input.lock,
+        }.lockAssignment,
       })) ||
-      !(await this.authorization.hasDocumentContentRead(input.actor))
+      !(await this.authorization.hasPermissions(input.actor, {
+        permissions: ['document.content.read'],
+        lock: false,
+      }))
     )
       throw new NotFoundException();
     if (input.lock)
-      await this.authorization.requireDocumentContentRead(input.actor);
+      await this.authorization.requirePermissions(input.actor, {
+        permissions: ['document.content.read'],
+        lock: true,
+        prerequisites: [
+          { permissions: ['document.read', 'document.reference.read'] },
+          {
+            permissions: ['client.read'],
+            workspaceAlternative: 'client.manage',
+          },
+        ],
+      });
   }
 
   async exact(input: {
@@ -134,9 +159,17 @@ export class DocumentTaskResultReferenceService {
       input.context.companyId
     )
       throw new NotFoundException();
-    await this.authorization.requireDocumentContentReadWithinReadTransaction(
-      input.actor,
-    );
+    await this.authorization.requirePermissions(input.actor, {
+      permissions: ['document.content.read'],
+      lock: false,
+      prerequisites: [
+        { permissions: ['document.read', 'document.reference.read'] },
+        {
+          permissions: ['client.read'],
+          workspaceAlternative: 'client.manage',
+        },
+      ],
+    });
     await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
       input.actor,
     );
@@ -144,7 +177,12 @@ export class DocumentTaskResultReferenceService {
       input.actor,
       input.context.clientAccountId,
     );
-    if (!(await this.authorization.hasMissionDeliverableAccess(input.actor)))
+    if (
+      !(await this.authorization.hasPermissions(input.actor, {
+        permissions: ['document.mission_deliverable.access'],
+        lock: false,
+      }))
+    )
       throw new NotFoundException();
   }
 

@@ -102,7 +102,12 @@ export class DocumentPaymentSource {
     };
   }
   async requireFreshCopyAuthority(actor: ActorContext) {
-    if (!(await this.access.mayReadPaymentEvidencePayer(actor, true)))
+    if (
+      !(await this.access.hasPermissions(actor, {
+        permissions: ['client.read'],
+        lock: true,
+      }))
+    )
       throw new ForbiddenException();
   }
   async inspect(

@@ -124,11 +124,15 @@ export class ContractModelService {
     actor: ActorContext;
     lock: 'share' | 'update';
   }) {
-    const companyId = await this.authorization.requireContractAccess(
-      actor,
-      ['commercial.contract.prepare', 'commercial.contract.model.select'],
-      true,
-    );
+    const companyId = (
+      await this.authorization.requirePermissions(actor, {
+        permissions: [
+          'commercial.contract.prepare',
+          'commercial.contract.model.select',
+        ],
+        lock: true,
+      })
+    ).companyId;
     const model = await this.root({ actor, companyId, lock });
     if (!model?.activeVersionId) return null;
     const version = await this.exactVersion({

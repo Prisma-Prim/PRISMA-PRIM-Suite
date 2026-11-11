@@ -232,12 +232,18 @@ export class MissionApplicabilityService {
         await this.templates.requirePilotReviewWithinTransaction(actor);
         const capture =
           input.action === 'PROPOSE' || input.action === 'CORRECT_PROPOSAL'
-            ? await this.authorization.requireMissionApplicabilityCoordinator(
-                actor,
-              )
-            : await this.authorization.requireMissionApplicabilityApprover(
-                actor,
-              );
+            ? (
+                await this.authorization.requirePermissions(actor, {
+                  permissions: ['project.mission_applicability.propose'],
+                  lock: true,
+                })
+              ).grant('project.mission_applicability.propose')
+            : (
+                await this.authorization.requirePermissions(actor, {
+                  permissions: ['project.mission_applicability.decide'],
+                  lock: true,
+                })
+              ).grant('project.mission_applicability.decide');
         const scope = this.scope(actor, projectId);
         if (!(await this.access.hasEvidenceReadWithinTransaction(actor, true)))
           throw new NotFoundException();

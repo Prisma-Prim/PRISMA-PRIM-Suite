@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createIsolatedPostgresTestDatabase,
@@ -649,6 +650,122 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
         },
       }),
     ]);
+  });
+
+  it('denies a lifecycle command whose captured Project grant was replaced during its key wait', async () => {
+    const key = randomUUID();
+    const control = await harness.pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await control.query('BEGIN');
+      const {
+        rows: [controller],
+      } = await control.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      if (!controller) throw new Error('Missing barrier connection.');
+      await control.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [JSON.stringify(['project.lifecycle', workspaceId, approver, key])],
+      );
+      pending = transition(
+        {
+          action: 'cancel',
+          expectedLifecycleRevision: 0,
+          reason: 'Client withdrew the request.',
+        },
+        { key },
+      );
+      const deadline = performance.now() + 2000;
+      let blocked = false;
+      while (performance.now() < deadline) {
+        const result = await harness.pool.query(
+          `SELECT pid FROM pg_stat_activity
+           WHERE datname=current_database() AND wait_event_type='Lock'
+             AND $1 = ANY(pg_blocking_pids(pid))`,
+          [controller.pid],
+        );
+        if (result.rows.length === 1) {
+          blocked = true;
+          break;
+        }
+        await delay(10);
+      }
+      expect(blocked).toBe(true);
+      expect((await revoke('project', approver)).status).toBe(200);
+      await grant('project', approver);
+      await control.query('COMMIT');
+      expect((await pending).status).toBe(403);
+      expect(await lifecycle()).toMatchObject({
+        status: 'preparatory',
+        transitions: [],
+      });
+      expect(await lifecycleEvents()).toEqual([]);
+      expect(
+        (
+          await transition({
+            action: 'cancel',
+            expectedLifecycleRevision: 0,
+            reason: 'Client withdrew the request.',
+          })
+        ).status,
+      ).toBe(200);
+    } finally {
+      await control.query('ROLLBACK');
+      await pending;
+      control.release();
+    }
+  });
+
+  it('denies a formerly loose Project check when revocation commits while its assignment lock waits', async () => {
+    const control = await harness.pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await control.query('BEGIN');
+      const {
+        rows: [controller],
+      } = await control.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      if (!controller) throw new Error('Missing barrier connection.');
+      await control.query(
+        `UPDATE company_role_assignments SET revoked_at=now()
+         WHERE company_id=$1 AND workspace_membership_id=$2
+           AND bundle='company_project_access' AND revoked_at IS NULL`,
+        [companyId, approver],
+      );
+      pending = transition({
+        action: 'cancel',
+        expectedLifecycleRevision: 0,
+        reason: 'Client withdrew the request.',
+      });
+      const deadline = performance.now() + 2000;
+      let blocked = false;
+      while (performance.now() < deadline) {
+        const result = await harness.pool.query(
+          `SELECT pid FROM pg_stat_activity WHERE datname=current_database()
+             AND wait_event_type='Lock' AND $1=ANY(pg_blocking_pids(pid))`,
+          [controller.pid],
+        );
+        if (result.rows.length === 1) {
+          blocked = true;
+          break;
+        }
+        await delay(10);
+      }
+      expect(blocked).toBe(true);
+      await control.query('COMMIT');
+      expect((await pending).status).toBe(403);
+      expect(await lifecycle()).toMatchObject({
+        status: 'preparatory',
+        transitions: [],
+      });
+      expect(await lifecycleEvents()).toEqual([]);
+    } finally {
+      await control.query('ROLLBACK');
+      await pending;
+      control.release();
+    }
   });
 
   it('cancels from every open status and keeps completed and cancelled Projects terminal', async () => {

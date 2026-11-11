@@ -4,7 +4,6 @@ import {
   receivedAddendumClientReadCapture,
 } from './received-addendum-access.js';
 import {
-  PAYMENT_BUNDLES,
   capturePaymentGrant,
   paymentCapturedGrant,
   paymentReadGrant,
@@ -26,38 +25,23 @@ import {
   COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
-  COMPANY_INVOICE_READER_BUNDLE,
-  COMPANY_INVOICE_RECORDER_BUNDLE,
-  COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
-  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
-  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
 } from './company-permissions.js';
 import { captureMissionPlanGrant } from './mission-plan-captured-grants.js';
-import { receivedContractAssignment } from './received-contract-access.js';
-import { missionDeliverableAssignment } from './mission-deliverable-access.js';
+
 import {
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
-  COMPANY_CONTRACT_EARLY_PREPARATION_V1_PERMISSIONS,
   contractEarlyPreparationPermissionsFor,
 } from './company-permissions.js';
-import {
-  COMPANY_IDEAS_READER_BUNDLE,
-  COMPANY_IDEAS_RECORDER_BUNDLE,
-  COMPANY_IDEAS_REVIEWER_BUNDLE,
-  COMPANY_CERTIFICATION_READER_BUNDLE,
-  COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
-  COMPANY_CERTIFICATION_APPROVER_BUNDLE,
-  COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
-} from './company-permissions.js';
+
 import {
   COMPANY_CONTRACT_PREPARER_BUNDLE,
   contractPreparerPermissionsFor,
   contractApproverPermissionsFor,
   COMPANY_CONTRACT_APPROVER_BUNDLE,
-  type CompanyContractPermission,
 } from './company-permissions.js';
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   companies,
@@ -69,6 +53,7 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_CONFERRING_BUNDLES,
+  companyRolePermissionsFor,
   COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
   COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
   COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
@@ -100,14 +85,11 @@ import {
   documentApproverPermissionsFor,
   documentPermissionsFor,
   isDocumentPermissionSetVersion,
-  type DocumentPermission,
-  type DocumentPermissionSetVersion,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_PROJECT_APPROVER_BUNDLE,
   projectApproverPermissionsFor,
   isProjectPermissionSetVersion,
   projectPermissionsFor,
-  type CompanyProjectPermissionSetVersion,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   companyDirectorClientPermissionsFor,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
@@ -116,30 +98,17 @@ import {
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   commercialActivityPermissionsFor,
   type CompanyCommercialIntakePermission,
-  type CompanyCommercialIntakePermissionSetVersion,
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
   serviceCataloguePermissionsFor,
-  type CompanyServiceCataloguePermission,
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   pricingConfigurationPermissionsFor,
-  type CompanyPricingConfigurationPermission,
   COMPANY_PRICING_USER_BUNDLE,
   pricingUserPermissionsFor,
-  type CompanyPricingUserPermission,
-  COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
-  COMPANY_MISSION_PLAN_USER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE,
-  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
-  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
-  COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
-  COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
-  COMPANY_ROLE_BUNDLES,
   COMPANY_OFFER_APPROVER_BUNDLE,
   offerPreparerPermissionsFor,
-  type CompanyOfferPermission,
   offerApproverPermissionsFor,
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
-  commercialIntakeVersionsWith,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   projectStagePermissionsFor,
@@ -151,11 +120,8 @@ import {
   salesStageConfigurationPermissionsFor,
   isOpportunityManagerPermissionSetVersion,
   opportunityManagerPermissionsFor,
-  opportunityManagerVersionsWith,
-  type CompanyOpportunityManagerPermission,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   pricingAdjustmentPermissionsFor,
-  type CompanyPricingAdjustmentPermission,
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   profitabilityContributorPermissionsFor,
@@ -166,29 +132,157 @@ import {
   operationalRiskRecorderPermissionsFor,
 } from './company-permissions.js';
 
-import {
-  projectIdeasAssignment,
-  requireIdeasCapturedGrant,
-} from './ideas-captured-grants.js';
-import {
-  projectCertificationAssignment,
-  requireCertificationCapturedGrant,
-  type CertificationRole,
-} from './certification-captured-grants.js';
+import { projectIdeasAssignment } from './ideas-captured-grants.js';
+import { projectCertificationAssignment } from './certification-captured-grants.js';
 import { captureContractModelGrant } from './contract-model-captured-grants.js';
 import { captureOfferModelGrant } from './offer-model-captured-grants.js';
-
-// Every captured Registrar version carries Document metadata and
-// Representation read; null or unknown versions fail closed.
-const DOCUMENT_READ_REGISTRAR_VERSIONS = [
-  'v1',
-  'v2',
-  'v3',
-] as const satisfies readonly DocumentPermissionSetVersion[];
+import {
+  captureCompanyPermissions,
+  captureGrantProjection,
+  capturedCompanyGrants,
+  capturedAssignmentsCondition,
+  carriesCapturedPermissions,
+  capturedPermissionResult,
+  type CapturedCompanyGrant,
+  type CapturedPermissionRequest,
+  type PermissionRequirement,
+} from './captured-company-permissions.js';
 
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  /** The caller owns the transaction or read snapshot and chooses whether grants remain locked. */
+  async requirePermissions(
+    actor: ActorContext,
+    request: CapturedPermissionRequest,
+  ) {
+    const company = actor.activeCompany;
+    if (!company) throw new ForbiddenException();
+    const captured = capturedCompanyGrants(actor);
+    const consumed: CapturedCompanyGrant[] = [];
+    const consume = async (
+      requirement: PermissionRequirement,
+      assignmentId?: string,
+    ) => {
+      if (
+        consumed.some(
+          (grant) =>
+            (!assignmentId || grant.assignmentId === assignmentId) &&
+            carriesCapturedPermissions(actor, grant, requirement),
+        )
+      )
+        return;
+      if (
+        requirement.workspaceAlternative &&
+        actor.workspacePermissions.includes(requirement.workspaceAlternative)
+      ) {
+        const query = this.databaseContext.connection
+          .select({ id: workspacePermissionGrants.id })
+          .from(workspacePermissionGrants)
+          .where(
+            and(
+              eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+              eq(
+                workspacePermissionGrants.workspaceMembershipId,
+                actor.workspaceMembershipId,
+              ),
+              eq(
+                workspacePermissionGrants.permission,
+                requirement.workspaceAlternative,
+              ),
+            ),
+          )
+          .limit(1);
+        const rows = request.lock ? await query.for('share') : await query;
+        if (rows.length) return;
+      }
+      const candidates = captured.filter(
+        (grant) =>
+          (!assignmentId || grant.assignmentId === assignmentId) &&
+          carriesCapturedPermissions(actor, grant, requirement),
+      );
+      if (!candidates.length) throw new ForbiddenException();
+      const id = await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        candidates,
+        request.lock ?? false,
+        request.lockCompany === false ? 'member-rows' : 'all-rows',
+      );
+      const selected = candidates.find((grant) => grant.assignmentId === id);
+      if (!selected) throw new ForbiddenException();
+      consumed.push(selected);
+    };
+    await consume(request, request.assignmentId);
+    for (const prerequisite of request.prerequisites ?? [])
+      await consume(prerequisite);
+    if (consumed.length === 0) {
+      const identityQuery = this.databaseContext.connection
+        .select({ id: workspaceMemberships.id })
+        .from(workspaceMemberships)
+        .innerJoin(
+          internalUsers,
+          and(
+            eq(internalUsers.id, workspaceMemberships.internalUserId),
+            eq(internalUsers.id, actor.internalUserId),
+            eq(internalUsers.status, 'active'),
+          ),
+        )
+        .innerJoin(
+          companies,
+          and(
+            eq(companies.workspaceId, workspaceMemberships.workspaceId),
+            eq(companies.id, company.id),
+            eq(companies.status, 'active'),
+          ),
+        )
+        .where(
+          and(
+            eq(workspaceMemberships.workspaceId, actor.workspaceId),
+            eq(workspaceMemberships.id, actor.workspaceMembershipId),
+            eq(workspaceMemberships.status, 'active'),
+          ),
+        );
+      const identity = request.lock
+        ? await identityQuery.for('share', {
+            of:
+              request.lockCompany === false
+                ? [workspaceMemberships, internalUsers]
+                : [workspaceMemberships, internalUsers, companies],
+          })
+        : await identityQuery;
+      if (!identity.length) throw new ForbiddenException();
+    }
+    if (
+      !consumed.some((grant) =>
+        COMPANY_CONTEXT_CONFERRING_BUNDLES.some(
+          (bundle) => bundle === grant.bundle,
+        ),
+      )
+    ) {
+      const context = await this.requireLiveCompanyContext(
+        actor,
+        company.id,
+        request.lock ?? false,
+      );
+      if (context) consumed.push(context);
+    }
+    return capturedPermissionResult(company.id, consumed);
+  }
+
+  async hasPermissions(
+    actor: ActorContext,
+    request: CapturedPermissionRequest,
+  ): Promise<boolean> {
+    try {
+      await this.requirePermissions(actor, request);
+      return true;
+    } catch (error) {
+      if (error instanceof ForbiddenException) return false;
+      throw error;
+    }
+  }
 
   /** Payment copied reads and source-free actions deliberately consume no Client/Document authority. */
   async requirePaymentObservationAccess(
@@ -211,16 +305,11 @@ export class CompanyContextAuthorization {
                 : 'company_payment_reverser',
           );
     if (!actor.active || !company || !grant) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.id, grant.assignmentId),
-        eq(companyRoleAssignments.bundle, grant.bundle),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      options.lock,
-    );
+    await this.requirePermissions(actor, {
+      permissions: companyRolePermissionsFor(grant.bundle, 'v1'),
+      assignmentId: grant.assignmentId,
+      lock: options.lock,
+    });
     const contexts = await this.opportunityFollowUpContextIdentities(
       actor,
       company.id,
@@ -252,10 +341,9 @@ export class CompanyContextAuthorization {
         await this.requireLiveCapturedAssignment(
           actor,
           company.id,
-          and(
-            eq(companyRoleAssignments.id, contextId),
-            isNull(companyRoleAssignments.revokedAt),
-          ) ?? sql`false`,
+          capturedCompanyGrants(actor).filter(
+            (grant) => grant.assignmentId === contextId,
+          ),
           true,
         );
       }
@@ -341,47 +429,17 @@ export class CompanyContextAuthorization {
         actor,
         options.lockAssignment,
       );
-      await this.requireLiveCapturedAssignment(
-        actor,
-        company.id,
-        and(
-          eq(companyRoleAssignments.id, family.assignmentId),
-          eq(companyRoleAssignments.bundle, family.bundle),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-        ) ?? sql`false`,
-        options.lockAssignment,
-      );
-      if (selected)
-        await this.requireLiveCapturedAssignment(
-          actor,
-          company.id,
-          and(
-            eq(companyRoleAssignments.id, selected.assignmentId),
-            eq(companyRoleAssignments.bundle, selected.bundle),
-            eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-          ) ?? sql`false`,
-          options.lockAssignment,
-        );
-      return true;
-    } catch (error) {
-      if (error instanceof ForbiddenException) return false;
-      throw error;
-    }
-  }
-  async mayReadPaymentEvidencePayer(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<boolean> {
-    const company = actor.activeCompany;
-    if (!company?.clientPermissions.includes('client.read')) return false;
-    try {
-      await this.requireCapturedCompanyGrant(actor, {
-        bundle: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-        assignmentId: company.clientPermissionAssignmentId,
-        version: company.clientPermissionSetVersion,
-        versions: ['v1', 'v2'],
-        lock,
+      await this.requirePermissions(actor, {
+        permissions: companyRolePermissionsFor(family.bundle, 'v1'),
+        assignmentId: family.assignmentId,
+        lock: options.lockAssignment,
       });
+      if (selected)
+        await this.requirePermissions(actor, {
+          permissions: companyRolePermissionsFor(selected.bundle, 'v1'),
+          assignmentId: selected.assignmentId,
+          lock: options.lockAssignment,
+        });
       return true;
     } catch (error) {
       if (error instanceof ForbiddenException) return false;
@@ -424,16 +482,11 @@ export class CompanyContextAuthorization {
       );
     if (!actor.active || !company || !grant) throw new ForbiddenException();
     await this.requireLiveCompanyContext(actor, company.id, options.lock);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.id, grant.assignmentId),
-        eq(companyRoleAssignments.bundle, grant.bundle),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      options.lock,
-    );
+    await this.requirePermissions(actor, {
+      permissions: companyRolePermissionsFor(grant.bundle, 'v1'),
+      assignmentId: grant.assignmentId,
+      lock: options.lock,
+    });
     const contexts = await this.opportunityFollowUpContextIdentities(
       actor,
       company.id,
@@ -469,38 +522,26 @@ export class CompanyContextAuthorization {
     if (!actor.active || !company || !capture) throw new ForbiddenException();
     // Match native Commercial Intake's assignment/member/user/Company → context
     // lock order before consuming the independent coordinator assignment.
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.id, capture.nativeAssignmentId),
-        eq(companyRoleAssignments.bundle, COMPANY_COMMERCIAL_INTAKE_BUNDLE),
-        eq(
-          companyRoleAssignments.permissionSetVersion,
-          capture.nativePermissionSetVersion,
-        ),
-      ) ?? sql`false`,
-      options.lock,
-    );
+    await this.requirePermissions(actor, {
+      permissions: ['commercial.request.read', 'commercial.opportunity.read'],
+      assignmentId: capture.nativeAssignmentId,
+      lock: options.lock,
+    });
     const contextIdentities = await this.opportunityFollowUpContextIdentities(
       actor,
       company.id,
       options.lock,
     );
     if (contextIdentities.length === 0) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.id, capture.assignmentId),
-        eq(
-          companyRoleAssignments.bundle,
-          COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
-        ),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      options.lock,
-    );
+    await this.requirePermissions(actor, {
+      permissions: [
+        options.manage
+          ? 'commercial.opportunity.follow_up.manage'
+          : 'commercial.opportunity.follow_up.read',
+      ],
+      assignmentId: capture.assignmentId,
+      lock: options.lock,
+    });
     const readCapture = opportunityFollowUpReadCapture({
       workspaceId: actor.workspaceId,
       workspaceMembershipId: actor.workspaceMembershipId,
@@ -577,273 +618,6 @@ export class CompanyContextAuthorization {
     return grants.map((grant) => [grant.bundle, grant.id, grant.version]);
   }
 
-  async requireTaskResultRecorder(actor: ActorContext): Promise<string> {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company?.taskResultPermissions?.includes('task.result.record') ||
-      company.taskResultRecorderPermissionSetVersion !== 'v1' ||
-      !company.taskResultRecorderAssignmentId
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, company.id, true);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.id, company.taskResultRecorderAssignmentId),
-        eq(companyRoleAssignments.bundle, COMPANY_TASK_RESULT_RECORDER_BUNDLE),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      true,
-    );
-    return company.id;
-  }
-
-  async requireMissionApplicabilityApprover(actor: ActorContext) {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company?.missionApplicabilityDecisionPermissions?.includes(
-        'project.mission_applicability.decide',
-      ) ||
-      company.missionApplicabilityApproverPermissionSetVersion !== 'v1' ||
-      !company.missionApplicabilityApproverAssignmentId
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, company.id, true);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(
-          companyRoleAssignments.id,
-          company.missionApplicabilityApproverAssignmentId,
-        ),
-        eq(
-          companyRoleAssignments.bundle,
-          COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
-        ),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      true,
-    );
-    return {
-      companyId: company.id,
-      assignmentId: company.missionApplicabilityApproverAssignmentId,
-      permissionSetVersion: 'v1' as const,
-    };
-  }
-
-  async requireInternalTaskAccess(actor: ActorContext, lock: boolean) {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company ||
-      company.internalTaskManagerPermissionSetVersion !== 'v1' ||
-      !company.internalTaskManagerAssignmentId ||
-      !company.internalTaskPermissions?.includes('internal_task.read') ||
-      !company.internalTaskPermissions.includes('internal_task.manage')
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.id, company.internalTaskManagerAssignmentId),
-        eq(companyRoleAssignments.bundle, COMPANY_INTERNAL_TASK_MANAGER_BUNDLE),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      lock,
-    );
-    return {
-      companyId: company.id,
-      assignmentId: company.internalTaskManagerAssignmentId,
-    };
-  }
-
-  async requireProjectNextActionCoordinator(actor: ActorContext) {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company?.projectNextActionPermissions?.includes(
-        'project.next_action.update',
-      ) ||
-      company.projectNextActionCoordinatorPermissionSetVersion !== 'v1' ||
-      !company.projectNextActionCoordinatorAssignmentId
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, company.id, true);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(
-          companyRoleAssignments.id,
-          company.projectNextActionCoordinatorAssignmentId,
-        ),
-        eq(
-          companyRoleAssignments.bundle,
-          COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
-        ),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      true,
-    );
-    return {
-      companyId: company.id,
-      assignmentId: company.projectNextActionCoordinatorAssignmentId,
-      permissionSetVersion: 'v1' as const,
-    };
-  }
-
-  async requireMissionApplicabilityCoordinator(actor: ActorContext) {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company?.missionApplicabilityProposalPermissions?.includes(
-        'project.mission_applicability.propose',
-      ) ||
-      company.missionApplicabilityCoordinatorPermissionSetVersion !== 'v1' ||
-      !company.missionApplicabilityCoordinatorAssignmentId
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, company.id, true);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(
-          companyRoleAssignments.id,
-          company.missionApplicabilityCoordinatorAssignmentId,
-        ),
-        eq(
-          companyRoleAssignments.bundle,
-          COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
-        ),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      true,
-    );
-    return {
-      companyId: company.id,
-      assignmentId: company.missionApplicabilityCoordinatorAssignmentId,
-      permissionSetVersion: 'v1' as const,
-    };
-  }
-
-  async requireMissionResultReviewer(actor: ActorContext) {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company?.missionResultReviewPermissions?.includes(
-        'project.mission_result.review',
-      ) ||
-      company.missionResultReviewerPermissionSetVersion !== 'v1' ||
-      !company.missionResultReviewerAssignmentId
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, company.id, true);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(
-          companyRoleAssignments.id,
-          company.missionResultReviewerAssignmentId,
-        ),
-        eq(
-          companyRoleAssignments.bundle,
-          COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
-        ),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-      ) ?? sql`false`,
-      true,
-    );
-    return {
-      companyId: company.id,
-      assignmentId: company.missionResultReviewerAssignmentId,
-      permissionSetVersion: 'v1' as const,
-    };
-  }
-
-  async requireIdeasAccess(
-    actor: ActorContext,
-    operation: 'read' | 'record' | 'disposition',
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (!company) throw new ForbiddenException();
-    const reader = requireIdeasCapturedGrant(company, 'reader');
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      and(
-        eq(companyRoleAssignments.bundle, reader.bundle),
-        eq(
-          companyRoleAssignments.permissionSetVersion,
-          reader.permissionSetVersion,
-        ),
-        eq(companyRoleAssignments.id, reader.assignmentId),
-      ) ?? sql`false`,
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    if (operation === 'record' || operation === 'disposition') {
-      const mutation = requireIdeasCapturedGrant(
-        company,
-        operation === 'record' ? 'recorder' : 'reviewer',
-      );
-      await this.requireLiveCapturedAssignment(
-        actor,
-        company.id,
-        and(
-          eq(companyRoleAssignments.bundle, mutation.bundle),
-          eq(
-            companyRoleAssignments.permissionSetVersion,
-            mutation.permissionSetVersion,
-          ),
-          eq(companyRoleAssignments.id, mutation.assignmentId),
-        ) ?? sql`false`,
-        lock,
-      );
-    }
-    return company.id;
-  }
-
-  /**
-   * Certification authority: the reader assignment always, plus the requested
-   * mutation role, each rechecked live under the caller's lock choice.
-   */
-  async requireCertificationAccess(
-    actor: ActorContext,
-    role: CertificationRole,
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (!company) throw new ForbiddenException();
-    const grants = [requireCertificationCapturedGrant(company, 'reader')];
-    if (role !== 'reader')
-      grants.push(requireCertificationCapturedGrant(company, role));
-    for (const grant of grants)
-      await this.requireLiveCapturedAssignment(
-        actor,
-        company.id,
-        and(
-          eq(companyRoleAssignments.bundle, grant.bundle),
-          eq(
-            companyRoleAssignments.permissionSetVersion,
-            grant.permissionSetVersion,
-          ),
-          eq(companyRoleAssignments.id, grant.assignmentId),
-        ) ?? sql`false`,
-        lock,
-      );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
   async resolveAuthorizedActiveCompany(
     actor: ActorContext,
     companyId: string,
@@ -854,6 +628,7 @@ export class CompanyContextAuthorization {
         companyId,
       );
       if (!company) return undefined;
+      captureCompanyPermissions({ actor, company, grants: [] });
       return (
         (await this.findAssignedActiveCompanies(actor, companyId))[0] ?? company
       );
@@ -935,246 +710,6 @@ export class CompanyContextAuthorization {
     return new Set(rows.map((row) => row.companyId));
   }
 
-  async requireDocumentProjectManage(actor: ActorContext): Promise<void> {
-    const companyId = await this.requireDocumentAccess(actor, true);
-    await this.requireProjectAccess(actor, true);
-    if (
-      !actor.activeCompany?.documentPermissions?.includes(
-        'document.project.manage',
-      )
-    )
-      throw new ForbiddenException();
-    const [assignment] = await this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(
-            companyRoleAssignments.bundle,
-            COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
-          ),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      )
-      .for('share');
-    if (!assignment) throw new ForbiddenException();
-  }
-  async requireDocumentAccess(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const companyId = actor.activeCompany?.id;
-    if (!companyId) throw new ForbiddenException();
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(
-            workspaceMemberships.workspaceId,
-            companyRoleAssignments.workspaceId,
-          ),
-          eq(
-            workspaceMemberships.id,
-            companyRoleAssignments.workspaceMembershipId,
-          ),
-          eq(workspaceMemberships.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        and(
-          eq(internalUsers.id, workspaceMemberships.internalUserId),
-          eq(internalUsers.id, actor.internalUserId),
-          eq(internalUsers.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        companies,
-        and(
-          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
-          eq(companies.id, companyRoleAssignments.companyId),
-          eq(companies.status, 'active'),
-        ),
-      )
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
-          inArray(companyRoleAssignments.permissionSetVersion, [
-            ...DOCUMENT_READ_REGISTRAR_VERSIONS,
-          ]),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    const rows = lock ? await query.for('share') : await query;
-    if (rows.length === 0) throw new ForbiddenException();
-    if (!actor.workspacePermissions.includes('client.manage')) {
-      const clientQuery = this.databaseContext.connection
-        .select({ id: companyRoleAssignments.id })
-        .from(companyRoleAssignments)
-        .where(
-          and(
-            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-            eq(
-              companyRoleAssignments.workspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(companyRoleAssignments.companyId, companyId),
-            eq(
-              companyRoleAssignments.bundle,
-              COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-            ),
-            inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
-            isNull(companyRoleAssignments.revokedAt),
-          ),
-        );
-      const clientRows = lock
-        ? await clientQuery.for('share')
-        : await clientQuery;
-      if (clientRows.length === 0) throw new ForbiddenException();
-    }
-    return companyId;
-  }
-
-  // `document.correct` exists in captured Registrar v2 and v3; a legacy v1
-  // assignment fails closed.
-  async requireDocumentCorrection(actor: ActorContext): Promise<string> {
-    return this.requireDocumentAuthority(actor, 'document.correct', {
-      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-      versions: ['v2', 'v3'],
-    });
-  }
-
-  // `document.version.manage` exists only in captured Registrar v3.
-  async requireDocumentVersionManagement(actor: ActorContext): Promise<string> {
-    return this.requireDocumentAuthority(actor, 'document.version.manage', {
-      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-      versions: ['v3'],
-    });
-  }
-
-  // Designation requires a live captured Company Document Approver v1 in
-  // addition to the delivered Document read authority, which any Registrar
-  // version provides. The Approver itself grants neither.
-  async requireDocumentVersionDesignation(
-    actor: ActorContext,
-  ): Promise<string> {
-    return this.requireDocumentAuthority(
-      actor,
-      'document.version.designate_official',
-      { bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE, versions: ['v1'] },
-    );
-  }
-
-  async requireDocumentContentRead(actor: ActorContext): Promise<string> {
-    return this.requireDocumentAuthority(actor, 'document.content.read', {
-      bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
-      versions: ['v1'],
-    });
-  }
-  /** Read-only caller-owned snapshot participant; shares native policy without write locks. */
-  async requireDocumentContentReadWithinReadTransaction(
-    actor: ActorContext,
-  ): Promise<string> {
-    return this.requireDocumentAuthority(
-      actor,
-      'document.content.read',
-      { bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE, versions: ['v1'] },
-      false,
-    );
-  }
-  async requireDocumentContentUpload(actor: ActorContext): Promise<string> {
-    await this.requireDocumentContentRead(actor);
-    await this.requireDocumentVersionManagement(actor);
-    return this.requireDocumentAuthority(actor, 'document.content.upload', {
-      bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
-      versions: ['v1'],
-    });
-  }
-  /**
-   * Knowledge source administration or evidence use: the delivered Document
-   * content read, then the exact captured Knowledge grant for the role,
-   * rechecked live and share-locked until the caller's transaction ends.
-   */
-  async requireKnowledgeAccess(
-    actor: ActorContext,
-    role: 'admin' | 'reader',
-  ): Promise<string> {
-    const companyId = await this.requireDocumentContentRead(actor);
-    const bundle =
-      role === 'admin'
-        ? COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE
-        : COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE;
-    const capture = actor.activeCompany?.knowledgeGrants?.find(
-      (grant) => grant.bundle === bundle && grant.permissionSetVersion === 'v1',
-    );
-    if (!capture) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      companyId,
-      and(
-        eq(companyRoleAssignments.id, capture.assignmentId),
-        eq(companyRoleAssignments.bundle, capture.bundle),
-        eq(
-          companyRoleAssignments.permissionSetVersion,
-          capture.permissionSetVersion,
-        ),
-      ) ?? sql`false`,
-      true,
-    );
-    return companyId;
-  }
-  /** Current captured family authority; a write's shared lock fences revocation. */
-  async hasMissionDeliverableAccess(
-    actor: ActorContext,
-    options: { lockAssignment: boolean } = { lockAssignment: false },
-  ): Promise<boolean> {
-    const condition = missionDeliverableAssignment(actor);
-    if (!condition) return false;
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(condition);
-    const [assignment] = options.lockAssignment
-      ? await query.for('share')
-      : await query;
-    return assignment !== undefined;
-  }
-
-  async requireContractSignatureDeclaration(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (
-      !company?.contractSignatureDeclarerAssignmentId ||
-      company.contractSignatureDeclarerPermissionSetVersion !== 'v1'
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      sql`(${capturedGrant(COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE)} AND ${eq(companyRoleAssignments.id, company.contractSignatureDeclarerAssignmentId)})`,
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
   /** Contract owns source qualification; Access fences the exact native captures it consumes. */
   async requireExternalInvoiceSourceAccess(
     actor: ActorContext,
@@ -1198,27 +733,13 @@ export class CompanyContextAuthorization {
       company.id,
       options.lockAssignment,
     );
-    const alternatives = [
-      nativeDocumentCapturedGrant({
-        bundle: COMPANY_CONTRACT_PREPARER_BUNDLE,
-        assignmentId: company.contractPermissionAssignmentId,
-        version: company.contractPermissionSetVersion,
-        versions: ['v1', 'v2'],
-      }),
-      nativeDocumentCapturedGrant({
-        bundle: COMPANY_CONTRACT_APPROVER_BUNDLE,
-        assignmentId: company.contractApproverAssignmentId,
-        version: company.contractApproverPermissionSetVersion,
-        versions: ['v1', 'v2'],
-      }),
-    ].filter((condition): condition is SQL => condition !== undefined);
-    if (!alternatives.length) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      sql`(${sql.join(alternatives, sql` OR `)})`,
-      options.lockAssignment,
-    );
+    await this.requirePermissions(actor, {
+      anyOf: [
+        ['commercial.contract.read', 'commercial.contract.prepare'],
+        ['commercial.contract.read', 'commercial.contract.approve'],
+      ],
+      lock: options.lockAssignment,
+    });
     await this.requireCapturedCompanyGrant(actor, {
       bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
       assignmentId: company.commercialIntakePermissionAssignmentId,
@@ -1253,27 +774,13 @@ export class CompanyContextAuthorization {
       company.id,
       options.lockAssignment,
     );
-    const alternatives = [
-      nativeDocumentCapturedGrant({
-        bundle: COMPANY_CONTRACT_PREPARER_BUNDLE,
-        assignmentId: company.contractPermissionAssignmentId,
-        version: company.contractPermissionSetVersion,
-        versions: ['v1', 'v2'],
-      }),
-      nativeDocumentCapturedGrant({
-        bundle: COMPANY_CONTRACT_APPROVER_BUNDLE,
-        assignmentId: company.contractApproverAssignmentId,
-        version: company.contractApproverPermissionSetVersion,
-        versions: ['v1', 'v2'],
-      }),
-    ].filter((condition): condition is SQL => condition !== undefined);
-    if (!alternatives.length) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      sql`(${sql.join(alternatives, sql` OR `)})`,
-      options.lockAssignment,
-    );
+    await this.requirePermissions(actor, {
+      anyOf: [
+        ['commercial.contract.read', 'commercial.contract.prepare'],
+        ['commercial.contract.read', 'commercial.contract.approve'],
+      ],
+      lock: options.lockAssignment,
+    });
     await this.requireCapturedCompanyGrant(actor, {
       bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
       assignmentId: company.commercialIntakePermissionAssignmentId,
@@ -1294,15 +801,15 @@ export class CompanyContextAuthorization {
       lock: boolean;
     },
   ): Promise<void> {
-    const company = actor.activeCompany;
-    const condition = nativeDocumentCapturedGrant(input);
-    if (!company || !condition) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      condition,
-      input.lock,
-    );
+    const validCapture = isNativeDocumentCapture(input);
+    if (!validCapture) throw new ForbiddenException();
+    await this.requirePermissions(actor, {
+      anyOf: companyRolePermissionsFor(input.bundle, input.version).map(
+        (permission) => [permission],
+      ),
+      assignmentId: input.assignmentId,
+      lock: input.lock,
+    });
   }
 
   private async requireExternalInvoiceClientRead(
@@ -1500,8 +1007,7 @@ export class CompanyContextAuthorization {
       (candidate) =>
         (!options.record ||
           candidate.bundle === COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE) &&
-        nativeDocumentCapturedGrant({ ...candidate, versions: ['v1'] }) !==
-          undefined,
+        isNativeDocumentCapture({ ...candidate, versions: ['v1'] }),
     );
     const readCaptureFor = (candidate: (typeof candidates)[number]) =>
       createHash('sha256')
@@ -1537,7 +1043,10 @@ export class CompanyContextAuthorization {
       versions: ['v1'],
       lock: options.lockAssignment,
     });
-    await this.requireCapturedProjectRead(actor, options.lockAssignment);
+    await this.requirePermissions(actor, {
+      permissions: ['project.read'],
+      lock: options.lockAssignment,
+    });
     return { companyId: company.id, readCapture: readCaptureFor(selected) };
   }
 
@@ -1769,47 +1278,20 @@ export class CompanyContextAuthorization {
         company.id,
         options.lockAssignment,
       );
-      await this.requireLiveCapturedAssignment(
-        actor,
-        company.id,
-        and(
-          eq(companyRoleAssignments.id, captured.family.assignmentId),
-          eq(companyRoleAssignments.bundle, captured.family.bundle),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-        ) ?? sql`false`,
-        options.lockAssignment,
-      );
-      const alternatives = captured.finance.map(
-        (grant) =>
-          sql`(${companyRoleAssignments.id} = ${grant.assignmentId} AND ${companyRoleAssignments.bundle} = ${grant.bundle} AND ${companyRoleAssignments.permissionSetVersion} = 'v1')`,
-      );
-      await this.requireLiveCapturedAssignment(
-        actor,
-        company.id,
-        sql`(${sql.join(alternatives, sql` OR `)})`,
-        options.lockAssignment,
-      );
+      await this.requirePermissions(actor, {
+        permissions: ['document.external_invoice.access'],
+        assignmentId: captured.family.assignmentId,
+        lock: options.lockAssignment,
+      });
+      await this.requirePermissions(actor, {
+        permissions: [options.manage ? 'finance.manage' : 'finance.read'],
+        lock: options.lockAssignment,
+      });
       return true;
     } catch (error) {
       if (error instanceof ForbiddenException) return false;
       throw error;
     }
-  }
-
-  async hasReceivedContractAccess(
-    actor: ActorContext,
-    options: { lockAssignment: boolean } = { lockAssignment: false },
-  ): Promise<boolean> {
-    const condition = receivedContractAssignment(actor);
-    if (!condition) return false;
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(condition);
-    const [assignment] = options.lockAssignment
-      ? await query.for('share')
-      : await query;
-    return assignment !== undefined;
   }
 
   async hasReceivedAddendumAccess(
@@ -1826,985 +1308,82 @@ export class CompanyContextAuthorization {
     });
     if (capture !== actor.activeCompany.receivedAddendumClientReadCapture)
       return false;
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(condition);
-    const [assignment] = options.lockAssignment
-      ? await query.for('share')
-      : await query;
-    return assignment !== undefined;
-  }
-
-  async hasDocumentContentRead(actor: ActorContext): Promise<boolean> {
-    const companyId = actor.activeCompany?.id;
-    if (
-      !companyId ||
-      !actor.activeCompany?.documentPermissions?.includes(
-        'document.content.read',
-      )
-    )
-      return false;
-    const [assignment] = await this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(
-            companyRoleAssignments.bundle,
-            COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
-          ),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    return assignment !== undefined;
-  }
-
-  /**
-   * Shared native Document authority. Commands lock assignments; a caller-owned read snapshot does not.
-   * A command's live authority includes locked Document read authority,
-   * Representation read, the required permission and its captured assignment
-   * locked `FOR SHARE`, which serializes the command against revocation.
-   */
-  private async requireDocumentAuthority(
-    actor: ActorContext,
-    permission: DocumentPermission,
-    grant:
-      | {
-          bundle: typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE;
-          versions: readonly DocumentPermissionSetVersion[];
-        }
-      | {
-          bundle:
-            | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE
-            | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE
-            | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE;
-          versions: readonly ['v1'];
-        },
-    lockAssignment = true,
-  ): Promise<string> {
-    const companyId = await this.requireDocumentAccess(actor, lockAssignment);
-    if (
-      !actor.activeCompany?.documentPermissions?.includes(permission) ||
-      !actor.activeCompany.documentPermissions.includes(
-        'document.reference.read',
-      )
-    )
-      throw new ForbiddenException();
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, grant.bundle),
-          inArray(companyRoleAssignments.permissionSetVersion, [
-            ...grant.versions,
-          ]),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    const [assignment] = lockAssignment
-      ? await query.for('share')
-      : await query;
-    if (!assignment) throw new ForbiddenException();
-    return companyId;
-  }
-
-  // A source catalogue contains no Client or Project records. Validate the
-  // live captured Project read permission without granting access to that data.
-  async requireProjectReadPermission(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const companyId = await this.requireProjectPermissionAssignment(
-      actor,
-      ['v1', 'v2'],
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, companyId, lock);
-    return companyId;
-  }
-
-  /** Exact captured Project read; caller owns the readonly transaction and Client participant. */
-  async requireProjectReadWithinReadTransaction(
-    actor: ActorContext,
-  ): Promise<string> {
-    return this.requireCapturedProjectRead(actor, false);
-  }
-
-  /** Fence the exact consumed Project-read grant after a command's key wait. */
-  async requireCapturedProjectReadWithinTransaction(
-    actor: ActorContext,
-  ): Promise<string> {
-    return this.requireCapturedProjectRead(actor, true);
-  }
-
-  private async requireCapturedProjectRead(
-    actor: ActorContext,
-    lock: boolean,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (
-      !actor.active ||
-      !company?.projectPermissions?.includes('project.read') ||
-      !company.projectPermissionAssignmentId ||
-      !isProjectPermissionSetVersion(company.projectPermissionSetVersion)
-    )
-      throw new ForbiddenException();
-    const companyId = await this.requireProjectReadPermission(actor, lock);
-    await this.requireLiveCapturedAssignment(
-      actor,
-      companyId,
-      and(
-        eq(companyRoleAssignments.id, company.projectPermissionAssignmentId),
-        eq(companyRoleAssignments.bundle, COMPANY_PROJECT_ACCESS_BUNDLE),
-        eq(
-          companyRoleAssignments.permissionSetVersion,
-          company.projectPermissionSetVersion,
-        ),
-      ) ?? sql`false`,
-      lock,
-    );
-    return companyId;
-  }
-
-  // Every delivered Project read and create accepts either captured version.
-  async requireProjectAccess(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    return this.requireProjectAssignment(actor, ['v1', 'v2'], lock);
-  }
-
-  // `project.update` exists only in captured v2, so a legacy v1 assignment
-  // fails closed. A locked read serializes a command against revocation,
-  // suspension and the loss of the Client read prerequisite.
-  async requireProjectUpdate(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    if (!actor.activeCompany?.projectPermissions?.includes('project.update'))
-      throw new ForbiddenException();
-    return this.requireProjectAssignment(actor, ['v2'], lock);
-  }
-
-  // Company Project Approver v1 carries only the lifecycle permissions. Its
-  // holder independently needs current Project read and Client read in the
-  // active Company. A locked read serializes a transition against the
-  // revocation of any of them.
-  async requireProjectLifecycleTransition(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const companyId = await this.requireProjectAccess(actor, lock);
-    if (
-      !actor.activeCompany?.projectApproverPermissions?.includes(
-        'project.lifecycle.transition',
-      )
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      companyId,
-      capturedGrant(COMPANY_PROJECT_APPROVER_BUNDLE),
-      lock,
-    );
-    return companyId;
-  }
-
-  async requireProjectClose(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const companyId = await this.requireProjectAccess(actor, lock);
-    if (
-      !actor.activeCompany?.projectApproverPermissions?.includes(
-        'project.close',
-      )
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      companyId,
-      capturedGrant(COMPANY_PROJECT_APPROVER_BUNDLE),
-      lock,
-    );
-    return companyId;
-  }
-
-  private async requireProjectPermissionAssignment(
-    actor: ActorContext,
-    capturedVersions: readonly CompanyProjectPermissionSetVersion[],
-    lock: boolean,
-  ): Promise<string> {
-    const companyId = actor.activeCompany?.id;
-    if (!companyId) throw new ForbiddenException();
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(
-            workspaceMemberships.workspaceId,
-            companyRoleAssignments.workspaceId,
-          ),
-          eq(
-            workspaceMemberships.id,
-            companyRoleAssignments.workspaceMembershipId,
-          ),
-          eq(workspaceMemberships.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        and(
-          eq(internalUsers.id, workspaceMemberships.internalUserId),
-          eq(internalUsers.id, actor.internalUserId),
-          eq(internalUsers.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        companies,
-        and(
-          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
-          eq(companies.id, companyRoleAssignments.companyId),
-          eq(companies.status, 'active'),
-        ),
-      )
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_PROJECT_ACCESS_BUNDLE),
-          inArray(companyRoleAssignments.permissionSetVersion, [
-            ...capturedVersions,
-          ]),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    const rows = lock ? await query.for('share') : await query;
-    if (rows.length === 0) throw new ForbiddenException();
-    return companyId;
-  }
-
-  private async requireProjectAssignment(
-    actor: ActorContext,
-    capturedVersions: readonly CompanyProjectPermissionSetVersion[],
-    lock: boolean,
-  ): Promise<string> {
-    const companyId = await this.requireProjectPermissionAssignment(
-      actor,
-      capturedVersions,
-      lock,
-    );
-    if (!actor.workspacePermissions.includes('client.manage')) {
-      const clientQuery = this.databaseContext.connection
-        .select({ id: companyRoleAssignments.id })
-        .from(companyRoleAssignments)
-        .where(
-          and(
-            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-            eq(
-              companyRoleAssignments.workspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(companyRoleAssignments.companyId, companyId),
-            eq(
-              companyRoleAssignments.bundle,
-              COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-            ),
-            inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
-            isNull(companyRoleAssignments.revokedAt),
-          ),
-        );
-      const clientRows = lock
-        ? await clientQuery.for('share')
-        : await clientQuery;
-      if (clientRows.length === 0) throw new ForbiddenException();
-    }
-    return companyId;
-  }
-
-  async requireCommercialIntakeAccess(
-    actor: ActorContext,
-    mode: CommercialIntakeAccessMode,
-    lock = false,
-  ): Promise<string> {
-    const companyId = actor.activeCompany?.id;
-    const permissions = actor.activeCompany?.commercialIntakePermissions ?? [];
-    const { required, capturedVersions } = commercialIntakeRequirement(mode);
-    if (
-      !companyId ||
-      required.some((permission) => !permissions.includes(permission))
-    )
-      throw new ForbiddenException();
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(
-            workspaceMemberships.workspaceId,
-            companyRoleAssignments.workspaceId,
-          ),
-          eq(
-            workspaceMemberships.id,
-            companyRoleAssignments.workspaceMembershipId,
-          ),
-          eq(workspaceMemberships.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        and(
-          eq(internalUsers.id, workspaceMemberships.internalUserId),
-          eq(internalUsers.id, actor.internalUserId),
-          eq(internalUsers.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        companies,
-        and(
-          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
-          eq(companies.id, companyRoleAssignments.companyId),
-          eq(companies.status, 'active'),
-        ),
-      )
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_COMMERCIAL_INTAKE_BUNDLE),
-          inArray(companyRoleAssignments.permissionSetVersion, [
-            ...capturedVersions,
-          ]),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    const rows = lock ? await query.for('share') : await query;
-    if (rows.length === 0) throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, companyId, lock);
-    return companyId;
-  }
-
-  // Company Service Catalogue v1 grants catalogue authority only. Company
-  // context must already follow from an independent assignment, and a locked
-  // read serializes a command against a concurrent revocation of the bundle.
-  async requireServiceCatalogueAccess(
-    actor: ActorContext,
-    required: readonly CompanyServiceCataloguePermission[],
-    lock = false,
-  ): Promise<string> {
-    const companyId = actor.activeCompany?.id;
-    const permissions = actor.activeCompany?.serviceCataloguePermissions ?? [];
-    if (
-      !companyId ||
-      required.some((permission) => !permissions.includes(permission))
-    )
-      throw new ForbiddenException();
-    const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(
-            workspaceMemberships.workspaceId,
-            companyRoleAssignments.workspaceId,
-          ),
-          eq(
-            workspaceMemberships.id,
-            companyRoleAssignments.workspaceMembershipId,
-          ),
-          eq(workspaceMemberships.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        and(
-          eq(internalUsers.id, workspaceMemberships.internalUserId),
-          eq(internalUsers.id, actor.internalUserId),
-          eq(internalUsers.status, 'active'),
-        ),
-      )
-      .innerJoin(
-        companies,
-        and(
-          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
-          eq(companies.id, companyRoleAssignments.companyId),
-          eq(companies.status, 'active'),
-        ),
-      )
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_SERVICE_CATALOGUE_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    const rows = lock ? await query.for('share') : await query;
-    if (rows.length === 0) throw new ForbiddenException();
-    await this.requireLiveCompanyContext(actor, companyId, lock);
-    return companyId;
-  }
-
-  // Configuration read is carried by a live captured Company Pricing
-  // Configuration v1 or Company Pricing User v1 assignment, and management by
-  // Configuration v1 alone (pricing PRD section 10). A bundle is accepted only
-  // when its own captured permissions include every required one, so neither
-  // lends the other anything. Company context must already follow from an
-  // independent assignment, and a locked read serializes a command against a
-  // concurrent revocation.
-  async requirePricingConfigurationAccess(
-    actor: ActorContext,
-    required: readonly CompanyPricingConfigurationPermission[],
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    const grants: SQL[] = [];
-    if (carriesEvery(company?.pricingConfigurationPermissions, required))
-      grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
-    if (carriesEvery(company?.pricingUserPermissions, required))
-      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
-    if (!company || grants.length === 0) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // Reassignment needs the live captured Company Opportunity Manager v1 or v2.
-  async requireOpportunityAssign(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    return this.requireOpportunityManagerPermission(
-      actor,
-      'commercial.opportunity.assign',
-      lock,
-    );
-  }
-
-  // The outcome status change exists only in captured Company Opportunity
-  // Manager v2, so a legacy v1 assignment fails closed.
-  async requireOpportunityOutcomeChange(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    return this.requireOpportunityManagerPermission(
-      actor,
-      'commercial.opportunity.outcome.change',
-      lock,
-    );
-  }
-
-  // A manager permission needs a live captured Opportunity Manager version
-  // carrying it, a live Commercial Intake version carrying both reads and
-  // live Company context, all in the same active Company. A locked read
-  // serializes the command against revocation of any of them and suspension
-  // of the actor. It leaves the Company row unlocked: reassignment later
-  // share-locks its target member before that row, the order Company
-  // assignment administration uses, so a concurrent grant or revocation for
-  // the target cannot deadlock with it.
-  private async requireOpportunityManagerPermission(
-    actor: ActorContext,
-    permission: CompanyOpportunityManagerPermission,
-    lock: boolean,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    const intakePermissions = company?.commercialIntakePermissions ?? [];
-    if (
-      !company?.opportunityManagerPermissions?.includes(permission) ||
-      COMMERCIAL_INTAKE_READ_PERMISSIONS.some(
-        (required) => !intakePermissions.includes(required),
-      )
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      // One array parameter keeps this locked read's text short enough for
-      // pg_stat_activity to show its locking clause.
-      sql`(${eq(
-        companyRoleAssignments.bundle,
-        COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
-      )} AND ${companyRoleAssignments.permissionSetVersion} = ANY(${sql.param(
-        opportunityManagerVersionsWith(permission),
-      )}))`,
-      lock,
-      'member-rows',
-    );
-    await this.requireLiveCommercialIntakeRead(actor, company.id, lock);
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // Sales Stage configuration needs the live captured Company Sales Stage
-  // Configuration v1, a live Commercial Intake version carrying both reads and
-  // live Company context, all in the same active Company. A locked read
-  // serializes the command against revocation of any of them and suspension
-  // of the actor.
-  async requireSalesStageConfiguration(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (
-      !company?.salesStageConfigurationPermissions?.includes(
-        'commercial.sales_stage.configure',
-      ) ||
-      !carriesEvery(
-        company.commercialIntakePermissions,
-        COMMERCIAL_INTAKE_READ_PERMISSIONS,
-      )
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      capturedGrant(COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE),
-      lock,
-      'member-rows',
-    );
-    await this.requireLiveCommercialIntakeRead(actor, company.id, lock);
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // The live captured Commercial Intake read prerequisite of an opt-in
-  // commercial bundle: any captured version carrying both reads.
-  private async requireLiveCommercialIntakeRead(
-    actor: ActorContext,
-    companyId: string,
-    lock: boolean,
-  ): Promise<void> {
-    await this.requireLiveCapturedAssignment(
-      actor,
-      companyId,
-      sql`(${eq(
-        companyRoleAssignments.bundle,
-        COMPANY_COMMERCIAL_INTAKE_BUNDLE,
-      )} AND ${inArray(
-        companyRoleAssignments.permissionSetVersion,
-        commercialIntakeVersionsWith(COMMERCIAL_INTAKE_READ_PERMISSIONS),
-      )})`,
-      lock,
-      'member-rows',
-    );
-  }
-
-  // Calculation belongs only to Company Pricing User v1. Snapshot reads use
-  // requirePricingSnapshotReadAccess because Offer Preparer v1 also carries
-  // that one permission without gaining calculation authority.
-  async requirePricingUserAccess(
-    actor: ActorContext,
-    required: readonly CompanyPricingUserPermission[],
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (!company || !carriesEvery(company.pricingUserPermissions, required))
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      capturedGrant(COMPANY_PRICING_USER_BUNDLE),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  async requireContractAccess(
-    actor: ActorContext,
-    required: readonly CompanyContractPermission[],
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (!company || !carriesEvery(company.contractPermissions, required))
-      throw new ForbiddenException();
-    const grants = [
-      ...capturedVersionGrants(COMPANY_CONTRACT_PREPARER_BUNDLE, required),
-      ...capturedVersionGrants(COMPANY_CONTRACT_APPROVER_BUNDLE, required),
-      ...(required.every((p) =>
-        COMPANY_CONTRACT_EARLY_PREPARATION_V1_PERMISSIONS.some(
-          (own) => own === p,
-        ),
-      )
-        ? [capturedGrant(COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE)]
-        : []),
-    ];
-    if (!grants.length) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  async requireContractQualityAccess(
-    actor: ActorContext,
-    lock = false,
-    modelBased = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    const grants: SQL[] = [];
-    if (
-      company?.contractPermissions?.includes('commercial.contract.prepare') &&
-      (!modelBased ||
-        company.contractPermissions.includes(
-          'commercial.contract.model_based.prepare',
-        ))
-    )
-      grants.push(
-        ...capturedVersionGrants(
-          COMPANY_CONTRACT_PREPARER_BUNDLE,
-          modelBased
-            ? [
-                'commercial.contract.prepare',
-                'commercial.contract.model_based.prepare',
-              ]
-            : ['commercial.contract.prepare'],
-        ),
-      );
-    if (
-      company?.contractPermissions?.includes('commercial.contract.approve') &&
-      (!modelBased ||
-        company.contractPermissions.includes(
-          'commercial.contract.model_based.approve',
-        ))
-    )
-      grants.push(
-        ...capturedVersionGrants(
-          COMPANY_CONTRACT_APPROVER_BUNDLE,
-          modelBased
-            ? [
-                'commercial.contract.approve',
-                'commercial.contract.model_based.approve',
-              ]
-            : ['commercial.contract.approve'],
-        ),
-      );
-    if (!company || !grants.length) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // The bundles are independent from Company context and Opportunity read.
-  // The Opportunity owner must separately prove target readability.
-  async requireProfitabilityEstimateAccess(
-    actor: ActorContext,
-    operation: 'read' | 'create' | 'decide',
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    const grants: SQL[] = [];
-    if (
-      company?.profitabilityContributorPermissions?.includes(
-        'commercial.profitability_estimate.read',
-      ) &&
-      (operation === 'read' ||
-        (operation === 'create' &&
-          company.profitabilityContributorPermissions.includes(
-            'commercial.profitability_estimate.create',
-          )))
-    )
-      grants.push(capturedGrant(COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE));
-    if (
-      company?.profitabilityDirectorPermissions?.includes(
-        'commercial.profitability_estimate.read',
-      ) &&
-      (operation === 'read' ||
-        (operation === 'decide' &&
-          company.profitabilityDirectorPermissions.includes(
-            'commercial.profitability_estimate.decide',
-          )))
-    )
-      grants.push(capturedGrant(COMPANY_PROFITABILITY_DIRECTOR_BUNDLE));
-    if (!company || grants.length === 0) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  async requireOfferAccess(
-    actor: ActorContext,
-    required: readonly CompanyOfferPermission[],
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (!company || !carriesEvery(company.offerPermissions, required))
-      throw new ForbiddenException();
-    const grants: SQL[] = [];
-    grants.push(
-      ...capturedVersionGrants(COMPANY_OFFER_PREPARER_BUNDLE, required),
-    );
-    grants.push(
-      ...capturedVersionGrants(COMPANY_OFFER_APPROVER_BUNDLE, required),
-    );
-    if (!grants.length) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  async requireOfferQualityAccess(
-    actor: ActorContext,
-    lock = false,
-    modelBased = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    const grants: SQL[] = [];
-    if (
-      company?.offerPermissions?.includes('commercial.offer.prepare') &&
-      (!modelBased ||
-        company.offerPermissions.includes(
-          'commercial.offer.model_based.prepare',
-        ))
-    )
-      grants.push(
-        ...capturedVersionGrants(
-          COMPANY_OFFER_PREPARER_BUNDLE,
-          modelBased
-            ? [
-                'commercial.offer.prepare',
-                'commercial.offer.model_based.prepare',
-              ]
-            : ['commercial.offer.prepare'],
-        ),
-      );
-    if (
-      company?.offerPermissions?.includes('commercial.offer.approve') &&
-      (!modelBased ||
-        company.offerPermissions.includes(
-          'commercial.offer.model_based.approve',
-        ))
-    )
-      grants.push(
-        ...capturedVersionGrants(
-          COMPANY_OFFER_APPROVER_BUNDLE,
-          modelBased
-            ? [
-                'commercial.offer.approve',
-                'commercial.offer.model_based.approve',
-              ]
-            : ['commercial.offer.approve'],
-        ),
-      );
-    if (!company || !grants.length) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // Applying an adjustment requires its own captured v1 assignment. It does
-  // not lend calculation, Snapshot read or Company context authority.
-  async requirePricingAdjustmentAccess(
-    actor: ActorContext,
-    required: readonly CompanyPricingAdjustmentPermission[],
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    if (
-      !company ||
-      !carriesEvery(company.pricingAdjustmentPermissions, required)
-    )
-      throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      capturedGrant(COMPANY_PRICING_ADJUSTMENT_BUNDLE),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // Snapshot read may come from Pricing User v1 or Offer Preparer v1. Each
-  // grant is checked independently and neither confers calculation authority.
-  async requirePricingSnapshotReadAccess(
-    actor: ActorContext,
-    lock = false,
-  ): Promise<string> {
-    const company = actor.activeCompany;
-    const grants: SQL[] = [];
-    if (
-      company?.pricingUserPermissions?.includes(
-        'commercial.pricing.snapshot.read',
-      )
-    )
-      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
-    if (company?.offerPermissions?.includes('commercial.pricing.snapshot.read'))
-      grants.push(
-        ...capturedVersionGrants(COMPANY_OFFER_PREPARER_BUNDLE, [
-          'commercial.pricing.snapshot.read',
-        ]),
-      );
-    if (!company || grants.length === 0) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      lock,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
-  }
-
-  // Offering read is carried by a live captured Company Service Catalogue v1,
-  // Company Pricing Configuration v1 or Company Pricing User v1 assignment
-  // (pricing PRD section 10). None confers any other permission of another.
-  async requireOfferingReadAccess(actor: ActorContext): Promise<string> {
-    const company = actor.activeCompany;
-    const grants: SQL[] = [];
-    if (
-      company?.serviceCataloguePermissions?.includes('commercial.offering.read')
-    )
-      grants.push(capturedGrant(COMPANY_SERVICE_CATALOGUE_BUNDLE));
-    if (
-      company?.pricingConfigurationPermissions?.includes(
-        'commercial.offering.read',
-      )
-    )
-      grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
-    if (company?.pricingUserPermissions?.includes('commercial.offering.read'))
-      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
-    if (!company || grants.length === 0) throw new ForbiddenException();
-    await this.requireLiveCapturedAssignment(
-      actor,
-      company.id,
-      anyCapturedGrant(grants),
-      false,
-    );
-    await this.requireLiveCompanyContext(actor, company.id, false);
-    return company.id;
+    return this.hasPermissions(actor, {
+      permissions: ['document.received_addendum.access'],
+      lock: options.lockAssignment,
+    });
   }
 
   private async requireLiveCapturedAssignment(
     actor: ActorContext,
     companyId: string,
-    grant: SQL,
+    grants: readonly CapturedCompanyGrant[],
     lock: boolean,
     // Which joined rows a locked read share-locks: every row, or only the
     // assignment, membership and Internal User rows of the actor.
     lockedRows: 'all-rows' | 'member-rows' = 'all-rows',
-  ): Promise<void> {
+  ): Promise<string> {
+    if (!grants.length) throw new ForbiddenException();
+    const assignment = alias(companyRoleAssignments, 'a');
+    const member = alias(workspaceMemberships, 'm');
+    const user = alias(internalUsers, 'u');
+    const company = alias(companies, 'c');
     const query = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
+      .select({ id: assignment.id })
+      .from(assignment)
       .innerJoin(
-        workspaceMemberships,
+        member,
         and(
-          eq(
-            workspaceMemberships.workspaceId,
-            companyRoleAssignments.workspaceId,
-          ),
-          eq(
-            workspaceMemberships.id,
-            companyRoleAssignments.workspaceMembershipId,
-          ),
-          eq(workspaceMemberships.status, 'active'),
+          eq(member.workspaceId, assignment.workspaceId),
+          eq(member.id, assignment.workspaceMembershipId),
+          eq(member.status, 'active'),
         ),
       )
       .innerJoin(
-        internalUsers,
+        user,
         and(
-          eq(internalUsers.id, workspaceMemberships.internalUserId),
-          eq(internalUsers.id, actor.internalUserId),
-          eq(internalUsers.status, 'active'),
+          eq(user.id, member.internalUserId),
+          eq(user.id, actor.internalUserId),
+          eq(user.status, 'active'),
         ),
       )
       .innerJoin(
-        companies,
+        company,
         and(
-          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
-          eq(companies.id, companyRoleAssignments.companyId),
-          eq(companies.status, 'active'),
+          eq(company.workspaceId, assignment.workspaceId),
+          eq(company.id, assignment.companyId),
+          eq(company.status, 'active'),
         ),
       )
       .where(
         and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          grant,
-          isNull(companyRoleAssignments.revokedAt),
+          eq(assignment.workspaceId, actor.workspaceId),
+          eq(assignment.workspaceMembershipId, actor.workspaceMembershipId),
+          eq(assignment.companyId, companyId),
+          capturedAssignmentsCondition(grants, assignment),
+          isNull(assignment.revokedAt),
         ),
-      );
+      )
+      .orderBy(assignment.id)
+      .limit(1);
     const rows = !lock
       ? await query
       : lockedRows === 'member-rows'
         ? await query.for('share', {
-            of: [companyRoleAssignments, workspaceMemberships, internalUsers],
+            of: [assignment, member, user],
           })
         : await query.for('share');
     if (rows.length === 0) throw new ForbiddenException();
+    const selected = rows[0];
+    if (!selected) throw new ForbiddenException();
+    return selected.id;
   }
 
   private async requireLiveCompanyContext(
     actor: ActorContext,
     companyId: string,
     lock: boolean,
-  ): Promise<void> {
+  ): Promise<CapturedCompanyGrant | undefined> {
     if (actor.workspacePermissions.includes('company.manage')) {
       const managerQuery = this.databaseContext.connection
         .select({ id: workspacePermissionGrants.id })
@@ -2825,28 +1404,20 @@ export class CompanyContextAuthorization {
       if (managerGrants.length > 0) return;
     }
 
-    const contextQuery = this.databaseContext.connection
-      .select({ id: companyRoleAssignments.id })
-      .from(companyRoleAssignments)
-      .where(
-        and(
-          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-          eq(
-            companyRoleAssignments.workspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(companyRoleAssignments.companyId, companyId),
-          inArray(
-            companyRoleAssignments.bundle,
-            COMPANY_CONTEXT_CONFERRING_BUNDLES,
-          ),
-          isNull(companyRoleAssignments.revokedAt),
-        ),
-      );
-    const contextAssignments = lock
-      ? await contextQuery.for('share')
-      : await contextQuery;
-    if (contextAssignments.length === 0) throw new ForbiddenException();
+    const captured = capturedCompanyGrants(actor).filter((grant) =>
+      COMPANY_CONTEXT_CONFERRING_BUNDLES.some(
+        (bundle) => bundle === grant.bundle,
+      ),
+    );
+    if (!captured.length) throw new ForbiddenException();
+    const selected = await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      captured,
+      lock,
+      'member-rows',
+    );
+    return captured.find((grant) => grant.assignmentId === selected);
   }
 
   private async findActiveCompany(
@@ -2877,68 +1448,6 @@ export class CompanyContextAuthorization {
         companyRoleAssignments.workspaceMembershipId,
         actor.workspaceMembershipId,
       ),
-      inArray(sql`${companyRoleAssignments.bundle}::text`, [
-        ...COMPANY_CONTEXT_CONFERRING_BUNDLES,
-        COMPANY_WORKING_EVIDENCE_CASE_READER_BUNDLE,
-        COMPANY_WORKING_EVIDENCE_CASE_RECORDER_BUNDLE,
-        COMPANY_RECEIVED_AUDIT_SOURCE_ACCESS_BUNDLE,
-        COMPANY_COMMERCIAL_INTAKE_BUNDLE,
-        COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE,
-        COMPANY_SERVICE_CATALOGUE_BUNDLE,
-        COMPANY_PRICING_CONFIGURATION_BUNDLE,
-        COMPANY_PRICING_USER_BUNDLE,
-        COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
-        COMPANY_MISSION_PLAN_USER_BUNDLE,
-        COMPANY_OFFER_PREPARER_BUNDLE,
-        COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
-        COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
-        COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
-        COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
-        COMPANY_CONTRACT_PREPARER_BUNDLE,
-        COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
-        COMPANY_CONTRACT_APPROVER_BUNDLE,
-        COMPANY_OFFER_APPROVER_BUNDLE,
-        COMPANY_PRICING_ADJUSTMENT_BUNDLE,
-        COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
-        COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
-        COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
-        COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
-        COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
-        COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
-        ...PAYMENT_BUNDLES,
-        COMPANY_INVOICE_READER_BUNDLE,
-        COMPANY_INVOICE_RECORDER_BUNDLE,
-        COMPANY_EXTERNAL_INVOICE_ACCESS_BUNDLE,
-        COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
-        COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
-        COMPANY_IDEAS_READER_BUNDLE,
-        COMPANY_IDEAS_RECORDER_BUNDLE,
-        COMPANY_IDEAS_REVIEWER_BUNDLE,
-        COMPANY_CERTIFICATION_READER_BUNDLE,
-        COMPANY_CERTIFICATION_PROGRAMME_MANAGER_BUNDLE,
-        COMPANY_CERTIFICATION_APPROVER_BUNDLE,
-        COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
-        COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
-        COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
-        COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
-        COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
-        COMPANY_INTERNAL_TASK_MANAGER_BUNDLE,
-        COMPANY_TASK_MANAGER_BUNDLE,
-        COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
-        COMPANY_PROJECT_APPROVER_BUNDLE,
-        COMPANY_DOCUMENT_APPROVER_BUNDLE,
-        COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
-        COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
-        COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
-        COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
-        COMPANY_RECEIVED_ADDENDUM_ACCESS_BUNDLE,
-        COMPANY_TASK_RESULT_RECORDER_BUNDLE,
-        COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
-        COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
-        COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
-        COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
-        COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
-      ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
     ];
@@ -2963,6 +1472,7 @@ export class CompanyContextAuthorization {
       )
       .where(and(...conditions));
     const companiesById = new Map<string, ActiveCompanyContext>();
+    const projections = new Map<string, Readonly<Record<string, unknown>>>();
     const independentlyAuthorizedCompanies = new Set<string>();
     for (const row of rows) {
       const existing = companiesById.get(row.id);
@@ -2971,6 +1481,7 @@ export class CompanyContextAuthorization {
         displayName: row.displayName,
         clientPermissions: [],
       };
+      const before = { ...company };
       if (
         row.bundle === COMPANY_OPPORTUNITY_FOLLOW_UP_COORDINATOR_BUNDLE &&
         row.permissionSetVersion === 'v1'
@@ -3494,6 +2005,10 @@ export class CompanyContextAuthorization {
       ) {
         independentlyAuthorizedCompanies.add(row.id);
       }
+      projections.set(
+        row.assignmentId,
+        captureGrantProjection({ before, after: company, grant: row }),
+      );
       companiesById.set(row.id, company);
     }
     // Organizer contributes only its mutation permission. Company context must
@@ -3623,70 +2138,15 @@ export class CompanyContextAuthorization {
             });
       }
     }
+    for (const company of authorizedCompanies)
+      captureCompanyPermissions({
+        actor,
+        company,
+        grants: rows.filter((row) => row.id === company.id),
+        projections,
+      });
     return authorizedCompanies;
   }
-}
-
-// Read only the permissions of the live captured version; never upgrade it.
-function capturedVersionGrants(
-  bundle:
-    | typeof COMPANY_OFFER_PREPARER_BUNDLE
-    | typeof COMPANY_OFFER_APPROVER_BUNDLE
-    | typeof COMPANY_CONTRACT_PREPARER_BUNDLE
-    | typeof COMPANY_CONTRACT_APPROVER_BUNDLE,
-  required: readonly string[],
-): SQL[] {
-  const versions: Readonly<Record<string, readonly string[]>> =
-    COMPANY_ROLE_BUNDLES[bundle].versions;
-  return Object.entries(versions)
-    .filter(([, permissions]) =>
-      required.every((permission) =>
-        permissions.some((own) => own === permission),
-      ),
-    )
-    .map(
-      ([version]) =>
-        sql`(${companyRoleAssignments.bundle}::text = ${bundle} AND ${eq(companyRoleAssignments.permissionSetVersion, version)})`,
-    );
-}
-
-function capturedGrant(
-  bundle:
-    | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
-    | typeof COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE
-    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
-    | typeof COMPANY_PRICING_USER_BUNDLE
-    | typeof COMPANY_PROJECT_APPROVER_BUNDLE
-    | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
-    | typeof COMPANY_OFFER_PREPARER_BUNDLE
-    | typeof COMPANY_CONTRACT_PREPARER_BUNDLE
-    | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE
-    | typeof COMPANY_CONTRACT_APPROVER_BUNDLE
-    | typeof COMPANY_OFFER_APPROVER_BUNDLE
-    | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE
-    | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE
-    | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
-): SQL {
-  return sql`(${sql`${companyRoleAssignments.bundle}::text = ${bundle}`} AND ${eq(
-    companyRoleAssignments.permissionSetVersion,
-    'v1',
-  )})`;
-}
-
-// Any one of the alternative live captured grants satisfies a check.
-function anyCapturedGrant(grants: readonly SQL[]): SQL {
-  return sql`(${sql.join([...grants], sql` OR `)})`;
-}
-
-// A captured bundle satisfies a check only through its own permissions.
-function carriesEvery(
-  captured: readonly string[] | undefined,
-  required: readonly string[],
-): boolean {
-  return (
-    captured !== undefined &&
-    required.every((permission) => captured.includes(permission))
-  );
 }
 
 export type CompanyContextVisibility =
@@ -3696,18 +2156,7 @@ export type CompanyContextVisibility =
 export type CommercialIntakeAccessMode =
   'read' | 'create' | 'update-next-action' | 'associate-client' | 'set-stage';
 
-// Runtime authorization evaluates the captured assignment version. Reads and
-// creates accept every captured version that carries them. Later mutations
-// require every captured version that carries their permission.
-function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
-  required: readonly CompanyCommercialIntakePermission[];
-  capturedVersions: readonly CompanyCommercialIntakePermissionSetVersion[];
-} {
-  const required = commercialIntakeRequiredPermissions(mode);
-  return { required, capturedVersions: commercialIntakeVersionsWith(required) };
-}
-
-function commercialIntakeRequiredPermissions(
+export function commercialIntakeRequiredPermissions(
   mode: CommercialIntakeAccessMode,
 ): readonly CompanyCommercialIntakePermission[] {
   switch (mode) {
@@ -3739,12 +2188,17 @@ function assertNeverMode(mode: never): never {
 }
 
 /** Complete runtime proof for one feature-consumed native assignment identity. */
-function nativeDocumentCapturedGrant(input: {
+function isNativeDocumentCapture(input: {
   bundle: typeof companyRoleAssignments.$inferSelect.bundle;
   assignmentId: unknown;
   version: unknown;
   versions: readonly string[];
-}): SQL | undefined {
+}): input is {
+  bundle: typeof companyRoleAssignments.$inferSelect.bundle;
+  assignmentId: string;
+  version: string;
+  versions: readonly string[];
+} {
   if (
     typeof input.assignmentId !== 'string' ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
@@ -3753,12 +2207,8 @@ function nativeDocumentCapturedGrant(input: {
     typeof input.version !== 'string' ||
     !input.versions.includes(input.version)
   )
-    return undefined;
-  return and(
-    eq(companyRoleAssignments.id, input.assignmentId),
-    eq(companyRoleAssignments.bundle, input.bundle),
-    eq(companyRoleAssignments.permissionSetVersion, input.version),
-  );
+    return false;
+  return true;
 }
 
 function invoiceRecordReadCapture(

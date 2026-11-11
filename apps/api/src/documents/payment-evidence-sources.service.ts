@@ -97,7 +97,12 @@ export class PaymentEvidenceSourcesService {
       receivingCompanyLabel: source.receivingCompanyLabel,
       ...receivedSourceAttributionView(source),
     };
-    if (!(await this.access.mayReadPaymentEvidencePayer(actor)))
+    if (
+      !(await this.access.hasPermissions(actor, {
+        permissions: ['client.read'],
+        lock: false,
+      }))
+    )
       return { ...common, payer: { kind: 'UNAVAILABLE' } };
     const party = {
       legalName: source.payerLegalName,

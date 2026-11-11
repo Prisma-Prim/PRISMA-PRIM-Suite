@@ -404,11 +404,12 @@ export class OfferModelService {
     actor: ActorContext;
     lock: 'share' | 'update';
   }) {
-    const companyId = await this.companyAuthorization.requireOfferAccess(
-      actor,
-      ['commercial.offer.model.select'],
-      true,
-    );
+    const companyId = (
+      await this.companyAuthorization.requirePermissions(actor, {
+        permissions: ['commercial.offer.model.select'],
+        lock: true,
+      })
+    ).companyId;
     const model = await this.root({ actor, companyId, lock });
     if (!model?.activeVersionId) return null;
     const version = await this.exactVersion({
