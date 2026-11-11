@@ -54,8 +54,15 @@ function review(missing?: string) {
         item === missing
           ? { answer: 'missing', note: 'Signed list not received.' }
           : {
-              answer:
-                item === 'findings_follow_up' ? 'not_applicable' : 'present',
+              // Nothing stands for these items before the decision here; a
+              // "present" answer without its record is a critical Discrepancy.
+              answer: [
+                'findings_follow_up',
+                'participant_lists',
+                'certificate_data',
+              ].includes(item)
+                ? 'not_applicable'
+                : 'present',
               note: null,
             },
       ]),

@@ -142,6 +142,19 @@ export async function openCertificationFixture(input: {
     );
     return Number(result.rows[0]?.total);
   }
+  /** The recorded Activity of a Case: action, revision and metadata. */
+  async function eventMetadata(caseId: string) {
+    if (!harness) throw new Error('Fixture is closed.');
+    const result = await harness.pool.query<{
+      action: string;
+      revision: number;
+      metadata: unknown;
+    }>(
+      'SELECT action, revision, metadata FROM certification_events WHERE case_id = $1 ORDER BY revision',
+      [caseId],
+    );
+    return result.rows;
+  }
   /**
    * Rewrites the latest recorded version of a step into the shape an earlier
    * release stored, bypassing the immutability trigger in this isolated
@@ -323,7 +336,8 @@ export async function openCertificationFixture(input: {
           method: 'POST',
           body: {
             expectedRevision: 5,
-            signedOn: '2026-11-02',
+            // Signed before Stage 1 (2026-10-01 in the tests), as R05 expects.
+            signedOn: '2026-09-15',
             attachmentId: text(record(register[0]).id),
           },
         },
@@ -599,6 +613,7 @@ export async function openCertificationFixture(input: {
     created,
     grant,
     eventCount,
+    eventMetadata,
     storeAsEarlierRelease,
     holdTable,
     caseWithApplication,

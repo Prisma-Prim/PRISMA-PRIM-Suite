@@ -433,6 +433,11 @@ type StoredCase = {
   attachments: StoredAttachment[];
   findings: StoredFinding[];
   certificate: StoredCertificate | null;
+  /** The consistency section's Discrepancies, seeded or recorded. */
+  consistency: {
+    open: Record<string, unknown>[];
+    resolved: Record<string, unknown>[];
+  };
 };
 /** A frozen received PDF of the Case's Client, with its exact bytes. */
 export type FakeSource = {
@@ -1001,7 +1006,7 @@ export class FakeCertificationServer {
         : this.reportStage(staged, which, request.body);
     }
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
@@ -1052,6 +1057,10 @@ export class FakeCertificationServer {
         return this.agreeCertificateData(stored, request.body);
       case '/certificate':
         return this.recordCertificate(stored, request.body);
+      case '/discrepancies':
+        return this.recordDiscrepancy(stored, request.body);
+      case '/discrepancy-resolutions':
+        return this.resolveDiscrepancy(stored, request.body);
       default:
         return new Response(null, { status: 404 });
     }
@@ -2498,8 +2507,8 @@ export class FakeCertificationServer {
       return refusal(409, 'STALE_VERSION');
     if (stored.status !== 'open')
       return refusal(409, 'CERTIFICATION_CASE_CLOSED');
-    if (stored.steps.some((step) => step.step === 'application_review'))
-      return refusal(409, 'CERTIFICATION_APPLICATION_REVIEWED');
+    if (latestStep(stored, 'decision'))
+      return refusal(409, 'CERTIFICATION_DECIDED');
     const first = !stored.steps.some((step) => step.step === 'application');
     const reason = typeof input.reason === 'string' ? input.reason : null;
     if (first !== (reason === null))
@@ -2562,6 +2571,7 @@ export class FakeCertificationServer {
       attachments: [],
       findings: [],
       certificate: null,
+      consistency: { open: [], resolved: [] },
     };
     this.cases.set(stored.id, stored);
     return stored;
@@ -2673,7 +2683,199 @@ export class FakeCertificationServer {
       decision: latest('decision'),
       certificateData: latest('certificate_data'),
       certificate: stored.certificate,
+      consistency: {
+        ruleSetVersion: 'dossier-consistency-2026-11',
+        counts: {
+          critical: stored.consistency.open.filter(
+            (entry) => entry.verdict === 'critical',
+          ).length,
+          error: stored.consistency.open.filter(
+            (entry) => entry.verdict === 'error',
+          ).length,
+          toClarify: stored.consistency.open.filter(
+            (entry) => entry.verdict === 'to_clarify',
+          ).length,
+        },
+        open: stored.consistency.open,
+        resolved: stored.consistency.resolved,
+        resolvedTotal: stored.consistency.resolved.length,
+      },
     };
+  }
+
+  /** Adds an open Discrepancy the rule set would raise, as the server shows it. */
+  seedDiscrepancy(caseId: string, discrepancy: Record<string, unknown>) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case.');
+    stored.consistency.open.push(discrepancy);
+  }
+
+  /** Records a manual Discrepancy as the server would, in its order of checks. */
+  private recordDiscrepancy(stored: StoredCase, body: unknown): Response {
+    const actor = this.actor();
+    const onTeam = this.onTeam(stored);
+    if (!holdsManager(actor) && !holdsAuditor(actor) && !holdsApprover(actor))
+      return new Response(null, { status: 403 });
+    const input = record(body);
+    const left = record(input.left);
+    const right = record(input.right);
+    const verdict = input.verdict;
+    if (
+      verdict !== 'critical' &&
+      verdict !== 'error' &&
+      verdict !== 'to_clarify'
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status !== 'open')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (
+      !holdsManager(actor) &&
+      !(holdsAuditor(actor) && onTeam) &&
+      !(holdsApprover(actor) && !onTeam)
+    )
+      return refusal(
+        409,
+        holdsApprover(actor)
+          ? 'CERTIFICATION_INDEPENDENCE'
+          : 'CERTIFICATION_NOT_ON_TEAM',
+      );
+    const side = (value: Record<string, unknown>) => {
+      const attached = stored.attachments.find(
+        (item) => item.id === value.attachmentId,
+      );
+      return attached
+        ? {
+            value: { kind: 'text', text: value.value },
+            detail: value.location ?? null,
+            source: {
+              kind: 'attachment',
+              attachment: {
+                attachmentId: attached.id,
+                documentId: attached.documentId,
+                versionId: attached.versionId,
+                versionNumber: attached.versionNumber,
+                sourceTitle: attached.sourceTitle,
+              },
+            },
+          }
+        : undefined;
+    };
+    const first = side(left);
+    const second = side(right);
+    if (!first || !second) return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    stored.revision += 1;
+    const sequence =
+      [...stored.consistency.open, ...stored.consistency.resolved].filter(
+        (entry) => entry.origin === 'manual',
+      ).length + 1;
+    stored.consistency.open.push({
+      id: `manual:11310000-0000-4000-8000-6000000000${String(++this.sequence).padStart(2, '0')}`,
+      origin: 'manual',
+      rule: null,
+      sequence,
+      subject: { kind: 'manual', text: input.subject },
+      note: input.note ?? null,
+      verdict,
+      left: first,
+      right: second,
+      openedRevision: stored.revision,
+      opened: { by: me, at: this.tick() },
+      endedRevision: null,
+      status: 'open',
+      blocks:
+        verdict === 'to_clarify'
+          ? null
+          : latestStep(stored, 'decision')
+            ? 'certificate'
+            : 'decision',
+      resolution: null,
+    });
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
+  /** Accepts or corrects an open Discrepancy as the server would. */
+  private resolveDiscrepancy(stored: StoredCase, body: unknown): Response {
+    const actor = this.actor();
+    if (!holdsManager(actor) && !holdsAuditor(actor) && !holdsApprover(actor))
+      return new Response(null, { status: 403 });
+    const input = record(body);
+    if (typeof input.reason !== 'string' || !input.reason.trim())
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.expectedRevision !== stored.revision)
+      return refusal(409, 'STALE_VERSION');
+    if (stored.status === 'rejected')
+      return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    const index = stored.consistency.open.findIndex(
+      (entry) => entry.id === input.discrepancyId,
+    );
+    const target = stored.consistency.open[index];
+    if (!target) return refusal(409, 'CERTIFICATION_DISCREPANCY_NOT_OPEN');
+    const onTeam = this.onTeam(stored);
+    const approver = holdsApprover(actor) && !onTeam;
+    const manager = holdsManager(actor);
+    const refuse = () =>
+      holdsApprover(actor) && onTeam
+        ? refusal(409, 'CERTIFICATION_INDEPENDENCE')
+        : new Response(null, { status: 403 });
+    let source: unknown = null;
+    if (input.resolution === 'accepted') {
+      if (target.verdict === 'critical')
+        return refusal(409, 'CERTIFICATION_DISCREPANCY_CRITICAL');
+      if (target.verdict === 'error' ? !approver : !approver && !manager)
+        return refuse();
+    } else {
+      if (target.origin !== 'manual')
+        return refusal(409, 'CERTIFICATION_DISCREPANCY_CORRECTED_BY_RECORD');
+      if (!approver && !manager) return refuse();
+      const correctedBy = record(input.correctedBy);
+      const attached = stored.attachments.find(
+        (item) => item.id === correctedBy.attachmentId,
+      );
+      const version = stored.steps.find(
+        (step) => step.id === correctedBy.stepVersionId,
+      );
+      if (attached)
+        source = {
+          kind: 'attachment',
+          attachment: {
+            attachmentId: attached.id,
+            documentId: attached.documentId,
+            versionId: attached.versionId,
+            versionNumber: attached.versionNumber,
+            sourceTitle: attached.sourceTitle,
+          },
+        };
+      else if (version)
+        source = {
+          kind: 'step',
+          step: version.step,
+          version: version.version,
+          versionId: version.id,
+          attachment: null,
+        };
+      else return refusal(409, 'CERTIFICATION_CORRECTING_RECORD_UNKNOWN');
+    }
+    stored.revision += 1;
+    stored.consistency.open.splice(index, 1);
+    stored.consistency.resolved.unshift({
+      ...target,
+      status: 'resolved',
+      blocks: null,
+      resolution: {
+        kind: input.resolution === 'accepted' ? 'accepted' : 'corrected',
+        via: input.resolution === 'accepted' ? 'acceptance' : 'resolution',
+        reason: input.reason,
+        by: me,
+        at: this.tick(),
+        caseRevision: stored.revision,
+        ...(input.resolution === 'accepted'
+          ? { ruleSetVersion: 'dossier-consistency-2026-11' }
+          : { source }),
+      },
+    });
+    return Response.json(this.detail(stored), { status: 201 });
   }
 
   private tick(): string {

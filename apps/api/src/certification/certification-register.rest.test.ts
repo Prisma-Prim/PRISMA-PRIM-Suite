@@ -161,8 +161,14 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
         DOSSIER_ITEMS.map((item) => [
           item,
           {
-            answer:
-              item === 'findings_follow_up' ? 'not_applicable' : 'present',
+            // Nothing stands for these items at the review here.
+            answer: [
+              'findings_follow_up',
+              'participant_lists',
+              'certificate_data',
+            ].includes(item)
+              ? 'not_applicable'
+              : 'present',
             note: null,
           },
         ]),

@@ -282,9 +282,12 @@ describe('Certification Case workspace', () => {
       criteria: reviewCriteria('yes'),
       outcome: 'accepted',
     });
+    // The accepted application stays correctable, with a reason, until the
+    // decision: the dossier consistency check compares what changed.
     expect(
-      screen.getByText(
-        'The application can no longer be corrected: it has been reviewed.',
+      within(screen.getByRole('region', { name: 'Application' })).getByRole(
+        'button',
+        { name: 'Correct the application' },
       ),
     ).toBeVisible();
     expect(

@@ -71,6 +71,13 @@ function ready(overrides: Partial<DecisionContext> = {}): DecisionContext {
       },
     },
     dossierReview: { value: complete },
+    consistency: {
+      ruleSetVersion: 'dossier-consistency-2026-11',
+      counts: { critical: 0, error: 0, toClarify: 0 },
+      open: [],
+      resolved: [],
+      resolvedTotal: 0,
+    },
     ...overrides,
   };
 }
@@ -133,6 +140,56 @@ describe('Certification Decision preconditions', () => {
     ],
   ])('lists %s when the read Case shows it unmet', (code, context) => {
     expect(decisionPreconditions(context, 'refused')).toEqual([code]);
+  });
+
+  it('lists an open Discrepancy that blocks the decision, never one to clarify', () => {
+    const side = {
+      value: { kind: 'days', days: '3' },
+      detail: null,
+      source: null,
+    } as const;
+    const discrepancy = {
+      id: `R01:${'a'.repeat(32)}`,
+      origin: 'rule',
+      rule: 'R01',
+      subject: { kind: 'duration_proposal' },
+      left: side,
+      right: { ...side, value: { kind: 'days', days: '3.5' } },
+      openedRevision: 9,
+      opened: null,
+      endedRevision: null,
+      status: 'open',
+      resolution: null,
+    } as const;
+    const consistency = (verdict: 'error' | 'to_clarify') => ({
+      ruleSetVersion: 'dossier-consistency-2026-11',
+      counts: {
+        critical: 0,
+        error: verdict === 'error' ? 1 : 0,
+        toClarify: verdict === 'to_clarify' ? 1 : 0,
+      },
+      open: [
+        {
+          ...discrepancy,
+          verdict,
+          blocks: verdict === 'error' ? ('decision' as const) : null,
+        },
+      ],
+      resolved: [],
+      resolvedTotal: 0,
+    });
+    expect(
+      decisionPreconditions(
+        ready({ consistency: consistency('error') }),
+        'granted',
+      ),
+    ).toEqual(['DISCREPANCIES_OPEN']);
+    expect(
+      decisionPreconditions(
+        ready({ consistency: consistency('to_clarify') }),
+        'granted',
+      ),
+    ).toEqual([]);
   });
 
   it('lists an overdue nonconformity, which also still holds the Case', () => {

@@ -11,9 +11,11 @@ export const certificationTables = [
   'certification_case_documents',
   'certification_cases',
   'certification_certificates',
+  'certification_discrepancy_resolutions',
   'certification_events',
   'certification_finding_records',
   'certification_findings',
+  'certification_manual_discrepancies',
   'certification_receipts',
   'certification_step_versions',
 ];

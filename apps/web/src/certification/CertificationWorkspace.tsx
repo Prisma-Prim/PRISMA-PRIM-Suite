@@ -12,6 +12,7 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
   conflictCode,
+  conflictDiscrepancies,
   conflictFailures,
   createAuthenticatedApiClient,
   type ApiResult,
@@ -242,6 +243,19 @@ import {
   PreconditionList,
   RecommendationView,
 } from './CertificationDecisionViews';
+import {
+  blockingDecision,
+  emptyManualDraft,
+  manualFromDraft,
+  parseBlockingDiscrepancies,
+  resolutionFromDraft,
+  type ConsistencyRoles,
+  type ConsistencyRule,
+  type ManualDraft,
+  type ResolutionDraft,
+} from './certification-consistency';
+import { useConsistencyCopy } from './certification-consistency.copy';
+import { ConsistencyRegion, ruleLabel } from './CertificationConsistency';
 
 export interface CertificationWorkspaceProps {
   actor: ActorContext;
@@ -281,7 +295,11 @@ type Feedback =
       status: 'unmet';
       source: 'case' | 'server';
       failures: DecisionPrecondition[];
+      /** The blocking Discrepancies, from the read Case or as the server named them. */
+      discrepancies: NamedDiscrepancy[];
     };
+/** A Discrepancy a decision is refused for, by identity and rule. */
+type NamedDiscrepancy = { id: string; rule: ConsistencyRule | 'manual' };
 type MutationKind =
   | 'open'
   | 'application'
@@ -292,6 +310,8 @@ type MutationKind =
   | 'team'
   | 'decision'
   | 'finding'
+  | 'discrepancy'
+  | 'discrepancyResolution'
   | StageKind
   | ClosingKind;
 /** The closing steps, each with its own form and feedback. */
@@ -534,6 +554,15 @@ function CertificationRegistry(
   );
   const [certificateFeedback, setCertificateFeedback] =
     useState<Feedback>(IDLE);
+  /** The manual Discrepancy form is open; its draft is kept through a reload. */
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDraft, setManualDraft] = useState<ManualDraft>(emptyManualDraft);
+  const [manualFeedback, setManualFeedback] = useState<Feedback>(IDLE);
+  /** The one acceptance or correction form open in the region, if any. */
+  const [resolutionDraft, setResolutionDraft] =
+    useState<ResolutionDraft | null>(null);
+  const [resolutionFeedback, setResolutionFeedback] = useState<Feedback>(IDLE);
+  const consistencyCopy = useConsistencyCopy();
   const closingFeedback: Record<ClosingKind, Feedback> = {
     recommendation: recommendationFeedback,
     dossierReview: dossierFeedback,
@@ -558,6 +587,8 @@ function CertificationRegistry(
       teamFeedback,
       decisionFeedback,
       findingFeedback,
+      manualFeedback,
+      resolutionFeedback,
       ...Object.values(stageFeedback),
       ...Object.values(closingFeedback),
     ].some((feedback) => feedback.status === 'saving');
@@ -583,6 +614,10 @@ function CertificationRegistry(
         return setDecisionFeedback;
       case 'finding':
         return setFindingFeedback;
+      case 'discrepancy':
+        return setManualFeedback;
+      case 'discrepancyResolution':
+        return setResolutionFeedback;
       case 'stage1Plan':
         return setStage1PlanFeedback;
       case 'stage2Plan':
@@ -683,6 +718,11 @@ function CertificationRegistry(
     }
     setFindingForm(null);
     setFindingFeedback(IDLE);
+    setManualOpen(false);
+    setManualDraft(emptyManualDraft());
+    setManualFeedback(IDLE);
+    setResolutionDraft(null);
+    setResolutionFeedback(IDLE);
     for (const kind of CLOSING_KINDS) {
       resetClosingDraft(kind);
       feedbackSetter(kind)(IDLE);
@@ -845,6 +885,8 @@ function CertificationRegistry(
       setTeamFeedback(clear);
       setDecisionFeedback(clear);
       setFindingFeedback(clear);
+      setManualFeedback(clear);
+      setResolutionFeedback(clear);
       for (const kind of STAGE_KINDS) feedbackSetter(kind)(clear);
       for (const kind of CLOSING_KINDS) feedbackSetter(kind)(clear);
     }
@@ -993,6 +1035,13 @@ function CertificationRegistry(
         break;
       case 'finding':
         setFindingForm(null);
+        break;
+      case 'discrepancy':
+        setManualDraft(emptyManualDraft());
+        setManualOpen(false);
+        break;
+      case 'discrepancyResolution':
+        setResolutionDraft(null);
         break;
       case 'stage1Plan':
       case 'stage2Plan':
@@ -1666,6 +1715,9 @@ function CertificationRegistry(
         status: 'unmet',
         source: 'case',
         failures,
+        discrepancies: blockingDecision(view.caseDetail.consistency).map(
+          (entry) => ({ id: entry.id, rule: entry.rule ?? 'manual' }),
+        ),
       });
       return;
     }
@@ -2101,6 +2153,179 @@ function CertificationRegistry(
     );
   }
 
+  /** Who may record or resolve Discrepancies on the read Case. */
+  function consistencyRoles(view: CaseView): ConsistencyRoles {
+    const linked = linkedToAnyTeamVersion(
+      view.timeline,
+      actor.workspaceMembershipId,
+    );
+    return {
+      manager: authority.manage,
+      independentApprover: authority.approve && !linked,
+      auditorOnTeam: authority.audit && linked,
+    };
+  }
+
+  /** Records a manual Discrepancy; the server rechecks every rule. */
+  function submitManual(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      detail?.status !== 'ready' ||
+      blockedUntilReload(manualFeedback)
+    )
+      return;
+    const { caseDetail: current, register } = detail.value;
+    if (current.status !== 'open') return;
+    const check = manualFromDraft(manualDraft, register.items);
+    if (check.status !== 'valid') {
+      setManualFeedback(refusedWith('discrepancyValidation'));
+      return;
+    }
+    void execute(
+      'discrepancy',
+      reuse(manualFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/discrepancies`,
+        body: JSON.stringify({
+          expectedRevision: current.revision,
+          ...check.body,
+        }),
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** Accepts a Discrepancy, or closes a manual one as corrected. */
+  function submitResolution(event: FormEvent) {
+    event.preventDefault();
+    if (
+      busy ||
+      detail?.status !== 'ready' ||
+      resolutionDraft === null ||
+      blockedUntilReload(resolutionFeedback)
+    )
+      return;
+    const { caseDetail: current, register, timeline } = detail.value;
+    const check = resolutionFromDraft(resolutionDraft, {
+      attachments: register.items,
+      versions: timeline.entries,
+    });
+    if (check.status !== 'valid') {
+      setResolutionFeedback(
+        refusedWith(
+          check.status === 'reasonRequired'
+            ? 'discrepancyReasonRequired'
+            : 'discrepancyCorrectionRequired',
+        ),
+      );
+      return;
+    }
+    void execute(
+      'discrepancyResolution',
+      reuse(resolutionFeedback, {
+        path: `/certification-cases/${encodeURIComponent(current.id)}/discrepancy-resolutions`,
+        body: JSON.stringify({
+          expectedRevision: current.revision,
+          ...check.body,
+        }),
+        caseId: current.id,
+      }),
+    );
+  }
+
+  /** The Discrepancies a decision is refused for, each by its rule or subject. */
+  function namedDiscrepancies(named: readonly NamedDiscrepancy[]) {
+    if (named.length === 0) return null;
+    const open =
+      detail?.status === 'ready'
+        ? detail.value.caseDetail.consistency.open
+        : [];
+    return (
+      <ul aria-label={consistencyCopy('openTitle')}>
+        {named.map((entry) => {
+          const read = open.find((view) => view.id === entry.id);
+          return (
+            <li key={entry.id}>
+              {entry.rule === 'manual'
+                ? read?.origin === 'manual'
+                  ? formatMessage(consistencyCopy('manualHeading'), {
+                      sequence: read.sequence,
+                      subject: read.subject,
+                    })
+                  : consistencyCopy('manualFormTitle')
+                : `${entry.rule} — ${consistencyCopy(ruleLabel(entry.rule))}`}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  /** The Dossier consistency region of the read Case. */
+  function consistencySection(view: CaseView) {
+    const roles = consistencyRoles(view);
+    const formState = <Draft,>(
+      kind: 'discrepancy' | 'discrepancyResolution',
+      feedback: Feedback,
+      draft: Draft,
+    ) => ({
+      draft,
+      feedback: feedbackMessage(kind, feedback),
+      saving: feedback.status === 'saving',
+      invalid: feedback.status === 'refused',
+      describedBy: describedFeedback(kind, feedback),
+    });
+    const clearRefusal = (
+      feedback: Feedback,
+      set: (next: Feedback) => void,
+    ) => {
+      if (
+        feedback.status === 'saved' ||
+        (feedback.status === 'refused' && !feedback.reload)
+      )
+        set(IDLE);
+    };
+    return (
+      <ConsistencyRegion
+        prefix={prefix}
+        detail={view.caseDetail}
+        register={view.register}
+        timeline={view.timeline}
+        roles={roles}
+        busy={busy}
+        manual={{
+          ...formState('discrepancy', manualFeedback, manualDraft),
+          open: manualOpen,
+        }}
+        onManualOpen={(open) => {
+          setManualOpen(open);
+          if (!open) setManualDraft(emptyManualDraft());
+          setManualFeedback(IDLE);
+        }}
+        onManualDraft={(draft) => {
+          setManualDraft(draft);
+          clearRefusal(manualFeedback, setManualFeedback);
+        }}
+        onManualSubmit={submitManual}
+        resolution={formState(
+          'discrepancyResolution',
+          resolutionFeedback,
+          resolutionDraft,
+        )}
+        onResolutionDraft={(draft) => {
+          const reopened =
+            draft === null ||
+            draft.discrepancyId !== resolutionDraft?.discrepancyId ||
+            draft.resolution !== resolutionDraft.resolution;
+          setResolutionDraft(draft);
+          if (reopened) setResolutionFeedback(IDLE);
+          else clearRefusal(resolutionFeedback, setResolutionFeedback);
+        }}
+        onResolutionSubmit={submitResolution}
+      />
+    );
+  }
+
   function retry(kind: MutationKind, feedback: Feedback) {
     if (feedback.status === 'uncertain') void execute(kind, feedback.intent);
   }
@@ -2115,6 +2340,8 @@ function CertificationRegistry(
     team: `${prefix}-team-feedback`,
     decision: `${prefix}-decision-feedback`,
     finding: `${prefix}-finding-feedback`,
+    discrepancy: `${prefix}-discrepancy-feedback`,
+    discrepancyResolution: `${prefix}-discrepancy-resolution-feedback`,
     stage1Plan: `${prefix}-stage-1-plan-feedback`,
     stage2Plan: `${prefix}-stage-2-plan-feedback`,
     stage1Report: `${prefix}-stage-1-report-feedback`,
@@ -2166,6 +2393,7 @@ function CertificationRegistry(
               )}
             </p>
             <PreconditionList failures={feedback.failures} />
+            {namedDiscrepancies(feedback.discrepancies)}
           </div>
         );
     }
@@ -2366,6 +2594,8 @@ function CertificationRegistry(
             teamFeedback,
             decisionFeedback,
             findingFeedback,
+            manualFeedback,
+            resolutionFeedback,
             ...Object.values(stageFeedback),
             ...Object.values(closingFeedback),
           ].some((feedback) => feedback.status === 'saved') && (
@@ -2461,6 +2691,7 @@ function CertificationRegistry(
                   {copy('nextFindingsFollowUpPending')}
                 </p>
               )}
+              {consistencySection(caseView)}
               <section aria-labelledby={`${prefix}-application-title`}>
                 <h5 id={`${prefix}-application-title`}>
                   {copy('applicationTitle')}
@@ -2690,10 +2921,10 @@ function CertificationRegistry(
   /** The application form, or the plain-language reason it is unavailable. */
   function applicationStep(current: CaseDetail) {
     if (current.status === 'rejected') return null;
-    if (current.applicationReview)
+    if (current.decision !== null || current.status !== 'open')
       return (
         <p className="certification-blocked">
-          {copy('blockedApplicationReviewed')}
+          {copy('blockedApplicationDecided')}
         </p>
       );
     const application = current.application;
@@ -3869,6 +4100,12 @@ function CertificationRegistry(
           <div className="certification-blocked">
             <p>{copy('decisionPreconditionsTitle')}</p>
             <PreconditionList failures={unmet} />
+            {namedDiscrepancies(
+              blockingDecision(current.consistency).map((entry) => ({
+                id: entry.id,
+                rule: entry.rule ?? 'manual',
+              })),
+            )}
           </div>
         )}
         <CertificationDecisionForm
@@ -4353,6 +4590,8 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
     case 'review':
     case 'attach':
     case 'decision':
+    case 'discrepancy':
+    case 'discrepancyResolution':
       return 'blockedCorrectionReason';
   }
   return unexpected(kind);
@@ -4381,6 +4620,9 @@ function independenceRefusal(kind: MutationKind): Feedback {
     case 'stage1Report':
     case 'stage2Report':
       return refusedWith('actingOnTeam');
+    case 'discrepancy':
+    case 'discrepancyResolution':
+      return refusedWith('discrepancyIndependence', true);
     case 'decision':
     case 'open':
     case 'application':
@@ -4408,6 +4650,9 @@ function attachmentRoleRefusal(kind: MutationKind): CertificationMessageKey {
       return 'certificateDataDocumentRole';
     case 'certificate':
       return 'certificatePdfRole';
+    case 'discrepancy':
+    case 'discrepancyResolution':
+      return 'discrepancyDocumentUnavailable';
     case 'open':
     case 'application':
     case 'review':
@@ -4451,6 +4696,8 @@ function attestationRefusal(kind: MutationKind): CertificationMessageKey {
     case 'stage2Report':
     case 'recommendation':
     case 'certificateData':
+    case 'discrepancy':
+    case 'discrepancyResolution':
       return 'decisionAttestationRequired';
   }
   return unexpected(kind);
@@ -4462,8 +4709,14 @@ function attestationRefusal(kind: MutationKind): CertificationMessageKey {
  */
 function preconditionsRefusal(result: ApiResult<unknown>): Feedback {
   const failures = parseDecisionFailures(conflictFailures(result));
+  const named = parseBlockingDiscrepancies(conflictDiscrepancies(result));
   return failures
-    ? { status: 'unmet', source: 'server', failures }
+    ? {
+        status: 'unmet',
+        source: 'server',
+        failures,
+        discrepancies: named ?? [],
+      }
     : refusedWith('decisionPreconditionsUnknown', true);
 }
 
@@ -4828,8 +5081,18 @@ function commandFeedback(
           return refusedWith('durationNotAccepted', true);
         case 'CERTIFICATION_ORDER_REFERENCE_TAKEN':
           return refusedWith('referenceTaken');
-        case 'CERTIFICATION_APPLICATION_REVIEWED':
-          return refusedWith('blockedApplicationReviewed', true);
+        case 'CERTIFICATION_DISCREPANCY_NOT_OPEN':
+          return refusedWith('discrepancyNotOpen', true);
+        case 'CERTIFICATION_DISCREPANCY_CRITICAL':
+          return refusedWith('discrepancyCritical', true);
+        case 'CERTIFICATION_DISCREPANCY_CORRECTED_BY_RECORD':
+          return refusedWith('discrepancyCorrectedByRecord', true);
+        case 'CERTIFICATION_NOT_ON_TEAM':
+          return refusedWith('discrepancyNotOnTeam', true);
+        case 'CERTIFICATION_CORRECTING_RECORD_UNKNOWN':
+          return refusedWith('discrepancyCorrectionUnknown', true);
+        case 'CERTIFICATION_DISCREPANCIES_OPEN':
+          return refusedWith('certificateDiscrepanciesOpen', true);
         case 'CERTIFICATION_APPLICATION_MISSING':
           return refusedWith('blockedReviewBeforeApplication', true);
         case 'CERTIFICATION_APPLICATION_ALREADY_REVIEWED':
