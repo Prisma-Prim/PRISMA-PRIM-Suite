@@ -764,6 +764,13 @@
       "when": 1794130980316,
       "tag": "0108_certification_certificate_attestation",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1794412973461,
+      "tag": "0109_document_frozen_pdf",
+      "breakpoints": true
     }
   ]
 }

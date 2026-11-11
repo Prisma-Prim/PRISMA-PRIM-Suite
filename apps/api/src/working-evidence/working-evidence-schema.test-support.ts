@@ -1,3 +1,4 @@
+import { conserveFrozenPdfPolicyUpgrade } from '../documents/frozen-pdf-policy-schema.test-support.js';
 import { types } from 'pg';
 import { expect } from 'vitest';
 import { withoutCertificationSchema } from '../certification/certification-schema.test-support.js';
@@ -89,7 +90,9 @@ export function conserveWorkingEvidenceSchema(
   after: Record<string, unknown>,
   tables: readonly string[],
 ) {
-  const normalized = withoutWorkingEvidenceSchema(after);
+  const normalized = withoutWorkingEvidenceSchema(
+    conserveFrozenPdfPolicyUpgrade(before, after),
+  );
   for (const [kind, rows] of Object.entries(before))
     for (const entry of fixtureObjects(rows))
       expect(

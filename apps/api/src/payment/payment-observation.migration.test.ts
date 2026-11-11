@@ -1,3 +1,4 @@
+import { conserveFrozenPdfPolicyUpgrade } from '../documents/frozen-pdf-policy-schema.test-support.js';
 import { certificationTables } from '../certification/certification-schema.test-support.js';
 import {
   workingEvidenceExistingTableTriggers,
@@ -224,7 +225,9 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
           );
         }
         const after = await paymentPredecessorSchema(database.targetPool),
-          normalized = withoutReceivedAddendumSchema(after);
+          normalized = withoutReceivedAddendumSchema(
+            conserveFrozenPdfPolicyUpgrade(schema, after),
+          );
         for (const [kind, rows] of Object.entries(schema))
           for (const entry of fixtureObjects(rows))
             expect(

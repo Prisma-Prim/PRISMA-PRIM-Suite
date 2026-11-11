@@ -123,7 +123,11 @@ export class InvoiceRecordService {
           if (current.row.revision === 2147483647)
             conflict('STALE_INVOICE_RECORD');
           if (body.action === 'CORRECT') {
-            await this.source.qualify(actor, current.snapshot.source);
+            await this.source.qualify(
+              actor,
+              current.snapshot.source,
+              'recorded',
+            );
             if (isDeepStrictEqual(body.values, current.head.after.values))
               conflict('INVOICE_NO_CHANGE');
           }
@@ -254,6 +258,7 @@ export class InvoiceRecordService {
             await this.source.qualifyEligibility(
               actor,
               current.snapshot.source,
+              'recorded',
             );
             canCorrect = true;
           } catch (e) {

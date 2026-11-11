@@ -11,6 +11,11 @@ import { ClientOperationalReferenceService } from '../client/client-operational-
 import { ContractExternalInvoiceReferenceService } from '../contract/contract-external-invoice-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  clientAccounts,
+  clientCompanyRelationships,
+  contracts,
+  contractVersions,
+  contractSigningDeclarations,
   documentPdfs,
   documentVersions,
   externalInvoiceDocumentRelations,
@@ -18,6 +23,10 @@ import {
 } from '../database/schema/index.js';
 import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentContentService } from './document-content.service.js';
+import {
+  documentVersionPdfQuery,
+  frozenDocumentPdfPredicate,
+} from './document-version-pdf-query.js';
 
 export interface DocumentInvoiceTuple {
   documentId: string;
@@ -189,14 +198,16 @@ export class DocumentInvoiceRecordSource {
   async qualify(
     actor: ActorContext,
     tuple: DocumentInvoiceTuple,
+    use: 'new' | 'recorded' = 'new',
   ): Promise<DocumentInvoiceSnapshot> {
-    const snapshot = await this.qualifyEligibility(actor, tuple);
+    const snapshot = await this.qualifyEligibility(actor, tuple, use);
     await this.download(actor, tuple);
     return snapshot;
   }
   async qualifyEligibility(
     actor: ActorContext,
     tuple: DocumentInvoiceTuple,
+    use: 'new' | 'recorded' = 'new',
   ): Promise<DocumentInvoiceSnapshot> {
     const company = actor.activeCompany;
     if (!company) throw new ForbiddenException();
@@ -215,34 +226,21 @@ export class DocumentInvoiceRecordSource {
       actor,
       selection: relation,
     });
-    const [row] = await this.database.connection
-      .select({
-        document: workingDocuments,
-        version: documentVersions,
-        pdf: {
-          id: documentPdfs.id,
-          size: documentPdfs.size,
-          sha256: documentPdfs.sha256,
-        },
-      })
-      .from(workingDocuments)
-      .innerJoin(
-        documentVersions,
-        and(
-          eq(documentVersions.documentId, workingDocuments.id),
-          eq(documentVersions.workspaceId, workingDocuments.workspaceId),
-          eq(documentVersions.companyId, workingDocuments.companyId),
-        ),
-      )
-      .innerJoin(
-        documentPdfs,
-        and(
-          eq(documentPdfs.workspaceId, documentVersions.workspaceId),
-          eq(documentPdfs.companyId, documentVersions.companyId),
-          eq(documentPdfs.documentId, documentVersions.documentId),
-          eq(documentPdfs.versionId, documentVersions.id),
-        ),
-      )
+    const [row] = await documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          document: workingDocuments,
+          version: documentVersions,
+          pdf: {
+            id: documentPdfs.id,
+            size: documentPdfs.size,
+            sha256: documentPdfs.sha256,
+          },
+          frozen: frozenDocumentPdfPredicate(),
+        })
+        .from(workingDocuments)
+        .$dynamic(),
+    )
       .where(
         and(
           eq(workingDocuments.workspaceId, actor.workspaceId),
@@ -255,7 +253,7 @@ export class DocumentInvoiceRecordSource {
       .for('share', { of: documentVersions });
     if (!row || row.document.type !== 'external-invoice')
       throw new NotFoundException();
-    if (row.version.status === 'draft')
+    if (row.version.status === 'draft' || (use === 'new' && !row.frozen))
       throw new ConflictException({
         code: 'INVOICE_SOURCE_NOT_ELIGIBLE',
         message: 'Select an exact official or superseded financial source.',
@@ -291,29 +289,76 @@ export class DocumentInvoiceRecordSource {
       { action: 'content-read', lockAssignment: true },
     );
     await this.requireAuthority(actor);
-    const result = await this.database.connection.execute<{
-      documentId: string;
-      documentVersionId: string;
-      representationId: string;
-      documentTitle: string;
-      versionNumber: number;
-      versionState: 'official' | 'superseded';
-      fileName: string;
-      byteLength: number;
-      sha256: string;
-    }>(sql`
-   SELECT d.id AS "documentId",v.id AS "documentVersionId",p.id AS "representationId",v.frozen_title AS "documentTitle",v.number AS "versionNumber",v.status AS "versionState",p.file_name AS "fileName",p.size AS "byteLength",p.sha256 FROM working_documents d JOIN document_versions v ON (v.workspace_id,v.company_id,v.document_id)=(d.workspace_id,d.company_id,d.id) JOIN document_pdfs p ON (p.workspace_id,p.company_id,p.document_id,p.version_id)=(v.workspace_id,v.company_id,v.document_id,v.id) JOIN external_invoice_document_relations r ON (r.workspace_id,r.company_id,r.document_id)=(d.workspace_id,d.company_id,d.id) JOIN contracts c ON (c.workspace_id,c.company_id,c.id)=(r.workspace_id,r.company_id,r.contract_id) JOIN contract_versions cv ON (cv.workspace_id,cv.company_id,cv.contract_id,cv.id)=(r.workspace_id,r.company_id,r.contract_id,r.contract_version_id) JOIN contract_signing_declarations sd ON (sd.workspace_id,sd.company_id,sd.contract_id,sd.contract_version_id)=(cv.workspace_id,cv.company_id,cv.contract_id,cv.id) JOIN client_accounts cl ON (cl.workspace_id,cl.id)=(d.workspace_id,d.client_id) JOIN client_company_relationships cr ON (cr.workspace_id,cr.company_id,cr.client_account_id)=(d.workspace_id,d.company_id,d.client_id)
-   WHERE d.workspace_id=${actor.workspaceId}::uuid AND d.company_id=${companyId}::uuid AND d.type='external-invoice' AND v.status IN ('official','superseded') AND p.scan_outcome='clean' AND c.kind='CONTRACT' AND c.origin='COMPANY_MODEL_OFFER' AND cv.provenance='COMPANY_MODEL_OFFER' AND cv.decision_state='APPROVED' AND cv.execution_state='EXECUTED' AND cl.status='active' AND cr.status='active'
-   ${after ? sql`AND (d.id,v.id,p.id)>(${after.documentId}::uuid,${after.documentVersionId}::uuid,${after.representationId}::uuid)` : sql``}
-   ORDER BY d.id,v.id,p.id LIMIT 26`);
+    const result = await documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          documentId: workingDocuments.id,
+          documentVersionId: documentVersions.id,
+          representationId: documentPdfs.id,
+          documentTitle: documentVersions.frozenTitle,
+          versionNumber: documentVersions.number,
+          versionState: documentVersions.status,
+          fileName: documentPdfs.fileName,
+          byteLength: documentPdfs.size,
+          sha256: documentPdfs.sha256,
+        })
+        .from(workingDocuments)
+        .$dynamic(),
+    )
+      .innerJoin(
+        externalInvoiceDocumentRelations,
+        sql`(${externalInvoiceDocumentRelations.workspaceId},${externalInvoiceDocumentRelations.companyId},${externalInvoiceDocumentRelations.documentId})=(${workingDocuments.workspaceId},${workingDocuments.companyId},${workingDocuments.id})`,
+      )
+      .innerJoin(
+        contracts,
+        sql`(${contracts.workspaceId},${contracts.companyId},${contracts.id})=(${externalInvoiceDocumentRelations.workspaceId},${externalInvoiceDocumentRelations.companyId},${externalInvoiceDocumentRelations.contractId})`,
+      )
+      .innerJoin(
+        contractVersions,
+        sql`(${contractVersions.workspaceId},${contractVersions.companyId},${contractVersions.contractId},${contractVersions.id})=(${externalInvoiceDocumentRelations.workspaceId},${externalInvoiceDocumentRelations.companyId},${externalInvoiceDocumentRelations.contractId},${externalInvoiceDocumentRelations.contractVersionId})`,
+      )
+      .innerJoin(
+        contractSigningDeclarations,
+        sql`(${contractSigningDeclarations.workspaceId},${contractSigningDeclarations.companyId},${contractSigningDeclarations.contractId},${contractSigningDeclarations.contractVersionId})=(${contractVersions.workspaceId},${contractVersions.companyId},${contractVersions.contractId},${contractVersions.id})`,
+      )
+      .innerJoin(
+        clientAccounts,
+        sql`(${clientAccounts.workspaceId},${clientAccounts.id})=(${workingDocuments.workspaceId},${workingDocuments.clientId})`,
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        sql`(${clientCompanyRelationships.workspaceId},${clientCompanyRelationships.companyId},${clientCompanyRelationships.clientAccountId})=(${workingDocuments.workspaceId},${workingDocuments.companyId},${workingDocuments.clientId})`,
+      )
+      .where(
+        and(
+          eq(workingDocuments.workspaceId, actor.workspaceId),
+          eq(workingDocuments.companyId, companyId),
+          eq(workingDocuments.type, 'external-invoice'),
+          frozenDocumentPdfPredicate(),
+          eq(contracts.kind, 'CONTRACT'),
+          eq(contracts.origin, 'COMPANY_MODEL_OFFER'),
+          eq(contractVersions.provenance, 'COMPANY_MODEL_OFFER'),
+          eq(contractVersions.decisionState, 'APPROVED'),
+          eq(contractVersions.executionState, 'EXECUTED'),
+          eq(clientAccounts.status, 'active'),
+          eq(clientCompanyRelationships.status, 'active'),
+          after
+            ? sql`(${workingDocuments.id},${documentVersions.id},${documentPdfs.id})>(${after.documentId}::uuid,${after.documentVersionId}::uuid,${after.representationId}::uuid)`
+            : undefined,
+        ),
+      )
+      .orderBy(workingDocuments.id, documentVersions.id, documentPdfs.id)
+      .limit(26);
     const items = [];
-    for (const row of result.rows.slice(0, 25)) {
+    for (const row of result.slice(0, 25)) {
+      if (row.documentTitle === null || row.versionState === 'draft')
+        throw new Error('Invalid frozen financial source.');
       const source = {
         documentId: row.documentId,
         documentVersionId: row.documentVersionId,
         representationId: row.representationId,
       };
-      const snapshot = await this.qualify(actor, source);
+      const snapshot = await this.qualifyEligibility(actor, source);
       items.push({
         source,
         documentTitle: row.documentTitle,
@@ -325,7 +370,7 @@ export class DocumentInvoiceRecordSource {
         copiedContext: snapshot.copiedContext,
       });
     }
-    return { items, hasMore: result.rows.length > 25 };
+    return { items, hasMore: result.length > 25 };
   }
   async project(actor: ActorContext, snapshot: DocumentInvoiceSnapshot) {
     let liveSource: DocumentInvoiceLiveSource = { kind: 'UNAVAILABLE' };
@@ -381,7 +426,11 @@ export class DocumentInvoiceRecordSource {
                 eq(documentPdfs.id, snapshot.source.representationId),
               ),
             );
-          if (pdf)
+          if (
+            pdf &&
+            pdf.size === snapshot.byteLength &&
+            pdf.sha256 === snapshot.sha256
+          )
             content = {
               kind: 'AVAILABLE',
               representationId: snapshot.source.representationId,

@@ -1,3 +1,4 @@
+import { MAXIMUM_DOCUMENT_PDF_BYTES } from '../documents/document-pdf.types.js';
 import { HttpException } from '@nestjs/common';
 
 export function refuse(
@@ -253,7 +254,7 @@ export function readSupportView(value: unknown) {
       sourcePurpose: literal(v.sourcePurpose, 2000),
       filename: literal(v.filename, 120),
       mediaType: 'application/pdf',
-      sizeBytes: integer(v.sizeBytes, 1, 5242880),
+      sizeBytes: integer(v.sizeBytes, 1, MAXIMUM_DOCUMENT_PDF_BYTES),
       sha256: v.sha256,
       locator: nullable(v.locator, 500),
       supportNote: literal(v.supportNote, 2000),

@@ -1,3 +1,4 @@
+import { conserveFrozenPdfPolicyUpgrade } from './frozen-pdf-policy-schema.test-support.js';
 import {
   withoutWorkingEvidenceSchema,
   workingEvidenceExistingTableTriggers,
@@ -85,7 +86,9 @@ export function conserveReceivedAddendumSchema(
   after: Record<string, unknown>,
   tables: readonly string[],
 ) {
-  const normalized = withoutReceivedAddendumSchema(after);
+  const normalized = withoutReceivedAddendumSchema(
+    conserveFrozenPdfPolicyUpgrade(before, after),
+  );
   for (const [kind, rows] of Object.entries(before))
     for (const entry of fixtureObjects(rows))
       expect(

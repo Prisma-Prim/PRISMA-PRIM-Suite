@@ -1,10 +1,15 @@
+import { MAXIMUM_DOCUMENT_PDF_BYTES } from './document-pdf.types.js';
+import {
+  documentVersionPdfQuery,
+  frozenDocumentPdfPredicate,
+} from './document-version-pdf-query.js';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -199,65 +204,49 @@ export class DocumentSigningReferenceService {
         receivedContractDocumentRelations.contractVersionId,
         context.contractVersionId,
       ),
-      inArray(documentVersions.status, ['official', 'superseded']),
-      eq(documentPdfs.scanOutcome, 'clean'),
-      // An official Version freezes its final successful draft upload. Earlier
-      // uploads remain downloadable history, never signing candidates.
-      sql`${documentPdfs.uploadRevision} = (SELECT max(designated_pdf.upload_revision) FROM document_pdfs designated_pdf WHERE designated_pdf.workspace_id=${documentPdfs.workspaceId} AND designated_pdf.company_id=${documentPdfs.companyId} AND designated_pdf.document_id=${documentPdfs.documentId} AND designated_pdf.version_id=${documentPdfs.versionId})`,
+      frozenDocumentPdfPredicate(),
     );
   }
   private selection() {
-    return this.database.connection
-      .select({
-        documentId: workingDocuments.id,
-        documentVersionId: documentVersions.id,
-        documentVersionNumber: documentVersions.number,
-        title: documentVersions.frozenTitle,
-        status: documentVersions.status,
-        representationId: documentPdfs.id,
-        fileName: documentPdfs.fileName,
-        mediaType: documentPdfs.mediaType,
-        size: documentPdfs.size,
-        sha256: documentPdfs.sha256,
-        scanOutcome: documentPdfs.scanOutcome,
-        scanEngine: documentPdfs.scanEngine,
-        scannedAt: documentPdfs.scannedAt,
-        storedByMembershipId: documentPdfs.storedByMembershipId,
-        storedAt: documentPdfs.storedAt,
-      })
-      .from(workingDocuments)
-      .innerJoin(
-        receivedContractDocumentRelations,
-        and(
-          eq(
-            receivedContractDocumentRelations.workspaceId,
-            workingDocuments.workspaceId,
+    return documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          documentId: workingDocuments.id,
+          documentVersionId: documentVersions.id,
+          documentVersionNumber: documentVersions.number,
+          title: documentVersions.frozenTitle,
+          status: documentVersions.status,
+          representationId: documentPdfs.id,
+          fileName: documentPdfs.fileName,
+          mediaType: documentPdfs.mediaType,
+          size: documentPdfs.size,
+          sha256: documentPdfs.sha256,
+          scanOutcome: documentPdfs.scanOutcome,
+          scanEngine: documentPdfs.scanEngine,
+          scannedAt: documentPdfs.scannedAt,
+          storedByMembershipId: documentPdfs.storedByMembershipId,
+          storedAt: documentPdfs.storedAt,
+        })
+        .from(workingDocuments)
+        .innerJoin(
+          receivedContractDocumentRelations,
+          and(
+            eq(
+              receivedContractDocumentRelations.workspaceId,
+              workingDocuments.workspaceId,
+            ),
+            eq(
+              receivedContractDocumentRelations.companyId,
+              workingDocuments.companyId,
+            ),
+            eq(
+              receivedContractDocumentRelations.documentId,
+              workingDocuments.id,
+            ),
           ),
-          eq(
-            receivedContractDocumentRelations.companyId,
-            workingDocuments.companyId,
-          ),
-          eq(receivedContractDocumentRelations.documentId, workingDocuments.id),
-        ),
-      )
-      .innerJoin(
-        documentVersions,
-        and(
-          eq(documentVersions.workspaceId, workingDocuments.workspaceId),
-          eq(documentVersions.companyId, workingDocuments.companyId),
-          eq(documentVersions.documentId, workingDocuments.id),
-        ),
-      )
-      .innerJoin(
-        documentPdfs,
-        and(
-          eq(documentPdfs.workspaceId, documentVersions.workspaceId),
-          eq(documentPdfs.companyId, documentVersions.companyId),
-          eq(documentPdfs.documentId, documentVersions.documentId),
-          eq(documentPdfs.versionId, documentVersions.id),
-        ),
-      )
-      .$dynamic();
+        )
+        .$dynamic(),
+    );
   }
 }
 
@@ -289,7 +278,8 @@ export function readConservedSigningPdf(value: unknown) {
   )
     throw new Error('Invalid conserved signing PDF.');
   const size = modelInteger(row.size, 1);
-  if (size > 5242880) throw new Error('Invalid conserved signing PDF size.');
+  if (size > MAXIMUM_DOCUMENT_PDF_BYTES)
+    throw new Error('Invalid conserved signing PDF size.');
   const instant = (value: unknown): string => {
     if (
       typeof value !== 'string' ||
