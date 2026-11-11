@@ -1,3 +1,4 @@
+import { CompanyRoleAssignmentController } from './company-role-assignment.controller.js';
 import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import type {
   CanActivate,
@@ -28,9 +29,7 @@ import {
   ActorContextAdapter,
   type ActorContextRequest,
 } from './actor-context.adapter.js';
-import { CompanyContextAssignmentController } from './company-context-assignment.controller.js';
 import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
-import { CompanyDirectorClientAssignmentController } from './company-director-client-assignment.controller.js';
 import { WorkspaceMembershipSuspensionController } from './workspace-membership-suspension.controller.js';
 import { WorkspaceMembershipSuspensionService } from './workspace-membership-suspension.service.js';
 
@@ -134,9 +133,8 @@ describe('Controllers without an established actor context', () => {
         ActivityLogController,
         ClientController,
         ClientDuplicateReviewController,
-        CompanyContextAssignmentController,
+        CompanyRoleAssignmentController,
         CompanyController,
-        CompanyDirectorClientAssignmentController,
         WorkspaceMembershipSuspensionController,
       ],
       providers: [
@@ -163,10 +161,7 @@ describe('Controllers without an established actor context', () => {
           provide: CompanyContextAssignmentService,
           useValue: serviceDouble([
             'readAdministrationState',
-            'grant',
-            'revoke',
-            'grantDirectorClientAccess',
-            'revokeDirectorClientAccess',
+            'executeAssignment',
           ]),
         },
         {

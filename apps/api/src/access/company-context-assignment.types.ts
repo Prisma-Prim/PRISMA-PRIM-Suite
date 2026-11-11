@@ -54,7 +54,9 @@ export interface CompanyAccessAdministrationState {
   assignments: CompanyContextAssignmentRecord[];
 }
 
-export interface GrantCompanyContextAssignmentCommand {
+export interface CompanyRoleAssignmentCommand {
+  bundle: CompanyRoleBundle;
+  operation: 'grant' | 'revoke';
   workspaceMembershipId: unknown;
   companyId: unknown;
   idempotencyKey: string | undefined;

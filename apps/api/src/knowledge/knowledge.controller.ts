@@ -108,7 +108,9 @@ export class KnowledgeAssignmentController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const input = object(body, ['workspaceMembershipId', 'companyId']);
-    return this.assignments.grantKnowledgeSourceAdministrator(actor(request), {
+    return this.assignments.executeAssignment(actor(request), {
+      bundle: 'company_knowledge_source_administrator',
+      operation: 'grant',
       ...input,
       workspaceMembershipId: input.workspaceMembershipId,
       companyId: input.companyId,
@@ -122,7 +124,9 @@ export class KnowledgeAssignmentController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const input = object(body, ['workspaceMembershipId', 'companyId']);
-    return this.assignments.grantKnowledgeEvidenceReader(actor(request), {
+    return this.assignments.executeAssignment(actor(request), {
+      bundle: 'company_knowledge_evidence_reader',
+      operation: 'grant',
       ...input,
       workspaceMembershipId: input.workspaceMembershipId,
       companyId: input.companyId,
@@ -136,12 +140,13 @@ export class KnowledgeAssignmentController {
     @Param('companyId') companyId: string,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.assignments.revokeKnowledgeSourceAdministrator(
-      actor(request),
-      membershipId,
+    return this.assignments.executeAssignment(actor(request), {
+      bundle: 'company_knowledge_source_administrator',
+      operation: 'revoke',
+      workspaceMembershipId: membershipId,
       companyId,
-      key,
-    );
+      idempotencyKey: key,
+    });
   }
   @Delete('readers/:membershipId/:companyId')
   revokeReader(
@@ -150,12 +155,13 @@ export class KnowledgeAssignmentController {
     @Param('companyId') companyId: string,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.assignments.revokeKnowledgeEvidenceReader(
-      actor(request),
-      membershipId,
+    return this.assignments.executeAssignment(actor(request), {
+      bundle: 'company_knowledge_evidence_reader',
+      operation: 'revoke',
+      workspaceMembershipId: membershipId,
       companyId,
-      key,
-    );
+      idempotencyKey: key,
+    });
   }
 }
 function actor(request: ActorContextRequest) {
