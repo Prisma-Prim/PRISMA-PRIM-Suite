@@ -134,8 +134,10 @@ Steps, in order:
 8. `findings_follow_up` — every nonconformity answered; major nonconformities implemented and verified; minor nonconformities with a plan judged adequate.
 9. `recommendation` — recorded by the team leader.
 10. `dossier_review` — completed by an approver.
-11. `decision` — recorded once; immutable.
+11. `decision` — the first version fixes the outcome; a later version corrects only the granted texts and references, with a reason, until the Certificate is recorded ([#1152](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1152)).
 12. `certificate` — data agreed with the client, then the Certificate recorded after a granting decision.
+
+The [certification dossier control PRD](release-4-certification-dossier-control-prd.md), ready for product review, restates the decision rule and proposes the Certificate data before the dossier review, the Certificate release circuit and revisions after issuance.
 
 Derived dates, displayed and never stored as decisions: the response due date of a nonconformity (two weeks after the last day of its Audit); the six-month limits of section 10; the Certificate expiry; the latest start of the first surveillance (twelve months after the decision). A Case that passes a six-month limit cannot continue in this journey; repeating a Stage or an additional audit belongs to a later contract.
 
