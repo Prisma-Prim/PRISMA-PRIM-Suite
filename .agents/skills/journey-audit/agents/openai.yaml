@@ -1,0 +1,5 @@
+interface:
+  display_name: "Journey Audit"
+  short_description: "Walk acceptance journeys by role and width; report confirmed inconsistencies"
+policy:
+  allow_implicit_invocation: false
