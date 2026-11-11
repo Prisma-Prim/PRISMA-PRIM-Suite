@@ -189,6 +189,45 @@ function seededCase(
   return caseId;
 }
 
+/**
+ * A Case with both Stages reported and a grant recommended, whose team
+ * leaves the approver independent; the dossier is not yet reviewed.
+ */
+function recommendedCase(server: FakeCertificationServer, reference: string) {
+  const caseId = server.seedApprovedTeam({
+    orderReference: reference,
+    leader: null,
+  });
+  for (const [step, value] of [
+    ['stage_1_plan', stagePlan],
+    ['stage_1_report', stage1Report],
+    ['stage_2_plan', stagePlan],
+    ['stage_2_report', stage2Report],
+  ] as const) {
+    const attachment = server.attachAsColleague(
+      caseId,
+      server.addSource(`Fictional ${step}`),
+      step.endsWith('plan') ? 'plan' : 'report',
+    );
+    server.recordStageAsColleague(
+      caseId,
+      step,
+      step === 'stage_2_plan'
+        ? stagePlan(attachment, {
+            startDate: '2026-11-20',
+            endDate: '2026-11-21',
+            onSiteDays: '2',
+          })
+        : value(attachment),
+    );
+  }
+  server.recordStepAsColleague(caseId, 'recommendation', {
+    recommendation: 'grant',
+    basis: 'Fictional basis.',
+  });
+  return caseId;
+}
+
 describe('Dossier consistency region', () => {
   it('shows the counts per verdict, both values with their sources and the act each Discrepancy blocks, or the empty state', async () => {
     const { server, actor } = serve({ manager: true });
@@ -540,37 +579,7 @@ describe('Dossier consistency region', () => {
     vi.unstubAllGlobals();
 
     const approver = serve({ manager: false, approver: true });
-    const caseId = approver.server.seedApprovedTeam({
-      orderReference: 'CERT-GATE',
-      leader: null,
-    });
-    for (const [step, value] of [
-      ['stage_1_plan', stagePlan],
-      ['stage_1_report', stage1Report],
-      ['stage_2_plan', stagePlan],
-      ['stage_2_report', stage2Report],
-    ] as const) {
-      const attachment = approver.server.attachAsColleague(
-        caseId,
-        approver.server.addSource(`Fictional ${step}`),
-        step.endsWith('plan') ? 'plan' : 'report',
-      );
-      approver.server.recordStageAsColleague(
-        caseId,
-        step,
-        step === 'stage_2_plan'
-          ? stagePlan(attachment, {
-              startDate: '2026-11-20',
-              endDate: '2026-11-21',
-              onSiteDays: '2',
-            })
-          : value(attachment),
-      );
-    }
-    approver.server.recordStepAsColleague(caseId, 'recommendation', {
-      recommendation: 'grant',
-      basis: 'Fictional basis.',
-    });
+    const caseId = recommendedCase(approver.server, 'CERT-GATE');
     approver.server.recordStepAsColleague(
       caseId,
       'dossier_review',
@@ -593,6 +602,86 @@ describe('Dossier consistency region', () => {
     expect(
       within(decision).getByRole('list', { name: 'Open Discrepancies' }),
     ).toHaveTextContent('R01 — Audit duration against the current application');
+  });
+
+  it('shows the unmet decision preconditions and the blocking Discrepancies once after a blocked submit, and announces them', async () => {
+    const intro =
+      'The Certification Decision cannot be recorded until these preconditions hold:';
+    const { server, actor } = serve({ manager: false, approver: true });
+    const caseId = recommendedCase(server, 'CERT-BLOCKED');
+    server.seedDiscrepancy(caseId, ruleDiscrepancy('R01'));
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-BLOCKED');
+    const decision = screen.getByRole('region', {
+      name: 'Certification Decision',
+    });
+    const decisionForm = within(decision).getByRole('form', {
+      name: 'Record the Certification Decision',
+    });
+    fireEvent.click(
+      within(decisionForm).getByRole('radio', {
+        name: 'Certification refused',
+      }),
+    );
+    change(within(decisionForm).getByLabelText('Decision date'), '2026-11-06');
+    change(
+      within(decisionForm).getByLabelText('Decision maker'),
+      'Decision Maker Demo',
+    );
+    change(
+      within(decisionForm).getByLabelText('Function of the decision maker'),
+      'Head of the certification body',
+    );
+    change(
+      within(decisionForm).getByLabelText('Rationale'),
+      'Fictional rationale.',
+    );
+    fireEvent.click(
+      within(decisionForm).getByRole('checkbox', {
+        name: 'I attest that the decision maker is not a member of the audit team.',
+      }),
+    );
+    fireEvent.click(
+      within(decisionForm).getByRole('button', { name: 'Record the decision' }),
+    );
+
+    // One sentence, one list of preconditions and one list of Discrepancies,
+    // all in the announced alert.
+    const blocked = await within(decision).findByRole('alert');
+    expect(within(decision).getAllByText(intro)).toEqual([
+      within(blocked).getByText(intro),
+    ]);
+    const lists = (name: string) =>
+      within(decision).getAllByRole('list', { name });
+    expect(lists('Unmet decision preconditions')).toEqual([
+      within(blocked).getByRole('list', {
+        name: 'Unmet decision preconditions',
+      }),
+    ]);
+    expect(
+      within(blocked)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'The dossier review is not recorded, or it lists a missing item.',
+      'A critical Discrepancy or an unaccepted error is open in the dossier consistency.',
+      'R01 — Audit duration against the current application',
+    ]);
+    expect(lists('Open Discrepancies')).toEqual([
+      within(blocked).getByRole('list', { name: 'Open Discrepancies' }),
+    ]);
+    expect(server.mutations()).toEqual([]);
+
+    // An edit answers the alert; the standing notice lists them once again.
+    change(
+      within(decisionForm).getByLabelText('Rationale'),
+      'Fictional rationale, revised.',
+    );
+    expect(within(decision).queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(decision).getAllByText(intro)).toHaveLength(1);
+    expect(lists('Unmet decision preconditions')).toHaveLength(1);
+    expect(lists('Open Discrepancies')).toHaveLength(1);
   });
 
   it('is available in Romanian, Russian, French and English', async () => {
