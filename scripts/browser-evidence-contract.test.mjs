@@ -210,7 +210,10 @@ test('every acceptance spec is selected by file-name convention, not by a list',
 test('acceptance failures retain first-attempt evidence without a retry', async () => {
   const config = await readFile(acceptanceConfigUrl, 'utf8');
   assert.match(config, /trace: 'retain-on-failure'/u);
-  assert.match(config, /screenshot: 'only-on-failure'/u);
+  // Every journey, passing or failing, keeps a final screenshot per width:
+  // the acceptance-proof check requires desktop and narrow screenshots of the
+  // journey cited as visual proof.
+  assert.match(config, /screenshot: 'on'/u);
   assert.doesNotMatch(config, /retries:\s*[1-9]/u);
 
   const workflow = (await readFile(workflowUrl, 'utf8')).replaceAll(

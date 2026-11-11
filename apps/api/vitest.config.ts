@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config';
 const stepSummaryReporter = fileURLToPath(
   new URL('../../scripts/vitest-step-summary-reporter.mjs', import.meta.url),
 );
+// In CI, the acceptance-proof check (scripts/verify-acceptance-proof.mjs)
+// reads the run's results from this JSON file.
+const resultsFile = process.env.CI_TEST_RESULTS_FILE;
 
 export default defineConfig({
   test: {
@@ -12,8 +15,14 @@ export default defineConfig({
     // keeps Vitest's own default selection (never `undefined`: that crashes).
     reporters:
       process.env.GITHUB_ACTIONS === 'true'
-        ? ['default', 'github-actions', stepSummaryReporter]
+        ? [
+            'default',
+            'github-actions',
+            stepSummaryReporter,
+            ...(resultsFile ? ['json'] : []),
+          ]
         : [],
+    outputFile: resultsFile ? { json: resultsFile } : undefined,
     // Each PostgreSQL-backed REST file creates and migrates its own database.
     // Measured on a 16-thread host (#571): one worker per core timed out 19
     // of 109 files, while 6 workers passed all of them and finished sooner.

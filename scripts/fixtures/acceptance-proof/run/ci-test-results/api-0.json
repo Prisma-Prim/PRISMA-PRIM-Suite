@@ -1,0 +1,49 @@
+{
+  "numTotalTestSuites": 3,
+  "numTotalTests": 5,
+  "success": false,
+  "testResults": [
+    {
+      "name": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/api/src/client/client-registration.rest.test.ts",
+      "status": "failed",
+      "assertionResults": [
+        {
+          "ancestorTitles": ["Client registration"],
+          "title": "registers a Client in the actor's Company",
+          "fullName": "Client registration registers a Client in the actor's Company",
+          "status": "passed"
+        },
+        {
+          "ancestorTitles": ["Client registration"],
+          "title": "rejects a duplicate legal identifier",
+          "fullName": "Client registration rejects a duplicate legal identifier",
+          "status": "failed"
+        },
+        {
+          "ancestorTitles": ["Client registration"],
+          "title": "imports a legacy register",
+          "fullName": "Client registration imports a legacy register",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "name": "/home/runner/work/PRISMA-PRIM-Suite/PRISMA-PRIM-Suite/apps/api/src/client/client-archive.service.test.ts",
+      "status": "passed",
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "title": "archives a Client",
+          "fullName": "archives a Client",
+          "status": "passed"
+        },
+        {
+          "ancestorTitles": [],
+          "title": "keeps the archive history",
+          "fullName": "keeps the archive history",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

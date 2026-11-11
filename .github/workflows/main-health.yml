@@ -49,14 +49,35 @@ jobs:
         run: pnpm db:check-drift
 
       - name: Test scripts
+        env:
+          CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/scripts.json
         run: pnpm test:scripts
 
       - name: Test documentation contracts
         run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration
 
+      # Each test family keeps its results for the acceptance-proof check in
+      # `quality` (scripts/verify-acceptance-proof.mjs).
+      - name: Upload script test results
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results-scripts-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/ci-test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
   ci:
     if: ${{ github.event_name == 'schedule' }}
     uses: ./.github/workflows/ci.yml
+    # A called workflow cannot exceed its caller's permissions; the CI
+    # aggregate reads pull requests and issues for the acceptance proof.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: read
 
   report:
     needs: [checks, ci]

@@ -378,6 +378,16 @@ test('the CI reporter set keeps dot, adds GitHub annotations and the summary, an
       'playwright-step-summary-reporter.mjs',
     ),
   );
+
+  // The acceptance-proof check reads each CI run's results from this file.
+  const resultsFile = '/runner/temp/ci-test-results/acceptance-1.json';
+  assert.deepEqual(
+    ciReporter({ CI: 'true', CI_TEST_RESULTS_FILE: resultsFile }).slice(3),
+    [['json', { outputFile: resultsFile }]],
+  );
+  assert.deepEqual(ciReporter({ CI_TEST_RESULTS_FILE: resultsFile }), [
+    ['list'],
+  ]);
 });
 
 test('both Playwright suites report through the CI reporter set and the probe stays plain', async () => {
@@ -407,7 +417,8 @@ test('the mocked browser suite keeps traces and screenshots of failures without 
 
 // Outside GitHub Actions the list must be empty, never `undefined`: an
 // explicit `undefined` replaces Vitest's default list and crashes its start-up.
-test('both Vitest suites keep the built-in GitHub reporter and add the summary in GitHub Actions only', async () => {
+// The JSON results feed the acceptance-proof check, only when CI names a file.
+test('both Vitest suites keep the built-in GitHub reporter and add the summary and the CI results in GitHub Actions only', async () => {
   for (const config of [
     'apps/web/vite.config.ts',
     'apps/api/vitest.config.ts',
@@ -415,7 +426,17 @@ test('both Vitest suites keep the built-in GitHub reporter and add the summary i
     const source = await readSource(config);
     assert.match(
       source,
-      /reporters:\s*process\.env\.GITHUB_ACTIONS === 'true'\s*\?\s*\['default', 'github-actions', stepSummaryReporter\]\s*:\s*\[\],/u,
+      /reporters:\s*process\.env\.GITHUB_ACTIONS === 'true'\s*\?\s*\[\s*'default',\s*'github-actions',\s*stepSummaryReporter,\s*\.\.\.\(resultsFile \? \['json'\] : \[\]\),?\s*\]\s*:\s*\[\],/u,
+      config,
+    );
+    assert.match(
+      source,
+      /^const resultsFile = process\.env\.CI_TEST_RESULTS_FILE;$/mu,
+      config,
+    );
+    assert.match(
+      source,
+      /outputFile: resultsFile \? \{ json: resultsFile \} : undefined,/u,
       config,
     );
     assert.match(source, /scripts\/vitest-step-summary-reporter\.mjs/u, config);
