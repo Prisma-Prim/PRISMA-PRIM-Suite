@@ -1,6 +1,10 @@
 import { expect, it } from 'vitest';
 import { interfaceLocales } from '../localization/interface-locale';
 import { resolveMessage } from '../localization/messages';
+import {
+  consistencyMessages,
+  type ConsistencyMessageKey,
+} from './certification-consistency.copy';
 import type { StepVersion } from './certification-response';
 import {
   certificationMessages,
@@ -22,44 +26,87 @@ const labelModules = import.meta.glob(
 );
 
 /**
- * Where the Case page names a step: the title of each of its timeline entries,
- * and its own row of the step list, except the two Stages, whose plan and
- * report share one row.
+ * Where the Case page names a step: the title of each of its timeline entries;
+ * its own row of the step list, except the two Stages, whose plan and report
+ * share one row; and a step version cited as a Discrepancy source in the
+ * dossier consistency region.
  */
 interface PageName {
   timeline: CertificationMessageKey;
   stepList: CertificationMessageKey | null;
+  consistency: ConsistencyMessageKey;
 }
 
 const PAGE_NAMES: Readonly<Record<StepVersion['step'], PageName>> = {
-  application: { timeline: 'timelineApplication', stepList: 'stepApplication' },
-  application_review: { timeline: 'timelineReview', stepList: 'stepReview' },
-  duration: { timeline: 'timelineDuration', stepList: 'stepDuration' },
-  agreement: { timeline: 'timelineAgreement', stepList: 'stepAgreement' },
-  team: { timeline: 'timelineTeam', stepList: 'stepTeam' },
+  application: {
+    timeline: 'timelineApplication',
+    stepList: 'stepApplication',
+    consistency: 'stepApplication',
+  },
+  application_review: {
+    timeline: 'timelineReview',
+    stepList: 'stepReview',
+    consistency: 'stepApplicationReview',
+  },
+  duration: {
+    timeline: 'timelineDuration',
+    stepList: 'stepDuration',
+    consistency: 'stepDuration',
+  },
+  agreement: {
+    timeline: 'timelineAgreement',
+    stepList: 'stepAgreement',
+    consistency: 'stepAgreement',
+  },
+  team: {
+    timeline: 'timelineTeam',
+    stepList: 'stepTeam',
+    consistency: 'stepTeam',
+  },
   team_decision: {
     timeline: 'timelineTeamDecision',
     stepList: 'stepTeamDecision',
+    consistency: 'stepTeamDecision',
   },
-  stage_1_plan: { timeline: 'timelineStage1Plan', stepList: null },
-  stage_1_report: { timeline: 'timelineStage1Report', stepList: null },
-  stage_2_plan: { timeline: 'timelineStage2Plan', stepList: null },
-  stage_2_report: { timeline: 'timelineStage2Report', stepList: null },
+  stage_1_plan: {
+    timeline: 'timelineStage1Plan',
+    stepList: null,
+    consistency: 'stepStage1Plan',
+  },
+  stage_1_report: {
+    timeline: 'timelineStage1Report',
+    stepList: null,
+    consistency: 'stepStage1Report',
+  },
+  stage_2_plan: {
+    timeline: 'timelineStage2Plan',
+    stepList: null,
+    consistency: 'stepStage2Plan',
+  },
+  stage_2_report: {
+    timeline: 'timelineStage2Report',
+    stepList: null,
+    consistency: 'stepStage2Report',
+  },
   recommendation: {
     timeline: 'timelineRecommendation',
     stepList: 'stepRecommendation',
+    consistency: 'stepRecommendation',
   },
   dossier_review: {
     timeline: 'timelineDossierReview',
     stepList: 'stepDossierReview',
+    consistency: 'stepDossierReview',
   },
   decision: {
     timeline: 'timelineCertificationDecision',
     stepList: 'stepCertificationDecision',
+    consistency: 'stepDecision',
   },
   certificate_data: {
     timeline: 'timelineCertificateData',
     stepList: 'stepCertificateData',
+    consistency: 'stepCertificateData',
   },
 };
 
@@ -103,6 +150,7 @@ it('names every step version in the dossier register as the Case page does, in e
   expect([...registers.keys()].sort()).toEqual([...interfaceLocales].sort());
   const printed: Record<string, unknown> = {};
   const shown: Record<string, string> = {};
+  const cited: Record<string, string> = {};
   const listed: Record<string, string> = {};
   const listedAsShown: Record<string, string> = {};
   for (const locale of interfaceLocales) {
@@ -118,14 +166,21 @@ it('names every step version in the dossier register as the Case page does, in e
       const name = stepNameOf(message(page.timeline));
       printed[key] = steps[step];
       shown[key] = name;
+      cited[key] = resolveMessage(
+        consistencyMessages,
+        locale,
+        page.consistency,
+      );
       if (page.stepList) {
         listed[key] = message(page.stepList);
         listedAsShown[key] = name;
       }
     }
   }
-  // The step list and the timeline give a step the same name ...
+  // The step list, the timeline and the consistency region give a step the
+  // same name ...
   expect(listed).toEqual(listedAsShown);
+  expect(cited).toEqual(shown);
   // ... and the register prints each version under that name.
   expect(printed).toEqual(shown);
 });
