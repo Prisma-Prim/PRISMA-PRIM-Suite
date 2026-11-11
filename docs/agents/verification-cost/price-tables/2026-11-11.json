@@ -1,0 +1,81 @@
+{
+  "version": "2026-11-11",
+  "currency": "USD",
+  "unit": "per million tokens",
+  "source": "Anthropic first-party API list prices, https://platform.claude.com/docs/en/about-claude/pricing, read 2026-11-11 (standard speed, global inference, no batch discount). Cross-checked: Claude Code's own cost for one local session matched these prices for claude-opus-5-5 and claude-haiku-5-5.",
+  "models": {
+    "claude-fable-5-1": {
+      "input": 10,
+      "output": 50,
+      "cacheWrite5m": 12.5,
+      "cacheWrite1h": 20,
+      "cacheRead": 0.25
+    },
+    "claude-fable-5-2": {
+      "input": 8,
+      "output": 40,
+      "cacheWrite5m": 10,
+      "cacheWrite1h": 16,
+      "cacheRead": 0.2
+    },
+    "claude-haiku-5-5": {
+      "input": 0.1,
+      "output": 0.5,
+      "cacheWrite5m": 0.125,
+      "cacheWrite1h": 0.2,
+      "cacheRead": 0.01,
+      "longContext": {
+        "abovePromptTokens": 100000,
+        "input": 0.5,
+        "output": 2.5,
+        "cacheWrite5m": 0.625,
+        "cacheWrite1h": 1,
+        "cacheRead": 0.05
+      }
+    },
+    "claude-opus-5": {
+      "input": 5,
+      "output": 25,
+      "cacheWrite5m": 6.25,
+      "cacheWrite1h": 10,
+      "cacheRead": 0.5
+    },
+    "claude-opus-5-5": {
+      "input": 4,
+      "output": 20,
+      "cacheWrite5m": 5,
+      "cacheWrite1h": 8,
+      "cacheRead": 0.2
+    },
+    "claude-sonnet-5": {
+      "input": 2,
+      "output": 10,
+      "cacheWrite5m": 2.5,
+      "cacheWrite1h": 4,
+      "cacheRead": 0.2
+    },
+    "claude-sonnet-5-5": {
+      "input": 2,
+      "output": 10,
+      "cacheWrite5m": 2.5,
+      "cacheWrite1h": 4,
+      "cacheRead": 0.1
+    },
+    "codex-auto-review": {
+      "input": null,
+      "output": null,
+      "cacheWrite5m": null,
+      "cacheWrite1h": null,
+      "cacheRead": null,
+      "note": "Codex review model seen in local Codex rollouts; no published per-token price was verified for this table."
+    },
+    "gpt-6.1-sol": {
+      "input": null,
+      "output": null,
+      "cacheWrite5m": null,
+      "cacheWrite1h": null,
+      "cacheRead": null,
+      "note": "Model seen in local Codex rollouts; its OpenAI price was not verified from an authoritative source for this table."
+    }
+  }
+}
