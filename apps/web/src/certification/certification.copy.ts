@@ -1145,7 +1145,7 @@ export const certificationMessages = defineMessages(keys, {
     noFactor: 'None',
     showProposal: 'Show the computed proposal',
 
-    documentsTitle: 'Dossier register',
+    documentsTitle: 'Document archive',
     documentsHelp:
       'Exact PDFs received from the Client and attached to this Case, in the order they were attached. Each attachment keeps the exact version and its SHA-256 fingerprint.',
     documentsEmpty: 'No document is attached to this Case yet.',
@@ -1212,12 +1212,12 @@ export const certificationMessages = defineMessages(keys, {
     agreementTitle: 'Certification agreement',
     agreementMissing: 'No certification agreement is recorded yet.',
     agreementHelp:
-      'Record the date the agreement was signed and the signed original attached in the dossier register with the role Certification agreement.',
+      'Record the date the agreement was signed and the signed original attached in the document archive with the role Certification agreement.',
     agreementSignedOn: 'Signed on',
     agreementDocument: 'Signed original',
     selectAgreementDocument: 'Select the signed original',
     agreementNoDocument:
-      'No document is attached with the role Certification agreement yet. Attach the signed original in the dossier register first.',
+      'No document is attached with the role Certification agreement yet. Attach the signed original in the document archive first.',
     recordAgreement: 'Record the agreement',
     correctAgreement: 'Correct the agreement',
     agreementValidation:
@@ -1374,9 +1374,9 @@ export const certificationMessages = defineMessages(keys, {
     stage2ReportHelp:
       'Record the completion of the Stage 2 audit with the attached report, the participant list and an optional annex.',
     stageNoPlanDocument:
-      'No document is attached with the role Audit plan yet. Attach the plan PDF in the dossier register first.',
+      'No document is attached with the role Audit plan yet. Attach the plan PDF in the document archive first.',
     stageNoReportDocument:
-      'No document is attached with the role Audit report yet. Attach the report PDF in the dossier register first.',
+      'No document is attached with the role Audit report yet. Attach the report PDF in the document archive first.',
     stagePlanValidation:
       'Complete the plan: start and end dates, on-site auditor-days above zero and remote auditor-days with at most two decimals, the objectives and scope (at most 2,000 characters each) and the attached audit plan. The date sent to the client is optional.',
     stageDatesRule: 'A Stage ends on or after its start date. Check the dates.',
@@ -1494,7 +1494,7 @@ export const certificationMessages = defineMessages(keys, {
     findingEvidenceHelp:
       'PDFs attached to this Case with the role Evidence, at most ten.',
     findingNoEvidenceDocument:
-      'No document is attached with the role Evidence yet. Attach the evidence PDFs in the dossier register first: a nonconformity cites at least one.',
+      'No document is attached with the role Evidence yet. Attach the evidence PDFs in the document archive first: a nonconformity cites at least one.',
     correctFinding: 'Correct the statement of Finding {sequence}',
     changeClassification: 'Change the classification of Finding {sequence}',
     reclassifyFinding: 'Reclassify Finding {sequence}',
@@ -1614,7 +1614,7 @@ export const certificationMessages = defineMessages(keys, {
     recordDossierReview: 'Record the dossier review',
     correctDossierReview: 'Correct the dossier review',
     dossierReviewHelp:
-      'An approver who is not on the audit team answers every dossier item: present, missing or not applicable. Nothing is preselected; a missing item needs a note. This review is distinct from the document register.',
+      'An approver who is not on the audit team answers every dossier item: present, missing or not applicable. Nothing is preselected; a missing item needs a note. This review is distinct from the document archive.',
     dossierAnswerPresent: 'Present',
     dossierAnswerMissing: 'Missing',
     dossierAnswerNotApplicable: 'Not applicable',
@@ -2601,7 +2601,7 @@ export const certificationMessages = defineMessages(keys, {
     findingEvidenceHelp:
       'PDF joints à ce dossier avec le rôle Preuve, dix au plus.',
     findingNoEvidenceDocument:
-      'Aucun document n’est encore joint avec le rôle Preuve. Joignez d’abord les PDF de preuve dans le registre du dossier : une non-conformité en cite au moins un.',
+      'Aucun document n’est encore joint avec le rôle Preuve. Joignez d’abord les PDF de preuve au registre des pièces : une non-conformité en cite au moins un.',
     correctFinding: 'Corriger l’énoncé du constat {sequence}',
     changeClassification: 'Changer la classification du constat {sequence}',
     reclassifyFinding: 'Reclasser le constat {sequence}',
@@ -3716,7 +3716,7 @@ export const certificationMessages = defineMessages(keys, {
     findingEvidenceHelp:
       'PDF-uri atașate acestui dosar cu rolul Dovadă, cel mult zece.',
     findingNoEvidenceDocument:
-      'Niciun document nu este încă atașat cu rolul Dovadă. Atașați mai întâi PDF-urile de dovadă în registrul dosarului: o neconformitate citează cel puțin unul.',
+      'Niciun document nu este încă atașat cu rolul Dovadă. Atașați mai întâi PDF-urile de dovadă în registrul documentelor: o neconformitate citează cel puțin unul.',
     correctFinding: 'Corectați enunțul constatării {sequence}',
     changeClassification: 'Schimbați clasificarea constatării {sequence}',
     reclassifyFinding: 'Reclasificați constatarea {sequence}',
@@ -4820,7 +4820,7 @@ export const certificationMessages = defineMessages(keys, {
     findingEvidenceHelp:
       'PDF, приложенные к этому делу с ролью «Свидетельство», не более десяти.',
     findingNoEvidenceDocument:
-      'Документы с ролью «Свидетельство» пока не приложены. Сначала приложите PDF-свидетельства в реестре дела: несоответствие ссылается хотя бы на одно.',
+      'Документы с ролью «Свидетельство» пока не приложены. Сначала приложите PDF-свидетельства в реестре документов: несоответствие ссылается хотя бы на одно.',
     correctFinding: 'Исправить формулировку наблюдения {sequence}',
     changeClassification: 'Изменить классификацию наблюдения {sequence}',
     reclassifyFinding: 'Переклассифицировать наблюдение {sequence}',

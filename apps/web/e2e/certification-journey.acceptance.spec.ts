@@ -428,6 +428,24 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
   await test.step('the decision before the dossier review is blocked with its reason, then recorded', async () => {
     const article = await openCase(approver);
     decisionPosts.length = 0;
+    // The attached PDFs and the generated PDF carry distinct names, and the
+    // dossier review form names the archive it is distinct from.
+    const reviewForm = region(article, 'dossierReviewTitle').getByRole('form', {
+      name: copy('recordDossierReview'),
+      exact: true,
+    });
+    await expect(
+      reviewForm.getByText(copy('dossierReviewHelp'), { exact: true }),
+    ).toBeVisible();
+    await region(article, 'documentsTitle').screenshot({
+      path: info.outputPath(`certification-document-archive-${width}.png`),
+    });
+    await region(article, 'registerPdfTitle').screenshot({
+      path: info.outputPath(`certification-register-pdf-${width}.png`),
+    });
+    await reviewForm.screenshot({
+      path: info.outputPath(`certification-dossier-review-form-${width}.png`),
+    });
     const panel = region(article, 'certificationDecisionTitle');
     await expect(
       panel.getByRole('list', {
