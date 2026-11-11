@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import {
   expect,
@@ -395,7 +396,7 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
   ).toHaveLength(1);
   // Keep the browser's old Template projection while the administrator revokes
   // the actual grant. Only the transport dispatch is held; the backend decides403.
-  await page.unroute('**/api/projects/from-template');
+  await removeRoute(page, '**/api/projects/from-template');
   let releaseCreation: (() => void) | undefined;
   const creationGate = new Promise<void>((resolve) => {
     releaseCreation = resolve;
@@ -1302,7 +1303,7 @@ async function reloadProjects({
     await expect(title).toBeVisible();
   } finally {
     release();
-    await page.unroute(pattern, holdReload);
+    await removeRoute(page, pattern, holdReload);
   }
 }
 

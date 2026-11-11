@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -203,7 +204,7 @@ test('records reported signing through exact uncertain retries, literal locale/f
   if (!downloadedPath)
     throw new Error('Missing independently conserved PDF download.');
   expect(await readFile(downloadedPath)).toEqual(ready.pdfA);
-  await page.unroute(selectedPdfRoute);
+  await removeRoute(page, selectedPdfRoute);
   await ready.command('/company-contract-signature-declarer-assignments', {
     companyId: ready.companyId,
     workspaceMembershipId: ready.preparerId,
@@ -376,7 +377,7 @@ test('records reported signing through exact uncertain retries, literal locale/f
     panel.getByRole('button', { name: 'Retry the identical declaration' }),
   ).toHaveCount(0);
   releaseOldReload?.();
-  await page.unroute(rootReadRoute);
+  await removeRoute(page, rootReadRoute);
   await expect(
     panel.getByRole('heading', { name: 'Recorded declaration' }),
   ).toBeVisible();

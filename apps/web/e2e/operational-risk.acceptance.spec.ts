@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import {
   expect,
@@ -170,7 +171,7 @@ test('explicitly records, replays, follows and corrects a confidential Company R
   // Unroute only after the refreshed Risk is visible. Removing the last route
   // turns request interception off, and a read still in flight at that moment
   // never settles (#1082).
-  await page.unroute('**/api/operational-risks');
+  await removeRoute(page, '**/api/operational-risks');
   await expect(risks.locator('script')).toHaveCount(0);
 
   for (const kind of ['observation', 'reassessment']) {
@@ -499,7 +500,7 @@ async function journalCorrectionJourney({
             exact: true,
           }),
         ).toContainText(originalNarrative);
-        await page.unroute(browserRoot);
+        await removeRoute(page, browserRoot);
         await risks
           .getByRole('region', { name: 'Recorded risks', exact: true })
           .getByRole('button', { name: 'Reload', exact: true })
@@ -517,7 +518,7 @@ async function journalCorrectionJourney({
       await expect(risks.getByText('Assessment: not assessed')).toBeVisible();
       // The corrected statement is the refresh's last read: no read is in
       // flight when this unroute turns request interception off (#1082).
-      if (lose) await page.unroute(`${browserRoot}/corrections`);
+      if (lose) await removeRoute(page, `${browserRoot}/corrections`);
     }
   }
   if (!observationId)

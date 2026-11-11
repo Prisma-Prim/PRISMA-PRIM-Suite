@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import {
   expect,
   type Page,
@@ -419,7 +420,7 @@ for (const locale of locales) {
       });
     } finally {
       release.release();
-      await page.unroute(pattern);
+      await removeRoute(page, pattern);
     }
   });
 }

@@ -120,6 +120,22 @@ export default tseslint.config(
     },
   },
   {
+    // Removing the final Playwright route can strand Chromium reads (#1097,
+    // #1098). The helper keeps interception enabled until the page closes.
+    files: ['apps/web/e2e/**/*.ts'],
+    ignores: ['apps/web/e2e/route-removal.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.property.name=/^unroute(All)?$/]',
+          message:
+            'Use removeRoute(page, pattern, handler?) from ./route-removal to keep in-flight Chromium reads alive.',
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.browser,

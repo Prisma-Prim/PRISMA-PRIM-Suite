@@ -722,6 +722,7 @@ test('flaky_guard repeats only the changed tests of a pull request, per family, 
   const repeat = stepBody(guard, 'Repeat changed tests');
   assert.match(repeat, /REPEAT_FAMILY: \$\{\{ matrix\.family \}\}/);
   assert.match(repeat, /REPEAT_FILES: \$\{\{ toJSON\(matrix\.files\) \}\}/);
+  assert.match(repeat, /REPEAT_PROJECT: \$\{\{ matrix\.project \}\}/);
   assert.match(repeat, /run: node scripts\/ci-repeat-tests\.mjs\n/);
   assert.doesNotMatch(repeat, /\bif:|continue-on-error/);
   // Changed file names reach commands only through the environment.

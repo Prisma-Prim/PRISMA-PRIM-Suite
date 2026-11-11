@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import {
   expect,
   test,
@@ -168,7 +169,7 @@ test('records literal observations, keeps the immutable uncertain command across
   }
   expect(bodies).toHaveLength(1);
   expect(reads).toBe(pendingReads);
-  await page.unroute('**/api/payments', dropCommitted);
+  await removeRoute(page, '**/api/payments', dropCommitted);
   const retry = page.waitForResponse(native('POST', '/payments'));
   await panel.getByRole('button', { name: en.retrySame, exact: true }).click();
   expect(await (await retry).json()).toEqual(firstReceipt);
@@ -504,6 +505,10 @@ test('requires a deliberate validated conflict reload and keeps a confirmed muta
       ).payment,
     ),
   ).toMatchObject({ revision: 3, values: { amountMinor: '200100' } });
-  await page.unroute(`**/api/payments/${root.id}/commands`, failOnlyRefresh);
-  await page.unroute(`**/api/payments/${root.id}`, failRead);
+  await removeRoute(
+    page,
+    `**/api/payments/${root.id}/commands`,
+    failOnlyRefresh,
+  );
+  await removeRoute(page, `**/api/payments/${root.id}`, failRead);
 });

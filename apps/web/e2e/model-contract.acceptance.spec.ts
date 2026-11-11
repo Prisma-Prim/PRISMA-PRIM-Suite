@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
@@ -496,7 +497,7 @@ test('preserves a full corresponding Contract/annex from pending Offer through e
     await expect(page.getByText(revised.trim(), { exact: true })).toHaveCount(
       0,
     );
-    await page.unroute('**/api' + base + '/versions');
+    await removeRoute(page, '**/api' + base + '/versions');
     panel = await openCase();
     await expect(
       panel.getByText(revised.trim(), { exact: true }),

@@ -59,6 +59,39 @@ async function lintFiles(files) {
 const accessRule = 'no-restricted-imports';
 const activityRule = 'no-restricted-syntax';
 
+test('e2e route removal must use the helper while page-close teardown can justify an exception', async () => {
+  const unsafe = await lintFiles({
+    'apps/web/e2e/read.spec.ts': `
+      import type { Page } from '@playwright/test';
+      export async function retire(page: Page) {
+        await page.unroute('**/api/**');
+        await page.unrouteAll({ behavior: 'wait' });
+      }
+    `,
+  });
+  assert.equal(unsafe.status, lintErrors, unsafe.output);
+  assert.match(unsafe.output, /Use removeRoute/);
+  assert.match(unsafe.output, /2 problems/);
+
+  const safe = await lintFiles({
+    'apps/web/e2e/read.spec.ts': `
+      import type { Page } from '@playwright/test';
+      import { removeRoute } from './route-removal';
+      export async function retire(page: Page) {
+        await removeRoute(page, '**/api/**');
+        // eslint-disable-next-line no-restricted-syntax -- Teardown: no more reads.
+        await page.unrouteAll({ behavior: 'ignoreErrors' });
+        await page.close();
+      }
+    `,
+    'apps/web/e2e/route-removal.ts': `
+      import type { Page } from '@playwright/test';
+      export const removeRoute = (page: Page, pattern: string) => page.unroute(pattern);
+    `,
+  });
+  assert.equal(safe.status, 0, safe.output);
+});
+
 // Reduced from e1a8a803 (#1004), apps/api/src/knowledge/knowledge.authorization.ts:
 // the Knowledge module rechecked a captured grant by querying
 // company_role_assignments itself; its query omits the membership, Internal

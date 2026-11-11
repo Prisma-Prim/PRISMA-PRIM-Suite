@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { readFile, writeFile } from 'node:fs/promises';
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { selectOption } from './select-option';
@@ -378,7 +379,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   expect(attempts).toHaveLength(2);
   expect(attempts[1]).toEqual(attempts[0]);
   expect(attempts[0]?.key).toBeTruthy();
-  await page.unroute(routePattern);
+  await removeRoute(page, routePattern);
   await expect(
     panel.getByText('Recorded accepted scope ' + suffix, { exact: true }),
   ).toBeVisible();
@@ -948,7 +949,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     decision.getByText('Approved internally', { exact: true }),
   ).toBeVisible();
   expect(approvalAttempts[1]).toEqual(approvalAttempts[0]);
-  await page.unroute('**/api' + approvalPath);
+  await removeRoute(page, '**/api' + approvalPath);
   await expect(decision.locator('.contract-checksum')).toHaveText(
     recordedChecksum ?? '',
   );
@@ -1072,7 +1073,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(declaredDates).toHaveCount(2);
   for (const declaredDate of await declaredDates.all())
     await expect(declaredDate).toHaveText(displayedSigningDate);
-  await page.unroute('**/api' + signaturePath);
+  await removeRoute(page, '**/api' + signaturePath);
   await expect(signatures.locator('.contract-checksum')).toHaveText(
     recordedChecksum ?? '',
   );
@@ -1228,7 +1229,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   expect(linkAttempts).toHaveLength(2);
   expect(linkAttempts[1]).toEqual(linkAttempts[0]);
   expect(linkAttempts[0]?.key).toBeTruthy();
-  await page.unroute('**/api' + projectLinkPath);
+  await removeRoute(page, '**/api' + projectLinkPath);
   const linkedRead = object(
     object(
       await body(
@@ -1426,7 +1427,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   expect(createAttempts).toHaveLength(2);
   expect(createAttempts[1]).toEqual(createAttempts[0]);
   expect(createAttempts[0]?.key).toBeTruthy();
-  await page.unroute('**/api' + creationPath);
+  await removeRoute(page, '**/api' + creationPath);
   const cp2Read = object(
     object(
       await body(
@@ -1629,7 +1630,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   ).toBeDisabled();
   expect(versionAttempts).toHaveLength(2);
   expect(versionAttempts[1]).toEqual(versionAttempts[0]);
-  await page.unroute('**/api' + c6VersionPath);
+  await removeRoute(page, '**/api' + c6VersionPath);
   await expect(revisions.getByLabel('Revised special conditions')).toHaveValue(
     '  C6 revised synthetic conditions  ',
   );
@@ -1873,7 +1874,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   ).toBeVisible();
   expect(addendumAttempts).toHaveLength(2);
   expect(addendumAttempts[1]).toEqual(addendumAttempts[0]);
-  await page.unroute('**/api' + addendumPath);
+  await removeRoute(page, '**/api' + addendumPath);
   await expect(
     panel
       .getByRole('paragraph')
@@ -2346,7 +2347,7 @@ test('C9 governs a persisted DIRECT Contract without Offer authority', async ({
   await page.keyboard.press('Enter');
   await expect(panel.getByText('Direct origin', { exact: true })).toBeVisible();
   expect(attempts[1]).toEqual(attempts[0]);
-  await page.unroute('**/api' + base + '/direct');
+  await removeRoute(page, '**/api' + base + '/direct');
   const read = async () =>
     object(
       object(

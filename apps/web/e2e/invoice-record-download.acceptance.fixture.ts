@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import {
@@ -235,13 +236,13 @@ export async function exerciseInvoiceDownloadMode({
         path: info.outputPath(`invoice-download-${mode}-${stage}-current.png`),
         fullPage: true,
       });
-      await page.unroute(path);
+      await removeRoute(page, path);
       await activate(
         form.getByRole('button', { name: copy.cancel, exact: true }),
       );
     }
   } finally {
-    await page.unroute(path);
+    await removeRoute(page, path);
     page.off('download', observedDownload);
     await proof(page, 'restore');
   }

@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, request, type Page, type TestInfo } from '@playwright/test';
@@ -427,7 +428,7 @@ export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
       await choose(companyId);
       cases = await openCase();
       if (stage === 'response' || stage === 'late401')
-        await page.unroute(responsePath);
+        await removeRoute(page, responsePath);
       await page.screenshot({
         path: info.outputPath(
           `working-evidence-${suffix}-${stage}-retired.png`,
@@ -468,7 +469,7 @@ export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
       await page.evaluate(() =>
         sessionStorage.removeItem('deterministic-auth-state'),
       );
-      await page.unroute(path);
+      await removeRoute(page, path);
     }
     await page.route(
       `**/api/working-evidence-cases/${caseId}/corrections`,
@@ -498,7 +499,10 @@ export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
     await page.evaluate(() =>
       sessionStorage.removeItem('deterministic-auth-state'),
     );
-    await page.unroute(`**/api/working-evidence-cases/${caseId}/corrections`);
+    await removeRoute(
+      page,
+      `**/api/working-evidence-cases/${caseId}/corrections`,
+    );
     await cases.getByRole('button', { name: 'Cancel', exact: true }).click();
     // Equal source-capture replacement reaches the current App through a genuine
     // Recorder403 recovery, without switching Company while the hash is held.
@@ -575,7 +579,7 @@ export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
     await expect(
       cases.getByRole('button', { name: 'Record working statement' }),
     ).toBeVisible();
-    await page.unroute('**/api/access/current-actor');
+    await removeRoute(page, '**/api/access/current-actor');
     await page.screenshot({
       path: info.outputPath(`working-evidence-${suffix}-retired-recovery.png`),
       fullPage: true,
@@ -597,8 +601,8 @@ export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
         await clean(() => proof(page, 'release'));
         await clean(() => proof(page, 'restore'));
       }
-      await clean(() => page.unroute('**/api/access/current-actor'));
-      await clean(() => page.unroute('**/api/**'));
+      await clean(() => removeRoute(page, '**/api/access/current-actor'));
+      await clean(() => removeRoute(page, '**/api/**'));
     }
     if (!projectRestored) await clean(() => assignment('project', true));
     for (const bundle of grants.reverse())

@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { selectOption } from './select-option';
@@ -417,7 +418,7 @@ test('prepares an exact approved-price Offer, retries lost confirmation, version
   await expect.poll(() => sourceRetired).toBe(true);
   await expect(page.locator('.profitability-version')).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(firstSource);
-  await page.unroute(sourceRoute);
+  await removeRoute(page, sourceRoute);
   const revoked = await page.request.delete(
     `${origin}/company-profitability-contributor-assignments/${preparerId}/${companyId}`,
     { headers: { ...identities.owner, 'idempotency-key': randomUUID() } },

@@ -18,9 +18,19 @@ const vitestPackages = { api: '@prisma-prim/api', web: '@prisma-prim/web' };
  *   inside one run hits those records (HTTP 409) and fails every spec. Each
  *   repetition is therefore a whole Playwright run with a fresh database.
  */
-export function repeatInvocations({ family, files, repeats = repeatCount }) {
+export function repeatInvocations({
+  family,
+  files,
+  project,
+  repeats = repeatCount,
+}) {
   if (!Object.hasOwn(testFamilies, family))
     throw new Error(`unknown test family ${JSON.stringify(family)}`);
+  if (family === 'acceptance') {
+    if (!testFamilies.acceptance.projects.includes(project))
+      throw new Error('Expected a canonical acceptance project to repeat');
+  } else if (project !== undefined)
+    throw new Error('A project partition is only supported for acceptance');
   if (
     !Array.isArray(files) ||
     files.length === 0 ||
@@ -57,6 +67,7 @@ export function repeatInvocations({ family, files, repeats = repeatCount }) {
         '--filter',
         '@prisma-prim/web',
         'test:browser:acceptance',
+        `--project=${project}`,
         ...relative,
       ],
     }));
@@ -77,8 +88,14 @@ export function repeatInvocations({ family, files, repeats = repeatCount }) {
 }
 
 /** Runs the repetitions in order and stops at the first one that is not green. */
-export function runRepeats({ family, files, repeats = repeatCount, run }) {
-  const invocations = repeatInvocations({ family, files, repeats });
+export function runRepeats({
+  family,
+  files,
+  project,
+  repeats = repeatCount,
+  run,
+}) {
+  const invocations = repeatInvocations({ family, files, project, repeats });
   for (const [index, { command, args }] of invocations.entries()) {
     if (run(command, args) !== 0)
       return {
@@ -102,6 +119,7 @@ function main() {
     outcome = runRepeats({
       family,
       files,
+      project: process.env.REPEAT_PROJECT || undefined,
       run: (command, args) => {
         console.log(`\n> ${command} ${args.join(' ')}`);
         const child = spawnSync(command, args, {

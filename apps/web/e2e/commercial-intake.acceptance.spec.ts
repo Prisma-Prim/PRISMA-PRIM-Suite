@@ -1,3 +1,4 @@
+import { removeRoute } from './route-removal';
 import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
@@ -1348,7 +1349,7 @@ test('finds an older personal open case, preserves its uncertain next action and
     );
     releaseAll();
     await settledAll;
-    await page.unroute(allPattern);
+    await removeRoute(page, allPattern);
     const targetRow = intake.getByRole('button').filter({
       has: page.getByText(subject, { exact: true }),
     });
@@ -1435,7 +1436,7 @@ test('finds an older personal open case, preserves its uncertain next action and
     expect(commands[0]?.body).toBe(
       JSON.stringify({ expectedVersion: 1, nextAction: literal }),
     );
-    await page.unroute(nextActionPattern);
+    await removeRoute(page, nextActionPattern);
     await page.reload();
     await selectOption(view, { label: 'My open cases' });
     await intake.getByRole('button', { name: 'Show older Requests' }).click();
@@ -1465,8 +1466,8 @@ test('finds an older personal open case, preserves its uncertain next action and
     await expect(view).toHaveAttribute('data-value', 'all');
   } finally {
     releaseAll();
-    await page.unroute(allPattern);
-    await page.unroute(nextActionPattern);
+    await removeRoute(page, allPattern);
+    await removeRoute(page, nextActionPattern);
     await revokeColleagueIntake(page, colleague);
   }
 });
@@ -1578,7 +1579,7 @@ test('opens a personal case with real captured Intake v1 and keeps the next acti
     expect(stored.initialOpportunity.version).toBe(1);
     await capture(page, testInfo, `my-open-cases-v1-readonly-${suffix}.png`);
   } finally {
-    await page.unroute('**/api/**');
+    await removeRoute(page, '**/api/**');
     const revoked = await page.request.delete(
       `http://127.0.0.1:4174/api/company-context-assignments/${membershipId}/${companyId}`,
       {

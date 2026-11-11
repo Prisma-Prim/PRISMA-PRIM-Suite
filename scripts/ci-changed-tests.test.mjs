@@ -110,6 +110,43 @@ test('no changed test produces an empty matrix', () => {
   );
 });
 
+test('acceptance repeats partition desktop and narrow without dropping or duplicating a spec in either project', () => {
+  const configuration = readFileSync(
+    new URL('../apps/web/playwright.acceptance.config.ts', import.meta.url),
+    'utf8',
+  );
+  assert.deepEqual(
+    testFamilies.acceptance.projects,
+    [
+      ...configuration
+        .slice(
+          configuration.indexOf('projects: ['),
+          configuration.indexOf('webServer:'),
+        )
+        .matchAll(/name: '([^']+)'/gu),
+    ].map((match) => match[1]),
+    'repeat partitions must cover every canonical acceptance project',
+  );
+  const files = Array.from(
+    { length: 7 },
+    (_, index) => `apps/web/e2e/journey-${index}.acceptance.spec.ts`,
+  );
+  const { include } = repeatMatrix({ acceptance: files });
+  assert.equal(include.length, 4);
+  assert.equal(new Set(include.map(({ label }) => label)).size, 4);
+  for (const project of [
+    'operational-acceptance-desktop',
+    'operational-acceptance-narrow',
+  ]) {
+    const jobs = include.filter((job) => job.project === project);
+    assert.equal(jobs.length, 2);
+    assert.deepEqual(
+      jobs.flatMap((job) => job.files),
+      files,
+    );
+  }
+});
+
 test('each family keeps its own environment needs and splits into bounded parallel jobs', () => {
   const files = (count, prefix) =>
     Array.from({ length: count }, (_, i) => `${prefix}${i}.test.ts`);
@@ -121,7 +158,14 @@ test('each family keeps its own environment needs and splits into bounded parall
   });
   assert.deepEqual(
     include.map(({ label }) => label),
-    ['api 1/2', 'api 2/2', 'web', 'browser', 'acceptance'],
+    [
+      'api 1/2',
+      'api 2/2',
+      'web',
+      'browser',
+      'acceptance operational-acceptance-desktop',
+      'acceptance operational-acceptance-narrow',
+    ],
   );
   assert.equal(include[0].files.length, testFamilies.api.filesPerJob);
   assert.equal(include[1].files.length, 1);
@@ -150,6 +194,12 @@ test('each family keeps its own environment needs and splits into bounded parall
         postgres: 'false',
         chromium: 'true',
         doctor: 'agent:doctor:web',
+      },
+      {
+        family: 'acceptance',
+        postgres: 'true',
+        chromium: 'true',
+        doctor: 'agent:doctor:web-postgres',
       },
       {
         family: 'acceptance',
@@ -276,6 +326,7 @@ test('the CLI reads a real pull request diff and writes the scope outputs', () =
       [
         ['web', ['apps/web/src/stable.test.tsx']],
         ['browser', ['apps/web/e2e/new.spec.ts']],
+        ['acceptance', ['apps/web/e2e/new.acceptance.spec.ts']],
         ['acceptance', ['apps/web/e2e/new.acceptance.spec.ts']],
       ],
     );
