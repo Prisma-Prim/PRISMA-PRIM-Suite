@@ -1,5 +1,9 @@
+import {
+  documentVersionPdfQuery,
+  frozenDocumentPdfPredicate,
+} from './document-version-pdf-query.js';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -39,20 +43,15 @@ export class DocumentTaskResultReferenceService {
     context: TaskResultDocumentContext;
   }): Promise<TaskResultDocumentReference[]> {
     await this.requireRead({ ...input, lock: false });
-    const rows = await this.database.connection
-      .select({
-        documentId: workingDocuments.id,
-        versionId: documentVersions.id,
-      })
-      .from(workingDocuments)
-      .innerJoin(
-        documentVersions,
-        and(
-          eq(documentVersions.workspaceId, workingDocuments.workspaceId),
-          eq(documentVersions.companyId, workingDocuments.companyId),
-          eq(documentVersions.documentId, workingDocuments.id),
-        ),
-      )
+    const rows = await documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          documentId: workingDocuments.id,
+          versionId: documentVersions.id,
+        })
+        .from(workingDocuments)
+        .$dynamic(),
+    )
       .where(
         and(
           eq(workingDocuments.workspaceId, input.actor.workspaceId),
@@ -60,7 +59,7 @@ export class DocumentTaskResultReferenceService {
           eq(workingDocuments.clientId, input.context.clientAccountId),
           eq(workingDocuments.projectId, input.context.projectId),
           eq(workingDocuments.type, 'mission-deliverable'),
-          inArray(documentVersions.status, ['official', 'superseded']),
+          frozenDocumentPdfPredicate(),
         ),
       )
       .orderBy(
@@ -226,22 +225,26 @@ export class DocumentTaskResultReferenceService {
         document.projectId !== input.context.projectId)
     )
       throw new NotFoundException();
-    const [version] = await this.database.connection
-      .select({
-        id: documentVersions.id,
-        number: documentVersions.number,
-        title: documentVersions.frozenTitle,
-        status: documentVersions.status,
-      })
-      .from(documentVersions)
-      .where(
-        and(
-          eq(documentVersions.workspaceId, input.actor.workspaceId),
-          eq(documentVersions.companyId, input.context.companyId),
-          eq(documentVersions.documentId, input.documentId),
-          eq(documentVersions.id, input.versionId),
-        ),
-      );
+    const [version] = await documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          id: documentVersions.id,
+          number: documentVersions.number,
+          title: documentVersions.frozenTitle,
+          status: documentVersions.status,
+          representationId: documentPdfs.id,
+        })
+        .from(workingDocuments)
+        .$dynamic(),
+    ).where(
+      and(
+        eq(workingDocuments.workspaceId, input.actor.workspaceId),
+        eq(workingDocuments.companyId, input.context.companyId),
+        eq(workingDocuments.id, input.documentId),
+        eq(documentVersions.id, input.versionId),
+        frozenDocumentPdfPredicate(),
+      ),
+    );
     if (
       !version ||
       (version.status !== 'official' && version.status !== 'superseded') ||
@@ -252,24 +255,9 @@ export class DocumentTaskResultReferenceService {
       version.number < 1
     )
       throw new NotFoundException();
-    const [pdf] = await this.database.connection
-      .select({ id: documentPdfs.id })
-      .from(documentPdfs)
-      .where(
-        and(
-          eq(documentPdfs.workspaceId, input.actor.workspaceId),
-          eq(documentPdfs.companyId, input.context.companyId),
-          eq(documentPdfs.documentId, input.documentId),
-          eq(documentPdfs.versionId, input.versionId),
-          eq(documentPdfs.scanOutcome, 'clean'),
-        ),
-      )
-      .orderBy(desc(documentPdfs.uploadRevision))
-      .limit(1);
     if (
-      !pdf ||
-      (input.reference.kind === 'declared' &&
-        pdf.id !== input.reference.representationId)
+      input.reference.kind === 'declared' &&
+      version.representationId !== input.reference.representationId
     )
       throw new NotFoundException();
     return {
@@ -278,7 +266,7 @@ export class DocumentTaskResultReferenceService {
       versionNumber: version.number,
       title: version.title,
       status: version.status,
-      representationId: pdf.id,
+      representationId: version.representationId,
     };
   }
 }

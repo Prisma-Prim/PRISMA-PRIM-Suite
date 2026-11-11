@@ -1,6 +1,19 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { DocumentPdfStorage } from '../documents/document-pdf-storage.js';
 import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
+import {
+  fictionalInvoicePdf,
+  openExternalInvoiceDocument,
+} from '../documents/external-invoice.test-support.js';
 import {
   openEstimateOfferFixture,
   responseRecord,
@@ -8,6 +21,7 @@ import {
 } from '../offer/offer-estimate-preparation.test-support.js';
 import {
   invoiceRecordEffects,
+  fictionalInvoiceValues,
   prepareInvoiceRecordSource,
 } from './invoice-record.proof-support.js';
 
@@ -28,6 +42,162 @@ withPostgres('Invoice Record deliberately superseded exact source', () => {
   afterAll(async () => {
     await fixture?.close();
     await scanner?.close();
+  });
+
+  it.each([
+    {
+      field: 'SHA-256',
+      statement:
+        "UPDATE document_pdfs SET sha256=repeat('0',64) WHERE id=$1::uuid",
+    },
+    {
+      field: 'byte length',
+      statement:
+        "UPDATE document_pdfs SET content=content||decode('00','hex'),size=size+1 WHERE id=$1::uuid",
+    },
+  ])(
+    'withholds content whose $field differs from the conserved Invoice snapshot',
+    async ({ statement }) => {
+      const source = await prepareInvoiceRecordSource(fixture);
+      const created = await source.create();
+      expect(created.status).toBe(201);
+      const recordId = responseString(
+        responseRecord(await created.json()),
+        'recordId',
+      );
+      const initial = await source.read(`/invoice-records/${recordId}`);
+      // Only this disposable-database damage fixture bypasses immutable-row triggers.
+      // Restore the exact bytes/metadata and re-enable guards even when an assertion fails.
+      try {
+        await fixture.pool.query(
+          'ALTER TABLE document_pdfs DISABLE TRIGGER USER',
+        );
+        try {
+          await fixture.pool.query(statement, [source.source.representationId]);
+        } finally {
+          await fixture.pool.query(
+            'ALTER TABLE document_pdfs ENABLE TRIGGER USER',
+          );
+        }
+        const damaged = await source.read(`/invoice-records/${recordId}`);
+        expect(damaged.record).toEqual(initial.record);
+        expect(damaged.history).toEqual(initial.history);
+        expect(responseRecord(damaged.liveSource).content).toEqual({
+          kind: 'UNAVAILABLE',
+        });
+        expect((await source.read('/invoice-records/sources')).items).toEqual(
+          [],
+        );
+      } finally {
+        await fixture.pool.query(
+          'ALTER TABLE document_pdfs DISABLE TRIGGER USER',
+        );
+        try {
+          await fixture.pool.query(
+            'UPDATE document_pdfs SET content=$1,size=$2,sha256=$3 WHERE id=$4::uuid',
+            [
+              source.bytes,
+              source.bytes.length,
+              createHash('sha256').update(source.bytes).digest('hex'),
+              source.source.representationId,
+            ],
+          );
+        } finally {
+          await fixture.pool.query(
+            'ALTER TABLE document_pdfs ENABLE TRIGGER USER',
+          );
+        }
+      }
+      expect(
+        (await source.read(`/invoice-records/${recordId}`)).liveSource,
+      ).toEqual(initial.liveSource);
+    },
+  );
+
+  it('selects frozen Invoice sources without reading PDF bytes', async () => {
+    const source = await prepareInvoiceRecordSource(fixture);
+    const read = vi.spyOn(DocumentPdfStorage.prototype, 'read');
+    try {
+      const selector = await source.read('/invoice-records/sources');
+      expect(selector.items).toEqual([
+        expect.objectContaining({
+          source: source.source,
+          byteLength: source.bytes.length,
+          sha256: createHash('sha256').update(source.bytes).digest('hex'),
+        }),
+      ]);
+      expect(read).toHaveBeenCalledTimes(0);
+    } finally {
+      read.mockRestore();
+    }
+  });
+
+  it('refuses a replaced upload from the same designated Version even when its bytes equal the frozen PDF', async () => {
+    const document = await openExternalInvoiceDocument(fixture);
+    const versionId = responseString(
+      responseRecord(document.document.version),
+      'id',
+    );
+    const bytes = await fictionalInvoicePdf();
+    const uploads: string[] = [];
+    for (const revision of [1, 2]) {
+      const uploaded = await document.upload(versionId, revision, bytes);
+      expect(uploaded.status).toBe(201);
+      uploads.push(
+        responseString(
+          responseRecord(await uploaded.json()),
+          'representationId',
+        ),
+      );
+    }
+    const [replacedId, frozenId] = uploads;
+    if (!replacedId || !frozenId)
+      throw new Error('Expected two native uploads.');
+    expect(replacedId).not.toBe(frozenId);
+    const designation = await document.mutate(
+      `/versions/${versionId}/official-designation`,
+      { expectedRevision: 3 },
+    );
+    expect(designation.status).toBe(200);
+    const source = {
+      documentId: document.documentId,
+      documentVersionId: versionId,
+      representationId: frozenId,
+    };
+    const selector = await fixture.read({
+      ...document.target,
+      path: '/invoice-records/sources',
+    });
+    expect(responseRecord(selector).items).toEqual([
+      expect.objectContaining({
+        source,
+        byteLength: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      }),
+    ]);
+    const before = await invoiceRecordEffects(fixture);
+    const body = {
+      source: { ...source, representationId: replacedId },
+      values: fictionalInvoiceValues(),
+      acknowledgeExternalDeclaration: true,
+      replacesWithdrawnRecordId: null,
+    };
+    const refused = await fixture.post({
+      ...document.target,
+      path: '/invoice-records',
+      body,
+    });
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({
+      code: 'INVOICE_SOURCE_NOT_ELIGIBLE',
+    });
+    expect(await invoiceRecordEffects(fixture)).toEqual(before);
+    const created = await fixture.post({
+      ...document.target,
+      path: '/invoice-records',
+      body: { ...body, source },
+    });
+    expect(created.status).toBe(201);
   });
 
   it('newly records superseded V1 despite an equal-byte official V2 and keeps that exact source after empty V3 creation', async () => {

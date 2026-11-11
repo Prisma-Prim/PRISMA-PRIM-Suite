@@ -1,4 +1,8 @@
 import {
+  documentVersionPdfQuery,
+  frozenDocumentPdfPredicate,
+} from './document-version-pdf-query.js';
+import {
   ForbiddenException,
   HttpException,
   Injectable,
@@ -9,7 +13,14 @@ import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
-import { documentPdfs, documentVersions } from '../database/schema/index.js';
+import {
+  clientAccounts,
+  clientCompanyRelationships,
+  documentPdfs,
+  documentVersions,
+  workingDocuments,
+  paymentEvidenceDocumentSources,
+} from '../database/schema/index.js';
 import { paymentSnapshot } from '../payment/payment.representation.js';
 import type { PaymentSource } from '../payment/payment.input.js';
 import type {
@@ -129,33 +140,46 @@ export class DocumentPaymentSource {
     const c = actor.activeCompany;
     if (!c) throw new ForbiddenException();
     // Eligibility is completely applied before the page bound; no hidden first-N truncation.
-    const result = await this.database.connection.execute<{
-      snapshot: unknown;
-      documentTitle: string;
-      versionNumber: number;
-      versionState: 'official' | 'superseded';
-      fileName: string;
-    }>(sql`
-      SELECT jsonb_build_object('source',jsonb_build_object('documentId',d.id,'documentVersionId',v.id,'representationId',p.id),'originalClientId',d.client_id,'payerAdditionalId',s.payer_legal_entity_id,'byteLength',p.size,'sha256',p.sha256,'copiedContext',jsonb_build_object('companyLabel',s.receiving_company_label,'payer',jsonb_build_object('kind',s.payer_kind,'legalName',s.payer_legal_name,'taxId',s.payer_tax_id,'legalAddress',s.payer_legal_address))) AS snapshot,
-      coalesce(v.frozen_title,d.title) AS "documentTitle",v.number AS "versionNumber",v.status AS "versionState",p.file_name AS "fileName"
-      FROM working_documents d JOIN payment_evidence_document_sources s ON (s.workspace_id,s.company_id,s.document_id)=(d.workspace_id,d.company_id,d.id)
-      JOIN document_versions v ON (v.workspace_id,v.company_id,v.document_id)=(d.workspace_id,d.company_id,d.id)
-      JOIN document_pdfs p ON (p.workspace_id,p.company_id,p.document_id,p.version_id)=(v.workspace_id,v.company_id,v.document_id,v.id)
-      JOIN client_accounts cl ON (cl.workspace_id,cl.id)=(d.workspace_id,d.client_id)
-      JOIN client_company_relationships cr ON (cr.workspace_id,cr.company_id,cr.client_account_id)=(d.workspace_id,d.company_id,d.client_id)
-      WHERE d.workspace_id=${actor.workspaceId}::uuid AND d.company_id=${c.id}::uuid AND d.type='payment-evidence' AND d.confidentiality='company-confidential'
-      AND s.original_client_account_id=d.client_id AND cl.status='active' AND cl.version<2147483647 AND cr.status='active'
-      AND v.status IN ('official','superseded') AND p.scan_outcome='clean' AND p.media_type='application/pdf'
-      AND p.size BETWEEN 1 AND 5242880 AND p.size=octet_length(p.content) AND p.sha256=encode(sha256(p.content),'hex')
-      AND NOT EXISTS(SELECT 1 FROM document_pdfs later WHERE (later.workspace_id,later.company_id,later.document_id,later.version_id)=(p.workspace_id,p.company_id,p.document_id,p.version_id) AND later.upload_revision>p.upload_revision)
-      ${after ? sql`AND (d.id,v.id,p.id)>(${after.documentId}::uuid,${after.documentVersionId}::uuid,${after.representationId}::uuid)` : sql``}
-      ORDER BY d.id,v.id,p.id LIMIT 26`);
+    const result = await documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          snapshot: sql<unknown>`jsonb_build_object('source',jsonb_build_object('documentId',${workingDocuments.id},'documentVersionId',${documentVersions.id},'representationId',${documentPdfs.id}),'originalClientId',${workingDocuments.clientId},'payerAdditionalId',${paymentEvidenceDocumentSources.payerLegalEntityId},'byteLength',${documentPdfs.size},'sha256',${documentPdfs.sha256},'copiedContext',jsonb_build_object('companyLabel',${paymentEvidenceDocumentSources.receivingCompanyLabel},'payer',jsonb_build_object('kind',${paymentEvidenceDocumentSources.payerKind},'legalName',${paymentEvidenceDocumentSources.payerLegalName},'taxId',${paymentEvidenceDocumentSources.payerTaxId},'legalAddress',${paymentEvidenceDocumentSources.payerLegalAddress})))`,
+          documentTitle: sql<string>`coalesce(${documentVersions.frozenTitle},${workingDocuments.title})`,
+          versionNumber: documentVersions.number,
+          versionState: documentVersions.status,
+          fileName: documentPdfs.fileName,
+        })
+        .from(workingDocuments)
+        .$dynamic(),
+    )
+      .innerJoin(
+        paymentEvidenceDocumentSources,
+        sql`(${paymentEvidenceDocumentSources.workspaceId},${paymentEvidenceDocumentSources.companyId},${paymentEvidenceDocumentSources.documentId})=(${workingDocuments.workspaceId},${workingDocuments.companyId},${workingDocuments.id})`,
+      )
+      .innerJoin(
+        clientAccounts,
+        sql`(${clientAccounts.workspaceId},${clientAccounts.id})=(${workingDocuments.workspaceId},${workingDocuments.clientId})`,
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        sql`(${clientCompanyRelationships.workspaceId},${clientCompanyRelationships.companyId},${clientCompanyRelationships.clientAccountId})=(${workingDocuments.workspaceId},${workingDocuments.companyId},${workingDocuments.clientId})`,
+      )
+      .where(
+        sql`${workingDocuments.workspaceId}=${actor.workspaceId}::uuid AND ${workingDocuments.companyId}=${c.id}::uuid AND ${workingDocuments.type}='payment-evidence' AND ${workingDocuments.confidentiality}='company-confidential'
+      AND ${paymentEvidenceDocumentSources.originalClientAccountId}=${workingDocuments.clientId} AND ${clientAccounts.status}='active' AND ${clientAccounts.version}<2147483647 AND ${clientCompanyRelationships.status}='active'
+      AND ${frozenDocumentPdfPredicate()}
+      ${after ? sql`AND (${workingDocuments.id},${documentVersions.id},${documentPdfs.id})>(${after.documentId}::uuid,${after.documentVersionId}::uuid,${after.representationId}::uuid)` : sql``}`,
+      )
+      .orderBy(workingDocuments.id, documentVersions.id, documentPdfs.id)
+      .limit(26);
     const items: PaymentSelectable[] = [];
-    for (const candidate of result.rows.slice(0, 25)) {
+    for (const candidate of result.slice(0, 25)) {
       // This read-only snapshot already qualifies each original Client, exact
       // tuple and clean PDF before LIMIT. Shared native grants are locked above;
       // no per-row detail/projection reads or mutation/new-use locks are needed.
       const snapshot = paymentSnapshot(candidate.snapshot);
+      if (candidate.versionState === 'draft')
+        throw new Error('Invalid frozen payment source.');
       items.push({
         source: snapshot.source,
         documentTitle: candidate.documentTitle,
@@ -167,7 +191,7 @@ export class DocumentPaymentSource {
         copiedContext: snapshot.copiedContext,
       });
     }
-    return { items, hasMore: result.rows.length > 25 };
+    return { items, hasMore: result.length > 25 };
   }
   async project(actor: ActorContext, snapshot: PaymentSourceSnapshot) {
     let liveSource: PaymentLiveSource = { kind: 'UNAVAILABLE' },

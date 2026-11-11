@@ -1,10 +1,14 @@
+import {
+  documentVersionPdfQuery,
+  frozenDocumentPdfPredicate,
+} from './document-version-pdf-query.js';
 import { createHash } from 'node:crypto';
 import {
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -132,7 +136,7 @@ export class DocumentWorkingEvidenceReferenceService {
       .where(
         and(
           this.documentScope(input),
-          this.frozenPdf(),
+          frozenDocumentPdfPredicate(),
           input.after === null
             ? undefined
             : or(
@@ -201,44 +205,22 @@ export class DocumentWorkingEvidenceReferenceService {
   }
 
   private selection() {
-    return this.database.connection
-      .select({
-        documentId: workingDocuments.id,
-        createdAt: workingDocuments.createdAt,
-        versionId: documentVersions.id,
-        versionNumber: documentVersions.number,
-        sourceTitle: documentVersions.frozenTitle,
-        sourcePurpose: documentVersions.frozenPurpose,
-        representationId: documentPdfs.id,
-        filename: documentPdfs.fileName,
-        sizeBytes: documentPdfs.size,
-        sha256: documentPdfs.sha256,
-      })
-      .from(workingDocuments)
-      .innerJoin(
-        documentVersions,
-        and(
-          eq(documentVersions.workspaceId, workingDocuments.workspaceId),
-          eq(documentVersions.companyId, workingDocuments.companyId),
-          eq(documentVersions.documentId, workingDocuments.id),
-        ),
-      )
-      .innerJoin(
-        documentPdfs,
-        and(
-          eq(documentPdfs.workspaceId, documentVersions.workspaceId),
-          eq(documentPdfs.companyId, documentVersions.companyId),
-          eq(documentPdfs.documentId, documentVersions.documentId),
-          eq(documentPdfs.versionId, documentVersions.id),
-        ),
-      );
-  }
-
-  private frozenPdf() {
-    return and(
-      inArray(documentVersions.status, ['official', 'superseded']),
-      eq(documentPdfs.scanOutcome, 'clean'),
-      sql`NOT EXISTS (SELECT 1 FROM document_pdfs later_pdf WHERE later_pdf.workspace_id=${documentPdfs.workspaceId} AND later_pdf.company_id=${documentPdfs.companyId} AND later_pdf.document_id=${documentPdfs.documentId} AND later_pdf.version_id=${documentPdfs.versionId} AND later_pdf.upload_revision>${documentPdfs.uploadRevision})`,
+    return documentVersionPdfQuery(
+      this.database.connection
+        .select({
+          documentId: workingDocuments.id,
+          createdAt: workingDocuments.createdAt,
+          versionId: documentVersions.id,
+          versionNumber: documentVersions.number,
+          sourceTitle: documentVersions.frozenTitle,
+          sourcePurpose: documentVersions.frozenPurpose,
+          representationId: documentPdfs.id,
+          filename: documentPdfs.fileName,
+          sizeBytes: documentPdfs.size,
+          sha256: documentPdfs.sha256,
+        })
+        .from(workingDocuments)
+        .$dynamic(),
     );
   }
 
@@ -282,7 +264,8 @@ export class DocumentWorkingEvidenceReferenceService {
         this.documentScope(input, input.documentId),
         eq(documentVersions.id, input.versionId),
         eq(documentPdfs.id, input.representationId),
-        this.frozenPdf(),
+        // Exact bytes are checked below so a damaged known source remains an outage.
+        frozenDocumentPdfPredicate({ integrity: 'storage' }),
       ),
     );
     if (!row) {

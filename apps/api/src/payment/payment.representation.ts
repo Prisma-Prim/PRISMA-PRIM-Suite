@@ -1,3 +1,4 @@
+import { MAXIMUM_DOCUMENT_PDF_BYTES } from '../documents/document-pdf.types.js';
 import { requireUuid } from '../access/access-command-validation.js';
 import {
   paymentObject,
@@ -197,7 +198,7 @@ export function paymentSnapshot(value: unknown): PaymentSourceSnapshot {
     typeof v.byteLength !== 'number' ||
     !Number.isInteger(v.byteLength) ||
     v.byteLength < 1 ||
-    v.byteLength > 5242880 ||
+    v.byteLength > MAXIMUM_DOCUMENT_PDF_BYTES ||
     typeof v.sha256 !== 'string' ||
     !/^[a-f0-9]{64}$/u.test(v.sha256)
   )

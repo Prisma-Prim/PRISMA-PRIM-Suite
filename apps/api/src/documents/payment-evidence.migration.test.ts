@@ -1,3 +1,4 @@
+import { conserveFrozenPdfPolicyUpgrade } from './frozen-pdf-policy-schema.test-support.js';
 import { certificationTables } from '../certification/certification-schema.test-support.js';
 import {
   withoutWorkingEvidenceSchema,
@@ -113,7 +114,9 @@ function conserveSchema(
   after: Record<string, unknown>,
   tables: readonly string[],
 ) {
-  after = withoutWorkingEvidenceSchema(after);
+  after = withoutWorkingEvidenceSchema(
+    conserveFrozenPdfPolicyUpgrade(before, after),
+  );
   for (const [kind, rows] of Object.entries(before)) {
     const actual = fixtureObjects(after[kind]);
     const expected = fixtureObjects(rows);
