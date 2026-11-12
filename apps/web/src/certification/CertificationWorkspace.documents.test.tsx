@@ -311,6 +311,12 @@ describe('Certification signed originals and agreement', () => {
     expect(server.mutations()).toEqual([]);
 
     selectOptionByLabel(source, 'Signed application questionnaire — version 1');
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Attach the document' }),
+    );
+    const role = within(form).getByLabelText('Role');
+    await waitFor(() => expect(role).toHaveAttribute('aria-invalid', 'true'));
+    expect([...form.querySelectorAll('[aria-invalid="true"]')]).toEqual([role]);
     selectOptionByLabel(
       within(form).getByLabelText('Role'),
       'Application questionnaire',
@@ -352,6 +358,39 @@ describe('Certification signed originals and agreement', () => {
       name: 'Signed application questionnaire — version 1 (already attached)',
     });
     expect(attached).toBeDisabled();
+  });
+
+  it('keeps a valid attachment draft unmarked after a stale refusal', async () => {
+    const { server, actor } = serve({ manager: true, documents: true });
+    const caseId = server.seed({
+      orderReference: 'CERT-ATTACH-STALE',
+      accepted: true,
+    });
+    server.addSource('Signed application questionnaire');
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-ATTACH-STALE');
+    const form = await openAttachForm();
+    const source = within(form).getByLabelText('Received PDF');
+    await waitFor(() => expect(source).toBeEnabled());
+    selectOptionByLabel(source, 'Signed application questionnaire — version 1');
+    selectOptionByLabel(
+      within(form).getByLabelText('Role'),
+      'Application questionnaire',
+    );
+    server.attachAsColleague(caseId, server.addSource('Audit plan'), 'plan');
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Attach the document' }),
+    );
+    expect(
+      await within(region(ARCHIVE)).findByText(
+        'This Case changed since you opened it. Reload it before saving; your draft is kept.',
+      ),
+    ).toBeVisible();
+    expect(form.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+    expect(
+      within(form).getByRole('button', { name: 'Attach the document' }),
+    ).toBeDisabled();
   });
 
   it('refuses a duplicate attachment in plain language until the Case is reloaded', async () => {
@@ -503,6 +542,9 @@ describe('Certification signed originals and agreement', () => {
         'The agreement cannot be signed after today. Check the signature date.',
       ),
     ).toBeVisible();
+    expect([...form.querySelectorAll('[aria-invalid="true"]')]).toEqual([
+      within(form).getByLabelText('Signed on'),
+    ]);
     expect(server.mutations()).toEqual([]);
 
     change(within(form).getByLabelText('Signed on'), '2026-11-02');
@@ -645,6 +687,7 @@ describe('Certification signed originals and agreement', () => {
       ),
     ).toBeVisible();
     expect(submit).toBeDisabled();
+    expect(form.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
     await expectAttached('Audit plan — version 1');

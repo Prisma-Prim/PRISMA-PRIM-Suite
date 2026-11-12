@@ -174,6 +174,16 @@ describe('Certification Case workspace', () => {
     const entity = await screen.findByLabelText('Client legal entity');
     await waitFor(() => expect(entity).toBeEnabled());
     selectOption(entity, certificationIds.entity);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open Certification Case' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Order reference')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      ),
+    );
+    expect(entity).not.toHaveAttribute('aria-invalid', 'true');
     change(screen.getByLabelText('Order reference'), ' CERT-0001/01 ');
     fireEvent.click(
       screen.getByRole('button', { name: 'Open Certification Case' }),
@@ -337,6 +347,9 @@ describe('Certification Case workspace', () => {
       await screen.findByText(/Answer every criterion yes or no with a note/u),
     ).toBeVisible();
     expect(server.mutations()).toEqual([]);
+    expect([...review.querySelectorAll('[aria-invalid="true"]')]).toEqual([
+      within(review).getByLabelText('Reason given to the applicant'),
+    ]);
     change(
       within(review).getByLabelText('Reason given to the applicant'),
       'Impartiality risk cannot be mitigated.',
@@ -398,6 +411,8 @@ describe('Certification Case workspace', () => {
     ).toBeVisible();
     expect(server.mutations()).toEqual([]);
 
+    expect(review.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+
     // The server keeps the same rule for a request the guard did not stop.
     answer(review, 'competentTeamAvailable', 'Yes');
     server.interceptions.push({
@@ -417,6 +432,70 @@ describe('Certification Case workspace', () => {
     ).toBeVisible();
   });
 
+  it('marks only the missing application fact and leaves optional blanks valid', async () => {
+    const server = new FakeCertificationServer();
+    server.seed({ orderReference: 'CERT-FIELD' });
+    server.install();
+    renderWorkspace();
+    await openSeededCase('CERT-FIELD');
+    const form = screen.getByRole('form', { name: 'Record the application' });
+    fillApplication(form);
+    const name = within(form).getByLabelText('Declared legal name');
+    change(name, '   ');
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the application' }),
+    );
+    await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'));
+    expect([...form.querySelectorAll('[aria-invalid="true"]')]).toEqual([name]);
+    change(name, 'Lactis Demo SRL');
+    change(
+      within(form).getByLabelText('Date of the signed application'),
+      '2999-12-31',
+    );
+    const shifts = within(form).getByLabelText('Shifts');
+    change(shifts, '1.5');
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the application' }),
+    );
+    await waitFor(() => expect(shifts).toHaveAttribute('aria-invalid', 'true'));
+    expect([...form.querySelectorAll('[aria-invalid="true"]')]).toEqual([
+      shifts,
+    ]);
+    expect(server.mutations()).toHaveLength(0);
+  });
+
+  it('keeps valid review fields unmarked after a stale refusal', async () => {
+    const server = new FakeCertificationServer();
+    const caseId = server.seed({
+      orderReference: 'CERT-REVIEW-STALE',
+      application: true,
+    });
+    server.install();
+    renderWorkspace();
+    await openSeededCase('CERT-REVIEW-STALE');
+    const form = screen.getByRole('form', { name: 'Record the review' });
+    answer(form, 'scopeCertifiable', 'Yes');
+    answer(form, 'competentTeamAvailable', 'Yes');
+    answer(form, 'competentDecisionMakerAvailable', 'Yes');
+    answer(form, 'risksAcceptable', 'Yes');
+    fireEvent.click(
+      within(form).getByRole('radio', { name: 'Accept the application' }),
+    );
+    server.correctAsColleague(caseId, 'Headcount corrected by a colleague.');
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the review' }),
+    );
+    expect(
+      await screen.findByText(
+        'This Case changed since you opened it. Reload it before saving; your draft is kept.',
+      ),
+    ).toBeVisible();
+    expect(form.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+    expect(
+      within(form).getByRole('button', { name: 'Record the review' }),
+    ).toBeDisabled();
+  });
+
   it('keeps the draft through a stale refusal, requires a reload and saves with a fresh key', async () => {
     const server = new FakeCertificationServer();
     const caseId = server.seed({
@@ -431,6 +510,10 @@ describe('Certification Case workspace', () => {
     );
     const form = screen.getByRole('form', { name: 'Correct the application' });
     change(within(form).getByLabelText('Shifts'), '3');
+    change(
+      within(form).getByLabelText('Date of the signed application'),
+      '2999-12-31',
+    );
     change(
       within(form).getByLabelText('Correction reason'),
       'A third shift starts in spring.',
@@ -448,6 +531,7 @@ describe('Certification Case workspace', () => {
       within(form).getByRole('button', { name: 'Record the correction' }),
     ).toBeDisabled();
     expect(within(form).getByLabelText('Shifts')).toHaveValue('3');
+    expect(form.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
     await expectInRegion(
@@ -922,6 +1006,7 @@ describe('Certification Case workspace', () => {
       ),
     ).toBeVisible();
     expect(server.mutations()).toEqual([]);
+    expect(confirm.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
 
     // The server keeps the same rule for a request the guard did not stop.
     change(within(confirm).getByLabelText('Initial audit on site'), '2,5');
@@ -1063,6 +1148,15 @@ describe('Certification Case workspace', () => {
       ),
     ).toBeVisible();
     expect(server.proposalReads()).toEqual([]);
+    expect(inputs.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+
+    const count = within(inputs).getByLabelText('HACCP studies in CI');
+    change(count, 'wrong');
+    computeProposal();
+    await waitFor(() => expect(count).toHaveAttribute('aria-invalid', 'true'));
+    expect([...inputs.querySelectorAll('[aria-invalid="true"]')]).toEqual([
+      count,
+    ]);
 
     change(within(inputs).getByLabelText('HACCP studies in CI'), '0');
     change(within(inputs).getByLabelText('Management system maturity'), '15');
@@ -1133,6 +1227,8 @@ describe('Certification Case workspace', () => {
         name: 'Confirm the audit duration',
       }),
     ).toBeDisabled();
+
+    expect(confirm.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
     await expectInRegion('Audit duration', /Recorded by: Boris Demo/u);

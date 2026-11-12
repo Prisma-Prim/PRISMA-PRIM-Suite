@@ -918,6 +918,11 @@ describe('Exchanges and deadlines region', () => {
         'Enter whole days from 0 to 365, or leave the value empty.',
       ),
     ).toBeVisible();
+    expect([...panel.querySelectorAll('[aria-invalid="true"]')]).toEqual([
+      within(panel).getByLabelText(
+        'Stage plan sent to the client, in calendar days',
+      ),
+    ]);
     for (const [label, value] of [
       ['Stage plan sent to the client, in calendar days', '10'],
       [
@@ -974,6 +979,7 @@ describe('Exchanges and deadlines region', () => {
         'The deadlines changed meanwhile. Reload them, then save your values again.',
       ),
     ).toBeVisible();
+    expect(panel.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
     fireEvent.click(
       within(region()).getByRole('button', { name: 'Reload the deadlines' }),
     );

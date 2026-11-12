@@ -6,6 +6,7 @@ import {
   type CertificationMessageKey,
 } from './certification.copy';
 import {
+  confirmedCents,
   CONFIRMED_DURATION_FIELDS,
   INCREASE_FACTORS,
   REDUCTION_FACTORS,
@@ -17,6 +18,7 @@ import {
   draftNeedsJustification,
   factorText,
   studiesTotal,
+  wholeNumber,
   type DurationDraft,
 } from './certification-duration-draft';
 import {
@@ -28,6 +30,7 @@ import {
 import { ActingFieldset } from './CertificationAttribution';
 import { DurationResultView, factorLabel } from './CertificationDurationViews';
 import { NumberField } from './CertificationForms';
+import { invalidField, wrongText } from './certification-fields';
 
 export type DurationFormProps = {
   idPrefix: string;
@@ -80,7 +83,8 @@ export function DurationForm({
   const id = (name: string) => `${idPrefix}-${name}`;
   const set = (patch: Partial<DurationDraft>) =>
     onChange({ ...draft, ...patch });
-  const inputsInvalid = inputsRefusal !== undefined;
+  const inputsInvalid = (wrong: boolean) =>
+    invalidField(inputsRefusal?.id, wrong);
   const confirmable =
     proposal?.current === true && proposal.result.kind !== 'refused'
       ? proposal.result
@@ -102,7 +106,7 @@ export function DurationForm({
             placeholder={copy('selectPrimarySubcategory')}
             disabled={disabled}
             required
-            invalid={inputsInvalid}
+            invalid={inputsInvalid(draft.primary === null)}
             describedBy={
               [id('primary-help'), inputsRefusal?.id]
                 .filter(Boolean)
@@ -136,7 +140,12 @@ export function DurationForm({
                 })}
                 value={entry.count}
                 disabled={disabled}
-                invalid={inputsInvalid}
+                invalid={inputsInvalid(
+                  wholeNumber(
+                    entry.count,
+                    CERTIFICATION_LIMITS.haccpStudiesPerSubcategory,
+                  ) === undefined,
+                )}
                 describedBy={
                   [id('studies-total'), inputsRefusal?.id]
                     .filter(Boolean)
@@ -265,7 +274,13 @@ function FactorFields<Factor extends IncreaseFactor | ReductionFactor>({
             label={copy(factorLabel(factor))}
             value={factorText(texts, factor)}
             disabled={disabled}
-            invalid={feedbackId !== undefined}
+            invalid={invalidField(
+              feedbackId,
+              wholeNumber(
+                factorText(texts, factor),
+                CERTIFICATION_LIMITS.factorPercent,
+              ) === undefined,
+            )}
             describedBy={[help.id, feedbackId].filter(Boolean).join(' ')}
             onChange={(value) => onChange({ ...texts, [factor]: value })}
           />
@@ -304,7 +319,7 @@ function ConfirmationForm({
 }) {
   const copy = useCertificationCopy();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   const describedBy = (extra: string) =>
     [extra, feedbackId].filter(Boolean).join(' ');
   return (
@@ -325,7 +340,11 @@ function ConfirmationForm({
             value={draft.confirmed[field]}
             decimal
             disabled={disabled}
-            invalid={invalid}
+            invalid={invalid(
+              confirmedCents(
+                draft.confirmed[field].trim().replace(',', '.'),
+              ) === undefined,
+            )}
             describedBy={describedBy(id('confirm-help'))}
             onChange={(value) =>
               onChange({
@@ -344,7 +363,13 @@ function ConfirmationForm({
           maxLength={CERTIFICATION_LIMITS.justification}
           disabled={disabled}
           required={justificationRequired}
-          aria-invalid={invalid}
+          aria-invalid={invalid(
+            wrongText(
+              draft.justification,
+              CERTIFICATION_LIMITS.justification,
+              justificationRequired,
+            ),
+          )}
           aria-describedby={describedBy(id('justification-hint'))}
           onChange={(event) =>
             onChange({ ...draft, justification: event.target.value })
@@ -374,7 +399,9 @@ function ConfirmationForm({
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalid(
+              wrongText(draft.reason, CERTIFICATION_LIMITS.reason),
+            )}
             aria-describedby={feedbackId}
             onChange={(event) =>
               onChange({ ...draft, reason: event.target.value })

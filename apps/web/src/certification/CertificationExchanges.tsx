@@ -11,6 +11,7 @@ import {
   EXCHANGE_LIMITS,
   filterExchanges,
   sendingsOf,
+  wrongDeadlineDay,
   type DeadlineDraft,
   type DeadlineEntry,
   type DeadlineHistory,
@@ -270,7 +271,7 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
     ) => values.map((value) => ({ value, label: t(label(value)) }));
     return (
       <form
-        className="certification-form certification-exchange-form"
+        className="certification-form"
         aria-label={title}
         noValidate
         onSubmit={props.onExchangeSubmit}
@@ -1175,7 +1176,10 @@ export function DeadlineAdministration(props: {
                   inputMode="numeric"
                   value={props.draft[kind]}
                   disabled={props.busy}
-                  aria-invalid={feedback.status === 'invalid'}
+                  aria-invalid={
+                    feedback.status === 'invalid' &&
+                    wrongDeadlineDay(props.draft[kind])
+                  }
                   aria-describedby={message ? feedbackId : undefined}
                   onChange={(event) =>
                     props.onDraft({

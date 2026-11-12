@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { formatMessage } from '../localization/messages';
 import { Select } from '../presentation/Select';
+import { invalidField, wrongDate, wrongText } from './certification-fields';
 import { useCertificationCopy } from './certification.copy';
 import {
   alreadyAttached,
@@ -61,7 +62,7 @@ export function AttachForm({
 }: AttachFormProps) {
   const copy = useCertificationCopy();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   const items = eligible.status === 'ready' ? eligible.value.items : [];
   return (
     <form
@@ -99,7 +100,13 @@ export function AttachForm({
         placeholder={copy('selectEligibleDocument')}
         disabled={disabled || items.length === 0}
         required
-        invalid={invalid}
+        invalid={invalid(
+          !items.some(
+            (item) =>
+              sourceKey(item) === draft.source &&
+              !alreadyAttached(item, register),
+          ),
+        )}
         describedBy={feedbackId}
         options={items.map((item) => {
           const attached = alreadyAttached(item, register);
@@ -121,7 +128,7 @@ export function AttachForm({
         placeholder={copy('selectDocumentRole')}
         disabled={disabled}
         required
-        invalid={invalid}
+        invalid={invalid(draft.role === null)}
         describedBy={feedbackId}
         options={CERTIFICATION_DOCUMENT_ROLES.map((role) => ({
           value: role,
@@ -143,7 +150,9 @@ export function AttachForm({
           value={draft.note}
           maxLength={CERTIFICATION_LIMITS.attachmentNote}
           disabled={disabled}
-          aria-invalid={invalid}
+          aria-invalid={invalid(
+            wrongText(draft.note, CERTIFICATION_LIMITS.attachmentNote, false),
+          )}
           aria-describedby={[id('note-hint'), feedbackId]
             .filter(Boolean)
             .join(' ')}
@@ -203,7 +212,7 @@ export function AgreementForm({
   const copy = useCertificationCopy();
   const reference = useAttachmentReference();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   const describedBy = [id('help'), feedbackId].filter(Boolean).join(' ');
   return (
     <form
@@ -223,7 +232,9 @@ export function AgreementForm({
           max={today}
           disabled={disabled}
           required
-          aria-invalid={invalid}
+          aria-invalid={invalid(
+            wrongDate(draft.signedOn, { required: true, max: today }),
+          )}
           aria-describedby={describedBy}
           onChange={(event) =>
             onChange({ ...draft, signedOn: event.target.value })
@@ -237,7 +248,11 @@ export function AgreementForm({
         placeholder={copy('selectAgreementDocument')}
         disabled={disabled}
         required
-        invalid={invalid}
+        invalid={invalid(
+          !attachments.some(
+            (attachment) => attachment.id === draft.attachmentId,
+          ),
+        )}
         describedBy={describedBy}
         options={attachments.map((attachment) => ({
           value: attachment.id,
@@ -254,7 +269,9 @@ export function AgreementForm({
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalid(
+              wrongText(draft.reason, CERTIFICATION_LIMITS.reason),
+            )}
             aria-describedby={feedbackId}
             onChange={(event) =>
               onChange({ ...draft, reason: event.target.value })

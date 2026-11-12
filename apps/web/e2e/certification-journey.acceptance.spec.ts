@@ -321,6 +321,43 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     );
   });
 
+  await test.step('a missing application fact marks only its text input with the error border at desktop and narrow widths', async () => {
+    const article = await openCase(manager);
+    const before = record(await journey.read(manager, journey.base)).revision;
+    await article
+      .getByRole('button', { name: copy('correctApplication'), exact: true })
+      .click();
+    const form = article.getByRole('form', {
+      name: copy('correctApplication'),
+      exact: true,
+    });
+    const name = form.getByLabel(copy('declaredLegalName'), { exact: true });
+    await name.fill('   ');
+    await form
+      .getByLabel(copy('correctionReason'), { exact: true })
+      .fill('Fictional correction for the field validation check.');
+    await form
+      .getByRole('button', { name: copy('saveCorrection'), exact: true })
+      .click();
+    await expect(form.locator('[aria-invalid="true"]')).toHaveCount(1);
+    await expect(name).toHaveAttribute('aria-invalid', 'true');
+    await expect(name).toHaveCSS('border-top-color', 'rgb(167, 51, 73)');
+    await expect(
+      form.getByLabel(copy('declaredAddress'), { exact: true }),
+    ).toHaveCSS('border-top-color', 'rgb(217, 209, 237)');
+    await name.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`application-refused-field-${width}.png`),
+    });
+    await form
+      .getByRole('button', { name: copy('cancel'), exact: true })
+      .click();
+    await expect(form).toHaveCount(0);
+    expect(record(await journey.read(manager, journey.base)).revision).toBe(
+      before,
+    );
+  });
+
   await test.step('a refused future exchange marks only its date, with the error border at desktop and narrow widths', async () => {
     const article = await openCase(manager);
     const before = record(await journey.read(manager, journey.base)).revision;

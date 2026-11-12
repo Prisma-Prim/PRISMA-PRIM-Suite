@@ -278,7 +278,10 @@ function percents<Factor extends string>(
   return result;
 }
 
-function wholeNumber(value: string, maximum: number): number | undefined {
+export function wholeNumber(
+  value: string,
+  maximum: number,
+): number | undefined {
   const trimmed = value.trim();
   if (!/^\d{1,3}$/u.test(trimmed)) return undefined;
   const number = Number(trimmed);
