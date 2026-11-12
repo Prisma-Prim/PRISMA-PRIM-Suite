@@ -991,9 +991,37 @@ export class FakeCertificationServer {
       const staged = registerPath[1]
         ? this.cases.get(registerPath[1])
         : undefined;
-      if (!staged || request.method !== 'POST')
-        return new Response(null, { status: 404 });
+      if (!staged) return new Response(null, { status: 404 });
       const [, , collection, target, withdrawal] = registerPath;
+      if (
+        collection === 'exchanges' &&
+        target === undefined &&
+        request.method === 'GET'
+      ) {
+        const cursor = new URLSearchParams(request.search).get('cursor') ?? '';
+        const [caseId, revision, before] = cursor.split(':');
+        if (caseId !== staged.id)
+          return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+        if (Number(revision) !== staged.revision)
+          return refusal(409, 'CERTIFICATION_STALE');
+        const remaining = staged.exchanges.records
+          .filter((entry) => entry.sequence < Number(before))
+          .sort((left, right) => right.sequence - left.sequence);
+        const selected = remaining.slice(0, 200);
+        const last = selected.at(-1);
+        return Response.json({
+          records: selected.map((entry) => ({
+            ...entry,
+            current: entry.versions.at(-1),
+          })),
+          total: staged.exchanges.records.length,
+          nextCursor:
+            remaining.length > 200 && last
+              ? `${staged.id}:${staged.revision}:${last.sequence}`
+              : null,
+        });
+      }
+      if (request.method !== 'POST') return new Response(null, { status: 404 });
       if (collection === 'exchanges' && withdrawal === undefined)
         return this.recordExchange(staged, request.body, target);
       if (collection === 'reverification-items' && target === undefined)
@@ -2738,12 +2766,20 @@ export class FakeCertificationServer {
         resolvedTotal: stored.consistency.resolved.length,
       },
       exchanges: {
-        records: stored.exchanges.records.map((entry) => ({
+        records: stored.exchanges.records.slice(-200).map((entry) => ({
           sequence: entry.sequence,
           current: entry.versions.at(-1),
           versions: entry.versions,
         })),
         total: stored.exchanges.records.length,
+        nextCursor:
+          stored.exchanges.records.length > 200
+            ? `${stored.id}:${stored.revision}:${stored.exchanges.records.length - 199}`
+            : null,
+        sendings: stored.exchanges.records.flatMap((entry) => {
+          const current = entry.versions.at(-1);
+          return current?.direction === 'sent' ? [current] : [];
+        }),
         deadlines: {
           set: this.deadlineSets[0] ?? null,
           entries: this.deadlineSets.length ? stored.exchanges.entries : [],
@@ -2754,6 +2790,17 @@ export class FakeCertificationServer {
         },
       },
     };
+  }
+
+  /** Seeds immutable exchange versions at the HTTP boundary for screen tests. */
+  seedExchangeRecord(
+    caseId: string,
+    sequence: number,
+    versions: Record<string, unknown>[],
+  ) {
+    const stored = this.cases.get(caseId);
+    if (!stored) throw new Error('Unknown Case.');
+    stored.exchanges.records.push({ sequence, versions });
   }
 
   /** Sets the deadline states the server would derive for a Case. */

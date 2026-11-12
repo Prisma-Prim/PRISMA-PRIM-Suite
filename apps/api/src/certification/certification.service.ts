@@ -1,3 +1,7 @@
+import {
+  exchangePage,
+  exchangePosition,
+} from './certification-exchange-page.js';
 import type { CompanyPermission } from '../access/captured-company-permissions.js';
 import {
   BadRequestException,
@@ -2129,6 +2133,30 @@ export class CertificationService {
     );
   }
 
+  /** A bounded continuation of a Case register, at the initial read's revision. */
+  exchanges({
+    actor,
+    caseId,
+    query,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    query: unknown;
+  }) {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'reader', async (companyId) => {
+      const row = await this.visibleCase(actor, companyId, targetId, {
+        lock: 'share',
+      });
+      return exchangePage({
+        caseId: targetId,
+        revision: row.revision,
+        versions: await this.exchangeVersions(actor, companyId, targetId),
+        position: exchangePosition(query),
+      });
+    });
+  }
+
   timeline({
     actor,
     caseId,
@@ -2407,8 +2435,9 @@ export class CertificationService {
     actor: ActorContext,
     companyId: string,
     caseId: string,
+    options: { lock?: 'share' } = {},
   ): Promise<CaseRow> {
-    const [row] = await this.database.connection
+    const query = this.database.connection
       .select()
       .from(certificationCases)
       .where(
@@ -2418,6 +2447,7 @@ export class CertificationService {
           eq(certificationCases.id, caseId),
         ),
       );
+    const [row] = await (options.lock ? query.for(options.lock) : query);
     if (!row) throw new NotFoundException();
     await this.projects.missionContextWithinTransaction({
       actor,
@@ -2431,7 +2461,12 @@ export class CertificationService {
     companyId: string,
     caseId: string,
   ): Promise<CertificationCaseDetail> {
-    const row = await this.visibleCase(actor, companyId, caseId);
+    // Case commands take this same row FOR UPDATE. Holding a shared lock
+    // keeps its revision and all exchange histories together, while Access
+    // retains its ordinary read-committed permission rechecks.
+    const row = await this.visibleCase(actor, companyId, caseId, {
+      lock: 'share',
+    });
     const steps = await this.steps(actor, companyId, caseId);
     const findings = await this.findings(actor, companyId, caseId, steps);
     const summary = this.summary(
@@ -2478,7 +2513,14 @@ export class CertificationService {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
       }),
-      ...(await this.checkedSections(actor, companyId, row, steps, findings)),
+      ...(await this.checkedSections(
+        actor,
+        companyId,
+        row,
+        steps,
+        findings,
+        true,
+      )),
     };
   }
 
@@ -2489,6 +2531,7 @@ export class CertificationService {
     row: CaseRow,
     steps: readonly StepRow[],
     findings: readonly FindingView[],
+    paged = false,
   ): Promise<Pick<CertificationCaseDetail, 'consistency' | 'exchanges'>> {
     const input = await this.consistencyInput(
       actor,
@@ -2498,15 +2541,26 @@ export class CertificationService {
       findings,
     );
     const certificate = await this.certificate(actor, companyId, row.id);
+    const exchanges = await this.exchangeSection(actor, {
+      companyId,
+      caseId: row.id,
+      input,
+      findings,
+      firstSurveillanceBy: certificate?.firstSurveillanceBy ?? null,
+    });
     return {
       consistency: consistencySection(input),
-      exchanges: await this.exchangeSection(actor, {
-        companyId,
-        caseId: row.id,
-        input,
-        findings,
-        firstSurveillanceBy: certificate?.firstSurveillanceBy ?? null,
-      }),
+      exchanges: paged
+        ? {
+            ...exchanges,
+            ...exchangePage({
+              caseId: row.id,
+              revision: row.revision,
+              versions: input.exchanges,
+              position: null,
+            }),
+          }
+        : exchanges,
     };
   }
 

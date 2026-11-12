@@ -1210,6 +1210,134 @@ withPostgres(
         expect(content, value).toContain(compactPdfText(value));
     });
 
+    it('pages every Exchange Record and correction beyond 200, keeps the Stage sending met and prints every record', async () => {
+      await configureFictional();
+      const { caseId, base, plan1 } = await lactisCase();
+      let view = await step(
+        CERTIFICATION_OWNER,
+        base,
+        '/exchanges',
+        exchange([plan1]),
+      );
+      view = await fixture.created(
+        await post(CERTIFICATION_OWNER, `${base}/exchanges/1`, {
+          expectedRevision: view.revision,
+          ...exchange([plan1], { reference: 'CORRECTED-FIRST' }),
+          reason: 'Fictional correction of the sending reference.',
+        }),
+      );
+      for (let sequence = 2; sequence <= 201; sequence++)
+        view = await fixture.created(
+          await post(CERTIFICATION_OWNER, `${base}/exchanges`, {
+            expectedRevision: view.revision,
+            ...exchange([plan1], {
+              direction: 'received',
+              itemKind: 'other',
+              reference: `IN-${sequence}`,
+            }),
+          }),
+        );
+      const eventsBeforeRead = await fixture.eventCount(caseId);
+      const first = section(await read(CERTIFICATION_READER, base));
+      expect(records(first.records)).toHaveLength(200);
+      expect(first.total).toBe(201);
+      expect(first.nextCursor).toEqual(expect.any(String));
+      const nextPath = `${base}/exchanges?cursor=${encodeURIComponent(text(first.nextCursor))}`;
+      const last = await read(CERTIFICATION_READER, nextPath);
+      expect(last.nextCursor).toBeNull();
+      expect(records(last.records).map((entry) => entry.sequence)).toEqual([1]);
+      expect(
+        records(records(last.records)[0]?.versions).map(
+          (entry) => entry.version,
+        ),
+      ).toEqual([1, 2]);
+      expect(
+        new Set(
+          [...records(first.records), ...records(last.records)].map(
+            (entry) => entry.sequence,
+          ),
+        ).size,
+      ).toBe(201);
+      expect(records(first.sendings)).toEqual([
+        expect.objectContaining({
+          sequence: 1,
+          version: 2,
+          attachmentIds: [plan1],
+        }),
+      ]);
+      expect(records(record(first.deadlines).entries)).toContainEqual(
+        expect.objectContaining({
+          kind: 'stage_plan_sent',
+          stage: 'stage_1',
+          state: 'met',
+          record: expect.objectContaining({ sequence: 1, version: 2 }),
+        }),
+      );
+      for (const target of [base, `/certification-cases/${randomUUID()}`]) {
+        const hidden = await fixture.call(
+          CERTIFICATION_OWNER,
+          `${target}/exchanges?cursor=${encodeURIComponent(text(first.nextCursor))}`,
+          { company: otherCompanyId },
+        );
+        expect(hidden.status).toBe(404);
+      }
+      const foreignWorkspace = randomUUID();
+      const denials = [];
+      for (const target of [base, `/certification-cases/${randomUUID()}`]) {
+        const response = await fixture.call(
+          CERTIFICATION_READER,
+          `${target}/exchanges?cursor=${encodeURIComponent(text(first.nextCursor))}`,
+          { workspace: foreignWorkspace },
+        );
+        expect(response.status).toBe(403);
+        denials.push(await response.json());
+      }
+      expect(denials[0]).toEqual(denials[1]);
+      const otherCase = await fixture.caseWithApplication();
+      expect(
+        (
+          await fixture.call(
+            CERTIFICATION_READER,
+            `/certification-cases/${otherCase}/exchanges?cursor=${encodeURIComponent(text(first.nextCursor))}`,
+          )
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await fixture.call(
+            CERTIFICATION_READER,
+            `${base}/exchanges?cursor=broken`,
+          )
+        ).status,
+      ).toBe(400);
+      const pdf = await fixture.call(
+        CERTIFICATION_READER,
+        `${base}/register?language=en`,
+      );
+      expect(pdf.status).toBe(200);
+      const content = compactPdfText(
+        (await inspectCommercialPdf(new Uint8Array(await pdf.arrayBuffer())))
+          .map((page) => page.text)
+          .join('\n'),
+      );
+      for (let sequence = 1; sequence <= 201; sequence++)
+        expect(content).toContain(
+          compactPdfText(`Exchange Record ${sequence} —`),
+        );
+      expect(content).toContain('CORRECTED-FIRST');
+      expect(await fixture.eventCount(caseId)).toBe(eventsBeforeRead);
+      await fixture.created(
+        await post(CERTIFICATION_OWNER, `${base}/exchanges/1`, {
+          expectedRevision: view.revision,
+          ...exchange([plan1], { reference: 'CORRECTED-AGAIN' }),
+          reason: 'Fictional later correction while reading another page.',
+        }),
+      );
+      const stale = await fixture.call(CERTIFICATION_READER, nextPath);
+      expect(stale.status).toBe(409);
+      expect(record(await stale.json()).code).toBe('CERTIFICATION_STALE');
+    });
+
     async function configureFictional() {
       const current = await read(
         CERTIFICATION_OWNER,
