@@ -34,6 +34,26 @@ import {
   type ExchangeMessageKey,
 } from './certification-exchanges.copy';
 import type { CaseDetail, DocumentRegister } from './certification-response';
+import { blank, invalidField, wrongDate } from './certification-fields';
+import { latestBusinessDate } from './certification-attribution';
+
+type ExchangeField = keyof ExchangeDraft | keyof ReverificationDraft;
+export type ExchangeFieldFeedback = {
+  id: string;
+  field: ExchangeField | 'draft';
+} | null;
+
+/** The alert names one field, or lets each local draft value speak for itself. */
+function fieldError(
+  feedback: ExchangeFieldFeedback,
+  field: ExchangeField,
+  wrong: boolean,
+): boolean {
+  return invalidField(
+    feedback?.id,
+    feedback?.field === 'draft' ? wrong : feedback?.field === field,
+  );
+}
 
 /** One command form of the region: its draft, feedback and description. */
 type FormState<Draft> = {
@@ -41,7 +61,7 @@ type FormState<Draft> = {
   /** The rendered refusal, uncertainty or saving message, if any. */
   feedback: ReactNode;
   saving: boolean;
-  invalid: boolean;
+  fieldFeedback: ExchangeFieldFeedback;
   describedBy: string | undefined;
 };
 
@@ -250,7 +270,7 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
     ) => values.map((value) => ({ value, label: t(label(value)) }));
     return (
       <form
-        className="certification-form"
+        className="certification-form certification-exchange-form"
         aria-label={title}
         noValidate
         onSubmit={props.onExchangeSubmit}
@@ -262,7 +282,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           value={draft.direction}
           placeholder={t('selectDirection')}
           disabled={props.busy}
-          invalid={state.invalid}
+          invalid={fieldError(
+            state.fieldFeedback,
+            'direction',
+            draft.direction === '',
+          )}
           describedBy={state.describedBy}
           options={options(EXCHANGE_DIRECTIONS, directionLabel)}
           onValueChange={(value) =>
@@ -278,7 +302,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           value={draft.itemKind}
           placeholder={t('selectKind')}
           disabled={props.busy}
-          invalid={state.invalid}
+          invalid={fieldError(
+            state.fieldFeedback,
+            'itemKind',
+            draft.itemKind === '',
+          )}
           describedBy={state.describedBy}
           options={options(EXCHANGE_ITEM_KINDS, kindLabel)}
           onValueChange={(value) =>
@@ -288,7 +316,22 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
             })
           }
         />
-        <fieldset aria-describedby={state.describedBy}>
+        <fieldset
+          id={`${formId}-documents`}
+          aria-describedby={state.describedBy}
+          aria-invalid={fieldError(
+            state.fieldFeedback,
+            'attachmentIds',
+            draft.attachmentIds.length === 0 ||
+              draft.attachmentIds.length > EXCHANGE_LIMITS.attachments ||
+              draft.attachmentIds.some(
+                (id) =>
+                  !props.register.items.some(
+                    (attachment) => attachment.id === id,
+                  ),
+              ),
+          )}
+        >
           <legend>{t('formDocuments')}</legend>
           {props.register.items.length === 0 && <p>{t('noDocuments')}</p>}
           {props.register.items.map((attachment) => (
@@ -319,7 +362,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           value={draft.counterpartKind}
           placeholder={t('selectCounterpart')}
           disabled={props.busy}
-          invalid={state.invalid}
+          invalid={fieldError(
+            state.fieldFeedback,
+            'counterpartKind',
+            draft.counterpartKind === '',
+          )}
           describedBy={state.describedBy}
           options={options(EXCHANGE_COUNTERPART_KINDS, counterpartLabel)}
           onValueChange={(value) =>
@@ -339,8 +386,15 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           maxLength={EXCHANGE_LIMITS.counterpartName}
           required
           disabled={props.busy}
-          aria-invalid={state.invalid}
-          aria-describedby={`${formId}-counterpart-hint`}
+          aria-invalid={fieldError(
+            state.fieldFeedback,
+            'counterpartName',
+            blank(draft.counterpartName) ||
+              draft.counterpartName.length > EXCHANGE_LIMITS.counterpartName,
+          )}
+          aria-describedby={[`${formId}-counterpart-hint`, state.describedBy]
+            .filter(Boolean)
+            .join(' ')}
           onChange={(event) => set({ counterpartName: event.target.value })}
         />
         <p id={`${formId}-counterpart-hint`} className="certification-hint">
@@ -353,7 +407,14 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           value={draft.businessDate}
           required
           disabled={props.busy}
-          aria-invalid={state.invalid}
+          aria-invalid={fieldError(
+            state.fieldFeedback,
+            'businessDate',
+            wrongDate(draft.businessDate, {
+              required: true,
+              max: latestBusinessDate(),
+            }),
+          )}
           aria-describedby={state.describedBy}
           onChange={(event) => set({ businessDate: event.target.value })}
         />
@@ -363,7 +424,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           value={draft.channel}
           placeholder={t('selectChannel')}
           disabled={props.busy}
-          invalid={state.invalid}
+          invalid={fieldError(
+            state.fieldFeedback,
+            'channel',
+            draft.channel === '',
+          )}
           describedBy={state.describedBy}
           options={options(EXCHANGE_CHANNELS, channelLabel)}
           onValueChange={(value) =>
@@ -377,6 +442,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           id={`${formId}-reference`}
           value={draft.reference}
           maxLength={EXCHANGE_LIMITS.reference}
+          aria-invalid={fieldError(
+            state.fieldFeedback,
+            'reference',
+            draft.reference.length > EXCHANGE_LIMITS.reference,
+          )}
           disabled={props.busy}
           aria-describedby={state.describedBy}
           onChange={(event) => set({ reference: event.target.value })}
@@ -388,7 +458,12 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           maxLength={EXCHANGE_LIMITS.note}
           required={draft.channel === 'other'}
           disabled={props.busy}
-          aria-invalid={state.invalid && draft.channel === 'other'}
+          aria-invalid={fieldError(
+            state.fieldFeedback,
+            'note',
+            (draft.channel === 'other' && blank(draft.note)) ||
+              draft.note.length > EXCHANGE_LIMITS.note,
+          )}
           aria-describedby={`${formId}-note-hint`}
           onChange={(event) => set({ note: event.target.value })}
         />
@@ -404,7 +479,12 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
               maxLength={EXCHANGE_LIMITS.reason}
               required
               disabled={props.busy}
-              aria-invalid={state.invalid}
+              aria-invalid={fieldError(
+                state.fieldFeedback,
+                'reason',
+                blank(draft.reason) ||
+                  draft.reason.length > EXCHANGE_LIMITS.reason,
+              )}
               aria-describedby={state.describedBy}
               onChange={(event) => set({ reason: event.target.value })}
             />
@@ -573,7 +653,12 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
                 maxLength={EXCHANGE_LIMITS.reason}
                 required
                 disabled={props.busy}
-                aria-invalid={props.withdrawal.invalid}
+                aria-invalid={fieldError(
+                  props.withdrawal.fieldFeedback,
+                  'reason',
+                  blank(withdrawing.reason) ||
+                    withdrawing.reason.length > EXCHANGE_LIMITS.reason,
+                )}
                 aria-describedby={props.withdrawal.describedBy}
                 onChange={(event) =>
                   props.onWithdrawalDraft({
@@ -668,7 +753,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           maxLength={EXCHANGE_LIMITS.text}
           required
           disabled={props.busy}
-          aria-invalid={state.invalid}
+          aria-invalid={fieldError(
+            state.fieldFeedback,
+            'text',
+            blank(draft.text) || draft.text.length > EXCHANGE_LIMITS.text,
+          )}
           aria-describedby={state.describedBy}
           onChange={(event) =>
             props.onItemDraft({ ...draft, text: event.target.value })
