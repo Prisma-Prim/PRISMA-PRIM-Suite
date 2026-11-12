@@ -374,6 +374,15 @@ export function draftFromDeadlines(
 export type DeadlineCheck =
   { status: 'valid'; body: Record<string, unknown> } | { status: 'invalid' };
 
+/** A deadline field accepts no value, or whole calendar days from 0 to 365. */
+export function wrongDeadlineDay(value: string): boolean {
+  const days = value.trim();
+  return (
+    days !== '' &&
+    (!/^\d{1,3}$/u.test(days) || Number(days) > EXCHANGE_LIMITS.days)
+  );
+}
+
 /** Every kind: whole calendar days from 0 to 365, or empty for none. */
 export function deadlinesFromDraft(
   draft: DeadlineDraft,
@@ -386,8 +395,7 @@ export function deadlinesFromDraft(
       days[kind] = null;
       continue;
     }
-    if (!/^\d{1,3}$/u.test(value) || Number(value) > EXCHANGE_LIMITS.days)
-      return { status: 'invalid' };
+    if (wrongDeadlineDay(value)) return { status: 'invalid' };
     days[kind] = Number(value);
   }
   return { status: 'valid', body: { expectedVersion, days } };

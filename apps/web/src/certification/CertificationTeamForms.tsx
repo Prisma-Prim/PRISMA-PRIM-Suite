@@ -19,6 +19,7 @@ import {
   type TeamDraft,
   type TeamMemberDraft,
 } from './certification-team-draft';
+import { invalidField, wrongText } from './certification-fields';
 import { toggleEvidence } from './certification-findings-draft';
 import { ActingFieldset } from './CertificationAttribution';
 import { useAttachmentReference } from './CertificationDocumentViews';
@@ -74,7 +75,7 @@ export function TeamForm({
   const copy = useCertificationCopy();
   const reference = useAttachmentReference();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   const update = (index: number, patch: Partial<TeamMemberDraft>) =>
     onChange({
       ...draft,
@@ -111,7 +112,7 @@ export function TeamForm({
               maxLength={TEAM_LIMITS.name}
               disabled={disabled}
               required
-              aria-invalid={invalid}
+              aria-invalid={invalid(wrongText(member.name, TEAM_LIMITS.name))}
               aria-describedby={feedbackId}
               onChange={(event) => update(index, { name: event.target.value })}
             />
@@ -122,7 +123,7 @@ export function TeamForm({
               placeholder={copy('selectTeamRole')}
               disabled={disabled}
               required
-              invalid={invalid}
+              invalid={invalid(member.role === null)}
               describedBy={feedbackId}
               options={TEAM_ROLES.map((role) => ({
                 value: role,
@@ -140,7 +141,12 @@ export function TeamForm({
               value={member.workspaceMembershipId}
               placeholder={copy('teamMemberNotLinked')}
               disabled={disabled}
-              invalid={invalid}
+              invalid={invalid(
+                member.workspaceMembershipId !== '' &&
+                  !linkOptions.some(
+                    (option) => option.value === member.workspaceMembershipId,
+                  ),
+              )}
               describedBy={[field('link-help'), feedbackId]
                 .filter(Boolean)
                 .join(' ')}
@@ -173,7 +179,9 @@ export function TeamForm({
               maxLength={TEAM_LIMITS.competenceNote}
               disabled={disabled}
               required
-              aria-invalid={invalid}
+              aria-invalid={invalid(
+                wrongText(member.competenceNote, TEAM_LIMITS.competenceNote),
+              )}
               aria-describedby={feedbackId}
               onChange={(event) =>
                 update(index, { competenceNote: event.target.value })
@@ -182,7 +190,14 @@ export function TeamForm({
             <fieldset>
               <legend>{copy('declarations')}</legend>
               {IMPARTIALITY_DECLARATIONS.map((declaration) => (
-                <fieldset key={declaration} className="certification-criterion">
+                <fieldset
+                  key={declaration}
+                  className="certification-criterion"
+                  aria-invalid={invalid(
+                    member.declarations[declaration] === null,
+                  )}
+                  aria-describedby={feedbackId}
+                >
                   <legend>{copy(declarationLabel(declaration))}</legend>
                   <div className="certification-answers">
                     {DECLARATION_STATES.map((state) => (
@@ -220,7 +235,9 @@ export function TeamForm({
                   maxLength={TEAM_LIMITS.conflictNote}
                   disabled={disabled}
                   required
-                  aria-invalid={invalid}
+                  aria-invalid={invalid(
+                    wrongText(member.conflictNote, TEAM_LIMITS.conflictNote),
+                  )}
                   aria-describedby={[field('conflict-help'), feedbackId]
                     .filter(Boolean)
                     .join(' ')}
@@ -289,14 +306,28 @@ export function TeamForm({
           maxLength={TEAM_LIMITS.analysisNote}
           disabled={disabled}
           required={consultant !== null}
-          aria-invalid={invalid}
+          aria-invalid={invalid(
+            wrongText(
+              draft.analysisNote,
+              TEAM_LIMITS.analysisNote,
+              consultant !== null || draft.analysisEvidence.length > 0,
+            ),
+          )}
           aria-describedby={feedbackId}
           onChange={(event) =>
             onChange({ ...draft, analysisNote: event.target.value })
           }
         />
         {documents.length > 0 && (
-          <fieldset>
+          <fieldset
+            aria-invalid={invalid(
+              draft.analysisEvidence.length > TEAM_LIMITS.analysisEvidence ||
+                draft.analysisEvidence.some(
+                  (id) => !documents.some((document) => document.id === id),
+                ),
+            )}
+            aria-describedby={feedbackId}
+          >
             <legend>{copy('impartialityAnalysisEvidence')}</legend>
             {documents.map((attachment) => (
               <label key={attachment.id} className="certification-choice">
@@ -330,7 +361,9 @@ export function TeamForm({
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalid(
+              wrongText(draft.reason, CERTIFICATION_LIMITS.reason),
+            )}
             aria-describedby={feedbackId}
             onChange={(event) =>
               onChange({ ...draft, reason: event.target.value })
@@ -396,7 +429,7 @@ export function DecisionForm({
 }: DecisionFormProps) {
   const copy = useCertificationCopy();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   return (
     <form
       className="certification-form"
@@ -408,7 +441,10 @@ export function DecisionForm({
       {conflictDeclared && (
         <p className="certification-blocked">{copy('decisionConflictOnly')}</p>
       )}
-      <fieldset>
+      <fieldset
+        aria-invalid={invalid(draft.decision === null)}
+        aria-describedby={feedbackId}
+      >
         <legend>{copy('decisionChoice')}</legend>
         {(
           [
@@ -440,7 +476,9 @@ export function DecisionForm({
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalid(
+              wrongText(draft.reason, CERTIFICATION_LIMITS.reason),
+            )}
             aria-describedby={feedbackId}
             onChange={(event) =>
               onChange({ ...draft, reason: event.target.value })
@@ -462,7 +500,7 @@ export function DecisionForm({
           type="checkbox"
           checked={draft.independenceAttested}
           disabled={disabled}
-          aria-invalid={invalid}
+          aria-invalid={invalid(!draft.independenceAttested)}
           aria-describedby={feedbackId}
           onChange={(event) =>
             onChange({ ...draft, independenceAttested: event.target.checked })

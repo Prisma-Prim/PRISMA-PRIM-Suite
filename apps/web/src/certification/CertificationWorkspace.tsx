@@ -162,6 +162,7 @@ import {
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
+import { invalidField, blank, wrongText } from './certification-fields';
 import {
   Stage1ReportForm,
   Stage2ReportForm,
@@ -2967,7 +2968,10 @@ function CertificationRegistry(
                 value={entityId}
                 placeholder={copy('selectLegalEntity')}
                 disabled={busy || entities?.status !== 'ready'}
-                invalid={openFeedback.status === 'refused'}
+                invalid={invalidField(
+                  describedFeedback('open', openFeedback),
+                  blank(entityId),
+                )}
                 describedBy={describedFeedback('open', openFeedback)}
                 options={
                   entities?.status === 'ready'
@@ -2994,7 +2998,13 @@ function CertificationRegistry(
                 maxLength={CERTIFICATION_LIMITS.orderReference}
                 disabled={busy}
                 required
-                aria-invalid={openFeedback.status === 'refused'}
+                aria-invalid={invalidField(
+                  describedFeedback('open', openFeedback),
+                  wrongText(
+                    orderReference,
+                    CERTIFICATION_LIMITS.orderReference,
+                  ),
+                )}
                 aria-describedby={describedFeedback('open', openFeedback)}
                 onChange={(event) => {
                   setOrderReference(event.target.value);

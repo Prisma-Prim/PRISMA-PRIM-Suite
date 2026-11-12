@@ -2,7 +2,13 @@ import type { FormEvent } from 'react';
 import { formatMessage } from '../localization/messages';
 import { useCertificationCopy } from './certification.copy';
 import { latestBusinessDate } from './certification-attribution';
-import type { ApplicationDraft, ReviewDraft } from './certification-draft';
+import {
+  fullTimeEquivalent,
+  wholeNumber,
+  type ApplicationDraft,
+  type ReviewDraft,
+} from './certification-draft';
+import { invalidField, wrongDate, wrongText } from './certification-fields';
 import {
   CERTIFICATION_LIMITS,
   FOOD_CHAIN_SUBCATEGORIES,
@@ -44,7 +50,7 @@ export function ApplicationForm({
   const id = (name: string) => `${idPrefix}-${name}`;
   const set = (patch: Partial<ApplicationDraft>) =>
     onChange({ ...draft, ...patch });
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   const describedBy = (extra?: string) =>
     [extra, feedbackId].filter(Boolean).join(' ') || undefined;
   return (
@@ -64,7 +70,11 @@ export function ApplicationForm({
         value={draft.submittedOn}
         max={latestBusinessDate()}
         disabled={disabled}
-        aria-invalid={invalid}
+        aria-invalid={invalid(
+          wrongDate(draft.submittedOn, {
+            required: false,
+          }),
+        )}
         aria-describedby={describedBy(id('submitted-on-help'))}
         onChange={(event) => set({ submittedOn: event.target.value })}
       />
@@ -78,7 +88,12 @@ export function ApplicationForm({
         maxLength={CERTIFICATION_LIMITS.declaredLegalName}
         disabled={disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalid(
+          wrongText(
+            draft.declaredLegalName,
+            CERTIFICATION_LIMITS.declaredLegalName,
+          ),
+        )}
         aria-describedby={describedBy()}
         onChange={(event) => set({ declaredLegalName: event.target.value })}
       />
@@ -89,7 +104,12 @@ export function ApplicationForm({
         maxLength={CERTIFICATION_LIMITS.declaredAddress}
         disabled={disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalid(
+          wrongText(
+            draft.declaredAddress,
+            CERTIFICATION_LIMITS.declaredAddress,
+          ),
+        )}
         aria-describedby={describedBy()}
         onChange={(event) => set({ declaredAddress: event.target.value })}
       />
@@ -115,7 +135,9 @@ export function ApplicationForm({
                 maxLength={CERTIFICATION_LIMITS.siteText}
                 disabled={disabled}
                 required
-                aria-invalid={invalid}
+                aria-invalid={invalid(
+                  wrongText(site.address, CERTIFICATION_LIMITS.siteText),
+                )}
                 aria-describedby={describedBy()}
                 onChange={(event) => update({ address: event.target.value })}
               />
@@ -128,7 +150,9 @@ export function ApplicationForm({
                 maxLength={CERTIFICATION_LIMITS.siteText}
                 disabled={disabled}
                 required
-                aria-invalid={invalid}
+                aria-invalid={invalid(
+                  wrongText(site.activity, CERTIFICATION_LIMITS.siteText),
+                )}
                 aria-describedby={describedBy()}
                 onChange={(event) => update({ activity: event.target.value })}
               />
@@ -169,11 +193,17 @@ export function ApplicationForm({
         maxLength={CERTIFICATION_LIMITS.requestedScope}
         disabled={disabled}
         required
-        aria-invalid={invalid}
+        aria-invalid={invalid(
+          wrongText(draft.requestedScope, CERTIFICATION_LIMITS.requestedScope),
+        )}
         aria-describedby={describedBy()}
         onChange={(event) => set({ requestedScope: event.target.value })}
       />
-      <fieldset className="certification-subcategories">
+      <fieldset
+        className="certification-subcategories"
+        aria-invalid={invalid(draft.foodChainSubcategories.length === 0)}
+        aria-describedby={feedbackId}
+      >
         <legend>{copy('foodChainSubcategories')}</legend>
         {FOOD_CHAIN_SUBCATEGORIES.map((code) => (
           <label key={code} className="certification-choice">
@@ -203,7 +233,12 @@ export function ApplicationForm({
           label={copy('haccpStudyCount')}
           value={draft.haccpStudyCount}
           disabled={disabled}
-          invalid={invalid}
+          invalid={invalid(
+            wholeNumber(
+              draft.haccpStudyCount,
+              CERTIFICATION_LIMITS.haccpStudyCount,
+            ) === undefined,
+          )}
           describedBy={describedBy()}
           onChange={(value) => set({ haccpStudyCount: value })}
         />
@@ -212,7 +247,12 @@ export function ApplicationForm({
           label={copy('totalHeadcount')}
           value={draft.totalHeadcount}
           disabled={disabled}
-          invalid={invalid}
+          invalid={invalid(
+            wholeNumber(
+              draft.totalHeadcount,
+              CERTIFICATION_LIMITS.totalHeadcount,
+            ) === undefined,
+          )}
           describedBy={describedBy()}
           onChange={(value) => set({ totalHeadcount: value })}
         />
@@ -222,7 +262,9 @@ export function ApplicationForm({
           value={draft.effectiveFte}
           decimal
           disabled={disabled}
-          invalid={invalid}
+          invalid={invalid(
+            fullTimeEquivalent(draft.effectiveFte) === undefined,
+          )}
           describedBy={describedBy(id('fte-help'))}
           help={{ id: id('fte-help'), text: copy('effectiveFteHelp') }}
           onChange={(value) => set({ effectiveFte: value })}
@@ -232,7 +274,10 @@ export function ApplicationForm({
           label={copy('shiftCount')}
           value={draft.shiftCount}
           disabled={disabled}
-          invalid={invalid}
+          invalid={invalid(
+            wholeNumber(draft.shiftCount, CERTIFICATION_LIMITS.shiftCount) ===
+              undefined,
+          )}
           describedBy={describedBy()}
           onChange={(value) => set({ shiftCount: value })}
         />
@@ -264,7 +309,10 @@ export function ApplicationForm({
         feedbackId={feedbackId}
         onChange={(value) => set({ outsourcedProcesses: value })}
       />
-      <fieldset>
+      <fieldset
+        aria-invalid={invalid(draft.consultantUsed === null)}
+        aria-describedby={feedbackId}
+      >
         <legend>{copy('consultantUsed')}</legend>
         {(['yes', 'no'] as const).map((choice) => (
           <label key={choice} className="certification-choice">
@@ -290,7 +338,12 @@ export function ApplicationForm({
               maxLength={CERTIFICATION_LIMITS.consultantName}
               disabled={disabled}
               required
-              aria-invalid={invalid}
+              aria-invalid={invalid(
+                wrongText(
+                  draft.consultantName,
+                  CERTIFICATION_LIMITS.consultantName,
+                ),
+              )}
               aria-describedby={describedBy()}
               onChange={(event) => set({ consultantName: event.target.value })}
             />
@@ -312,7 +365,9 @@ export function ApplicationForm({
                 maxLength={CERTIFICATION_LIMITS.auditLanguage}
                 disabled={disabled}
                 required
-                aria-invalid={invalid}
+                aria-invalid={invalid(
+                  wrongText(language, CERTIFICATION_LIMITS.auditLanguage),
+                )}
                 aria-describedby={describedBy()}
                 onChange={(event) =>
                   set({
@@ -358,6 +413,13 @@ export function ApplicationForm({
         <input
           id={id('period')}
           value={draft.preferredAuditPeriod}
+          aria-invalid={invalid(
+            wrongText(
+              draft.preferredAuditPeriod,
+              CERTIFICATION_LIMITS.preferredAuditPeriod,
+              false,
+            ),
+          )}
           maxLength={CERTIFICATION_LIMITS.preferredAuditPeriod}
           disabled={disabled}
           aria-describedby={describedBy(id('period-hint'))}
@@ -376,7 +438,9 @@ export function ApplicationForm({
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalid(
+              wrongText(draft.reason, CERTIFICATION_LIMITS.reason),
+            )}
             aria-describedby={describedBy()}
             onChange={(event) => set({ reason: event.target.value })}
           />
@@ -425,6 +489,10 @@ function OptionalText({
       <textarea
         id={id}
         value={value}
+        aria-invalid={invalidField(
+          feedbackId,
+          wrongText(value, CERTIFICATION_LIMITS.optionalText, false),
+        )}
         maxLength={CERTIFICATION_LIMITS.optionalText}
         disabled={disabled}
         aria-describedby={[`${id}-hint`, feedbackId].filter(Boolean).join(' ')}
@@ -492,7 +560,7 @@ export function ReviewForm({
 }) {
   const copy = useCertificationCopy();
   const id = (name: string) => `${idPrefix}-${name}`;
-  const invalid = feedbackId !== undefined;
+  const invalid = (wrong: boolean) => invalidField(feedbackId, wrong);
   return (
     <form
       className="certification-form"
@@ -512,7 +580,12 @@ export function ReviewForm({
             },
           });
         return (
-          <fieldset key={criterion} className="certification-criterion">
+          <fieldset
+            key={criterion}
+            className="certification-criterion"
+            aria-invalid={invalid(entry.answer === null)}
+            aria-describedby={feedbackId}
+          >
             <legend>{copy(criterion)}</legend>
             <div className="certification-answers">
               {(['yes', 'no'] as const).map((answer) => (
@@ -536,14 +609,19 @@ export function ReviewForm({
               maxLength={CERTIFICATION_LIMITS.note}
               disabled={disabled}
               required
-              aria-invalid={invalid}
+              aria-invalid={invalid(
+                wrongText(entry.note, CERTIFICATION_LIMITS.note),
+              )}
               aria-describedby={feedbackId}
               onChange={(event) => update({ note: event.target.value })}
             />
           </fieldset>
         );
       })}
-      <fieldset>
+      <fieldset
+        aria-invalid={invalid(draft.outcome === null)}
+        aria-describedby={feedbackId}
+      >
         <legend>{copy('outcome')}</legend>
         {(
           [
@@ -575,7 +653,9 @@ export function ReviewForm({
             maxLength={CERTIFICATION_LIMITS.reason}
             disabled={disabled}
             required
-            aria-invalid={invalid}
+            aria-invalid={invalid(
+              wrongText(draft.rejectionReason, CERTIFICATION_LIMITS.reason),
+            )}
             aria-describedby={feedbackId}
             onChange={(event) =>
               onChange({ ...draft, rejectionReason: event.target.value })

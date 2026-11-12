@@ -305,6 +305,13 @@ describe('Certification audit team and its approval', () => {
         'A team has exactly one team leader. Check the roles.',
       ),
     ).toBeVisible();
+    expect(form.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+    const name = within(member(form, 1)).getByLabelText('Name');
+    change(name, '   ');
+    submitTeam(form);
+    await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'));
+    expect([...form.querySelectorAll('[aria-invalid="true"]')]).toEqual([name]);
+    change(name, 'Elena Demo');
 
     selectOptionByLabel(
       within(member(form, 1)).getByLabelText('Role in the team'),
@@ -851,6 +858,8 @@ describe('Certification audit team and its approval', () => {
       within(form).getByRole('button', { name: 'Propose the team' }),
     ).toBeDisabled();
 
+    expect(form.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+
     fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
     await waitFor(() =>
       expect(
@@ -895,6 +904,10 @@ describe('Certification audit team and its approval', () => {
         'This Case changed since you opened it. Reload it before saving; your draft is kept.',
       ),
     ).toBeVisible();
+
+    expect(
+      decisionForm().querySelectorAll('[aria-invalid="true"]'),
+    ).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
     // The kept draft now decides on the version the reload shows.

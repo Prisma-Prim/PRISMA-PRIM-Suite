@@ -103,6 +103,8 @@
   min-height: 5rem;
   resize: vertical;
 }
+.certification-workspace
+  input[aria-invalid='true']:not([type='checkbox'], [type='radio']),
 .certification-workspace [aria-invalid='true'] {
   border-color: #a73349;
 }
@@ -387,11 +389,6 @@
   margin-block: 0.5rem 0;
   padding-inline-start: 1.25rem;
   font-size: 0.9rem;
-}
-.certification-workspace
-  .certification-exchange-form
-  input[aria-invalid='true'] {
-  border-color: #a73349;
 }
 .certification-workspace .certification-exchanges fieldset label {
   display: block;

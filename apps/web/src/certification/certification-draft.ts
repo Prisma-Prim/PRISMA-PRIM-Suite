@@ -300,7 +300,10 @@ function optional(value: string, limit: number): string | null | undefined {
   return trimmed.length <= limit ? trimmed : undefined;
 }
 
-function wholeNumber(value: string, maximum: number): number | undefined {
+export function wholeNumber(
+  value: string,
+  maximum: number,
+): number | undefined {
   const trimmed = value.trim();
   if (!/^\d{1,9}$/u.test(trimmed)) return undefined;
   const number = Number(trimmed);
@@ -308,7 +311,7 @@ function wholeNumber(value: string, maximum: number): number | undefined {
 }
 
 /** Accepts a decimal point or comma, as typed in every supported locale. */
-function fullTimeEquivalent(value: string): number | undefined {
+export function fullTimeEquivalent(value: string): number | undefined {
   const trimmed = value.trim();
   if (!/^\d{1,6}([.,]\d)?$/u.test(trimmed)) return undefined;
   const number = Number(trimmed.replace(',', '.'));

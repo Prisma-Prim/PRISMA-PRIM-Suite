@@ -19,6 +19,15 @@ export function blank(value: string): boolean {
   return value.trim() === '';
 }
 
+/** The field's own trimmed text limit, including whether it is required. */
+export function wrongText(
+  value: string,
+  maximum: number,
+  required = true,
+): boolean {
+  return (required && blank(value)) || value.trim().length > maximum;
+}
+
 /**
  * A date its field refuses on its own: blank where required, not a real
  * calendar date, or after the latest day the field allows.
