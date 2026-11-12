@@ -99,6 +99,7 @@ export async function openCertificationFixture(input: {
       body?: unknown;
       key?: string;
       company?: string | null;
+      workspace?: string;
     } = {},
   ): Promise<Response> {
     const company = options.company === undefined ? companyId : options.company;
@@ -110,6 +111,9 @@ export async function openCertificationFixture(input: {
         'x-test-display-name': `Synthetic ${subject}`,
         'x-test-email': `${subject}@example.test`,
         ...(company ? { 'x-company-context-id': company } : {}),
+        ...(options.workspace
+          ? { 'x-workspace-context-id': options.workspace }
+          : {}),
         'content-type': 'application/json',
         'idempotency-key': options.key ?? randomUUID(),
       },

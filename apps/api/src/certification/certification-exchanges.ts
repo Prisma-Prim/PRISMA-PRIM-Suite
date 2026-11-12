@@ -500,13 +500,16 @@ export interface ExchangeRecordView {
   versions: ExchangeRecordVersion[];
 }
 
-/** The register keeps its latest records; the total says how many exist. */
+/** The screen reads at most this many records, with their complete histories. */
 export const EXCHANGE_LIMIT = 200;
 
 /** The register part of the Case read: records, then deadline states. */
 export interface ExchangeRegister {
   records: ExchangeRecordView[];
   total: number;
+  nextCursor: string | null;
+  /** Complete current sending facts, independent of the screen page. */
+  sendings: ExchangeSending[];
   deadlines: {
     set: DeadlineSetVersion | null;
     entries: DeadlineEntry[];
@@ -522,23 +525,30 @@ export function exchangeRegister(input: {
   today: string;
 }): ExchangeRegister {
   const current = currentExchanges(input.versions);
-  const records = current
-    .slice(-EXCHANGE_LIMIT)
-    .map((exchange) => ({
-      sequence: exchange.sequence,
-      current: exchange,
-      versions: input.versions
-        .filter((version) => version.sequence === exchange.sequence)
-        .sort((left, right) => left.version - right.version),
-    }))
-    .sort(
-      (left, right) =>
-        left.current.businessDate.localeCompare(right.current.businessDate) ||
-        left.sequence - right.sequence,
-    );
+  const records = exchangeRecords(input.versions);
   return {
     records,
     total: current.length,
+    nextCursor: null,
+    sendings: current
+      .filter((entry) => entry.direction === 'sent')
+      .map(
+        ({
+          sequence,
+          version,
+          businessDate,
+          channel,
+          counterpart,
+          attachmentIds,
+        }) => ({
+          sequence,
+          version,
+          businessDate,
+          channel,
+          counterpart,
+          attachmentIds,
+        }),
+      ),
     deadlines: {
       set: input.set,
       entries: deadlineStates({
@@ -549,4 +559,38 @@ export function exchangeRegister(input: {
       }),
     },
   };
+}
+
+/** The small projection a step needs, without notes or correction histories. */
+export type ExchangeSending = Pick<
+  ExchangeRecordVersion,
+  | 'sequence'
+  | 'version'
+  | 'businessDate'
+  | 'channel'
+  | 'counterpart'
+  | 'attachmentIds'
+>;
+
+/** Every record and immutable version, in current business-date order. */
+export function exchangeRecords(
+  versions: readonly ExchangeRecordVersion[],
+): ExchangeRecordView[] {
+  const grouped = new Map<number, ExchangeRecordVersion[]>();
+  for (const version of versions) {
+    const history = grouped.get(version.sequence) ?? [];
+    history.push(version);
+    grouped.set(version.sequence, history);
+  }
+  return [...grouped.entries()]
+    .flatMap(([sequence, history]) => {
+      history.sort((left, right) => left.version - right.version);
+      const current = history.at(-1);
+      return current ? [{ sequence, current, versions: history }] : [];
+    })
+    .sort(
+      (left, right) =>
+        left.current.businessDate.localeCompare(right.current.businessDate) ||
+        left.sequence - right.sequence,
+    );
 }

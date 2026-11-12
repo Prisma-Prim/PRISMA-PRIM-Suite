@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseCaseDetail,
+  parseCaseCommandReceipt,
   parseCaseList,
   parseDocumentRegister,
   parseDurationResult,
@@ -90,11 +91,36 @@ function detail(overrides: Record<string, unknown> = {}) {
 }
 
 const noExchange = {
+  nextCursor: null,
+  sendings: [],
   records: [],
   total: 0,
   deadlines: { set: null, entries: [] },
   reverification: { items: [], firstSurveillanceBy: null },
 };
+
+it('acknowledges an immutable pre-pagination command receipt while requiring the Case scope', () => {
+  const old = detail({
+    exchanges: {
+      records: [],
+      total: 0,
+      deadlines: { set: null, entries: [] },
+      reverification: { items: [], firstSurveillanceBy: null },
+    },
+  });
+  expect(parseCaseCommandReceipt(old, { ...scope, caseId })).toEqual({
+    id: caseId,
+    revision: 3,
+  });
+  for (const invalidScope of [
+    { ...scope, companyId: 'other' },
+    { ...scope, projectId: 'other' },
+    { ...scope, caseId: 'other' },
+  ])
+    expect(() => parseCaseCommandReceipt(old, invalidScope)).toThrow();
+  // Only acknowledgement accepts old receipts. A live read must have the new complete page contract.
+  expect(() => parseCaseDetail(old, { ...scope, caseId })).toThrow();
+});
 
 const noDiscrepancy = {
   ruleSetVersion: 'dossier-consistency-2026-11',

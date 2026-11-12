@@ -53,7 +53,12 @@ export type ExchangeRoles = {
   contributor: boolean;
 };
 
+export type ExchangePaging = 'idle' | 'loading' | 'stale' | 'error';
+
 export interface ExchangesRegionProps {
+  paging: ExchangePaging;
+  onLoadMore: () => void;
+  onReload: () => void;
   prefix: string;
   detail: CaseDetail;
   register: DocumentRegister;
@@ -812,6 +817,41 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
               })}
             </p>
           )}
+          {exchanges.nextCursor !== null && (
+            <div className="certification-actions">
+              {props.paging === 'stale' ? (
+                <>
+                  <p role="alert">{t('pageStale')}</p>
+                  <button
+                    type="button"
+                    onClick={props.onReload}
+                    disabled={props.busy}
+                  >
+                    {t('pageReload')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {props.paging === 'error' && (
+                    <p role="alert">{t('pageUnavailable')}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={props.onLoadMore}
+                    disabled={props.busy || props.paging === 'loading'}
+                  >
+                    {t(
+                      props.paging === 'loading'
+                        ? 'pageLoading'
+                        : props.paging === 'error'
+                          ? 'pageRetry'
+                          : 'pageMore',
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           {shown.length === 0 ? (
             <p>{t('filteredEmpty')}</p>
           ) : (
@@ -889,7 +929,7 @@ export function StepSendings({
     (entry) => entry.id === attachmentId,
   )?.documentId;
   if (!documentId) return null;
-  const sendings = sendingsOf(exchanges.records, documentId, register.items);
+  const sendings = sendingsOf(exchanges.sendings, documentId, register.items);
   return (
     <div className="certification-step-sendings">
       <p>
@@ -900,16 +940,16 @@ export function StepSendings({
       ) : (
         <ul aria-label={t('stepSendingsTitle')}>
           {sendings.map((entry) => {
-            const version = entry.current.attachmentIds
+            const version = entry.attachmentIds
               .map((id) => register.items.find((item) => item.id === id))
               .find((item) => item?.documentId === documentId);
             return (
               <li key={entry.sequence}>
                 {formatMessage(t('stepSending'), {
                   version: version?.versionNumber ?? '—',
-                  counterpart: `${t(counterpartLabel(entry.current.counterpart.kind))}: ${entry.current.counterpart.name}`,
-                  date: entry.current.businessDate,
-                  channel: t(channelLabel(entry.current.channel)),
+                  counterpart: `${t(counterpartLabel(entry.counterpart.kind))}: ${entry.counterpart.name}`,
+                  date: entry.businessDate,
+                  channel: t(channelLabel(entry.channel)),
                   sequence: entry.sequence,
                 })}
               </li>

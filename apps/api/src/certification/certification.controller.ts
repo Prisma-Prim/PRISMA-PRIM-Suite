@@ -74,6 +74,20 @@ export class CertificationController {
     });
   }
 
+  @Header('Cache-Control', 'private, no-store')
+  @Get('certification-cases/:caseId/exchanges')
+  exchanges(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Query() query: unknown,
+  ) {
+    return this.certification.exchanges({
+      actor: requireActorContext(request),
+      caseId,
+      query,
+    });
+  }
+
   @Post('certification-cases/:caseId/exchanges')
   recordExchange(
     @Req() request: ActorContextRequest,

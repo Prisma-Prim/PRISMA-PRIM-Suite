@@ -134,6 +134,7 @@ import {
 import {
   CERTIFICATION_LIMITS,
   parseCaseDetail,
+  parseCaseCommandReceipt,
   parseCaseList,
   parseDocumentRegister,
   parseDurationResult,
@@ -264,6 +265,7 @@ import {
   exchangeFromDraft,
   parseDeadlineHistory,
   parseDeadlineSet,
+  parseExchangePage,
   reverificationFromDraft,
   type DeadlineDraft,
   type ExchangeDraft,
@@ -272,6 +274,7 @@ import {
 import {
   DeadlineAdministration,
   ExchangesRegion,
+  type ExchangePaging,
   StepSendings,
   type DeadlineAdministrationView,
   type DeadlineFeedback,
@@ -467,6 +470,8 @@ function CertificationRegistry(
   const proposalOperation = useScopedOperation(props.scope);
   const registerOperation = useScopedOperation(props.scope);
   const deadlineOperation = useScopedOperation(props.scope);
+  const exchangePageOperation = useScopedOperation(props.scope);
+  const [exchangePaging, setExchangePaging] = useState<ExchangePaging>('idle');
   /**
    * The captured right to read received-source content, which reading,
    * listing and attaching the Client's PDFs need. Its change retires their
@@ -792,6 +797,7 @@ function CertificationRegistry(
     setManualFeedback(IDLE);
     setResolutionDraft(null);
     setResolutionFeedback(IDLE);
+    setExchangePaging('idle');
     setExchangeOpen(null);
     setExchangeDraft(emptyExchangeDraft());
     setExchangeFeedback(IDLE);
@@ -877,6 +883,7 @@ function CertificationRegistry(
       for (const other of [
         listOperation,
         detailOperation,
+        exchangePageOperation,
         entitiesOperation,
         mutationOperation,
         proposalOperation,
@@ -945,6 +952,8 @@ function CertificationRegistry(
     options: { reload?: boolean; trigger?: Element } = {},
   ) {
     if (mutating.current) return;
+    exchangePageOperation.retire();
+    setExchangePaging('idle');
     const signal = detailOperation.begin();
     if (!signal) return;
     if (selected.current !== caseId) resetCaseDrafts();
@@ -1021,6 +1030,7 @@ function CertificationRegistry(
   function closeCase() {
     if (mutating.current) return;
     detailOperation.retire();
+    exchangePageOperation.retire();
     selected.current = undefined;
     setSelectedId(undefined);
     setDetail(undefined);
@@ -1059,7 +1069,7 @@ function CertificationRegistry(
     mutating.current = true;
     const setFeedback = feedbackSetter(kind);
     setFeedback({ status: 'saving', intent });
-    let confirmed: CaseDetail | undefined;
+    let confirmed: Pick<CaseDetail, 'id' | 'revision'> | undefined;
     try {
       const result = await query(
         mutationOperation,
@@ -1071,7 +1081,7 @@ function CertificationRegistry(
       );
       if (signal.aborted) return;
       if (result.status === 'ok') {
-        confirmed = parseCaseDetail(result.value, {
+        confirmed = parseCaseCommandReceipt(result.value, {
           companyId,
           projectId,
           caseId: intent.caseId ?? undefined,
@@ -2615,6 +2625,70 @@ function CertificationRegistry(
     }
   }
 
+  async function loadMoreExchanges() {
+    if (detail?.status !== 'ready' || exchangePaging === 'loading' || busy)
+      return;
+    const view = detail.value,
+      current = view.caseDetail;
+    const cursor = current.exchanges.nextCursor;
+    if (cursor === null) return;
+    const signal = exchangePageOperation.begin();
+    if (!signal) return;
+    setExchangePaging('loading');
+    try {
+      const result = await query(
+        exchangePageOperation,
+        signal,
+        `/certification-cases/${encodeURIComponent(current.id)}/exchanges?cursor=${encodeURIComponent(cursor)}`,
+      );
+      if (signal.aborted) return;
+      if (result.status === 'ok') {
+        const page = parseExchangePage(result.value);
+        const previous = current.exchanges.records;
+        if (
+          page.total !== current.exchanges.total ||
+          page.records.some((entry) =>
+            previous.some((old) => old.sequence === entry.sequence),
+          ) ||
+          page.nextCursor === cursor ||
+          previous.length + page.records.length > page.total ||
+          (page.nextCursor === null &&
+            previous.length + page.records.length !== page.total)
+        )
+          throw new Error('Inconsistent exchange page.');
+        setDetail((latest) =>
+          latest?.status === 'ready' &&
+          latest.value.caseDetail.id === current.id &&
+          latest.value.caseDetail.revision === current.revision &&
+          latest.value.caseDetail.exchanges.nextCursor === cursor
+            ? {
+                status: 'ready',
+                value: {
+                  ...latest.value,
+                  caseDetail: {
+                    ...latest.value.caseDetail,
+                    exchanges: {
+                      ...latest.value.caseDetail.exchanges,
+                      records: [...previous, ...page.records],
+                      nextCursor: page.nextCursor,
+                    },
+                  },
+                },
+              }
+            : latest,
+        );
+        setExchangePaging('idle');
+      } else if (result.status === 'conflict') setExchangePaging('stale');
+      else if (
+        result.status !== 'forbidden' &&
+        result.status !== 'unauthorized'
+      )
+        setExchangePaging('error');
+    } catch {
+      if (!signal.aborted) setExchangePaging('error');
+    }
+  }
+
   /** The Exchanges and deadlines region of the read Case. */
   function exchangesSection(view: CaseView) {
     const roles = consistencyRoles(view);
@@ -2642,6 +2716,9 @@ function CertificationRegistry(
     const records = view.caseDetail.exchanges.records;
     return (
       <ExchangesRegion
+        paging={exchangePaging}
+        onLoadMore={() => void loadMoreExchanges()}
+        onReload={() => void openCase(view.caseDetail.id, { reload: true })}
         prefix={prefix}
         detail={view.caseDetail}
         register={view.register}

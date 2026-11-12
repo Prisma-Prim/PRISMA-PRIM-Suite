@@ -1106,4 +1106,70 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     path: info.outputPath(`certification-journey-${width}.png`),
     fullPage: true,
   });
+
+  await test.step('the reader continues past 200 exchanges and keeps the older Stage sending at desktop and narrow widths', async () => {
+    const current = record(await journey.read(manager, journey.base));
+    let expectedRevision = current.revision;
+    const loaded = record(current.exchanges);
+    const documents = records(
+      (await journey.read(manager, `${journey.base}/documents`)).items,
+    );
+    const document = documents[0];
+    if (!document || typeof loaded.total !== 'number')
+      throw new Error('Expected the fictional register.');
+    for (let sequence = loaded.total + 1; sequence <= 205; sequence++) {
+      const response = await journey.post(
+        manager,
+        `${journey.base}/exchanges`,
+        {
+          expectedRevision,
+          direction: 'received',
+          itemKind: 'other',
+          attachmentIds: [text(document.id)],
+          counterpart: {
+            kind: 'client',
+            name: 'Lactis Demo SRL, quality manager',
+          },
+          businessDate: journey.today,
+          channel: 'email',
+          reference: `PAGED-${sequence}`,
+          note: null,
+        },
+      );
+      expect(response.status()).toBe(201);
+      expectedRevision = record(await response.json()).revision;
+    }
+    const article = await openCase(reader);
+    const panel = exchanges(article);
+    await expect(
+      panel.getByRole('listitem', { name: /^Exchange Record \d+ — /u }),
+    ).toHaveCount(200);
+    await expect(
+      region(article, 'stage1Title').getByRole('list', {
+        name: exchangeCopy('stepSendingsTitle'),
+        exact: true,
+      }),
+    ).toContainText('Exchange Record 2');
+    const more = panel.getByRole('button', {
+      name: exchangeCopy('pageMore'),
+      exact: true,
+    });
+    await more.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`exchange-pagination-${width}.png`),
+    });
+    await more.click();
+    await expect(
+      panel.getByRole('listitem', { name: /^Exchange Record \d+ — /u }),
+    ).toHaveCount(205);
+    await expect(more).toHaveCount(0);
+    const oldest = panel.getByRole('listitem', {
+      name: /^Exchange Record 1 — /u,
+    });
+    await oldest.scrollIntoViewIfNeeded();
+    await expect(oldest).toContainText('Fictional questionnaire');
+    await page.screenshot({
+      path: info.outputPath(`exchange-pagination-loaded-${width}.png`),
+    });
+  });
 });

@@ -164,9 +164,24 @@ export type ReverificationItem =
           }
       ));
 
-export interface Exchanges {
+export type ExchangeSending = Pick<
+  ExchangeVersion,
+  | 'sequence'
+  | 'version'
+  | 'businessDate'
+  | 'channel'
+  | 'counterpart'
+  | 'attachmentIds'
+>;
+
+export interface ExchangePage {
   records: ExchangeRecord[];
   total: number;
+  nextCursor: string | null;
+}
+
+export interface Exchanges extends ExchangePage {
+  sendings: ExchangeSending[];
   deadlines: { set: DeadlineSetVersion | null; entries: DeadlineEntry[] };
   reverification: {
     items: ReverificationItem[];
@@ -204,18 +219,16 @@ export function filterExchanges(
  * sendings a step shows for its own document.
  */
 export function sendingsOf(
-  records: readonly ExchangeRecord[],
+  records: readonly ExchangeSending[],
   documentId: string,
   attachments: readonly { id: string; documentId: string }[],
-): ExchangeRecord[] {
-  return records.filter(
-    (record) =>
-      record.current.direction === 'sent' &&
-      record.current.attachmentIds.some(
-        (id) =>
-          attachments.find((attachment) => attachment.id === id)?.documentId ===
-          documentId,
-      ),
+): ExchangeSending[] {
+  return records.filter((record) =>
+    record.attachmentIds.some(
+      (id) =>
+        attachments.find((attachment) => attachment.id === id)?.documentId ===
+        documentId,
+    ),
   );
 }
 
@@ -385,10 +398,15 @@ export function parseExchanges(value: unknown): Exchanges {
   const body = object(value);
   const deadlines = object(body.deadlines);
   const reverification = object(body.reverification);
-  const records = list(body.records).map(exchangeRecord);
+  const page = parseExchangePage(body);
+  if (
+    page.records.length !== Math.min(200, page.total) ||
+    (page.nextCursor === null) !== page.total <= 200
+  )
+    invalid();
   const parsed: Exchanges = {
-    records,
-    total: count(body.total),
+    ...page,
+    sendings: collection(body.sendings).map(exchangeSending),
     deadlines: {
       set: deadlines.set === null ? null : deadlineSet(deadlines.set),
       entries: list(deadlines.entries).map(deadlineEntry),
@@ -402,11 +420,46 @@ export function parseExchanges(value: unknown): Exchanges {
     },
   };
   if (
-    parsed.total < records.length ||
-    new Set(records.map((entry) => entry.sequence)).size !== records.length
+    new Set(parsed.sendings.map((entry) => entry.sequence)).size !==
+    parsed.sendings.length
   )
     invalid();
   return parsed;
+}
+
+/** A bounded page of current records and their complete histories. */
+export function parseExchangePage(value: unknown): ExchangePage {
+  const body = object(value);
+  const records = list(body.records).map(exchangeRecord);
+  const total = count(body.total);
+  const nextCursor =
+    body.nextCursor === null ? null : text(body.nextCursor, 128);
+  if (
+    records.length > 200 ||
+    total < records.length ||
+    new Set(records.map((entry) => entry.sequence)).size !== records.length ||
+    (nextCursor !== null && (records.length === 0 || total <= records.length))
+  )
+    invalid();
+  return { records, total, nextCursor };
+}
+
+function exchangeSending(value: unknown): ExchangeSending {
+  const body = object(value),
+    counterpart = object(body.counterpart);
+  const attachmentIds = list(body.attachmentIds).map((id) => text(id, 64));
+  if (attachmentIds.length === 0) invalid();
+  return {
+    sequence: positive(body.sequence),
+    version: positive(body.version),
+    businessDate: calendar(body.businessDate),
+    channel: oneOf(EXCHANGE_CHANNELS, body.channel),
+    counterpart: {
+      kind: oneOf(EXCHANGE_COUNTERPART_KINDS, counterpart.kind),
+      name: text(counterpart.name, EXCHANGE_LIMITS.counterpartName),
+    },
+    attachmentIds,
+  };
 }
 
 /** The deadline set history the Company administrator reads. */
@@ -425,7 +478,7 @@ export function parseDeadlineSet(value: unknown): DeadlineSetVersion {
 function exchangeRecord(value: unknown): ExchangeRecord {
   const body = object(value);
   const current = exchangeVersion(body.current);
-  const versions = list(body.versions).map(exchangeVersion);
+  const versions = collection(body.versions).map(exchangeVersion);
   const sequence = positive(body.sequence);
   if (
     current.sequence !== sequence ||
@@ -637,9 +690,16 @@ function object(value: unknown): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value));
 }
 
-function list(value: unknown): unknown[] {
-  if (!Array.isArray(value) || value.length > 1000) invalid();
+/** Histories and complete current sending facts have no record-count cap. */
+function collection(value: unknown): unknown[] {
+  if (!Array.isArray(value)) invalid();
   return value;
+}
+
+function list(value: unknown): unknown[] {
+  const values = collection(value);
+  if (values.length > 1000) invalid();
+  return values;
 }
 
 function text(value: unknown, max = 4000): string {

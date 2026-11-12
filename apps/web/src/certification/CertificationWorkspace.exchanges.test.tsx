@@ -38,7 +38,7 @@ function LocaleSwitch() {
   const { changeLocale } = useInterfaceLocale();
   return (
     <>
-      {(['fr', 'ro', 'ru'] as const).map((locale) => (
+      {(['fr', 'ro', 'ru', 'en'] as const).map((locale) => (
         <button key={locale} type="button" onClick={() => changeLocale(locale)}>
           {`Locale ${locale}`}
         </button>
@@ -47,7 +47,10 @@ function LocaleSwitch() {
   );
 }
 
-function renderWorkspace(actor: ActorContext) {
+function renderWorkspace(
+  actor: ActorContext,
+  onActorRevalidated?: (actor: ActorContext) => void,
+) {
   return render(
     <>
       <LocaleSwitch />
@@ -55,6 +58,7 @@ function renderWorkspace(actor: ActorContext) {
         actor={actor}
         identity={certificationIdentity}
         projectId={certificationIds.project}
+        onActorRevalidated={onActorRevalidated}
       />
     </>,
   );
@@ -79,6 +83,48 @@ function plannedCase(server: FakeCertificationServer, reference: string) {
     'stage_1_plan',
     stagePlan(plan, { sentToClientOn: null }),
   );
+  return { caseId, plan };
+}
+
+function pagedCase(server: FakeCertificationServer, reference: string) {
+  const { caseId, plan } = plannedCase(server, reference);
+  for (let sequence = 1; sequence <= 201; sequence++) {
+    const version = {
+      id: `exchange-${sequence}`,
+      sequence,
+      version: 1,
+      caseRevision: 2,
+      direction: sequence === 1 ? 'sent' : 'received',
+      itemKind: 'stage_plan',
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL' },
+      businessDate: '2026-10-29',
+      channel: 'email',
+      reference: `OUT-${sequence}`,
+      note: null,
+      reason: null,
+      attachmentIds: [plan],
+      recordedBy: {
+        workspaceMembershipId: certificationIds.member,
+        displayName: 'Manager Demo',
+      },
+      recordedAt: '2026-10-30T12:00:00.000Z',
+    };
+    server.seedExchangeRecord(
+      caseId,
+      sequence,
+      sequence === 1
+        ? [
+            version,
+            {
+              ...version,
+              id: 'exchange-1-v2',
+              version: 2,
+              reason: 'Fictional correction',
+            },
+          ]
+        : [version],
+    );
+  }
   return { caseId, plan };
 }
 
@@ -141,6 +187,106 @@ const entries = [
 ];
 
 describe('Exchanges and deadlines region', () => {
+  it('reads the following Exchange Records and their correction history while the Stage sending stays visible beyond the first page', async () => {
+    const { server, actor } = serve({ manager: false });
+    const { caseId } = pagedCase(server, 'CERT-PAGED');
+    server.seedDeadlineSet(FICTIONAL);
+    server.seedDeadlineStates(caseId, entries);
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-PAGED');
+    expect(
+      within(region()).getAllByRole('listitem', {
+        name: /^Exchange Record \d+ —/u,
+      }),
+    ).toHaveLength(200);
+    expect(
+      screen.getByRole('list', { name: 'Sendings of this document' }),
+    ).toHaveTextContent('Exchange Record 1');
+    for (const [locale, label] of [
+      ['fr', 'Charger les échanges précédents'],
+      ['ro', 'Încarcă schimburile anterioare'],
+      ['ru', 'Загрузить предыдущие обмены'],
+      ['en', 'Load earlier exchanges'],
+    ]) {
+      fireEvent.click(screen.getByRole('button', { name: `Locale ${locale}` }));
+      expect(screen.getByRole('button', { name: label })).toBeVisible();
+    }
+    server.interceptions.push({
+      match: (request) =>
+        request.method === 'GET' && request.path.endsWith('/exchanges'),
+      respond: () => new Response(null, { status: 503 }),
+    });
+    fireEvent.click(
+      within(region()).getByRole('button', { name: 'Load earlier exchanges' }),
+    );
+    await within(region()).findByRole('alert');
+    expect(
+      within(region()).getAllByRole('listitem', {
+        name: /^Exchange Record \d+ —/u,
+      }),
+    ).toHaveLength(200);
+    server.interceptions.push({
+      match: (request) =>
+        request.method === 'GET' && request.path.endsWith('/exchanges'),
+      respond: () =>
+        Response.json({ code: 'CERTIFICATION_STALE' }, { status: 409 }),
+    });
+    fireEvent.click(
+      within(region()).getByRole('button', { name: 'Retry loading exchanges' }),
+    );
+    fireEvent.click(
+      await within(region()).findByRole('button', { name: 'Reload the Case' }),
+    );
+    await screen.findByRole('region', { name: REGION });
+    await within(region()).findByRole('button', {
+      name: 'Load earlier exchanges',
+    });
+    fireEvent.click(
+      within(region()).getByRole('button', { name: 'Load earlier exchanges' }),
+    );
+    await waitFor(() =>
+      expect(
+        within(region()).getAllByRole('listitem', {
+          name: /^Exchange Record \d+ —/u,
+        }),
+      ).toHaveLength(201),
+    );
+    expect(
+      within(region()).queryByRole('button', {
+        name: 'Load earlier exchanges',
+      }),
+    ).toBeNull();
+    const first = within(region()).getByRole('listitem', {
+      name: 'Exchange Record 1 — Sent — Stage plan',
+    });
+    expect(first).toHaveTextContent('Fictional correction');
+    expect(first).toHaveTextContent('Version 1');
+    expect(first).toHaveTextContent('Version 2');
+  });
+
+  it('retires the paged register and revalidates authority after access is refused', async () => {
+    const { server, actor } = serve({ manager: false });
+    pagedCase(server, 'CERT-PAGE-DENIED');
+    server.install();
+    const onActorRevalidated = vi.fn();
+    renderWorkspace(actor, onActorRevalidated);
+    await openSeededCase('CERT-PAGE-DENIED');
+    server.interceptions.push({
+      match: (request) =>
+        request.method === 'GET' && request.path.endsWith('/exchanges'),
+      respond: () => new Response(null, { status: 403 }),
+    });
+    fireEvent.click(
+      within(region()).getByRole('button', { name: 'Load earlier exchanges' }),
+    );
+    await waitFor(() => expect(onActorRevalidated).toHaveBeenCalledOnce());
+    expect(screen.queryByRole('region', { name: REGION })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'CERT-PAGE-DENIED' }),
+    ).toBeNull();
+  });
+
   it('shows its empty states, then the deadline states by text and icon, the derived dates and the Re-verification Items', async () => {
     const { server, actor } = serve({ manager: true });
     const empty = server.seed({ orderReference: 'CERT-EMPTY' });

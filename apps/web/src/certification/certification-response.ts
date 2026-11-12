@@ -436,6 +436,25 @@ export function parseCaseList(value: unknown, projectId: string): CaseList {
   return { projectId, cases, total };
 }
 
+/** A command reply is acknowledged before a fresh authoritative Case read. */
+export function parseCaseCommandReceipt(
+  value: unknown,
+  scope: { companyId: string; projectId: string; caseId?: string },
+): Pick<CaseDetail, 'id' | 'revision'> {
+  // Receipts are immutable and can predate additions to the live read model.
+  // Acknowledgement needs only the scoped identity and recorded revision;
+  // the caller reloads the live Case instead of displaying the receipt.
+  const body = object(value);
+  const id = text(body.id);
+  if (
+    body.companyId !== scope.companyId ||
+    body.projectId !== scope.projectId ||
+    (scope.caseId !== undefined && id !== scope.caseId)
+  )
+    invalid();
+  return { id, revision: positive(body.revision) };
+}
+
 export function parseCaseDetail(
   value: unknown,
   scope: { companyId: string; projectId: string; caseId?: string },

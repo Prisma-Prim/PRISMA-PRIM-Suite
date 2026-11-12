@@ -70,6 +70,8 @@ function source(
       resolvedTotal: 0,
     },
     exchanges: {
+      nextCursor: null,
+      sendings: [],
       records: [],
       total: 0,
       deadlines: { set: null, entries: [] },
@@ -300,6 +302,8 @@ describe('Certification Case dossier register', () => {
     const member = { workspaceMembershipId: id(3), displayName: 'Ada Ionescu' };
     const plan = { ...document(1), sourceTitle: 'Stage 1 audit plan' };
     const exchanges: CertificationRegisterSource['exchanges'] = {
+      nextCursor: null,
+      sendings: [],
       records: [
         {
           sequence: 1,

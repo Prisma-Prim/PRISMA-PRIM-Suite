@@ -11,6 +11,12 @@ const keys = [
   'filterAll',
   'filteredEmpty',
   'partial',
+  'pageMore',
+  'pageLoading',
+  'pageUnavailable',
+  'pageRetry',
+  'pageStale',
+  'pageReload',
   'recordHeading',
   'directionReceived',
   'directionSent',
@@ -157,7 +163,15 @@ export const exchangeMessages = defineMessages(keys, {
     filterKind: 'Item kind',
     filterAll: 'All',
     filteredEmpty: 'No Exchange Record matches these filters.',
-    partial: 'The latest {shown} of {total} Exchange Records.',
+    partial: '{shown} of {total} Exchange Records loaded.',
+    pageMore: 'Load earlier exchanges',
+    pageLoading: 'Loading exchanges…',
+    pageUnavailable:
+      'The following exchanges are unavailable. The loaded records are kept.',
+    pageRetry: 'Retry loading exchanges',
+    pageStale: 'The Case changed. Reload it to read a consistent register.',
+    pageReload: 'Reload the Case',
+
     recordHeading: 'Exchange Record {sequence} — {direction} — {kind}',
     directionReceived: 'Received',
     directionSent: 'Sent',
@@ -311,7 +325,16 @@ export const exchangeMessages = defineMessages(keys, {
     filterKind: 'Type d’élément',
     filterAll: 'Tous',
     filteredEmpty: 'Aucun échange ne correspond à ces filtres.',
-    partial: 'Les {shown} derniers échanges sur {total}.',
+    partial: '{shown} échanges chargés sur {total}.',
+    pageMore: 'Charger les échanges précédents',
+    pageLoading: 'Chargement des échanges…',
+    pageUnavailable:
+      'Les échanges suivants sont indisponibles. Les échanges chargés sont conservés.',
+    pageRetry: 'Réessayer le chargement',
+    pageStale:
+      'Le dossier a changé. Rechargez-le pour lire un registre cohérent.',
+    pageReload: 'Recharger le dossier',
+
     recordHeading: 'Échange {sequence} — {direction} — {kind}',
     directionReceived: 'Reçu',
     directionSent: 'Envoyé',
@@ -469,7 +492,16 @@ export const exchangeMessages = defineMessages(keys, {
     filterKind: 'Tip de element',
     filterAll: 'Toate',
     filteredEmpty: 'Niciun schimb nu corespunde acestor filtre.',
-    partial: 'Ultimele {shown} din {total} schimburi.',
+    partial: '{shown} din {total} schimburi încărcate.',
+    pageMore: 'Încarcă schimburile anterioare',
+    pageLoading: 'Se încarcă schimburile…',
+    pageUnavailable:
+      'Schimburile următoare nu sunt disponibile. Înregistrările încărcate sunt păstrate.',
+    pageRetry: 'Reîncearcă încărcarea',
+    pageStale:
+      'Dosarul s-a schimbat. Reîncarcă-l pentru a citi un registru coerent.',
+    pageReload: 'Reîncarcă dosarul',
+
     recordHeading: 'Schimbul {sequence} — {direction} — {kind}',
     directionReceived: 'Primit',
     directionSent: 'Trimis',
@@ -625,7 +657,16 @@ export const exchangeMessages = defineMessages(keys, {
     filterKind: 'Вид документа',
     filterAll: 'Все',
     filteredEmpty: 'Нет записей обмена, соответствующих фильтрам.',
-    partial: 'Последние {shown} из {total} записей обмена.',
+    partial: 'Загружено {shown} из {total} записей обмена.',
+    pageMore: 'Загрузить предыдущие обмены',
+    pageLoading: 'Загрузка обменов…',
+    pageUnavailable:
+      'Следующие обмены недоступны. Загруженные записи сохранены.',
+    pageRetry: 'Повторить загрузку',
+    pageStale:
+      'Досье изменилось. Загрузите его заново, чтобы прочитать согласованный реестр.',
+    pageReload: 'Загрузить досье заново',
+
     recordHeading: 'Запись обмена {sequence} — {direction} — {kind}',
     directionReceived: 'Получено',
     directionSent: 'Отправлено',
