@@ -30,8 +30,12 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   CERTIFICATION_STEPS,
   certificationCertificates,
+  certificationDeadlineSets,
   certificationDiscrepancyResolutions,
   certificationEvents,
+  certificationExchangeRecords,
+  certificationReverificationItems,
+  certificationReverificationWithdrawals,
   certificationFindingRecords,
   certificationFindings,
   certificationCaseDocuments,
@@ -56,6 +60,24 @@ import {
   manualDiscrepancyCommand,
   resolutionCommand,
 } from './certification-consistency.validation.js';
+import {
+  currentExchanges,
+  exchangeRegister,
+  type DeadlineSetVersion,
+  type ExchangeRecordVersion,
+} from './certification-exchanges.js';
+import { deadlineSetVersion } from './certification-procedure.service.js';
+import {
+  exchangeCommand,
+  reverificationCommand,
+  withdrawalCommand,
+  type ExchangeValue,
+} from './certification-exchanges.validation.js';
+import {
+  reverificationSection,
+  type ReverificationWithdrawal,
+  type StoredReverificationItem,
+} from './certification-reverification.js';
 import { pdfRefusal } from '../commercial-pdf/commercial-pdf-source.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
 import { workspaceMemberships } from '../database/schema/core.js';
@@ -2456,9 +2478,35 @@ export class CertificationService {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
       }),
-      consistency: consistencySection(
-        await this.consistencyInput(actor, companyId, row, steps, findings),
-      ),
+      ...(await this.checkedSections(actor, companyId, row, steps, findings)),
+    };
+  }
+
+  /** The Dossier Consistency Check and the exchange register, read together. */
+  private async checkedSections(
+    actor: ActorContext,
+    companyId: string,
+    row: CaseRow,
+    steps: readonly StepRow[],
+    findings: readonly FindingView[],
+  ): Promise<Pick<CertificationCaseDetail, 'consistency' | 'exchanges'>> {
+    const input = await this.consistencyInput(
+      actor,
+      companyId,
+      row,
+      steps,
+      findings,
+    );
+    const certificate = await this.certificate(actor, companyId, row.id);
+    return {
+      consistency: consistencySection(input),
+      exchanges: await this.exchangeSection(actor, {
+        companyId,
+        caseId: row.id,
+        input,
+        findings,
+        firstSurveillanceBy: certificate?.firstSurveillanceBy ?? null,
+      }),
     };
   }
 
@@ -2528,6 +2576,104 @@ export class CertificationService {
       status: row.status,
       manual: manual.map(manualDiscrepancyRecord),
       resolutions: resolutions.map(resolutionRecord),
+      exchanges: await this.exchangeVersions(actor, companyId, row.id),
+      deadlineDays: (await this.deadlineSet(actor, companyId))?.days ?? null,
+    };
+  }
+
+  /** Every version of the Case's Exchange Records, in recording order. */
+  private async exchangeVersions(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<ExchangeRecordVersion[]> {
+    const rows = await this.database.connection
+      .select()
+      .from(certificationExchangeRecords)
+      .where(
+        and(
+          eq(certificationExchangeRecords.workspaceId, actor.workspaceId),
+          eq(certificationExchangeRecords.companyId, companyId),
+          eq(certificationExchangeRecords.caseId, caseId),
+        ),
+      )
+      .orderBy(asc(certificationExchangeRecords.caseRevision));
+    return rows.map((row) => persisted(() => exchangeVersion(row)));
+  }
+
+  /** The Company's current procedure deadline set, if one was configured. */
+  private async deadlineSet(
+    actor: ActorContext,
+    companyId: string,
+  ): Promise<DeadlineSetVersion | null> {
+    const [row] = await this.database.connection
+      .select()
+      .from(certificationDeadlineSets)
+      .where(
+        and(
+          eq(certificationDeadlineSets.workspaceId, actor.workspaceId),
+          eq(certificationDeadlineSets.companyId, companyId),
+        ),
+      )
+      .orderBy(desc(certificationDeadlineSets.version))
+      .limit(1);
+    return row ? deadlineSetVersion(row) : null;
+  }
+
+  /** The exchange register, deadlines and Re-verification Items of a Case. */
+  private async exchangeSection(
+    actor: ActorContext,
+    {
+      companyId,
+      caseId,
+      input,
+      findings,
+      firstSurveillanceBy,
+    }: {
+      companyId: string;
+      caseId: string;
+      /** The records the consistency check read at the same revision. */
+      input: ConsistencyInput;
+      findings: readonly FindingView[];
+      firstSurveillanceBy: string | null;
+    },
+  ): Promise<CertificationCaseDetail['exchanges']> {
+    const scope = <
+      T extends
+        | typeof certificationReverificationItems
+        | typeof certificationReverificationWithdrawals,
+    >(
+      table: T,
+    ) =>
+      and(
+        eq(table.workspaceId, actor.workspaceId),
+        eq(table.companyId, companyId),
+        eq(table.caseId, caseId),
+      );
+    const stored = await this.database.connection
+      .select()
+      .from(certificationReverificationItems)
+      .where(scope(certificationReverificationItems))
+      .orderBy(asc(certificationReverificationItems.sequence));
+    const withdrawals = await this.database.connection
+      .select()
+      .from(certificationReverificationWithdrawals)
+      .where(scope(certificationReverificationWithdrawals));
+    return {
+      ...exchangeRegister({
+        steps: input.steps,
+        attachments: input.attachments,
+        versions: input.exchanges,
+        set: await this.deadlineSet(actor, companyId),
+        today: this.clock.now().toISOString().slice(0, 10),
+      }),
+      reverification: reverificationSection({
+        findings,
+        stored: stored.map(storedReverificationItem),
+        withdrawals: withdrawals.map(reverificationWithdrawal),
+        attachments: input.attachments,
+        firstSurveillanceBy,
+      }),
     };
   }
 
@@ -2597,22 +2743,7 @@ export class CertificationService {
           input.expectedRevision,
         );
         const steps = await this.steps(actor, companyId, targetId);
-        const roles = await this.contributorRoles(actor);
-        const onTeam = this.onTeam(actor, steps);
-        if (
-          !roles.has('programme_manager') &&
-          !(roles.has('auditor') && onTeam) &&
-          !(roles.has('approver') && !onTeam)
-        )
-          throw roles.has('approver')
-            ? stepConflict(
-                'CERTIFICATION_INDEPENDENCE',
-                'A member of the audit team records a Discrepancy as its auditor, not as an approver.',
-              )
-            : stepConflict(
-                'CERTIFICATION_NOT_ON_TEAM',
-                'An auditor records Discrepancies on the Cases whose audit team includes them.',
-              );
+        await this.requireContributor(actor, steps, 'discrepancy');
         for (const side of [input.left, input.right])
           await this.requireAttachment(
             actor,
@@ -2795,6 +2926,14 @@ export class CertificationService {
             actorDisplayName: actor.displayName,
             recordedAt: now,
           });
+        // The acceptance's re-verification flag adds a linked item.
+        if (input.reverify)
+          await this.insertReverificationItem(actor, companyId, current, {
+            origin: 'discrepancy',
+            text: input.reason,
+            source: { kind: 'discrepancy', discrepancyId: target.id },
+            at: now,
+          });
         return this.advance({
           actor,
           companyId,
@@ -2805,10 +2944,386 @@ export class CertificationService {
             rule,
             verdict: target.verdict,
             resolution: input.resolution,
+            ...(input.reverify ? { reverification: 'added' } : {}),
           },
         });
       },
     });
+  }
+
+  /**
+   * A programme manager records an Exchange Record, or corrects one with a
+   * reason, on an open, refused or certified Case. The business date is not
+   * later than today anywhere (UTC+14); each exchanged Version is attached
+   * to this Case.
+   */
+  recordExchange({
+    actor,
+    caseId,
+    sequence,
+    body,
+    key,
+  }: CaseCommandInput & { sequence?: string }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    const correcting =
+      sequence === undefined ? null : exchangeSequence(sequence);
+    return this.command({
+      actor,
+      kind: 'exchange',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, sequence: correcting, body }),
+      execute: async (companyId) => {
+        const input = exchangeCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+          ['open', 'refused', 'certified'],
+        );
+        const recorded = currentExchanges(
+          await this.exchangeVersions(actor, companyId, targetId),
+        );
+        let number: number;
+        let version: number;
+        if (correcting === null) {
+          if (input.reason !== null)
+            throw stepConflict(
+              'CERTIFICATION_CORRECTION_REASON',
+              'A correction states its reason; a first Exchange Record has none.',
+            );
+          number = Math.max(0, ...recorded.map((entry) => entry.sequence)) + 1;
+          version = 1;
+        } else {
+          const previous = recorded.find(
+            (entry) => entry.sequence === correcting,
+          );
+          if (!previous) throw new NotFoundException();
+          if (input.reason === null)
+            throw stepConflict(
+              'CERTIFICATION_CORRECTION_REASON',
+              'A correction states its reason; a first Exchange Record has none.',
+            );
+          if (sameExchange(previous, input.value)) throw unchangedCorrection();
+          number = correcting;
+          version = previous.version + 1;
+        }
+        await this.requireAttachments(
+          actor,
+          companyId,
+          targetId,
+          input.value.attachmentIds,
+        );
+        if (input.value.businessDate > latestBusinessDate(this.clock.now()))
+          throw stepConflict(
+            'CERTIFICATION_EXCHANGE_IN_FUTURE',
+            'An exchange cannot be dated after today.',
+          );
+        const now = this.clock.now();
+        await this.database.connection
+          .insert(certificationExchangeRecords)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            sequence: number,
+            version,
+            caseRevision: current.revision + 1,
+            direction: input.value.direction,
+            itemKind: input.value.itemKind,
+            counterpartKind: input.value.counterpart.kind,
+            counterpartName: input.value.counterpart.name,
+            businessDate: input.value.businessDate,
+            channel: input.value.channel,
+            reference: input.value.reference,
+            note: input.value.note,
+            attachmentIds: input.value.attachmentIds,
+            reason: input.reason,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            recordedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.exchange_recorded',
+          metadata: {
+            sequence: number,
+            version,
+            direction: input.value.direction,
+            itemKind: input.value.itemKind,
+            channel: input.value.channel,
+            counterpartKind: input.value.counterpart.kind,
+          },
+        });
+      },
+    });
+  }
+
+  /**
+   * A programme manager, an auditor on the team or an approver outside it
+   * adds a manual Re-verification Item, with an optional source of this Case.
+   */
+  addReverificationItem({
+    actor,
+    caseId,
+    body,
+    key,
+  }: CaseCommandInput): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'contributor',
+      kind: 'reverification_item',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const input = reverificationCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+          ['open', 'refused', 'certified'],
+        );
+        const steps = await this.steps(actor, companyId, targetId);
+        await this.requireContributor(actor, steps, 'reverification');
+        const source = input.source;
+        if (source?.kind === 'attachment')
+          await this.requireAttachment(
+            actor,
+            companyId,
+            targetId,
+            source.attachmentId,
+            DOCUMENT_ROLES,
+          );
+        else if (source?.kind === 'finding') {
+          const findings = await this.findings(
+            actor,
+            companyId,
+            targetId,
+            steps,
+          );
+          if (!findings.some((finding) => finding.id === source.findingId))
+            throw unknownSource();
+        } else if (source?.kind === 'exchange') {
+          const recorded = await this.exchangeVersions(
+            actor,
+            companyId,
+            targetId,
+          );
+          if (!recorded.some((entry) => entry.sequence === source.sequence))
+            throw unknownSource();
+        } else if (source?.kind === 'discrepancy') {
+          const section = consistencySection(
+            await this.consistencyInput(
+              actor,
+              companyId,
+              current,
+              steps,
+              await this.findings(actor, companyId, targetId, steps),
+            ),
+          );
+          if (
+            ![...section.open, ...section.resolved].some(
+              (view) => view.id === source.discrepancyId,
+            )
+          )
+            throw unknownSource();
+        }
+        const now = this.clock.now();
+        await this.insertReverificationItem(actor, companyId, current, {
+          origin: 'manual',
+          text: input.text,
+          source,
+          at: now,
+        });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.reverification_item_added',
+          metadata: { origin: 'manual', source: source?.kind ?? 'none' },
+        });
+      },
+    });
+  }
+
+  /** A programme manager withdraws a manual Re-verification Item with a reason. */
+  withdrawReverificationItem({
+    actor,
+    caseId,
+    itemId,
+    body,
+    key,
+  }: CaseCommandInput & { itemId: string }): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    // An automatic item is derived from its Finding: it has no stored
+    // identity to withdraw, so its `finding:` id finds nothing here.
+    const target = itemId.startsWith('finding:') ? null : requireUuid(itemId);
+    return this.command({
+      actor,
+      kind: 'reverification_withdrawal',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, itemId, body }),
+      execute: async (companyId) => {
+        const input = withdrawalCommand(body);
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          input.expectedRevision,
+          ['open', 'refused', 'certified'],
+        );
+        if (target === null)
+          throw stepConflict(
+            'CERTIFICATION_REVERIFICATION_AUTOMATIC',
+            'An automatic Re-verification Item cannot be withdrawn.',
+          );
+        const [item] = await this.database.connection
+          .select({ id: certificationReverificationItems.id })
+          .from(certificationReverificationItems)
+          .where(
+            and(
+              eq(
+                certificationReverificationItems.workspaceId,
+                actor.workspaceId,
+              ),
+              eq(certificationReverificationItems.companyId, companyId),
+              eq(certificationReverificationItems.caseId, targetId),
+              eq(certificationReverificationItems.id, target),
+            ),
+          );
+        if (!item) throw new NotFoundException();
+        const [withdrawn] = await this.database.connection
+          .select({ id: certificationReverificationWithdrawals.id })
+          .from(certificationReverificationWithdrawals)
+          .where(
+            and(
+              eq(
+                certificationReverificationWithdrawals.workspaceId,
+                actor.workspaceId,
+              ),
+              eq(certificationReverificationWithdrawals.companyId, companyId),
+              eq(certificationReverificationWithdrawals.caseId, targetId),
+              eq(certificationReverificationWithdrawals.itemId, target),
+            ),
+          );
+        if (withdrawn)
+          throw stepConflict(
+            'CERTIFICATION_REVERIFICATION_WITHDRAWN',
+            'This Re-verification Item is already withdrawn.',
+          );
+        const now = this.clock.now();
+        await this.database.connection
+          .insert(certificationReverificationWithdrawals)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            caseRevision: current.revision + 1,
+            itemId: target,
+            reason: input.reason,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            recordedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.reverification_item_withdrawn',
+          metadata: { origin: 'manual' },
+        });
+      },
+    });
+  }
+
+  /** Inserts a stored Re-verification Item at the next Case revision. */
+  private async insertReverificationItem(
+    actor: ActorContext,
+    companyId: string,
+    current: CaseRow,
+    item: {
+      origin: 'manual' | 'discrepancy';
+      text: string;
+      source: StoredReverificationItem['source'];
+      at: Date;
+    },
+  ): Promise<void> {
+    const [recorded] = await this.database.connection
+      .select({ value: count() })
+      .from(certificationReverificationItems)
+      .where(
+        and(
+          eq(certificationReverificationItems.workspaceId, actor.workspaceId),
+          eq(certificationReverificationItems.companyId, companyId),
+          eq(certificationReverificationItems.caseId, current.id),
+        ),
+      );
+    const source = item.source;
+    await this.database.connection
+      .insert(certificationReverificationItems)
+      .values({
+        workspaceId: actor.workspaceId,
+        companyId,
+        caseId: current.id,
+        caseRevision: current.revision + 1,
+        sequence: (recorded?.value ?? 0) + 1,
+        origin: item.origin,
+        text: item.text,
+        sourceKind: source?.kind ?? null,
+        sourceFindingId: source?.kind === 'finding' ? source.findingId : null,
+        sourceDiscrepancyId:
+          source?.kind === 'discrepancy' ? source.discrepancyId : null,
+        sourceExchangeSequence:
+          source?.kind === 'exchange' ? source.sequence : null,
+        sourceAttachmentId:
+          source?.kind === 'attachment' ? source.attachmentId : null,
+        actorMembershipId: actor.workspaceMembershipId,
+        actorInternalUserId: actor.internalUserId,
+        actorDisplayName: actor.displayName,
+        recordedAt: item.at,
+      });
+  }
+
+  /**
+   * Refuses unless the actor is a programme manager, an auditor on the
+   * audit team or an approver outside it, rechecked in the transaction.
+   */
+  private async requireContributor(
+    actor: ActorContext,
+    steps: readonly StepRow[],
+    act: 'discrepancy' | 'reverification',
+  ): Promise<void> {
+    const roles = await this.contributorRoles(actor);
+    const onTeam = this.onTeam(actor, steps);
+    if (
+      roles.has('programme_manager') ||
+      (roles.has('auditor') && onTeam) ||
+      (roles.has('approver') && !onTeam)
+    )
+      return;
+    const what =
+      act === 'discrepancy' ? 'a Discrepancy' : 'a Re-verification Item';
+    throw roles.has('approver')
+      ? stepConflict(
+          'CERTIFICATION_INDEPENDENCE',
+          `A member of the audit team records ${what} as its auditor, not as an approver.`,
+        )
+      : stepConflict(
+          'CERTIFICATION_NOT_ON_TEAM',
+          `An auditor records ${what} on the Cases whose audit team includes them.`,
+        );
   }
 
   /** Every recorded version and referenced Document Version of a visible Case. */
@@ -2919,15 +3434,13 @@ export class CertificationService {
         ...(certificate ? [{ kind: 'certificate' as const, certificate }] : []),
       ],
       documents: documents.map(attachment),
-      consistency: consistencySection(
-        await this.consistencyInput(
-          actor,
-          companyId,
-          row,
-          steps,
-          await this.findings(actor, companyId, caseId, steps),
-        ),
-      ),
+      ...(await this.checkedSections(
+        actor,
+        companyId,
+        row,
+        steps,
+        await this.findings(actor, companyId, caseId, steps),
+      )),
     };
   }
 
@@ -3583,6 +4096,109 @@ function attachment(
       displayName: row.actorDisplayName,
     },
     attachedAt: row.attachedAt.toISOString(),
+  };
+}
+
+function exchangeSequence(value: string): number {
+  if (!/^[1-9]\d{0,8}$/u.test(value)) throw new NotFoundException();
+  return Number(value);
+}
+
+/** Whether a correction would restate the current version unchanged. */
+function sameExchange(
+  previous: ExchangeRecordVersion,
+  value: ExchangeValue,
+): boolean {
+  return sameValue(
+    {
+      direction: previous.direction,
+      itemKind: previous.itemKind,
+      attachmentIds: previous.attachmentIds,
+      counterpart: previous.counterpart,
+      businessDate: previous.businessDate,
+      channel: previous.channel,
+      reference: previous.reference,
+      note: previous.note,
+    },
+    value,
+  );
+}
+
+function unknownSource(): ConflictException {
+  return stepConflict(
+    'CERTIFICATION_REVERIFICATION_SOURCE_UNKNOWN',
+    'Name a Finding, Discrepancy, Exchange Record or attached Document Version of this Case.',
+  );
+}
+
+function exchangeVersion(
+  row: typeof certificationExchangeRecords.$inferSelect,
+): ExchangeRecordVersion {
+  const ids: unknown = row.attachmentIds;
+  if (!Array.isArray(ids))
+    throw new Error('Stored attachments are not a list.');
+  const values: unknown[] = ids;
+  return {
+    id: row.id,
+    sequence: row.sequence,
+    version: row.version,
+    caseRevision: row.caseRevision,
+    direction: row.direction,
+    itemKind: row.itemKind,
+    counterpart: { kind: row.counterpartKind, name: row.counterpartName },
+    businessDate: row.businessDate,
+    channel: row.channel,
+    reference: row.reference,
+    note: row.note,
+    attachmentIds: values.map((id) => requireUuid(id)),
+    reason: row.reason,
+    recordedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    recordedAt: row.recordedAt.toISOString(),
+  };
+}
+
+function storedReverificationItem(
+  row: typeof certificationReverificationItems.$inferSelect,
+): StoredReverificationItem {
+  let source: StoredReverificationItem['source'] = null;
+  if (row.sourceFindingId !== null)
+    source = { kind: 'finding', findingId: row.sourceFindingId };
+  else if (row.sourceDiscrepancyId !== null)
+    source = { kind: 'discrepancy', discrepancyId: row.sourceDiscrepancyId };
+  else if (row.sourceExchangeSequence !== null)
+    source = { kind: 'exchange', sequence: row.sourceExchangeSequence };
+  else if (row.sourceAttachmentId !== null)
+    source = { kind: 'attachment', attachmentId: row.sourceAttachmentId };
+  return {
+    id: row.id,
+    sequence: row.sequence,
+    caseRevision: row.caseRevision,
+    origin: row.origin,
+    text: row.text,
+    source,
+    addedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    addedAt: row.recordedAt.toISOString(),
+  };
+}
+
+function reverificationWithdrawal(
+  row: typeof certificationReverificationWithdrawals.$inferSelect,
+): ReverificationWithdrawal {
+  return {
+    itemId: row.itemId,
+    caseRevision: row.caseRevision,
+    reason: row.reason,
+    by: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    at: row.recordedAt.toISOString(),
   };
 }
 

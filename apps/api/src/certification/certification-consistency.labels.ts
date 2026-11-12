@@ -48,6 +48,9 @@ export interface ConsistencyLabels {
     certificateText: string;
     addressNumbers: string;
     documentVersion: string;
+    planSending: string;
+    exchangeReference: string;
+    exchangeDeadline: string;
   };
   textFields: {
     holderName: string;
@@ -65,6 +68,7 @@ export interface ConsistencyLabels {
     revision: string;
     finding: string;
     certificate: string;
+    exchange: string;
   };
 }
 
@@ -82,12 +86,16 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R03: 'Stage plan days against the Stage share of the duration',
       R04: 'Stage plan days against calendar days and auditors on site',
       R05: 'Business dates in order',
+      R06: 'Stage plan sent after the Stage’s first day',
+      R07: 'Stage plan sending against the register',
       R08: 'Dossier item answered present without its record',
       R09: 'Dossier item answered missing or not applicable while recorded',
       R10: 'Record changed after the dossier review',
       R11: 'Granted texts against the agreed Certificate data',
       R12: 'House numbers and postal codes of the addresses',
       R14: 'Record relying on an older Document Version',
+      R15: 'Outgoing reference carried by several sendings',
+      R16: 'Sending before a “not before” procedure deadline',
     },
     verdicts: {
       critical: 'Critical',
@@ -130,6 +138,9 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       certificateText: 'Certificate text',
       addressNumbers: 'Address numbers',
       documentVersion: 'Document Version',
+      planSending: 'Stage plan sending',
+      exchangeReference: 'Outgoing reference',
+      exchangeDeadline: 'Stage 2 report released to the client',
     },
     textFields: {
       holderName: 'holder',
@@ -181,6 +192,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       revision: 'Case revision',
       finding: 'Finding',
       certificate: 'Certificate',
+      exchange: 'Exchange Record',
     },
   },
   fr: {
@@ -196,12 +208,16 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R03: 'Jours du plan d’étape par rapport à la part de l’étape dans la durée',
       R04: 'Jours du plan d’étape par rapport aux jours calendaires et aux auditeurs sur site',
       R05: 'Ordre des dates',
+      R06: 'Plan d’étape envoyé après le premier jour de l’étape',
+      R07: 'Envoi du plan d’étape face au registre',
       R08: 'Élément du dossier déclaré présent sans son enregistrement',
       R09: 'Élément du dossier déclaré manquant ou sans objet alors qu’il est enregistré',
       R10: 'Enregistrement modifié après la revue du dossier',
       R11: 'Textes accordés par rapport aux données du certificat convenues',
       R12: 'Numéros de rue et codes postaux des adresses',
       R14: 'Enregistrement fondé sur une version de document antérieure',
+      R15: 'Référence sortante portée par plusieurs envois',
+      R16: 'Envoi avant un délai de procédure « pas avant »',
     },
     verdicts: {
       critical: 'Critique',
@@ -244,6 +260,9 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       certificateText: 'Texte du certificat',
       addressNumbers: 'Numéros d’adresse',
       documentVersion: 'Version de document',
+      planSending: 'Envoi du plan d’étape',
+      exchangeReference: 'Référence sortante',
+      exchangeDeadline: 'Rapport d’étape 2 remis au client',
     },
     textFields: {
       holderName: 'titulaire',
@@ -295,6 +314,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       revision: 'Révision du dossier',
       finding: 'Constat',
       certificate: 'Certificat',
+      exchange: 'Échange',
     },
   },
   ro: {
@@ -310,12 +330,16 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R03: 'Zilele planului de etapă față de cota etapei din durată',
       R04: 'Zilele planului de etapă față de zilele calendaristice și auditorii la fața locului',
       R05: 'Ordinea datelor',
+      R06: 'Plan de etapă trimis după prima zi a etapei',
+      R07: 'Trimiterea planului de etapă față de registru',
       R08: 'Element al dosarului declarat prezent fără înregistrarea sa',
       R09: 'Element al dosarului declarat lipsă sau neaplicabil deși este înregistrat',
       R10: 'Înregistrare modificată după analiza dosarului',
       R11: 'Textele acordate față de datele certificatului convenite',
       R12: 'Numerele de stradă și codurile poștale ale adreselor',
       R14: 'Înregistrare bazată pe o versiune anterioară a documentului',
+      R15: 'Referință de ieșire purtată de mai multe trimiteri',
+      R16: 'Trimitere înaintea unui termen de procedură „nu înainte de”',
     },
     verdicts: {
       critical: 'Critic',
@@ -358,6 +382,9 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       certificateText: 'Textul certificatului',
       addressNumbers: 'Numerele adresei',
       documentVersion: 'Versiunea documentului',
+      planSending: 'Trimiterea planului de etapă',
+      exchangeReference: 'Referință de ieșire',
+      exchangeDeadline: 'Raportul etapei 2 transmis clientului',
     },
     textFields: {
       holderName: 'titular',
@@ -409,6 +436,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       revision: 'Revizia dosarului',
       finding: 'Constatarea',
       certificate: 'Certificatul',
+      exchange: 'Schimb',
     },
   },
   ru: {
@@ -424,12 +452,16 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R03: 'Дни плана этапа в сравнении с долей этапа в продолжительности',
       R04: 'Дни плана этапа в сравнении с календарными днями и аудиторами на месте',
       R05: 'Порядок дат',
+      R06: 'План этапа отправлен после первого дня этапа',
+      R07: 'Отправка плана этапа в сравнении с реестром',
       R08: 'Элемент досье отмечен как имеющийся, но запись отсутствует',
       R09: 'Элемент досье отмечен как отсутствующий или неприменимый, хотя запись есть',
       R10: 'Запись изменена после анализа досье',
       R11: 'Предоставленные тексты в сравнении с согласованными данными сертификата',
       R12: 'Номера домов и почтовые индексы в адресах',
       R14: 'Запись основана на более ранней версии документа',
+      R15: 'Исходящий номер у нескольких отправок',
+      R16: 'Отправка до процедурного срока «не ранее»',
     },
     verdicts: {
       critical: 'Критическое',
@@ -472,6 +504,9 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       certificateText: 'Текст сертификата',
       addressNumbers: 'Номера в адресе',
       documentVersion: 'Версия документа',
+      planSending: 'Отправка плана этапа',
+      exchangeReference: 'Исходящий номер',
+      exchangeDeadline: 'Отчёт этапа 2 передан клиенту',
     },
     textFields: {
       holderName: 'держатель',
@@ -523,6 +558,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       revision: 'Ревизия досье',
       finding: 'Вывод',
       certificate: 'Сертификат',
+      exchange: 'Запись обмена',
     },
   },
 };

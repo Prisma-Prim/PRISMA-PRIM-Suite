@@ -18,6 +18,7 @@ import {
   requireActorContext,
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
+import { CertificationProcedureService } from './certification-procedure.service.js';
 import { CertificationService } from './certification.service.js';
 import type { AuditStage } from './certification-stages.js';
 
@@ -49,7 +50,93 @@ function auditStage(value: string): AuditStage {
 @Controller()
 @UseGuards(ActorContextAdapter)
 export class CertificationController {
-  constructor(private readonly certification: CertificationService) {}
+  constructor(
+    private readonly certification: CertificationService,
+    private readonly procedure: CertificationProcedureService,
+  ) {}
+
+  @Header('Cache-Control', 'private, no-store')
+  @Get('certification-procedure-deadlines')
+  readDeadlines(@Req() request: ActorContextRequest) {
+    return this.procedure.readDeadlines(requireActorContext(request));
+  }
+
+  @Post('certification-procedure-deadlines')
+  configureDeadlines(
+    @Req() request: ActorContextRequest,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.procedure.configureDeadlines({
+      actor: requireActorContext(request),
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/exchanges')
+  recordExchange(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordExchange({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/exchanges/:sequence')
+  correctExchange(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Param('sequence') sequence: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordExchange({
+      actor: requireActorContext(request),
+      caseId,
+      sequence,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/reverification-items')
+  addReverificationItem(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.addReverificationItem({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/reverification-items/:itemId/withdrawal')
+  withdrawReverificationItem(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Param('itemId') itemId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.withdrawReverificationItem({
+      actor: requireActorContext(request),
+      caseId,
+      itemId,
+      body,
+      key,
+    });
+  }
 
   @Header('Cache-Control', 'private, no-store')
   @Get('projects/:projectId/certification-cases')

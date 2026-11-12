@@ -467,7 +467,8 @@ export async function prepareCertificationJourney(
   // improvement; the auditor records the client's plan, judged adequate. Its
   // plan states 2 auditor-days over one calendar day with Ion Popa as the
   // only auditor on site, which the consistency check asks to clarify (R04).
-  const stage2 = { start: addDays(today, -20), end: addDays(today, -20) };
+  // S2 is 21 days ago: the audit dossier, due within S2 + 20, is overdue.
+  const stage2 = { start: addDays(today, -21), end: addDays(today, -21) };
   await step(
     manager,
     `${base}/stages/stage-2/plan`,
@@ -550,6 +551,8 @@ export async function prepareCertificationJourney(
     step,
     attach,
     decision,
+    /** The first days of both Stages and S2, the last day of Stage 2. */
+    stages: { stage1, stage2 },
     /** The duration inputs and confirmed values of the first determination. */
     durationInputs: inputs,
     confirmedDuration: confirmed,

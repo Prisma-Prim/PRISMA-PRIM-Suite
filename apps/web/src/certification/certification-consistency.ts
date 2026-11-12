@@ -12,12 +12,16 @@ export const CONSISTENCY_RULES = [
   'R03',
   'R04',
   'R05',
+  'R06',
+  'R07',
   'R08',
   'R09',
   'R10',
   'R11',
   'R12',
   'R14',
+  'R15',
+  'R16',
 ] as const;
 export type ConsistencyRule = (typeof CONSISTENCY_RULES)[number];
 
@@ -100,7 +104,19 @@ export type DiscrepancySubject =
   | { kind: 'dossier_item'; item: ConsistencyDossierItem }
   | { kind: 'certificate_text'; language: string; field: CertificateTextField }
   | { kind: 'address_numbers'; language: string }
-  | { kind: 'document_version'; documentId: string };
+  | { kind: 'document_version'; documentId: string }
+  | { kind: 'plan_sending'; stage: AuditStage }
+  | {
+      kind: 'exchange_reference';
+      reference: string;
+      first: number;
+      second: number;
+    }
+  | {
+      kind: 'exchange_deadline';
+      deadline: 'stage_2_report_released';
+      sequence: number;
+    };
 
 export interface AttachmentReference {
   attachmentId: string;
@@ -145,6 +161,12 @@ export type DiscrepancySource =
   | {
       kind: 'certificate';
       number: string;
+      attachment: AttachmentReference | null;
+    }
+  | {
+      kind: 'exchange';
+      sequence: number;
+      version: number;
       attachment: AttachmentReference | null;
     }
   | { kind: 'attachment'; attachment: AttachmentReference };
@@ -344,6 +366,8 @@ export type ResolutionDraft = {
   discrepancyId: string;
   resolution: 'accepted' | 'corrected';
   reason: string;
+  /** Acceptances only: also add an item to re-verify at the next Audit. */
+  reverify: boolean;
   /** `attachment:<id>` or `step:<id>`; corrections only. */
   correctedBy: string;
 };
@@ -366,7 +390,11 @@ export function resolutionFromDraft(
     resolution: draft.resolution,
     reason: draft.reason,
   };
-  if (draft.resolution === 'accepted') return { status: 'valid', body: base };
+  if (draft.resolution === 'accepted')
+    return {
+      status: 'valid',
+      body: draft.reverify ? { ...base, reverify: true } : base,
+    };
   const [kind, id = ''] = draft.correctedBy.split(':');
   if (
     kind === 'attachment' &&
@@ -558,6 +586,24 @@ function subject(value: unknown): DiscrepancySubject {
       return { kind: 'address_numbers', language: text(body.language, 10) };
     case 'document_version':
       return { kind: 'document_version', documentId: text(body.documentId) };
+    case 'plan_sending':
+      return {
+        kind: 'plan_sending',
+        stage: oneOf(['stage_1', 'stage_2'] as const, body.stage),
+      };
+    case 'exchange_reference':
+      return {
+        kind: 'exchange_reference',
+        reference: text(body.reference, 64),
+        first: positive(body.first),
+        second: positive(body.second),
+      };
+    case 'exchange_deadline':
+      return {
+        kind: 'exchange_deadline',
+        deadline: oneOf(['stage_2_report_released'] as const, body.deadline),
+        sequence: positive(body.sequence),
+      };
     default:
       return invalid();
   }
@@ -627,6 +673,13 @@ function discrepancySource(value: unknown): DiscrepancySource {
       return {
         kind: 'certificate',
         number: text(body.number, 64),
+        attachment: attachment(body.attachment),
+      };
+    case 'exchange':
+      return {
+        kind: 'exchange',
+        sequence: positive(body.sequence),
+        version: positive(body.version),
         attachment: attachment(body.attachment),
       };
     case 'attachment':

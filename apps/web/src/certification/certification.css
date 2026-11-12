@@ -374,6 +374,27 @@
   background: #eef3fb;
   color: #24456f;
 }
+.certification-workspace .certification-verdict-neutral {
+  background: #f1f0f4;
+  color: #3b3650;
+}
+.certification-workspace .certification-hint {
+  margin-block: 0.25rem 0.75rem;
+  font-size: 0.9rem;
+  color: #4b4660;
+}
+.certification-workspace .certification-versions {
+  margin-block: 0.5rem 0;
+  padding-inline-start: 1.25rem;
+  font-size: 0.9rem;
+}
+.certification-workspace .certification-exchanges fieldset label {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.certification-workspace .certification-step-sendings ul {
+  padding-inline-start: 1.25rem;
+}
 .certification-workspace [role='alert'] {
   padding: 0.75rem 1rem;
   border-left: 3px solid #a73349;

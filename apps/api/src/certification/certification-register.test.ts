@@ -69,6 +69,12 @@ function source(
       resolved: [],
       resolvedTotal: 0,
     },
+    exchanges: {
+      records: [],
+      total: 0,
+      deadlines: { set: null, entries: [] },
+      reverification: { items: [], firstSurveillanceBy: null },
+    },
     ...overrides,
   };
 }
@@ -288,6 +294,180 @@ describe('Certification Case dossier register', () => {
       kind: 'paragraph',
       text: 'Aucune divergence trouvée par le jeu de règles dossier-consistency-2026-11.',
     });
+  }, 60_000);
+
+  it('lists the Exchange Records with their deadline states at generation time and the Re-verification Items', async () => {
+    const member = { workspaceMembershipId: id(3), displayName: 'Ada Ionescu' };
+    const plan = { ...document(1), sourceTitle: 'Stage 1 audit plan' };
+    const exchanges: CertificationRegisterSource['exchanges'] = {
+      records: [
+        {
+          sequence: 1,
+          current: {
+            id: id(20),
+            sequence: 1,
+            version: 2,
+            caseRevision: 12,
+            direction: 'sent',
+            itemKind: 'stage_plan',
+            counterpart: {
+              kind: 'client',
+              name: 'Lactis Demo SRL, quality manager',
+            },
+            businessDate: '2026-09-19',
+            channel: 'email',
+            reference: 'OUT-7',
+            note: null,
+            attachmentIds: [plan.id],
+            reason: 'Fictional date corrected.',
+            recordedBy: member,
+            recordedAt: AT,
+          },
+          versions: [],
+        },
+      ],
+      total: 1,
+      deadlines: {
+        set: {
+          version: 2,
+          days: {
+            stage_plan_sent: 10,
+            audit_dossier_transmitted: 20,
+            stage_2_report_released: 0,
+          },
+          configuredBy: {
+            workspaceMembershipId: id(11),
+            displayName: 'Admin Demo',
+          },
+          configuredAt: AT,
+        },
+        entries: [
+          {
+            kind: 'stage_plan_sent',
+            stage: 'stage_1',
+            direction: 'before',
+            days: 10,
+            anchor: '2026-10-01',
+            dueDate: '2026-09-21',
+            state: 'met',
+            record: { sequence: 1, version: 2, businessDate: '2026-09-19' },
+          },
+          {
+            kind: 'audit_dossier_transmitted',
+            stage: null,
+            direction: 'after',
+            days: 20,
+            anchor: '2026-10-21',
+            dueDate: '2026-11-10',
+            state: 'overdue',
+            record: null,
+          },
+        ],
+      },
+      reverification: {
+        firstSurveillanceBy: '2027-10-20',
+        items: [
+          {
+            id: `finding:${id(30)}`,
+            origin: 'automatic',
+            sequence: null,
+            text: null,
+            caseRevision: 9,
+            source: { kind: 'finding', findingId: id(30), sequence: 2 },
+            addedBy: null,
+            addedAt: null,
+            status: 'open',
+            withdrawal: null,
+          },
+          {
+            id: id(31),
+            origin: 'manual',
+            sequence: 1,
+            text: 'Fictional allergen labelling at dispatch.',
+            caseRevision: 14,
+            source: null,
+            addedBy: member,
+            addedAt: AT,
+            status: 'withdrawn',
+            withdrawal: {
+              caseRevision: 15,
+              reason: 'Fictional duplicate item.',
+              by: member,
+              at: AT,
+            },
+          },
+        ],
+      },
+    };
+    exchanges.records[0]?.versions.push(
+      {
+        ...exchanges.records[0].current,
+        id: id(19),
+        version: 1,
+        businessDate: '2026-09-17',
+        reference: 'OUT-5',
+        reason: null,
+      },
+      exchanges.records[0].current,
+    );
+    const states = {
+      en: [
+        'Exchanges and deadlines',
+        'Met',
+        'Overdue',
+        'Re-verification Items',
+      ],
+      fr: ['Échanges et délais', 'Respecté', 'Dépassé', 'Points à revérifier'],
+      ro: [
+        'Schimburi și termene',
+        'Respectat',
+        'Depășit',
+        'Elemente de reverificat',
+      ],
+      ru: [
+        'Обмены и сроки',
+        'Соблюдён',
+        'Просрочен',
+        'Пункты для повторной проверки',
+      ],
+    } as const;
+    for (const language of REGISTER_LANGUAGES) {
+      const register = certificationRegister(
+        source({ exchanges, documents: [plan] }),
+        language,
+      );
+      const text = compactPdfText(
+        (
+          await inspectCommercialPdf(
+            await renderCertificationRegister(register),
+          )
+        )
+          .map((page) => page.text)
+          .join('\n'),
+      );
+      for (const value of [
+        ...states[language],
+        'Lactis Demo SRL, quality manager',
+        'OUT-7',
+        'Stage 1 audit plan',
+        '2026-09-21',
+        'Fictional date corrected.',
+        // The earlier version's own values stay readable.
+        '2026-09-17',
+        'OUT-5',
+        'Fictional allergen labelling at dispatch.',
+        'Fictional duplicate item.',
+        '2027-10-20',
+      ])
+        expect(text, `${language}: ${value}`).toContain(compactPdfText(value));
+    }
+    expect(certificationRegister(source(), 'en').blocks).toEqual(
+      expect.arrayContaining([
+        { kind: 'paragraph', text: 'No procedure deadline configured.' },
+        { kind: 'paragraph', text: 'No exchange recorded.' },
+        { kind: 'paragraph', text: 'Nothing to re-verify.' },
+      ]),
+    );
   }, 60_000);
 
   it('wraps long texts and tables within the page and repeats the notice on every page', async () => {

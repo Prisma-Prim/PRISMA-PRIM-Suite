@@ -271,6 +271,71 @@ export class CompanyContextAuthorization {
     return capturedPermissionResult(company.id, consumed);
   }
 
+  /**
+   * The active Company of a member who holds the live Workspace right that
+   * assigns the Company bundles, the certification bundles included. The
+   * caller owns the transaction; `lock` share-locks the grant, membership,
+   * Internal User and Company until it ends.
+   */
+  async requireCompanyAssignmentAdministration(
+    actor: ActorContext,
+    options: { lock: boolean },
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !company ||
+      !actor.workspacePermissions.includes('company.assignment.manage')
+    )
+      throw new ForbiddenException();
+    const query = this.databaseContext.connection
+      .select({ id: workspacePermissionGrants.id })
+      .from(workspacePermissionGrants)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            workspacePermissionGrants.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            workspacePermissionGrants.workspaceMembershipId,
+          ),
+          eq(workspaceMemberships.internalUserId, actor.internalUserId),
+          eq(workspaceMemberships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        and(
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+          eq(internalUsers.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        companies,
+        and(
+          eq(companies.workspaceId, workspacePermissionGrants.workspaceId),
+          eq(companies.id, company.id),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+          eq(
+            workspacePermissionGrants.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(workspacePermissionGrants.permission, 'company.assignment.manage'),
+        ),
+      )
+      .limit(1);
+    const rows = options.lock ? await query.for('share') : await query;
+    if (!rows.length) throw new ForbiddenException();
+    return company.id;
+  }
+
   async hasPermissions(
     actor: ActorContext,
     request: CapturedPermissionRequest,

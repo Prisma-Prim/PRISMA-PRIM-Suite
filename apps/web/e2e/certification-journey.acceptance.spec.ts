@@ -13,6 +13,10 @@ import {
   consistencyMessages,
   type ConsistencyMessageKey,
 } from '../src/certification/certification-consistency.copy';
+import {
+  exchangeMessages,
+  type ExchangeMessageKey,
+} from '../src/certification/certification-exchanges.copy';
 import { formatMessage, resolveMessage } from '../src/localization/messages';
 import {
   CERTIFICATE_TEXT,
@@ -32,6 +36,8 @@ const copy = (key: CertificationMessageKey) =>
   resolveMessage(certificationMessages, 'en', key);
 const consistencyCopy = (key: ConsistencyMessageKey) =>
   resolveMessage(consistencyMessages, 'en', key);
+const exchangeCopy = (key: ExchangeMessageKey) =>
+  resolveMessage(exchangeMessages, 'en', key);
 
 /**
  * The Case page's timeline title of each step version. The dossier register
@@ -67,6 +73,9 @@ const COMMAND =
 const R04_REASON = 'Fictional long audit day agreed with the client.';
 const MANUAL_REASON =
   'The signed PDF prevails; the editable draft is not part of the dossier.';
+const R16_REASON =
+  'Fictional: the Stage 2 report was released before the decision by mistake.';
+const MANUAL_ITEM = 'Fictional: verify the allergen labels at dispatch.';
 
 test('runs the fictional Lactis Demo SRL Case from the application to the Certificate and downloads its dossier register', async ({
   page,
@@ -158,8 +167,87 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
   function discrepancy(article: Locator, heading: string) {
     return consistency(article).getByRole('listitem', { name: heading });
   }
-  function ruleHeading(rule: 'R01' | 'R04') {
-    return `${rule} — ${consistencyCopy(rule === 'R01' ? 'ruleR01' : 'ruleR04')}`;
+  function ruleHeading(rule: 'R01' | 'R04' | 'R16') {
+    return `${rule} — ${consistencyCopy(
+      rule === 'R01' ? 'ruleR01' : rule === 'R04' ? 'ruleR04' : 'ruleR16',
+    )}`;
+  }
+  function exchanges(article: Locator) {
+    return article.getByRole('region', {
+      name: exchangeCopy('title'),
+      exact: true,
+    });
+  }
+  /** One procedure deadline of the region, by its name and Stage. */
+  function deadline(article: Locator, name: string) {
+    return exchanges(article)
+      .getByRole('list', { name: exchangeCopy('deadlinesTitle'), exact: true })
+      .getByRole('listitem')
+      .filter({ hasText: name });
+  }
+  const stagePlanDeadline = (stage: 'stage1' | 'stage2') =>
+    `${exchangeCopy('deadlineStagePlan')} — ${exchangeCopy(stage)}`;
+  /** Records an Exchange Record through the region's form. */
+  async function recordExchange(
+    article: Locator,
+    fields: {
+      direction: ExchangeMessageKey;
+      kind: ExchangeMessageKey;
+      document: string;
+      counterpart: ExchangeMessageKey;
+      name: string;
+      date: string;
+      channel: ExchangeMessageKey;
+      reference: string | null;
+    },
+  ) {
+    const panel = exchanges(article);
+    await panel
+      .getByRole('button', { name: exchangeCopy('recordAction'), exact: true })
+      .click();
+    const form = panel.getByRole('form', {
+      name: exchangeCopy('formTitle'),
+      exact: true,
+    });
+    await selectOption(
+      form.getByLabel(exchangeCopy('formDirection'), { exact: true }),
+      { label: exchangeCopy(fields.direction) },
+    );
+    await selectOption(
+      form.getByLabel(exchangeCopy('formKind'), { exact: true }),
+      { label: exchangeCopy(fields.kind) },
+    );
+    await form
+      .getByRole('checkbox', {
+        name: formatMessage(exchangeCopy('documentVersion'), {
+          title: fields.document,
+          version: 1,
+        }),
+        exact: true,
+      })
+      .check();
+    await selectOption(
+      form.getByLabel(exchangeCopy('formCounterpartKind'), { exact: true }),
+      { label: exchangeCopy(fields.counterpart) },
+    );
+    await form
+      .getByLabel(exchangeCopy('formCounterpartName'), { exact: true })
+      .fill(fields.name);
+    await form
+      .getByLabel(exchangeCopy('formDate'), { exact: true })
+      .fill(fields.date);
+    await selectOption(
+      form.getByLabel(exchangeCopy('formChannel'), { exact: true }),
+      { label: exchangeCopy(fields.channel) },
+    );
+    if (fields.reference !== null)
+      await form
+        .getByLabel(exchangeCopy('formReference'), { exact: true })
+        .fill(fields.reference);
+    await form
+      .getByRole('button', { name: exchangeCopy('formSubmit'), exact: true })
+      .click();
+    await expect(form).toHaveCount(0);
   }
   async function reload(article: Locator) {
     await article
@@ -167,6 +255,159 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       .click();
     await expect(consistency(article)).toBeVisible();
   }
+
+  await test.step('the Company administrator sets the fictional procedure deadlines', async () => {
+    const article = await openCase(approver);
+    const panel = exchanges(article);
+    await expect(
+      panel.getByText(exchangeCopy('noDeadlines'), { exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText(exchangeCopy('empty'), { exact: true }),
+    ).toBeVisible();
+    await panel
+      .getByRole('button', { name: exchangeCopy('adminOpen'), exact: true })
+      .click();
+    const form = panel.getByRole('form', {
+      name: exchangeCopy('adminTitle'),
+      exact: true,
+    });
+    for (const [kind, days] of [
+      ['deadlineStagePlan', '10'],
+      ['deadlineAuditDossier', '20'],
+      ['deadlineStage2Report', '0'],
+    ] as const)
+      await form
+        .getByLabel(
+          formatMessage(exchangeCopy('adminDays'), {
+            name: exchangeCopy(kind),
+          }),
+          { exact: true },
+        )
+        .fill(days);
+    await form
+      .getByRole('button', { name: exchangeCopy('adminSubmit'), exact: true })
+      .click();
+    await expect(
+      panel.getByText(
+        formatMessage(exchangeCopy('adminSaved'), { version: 1 }),
+        {
+          exact: true,
+        },
+      ),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole('list', {
+        name: exchangeCopy('adminHistoryTitle'),
+        exact: true,
+      }),
+    ).toContainText(
+      `${exchangeCopy('deadlineStagePlan')}: 10 days; ${exchangeCopy('deadlineAuditDossier')}: 20 days; ${exchangeCopy('deadlineStage2Report')}: 0 days`,
+    );
+    // The Case reads the new set: nothing sent yet, the audit dossier is
+    // already overdue after S2 + 20.
+    await expect(
+      deadline(article, exchangeCopy('deadlineAuditDossier')),
+    ).toContainText(exchangeCopy('stateOverdue'));
+    await expect(deadline(article, stagePlanDeadline('stage1'))).toContainText(
+      exchangeCopy('stateOverdue'),
+    );
+  });
+
+  await test.step('the programme manager records the questionnaire received by e-mail and the Stage plans sent, met and met late', async () => {
+    await journey.attach('questionnaire', 'Fictional questionnaire');
+    const article = await openCase(manager);
+    await recordExchange(article, {
+      direction: 'directionReceived',
+      kind: 'kindApplication',
+      document: 'Fictional questionnaire',
+      counterpart: 'counterpartClient',
+      name: 'Lactis Demo SRL, quality manager',
+      date: addDays(journey.today, -45),
+      channel: 'channelEmail',
+      reference: null,
+    });
+    // The Stage 1 plan sent on S1 − 12 meets the deadline of 10 days.
+    const s1Plan = addDays(journey.stages.stage1.start, -12);
+    await recordExchange(article, {
+      direction: 'directionSent',
+      kind: 'kindStagePlan',
+      document: 'Stage 1 audit plan',
+      counterpart: 'counterpartClient',
+      name: 'Lactis Demo SRL, quality manager',
+      date: s1Plan,
+      channel: 'channelEmail',
+      reference: 'OUT-6',
+    });
+    // The Stage 2 plan sent 7 days before its first day meets it late.
+    const current = record(await journey.read(manager, journey.base));
+    const plan2 = records(current.stages).find(
+      (entry) => entry.step === 'stage_2_plan',
+    );
+    const s2Plan = addDays(journey.stages.stage2.start, -7);
+    await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'sent',
+      itemKind: 'stage_plan',
+      attachmentIds: [text(record(plan2?.value).planAttachmentId)],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: s2Plan,
+      channel: 'email',
+      reference: 'OUT-7',
+      note: null,
+    });
+    await reload(article);
+    const panel = exchanges(article);
+    await expect(
+      panel.getByRole('listitem', {
+        name: formatMessage(exchangeCopy('recordHeading'), {
+          sequence: 1,
+          direction: exchangeCopy('directionReceived'),
+          kind: exchangeCopy('kindApplication'),
+        }),
+        exact: true,
+      }),
+    ).toContainText(exchangeCopy('channelEmail'));
+    await expect(deadline(article, stagePlanDeadline('stage1'))).toContainText(
+      formatMessage(exchangeCopy('metBy'), { sequence: 2, date: s1Plan }),
+    );
+    await expect(deadline(article, stagePlanDeadline('stage1'))).toContainText(
+      exchangeCopy('stateMet'),
+    );
+    await expect(deadline(article, stagePlanDeadline('stage2'))).toContainText(
+      exchangeCopy('stateMetLate'),
+    );
+    // The Stage 1 plan shows its sending.
+    await expect(
+      region(article, 'stage1Title').getByRole('list', {
+        name: exchangeCopy('stepSendingsTitle'),
+        exact: true,
+      }),
+    ).toContainText(`on ${s1Plan} by ${exchangeCopy('channelEmail')}`);
+    // The register filters by direction.
+    await selectOption(
+      panel.getByLabel(exchangeCopy('filterDirection'), { exact: true }),
+      { label: exchangeCopy('directionReceived') },
+    );
+    await expect(
+      panel
+        .getByRole('list', { name: exchangeCopy('registerTitle'), exact: true })
+        .getByRole('listitem', { name: /^Exchange Record \d+ — /u }),
+    ).toHaveCount(1);
+    await selectOption(
+      panel.getByLabel(exchangeCopy('filterDirection'), { exact: true }),
+      { label: exchangeCopy('filterAll') },
+    );
+    await panel.screenshot({
+      path: info.outputPath(`exchanges-deadlines-${width}.png`),
+    });
+    // The sendings match the plans' Versions: no exchange rule is raised;
+    // only R04, open since the Stage 2 plan, asks to clarify.
+    const checked = record(
+      record(await journey.read(manager, journey.base)).consistency,
+    );
+    expect(checked.counts).toEqual({ critical: 0, error: 0, toClarify: 1 });
+    expect(records(checked.open).map((entry) => entry.rule)).toEqual(['R04']);
+  });
 
   await test.step('the headcount corrected to 60 opens R01, which blocks the decision until a new duration closes it as corrected', async () => {
     const article = await openCase(manager);
@@ -362,6 +603,67 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       consistency: {
         counts: { critical: 0, error: 0, toClarify: 0 },
         resolvedTotal: 3,
+      },
+    });
+  });
+
+  await test.step('the Stage 2 report sent to the client before any decision opens R16, which blocks the decision until the approver accepts it', async () => {
+    const current = record(await journey.read(manager, journey.base));
+    const report2 = records(current.stages).find(
+      (entry) => entry.step === 'stage_2_report',
+    );
+    const sentOn = addDays(journey.today, -3);
+    await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'sent',
+      itemKind: 'stage_report',
+      attachmentIds: [text(record(report2?.value).reportAttachmentId)],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: sentOn,
+      channel: 'email',
+      reference: null,
+      note: null,
+    });
+    const blocked = await journey.post(approver, `${journey.base}/decision`, {
+      expectedRevision: record(await journey.read(approver, journey.base))
+        .revision,
+      ...journey.decision(),
+    });
+    expect(blocked.status()).toBe(409);
+    expect(record(await blocked.json())).toMatchObject({
+      failures: expect.arrayContaining(['DISCREPANCIES_OPEN']),
+      discrepancies: [
+        expect.objectContaining({ rule: 'R16', verdict: 'error' }),
+      ],
+    });
+    const article = await openCase(approver);
+    const r16 = discrepancy(article, ruleHeading('R16'));
+    await expect(r16).toContainText(consistencyCopy('blocksDecision'));
+    await expect(r16).toContainText(consistencyCopy('verdictError'));
+    await expect(
+      deadline(article, exchangeCopy('deadlineStage2Report')),
+    ).toContainText(exchangeCopy('stateSentTooEarly'));
+    await r16
+      .getByRole('button', {
+        name: consistencyCopy('acceptAction'),
+        exact: true,
+      })
+      .click();
+    await r16
+      .getByLabel(consistencyCopy('reason'), { exact: true })
+      .fill(R16_REASON);
+    await r16
+      .getByRole('button', {
+        name: consistencyCopy('acceptSubmit'),
+        exact: true,
+      })
+      .click();
+    await expect(r16).toContainText(
+      formatMessage(consistencyCopy('resolvedReason'), { reason: R16_REASON }),
+    );
+    expect(record(await journey.read(approver, journey.base))).toMatchObject({
+      consistency: {
+        counts: { critical: 0, error: 0, toClarify: 0 },
+        resolvedTotal: 4,
       },
     });
   });
@@ -601,6 +903,38 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     });
   });
 
+  await test.step('the minor nonconformity and a manual item added by the auditor are among the Re-verification Items', async () => {
+    const article = await openCase(auditor);
+    const panel = exchanges(article);
+    await panel
+      .getByRole('button', { name: exchangeCopy('addItem'), exact: true })
+      .click();
+    const form = panel.getByRole('form', {
+      name: exchangeCopy('itemFormTitle'),
+      exact: true,
+    });
+    await form
+      .getByLabel(exchangeCopy('itemText'), { exact: true })
+      .fill(MANUAL_ITEM);
+    await form
+      .getByRole('button', { name: exchangeCopy('itemSubmit'), exact: true })
+      .click();
+    const items = panel.getByRole('list', {
+      name: exchangeCopy('reverificationTitle'),
+      exact: true,
+    });
+    await expect(
+      items.getByRole('listitem').filter({ hasText: MANUAL_ITEM }),
+    ).toContainText(exchangeCopy('itemOpen'));
+    await expect(items.getByRole('listitem')).toHaveCount(2);
+    await expect(items.getByRole('listitem').first()).toContainText(
+      formatMessage(exchangeCopy('itemAutomatic'), { sequence: 2 }),
+    );
+    await panel.screenshot({
+      path: info.outputPath(`reverification-items-${width}.png`),
+    });
+  });
+
   let readerCase: Locator | undefined;
   await test.step('a reader consults the open Case without any command', async () => {
     const article = await openCase(reader);
@@ -732,15 +1066,34 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     const documents = records(
       (await journey.read(reader, `${journey.base}/documents`)).items,
     );
-    expect(documents).toHaveLength(9);
+    expect(documents).toHaveLength(10);
     // The dossier consistency section lists the resolved Discrepancies.
     expected.push(
       'Dossier consistency',
       'R01 — Audit duration against the current application — Error — Resolved',
       'R04 — Stage plan days against calendar days and auditors on site — To clarify — Resolved',
       'Manual Discrepancy 1 — Stage type — To clarify — Resolved',
+      `R16 — ${consistencyCopy('ruleR16')} — Error — Resolved`,
       R04_REASON,
       MANUAL_REASON,
+      R16_REASON,
+    );
+    // The exchange register with its deadline states at generation time,
+    // then the Re-verification Items.
+    expected.push(
+      'Exchanges and deadlines',
+      'Procedure deadline set, version 1',
+      'Stage plan sent to the client — Stage 1 — Met',
+      'Stage plan sent to the client — Stage 2 — Met late',
+      'Audit dossier transmitted to the certification body — Overdue',
+      'Stage 2 report released to the client — Sent too early',
+      'Exchange Record 1 — Received — Application',
+      'Exchange Record 2 — Sent — Stage plan',
+      'Lactis Demo SRL, quality manager',
+      'Re-verification Items',
+      'Automatic Re-verification Item — Open',
+      'Re-verification Item 1 — Open',
+      MANUAL_ITEM,
     );
     for (const document of documents)
       expected.push(text(document.versionId), text(document.sourceTitle));

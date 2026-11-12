@@ -24,8 +24,17 @@ export type ResolutionInput = {
   discrepancyId: string;
   reason: string;
 } & (
-  | { resolution: 'accepted'; correctedBy: null }
-  | { resolution: 'corrected'; correctedBy: CorrectingReference }
+  | {
+      resolution: 'accepted';
+      correctedBy: null;
+      /** Adds a Re-verification Item linked to the accepted Discrepancy. */
+      reverify: boolean;
+    }
+  | {
+      resolution: 'corrected';
+      correctedBy: CorrectingReference;
+      reverify: false;
+    }
 );
 
 /** A manual Discrepancy: two stated values, each on an exact attached PDF. */
@@ -63,18 +72,21 @@ export function resolutionCommand(value: unknown): ResolutionInput {
     'resolution',
     'reason',
     'correctedBy',
+    'reverify',
   ]);
   const base = {
     expectedRevision: revision(body.expectedRevision),
     discrepancyId: discrepancyIdentity(body.discrepancyId),
     reason: text(body.reason, 2000),
   };
+  const reverify = body.reverify ?? false;
+  if (typeof reverify !== 'boolean') return invalid();
   if (body.resolution === 'accepted') {
     if (body.correctedBy !== undefined && body.correctedBy !== null)
       return invalid();
-    return { ...base, resolution: 'accepted', correctedBy: null };
+    return { ...base, resolution: 'accepted', correctedBy: null, reverify };
   }
-  if (body.resolution !== 'corrected') return invalid();
+  if (body.resolution !== 'corrected' || reverify) return invalid();
   const reference = inputObject(body.correctedBy, [
     'attachmentId',
     'stepVersionId',
@@ -85,6 +97,7 @@ export function resolutionCommand(value: unknown): ResolutionInput {
   return {
     ...base,
     resolution: 'corrected',
+    reverify: false,
     correctedBy: hasAttachment
       ? {
           kind: 'attachment',

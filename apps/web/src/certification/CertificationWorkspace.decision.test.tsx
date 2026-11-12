@@ -691,11 +691,13 @@ describe('Certification recommendation, decision and Certificate', () => {
     expect(caseDefinition('Next step')).toBe('None');
     expect(stepState('Certificate')).toBe('Recorded — DEMO-0001');
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
+    // Only the exchange register stays open after issuance (dossier control
+    // PRD §1.2): exchanges and items to re-verify are still recorded.
     expect(
       screen
         .queryAllByRole('button', { name: /^(Record|Correct|Add|Remove)\b/u })
         .map((button) => button.textContent),
-    ).toEqual([]);
+    ).toEqual(['Record an exchange', 'Add an item to re-verify']);
     expect(timelineTitles().slice(-5)).toEqual([
       'Team recommendation — Grant certification (version 1)',
       'Dossier review — version 1',
@@ -785,11 +787,12 @@ describe('Certification recommendation, decision and Certificate', () => {
       screen.queryByRole('region', { name: DATA }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
+    // A refused Case still records its exchanges (dossier control PRD §1.2).
     expect(
       screen
         .queryAllByRole('button', { name: /^(Record|Correct)\b/u })
         .map((button) => button.textContent),
-    ).toEqual([]);
+    ).toEqual(['Record an exchange']);
     expect(timelineTitles().at(-1)).toBe(
       'Certification Decision — Certification refused',
     );

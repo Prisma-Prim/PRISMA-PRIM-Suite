@@ -20,6 +20,8 @@ import type {
 
 import type { ActAttribution } from './certification-attribution.js';
 import type { ConsistencySection } from './certification-consistency.js';
+import type { ExchangeRegister } from './certification-exchanges.js';
+import type { ReverificationSection } from './certification-reverification.js';
 
 /** ISO 22003-1 food chain subcategories used by ISO 22000 certification. */
 export const FOOD_CHAIN_SUBCATEGORIES = [
@@ -132,6 +134,7 @@ export type CertificationDocumentRole =
   | 'certificate'
   | 'certificate_data'
   | 'decision_form'
+  | 'correspondence'
   | 'other';
 
 export interface CertificationAgreement {
@@ -295,6 +298,8 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
   certificate: CertificateRecord | null;
   /** The Dossier Consistency Check over the Case's current records. */
   consistency: ConsistencySection;
+  /** The exchange register, its deadline states and the Re-verification Items. */
+  exchanges: ExchangeRegister & { reverification: ReverificationSection };
 }
 
 export interface CertificateRecord {

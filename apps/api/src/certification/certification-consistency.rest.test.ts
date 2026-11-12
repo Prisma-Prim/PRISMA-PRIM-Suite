@@ -332,7 +332,7 @@ withPostgres(
       const { caseId, base } = await lactisCase();
       const clean = await read(CERTIFICATION_READER, base);
       expect(consistency(clean)).toEqual({
-        ruleSetVersion: 'dossier-consistency-2026-11',
+        ruleSetVersion: 'dossier-consistency-2026-11.2',
         counts: { critical: 0, error: 0, toClarify: 0 },
         open: [],
         resolved: [],
@@ -483,7 +483,7 @@ withPostgres(
           via: 'acceptance',
           reason: 'Fictional reason agreed with the client.',
           by: { displayName: `Synthetic ${CERTIFICATION_OWNER}` },
-          ruleSetVersion: 'dossier-consistency-2026-11',
+          ruleSetVersion: 'dossier-consistency-2026-11.2',
         },
       });
       const replay = await post(
@@ -879,7 +879,7 @@ withPostgres(
       );
       for (const value of [
         'Dossier consistency',
-        'Rule set: dossier-consistency-2026-11. Open: 0 critical, 0 error, 1 to clarify',
+        'Rule set: dossier-consistency-2026-11.2. Open: 0 critical, 0 error, 1 to clarify',
         'R04 — Stage plan days against calendar days and auditors on site — To clarify — Open',
         '2 auditor-days',
         '1 calendar day(s) × 1 auditor(s)',

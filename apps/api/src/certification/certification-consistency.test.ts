@@ -16,6 +16,11 @@ import type {
   DossierReview,
 } from './certification-decision.js';
 import type {
+  DeadlineDays,
+  ExchangeRecordVersion,
+} from './certification-exchanges.js';
+import { blockingDiscrepancies } from './certification-consistency.js';
+import type {
   ApplicationFacts,
   CertificationAttachment,
   CertificationStepVersion,
@@ -161,7 +166,52 @@ type StepInput = {
 class CaseBuilder {
   steps: CertificationStepVersion[] = [];
   attachments: CertificationAttachment[] = [];
+  exchanges: ExchangeRecordVersion[] = [];
+  deadlineDays: DeadlineDays | null = null;
   revision = 1;
+
+  /** Records an Exchange Record, or corrects record `sequence`. */
+  exchange(
+    value: Partial<
+      Pick<
+        ExchangeRecordVersion,
+        | 'direction'
+        | 'itemKind'
+        | 'counterpart'
+        | 'businessDate'
+        | 'channel'
+        | 'reference'
+        | 'attachmentIds'
+      >
+    >,
+    sequence?: number,
+  ) {
+    this.revision += 1;
+    const number =
+      sequence ??
+      Math.max(0, ...this.exchanges.map((entry) => entry.sequence)) + 1;
+    const version =
+      this.exchanges.filter((entry) => entry.sequence === number).length + 1;
+    this.exchanges.push({
+      id: `exchange-${String(number)}-${String(version)}`,
+      sequence: number,
+      version,
+      caseRevision: this.revision,
+      direction: 'sent',
+      itemKind: 'stage_plan',
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: '2026-09-19',
+      channel: 'email',
+      reference: null,
+      note: null,
+      attachmentIds: [],
+      reason: version > 1 ? 'Fictional correction' : null,
+      recordedBy: MANAGER,
+      recordedAt: `2026-10-03T00:00:${String(this.revision).padStart(2, '0')}.000Z`,
+      ...value,
+    });
+    return this;
+  }
 
   attach(
     role: CertificationAttachment['role'],
@@ -212,6 +262,8 @@ class CaseBuilder {
       attachments: this.attachments,
       findings: [],
       certificate: null,
+      exchanges: this.exchanges,
+      deadlineDays: this.deadlineDays,
     };
   }
 }
@@ -1062,5 +1114,280 @@ describe('Discrepancy history, acceptance and persistence (PRD §9.1)', () => {
     ).open[0];
     expect(first?.id).toMatch(/^R04:[0-9a-f]{32}$/u);
     expect(first?.id).toBe(second?.id);
+  });
+});
+
+describe('Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16)', () => {
+  const FICTIONAL: DeadlineDays = {
+    stage_plan_sent: 10,
+    audit_dossier_transmitted: 20,
+    stage_2_report_released: 0,
+  };
+  function sentPlan(builder: CaseBuilder, sentToClientOn: string | null) {
+    const latest = [...builder.steps]
+      .reverse()
+      .find((entry) => entry.step === 'stage_1_plan');
+    if (latest?.step !== 'stage_1_plan') throw new Error('No Stage 1 plan.');
+    builder.record({
+      step: 'stage_1_plan',
+      value: { ...latest.value, sentToClientOn },
+    });
+    return latest.value.planAttachmentId;
+  }
+
+  it('R06 asks to clarify a Stage plan sent on S1 + 1, never on S1 or before', () => {
+    const raised = plannedCase();
+    sentPlan(raised, '2026-10-02');
+    expect(only(checkConsistency(raised.snapshot()), 'R06')).toEqual([
+      expect.objectContaining({
+        verdict: 'to_clarify',
+        subject: { kind: 'plan_sending', stage: 'stage_1' },
+        left: expect.objectContaining({
+          value: { kind: 'date', date: '2026-10-02' },
+        }),
+        right: expect.objectContaining({ value: { kind: 'date', date: S1 } }),
+      }),
+    ]);
+    for (const sentOn of [S1, '2026-09-19']) {
+      const kept = plannedCase();
+      sentPlan(kept, sentOn);
+      expect(only(checkConsistency(kept.snapshot()), 'R06')).toEqual([]);
+    }
+  });
+
+  it('R07 raises a plan sending date no register record has, as an error', () => {
+    const builder = plannedCase();
+    const plan = sentPlan(builder, '2026-09-17');
+    builder.exchange({ businessDate: '2026-09-19', attachmentIds: [plan] });
+    expect(only(checkConsistency(builder.snapshot()), 'R07')).toEqual([
+      expect.objectContaining({
+        verdict: 'error',
+        subject: { kind: 'plan_sending', stage: 'stage_1' },
+        left: expect.objectContaining({
+          value: { kind: 'date', date: '2026-09-17' },
+        }),
+        right: expect.objectContaining({
+          value: { kind: 'date', date: '2026-09-19' },
+          source: expect.objectContaining({ kind: 'exchange', sequence: 1 }),
+        }),
+      }),
+    ]);
+  });
+
+  it('R07 is not raised before any sending, nor for a matching date and Version', () => {
+    const none = plannedCase();
+    sentPlan(none, '2026-09-17');
+    expect(only(checkConsistency(none.snapshot()), 'R07')).toEqual([]);
+    const matching = plannedCase();
+    const plan = sentPlan(matching, '2026-09-19');
+    matching.exchange({ businessDate: '2026-09-19', attachmentIds: [plan] });
+    expect(only(checkConsistency(matching.snapshot()), 'R07')).toEqual([]);
+  });
+
+  it('R07 asks to clarify when the client received only another Version of the plan', () => {
+    const builder = plannedCase();
+    builder.attach('plan', 'plan-1', 2);
+    sentPlan(builder, '2026-09-19');
+    builder.exchange({
+      businessDate: '2026-09-19',
+      attachmentIds: ['plan-1-v2'],
+    });
+    const found = only(checkConsistency(builder.snapshot()), 'R07');
+    expect(found).toEqual([
+      expect.objectContaining({
+        verdict: 'to_clarify',
+        left: expect.objectContaining({
+          value: { kind: 'version', version: 1 },
+        }),
+        right: expect.objectContaining({
+          value: { kind: 'version', version: 2 },
+        }),
+      }),
+    ]);
+    // The Version the client received is used: R14 leaves it to R07.
+    expect(only(checkConsistency(builder.snapshot()), 'R14')).toEqual([]);
+  });
+
+  it('R15 asks to clarify one outgoing reference on two sendings of different dates, not one record sending several Versions', () => {
+    const builder = plannedCase();
+    builder.exchange({ businessDate: '2026-09-19', reference: 'OUT-7' });
+    builder.exchange({ businessDate: '2026-10-13', reference: 'out-7 ' });
+    expect(only(checkConsistency(builder.snapshot()), 'R15')).toEqual([
+      expect.objectContaining({
+        verdict: 'to_clarify',
+        subject: {
+          kind: 'exchange_reference',
+          reference: 'OUT-7',
+          first: 1,
+          second: 2,
+        },
+        left: expect.objectContaining({
+          value: { kind: 'date', date: '2026-09-19' },
+        }),
+        right: expect.objectContaining({
+          value: { kind: 'date', date: '2026-10-13' },
+        }),
+      }),
+    ]);
+    const single = plannedCase();
+    single.exchange({
+      reference: 'OUT-7',
+      attachmentIds: ['plan-1-v1', 'plan-2-v1'],
+    });
+    // A received record carrying the same reference is not a sending.
+    single.exchange({
+      reference: 'OUT-7',
+      direction: 'received',
+      businessDate: '2026-10-13',
+    });
+    expect(only(checkConsistency(single.snapshot()), 'R15')).toEqual([]);
+  });
+
+  it('R16 raises the Stage 2 report sent before the decision, as an error that blocks it until accepted', () => {
+    const builder = reportedCase();
+    builder.deadlineDays = FICTIONAL;
+    builder.exchange({
+      itemKind: 'stage_report',
+      businessDate: '2026-10-25',
+      attachmentIds: ['report-2-v1'],
+    });
+    const [r16] = only(checkConsistency(builder.snapshot()), 'R16');
+    expect(r16).toMatchObject({
+      verdict: 'error',
+      subject: {
+        kind: 'exchange_deadline',
+        deadline: 'stage_2_report_released',
+        sequence: 1,
+      },
+      left: { value: { kind: 'date', date: '2026-10-25' } },
+      right: { value: { kind: 'state', state: 'not_recorded' } },
+    });
+    const section = consistencySection(input(builder));
+    const open = section.open.find((view) => view.rule === 'R16');
+    expect(open).toMatchObject({ blocks: 'decision' });
+    if (!open) throw new Error('Expected R16.');
+    // Accepted, it no longer blocks, and the decision recorded later keeps
+    // the same values: the sending was recorded while no decision existed.
+    const acceptance: ResolutionRecord = {
+      id: 'resolution-16',
+      discrepancyId: open.id,
+      manualDiscrepancyId: null,
+      kind: 'accepted',
+      verdict: 'error',
+      reason: 'Fictional report released early by mistake.',
+      correctedBy: null,
+      ruleSetVersion: CONSISTENCY_RULE_SET_VERSION,
+      caseRevision: builder.revision + 1,
+      recordedBy: APPROVER,
+      recordedAt: '2026-10-26T00:00:00.000Z',
+    };
+    expect(blockingDiscrepancies(builder.snapshot(), [], [acceptance])).toEqual(
+      [],
+    );
+    builder.revision += 1;
+    builder.record({ step: 'dossier_review', value: review() });
+    builder.record({ step: 'decision', value: decision('2026-11-04') });
+    expect(
+      consistencySection(
+        input(builder, { resolutions: [acceptance] }),
+      ).open.filter((view) => view.rule === 'R16'),
+    ).toEqual([]);
+  });
+
+  it('R16 compares a sending recorded after the decision with the decision date', () => {
+    const builder = reportedCase();
+    builder.deadlineDays = FICTIONAL;
+    builder.record({ step: 'dossier_review', value: review() });
+    builder.record({ step: 'decision', value: decision('2026-11-04') });
+    builder.exchange({
+      itemKind: 'stage_report',
+      businessDate: '2026-11-03',
+      attachmentIds: ['report-2-v1'],
+    });
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([
+      expect.objectContaining({
+        right: expect.objectContaining({
+          value: { kind: 'date', date: '2026-11-04' },
+          source: expect.objectContaining({ step: 'decision' }),
+        }),
+      }),
+    ]);
+    builder.exchange(
+      {
+        itemKind: 'stage_report',
+        businessDate: '2026-11-04',
+        attachmentIds: ['report-2-v1'],
+      },
+      1,
+    );
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
+  });
+
+  it('R16 keeps a sending recorded before the decision early when a later correction changes only its note or reference', () => {
+    const builder = reportedCase();
+    builder.deadlineDays = FICTIONAL;
+    const sending: Pick<
+      ExchangeRecordVersion,
+      'itemKind' | 'businessDate' | 'attachmentIds'
+    > = {
+      itemKind: 'stage_report',
+      businessDate: '2026-11-04',
+      attachmentIds: ['report-2-v1'],
+    };
+    builder.exchange(sending);
+    const [before] = only(checkConsistency(builder.snapshot()), 'R16');
+    builder.record({ step: 'dossier_review', value: review() });
+    builder.record({ step: 'decision', value: decision('2026-11-04') });
+    builder.exchange({ ...sending, reference: 'OUT-9' }, 1);
+    const latest = builder.exchanges.at(-1);
+    if (latest) latest.note = 'Fictional: the cover letter is OUT-9.';
+    // The transmission facts are unchanged: still sent while no decision
+    // existed, on the same compared values.
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([
+      expect.objectContaining({
+        subject: before?.subject,
+        left: expect.objectContaining({ value: before?.left.value }),
+        right: expect.objectContaining({
+          value: { kind: 'state', state: 'not_recorded' },
+        }),
+      }),
+    ]);
+    // A correction of the date is a new sending fact, compared with D.
+    builder.exchange({ ...sending, businessDate: '2026-11-05' }, 1);
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
+  });
+
+  it('R16 is not raised while the deadline is not configured', () => {
+    const builder = reportedCase();
+    builder.deadlineDays = { ...FICTIONAL, stage_2_report_released: null };
+    builder.exchange({
+      itemKind: 'stage_report',
+      businessDate: '2026-10-25',
+      attachmentIds: ['report-2-v1'],
+    });
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
+  });
+
+  it('closes an exchange Discrepancy as corrected by the Exchange Record version that resolves it', () => {
+    const builder = plannedCase();
+    builder.exchange({ businessDate: '2026-09-19', reference: 'OUT-7' });
+    builder.exchange({ businessDate: '2026-10-13', reference: 'OUT-7' });
+    builder.exchange({ businessDate: '2026-10-13', reference: 'OUT-8' }, 2);
+    const section = consistencySection(input(builder));
+    expect(section.open.filter((view) => view.rule === 'R15')).toEqual([]);
+    expect(section.resolved).toEqual([
+      expect.objectContaining({
+        rule: 'R15',
+        resolution: expect.objectContaining({
+          kind: 'corrected',
+          via: 'record',
+          source: expect.objectContaining({
+            kind: 'exchange',
+            sequence: 2,
+            version: 2,
+          }),
+        }),
+      }),
+    ]);
   });
 });

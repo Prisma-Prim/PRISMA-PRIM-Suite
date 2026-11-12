@@ -151,6 +151,12 @@ function subject(
       return `${s.addressNumbers} — ${value.language}`;
     case 'document_version':
       return s.documentVersion;
+    case 'plan_sending':
+      return `${s.planSending} — ${register.values.stage[value.stage]}`;
+    case 'exchange_reference':
+      return `${s.exchangeReference} ${value.reference} — ${labels.units.exchange} ${String(value.first)}, ${String(value.second)}`;
+    case 'exchange_deadline':
+      return `${s.exchangeDeadline} — ${labels.units.exchange} ${String(value.sequence)}`;
   }
   return unexpected(value);
 }
@@ -209,6 +215,8 @@ function source(
       return `${labels.units.finding} ${String(value.sequence)}${attachment ? `; ${attachment}` : ''}`;
     case 'certificate':
       return `${labels.units.certificate} ${value.number}${attachment ? `; ${attachment}` : ''}`;
+    case 'exchange':
+      return `${labels.units.exchange} ${String(value.sequence)}, ${labels.units.version} ${String(value.version)}${attachment ? `; ${attachment}` : ''}`;
     case 'attachment':
       return attachment;
   }

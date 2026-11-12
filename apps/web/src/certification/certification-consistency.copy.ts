@@ -24,6 +24,14 @@ const keys = [
   'ruleR11',
   'ruleR12',
   'ruleR14',
+  'ruleR06',
+  'ruleR07',
+  'ruleR15',
+  'ruleR16',
+  'subjectPlanSending',
+  'subjectExchangeReference',
+  'subjectExchangeDeadline',
+  'sourceExchange',
   'manualHeading',
   'blocksDecision',
   'blocksCertificate',
@@ -138,6 +146,7 @@ const keys = [
   'manualSubmit',
   'selectDocument',
   'saving',
+  'reverifyFlag',
 ] as const;
 
 export type ConsistencyMessageKey = (typeof keys)[number];
@@ -168,6 +177,16 @@ export const consistencyMessages = defineMessages(keys, {
     ruleR11: 'Granted texts against the agreed Certificate data',
     ruleR12: 'House numbers and postal codes of the addresses',
     ruleR14: 'Record relying on an older Document Version',
+    ruleR06: 'Stage plan sent after the Stage’s first day',
+    ruleR07: 'Stage plan sending against the register',
+    ruleR15: 'Outgoing reference carried by several sendings',
+    ruleR16: 'Sending before a “not before” procedure deadline',
+    subjectPlanSending: 'Sending of the {stage} plan to the client',
+    subjectExchangeReference:
+      'Reference {reference} of Exchange Records {first} and {second}',
+    subjectExchangeDeadline:
+      'Stage 2 report released to the client by Exchange Record {sequence}',
+    sourceExchange: 'Exchange Record {sequence}, version {version}',
     manualHeading: 'Manual Discrepancy {sequence}: {subject}',
     blocksDecision: 'Blocks the Certification Decision.',
     blocksCertificate: 'Blocks the recording of the Certificate.',
@@ -286,6 +305,7 @@ export const consistencyMessages = defineMessages(keys, {
     manualSubmit: 'Record the manual Discrepancy',
     selectDocument: 'Select a document',
     saving: 'Saving…',
+    reverifyFlag: 'Also re-verify it at the next Audit',
   },
   fr: {
     title: 'Cohérence du dossier',
@@ -316,6 +336,16 @@ export const consistencyMessages = defineMessages(keys, {
     ruleR11: 'Textes accordés par rapport aux données du certificat convenues',
     ruleR12: 'Numéros de rue et codes postaux des adresses',
     ruleR14: 'Enregistrement fondé sur une version de document antérieure',
+    ruleR06: 'Plan d’étape envoyé après le premier jour de l’étape',
+    ruleR07: 'Envoi du plan d’étape face au registre',
+    ruleR15: 'Référence sortante portée par plusieurs envois',
+    ruleR16: 'Envoi avant un délai de procédure « pas avant »',
+    subjectPlanSending: 'Envoi du plan de {stage} au client',
+    subjectExchangeReference:
+      'Référence {reference} des échanges {first} et {second}',
+    subjectExchangeDeadline:
+      'Rapport d’étape 2 remis au client par l’échange {sequence}',
+    sourceExchange: 'Échange {sequence}, version {version}',
     manualHeading: 'Divergence manuelle {sequence} : {subject}',
     blocksDecision: 'Bloque la décision de certification.',
     blocksCertificate: 'Bloque l’enregistrement du certificat.',
@@ -438,6 +468,7 @@ export const consistencyMessages = defineMessages(keys, {
     manualSubmit: 'Enregistrer la divergence manuelle',
     selectDocument: 'Sélectionner un document',
     saving: 'Enregistrement…',
+    reverifyFlag: 'La revérifier aussi au prochain audit',
   },
   ro: {
     title: 'Coerența dosarului',
@@ -467,6 +498,16 @@ export const consistencyMessages = defineMessages(keys, {
     ruleR11: 'Textele acordate față de datele certificatului convenite',
     ruleR12: 'Numerele de stradă și codurile poștale ale adreselor',
     ruleR14: 'Înregistrare bazată pe o versiune anterioară a documentului',
+    ruleR06: 'Plan de etapă trimis după prima zi a etapei',
+    ruleR07: 'Trimiterea planului de etapă față de registru',
+    ruleR15: 'Referință de ieșire purtată de mai multe trimiteri',
+    ruleR16: 'Trimitere înaintea unui termen de procedură „nu înainte de”',
+    subjectPlanSending: 'Trimiterea planului pentru {stage} către client',
+    subjectExchangeReference:
+      'Referința {reference} a schimburilor {first} și {second}',
+    subjectExchangeDeadline:
+      'Raportul etapei 2 transmis clientului prin schimbul {sequence}',
+    sourceExchange: 'Schimbul {sequence}, versiunea {version}',
     manualHeading: 'Neconcordanța manuală {sequence}: {subject}',
     blocksDecision: 'Blochează decizia de certificare.',
     blocksCertificate: 'Blochează înregistrarea certificatului.',
@@ -587,6 +628,7 @@ export const consistencyMessages = defineMessages(keys, {
     manualSubmit: 'Înregistrează neconcordanța manuală',
     selectDocument: 'Selectați un document',
     saving: 'Se salvează…',
+    reverifyFlag: 'De reverificat și la următorul audit',
   },
   ru: {
     title: 'Согласованность досье',
@@ -617,6 +659,16 @@ export const consistencyMessages = defineMessages(keys, {
       'Предоставленные тексты в сравнении с согласованными данными сертификата',
     ruleR12: 'Номера домов и почтовые индексы в адресах',
     ruleR14: 'Запись основана на более ранней версии документа',
+    ruleR06: 'План этапа отправлен после первого дня этапа',
+    ruleR07: 'Отправка плана этапа в сравнении с реестром',
+    ruleR15: 'Исходящий номер у нескольких отправок',
+    ruleR16: 'Отправка до процедурного срока «не ранее»',
+    subjectPlanSending: 'Отправка плана ({stage}) клиенту',
+    subjectExchangeReference:
+      'Номер {reference} записей обмена {first} и {second}',
+    subjectExchangeDeadline:
+      'Отчёт этапа 2 передан клиенту записью обмена {sequence}',
+    sourceExchange: 'Запись обмена {sequence}, версия {version}',
     manualHeading: 'Расхождение, внесённое вручную, {sequence}: {subject}',
     blocksDecision: 'Блокирует решение о сертификации.',
     blocksCertificate: 'Блокирует запись сертификата.',
@@ -739,6 +791,7 @@ export const consistencyMessages = defineMessages(keys, {
     manualSubmit: 'Записать расхождение',
     selectDocument: 'Выберите документ',
     saving: 'Сохранение…',
+    reverifyFlag: 'Также проверить повторно на следующем аудите',
   },
 });
 

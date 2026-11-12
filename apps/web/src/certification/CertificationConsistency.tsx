@@ -134,6 +134,12 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
           number: entry.number,
         });
         break;
+      case 'exchange':
+        record = formatMessage(t('sourceExchange'), {
+          sequence: entry.sequence,
+          version: entry.version,
+        });
+        break;
       case 'attachment':
         record = null;
         break;
@@ -185,6 +191,20 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
         });
       case 'document_version':
         return t('subjectDocumentVersion');
+      case 'plan_sending':
+        return formatMessage(t('subjectPlanSending'), {
+          stage: t(entry.stage === 'stage_1' ? 'stage1' : 'stage2'),
+        });
+      case 'exchange_reference':
+        return formatMessage(t('subjectExchangeReference'), {
+          reference: entry.reference,
+          first: entry.first,
+          second: entry.second,
+        });
+      case 'exchange_deadline':
+        return formatMessage(t('subjectExchangeDeadline'), {
+          sequence: entry.sequence,
+        });
     }
     return unexpected(entry);
   }
@@ -357,6 +377,7 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
                         resolution: 'accepted',
                         reason: '',
                         correctedBy: '',
+                        reverify: false,
                       })
                     }
                   >
@@ -374,6 +395,7 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
                         resolution: 'corrected',
                         reason: '',
                         correctedBy: '',
+                        reverify: false,
                       })
                     }
                   >
@@ -455,6 +477,22 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
             props.onResolutionDraft({ ...draft, reason: event.target.value })
           }
         />
+        {draft.resolution === 'accepted' && (
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.reverify}
+              disabled={props.busy}
+              onChange={(event) =>
+                props.onResolutionDraft({
+                  ...draft,
+                  reverify: event.target.checked,
+                })
+              }
+            />{' '}
+            {t('reverifyFlag')}
+          </label>
+        )}
         <div className="certification-actions">
           <button
             type="submit"
@@ -744,6 +782,10 @@ export function ruleLabel(rule: ConsistencyRule): ConsistencyMessageKey {
       return 'ruleR04';
     case 'R05':
       return 'ruleR05';
+    case 'R06':
+      return 'ruleR06';
+    case 'R07':
+      return 'ruleR07';
     case 'R08':
       return 'ruleR08';
     case 'R09':
@@ -756,6 +798,10 @@ export function ruleLabel(rule: ConsistencyRule): ConsistencyMessageKey {
       return 'ruleR12';
     case 'R14':
       return 'ruleR14';
+    case 'R15':
+      return 'ruleR15';
+    case 'R16':
+      return 'ruleR16';
   }
   return unexpected(rule);
 }

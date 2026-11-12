@@ -776,6 +776,15 @@ const keys = [
   'timelineCertificate',
   'roleCertificateData',
   'roleDecisionForm',
+  'roleCorrespondence',
+  'exchangeValidation',
+  'exchangeNoteRequired',
+  'exchangeReasonRequired',
+  'exchangeInFuture',
+  'reverificationValidation',
+  'reverificationSourceUnknown',
+  'reverificationNotWithdrawable',
+  'withdrawalReasonRequired',
   'blockedVersionCorrectionReason',
   'applicationSubmittedOn',
   'applicationSubmittedOnHelp',
@@ -1845,6 +1854,20 @@ export const certificationMessages = defineMessages(keys, {
     timelineCertificate: 'Certificate {number} recorded',
     roleCertificateData: 'Certificate data form',
     roleDecisionForm: 'Decision form',
+    roleCorrespondence:
+      'Correspondence (cover letter, transmittal list, saved message)',
+    exchangeValidation:
+      'Choose the direction, the item kind, at least one attached Document Version, the counterpart with its name, the date and the channel.',
+    exchangeNoteRequired:
+      'An exchange through another channel states it in a note.',
+    exchangeReasonRequired: 'A correction states its reason.',
+    exchangeInFuture: 'An exchange cannot be dated after today.',
+    reverificationValidation: 'State what to verify at the next Audit.',
+    reverificationSourceUnknown:
+      'The chosen source is not part of this Case. Reload the Case and choose again.',
+    reverificationNotWithdrawable:
+      'This item can no longer be withdrawn: an automatic item stays until the surveillance, and a withdrawn item stays withdrawn.',
+    withdrawalReasonRequired: 'A withdrawal states its reason.',
     blockedVersionCorrectionReason:
       'A new version needs a reason and a first record has none. Reload the Case before saving again.',
     applicationSubmittedOn: 'Date of the signed application',
@@ -2963,6 +2986,21 @@ export const certificationMessages = defineMessages(keys, {
     timelineCertificate: 'Certificat {number} enregistré',
     roleCertificateData: 'Formulaire des données du certificat',
     roleDecisionForm: 'Formulaire de décision',
+    roleCorrespondence:
+      'Correspondance (lettre d’accompagnement, bordereau, message enregistré)',
+    exchangeValidation:
+      'Choisissez le sens, le type d’élément, au moins une version de document jointe, l’interlocuteur et son nom, la date et le canal.',
+    exchangeNoteRequired:
+      'Un échange par un autre canal le précise dans une note.',
+    exchangeReasonRequired: 'Une correction indique son motif.',
+    exchangeInFuture: 'Un échange ne peut pas être daté après aujourd’hui.',
+    reverificationValidation:
+      'Indiquez ce qu’il faut vérifier au prochain audit.',
+    reverificationSourceUnknown:
+      'La source choisie n’appartient pas à ce dossier. Rechargez le dossier et choisissez de nouveau.',
+    reverificationNotWithdrawable:
+      'Ce point ne peut plus être retiré : un point automatique reste jusqu’à la surveillance, et un point retiré le reste.',
+    withdrawalReasonRequired: 'Un retrait indique son motif.',
     blockedVersionCorrectionReason:
       'Une nouvelle version exige un motif, et un premier enregistrement n’en a pas. Rechargez le dossier avant d’enregistrer à nouveau.',
     applicationSubmittedOn: 'Date de la demande signée',
@@ -4079,6 +4117,21 @@ export const certificationMessages = defineMessages(keys, {
     timelineCertificate: 'Certificatul {number} înregistrat',
     roleCertificateData: 'Formularul datelor certificatului',
     roleDecisionForm: 'Formular de decizie',
+    roleCorrespondence:
+      'Corespondență (scrisoare de însoțire, borderou, mesaj salvat)',
+    exchangeValidation:
+      'Alegeți sensul, tipul de element, cel puțin o versiune de document atașată, interlocutorul cu numele său, data și canalul.',
+    exchangeNoteRequired:
+      'Un schimb printr-un alt canal îl precizează într-o notă.',
+    exchangeReasonRequired: 'O corectare își precizează motivul.',
+    exchangeInFuture: 'Un schimb nu poate fi datat după ziua de azi.',
+    reverificationValidation:
+      'Precizați ce trebuie verificat la următorul audit.',
+    reverificationSourceUnknown:
+      'Sursa aleasă nu face parte din acest dosar. Reîncărcați dosarul și alegeți din nou.',
+    reverificationNotWithdrawable:
+      'Acest element nu mai poate fi retras: un element automat rămâne până la supraveghere, iar un element retras rămâne retras.',
+    withdrawalReasonRequired: 'O retragere își precizează motivul.',
     blockedVersionCorrectionReason:
       'O nouă versiune necesită un motiv, iar prima înregistrare nu are. Reîncărcați dosarul înainte de o nouă salvare.',
     applicationSubmittedOn: 'Data cererii semnate',
@@ -5171,6 +5224,19 @@ export const certificationMessages = defineMessages(keys, {
     timelineCertificate: 'Сертификат {number} записан',
     roleCertificateData: 'Форма данных сертификата',
     roleDecisionForm: 'Форма решения',
+    roleCorrespondence:
+      'Переписка (сопроводительное письмо, опись, сохранённое сообщение)',
+    exchangeValidation:
+      'Выберите направление, вид документа, хотя бы одну приложенную версию документа, контрагента с именем, дату и канал.',
+    exchangeNoteRequired: 'Обмен через другой канал описывается в примечании.',
+    exchangeReasonRequired: 'Исправление указывает причину.',
+    exchangeInFuture: 'Обмен не может быть датирован позже сегодняшнего дня.',
+    reverificationValidation: 'Укажите, что проверить на следующем аудите.',
+    reverificationSourceUnknown:
+      'Выбранный источник не относится к этому делу. Обновите дело и выберите снова.',
+    reverificationNotWithdrawable:
+      'Этот пункт больше нельзя отозвать: автоматический пункт остаётся до надзора, а отозванный остаётся отозванным.',
+    withdrawalReasonRequired: 'Отзыв указывает причину.',
     blockedVersionCorrectionReason:
       'Новой версии нужна причина, а у первой записи её нет. Загрузите дело заново перед новым сохранением.',
     applicationSubmittedOn: 'Дата подписанной заявки',
