@@ -187,8 +187,8 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
   }
   const stagePlanDeadline = (stage: 'stage1' | 'stage2') =>
     `${exchangeCopy('deadlineStagePlan')} — ${exchangeCopy(stage)}`;
-  /** Records an Exchange Record through the region's form. */
-  async function recordExchange(
+  /** Opens and fills the same exchange controls for accepted and refused commands. */
+  async function fillExchange(
     article: Locator,
     fields: {
       direction: ExchangeMessageKey;
@@ -244,6 +244,13 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       await form
         .getByLabel(exchangeCopy('formReference'), { exact: true })
         .fill(fields.reference);
+    return form;
+  }
+  async function recordExchange(
+    article: Locator,
+    fields: Parameters<typeof fillExchange>[1],
+  ) {
+    const form = await fillExchange(article, fields);
     await form
       .getByRole('button', { name: exchangeCopy('formSubmit'), exact: true })
       .click();
@@ -311,6 +318,54 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     ).toContainText(exchangeCopy('stateOverdue'));
     await expect(deadline(article, stagePlanDeadline('stage1'))).toContainText(
       exchangeCopy('stateOverdue'),
+    );
+  });
+
+  await test.step('a refused future exchange marks only its date, with the error border at desktop and narrow widths', async () => {
+    const article = await openCase(manager);
+    const before = record(await journey.read(manager, journey.base)).revision;
+    const form = await fillExchange(article, {
+      direction: 'directionSent',
+      kind: 'kindStagePlan',
+      document: 'Stage 1 audit plan',
+      counterpart: 'counterpartClient',
+      name: 'Lactis Demo SRL, quality manager',
+      date: addDays(journey.today, 2),
+      channel: 'channelEmail',
+      reference: null,
+    });
+    const refused = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/api${journey.base}/exchanges` &&
+        response.request().method() === 'POST',
+    );
+    await form
+      .getByRole('button', { name: exchangeCopy('formSubmit'), exact: true })
+      .click();
+    expect((await refused).status()).toBe(409);
+    await expect(form.getByRole('alert')).toContainText(
+      copy('exchangeInFuture'),
+    );
+    const date = form.getByLabel(exchangeCopy('formDate'), { exact: true });
+    await expect(form.locator('[aria-invalid="true"]')).toHaveCount(1);
+    await expect(date).toHaveAttribute('aria-invalid', 'true');
+    await expect(date).toHaveCSS('border-top-color', 'rgb(167, 51, 73)');
+    await expect(
+      form.getByLabel(exchangeCopy('formCounterpartName'), { exact: true }),
+    ).toHaveCSS('border-top-color', 'rgb(217, 209, 237)');
+    await expect(
+      form.getByLabel(exchangeCopy('formNote'), { exact: true }),
+    ).toHaveCSS('border-top-color', 'rgb(217, 209, 237)');
+    await date.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`exchange-refused-date-${width}.png`),
+    });
+    await form
+      .getByRole('button', { name: exchangeCopy('cancel'), exact: true })
+      .click();
+    await expect(form).toHaveCount(0);
+    expect(record(await journey.read(manager, journey.base)).revision).toBe(
+      before,
     );
   });
 

@@ -275,6 +275,7 @@ import {
   DeadlineAdministration,
   ExchangesRegion,
   type ExchangePaging,
+  type ExchangeFieldFeedback,
   StepSendings,
   type DeadlineAdministrationView,
   type DeadlineFeedback,
@@ -2700,7 +2701,11 @@ function CertificationRegistry(
       draft,
       feedback: feedbackMessage(kind, feedback),
       saving: feedback.status === 'saving',
-      invalid: feedback.status === 'refused',
+      fieldFeedback: exchangeFieldFeedback({
+        kind,
+        feedback,
+        id: feedbackIds[kind],
+      }),
       describedBy: describedFeedback(kind, feedback),
     });
     const clearRefusal = (
@@ -5538,6 +5543,36 @@ function refusedWith(
   reload = false,
 ): Feedback {
   return { status: 'refused', message, reload };
+}
+
+/** Only input refusals name fields; stale, denied and other state alerts do not. */
+function exchangeFieldFeedback({
+  kind,
+  feedback,
+  id,
+}: {
+  kind: 'exchange' | 'reverification' | 'withdrawal';
+  feedback: Feedback;
+  id: string;
+}): ExchangeFieldFeedback {
+  if (feedback.status !== 'refused') return null;
+  switch (feedback.message) {
+    case 'exchangeInFuture':
+      return { id, field: 'businessDate' };
+    case 'exchangeNoteRequired':
+      return { id, field: 'note' };
+    case 'exchangeReasonRequired':
+    case 'withdrawalReasonRequired':
+      return { id, field: 'reason' };
+    case 'discrepancyDocumentUnavailable':
+      return kind === 'exchange' ? { id, field: 'attachmentIds' } : null;
+    case 'exchangeValidation':
+    case 'reverificationValidation':
+    case 'invalid':
+      return { id, field: 'draft' };
+    default:
+      return null;
+  }
 }
 
 /** A refused or failed command, in the plain language of its reason. */

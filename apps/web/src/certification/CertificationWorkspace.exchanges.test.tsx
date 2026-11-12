@@ -143,6 +143,63 @@ function change(element: HTMLElement, value: string) {
   fireEvent.change(element, { target: { value } });
 }
 
+/** A valid exchange draft, through the same controls as a programme manager. */
+async function editableExchange(
+  options: { date?: string; channel?: 'E-mail' | 'Other'; note?: string } = {},
+) {
+  const { server, actor } = serve({ manager: true });
+  const { caseId, plan } = plannedCase(server, 'CERT-FIELD-ERROR');
+  server.install();
+  renderWorkspace(actor);
+  await openSeededCase('CERT-FIELD-ERROR');
+  fireEvent.click(
+    within(region()).getByRole('button', { name: 'Record an exchange' }),
+  );
+  const form = within(region()).getByRole('form', {
+    name: 'New Exchange Record',
+  });
+  selectOptionByLabel(within(form).getByLabelText('Direction'), 'Sent');
+  selectOptionByLabel(within(form).getByLabelText('Item kind'), 'Stage plan');
+  fireEvent.click(
+    within(form).getByRole('checkbox', {
+      name: 'Stage 1 audit plan, version 1',
+    }),
+  );
+  selectOptionByLabel(
+    within(form).getByLabelText('Counterpart kind'),
+    'Client',
+  );
+  change(
+    within(form).getByLabelText('Counterpart name'),
+    'Lactis Demo SRL, quality manager',
+  );
+  change(
+    within(form).getByLabelText('Date of the exchange'),
+    options.date ?? '2026-10-29',
+  );
+  selectOptionByLabel(
+    within(form).getByLabelText('Channel'),
+    options.channel ?? 'E-mail',
+  );
+  if (options.note) change(within(form).getByLabelText('Note'), options.note);
+  return { server, actor, caseId, plan, form };
+}
+
+function invalidFields(form: HTMLElement) {
+  return [...form.querySelectorAll('[aria-invalid="true"]')];
+}
+
+function refuseNext(
+  server: FakeCertificationServer,
+  { suffix, code }: { suffix: string; code: string },
+) {
+  server.interceptions.push({
+    match: (request) =>
+      request.method === 'POST' && request.path.endsWith(suffix),
+    respond: () => Response.json({ code }, { status: 409 }),
+  });
+}
+
 const entries = [
   {
     kind: 'stage_plan_sent',
@@ -287,6 +344,153 @@ describe('Exchanges and deadlines region', () => {
     ).toBeNull();
   });
 
+  it('marks only the business date when the server refuses a future exchange, keeping a filled Other-channel note valid', async () => {
+    // The fake server owns a fixed clock. Its refusal is authoritative even
+    // when this date has already passed on the browser's clock.
+    const { form } = await editableExchange({
+      date: '2026-11-08',
+      channel: 'Other',
+      note: 'Fictional platform handover.',
+    });
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the exchange' }),
+    );
+    await within(form).findByText('An exchange cannot be dated after today.');
+    expect(invalidFields(form)).toEqual([
+      within(form).getByLabelText('Date of the exchange'),
+    ]);
+  });
+
+  it('marks only the Document Versions group when the server refuses an attachment', async () => {
+    const { server, form } = await editableExchange();
+    refuseNext(server, {
+      suffix: '/exchanges',
+      code: 'CERTIFICATION_ATTACHMENT_ROLE',
+    });
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the exchange' }),
+    );
+    await within(form).findByText(
+      'A selected document is no longer attached to this Case. Reload the Case.',
+    );
+    expect(invalidFields(form)).toEqual([
+      within(form).getByRole('group', { name: /Document Versions/u }),
+    ]);
+  });
+
+  it.each(['STALE_VERSION', 'CERTIFICATION_CASE_CLOSED'])(
+    'marks no exchange field for the state refusal %s',
+    async (code) => {
+      const { server, form } = await editableExchange({
+        channel: 'Other',
+        note: 'Fictional platform handover.',
+      });
+      refuseNext(server, { suffix: '/exchanges', code });
+      fireEvent.click(
+        within(form).getByRole('button', { name: 'Record the exchange' }),
+      );
+      await within(form).findByRole('alert');
+      expect(invalidFields(form)).toEqual([]);
+    },
+  );
+
+  it('marks no correction field after a stale refusal, including its filled reason', async () => {
+    const { server, form } = await editableExchange();
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Record the exchange' }),
+    );
+    const entry = await within(region()).findByRole('listitem', {
+      name: 'Exchange Record 1 — Sent — Stage plan',
+    });
+    fireEvent.click(
+      within(entry).getByRole('button', { name: 'Correct Exchange Record 1' }),
+    );
+    const correction = within(entry).getByRole('form', {
+      name: 'Correction of Exchange Record 1',
+    });
+    change(
+      within(correction).getByLabelText('Reason for the correction'),
+      'Fictional reference corrected.',
+    );
+    refuseNext(server, { suffix: '/exchanges/1', code: 'STALE_VERSION' });
+    fireEvent.click(
+      within(correction).getByRole('button', { name: 'Record the correction' }),
+    );
+    await within(correction).findByRole('alert');
+    expect(invalidFields(correction)).toEqual([]);
+  });
+
+  it('marks only missing item text or withdrawal reason, and no field after their stale refusals', async () => {
+    const { server, actor } = serve({ manager: true });
+    plannedCase(server, 'CERT-ITEM-FIELDS');
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-ITEM-FIELDS');
+    const add = () =>
+      fireEvent.click(
+        within(region()).getByRole('button', {
+          name: 'Add an item to re-verify',
+        }),
+      );
+    add();
+    let form = within(region()).getByRole('form', {
+      name: 'Item to re-verify',
+    });
+    fireEvent.click(within(form).getByRole('button', { name: 'Add the item' }));
+    await within(form).findByText('State what to verify at the next Audit.');
+    expect(invalidFields(form)).toEqual([
+      within(form).getByLabelText('What to verify'),
+    ]);
+    change(
+      within(form).getByLabelText('What to verify'),
+      'Fictional first item.',
+    );
+    fireEvent.click(within(form).getByRole('button', { name: 'Add the item' }));
+    await within(region()).findByRole('listitem', {
+      name: /^Item 1: Fictional first item/u,
+    });
+    add();
+    form = within(region()).getByRole('form', { name: 'Item to re-verify' });
+    change(
+      within(form).getByLabelText('What to verify'),
+      'Fictional second item.',
+    );
+    refuseNext(server, {
+      suffix: '/reverification-items',
+      code: 'STALE_VERSION',
+    });
+    fireEvent.click(within(form).getByRole('button', { name: 'Add the item' }));
+    await within(form).findByRole('alert');
+    expect(invalidFields(form)).toEqual([]);
+    fireEvent.click(within(form).getByRole('button', { name: 'Cancel' }));
+    const item = within(region()).getByRole('listitem', {
+      name: /^Item 1: Fictional first item/u,
+    });
+    fireEvent.click(
+      within(item).getByRole('button', { name: 'Withdraw item 1' }),
+    );
+    const withdrawal = within(item).getByRole('form', {
+      name: 'Withdrawal of item 1',
+    });
+    fireEvent.click(
+      within(withdrawal).getByRole('button', { name: 'Record the withdrawal' }),
+    );
+    await within(withdrawal).findByText('A withdrawal states its reason.');
+    expect(invalidFields(withdrawal)).toEqual([
+      within(withdrawal).getByLabelText('Reason for the withdrawal'),
+    ]);
+    change(
+      within(withdrawal).getByLabelText('Reason for the withdrawal'),
+      'Fictional duplicate.',
+    );
+    refuseNext(server, { suffix: '/withdrawal', code: 'STALE_VERSION' });
+    fireEvent.click(
+      within(withdrawal).getByRole('button', { name: 'Record the withdrawal' }),
+    );
+    await within(withdrawal).findByRole('alert');
+    expect(invalidFields(withdrawal)).toEqual([]);
+  });
+
   it('shows its empty states, then the deadline states by text and icon, the derived dates and the Re-verification Items', async () => {
     const { server, actor } = serve({ manager: true });
     const empty = server.seed({ orderReference: 'CERT-EMPTY' });
@@ -399,6 +603,7 @@ describe('Exchanges and deadlines region', () => {
       ),
     ).toBeVisible();
     expect(server.mutations()).toHaveLength(0);
+    expect(invalidFields(form)).toEqual([within(form).getByLabelText('Note')]);
     selectOptionByLabel(within(form).getByLabelText('Channel'), 'E-mail');
     fireEvent.click(
       within(form).getByRole('button', { name: 'Record the exchange' }),
@@ -549,6 +754,9 @@ describe('Exchanges and deadlines region', () => {
     expect(
       await within(correction).findByText('A correction states its reason.'),
     ).toBeVisible();
+    expect(invalidFields(correction)).toEqual([
+      within(correction).getByLabelText('Reason for the correction'),
+    ]);
     change(
       within(correction).getByLabelText('Reason for the correction'),
       'Fictional: the plan was sent two days later.',
