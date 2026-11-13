@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  commandAttempt,
+  tableRows,
+} from '../command/command-writes.test-support.js';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
+import {
   createMissionDocumentFixture,
   json,
   record,
@@ -391,5 +396,117 @@ describe.skipIf(!databaseUrl)(
         ).toEqual({ history });
       }
     }, 45000);
+    describe('shared versioned command protocol: Mission applicability', () => {
+      type Context = Awaited<ReturnType<typeof prepareApplicability>>;
+      // The kit hands back the target it arranged; this finds its Project.
+      const contexts = new WeakMap<object, Context>();
+      const writes = () =>
+        tableRows(fixture.pool, [
+          'mission_applicability_streams',
+          'mission_applicability_facts',
+          'mission_applicability_commands',
+          'mission_applicability_events',
+          'activity_log_events',
+        ]);
+      const submit =
+        (path: string) =>
+        ({ value, key }: { value: unknown; key: string }) =>
+          commandAttempt(
+            fixture.call(path, { method: 'POST', key, body: value }),
+          );
+      for (const scenario of versionedCommandProtocolScenarios({
+        acceptedStatus: 201,
+        receipt: (value) => value,
+        arrange: async () => {
+          const context = await prepareApplicability(fixture);
+          await fixture.grant(
+            '/company-mission-applicability-coordinator-assignments',
+          );
+          const observed = await observedApplicability(
+            fixture,
+            context.path,
+            context.taskId,
+          );
+          const version = async () => {
+            const revision = (await currentApplicability(fixture, context.path))
+              .revision;
+            if (typeof revision !== 'number')
+              throw new Error('Expected an applicability revision.');
+            return revision;
+          };
+          const target = {
+            payload: ({
+              expectedVersion,
+              variant,
+            }: {
+              readonly expectedVersion: number;
+              readonly variant: 'first' | 'second';
+            }) => ({
+              ...observed,
+              ...demoProposal,
+              expectedApplicabilityRevision: expectedVersion,
+              reason:
+                variant === 'first'
+                  ? 'First protocol scope DEMO'
+                  : 'Second protocol scope DEMO',
+            }),
+            submit: submit(context.path),
+            version,
+            writes,
+            changeLater: async () => {
+              const pending = objects(
+                (await currentApplicability(fixture, context.path)).activities,
+              ).find((row) => record(row.task).id === context.taskId);
+              const later = await fixture.call(context.path, {
+                method: 'POST',
+                body: {
+                  ...(await observedApplicability(
+                    fixture,
+                    context.path,
+                    context.taskId,
+                  )),
+                  ...demoProposal,
+                  action: 'CORRECT_PROPOSAL',
+                  proposalId: record(pending?.pendingProposal).id,
+                  correctionReason: 'Later protocol correction DEMO',
+                },
+              });
+              expect(later.status, await later.clone().text()).toBe(201);
+            },
+            revokeAuthority: async () => {
+              const revoked = await fixture.call(
+                `/company-mission-applicability-coordinator-assignments/${context.membershipId}/${context.companyId}`,
+                { method: 'DELETE', company: null },
+              );
+              expect(revoked.status).toBe(200);
+            },
+          };
+          contexts.set(target, context);
+          return target;
+        },
+        arrangeElsewhere: async (target) => {
+          const context = contexts.get(target);
+          if (!context) throw new Error('Expected the arranged Project.');
+          const other = await fixture.call('/projects/from-template', {
+            method: 'POST',
+            body: {
+              clientAccountId: context.clientId,
+              title: 'Second applicability DEMO',
+              templateKey: pilotKey,
+              templateVersion: 1,
+            },
+          });
+          expect(other.status).toBe(201);
+          return {
+            submit: submit(
+              `/projects/${text((await json(other)).id)}/mission-applicability`,
+            ),
+            writes,
+          };
+        },
+      }))
+        // Each scenario arranges a pilot Project of thirteen Tasks natively.
+        it(scenario.name, scenario.run, 30_000);
+    });
   },
 );

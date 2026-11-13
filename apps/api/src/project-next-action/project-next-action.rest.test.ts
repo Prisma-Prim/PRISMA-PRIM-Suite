@@ -1,4 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  commandAttempt,
+  tableRows,
+} from '../command/command-writes.test-support.js';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
 import {
   json,
   object,
@@ -613,5 +619,106 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
       expect(response.status).toBe(200);
       return json(response);
     }
+    describe('shared versioned command protocol: Project next action', () => {
+      type Context = Awaited<ReturnType<typeof coordinator>>;
+      // The kit hands back the target it arranged; this finds its Project.
+      const contexts = new WeakMap<object, Context>();
+      const writes = () =>
+        tableRows(fixture.pool, [
+          'project_next_action_heads',
+          'project_next_action_history',
+          'project_next_action_commands',
+          'project_next_action_events',
+          'activity_log_events',
+        ]);
+      const submit =
+        (context: Context, path: string) =>
+        ({ value, key }: { value: unknown; key: string }) =>
+          commandAttempt(
+            fixture.request(path, {
+              method: 'POST',
+              companyId: context.companyId,
+              key,
+              body: value,
+            }),
+          );
+      for (const scenario of versionedCommandProtocolScenarios({
+        acceptedStatus: 200,
+        receipt: (value) => value,
+        arrange: async () => {
+          const context = await coordinator();
+          const version = async () => {
+            const revision = object(
+              (
+                await json(
+                  await fixture.request(context.path, {
+                    companyId: context.companyId,
+                  }),
+                )
+              ).current,
+            ).revision;
+            if (typeof revision !== 'number')
+              throw new Error('Expected a next-action revision.');
+            return revision;
+          };
+          const target = {
+            payload: ({
+              expectedVersion,
+              variant,
+            }: {
+              readonly expectedVersion: number;
+              readonly variant: 'first' | 'second';
+            }) => ({
+              expectedRevision: expectedVersion,
+              expectedLifecycleRevision: 0,
+              text:
+                variant === 'first'
+                  ? 'First protocol action DEMO'
+                  : 'Second protocol action DEMO',
+            }),
+            submit: submit(context, context.path),
+            version,
+            writes,
+            changeLater: async () => {
+              await change(
+                context,
+                await version(),
+                'Later protocol action DEMO',
+                randomUUID(),
+              );
+            },
+            revokeAuthority: async () => {
+              const revoked = await fixture.request(
+                `/company-project-next-action-coordinator-assignments/${context.membershipId}/${context.companyId}`,
+                { method: 'DELETE' },
+              );
+              expect(revoked.status).toBe(200);
+            },
+          };
+          contexts.set(target, context);
+          return target;
+        },
+        arrangeElsewhere: async (target) => {
+          const context = contexts.get(target);
+          if (!context) throw new Error('Expected the arranged Project.');
+          const other = await fixture.created(
+            '/projects',
+            {
+              clientAccountId: context.clientId,
+              title: 'Second next action DEMO mission',
+            },
+            context.companyId,
+          );
+          return {
+            submit: submit(
+              context,
+              `/projects/${string(other.id)}/next-action`,
+            ),
+            writes,
+          };
+        },
+      }))
+        it(scenario.name, scenario.run, 30_000);
+    });
   },
 );

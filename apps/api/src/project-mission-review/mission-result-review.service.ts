@@ -3,12 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
-import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
+import {
+  runKeyedCommand,
+  staleVersionConflict,
+} from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
 import { ProjectClosedGuard } from '../project/project-closed.guard.js';
@@ -17,6 +19,7 @@ import { MissionReadinessService } from '../project-template/mission-readiness.s
 import { ProjectTemplateService } from '../project-template/project-template.service.js';
 import { TaskResultsService } from '../task/task-results.service.js';
 import {
+  REVIEW_KEY_MAX_LENGTH,
   reviewHistoryQuery,
   reviewInput,
 } from './mission-result-review.input.js';
@@ -177,63 +180,65 @@ export class MissionResultReviewService {
     key: string | undefined,
   ) {
     const input = reviewInput(body);
-    const idempotencyKey = requireIdempotencyKey(key);
-    return this.database.transaction(async () => {
-      // Parent/role authority precedes the original Client mutex and Task locks.
-      await this.templates.requirePilotReviewWithinTransaction(actor);
-      const capture = (
-        await this.authorization.requirePermissions(actor, {
-          permissions: ['project.mission_result.review'],
-          lock: true,
-        })
-      ).grant('project.mission_result.review');
-      const scope = this.scope(actor, projectId);
-      const source = await this.source(actor, projectId);
-      if (!source)
-        throw new ConflictException(
-          'This Project has no supported mission review plan.',
-        );
-      if (source.kind === 'unavailable') throw new NotFoundException();
-      const project = await this.projects.read(actor, projectId);
-      // Canonical source order makes equivalent selection order an identical command.
-      const selected = source.activities.filter((row) =>
-        input.items.some((item) => item.taskId === row.task.id),
-      );
-      if (selected.length !== input.items.length)
-        throw new ConflictException('Select only mapped mission activities.');
-      const items = selected.map((row) => {
-        const item = input.items.find((item) => item.taskId === row.task.id);
-        if (!item) throw new Error('Missing selected mission activity.');
-        return item;
-      });
-      for (const item of items)
-        await this.results.requireReviewReadWithinTransaction({
-          actor,
-          taskId: item.taskId,
-        });
-      const intent = { outcome: input.outcome, basis: input.basis, items };
-      const signature = JSON.stringify(intent);
-      const command = JSON.stringify({
-        companyId: scope.companyId,
-        projectId,
-        expectedReviewRevision: input.expectedReviewRevision,
-        ...intent,
-      });
-      const lockKey = JSON.stringify([
-        'mission.result.review',
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        idempotencyKey,
-      ]);
-      await this.database.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey},0))`,
-      );
-      const receipt = await this.store.receipt(actor, idempotencyKey);
-      if (receipt) {
-        if (receipt.command !== command)
+    return runKeyedCommand(this.database, {
+      name: 'mission.result.review',
+      actor,
+      key,
+      maxKeyLength: REVIEW_KEY_MAX_LENGTH,
+      authorize: async () => {
+        // Parent/role authority precedes the original Client mutex and Task locks.
+        await this.templates.requirePilotReviewWithinTransaction(actor);
+        const capture = (
+          await this.authorization.requirePermissions(actor, {
+            permissions: ['project.mission_result.review'],
+            lock: true,
+          })
+        ).grant('project.mission_result.review');
+        const scope = this.scope(actor, projectId);
+        const source = await this.source(actor, projectId);
+        if (!source)
           throw new ConflictException(
-            'Idempotency-Key was used for another review intent.',
+            'This Project has no supported mission review plan.',
           );
+        if (source.kind === 'unavailable') throw new NotFoundException();
+        const project = await this.projects.read(actor, projectId);
+        // Canonical source order makes equivalent selection order an identical command.
+        const selected = source.activities.filter((row) =>
+          input.items.some((item) => item.taskId === row.task.id),
+        );
+        const mapped = selected.length === input.items.length;
+        const items = mapped
+          ? selected.map((row) => {
+              const item = input.items.find(
+                (item) => item.taskId === row.task.id,
+              );
+              if (!item) throw new Error('Missing selected mission activity.');
+              return item;
+            })
+          : input.items;
+        // Recorded commands select mapped activities only, so an unmapped
+        // selection can only conflict with a receipt; without one, execute
+        // refuses it.
+        if (mapped)
+          for (const item of items)
+            await this.results.requireReviewReadWithinTransaction({
+              actor,
+              taskId: item.taskId,
+            });
+        const intent = { outcome: input.outcome, basis: input.basis, items };
+        const command = {
+          companyId: scope.companyId,
+          projectId,
+          expectedReviewRevision: input.expectedReviewRevision,
+          ...intent,
+        };
+        return { capture, scope, project, mapped, intent, command };
+      },
+      findReceipt: ({ key: used }) => this.store.receipt(actor, used),
+      // Receipts record their intent as its JSON spelling.
+      recordedIntent: (receipt): unknown => JSON.parse(receipt.command),
+      intent: ({ scope: { command } }) => command,
+      replay: async ({ scope: { scope }, receipt }) => {
         const batch = await this.store.batch(scope, receipt.batchId);
         for (const row of await this.store.rows(batch))
           await this.store.evidence(actor, row);
@@ -243,126 +248,135 @@ export class MissionResultReviewService {
           batchId: batch.id,
           reviewRevision: batch.revision,
         };
-      }
-      await this.clients.lockActiveReferenceClient(
-        actor,
-        project.clientAccountId,
-      );
-      await this.closed.requireOpen({
-        actor,
-        companyId: scope.companyId,
-        projectId,
-      });
-      // Client serializes all compliant mutation owners. Re-read observed facts after waiting.
-      const refreshed = await this.source(actor, projectId);
-      if (!refreshed || refreshed.kind !== 'available')
-        throw new ConflictException('The mission source changed.');
-      const latest = await this.store.latest(scope);
-      if (input.expectedReviewRevision !== (latest?.revision ?? 0))
-        throw new ConflictException(
-          'The review history changed. Reload and review again.',
-        );
-      const rows = [];
-      const previous = await this.store.latestItems(scope);
-      for (const item of items) {
-        const target = await this.results.lockReviewTargetWithinTransaction({
+      },
+      execute: async ({
+        scope: { capture, scope, project, mapped, intent, command },
+        key: idempotencyKey,
+      }) => {
+        if (!mapped)
+          throw new ConflictException('Select only mapped mission activities.');
+        const { items } = intent;
+        const signature = JSON.stringify(intent);
+        await this.clients.lockActiveReferenceClient(
           actor,
-          taskId: item.taskId,
-        });
-        const position = refreshed.activities.findIndex(
-          (row) => row.task.id === item.taskId,
+          project.clientAccountId,
         );
-        if (
-          position < 0 ||
-          target.task.projectId !== projectId ||
-          target.task.status !== 'done' ||
-          target.task.version !== item.expectedTaskVersion ||
-          (target.current?.revision ?? 0) !== item.expectedResultRevision
-        )
-          throw new ConflictException(
-            'The selected Task or result changed. Reload and review again.',
-          );
-        if (
-          item.evidence.kind === 'DECLARED_RESULT' &&
-          target.current?.id !== item.evidence.resultId
-        )
-          throw new ConflictException(
-            'The selected declared result is no longer current.',
-          );
-        rows.push({
-          ...scope,
-          taskId: item.taskId,
-          position,
-          taskTitle: target.task.title,
-          taskVersion: target.task.version,
-          resultRevision: item.expectedResultRevision,
-          predecessorId:
-            previous.find((row) => row.taskId === item.taskId)?.id ?? null,
-          evidenceKind: item.evidence.kind,
-          resultId:
-            item.evidence.kind === 'DECLARED_RESULT'
-              ? item.evidence.resultId
-              : null,
-          externalReference:
-            item.evidence.kind === 'EXTERNAL_REPORTED'
-              ? item.evidence.reference
-              : null,
+        await this.closed.requireOpen({
+          actor,
+          companyId: scope.companyId,
+          projectId,
         });
-      }
-      if (
-        latest &&
-        latest.actorMembershipId === actor.workspaceMembershipId &&
-        latest.actorInternalUserId === actor.internalUserId &&
-        latest.signature === signature
-      )
+        // Client serializes all compliant mutation owners. Re-read observed facts after waiting.
+        const refreshed = await this.source(actor, projectId);
+        if (!refreshed || refreshed.kind !== 'available')
+          throw new ConflictException('The mission source changed.');
+        const latest = await this.store.latest(scope);
+        if (input.expectedReviewRevision !== (latest?.revision ?? 0))
+          throw staleVersionConflict(
+            'The review history changed. Reload and review again.',
+          );
+        const rows = [];
+        const previous = await this.store.latestItems(scope);
+        for (const item of items) {
+          const target = await this.results.lockReviewTargetWithinTransaction({
+            actor,
+            taskId: item.taskId,
+          });
+          const position = refreshed.activities.findIndex(
+            (row) => row.task.id === item.taskId,
+          );
+          if (
+            position < 0 ||
+            target.task.projectId !== projectId ||
+            target.task.status !== 'done' ||
+            target.task.version !== item.expectedTaskVersion ||
+            (target.current?.revision ?? 0) !== item.expectedResultRevision
+          )
+            throw new ConflictException(
+              'The selected Task or result changed. Reload and review again.',
+            );
+          if (
+            item.evidence.kind === 'DECLARED_RESULT' &&
+            target.current?.id !== item.evidence.resultId
+          )
+            throw new ConflictException(
+              'The selected declared result is no longer current.',
+            );
+          rows.push({
+            ...scope,
+            taskId: item.taskId,
+            position,
+            taskTitle: target.task.title,
+            taskVersion: target.task.version,
+            resultRevision: item.expectedResultRevision,
+            predecessorId:
+              previous.find((row) => row.taskId === item.taskId)?.id ?? null,
+            evidenceKind: item.evidence.kind,
+            resultId:
+              item.evidence.kind === 'DECLARED_RESULT'
+                ? item.evidence.resultId
+                : null,
+            externalReference:
+              item.evidence.kind === 'EXTERNAL_REPORTED'
+                ? item.evidence.reference
+                : null,
+          });
+        }
+        if (
+          latest &&
+          latest.actorMembershipId === actor.workspaceMembershipId &&
+          latest.actorInternalUserId === actor.internalUserId &&
+          latest.signature === signature
+        )
+          return this.store.saveReceipt({
+            ...scope,
+            actorMembershipId: actor.workspaceMembershipId,
+            idempotencyKey,
+            command: JSON.stringify(command),
+            batchId: latest.id,
+            reviewRevision: latest.revision,
+            action: 'unchanged',
+          });
+        if (latest?.revision === 2147483647)
+          throw new ConflictException('Mission review revision is exhausted.');
+        await this.clients.recordReferenceUse(actor, project.clientAccountId);
+        const batch = await this.store.append(
+          {
+            ...scope,
+            revision: (latest?.revision ?? 0) + 1,
+            predecessorId: latest?.id ?? null,
+            previousRevision: latest?.revision ?? null,
+            outcome: input.outcome,
+            basis: input.basis,
+            signature,
+            selectedCount: rows.length,
+            actorInternalUserId: actor.internalUserId,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorDisplayName: actor.displayName,
+            reviewerAssignmentId: capture.assignmentId,
+            reviewerPermissionSetVersion: capture.permissionSetVersion,
+            occurredAt: new Date(),
+          },
+          rows,
+        );
+        await this.accountability.recordMissionResultReviewEvent({
+          actor,
+          companyId: scope.companyId,
+          projectId,
+          batchId: batch.id,
+          reviewRevision: batch.revision,
+          occurredAt: batch.occurredAt,
+        });
         return this.store.saveReceipt({
           ...scope,
           actorMembershipId: actor.workspaceMembershipId,
           idempotencyKey,
-          command,
-          batchId: latest.id,
-          reviewRevision: latest.revision,
-          action: 'unchanged',
+          command: JSON.stringify(command),
+          batchId: batch.id,
+          reviewRevision: batch.revision,
+          action: 'recorded',
         });
-      if (latest?.revision === 2147483647)
-        throw new ConflictException('Mission review revision is exhausted.');
-      await this.clients.recordReferenceUse(actor, project.clientAccountId);
-      const batch = await this.store.append(
-        {
-          ...scope,
-          revision: (latest?.revision ?? 0) + 1,
-          predecessorId: latest?.id ?? null,
-          previousRevision: latest?.revision ?? null,
-          outcome: input.outcome,
-          basis: input.basis,
-          signature,
-          selectedCount: rows.length,
-          actorInternalUserId: actor.internalUserId,
-          actorMembershipId: actor.workspaceMembershipId,
-          actorDisplayName: actor.displayName,
-          reviewerAssignmentId: capture.assignmentId,
-          reviewerPermissionSetVersion: capture.permissionSetVersion,
-          occurredAt: new Date(),
-        },
-        rows,
-      );
-      await this.accountability.recordMissionResultReviewEvent({
-        actor,
-        companyId: scope.companyId,
-        projectId,
-        batchId: batch.id,
-        reviewRevision: batch.revision,
-        occurredAt: batch.occurredAt,
-      });
-      return this.store.saveReceipt({
-        ...scope,
-        actorMembershipId: actor.workspaceMembershipId,
-        idempotencyKey,
-        command,
-        batchId: batch.id,
-        reviewRevision: batch.revision,
-        action: 'recorded',
-      });
+      },
     });
   }
 }
