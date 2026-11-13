@@ -1,10 +1,12 @@
-import { CompanyRoleAssignmentController } from './company-role-assignment.controller.js';
-import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
-import type {
-  CanActivate,
-  ExecutionContext,
-  INestApplication,
+import {
+  RequestMethod,
+  type CanActivate,
+  type ExecutionContext,
+  type INestApplication,
+  type Provider,
+  type Type,
 } from '@nestjs/common';
+import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import { Test } from '@nestjs/testing';
 import {
   afterAll,
@@ -16,22 +18,75 @@ import {
   vi,
 } from 'vitest';
 import { ActivityLogController } from '../accountability/activity-log.controller.js';
-import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientDuplicateReviewController } from '../client/client-duplicate-review.controller.js';
-import { ClientDuplicateReviewService } from '../client/client-duplicate-review.service.js';
+import { ClientUnionController } from '../client/client-union.controller.js';
 import { ClientController } from '../client/client.controller.js';
-import { ClientService } from '../client/client.service.js';
+import { CommercialCatalogueController } from '../commercial-catalogue/commercial-catalogue.controller.js';
+import {
+  CommercialIntakeController,
+  CommercialIntakeOpportunityController,
+} from '../commercial-intake/commercial-intake.controller.js';
 import { CompanyController } from '../company/company.controller.js';
-import { CompanyService } from '../company/company.service.js';
+import { ContractModelController } from '../contract-model/contract-model.controller.js';
+import { ContractAgreementsController } from '../contract/contract-agreements.controller.js';
+import { ContractDecisionQueueController } from '../contract/contract-decision-queue.controller.js';
+import {
+  ContractController,
+  ProjectContractsController,
+} from '../contract/contract.controller.js';
+import { DocumentContentController } from '../documents/document-content.controller.js';
+import { DocumentProjectsController } from '../documents/document-projects.controller.js';
+import { DocumentVersionsController } from '../documents/document-versions.controller.js';
+import { DocumentsController } from '../documents/documents.controller.js';
+import { ProjectPdfBundleController } from '../documents/project-pdf-bundle.controller.js';
+import { IdeasController } from '../ideas/ideas.controller.js';
+import { InternalTaskController } from '../internal-task/internal-task.controller.js';
+import { InvoiceRecordController } from '../invoice-record/invoice-record.controller.js';
+import { KnowledgeActorGuard } from '../knowledge/knowledge-identity.js';
+import { KnowledgeWebController } from '../knowledge/knowledge-web.controller.js';
+import {
+  KnowledgeAssignmentController,
+  KnowledgeController,
+  KnowledgeReadController,
+} from '../knowledge/knowledge.controller.js';
+import { MissionPlanCopyController } from '../mission-plan/mission-plan-copy.controller.js';
+import { MissionPlanController } from '../mission-plan/mission-plan.controller.js';
+import { OfferModelController } from '../offer-model/offer-model.controller.js';
+import { OfferDecisionQueueController } from '../offer/offer-decision-queue.controller.js';
+import { OfferController } from '../offer/offer.controller.js';
+import { OperationalHomeController } from '../operational-home/operational-home.controller.js';
+import { OperationalRiskController } from '../operational-risk/operational-risk.controller.js';
+import {
+  OpportunityFollowUpController,
+  OpportunityFollowUpDiscoveryController,
+} from '../opportunity-follow-up/opportunity-follow-up.controller.js';
+import { PaymentController } from '../payment/payment.controller.js';
+import { PricingConfigurationController } from '../pricing-configuration/pricing-configuration.controller.js';
+import { PricingSnapshotController } from '../pricing-configuration/pricing-snapshot.controller.js';
+import { ProfitabilityDecisionQueueController } from '../profitability-estimate/profitability-decision-queue.controller.js';
+import { ProfitabilityEstimateController } from '../profitability-estimate/profitability-estimate.controller.js';
+import { MissionApplicabilityController } from '../project-mission-applicability/mission-applicability.controller.js';
+import { MissionResultReviewController } from '../project-mission-review/mission-result-review.controller.js';
+import { ProjectNextActionController } from '../project-next-action/project-next-action.controller.js';
+import { ProjectTemplateController } from '../project-template/project-template.controller.js';
+import { ProjectLifecycleController } from '../project/project-lifecycle.controller.js';
+import { ProjectResponsibilityController } from '../project/project-responsibility.controller.js';
+import { ProjectController } from '../project/project.controller.js';
+import { SalesStageController } from '../sales-stage/sales-stage.controller.js';
+import { TaskResultsController } from '../task/task-results.controller.js';
+import { TaskController } from '../task/task.controller.js';
+import { WorkingEvidenceController } from '../working-evidence/working-evidence.controller.js';
 import { AccessController } from './access.controller.js';
+import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import type { ActorContext } from './access.types.js';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
 } from './actor-context.adapter.js';
-import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
+import { CompanyRoleAssignmentController } from './company-role-assignment.controller.js';
+import { WorkspaceInvitationController } from './workspace-invitation.controller.js';
 import { WorkspaceMembershipSuspensionController } from './workspace-membership-suspension.controller.js';
-import { WorkspaceMembershipSuspensionService } from './workspace-membership-suspension.service.js';
+import { WorkspaceSessionRevocationController } from './workspace-session-revocation.controller.js';
 
 const actor: ActorContext = {
   internalUserId: parseInternalUserId('11111111-1111-4111-8111-111111111111'),
@@ -44,52 +99,160 @@ const actor: ActorContext = {
   workspacePermissions: [],
 };
 
-const membershipId = '11111111-1111-4111-8111-111111111111';
-const companyId = '22222222-2222-4222-8222-222222222222';
-const clientId = '33333333-3333-4333-8333-333333333333';
-const legalEntityId = '44444444-4444-4444-8444-444444444444';
-const reviewId = '55555555-5555-4555-8555-555555555555';
+// Every controller whose handlers read the actor through
+// `requireActorContext`. Each of their handlers is exercised below.
+const actorControllers: readonly Type[] = [
+  AccessController,
+  ActivityLogController,
+  ClientController,
+  ClientDuplicateReviewController,
+  ClientUnionController,
+  CommercialCatalogueController,
+  CommercialIntakeController,
+  CommercialIntakeOpportunityController,
+  CompanyController,
+  CompanyRoleAssignmentController,
+  ContractAgreementsController,
+  ContractController,
+  ContractDecisionQueueController,
+  ContractModelController,
+  DocumentContentController,
+  DocumentProjectsController,
+  DocumentVersionsController,
+  DocumentsController,
+  IdeasController,
+  InternalTaskController,
+  InvoiceRecordController,
+  KnowledgeAssignmentController,
+  KnowledgeController,
+  KnowledgeReadController,
+  KnowledgeWebController,
+  MissionApplicabilityController,
+  MissionPlanController,
+  MissionPlanCopyController,
+  MissionResultReviewController,
+  OfferController,
+  OfferDecisionQueueController,
+  OfferModelController,
+  OperationalHomeController,
+  OperationalRiskController,
+  OpportunityFollowUpController,
+  OpportunityFollowUpDiscoveryController,
+  PaymentController,
+  PricingConfigurationController,
+  PricingSnapshotController,
+  ProfitabilityDecisionQueueController,
+  ProfitabilityEstimateController,
+  ProjectContractsController,
+  ProjectController,
+  ProjectLifecycleController,
+  ProjectNextActionController,
+  ProjectPdfBundleController,
+  ProjectResponsibilityController,
+  ProjectTemplateController,
+  SalesStageController,
+  TaskController,
+  TaskResultsController,
+  WorkingEvidenceController,
+  WorkspaceInvitationController,
+  WorkspaceMembershipSuspensionController,
+  WorkspaceSessionRevocationController,
+];
+
+// Route parameters take values their route admits, a well-formed identifier
+// unless listed, so only the missing actor can deny the request.
+const identifierParameter = ['66666666-6666-4666-8666-666666666666'];
+const routeParameters = new Map<string, readonly string[]>([
+  ['noun', ['context', 'director-client']],
+]);
 
 interface ActorRoute {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
 }
 
-// Every handler that reads the actor through `requireActorContext`.
-const actorRoutes: readonly ActorRoute[] = [
-  { method: 'GET', path: '/access/current-actor' },
-  { method: 'GET', path: '/activity-log' },
-  { method: 'GET', path: '/company-context-assignments/administration' },
-  { method: 'POST', path: '/company-context-assignments' },
-  {
-    method: 'DELETE',
-    path: `/company-context-assignments/${membershipId}/${companyId}`,
-  },
-  { method: 'POST', path: '/company-director-client-assignments' },
-  {
-    method: 'DELETE',
-    path: `/company-director-client-assignments/${membershipId}/${companyId}`,
-  },
-  { method: 'POST', path: '/workspace-membership-suspensions' },
-  { method: 'GET', path: '/client-duplicate-reviews' },
-  { method: 'GET', path: `/client-duplicate-reviews/${reviewId}` },
-  { method: 'GET', path: '/clients' },
-  { method: 'GET', path: '/clients/search?query=Acme' },
-  { method: 'POST', path: '/clients' },
-  { method: 'PUT', path: `/clients/${clientId}/active-company-relationship` },
-  { method: 'GET', path: `/clients/${clientId}` },
-  { method: 'GET', path: `/clients/${clientId}/correction-history` },
-  { method: 'GET', path: `/clients/${clientId}/legal-entities` },
-  { method: 'POST', path: `/clients/${clientId}/legal-entities` },
-  {
-    method: 'PATCH',
-    path: `/clients/${clientId}/legal-entities/${legalEntityId}`,
-  },
-  { method: 'PATCH', path: `/clients/${clientId}` },
-  { method: 'GET', path: '/companies' },
-  { method: 'POST', path: '/companies' },
-  { method: 'GET', path: `/companies/${companyId}` },
-];
+const httpMethods = new Map<unknown, ActorRoute['method']>([
+  [RequestMethod.GET, 'GET'],
+  [RequestMethod.POST, 'POST'],
+  [RequestMethod.PUT, 'PUT'],
+  [RequestMethod.PATCH, 'PATCH'],
+  [RequestMethod.DELETE, 'DELETE'],
+]);
+
+function pathSegments(metadata: unknown): readonly string[] {
+  if (metadata === undefined) return ['/'];
+  if (typeof metadata === 'string') return [metadata];
+  if (
+    Array.isArray(metadata) &&
+    metadata.every((path) => typeof path === 'string')
+  )
+    return metadata;
+  throw new Error('Unsupported route path metadata.');
+}
+
+// Every concrete path of a route template, one per admitted parameter value.
+function routePaths(template: string): readonly string[] {
+  const parameter = /:(\w+)/u.exec(template);
+  if (!parameter) return [template];
+  const [placeholder, name] = parameter;
+  return (routeParameters.get(name) ?? identifierParameter).flatMap((value) =>
+    routePaths(template.replace(placeholder, value)),
+  );
+}
+
+function routeTemplate(...segments: readonly string[]): string {
+  const path = segments
+    .flatMap((segment) => segment.split('/'))
+    .filter((part) => part.length > 0)
+    .join('/');
+  return `/${path}`;
+}
+
+// The routes Nest registers for a controller, read from its own metadata so
+// that a handler added later is covered without editing this list.
+function routesOf(controller: Type): ActorRoute[] {
+  const bases = pathSegments(Reflect.getMetadata(PATH_METADATA, controller));
+  return Object.getOwnPropertyNames(controller.prototype).flatMap((name) => {
+    const handler: unknown = Object.getOwnPropertyDescriptor(
+      controller.prototype,
+      name,
+    )?.value;
+    if (name === 'constructor' || typeof handler !== 'function') return [];
+    const pathMetadata: unknown = Reflect.getMetadata(PATH_METADATA, handler);
+    if (pathMetadata === undefined) return [];
+    const method = httpMethods.get(
+      Reflect.getMetadata(METHOD_METADATA, handler),
+    );
+    if (!method)
+      throw new Error(`Unsupported HTTP method on ${controller.name}.${name}.`);
+    return bases.flatMap((base) =>
+      pathSegments(pathMetadata).flatMap((path) =>
+        routePaths(routeTemplate(base, path)).map((concrete) => ({
+          method,
+          path: concrete,
+        })),
+      ),
+    );
+  });
+}
+
+function dependenciesOf(controller: Type): readonly Type[] {
+  const parameters: unknown = Reflect.getMetadata(
+    'design:paramtypes',
+    controller,
+  );
+  if (parameters === undefined) return [];
+  if (
+    Array.isArray(parameters) &&
+    parameters.every(
+      (parameter): parameter is Type => typeof parameter === 'function',
+    )
+  )
+    return parameters;
+  throw new Error(`Unresolved constructor dependency of ${controller.name}.`);
+}
+
+const actorRoutes = actorControllers.flatMap(routesOf);
 
 describe('Controllers without an established actor context', () => {
   let app: INestApplication;
@@ -99,8 +262,17 @@ describe('Controllers without an established actor context', () => {
     async () => ({}),
   );
 
-  function serviceDouble(methods: readonly string[]) {
-    return Object.fromEntries(methods.map((name) => [name, serviceMethod]));
+  // Answers every method the service class declares through one recorder.
+  function serviceDouble(service: Type): Provider {
+    const methods = Object.getOwnPropertyNames(service.prototype).filter(
+      (name) => name !== 'constructor',
+    );
+    return {
+      provide: service,
+      useValue: Object.fromEntries(
+        methods.map((name) => [name, serviceMethod]),
+      ),
+    };
   }
 
   function send({ method, path }: ActorRoute): Promise<Response> {
@@ -116,8 +288,8 @@ describe('Controllers without an established actor context', () => {
   }
 
   beforeAll(async () => {
-    // Stands in for ActorContextAdapter: it admits the request and attaches
-    // the actor only when the test establishes one.
+    // Stands in for ActorContextAdapter and KnowledgeActorGuard: it admits
+    // the request and attaches the actor only when the test establishes one.
     const actorGuard: CanActivate = {
       canActivate(context: ExecutionContext) {
         const request = context
@@ -127,54 +299,14 @@ describe('Controllers without an established actor context', () => {
         return true;
       },
     };
+    const services = new Set(actorControllers.flatMap(dependenciesOf));
     const moduleRef = await Test.createTestingModule({
-      controllers: [
-        AccessController,
-        ActivityLogController,
-        ClientController,
-        ClientDuplicateReviewController,
-        CompanyRoleAssignmentController,
-        CompanyController,
-        WorkspaceMembershipSuspensionController,
-      ],
-      providers: [
-        {
-          provide: AccountabilityService,
-          useValue: serviceDouble(['listForActor']),
-        },
-        {
-          provide: ClientService,
-          useValue: serviceDouble([
-            'query',
-            'execute',
-            'readCorrectionHistory',
-            'readLegalEntities',
-            'registerLegalEntity',
-            'correctLegalEntity',
-          ]),
-        },
-        {
-          provide: ClientDuplicateReviewService,
-          useValue: serviceDouble(['list', 'read']),
-        },
-        {
-          provide: CompanyContextAssignmentService,
-          useValue: serviceDouble([
-            'readAdministrationState',
-            'executeAssignment',
-          ]),
-        },
-        {
-          provide: CompanyService,
-          useValue: serviceDouble(['listVisible', 'register', 'get']),
-        },
-        {
-          provide: WorkspaceMembershipSuspensionService,
-          useValue: serviceDouble(['suspend']),
-        },
-      ],
+      controllers: [...actorControllers],
+      providers: [...services].map(serviceDouble),
     })
       .overrideGuard(ActorContextAdapter)
+      .useValue(actorGuard)
+      .overrideGuard(KnowledgeActorGuard)
       .useValue(actorGuard)
       .compile();
     app = moduleRef.createNestApplication();
@@ -190,6 +322,14 @@ describe('Controllers without an established actor context', () => {
 
   afterAll(async () => {
     await app?.close();
+  });
+
+  it('covers every handler of the actor controllers', () => {
+    expect(actorRoutes).toContainEqual({
+      method: 'GET',
+      path: '/access/current-actor',
+    });
+    expect(actorRoutes.length).toBeGreaterThan(actorControllers.length);
   });
 
   it.each(actorRoutes)(

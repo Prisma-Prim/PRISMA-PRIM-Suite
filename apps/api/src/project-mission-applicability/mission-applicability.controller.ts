@@ -4,7 +4,6 @@ import {
   Post,
   Query,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { MissionApplicabilityService } from './mission-applicability.service.js';
 
@@ -26,9 +26,8 @@ export class MissionApplicabilityController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     return this.applicability.read(
-      request.actorContext,
+      requireActorContext(request),
       projectId.toLowerCase(),
     );
   }
@@ -39,9 +38,8 @@ export class MissionApplicabilityController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     return this.applicability.record(
-      request.actorContext,
+      requireActorContext(request),
       projectId.toLowerCase(),
       body,
       key,
@@ -53,9 +51,8 @@ export class MissionApplicabilityController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     return this.applicability.history(
-      request.actorContext,
+      requireActorContext(request),
       projectId.toLowerCase(),
       query,
     );

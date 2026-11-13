@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -16,6 +15,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { CompanyContextAssignmentService } from '../access/company-context-assignment.service.js';
 import { object } from './knowledge.validation.js';
@@ -31,7 +31,11 @@ export class KnowledgeController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.knowledge.create({ actor: actor(request), body, key });
+    return this.knowledge.create({
+      actor: requireActorContext(request),
+      body,
+      key,
+    });
   }
   @Post('sources/:sourceId/admission')
   @HttpCode(200)
@@ -42,7 +46,7 @@ export class KnowledgeController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.knowledge.change({
-      actor: actor(request),
+      actor: requireActorContext(request),
       sourceId,
       body,
       key,
@@ -58,7 +62,7 @@ export class KnowledgeController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.knowledge.change({
-      actor: actor(request),
+      actor: requireActorContext(request),
       sourceId,
       body,
       key,
@@ -70,7 +74,7 @@ export class KnowledgeController {
     @Req() request: ActorContextRequest,
     @Param('sourceId') sourceId: string,
   ) {
-    return this.knowledge.inspect(actor(request), sourceId);
+    return this.knowledge.inspect(requireActorContext(request), sourceId);
   }
 }
 
@@ -80,11 +84,11 @@ export class KnowledgeReadController {
   constructor(private readonly knowledge: KnowledgeService) {}
   @Get('sources')
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.knowledge.list(actor(request), query);
+    return this.knowledge.list(requireActorContext(request), query);
   }
   @Get('search')
   search(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.knowledge.search(actor(request), query);
+    return this.knowledge.search(requireActorContext(request), query);
   }
   @Get('sources/:sourceId/passages/:locator')
   passage(
@@ -93,7 +97,12 @@ export class KnowledgeReadController {
     @Param('locator') locator: string,
     @Query() query: unknown,
   ) {
-    return this.knowledge.getPassage(actor(request), sourceId, locator, query);
+    return this.knowledge.getPassage(
+      requireActorContext(request),
+      sourceId,
+      locator,
+      query,
+    );
   }
 }
 
@@ -108,7 +117,7 @@ export class KnowledgeAssignmentController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const input = object(body, ['workspaceMembershipId', 'companyId']);
-    return this.assignments.executeAssignment(actor(request), {
+    return this.assignments.executeAssignment(requireActorContext(request), {
       bundle: 'company_knowledge_source_administrator',
       operation: 'grant',
       ...input,
@@ -124,7 +133,7 @@ export class KnowledgeAssignmentController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const input = object(body, ['workspaceMembershipId', 'companyId']);
-    return this.assignments.executeAssignment(actor(request), {
+    return this.assignments.executeAssignment(requireActorContext(request), {
       bundle: 'company_knowledge_evidence_reader',
       operation: 'grant',
       ...input,
@@ -140,7 +149,7 @@ export class KnowledgeAssignmentController {
     @Param('companyId') companyId: string,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.assignments.executeAssignment(actor(request), {
+    return this.assignments.executeAssignment(requireActorContext(request), {
       bundle: 'company_knowledge_source_administrator',
       operation: 'revoke',
       workspaceMembershipId: membershipId,
@@ -155,7 +164,7 @@ export class KnowledgeAssignmentController {
     @Param('companyId') companyId: string,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.assignments.executeAssignment(actor(request), {
+    return this.assignments.executeAssignment(requireActorContext(request), {
       bundle: 'company_knowledge_evidence_reader',
       operation: 'revoke',
       workspaceMembershipId: membershipId,
@@ -163,8 +172,4 @@ export class KnowledgeAssignmentController {
       idempotencyKey: key,
     });
   }
-}
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

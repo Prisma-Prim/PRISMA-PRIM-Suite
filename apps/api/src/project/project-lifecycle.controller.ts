@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProjectLifecycleService } from './project-lifecycle.service.js';
 
@@ -26,7 +26,7 @@ export class ProjectLifecycleController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.lifecycle.read(actorFrom(request), projectId);
+    return this.lifecycle.read(requireActorContext(request), projectId);
   }
   @Get('eligible-start-exception-members')
   eligibleMembers(
@@ -34,7 +34,7 @@ export class ProjectLifecycleController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
     return this.lifecycle.eligibleStartExceptionMembers(
-      actorFrom(request),
+      requireActorContext(request),
       projectId,
     );
   }
@@ -46,10 +46,11 @@ export class ProjectLifecycleController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.lifecycle.transition(actorFrom(request), projectId, body, key);
+    return this.lifecycle.transition(
+      requireActorContext(request),
+      projectId,
+      body,
+      key,
+    );
   }
-}
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

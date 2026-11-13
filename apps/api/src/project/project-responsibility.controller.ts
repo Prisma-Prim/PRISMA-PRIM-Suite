@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProjectResponsibilityService } from './project-responsibility.service.js';
 
@@ -25,7 +25,7 @@ export class ProjectResponsibilityController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.responsibility.read(actorFrom(request), projectId);
+    return this.responsibility.read(requireActorContext(request), projectId);
   }
   @Put('responsible')
   change(
@@ -34,17 +34,21 @@ export class ProjectResponsibilityController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.responsibility.change(actorFrom(request), projectId, body, key);
+    return this.responsibility.change(
+      requireActorContext(request),
+      projectId,
+      body,
+      key,
+    );
   }
   @Get('eligible-responsible-members')
   eligibleMembers(
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.responsibility.eligibleMembers(actorFrom(request), projectId);
+    return this.responsibility.eligibleMembers(
+      requireActorContext(request),
+      projectId,
+    );
   }
-}
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

@@ -7,12 +7,12 @@ import {
   Post,
   Query,
   Req,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from './actor-context.adapter.js';
 import { WorkspaceInvitationService } from './workspace-invitation.service.js';
 
@@ -27,15 +27,19 @@ export class WorkspaceInvitationController {
     @Body() body: { email?: unknown; expiresInDays?: unknown },
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.invitations.issue(actor(request), body ?? {}, key);
+    return this.invitations.issue(
+      requireActorContext(request),
+      body ?? {},
+      key,
+    );
   }
   @Get()
   list(@Req() request: ActorContextRequest, @Query('after') after?: string) {
-    return this.invitations.list(actor(request), after);
+    return this.invitations.list(requireActorContext(request), after);
   }
   @Post(':id/refresh')
   refresh(@Req() request: ActorContextRequest, @Param('id') id: string) {
-    return this.invitations.refresh(actor(request), id);
+    return this.invitations.refresh(requireActorContext(request), id);
   }
   @Post(':id/revoke')
   revoke(
@@ -43,11 +47,6 @@ export class WorkspaceInvitationController {
     @Param('id') id: string,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.invitations.revoke(actor(request), id, key);
+    return this.invitations.revoke(requireActorContext(request), id, key);
   }
-}
-
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new UnauthorizedException();
-  return request.actorContext;
 }
