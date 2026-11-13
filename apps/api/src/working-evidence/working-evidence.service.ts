@@ -1,10 +1,4 @@
-import {
-  createHash,
-  createHmac,
-  randomBytes,
-  randomUUID,
-  timingSafeEqual,
-} from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   ForbiddenException,
   HttpException,
@@ -30,14 +24,22 @@ import {
   workingEvidenceSupports as supports,
   workingEvidenceOutputs as outputs,
   workingEvidenceReceipts as receipts,
+  workingEvidenceCursorKeys as cursorKeys,
 } from '../database/schema/working-evidence.js';
 import { DocumentWorkingEvidenceReferenceService } from '../documents/document-working-evidence-reference.service.js';
 import { ProjectService } from '../project/project.service.js';
 import { ProjectClosedGuard } from '../project/project-closed.guard.js';
 import {
+  workingEvidenceCursors,
+  type WorkingEvidencePosition,
+} from './working-evidence.cursor.js';
+import type {
+  ContinuationCursorScope,
+  WorkingEvidenceCursorBinding,
+} from '../continuation-cursor/continuation-cursor.js';
+import {
   command,
   cursorQuery,
-  integer,
   noQuery,
   readIntent,
   readReceipt,
@@ -55,15 +57,9 @@ type CaseRow = typeof cases.$inferSelect;
 type RevisionRow = typeof revisions.$inferSelect;
 // A Case command's key is its body's commandId, a canonical UUID.
 const COMMAND_ID_LENGTH = 36;
-const cursorScope = (value: unknown) =>
-  createHash('sha256')
-    .update(JSON.stringify(value))
-    .digest()
-    .subarray(0, 16)
-    .toString('base64url');
 @Injectable()
 export class WorkingEvidenceService {
-  private readonly cursorKey = randomBytes(32);
+  private readonly cursors: ReturnType<typeof workingEvidenceCursors>;
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: CompanyContextAuthorization,
@@ -73,7 +69,9 @@ export class WorkingEvidenceService {
     private readonly documents: DocumentWorkingEvidenceReferenceService,
     private readonly accountability: AccountabilityService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
-  ) {}
+  ) {
+    this.cursors = workingEvidenceCursors(({ scope }) => this.cursorKey(scope));
+  }
 
   record(actor: ActorContext, projectId: string, body: unknown) {
     return this.mutate(actor, 'RECORD', uuid(projectId), body);
@@ -425,7 +423,7 @@ export class WorkingEvidenceService {
     uuid(projectId);
     const cursor = cursorQuery(query);
     return this.read(async () => {
-      const { access, decoded } = await this.pageAccess(actor, cursor);
+      const { access, decoded } = await this.pageAccess(actor, cursor, 'cases');
       const project = await this.projects.missionContextWithinTransaction({
         actor,
         projectId,
@@ -434,14 +432,11 @@ export class WorkingEvidenceService {
         actor,
       );
       await this.clients.readReferenceClient(actor, project.clientAccountId);
-      const binding = cursorScope([
-        actor.workspaceId,
-        access.companyId,
+      const binding = this.cursorBinding(actor, access, [
         projectId,
         project.clientAccountId,
-        access.readCapture,
       ]);
-      const offset = this.pageCursor(decoded, binding);
+      const offset = decoded?.read(binding).offset ?? 0;
       const rows = await this.database.connection
         .select({ case: cases, revision: revisions })
         .from(cases)
@@ -475,11 +470,10 @@ export class WorkingEvidenceService {
         })),
         nextCursor:
           rows.length > 25
-            ? this.signCursor([
-                this.packCapture(access.readCapture),
+            ? await this.cursors.issue({
                 binding,
-                offset + 25,
-              ])
+                position: { kind: 'cases', offset: offset + 25 },
+              })
             : null,
       };
     });
@@ -488,16 +482,15 @@ export class WorkingEvidenceService {
     uuid(caseId);
     const cursor = cursorQuery(query);
     return this.read(async () => {
-      const { access, decoded } = await this.pageAccess(actor, cursor);
+      const { access, decoded } = await this.pageAccess(
+        actor,
+        cursor,
+        'history',
+      );
       const row = await this.findCase(actor, access.companyId, caseId);
       await this.context(actor, row);
-      const binding = cursorScope([
-        actor.workspaceId,
-        access.companyId,
-        caseId,
-        access.readCapture,
-      ]);
-      const offset = this.pageCursor(decoded, binding);
+      const binding = this.cursorBinding(actor, access, [caseId]);
+      const offset = decoded?.read(binding).offset ?? 0;
       const rows = await this.database.connection
         .select()
         .from(revisions)
@@ -525,11 +518,10 @@ export class WorkingEvidenceService {
         })),
         nextCursor:
           rows.length > 25
-            ? this.signCursor([
-                this.packCapture(access.readCapture),
+            ? await this.cursors.issue({
                 binding,
-                offset + 25,
-              ])
+                position: { kind: 'history', offset: offset + 25 },
+              })
             : null,
       };
     });
@@ -538,7 +530,11 @@ export class WorkingEvidenceService {
     uuid(projectId);
     const cursor = cursorQuery(query);
     return this.read(async () => {
-      const { access, decoded } = await this.pageAccess(actor, cursor);
+      const { access, decoded } = await this.pageAccess(
+        actor,
+        cursor,
+        'sources',
+      );
       const project = await this.projects.missionContextWithinTransaction({
         actor,
         projectId,
@@ -559,12 +555,9 @@ export class WorkingEvidenceService {
       });
       const company = actor.activeCompany;
       if (!company) throw new ForbiddenException();
-      const binding = cursorScope([
-        actor.workspaceId,
-        access.companyId,
+      const binding = this.cursorBinding(actor, access, [
         projectId,
         project.clientAccountId,
-        access.readCapture,
         company.documentPermissionAssignmentId,
         company.documentPermissionSetVersion,
         company.receivedAuditSourceAccessAssignmentId,
@@ -572,23 +565,7 @@ export class WorkingEvidenceService {
         company.documentContentReaderAssignmentId,
         company.documentContentReaderPermissionSetVersion,
       ]);
-      let after = null;
-      if (decoded) {
-        const v = decoded;
-        if (
-          !Array.isArray(v) ||
-          v.length !== 5 ||
-          v[1] !== binding ||
-          typeof v[2] !== 'string' ||
-          !validInstant(v[2])
-        )
-          return refuse('invalid_request');
-        after = {
-          createdAt: String(v[2]),
-          documentId: uuid(v[3]),
-          versionNumber: integer(v[4], 1, 50),
-        };
-      }
+      const after = decoded?.read(binding) ?? null;
       const rows = await this.documents.eligibleWithinReadTransaction({
         actor,
         context,
@@ -607,13 +584,15 @@ export class WorkingEvidenceService {
         })),
         nextCursor:
           rows.length > 25 && last
-            ? this.signCursor([
-                this.packCapture(access.readCapture),
+            ? await this.cursors.issue({
                 binding,
-                last.createdAt,
-                last.documentId,
-                last.versionNumber,
-              ])
+                position: {
+                  kind: 'sources',
+                  createdAt: last.createdAt,
+                  documentId: last.documentId,
+                  versionNumber: last.versionNumber,
+                },
+              })
             : null,
       };
     });
@@ -876,56 +855,53 @@ export class WorkingEvidenceService {
       throw new HttpException({ code: 'content_unavailable' }, 500);
     }
   }
-  private signCursor(value: unknown) {
-    const payload = Buffer.from(JSON.stringify(value)).toString('base64url');
-    const signature = createHmac('sha256', this.cursorKey)
-      .update(payload)
-      .digest('base64url');
-    const token = `${payload}.${signature}`;
-    if (token.length > 256) return refuse('content_unavailable');
-    return token;
+  private async cursorKey(scope: ContinuationCursorScope) {
+    const [row] = await this.database.connection
+      .select({ key: cursorKeys.key })
+      .from(cursorKeys)
+      .where(
+        and(
+          eq(cursorKeys.workspaceId, scope.workspaceId),
+          eq(cursorKeys.companyId, scope.companyId),
+        ),
+      );
+    if (!row || !/^[a-f0-9-]{72}$/u.test(row.key))
+      return refuse('content_unavailable');
+    return row.key;
   }
-  private decodeCursor(token: string): unknown {
-    const [payload, signature, ...extra] = token.split('.');
-    if (!payload || !signature || extra.length)
-      return refuse('invalid_request');
-    const expected = createHmac('sha256', this.cursorKey)
-      .update(payload)
-      .digest();
-    const actual = Buffer.from(signature, 'base64url');
-    if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
-      return refuse('invalid_request');
-    try {
-      return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    } catch {
-      return refuse('invalid_request');
-    }
+  private cursorBinding(
+    actor: ActorContext,
+    access: { companyId: string; readCapture: string },
+    context: WorkingEvidenceCursorBinding['context'],
+  ): WorkingEvidenceCursorBinding {
+    return {
+      workspaceId: actor.workspaceId,
+      companyId: access.companyId,
+      actorMembershipId: actor.workspaceMembershipId,
+      readCapture: access.readCapture,
+      context,
+    };
   }
-  private packCapture(capture: string) {
-    if (!/^[a-f0-9]{64}$/.test(capture)) return refuse('content_unavailable');
-    return Buffer.from(capture, 'hex').toString('base64url');
-  }
-  private async pageAccess(actor: ActorContext, token: string | null) {
+  private async pageAccess<Kind extends WorkingEvidencePosition['kind']>(
+    actor: ActorContext,
+    token: string | null,
+    kind: Kind,
+  ) {
     let access = await this.access.requireWorkingEvidenceCaseAccess(actor, {
       record: false,
       lockAssignment: false,
     });
     if (token === null) return { access, decoded: null };
-    const decoded = this.decodeCursor(token);
-    if (
-      !Array.isArray(decoded) ||
-      decoded.length < 3 ||
-      typeof decoded[0] !== 'string'
-    )
-      return refuse('invalid_request');
-    const packed = Buffer.from(decoded[0], 'base64url');
-    if (packed.length !== 32 || packed.toString('base64url') !== decoded[0])
-      return refuse('invalid_request');
+    const decoded = await this.cursors.open({
+      value: token,
+      scope: { workspaceId: actor.workspaceId, companyId: access.companyId },
+      kind,
+    });
     try {
       access = await this.access.requireWorkingEvidenceCaseAccess(actor, {
         record: false,
         lockAssignment: false,
-        readCapture: packed.toString('hex'),
+        readCapture: decoded.readCapture,
       });
     } catch (error) {
       if (
@@ -937,18 +913,4 @@ export class WorkingEvidenceService {
     }
     return { access, decoded };
   }
-  private pageCursor(value: unknown[] | null, binding: string) {
-    if (value === null) return 0;
-    if (value.length !== 3 || value[1] !== binding)
-      return refuse('invalid_request');
-    return integer(value[2], 0, 2147483647);
-  }
-}
-
-function validInstant(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    Number.isFinite(Date.parse(value)) &&
-    new Date(value).toISOString() === value
-  );
 }

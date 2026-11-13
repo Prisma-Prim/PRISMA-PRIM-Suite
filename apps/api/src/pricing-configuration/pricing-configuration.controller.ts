@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { PricingConfigurationService } from './pricing-configuration.service.js';
 import { TariffVersionService } from './tariff-version.service.js';
@@ -32,7 +32,7 @@ export class PricingConfigurationController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.configuration.publishRuleVersion(
-      actorFrom(request),
+      requireActorContext(request),
       body,
       idempotencyKey,
     );
@@ -40,7 +40,7 @@ export class PricingConfigurationController {
 
   @Get('rule-scope')
   readRuleScope(@Req() request: ActorContextRequest) {
-    return this.configuration.readRuleScope(actorFrom(request));
+    return this.configuration.readRuleScope(requireActorContext(request));
   }
 
   @Get('rule-versions')
@@ -50,7 +50,7 @@ export class PricingConfigurationController {
     @Query('limit') limit: unknown,
   ) {
     return this.configuration.listRuleVersions(
-      actorFrom(request),
+      requireActorContext(request),
       cursor,
       limit,
     );
@@ -63,7 +63,10 @@ export class PricingConfigurationController {
     @Req() request: ActorContextRequest,
     @Param('versionId') versionId: string,
   ) {
-    return this.configuration.readRuleVersion(actorFrom(request), versionId);
+    return this.configuration.readRuleVersion(
+      requireActorContext(request),
+      versionId,
+    );
   }
 
   // Offering and version identifiers are checked after authority inside the
@@ -77,7 +80,7 @@ export class PricingConfigurationController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.tariffs.publishTariffVersion(
-      actorFrom(request),
+      requireActorContext(request),
       offeringId,
       body,
       idempotencyKey,
@@ -89,7 +92,10 @@ export class PricingConfigurationController {
     @Req() request: ActorContextRequest,
     @Param('offeringId') offeringId: string,
   ) {
-    return this.tariffs.readTariffScope(actorFrom(request), offeringId);
+    return this.tariffs.readTariffScope(
+      requireActorContext(request),
+      offeringId,
+    );
   }
 
   @Get('offerings/:offeringId/tariff-versions')
@@ -100,7 +106,7 @@ export class PricingConfigurationController {
     @Query('limit') limit: unknown,
   ) {
     return this.tariffs.listTariffVersions(
-      actorFrom(request),
+      requireActorContext(request),
       offeringId,
       cursor,
       limit,
@@ -112,11 +118,9 @@ export class PricingConfigurationController {
     @Req() request: ActorContextRequest,
     @Param('versionId') versionId: string,
   ) {
-    return this.tariffs.readTariffVersion(actorFrom(request), versionId);
+    return this.tariffs.readTariffVersion(
+      requireActorContext(request),
+      versionId,
+    );
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

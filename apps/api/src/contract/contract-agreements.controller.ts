@@ -2,7 +2,6 @@ import { ReportedContractSigningService } from './reported-contract-signing.serv
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ContractService } from './contract.service.js';
 import { ContractProjectsService } from './contract-projects.service.js';
@@ -33,7 +33,7 @@ export class ContractAgreementsController {
     @Param('contractId') contractId: string,
   ) {
     return this.projects.candidates({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
     });
@@ -46,7 +46,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projects.link({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       payload,
@@ -61,7 +61,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projectCreation.createFromMissionPlan({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       payload,
@@ -76,7 +76,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projectCreation.create({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       payload,
@@ -91,7 +91,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.createAddendum({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       parentContractId,
       payload,
@@ -105,7 +105,7 @@ export class ContractAgreementsController {
   ) {
     return {
       contract: await this.contracts.read({
-        actor: actorFrom(request),
+        actor: requireActorContext(request),
         opportunityId,
         contractId,
       }),
@@ -120,7 +120,7 @@ export class ContractAgreementsController {
     @Query('cursor') cursor: string | undefined,
   ) {
     return this.signing.candidates({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       contractId,
@@ -136,7 +136,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.signing.declare({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       contractId,
@@ -153,7 +153,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.recordSignature({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -170,7 +170,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -188,7 +188,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -206,7 +206,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.runQualityChecks({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -223,7 +223,7 @@ export class ContractAgreementsController {
     @Query('cursor') cursor: string | undefined,
   ) {
     return this.contracts.listQualityRuns({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -239,7 +239,7 @@ export class ContractAgreementsController {
     @Param('runId') runId: string,
   ) {
     return this.contracts.readQualityRun({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -254,7 +254,7 @@ export class ContractAgreementsController {
     @Query('cursor') cursor: string | undefined,
   ) {
     return this.contracts.listVersions({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       limit,
@@ -269,7 +269,7 @@ export class ContractAgreementsController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.createVersion({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       payload,
@@ -284,7 +284,7 @@ export class ContractAgreementsController {
   ) {
     return {
       contract: await this.contracts.read({
-        actor: actorFrom(request),
+        actor: requireActorContext(request),
         opportunityId,
         contractId,
         versionId,
@@ -298,7 +298,7 @@ export class ContractAgreementsController {
     @Param('versionId') versionId: string,
   ) {
     const contract = await this.contracts.read({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       contractId,
       versionId,
@@ -310,8 +310,4 @@ export class ContractAgreementsController {
       ...contract.version.representation,
     };
   }
-}
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

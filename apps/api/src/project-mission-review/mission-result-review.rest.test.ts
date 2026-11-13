@@ -1,6 +1,11 @@
 import { preserveFrozenResultDocument } from '../task/task-results.test-support.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  commandAttempt,
+  tableRows,
+} from '../command/command-writes.test-support.js';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
+import {
   createMissionDocumentFixture,
   PDF_B,
   json,
@@ -912,6 +917,133 @@ describe.skipIf(!databaseUrl)(
         await fixture.call(`/tasks/${taskId}/history`),
       );
       expect(JSON.stringify(ordinary)).not.toContain(body.basis);
+    });
+    it('replays an exact retry after its reviewed Task changed state instead of refusing it', async () => {
+      const { path, taskId, body } = await readyReview();
+      const submit = () =>
+        fixture.call(path, { method: 'POST', key: 'state-retry-demo', body });
+      const first = await submit();
+      expect(first.status).toBe(201);
+      const receipt = await json(first);
+      expect(
+        (
+          await fixture.call(`/tasks/${taskId}/reopen`, {
+            method: 'POST',
+            body: { expectedVersion: 2 },
+          })
+        ).status,
+      ).toBe(201);
+      const before = await reviewWrites();
+      const retry = await submit();
+      expect(retry.status).toBe(201);
+      expect(await json(retry)).toEqual(receipt);
+      expect(await reviewWrites()).toEqual(before);
+    });
+    function reviewWrites() {
+      return tableRows(fixture.pool, [
+        'mission_result_review_batches',
+        'mission_result_review_items',
+        'mission_result_review_commands',
+        'mission_result_review_events',
+        'activity_log_events',
+      ]);
+    }
+    describe('shared versioned command protocol: Mission result review', () => {
+      type Review = Awaited<ReturnType<typeof readyReview>>;
+      // The kit hands back the target it arranged; this finds its review.
+      const reviews = new WeakMap<object, Review>();
+      function judgment(
+        context: Review,
+        expectedReviewRevision: number,
+        basis: string,
+      ) {
+        return { ...context.body, expectedReviewRevision, basis };
+      }
+      for (const scenario of versionedCommandProtocolScenarios({
+        acceptedStatus: 201,
+        receipt: (value) => value,
+        arrange: async () => {
+          const context = await readyReview();
+          const version = async () => {
+            const revision = record(
+              (await json(await fixture.call(context.path))).review,
+            ).revision;
+            if (typeof revision !== 'number')
+              throw new Error('Expected a review revision.');
+            return revision;
+          };
+          const target = {
+            payload: ({
+              expectedVersion,
+              variant,
+            }: {
+              readonly expectedVersion: number;
+              readonly variant: 'first' | 'second';
+            }) =>
+              judgment(
+                context,
+                expectedVersion,
+                variant === 'first'
+                  ? 'First protocol judgment DEMO'
+                  : 'Second protocol judgment DEMO',
+              ),
+            submit: ({ value, key }: { value: unknown; key: string }) =>
+              commandAttempt(
+                fixture.call(context.path, {
+                  method: 'POST',
+                  key,
+                  body: value,
+                }),
+              ),
+            version,
+            writes: reviewWrites,
+            changeLater: async () => {
+              const later = await fixture.call(context.path, {
+                method: 'POST',
+                body: judgment(
+                  context,
+                  await version(),
+                  'Later protocol judgment DEMO',
+                ),
+              });
+              expect(later.status, await later.clone().text()).toBe(201);
+            },
+            revokeAuthority: async () => {
+              const revoked = await fixture.call(
+                `/company-mission-result-reviewer-assignments/${context.membershipId}/${context.companyId}`,
+                { method: 'DELETE', company: null },
+              );
+              expect(revoked.status).toBe(200);
+            },
+          };
+          reviews.set(target, context);
+          return target;
+        },
+        arrangeElsewhere: async (target) => {
+          const context = reviews.get(target);
+          if (!context) throw new Error('Expected the arranged review.');
+          const other = await fixture.call('/projects/from-template', {
+            method: 'POST',
+            body: {
+              clientAccountId: context.clientId,
+              title: 'Second mission review DEMO',
+              templateKey: pilotKey,
+              templateVersion: 1,
+            },
+          });
+          expect(other.status).toBe(201);
+          const path = `/projects/${text((await json(other)).id)}/mission-result-reviews`;
+          return {
+            submit: ({ value, key }) =>
+              commandAttempt(
+                fixture.call(path, { method: 'POST', key, body: value }),
+              ),
+            writes: reviewWrites,
+          };
+        },
+      }))
+        // Each scenario arranges a pilot Project of thirteen Tasks natively.
+        it(scenario.name, scenario.run, 30_000);
     });
   },
 );

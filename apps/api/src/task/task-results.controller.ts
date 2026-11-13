@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { TaskResultsService } from './task-results.service.js';
 
@@ -25,7 +25,7 @@ export class TaskResultsController {
     @Req() request: ActorContextRequest,
     @Param('taskId') taskId: string,
   ) {
-    return this.results.current(actor(request), { taskId });
+    return this.results.current(requireActorContext(request), { taskId });
   }
   @Get('history')
   history(
@@ -33,7 +33,10 @@ export class TaskResultsController {
     @Param('taskId') taskId: string,
     @Query() query: unknown,
   ) {
-    return this.results.history(actor(request), { taskId, query });
+    return this.results.history(requireActorContext(request), {
+      taskId,
+      query,
+    });
   }
   @Post()
   record(
@@ -42,7 +45,7 @@ export class TaskResultsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.results.record(actor(request), {
+    return this.results.record(requireActorContext(request), {
       taskId,
       body,
       idempotencyKey: key,
@@ -54,7 +57,9 @@ export class TaskResultsController {
     @Req() request: ActorContextRequest,
     @Param('taskId') taskId: string,
   ) {
-    return this.results.eligibleVersions(actor(request), { taskId });
+    return this.results.eligibleVersions(requireActorContext(request), {
+      taskId,
+    });
   }
 
   @Post('corrections')
@@ -64,14 +69,10 @@ export class TaskResultsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.results.correct(actor(request), {
+    return this.results.correct(requireActorContext(request), {
       taskId,
       body,
       idempotencyKey: key,
     });
   }
-}
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

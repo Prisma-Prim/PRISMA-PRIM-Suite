@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -15,6 +14,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProjectNextActionService } from './project-next-action.service.js';
 
@@ -28,9 +28,8 @@ export class ProjectNextActionController {
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
     @Query() query: unknown,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     return this.nextAction.read(
-      request.actorContext,
+      requireActorContext(request),
       projectId.toLowerCase(),
       query,
     );
@@ -43,9 +42,8 @@ export class ProjectNextActionController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     return this.nextAction.record(
-      request.actorContext,
+      requireActorContext(request),
       projectId.toLowerCase(),
       body,
       key,

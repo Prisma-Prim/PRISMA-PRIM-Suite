@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { describe, expect, it } from 'vitest';
@@ -20,11 +21,8 @@ const withPostgres = databaseUrl ? describe : describe.skip;
 withPostgres('Certificate Revision migration', () => {
   it('upgrades real issued and legacy Cases without rewriting issuance, receipts or events and guards immutable scoped revisions', async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL required.');
-    const fixture = await openCertificationFixture({
-      databaseUrl,
-      namePrefix: 'revision1295_migration',
-      workspaceId: '00000000-0000-4000-8000-000000012950',
-    });
+    const { fixture, migrationWhen, close } =
+      await openRevisionMigrationFixture(databaseUrl);
     try {
       const { approved, issue, granted, attach, read, ok } =
         certificateReleaseCommands(() => fixture);
@@ -58,25 +56,20 @@ withPostgres('Certificate Revision migration', () => {
         'SELECT * FROM certification_events WHERE case_id=ANY($1::uuid[]) ORDER BY id',
         [[ordinary, legacy]],
       );
-      const raw: unknown = JSON.parse(
-        await readFile(resolve('drizzle/meta/_journal.json'), 'utf8'),
-      );
-      const entries = record(raw).entries;
-      if (!Array.isArray(entries)) throw new Error('Journal entries required.');
-      const entry = entries
-        .map(record)
-        .find(
-          (item) => item.tag === '0113_certification_certificate_revisions',
-        );
-      if (typeof entry?.when !== 'number')
-        throw new Error('Migration timestamp required.');
+      expect(
+        (
+          await fixture.databasePool.query(
+            'SELECT max(created_at)::text AS latest FROM drizzle.__drizzle_migrations',
+          )
+        ).rows,
+      ).toEqual([{ latest: String(migrationWhen) }]);
       // Recreate precisely the predecessor boundary around these real rows.
       await fixture.databasePool.query(
         'DROP TABLE certification_certificate_revisions',
       );
       await fixture.databasePool.query(
         'DELETE FROM drizzle.__drizzle_migrations WHERE created_at=$1',
-        [entry.when],
+        [migrationWhen],
       );
       const database = drizzle(fixture.databasePool);
       await migrate(database, { migrationsFolder: resolve('drizzle') });
@@ -168,7 +161,63 @@ withPostgres('Certificate Revision migration', () => {
         ),
       ).rejects.toBeDefined();
     } finally {
-      await fixture.close();
+      await close();
     }
   }, 120_000);
 });
+
+/** Seed this historical boundary before any later migration can be recorded. */
+async function openRevisionMigrationFixture(databaseUrl: string) {
+  const migrationsFolder = await mkdtemp(
+    join(tmpdir(), 'certificate-revisions-boundary-'),
+  );
+  try {
+    const directory = resolve('drizzle');
+    const raw: unknown = JSON.parse(
+      await readFile(join(directory, 'meta', '_journal.json'), 'utf8'),
+    );
+    const journal = record(raw);
+    if (!Array.isArray(journal.entries))
+      throw new Error('Journal entries required.');
+    const entries = journal.entries.map(record);
+    const index = entries.findIndex(
+      (entry) => entry.tag === '0113_certification_certificate_revisions',
+    );
+    const target = entries[index];
+    if (index < 0 || typeof target?.when !== 'number')
+      throw new Error('Revision migration timestamp required.');
+    const boundary = entries.slice(0, index + 1);
+    await mkdir(join(migrationsFolder, 'meta'));
+    await writeFile(
+      join(migrationsFolder, 'meta', '_journal.json'),
+      JSON.stringify({ ...journal, entries: boundary }),
+    );
+    for (const entry of boundary) {
+      if (typeof entry.tag !== 'string') throw new Error('Tag required.');
+      await cp(
+        join(directory, `${entry.tag}.sql`),
+        join(migrationsFolder, `${entry.tag}.sql`),
+      );
+    }
+    const fixture = await openCertificationFixture({
+      databaseUrl,
+      namePrefix: 'revision1295_migration',
+      workspaceId: '00000000-0000-4000-8000-000000012950',
+      migrationsFolder,
+    });
+    return {
+      fixture,
+      migrationWhen: target.when,
+      async close() {
+        try {
+          await fixture.close();
+        } finally {
+          await rm(migrationsFolder, { recursive: true, force: true });
+        }
+      },
+    };
+  } catch (error) {
+    await rm(migrationsFolder, { recursive: true, force: true });
+    throw error;
+  }
+}

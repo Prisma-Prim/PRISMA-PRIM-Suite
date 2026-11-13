@@ -17,8 +17,7 @@ import {
   followUpQuery,
 } from './opportunity-follow-up.input.js';
 import {
-  followUpCursor,
-  readFollowUpCursor,
+  followUpCursors,
   type FollowUpCursorBinding,
 } from './opportunity-follow-up.cursor.js';
 import {
@@ -37,12 +36,15 @@ function conflict(code: string): never {
 }
 @Injectable()
 export class OpportunityFollowUpService {
+  private readonly cursors: ReturnType<typeof followUpCursors>;
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: CompanyContextAuthorization,
     private readonly commercial: CommercialIntakeService,
     private readonly store: OpportunityFollowUpStore,
-  ) {}
+  ) {
+    this.cursors = followUpCursors(({ scope }) => this.continuationKey(scope));
+  }
   private binding(
     actor: ActorContext,
     companyId: string,
@@ -74,12 +76,14 @@ export class OpportunityFollowUpService {
     const result = await this.store.history(scope, before);
     let nextCursor: string | null = null;
     if (result.nextBefore !== undefined) {
-      const key = await this.continuationKey(scope);
-      nextCursor = followUpCursor(key, binding, {
-        kind: 'history',
-        opportunityId: scope.opportunityId,
-        headRevision,
-        before: result.nextBefore,
+      nextCursor = await this.cursors.issue({
+        binding,
+        position: {
+          kind: 'history',
+          opportunityId: scope.opportunityId,
+          headRevision,
+          before: result.nextBefore,
+        },
       });
     }
     return {
@@ -156,15 +160,12 @@ export class OpportunityFollowUpService {
             opportunityId,
           },
           binding = this.binding(actor, capture.companyId, capture.readCapture);
-        const position = readFollowUpCursor(
-          await this.continuationKey(scope),
-          cursorValue,
+        const position = await this.cursors.read({
+          value: cursorValue,
           binding,
-        );
-        if (
-          position.kind !== 'history' ||
-          position.opportunityId !== opportunityId
-        )
+          kind: 'history',
+        });
+        if (position.opportunityId !== opportunityId)
           throw new BadRequestException(
             'Restart follow-up history deliberately.',
           );
@@ -259,12 +260,12 @@ export class OpportunityFollowUpService {
           binding = this.binding(actor, capture.companyId, capture.readCapture);
         let after: { date: string; opportunityId: string } | undefined;
         if (typeof parsed.cursor === 'string') {
-          const cursor = readFollowUpCursor(
-            await this.continuationKey(scope),
-            parsed.cursor,
+          const cursor = await this.cursors.read({
+            value: parsed.cursor,
             binding,
-          );
-          if (cursor.kind !== 'discovery' || cursor.through !== through)
+            kind: 'discovery',
+          });
+          if (cursor.through !== through)
             throw new BadRequestException('Restart discovery deliberately.');
           after = { date: cursor.date, opportunityId: cursor.opportunityId };
         }
@@ -309,11 +310,14 @@ export class OpportunityFollowUpService {
         const last = visible.at(-1);
         const nextCursor =
           items.length > 25 && last
-            ? followUpCursor(await this.continuationKey(scope), binding, {
-                kind: 'discovery',
-                through,
-                date: last.followUpOn,
-                opportunityId: last.opportunityId,
+            ? await this.cursors.issue({
+                binding,
+                position: {
+                  kind: 'discovery',
+                  through,
+                  date: last.followUpOn,
+                  opportunityId: last.opportunityId,
+                },
               })
             : null;
         return {

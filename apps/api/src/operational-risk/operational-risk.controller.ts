@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { OperationalRiskService } from './operational-risk.service.js';
 
@@ -23,7 +23,7 @@ export class OperationalRiskController {
 
   @Get()
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.risks.list({ actor: actorFrom(request), query });
+    return this.risks.list({ actor: requireActorContext(request), query });
   }
 
   @Post()
@@ -32,12 +32,16 @@ export class OperationalRiskController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.risks.record({ actor: actorFrom(request), body, key });
+    return this.risks.record({
+      actor: requireActorContext(request),
+      body,
+      key,
+    });
   }
 
   @Get(':riskId')
   detail(@Req() request: ActorContextRequest, @Param('riskId') riskId: string) {
-    return this.risks.detail({ actor: actorFrom(request), riskId });
+    return this.risks.detail({ actor: requireActorContext(request), riskId });
   }
 
   @Get(':riskId/history')
@@ -46,7 +50,11 @@ export class OperationalRiskController {
     @Param('riskId') riskId: string,
     @Query() query: unknown,
   ) {
-    return this.risks.history({ actor: actorFrom(request), riskId, query });
+    return this.risks.history({
+      actor: requireActorContext(request),
+      riskId,
+      query,
+    });
   }
 
   @Post(':riskId/journal')
@@ -56,7 +64,12 @@ export class OperationalRiskController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.risks.append({ actor: actorFrom(request), riskId, body, key });
+    return this.risks.append({
+      actor: requireActorContext(request),
+      riskId,
+      body,
+      key,
+    });
   }
 
   @Post(':riskId/intake-corrections')
@@ -66,7 +79,12 @@ export class OperationalRiskController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.risks.correct({ actor: actorFrom(request), riskId, body, key });
+    return this.risks.correct({
+      actor: requireActorContext(request),
+      riskId,
+      body,
+      key,
+    });
   }
 
   @Get(':riskId/journal/:journalEntryId')
@@ -77,7 +95,7 @@ export class OperationalRiskController {
     @Query() query: unknown,
   ) {
     return this.risks.journalStatement({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       riskId,
       journalEntryId,
       query,
@@ -93,16 +111,11 @@ export class OperationalRiskController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.risks.correctJournal({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       riskId,
       journalEntryId,
       body,
       key,
     });
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

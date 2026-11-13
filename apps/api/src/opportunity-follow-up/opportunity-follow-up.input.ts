@@ -1,3 +1,4 @@
+import { continuationCursorMaximumLength } from '../continuation-cursor/continuation-cursor.js';
 import { BadRequestException } from '@nestjs/common';
 
 export function fields(
@@ -91,7 +92,9 @@ export function followUpQuery(
   const cursor = query.cursor;
   if (
     cursor !== undefined &&
-    (typeof cursor !== 'string' || cursor.length < 1 || cursor.length > 2048)
+    (typeof cursor !== 'string' ||
+      cursor.length < 1 ||
+      cursor.length > continuationCursorMaximumLength('opportunity-follow-up'))
   )
     throw new BadRequestException('Expected one bounded cursor.');
   return {

@@ -5,6 +5,8 @@ import {
 import { requireUuid } from '../access/access-command-validation.js';
 
 export const MAX_VERSION = 2147483647;
+// The keyed command module bounds keys as every other keyed receipt store does.
+export const INTERNAL_TASK_KEY_MAX_LENGTH = 200;
 export const states = [
   'todo',
   'in_progress',

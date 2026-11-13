@@ -1,6 +1,5 @@
 import {
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Body,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { IdeasService } from './ideas.service.js';
 
@@ -23,8 +23,7 @@ export class IdeasController {
 
   @Get()
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.ideas.list({ actor: request.actorContext, query });
+    return this.ideas.list({ actor: requireActorContext(request), query });
   }
   @Post()
   record(
@@ -32,13 +31,15 @@ export class IdeasController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.ideas.record({ actor: request.actorContext, body, key });
+    return this.ideas.record({
+      actor: requireActorContext(request),
+      body,
+      key,
+    });
   }
   @Get(':ideaId')
   detail(@Req() request: ActorContextRequest, @Param('ideaId') ideaId: string) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.ideas.detail({ actor: request.actorContext, ideaId });
+    return this.ideas.detail({ actor: requireActorContext(request), ideaId });
   }
   @Post(':ideaId/dispositions')
   recordDisposition(
@@ -47,9 +48,8 @@ export class IdeasController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     return this.ideas.recordDisposition({
-      actor: request.actorContext,
+      actor: requireActorContext(request),
       ideaId,
       body,
       key,
@@ -62,7 +62,10 @@ export class IdeasController {
     @Param('ideaId') ideaId: string,
     @Query() query: unknown,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.ideas.history({ actor: request.actorContext, ideaId, query });
+    return this.ideas.history({
+      actor: requireActorContext(request),
+      ideaId,
+      query,
+    });
   }
 }

@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProfitabilityEstimateService } from './profitability-estimate.service.js';
 
@@ -29,7 +29,7 @@ export class ProfitabilityEstimateController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.estimates.create({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       body,
       key,
@@ -43,7 +43,7 @@ export class ProfitabilityEstimateController {
     @Query() query: unknown,
   ) {
     return this.estimates.list({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       query,
     });
@@ -56,7 +56,7 @@ export class ProfitabilityEstimateController {
     @Param('versionId') versionId: string,
   ) {
     return this.estimates.read({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
     });
@@ -71,16 +71,11 @@ export class ProfitabilityEstimateController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.estimates.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       body,
       key,
     });
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

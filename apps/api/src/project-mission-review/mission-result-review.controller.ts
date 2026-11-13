@@ -4,7 +4,6 @@ import {
   Post,
   Query,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { MissionResultReviewService } from './mission-result-review.service.js';
 
@@ -26,8 +26,7 @@ export class MissionResultReviewController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.reviews.read(request.actorContext, projectId);
+    return this.reviews.read(requireActorContext(request), projectId);
   }
   @Post()
   record(
@@ -36,8 +35,12 @@ export class MissionResultReviewController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.reviews.record(request.actorContext, projectId, body, key);
+    return this.reviews.record(
+      requireActorContext(request),
+      projectId,
+      body,
+      key,
+    );
   }
   @Get('history')
   history(
@@ -45,7 +48,6 @@ export class MissionResultReviewController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.reviews.history(request.actorContext, projectId, query);
+    return this.reviews.history(requireActorContext(request), projectId, query);
   }
 }

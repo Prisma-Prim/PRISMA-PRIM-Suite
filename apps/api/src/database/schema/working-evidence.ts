@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -15,6 +16,25 @@ import { companies, clientAccounts, workspaceMemberships } from './core.js';
 import { projects } from './project.js';
 import { workingDocuments } from './documents.js';
 import { documentPdfs } from './document-pdfs.js';
+
+export const workingEvidenceCursorKeys = pgTable(
+  'working_evidence_cursor_keys',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    key: text('key')
+      .notNull()
+      .default(sql`gen_random_uuid()::text || gen_random_uuid()::text`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.companyId] }),
+    foreignKey({
+      name: 'working_evidence_cursor_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+  ],
+);
 
 const bytes = customType<{ data: Buffer; driverData: Buffer }>({
   dataType: () => 'bytea',

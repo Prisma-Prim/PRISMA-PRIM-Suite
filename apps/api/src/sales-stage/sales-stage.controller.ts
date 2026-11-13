@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Post,
@@ -11,6 +10,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { SalesStageService } from './sales-stage.service.js';
 
@@ -23,7 +23,7 @@ export class SalesStageController {
 
   @Get()
   list(@Req() request: ActorContextRequest) {
-    return this.stages.list(actorFrom(request));
+    return this.stages.list(requireActorContext(request));
   }
 
   @Post()
@@ -32,11 +32,10 @@ export class SalesStageController {
     @Body() body: unknown,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
-    return this.stages.create(actorFrom(request), body, idempotencyKey);
+    return this.stages.create(
+      requireActorContext(request),
+      body,
+      idempotencyKey,
+    );
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

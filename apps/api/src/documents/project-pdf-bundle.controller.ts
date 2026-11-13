@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Header,
   HttpCode,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProjectPdfBundleService } from './project-pdf-bundle.service.js';
 @Controller('projects/:projectId/pdf-bundle')
@@ -28,9 +28,8 @@ export class ProjectPdfBundleController {
     @Param('projectId') projectId: string,
     @Body() body: unknown,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
     const archive = await this.bundles.prepare(
-      request.actorContext,
+      requireActorContext(request),
       projectId,
       body,
     );

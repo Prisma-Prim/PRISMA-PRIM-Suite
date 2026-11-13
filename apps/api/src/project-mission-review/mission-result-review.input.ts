@@ -101,3 +101,5 @@ export function reviewHistoryQuery(value: unknown) {
     );
   return revision(Number(input.beforeRevision), 1);
 }
+/** mission_result_review_commands stores keys of 1 to 200 characters. */
+export const REVIEW_KEY_MAX_LENGTH = 200;

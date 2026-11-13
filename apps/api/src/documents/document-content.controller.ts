@@ -1,7 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import {
   Controller,
-  ForbiddenException,
   Get,
   Header,
   Headers,
@@ -15,6 +14,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { DocumentContentService } from './document-content.service.js';
 
@@ -31,8 +31,7 @@ export class DocumentContentController {
     @Headers('idempotency-key') key: string | undefined,
     @Query() query: unknown,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.content.upload(request.actorContext, {
+    return this.content.upload(requireActorContext(request), {
       documentId,
       versionId,
       query,
@@ -49,8 +48,7 @@ export class DocumentContentController {
     @Param('documentId') documentId: string,
     @Param('versionId') versionId: string,
   ): Promise<StreamableFile> {
-    if (!request.actorContext) throw new ForbiddenException();
-    const stored = await this.content.download(request.actorContext, {
+    const stored = await this.content.download(requireActorContext(request), {
       documentId,
       versionId,
     });
@@ -65,8 +63,7 @@ export class DocumentContentController {
     @Param('versionId') versionId: string,
     @Query() query: unknown,
   ) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.content.history(request.actorContext, {
+    return this.content.history(requireActorContext(request), {
       documentId,
       versionId,
       query,
@@ -82,8 +79,7 @@ export class DocumentContentController {
     @Param('versionId') versionId: string,
     @Param('representationId') representationId: string,
   ): Promise<StreamableFile> {
-    if (!request.actorContext) throw new ForbiddenException();
-    const stored = await this.content.download(request.actorContext, {
+    const stored = await this.content.download(requireActorContext(request), {
       documentId,
       versionId,
       representationId,
