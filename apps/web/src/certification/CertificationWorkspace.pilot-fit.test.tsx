@@ -939,7 +939,7 @@ describe('Certification Decision text correction', () => {
     expect(definition(decided, 'Decision')).toBe('Certification granted');
   });
 
-  it('preserves issued decisions and offers an independent correction for a refused decision', async () => {
+  it('offers a texts-only correction after issuance and preserves the broader independent correction of a refused decision', async () => {
     const { server, actor } = serve({ manager: false, approver: true });
     const certified = grantedCase(server, 'CERT-ACT-CERTIFIED');
     const dataForm = server.attachAsColleague(
@@ -977,8 +977,10 @@ describe('Certification Decision text correction', () => {
     renderWorkspace(actor);
     await openSeededCase('CERT-ACT-CERTIFIED');
     expect(
-      within(region('Certification Decision')).queryByRole('button'),
-    ).not.toBeInTheDocument();
+      within(region('Certification Decision')).getByRole('button', {
+        name: 'Correct the decision texts',
+      }),
+    ).toBeVisible();
     fireEvent.click(
       screen.getByRole('button', { name: 'Back to Certification Cases' }),
     );

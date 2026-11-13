@@ -3,7 +3,14 @@ import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { ActingFieldset, VersionAttribution } from './CertificationAttribution';
-import { useAttachmentReference } from './CertificationDocumentViews';
+import {
+  CertificateRevisions,
+  useCertificateRevisionForm,
+} from './CertificationRevisions';
+import {
+  useAttachmentReference,
+  type RegisterDownload,
+} from './CertificationDocumentViews';
 import {
   actingFromDraft,
   emptyActingDraft,
@@ -33,6 +40,7 @@ interface Props {
   feedback: Record<CommandKind, ReactNode>;
   onCommand: (command: ReleaseCommand) => void;
   issuance: ReactNode;
+  download?: RegisterDownload;
 }
 
 const emptyDraft = () => ({
@@ -67,11 +75,13 @@ const emptyApproval = () => ({
 
 /** Lives beside the selected Case so loading/reloading never discards typed drafts. */
 export function useCertificateReleaseForm() {
+  const revision = useCertificateRevisionForm();
   const [draft, setDraft] = useState(emptyDraft);
   const [opinion, setOpinion] = useState(emptyOpinion);
   const [approval, setApproval] = useState(emptyApproval);
   const [invalid, setInvalid] = useState<CommandKind | null>(null);
   return {
+    revision,
     draft,
     setDraft,
     opinion,
@@ -83,7 +93,8 @@ export function useCertificateReleaseForm() {
     reset(kind: CommandKind) {
       if (kind === 'certificateDraft') setDraft(emptyDraft());
       else if (kind === 'clientOpinion') setOpinion(emptyOpinion());
-      else setApproval(emptyApproval());
+      else if (kind === 'draftApproval') setApproval(emptyApproval());
+      else revision.reset();
       setInvalid(null);
     },
   };
@@ -782,6 +793,18 @@ export function CertificateReleaseRegion(props: Props) {
           )}
         </li>
       </ol>
+      <CertificateRevisions
+        current={current}
+        register={register}
+        approve={props.approve}
+        manage={props.manage}
+        disabled={props.disabled}
+        blocked={props.blocked.certificateRevision}
+        feedback={props.feedback.certificateRevision}
+        form={props.form.revision}
+        onCommand={props.onCommand}
+        download={props.download}
+      />
     </section>
   );
 }
