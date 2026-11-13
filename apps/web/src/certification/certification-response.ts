@@ -527,10 +527,23 @@ export function parseCaseDetail(
     release:
       body.release === undefined
         ? legacyRelease(body.certificate)
-        : parseCertificateRelease(body.release),
+        : parseCertificateRelease(body.release, {
+            hasCertificate: body.certificate !== null,
+          }),
     consistency: parseConsistency(body.consistency),
     exchanges: parseExchanges(body.exchanges),
   };
+  // Older publishers guaranteed an issued snapshot exactly equal to the agreed
+  // data, including order. Only an explicit revision contract admits pending texts.
+  const oldRelease =
+    body.release === undefined || object(body.release).revisions === undefined;
+  if (
+    oldRelease &&
+    detail.certificate &&
+    JSON.stringify(detail.certificate.texts) !==
+      JSON.stringify(detail.certificateData?.value.texts)
+  )
+    invalid();
   if (!consistent(detail)) invalid();
   return detail;
 }
@@ -1010,8 +1023,15 @@ function closingConsistent(detail: CaseDetail): boolean {
     certificate.validFrom === granted.decidedOn &&
     certificate.validFrom < certificate.firstSurveillanceBy &&
     certificate.firstSurveillanceBy < certificate.validUntil &&
-    JSON.stringify(certificate.texts) === JSON.stringify(data.value.texts) &&
-    sameCertificateTexts(certificate.texts, granted.grantedTexts)
+    detail.release.revisionRequired ===
+      (!sameCertificateTexts(
+        detail.release.revisions.at(-1)?.texts ?? certificate.texts,
+        data.value.texts,
+      ) ||
+        !sameCertificateTexts(
+          detail.release.revisions.at(-1)?.texts ?? certificate.texts,
+          granted.grantedTexts,
+        ))
   );
 }
 
@@ -1359,7 +1379,7 @@ function certificateDataValue(value: unknown): CertificateData {
 }
 
 /** One to four Certificate texts, at most one per language. */
-function certificateTexts(value: unknown): CertificateText[] {
+export function certificateTexts(value: unknown): CertificateText[] {
   const texts = list(value, 1, DECISION_LIMITS.texts).map((entry) => {
     const body = object(entry);
     return {
@@ -2275,6 +2295,9 @@ function unexpectedValue(value: never): never {
 /** Older live payloads predate release; immutable command receipts have their own reader. */
 function legacyRelease(certificate: unknown): CertificateRelease {
   return {
+    revisions: [],
+    currentRevisionIndex: certificate === null ? null : 0,
+    revisionRequired: false,
     validity: null,
     drafts: [],
     opinions: [],
@@ -2315,7 +2338,17 @@ function releaseConsistent(detail: CaseDetail): boolean {
         current.value.certificateDataVersionId !== detail.certificateData?.id)
   )
     return false;
+  if (
+    release.revisions.some(
+      (revision) =>
+        revision.caseRevision > detail.revision ||
+        versions.some((entry) => entry.caseRevision === revision.caseRevision),
+    )
+  )
+    return false;
   const certificate = detail.certificate;
+  if ((certificate === null) !== (release.currentRevisionIndex === null))
+    return false;
   if (!certificate)
     return (
       release.transmission === null &&

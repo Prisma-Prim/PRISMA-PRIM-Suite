@@ -555,6 +555,21 @@ export class CertificationController {
     });
   }
 
+  @Post('certification-cases/:caseId/certificate-revisions')
+  recordCertificateRevision(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordCertificateRevision({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
   @Post('certification-cases/:caseId/certificate')
   recordCertificate(
     @Req() request: ActorContextRequest,

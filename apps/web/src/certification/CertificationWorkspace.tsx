@@ -355,7 +355,8 @@ type ClosingKind =
   | 'certificate'
   | 'certificateDraft'
   | 'clientOpinion'
-  | 'draftApproval';
+  | 'draftApproval'
+  | 'certificateRevision';
 /** The Stage records, each with its own form and feedback. */
 type StageKind = 'stage1Plan' | 'stage2Plan' | 'stage1Report' | 'stage2Report';
 /**
@@ -434,6 +435,7 @@ const CLOSING_KINDS: readonly ClosingKind[] = [
   'certificateDraft',
   'clientOpinion',
   'draftApproval',
+  'certificateRevision',
 ];
 const NO_PROPOSAL: Proposal = { status: 'idle' };
 const NO_DOWNLOAD: Download = { status: 'idle' };
@@ -606,6 +608,8 @@ function CertificationRegistry(
     useState<Feedback>(IDLE);
   const [draftApprovalFeedback, setDraftApprovalFeedback] =
     useState<Feedback>(IDLE);
+  const [certificateRevisionFeedback, setCertificateRevisionFeedback] =
+    useState<Feedback>(IDLE);
   /** The manual Discrepancy form is open; its draft is kept through a reload. */
   const [manualOpen, setManualOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualDraft>(emptyManualDraft);
@@ -655,6 +659,7 @@ function CertificationRegistry(
     certificateDraft: certificateDraftFeedback,
     clientOpinion: clientOpinionFeedback,
     draftApproval: draftApprovalFeedback,
+    certificateRevision: certificateRevisionFeedback,
   };
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const [registerPdf, setRegisterPdf] = useState<RegisterPdf>(NO_REGISTER_PDF);
@@ -738,6 +743,8 @@ function CertificationRegistry(
         return setClientOpinionFeedback;
       case 'draftApproval':
         return setDraftApprovalFeedback;
+      case 'certificateRevision':
+        return setCertificateRevisionFeedback;
     }
     return unexpected(kind);
   }
@@ -758,6 +765,7 @@ function CertificationRegistry(
       case 'certificateDraft':
       case 'clientOpinion':
       case 'draftApproval':
+      case 'certificateRevision':
         return releaseForm.reset(kind);
     }
     return unexpected(kind);
@@ -1190,6 +1198,7 @@ function CertificationRegistry(
       case 'certificateDraft':
       case 'clientOpinion':
       case 'draftApproval':
+      case 'certificateRevision':
         resetClosingDraft(kind);
         break;
       default:
@@ -1831,6 +1840,8 @@ function CertificationRegistry(
       {
         register: view.register.items,
         correcting: recorded?.value.decision ?? null,
+        frozen:
+          view.caseDetail.status === 'certified' ? recorded?.value : undefined,
       },
     );
     if (check.status !== 'valid') {
@@ -1875,7 +1886,7 @@ function CertificationRegistry(
       !view ||
       !current ||
       !authority.manage ||
-      current.status !== 'open' ||
+      (current.status !== 'open' && current.status !== 'certified') ||
       !current.stage2Report
     )
       return;
@@ -1953,13 +1964,14 @@ function CertificationRegistry(
   }
 
   /**
-   * An approver linked to no team version records the decision of an open
-   * Case, or corrects it until the Certificate closes the Case.
+   * An approver linked to no team version records the decision, or corrects
+   * its permitted fields. Issuance restricts corrections to granted texts.
    */
   function decisionOffered(view: CaseView): boolean {
     return (
       (view.caseDetail.status === 'open' ||
-        view.caseDetail.status === 'refused') &&
+        view.caseDetail.status === 'refused' ||
+        view.caseDetail.status === 'certified') &&
       authority.approve &&
       !linkedToAnyTeamVersion(view.timeline, actor.workspaceMembershipId)
     );
@@ -2899,6 +2911,7 @@ function CertificationRegistry(
     certificateDraft: `${prefix}-certificate-draft-feedback`,
     clientOpinion: `${prefix}-client-opinion-feedback`,
     draftApproval: `${prefix}-draft-approval-feedback`,
+    certificateRevision: `${prefix}-certificate-revision-feedback`,
   } satisfies Record<MutationKind, string>;
 
   /** A step's confirmation is shown above the Case and survives its reload. */
@@ -3455,7 +3468,10 @@ function CertificationRegistry(
                 manage={authority.manage}
                 approve={
                   authority.approve &&
-                  findingRoles(caseView).independentApprover
+                  !linkedToAnyTeamVersion(
+                    caseView.timeline,
+                    actor.workspaceMembershipId,
+                  )
                 }
                 disabled={busy}
                 blocked={{
@@ -3464,6 +3480,9 @@ function CertificationRegistry(
                   ),
                   clientOpinion: blockedUntilReload(clientOpinionFeedback),
                   draftApproval: blockedUntilReload(draftApprovalFeedback),
+                  certificateRevision: blockedUntilReload(
+                    certificateRevisionFeedback,
+                  ),
                 }}
                 feedback={{
                   certificateDraft: feedbackMessage(
@@ -3478,6 +3497,10 @@ function CertificationRegistry(
                     'draftApproval',
                     draftApprovalFeedback,
                   ),
+                  certificateRevision: feedbackMessage(
+                    'certificateRevision',
+                    certificateRevisionFeedback,
+                  ),
                 }}
                 onCommand={(command) =>
                   sendClosing(
@@ -3487,6 +3510,7 @@ function CertificationRegistry(
                     command.value,
                   )
                 }
+                download={registerDownload(caseView)}
                 issuance={
                   caseView.caseDetail.decision?.value.decision === 'granted'
                     ? certificateSection(caseView)
@@ -3711,7 +3735,8 @@ function CertificationRegistry(
 
   /** The attach form, or the plain-language reason it is unavailable. */
   function attachStep(current: CaseDetail, register: DocumentRegister) {
-    if (current.status !== 'open') return null;
+    if (current.status !== 'open' && current.status !== 'certified')
+      return null;
     if (!documentRights)
       return <p className="certification-note">{copy('attachNoRights')}</p>;
     const listed = eligibleFor(current.id);
@@ -3733,6 +3758,7 @@ function CertificationRegistry(
       <AttachForm
         idPrefix={`${prefix}-attach`}
         eligible={listed}
+        certified={current.status === 'certified'}
         register={register.items}
         draft={attachDraft}
         disabled={busy}
@@ -4681,7 +4707,12 @@ function CertificationRegistry(
   function certificationDecisionStep(view: CaseView) {
     const current = view.caseDetail;
     const recorded = current.decision;
-    if (current.status !== 'open' && current.status !== 'refused') return null;
+    if (
+      current.status !== 'open' &&
+      current.status !== 'refused' &&
+      current.status !== 'certified'
+    )
+      return null;
     if (!authority.approve)
       return recorded ? null : (
         <p className="certification-note">
@@ -4735,6 +4766,7 @@ function CertificationRegistry(
           {...closingForm('certificationDecision', 'certification-decision')}
           draft={draft}
           correcting={outcome}
+          textsOnly={current.status === 'certified'}
           forms={attachmentsWithRole(view.register.items, 'decision_form')}
           today={latestBusinessDate()}
           onChange={(next) => {
@@ -4788,7 +4820,8 @@ function CertificationRegistry(
   function certificateDataStep(view: CaseView) {
     const current = view.caseDetail;
     const recorded = current.certificateData;
-    if (current.status !== 'open') return null;
+    if (current.status !== 'open' && current.status !== 'certified')
+      return null;
     if (!authority.manage)
       return recorded ? null : (
         <p className="certification-note">
@@ -5216,6 +5249,7 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
     case 'clientOpinion':
     case 'draftApproval':
     case 'certificate':
+    case 'certificateRevision':
       return 'blockedVersionCorrectionReason';
     case 'open':
     case 'application':
@@ -5251,6 +5285,7 @@ function independenceRefusal(kind: MutationKind): Feedback {
     case 'certificateDraft':
     case 'clientOpinion':
     case 'certificate':
+    case 'certificateRevision':
       return refusedWith('certificateIndependence');
     // Only the person approving on behalf of the certification body is checked.
     case 'draftApproval':
@@ -5292,6 +5327,7 @@ function attachmentRoleRefusal(kind: MutationKind): CertificationMessageKey {
     case 'clientOpinion':
     case 'draftApproval':
     case 'certificate':
+    case 'certificateRevision':
       return 'certificatePdfRole';
     case 'discrepancy':
     case 'discrepancyResolution':
@@ -5330,6 +5366,7 @@ function attestationRefusal(kind: MutationKind): CertificationMessageKey {
     case 'clientOpinion':
     case 'draftApproval':
     case 'certificate':
+    case 'certificateRevision':
       return 'certificateAttestationRequired';
     case 'certificationDecision':
     case 'open':
@@ -5436,6 +5473,26 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
       ...detail.release.opinions,
       ...detail.release.approvals,
     ].every((version) => recorded(version.id, version.version)) &&
+    detail.release.revisions.every((revision) => {
+      const decision = timeline.entries.find(
+        (entry) => entry.id === revision.decisionVersionId,
+      );
+      const data = timeline.entries.find(
+        (entry) => entry.id === revision.certificateDataVersionId,
+      );
+      return (
+        !steps.has(revision.caseRevision) &&
+        decision?.step === 'decision' &&
+        decision.value.decision === 'granted' &&
+        decision.caseRevision < revision.caseRevision &&
+        data?.step === 'certificate_data' &&
+        data.caseRevision < revision.caseRevision &&
+        certificateTextDifferences(revision.texts, decision.value.grantedTexts)
+          .length === 0 &&
+        certificateTextDifferences(revision.texts, data.value.texts).length ===
+          0
+      );
+    }) &&
     detail.findings.every((finding) =>
       finding.records.every((record) => !steps.has(record.caseRevision)),
     ) &&
@@ -5497,6 +5554,15 @@ function registerMatches(
   timeline: CaseTimeline,
   register: DocumentRegister,
 ) {
+  const certificateAttachments = [
+    detail.certificate?.attachmentId,
+    ...detail.release.revisions.map((revision) => revision.attachmentId),
+  ];
+  const certificateVersions = certificateAttachments.flatMap((id) =>
+    register.items
+      .filter((item) => item.id === id)
+      .map((item) => item.versionId),
+  );
   const findingRecords = detail.findings.flatMap((finding) => finding.records);
   const steps = new Set([
     ...timeline.entries.map((entry) => entry.caseRevision),
@@ -5552,6 +5618,37 @@ function registerMatches(
             item.id === attachmentId && item.caseRevision < entry.caseRevision,
         ),
       ),
+    ) &&
+    new Set(certificateVersions).size === certificateVersions.length &&
+    detail.release.revisions.every((revision) => {
+      const transmission = revision.transmission;
+      return (
+        transmission === null ||
+        (!transmission.attachmentIds.includes(
+          detail.certificate?.attachmentId ?? '',
+        ) &&
+          transmission.attachmentIds.every((id) =>
+            register.items.some(
+              (item) =>
+                item.id === id && item.caseRevision < transmission.caseRevision,
+            ),
+          ))
+      );
+    }) &&
+    detail.release.revisions.every(
+      (revision) =>
+        register.items.some(
+          (item) =>
+            item.id === revision.attachmentId &&
+            item.role === 'certificate' &&
+            item.caseRevision < revision.caseRevision,
+        ) &&
+        (revision.onBehalf?.formAttachmentId == null ||
+          register.items.some(
+            (item) =>
+              item.id === revision.onBehalf?.formAttachmentId &&
+              item.caseRevision < revision.caseRevision,
+          )),
     ) &&
     (detail.certificate === null ||
       register.items.some(
@@ -5881,6 +5978,8 @@ function commandFeedback(
           return refusedWith('blockedDossierBeforeRecommendation', true);
         case 'CERTIFICATION_DECIDED':
           return refusedWith('blockedDecided', true);
+        case 'CERTIFICATION_ISSUED_DECISION_FIXED':
+          return refusedWith('issuedDecisionFixed', true);
         case 'CERTIFICATION_DECISION_OUTCOME_FIXED':
           return refusedWith('decisionOutcomeFixedRefusal', true);
         case 'CERTIFICATION_DECISION_PRECONDITIONS':
@@ -5898,6 +5997,8 @@ function commandFeedback(
         case 'CERTIFICATION_CERTIFICATE_NUMBER_DIFFERS':
         case 'CERTIFICATION_CERTIFICATE_ISSUE_DATE':
           return refusedWith('certificateValidation');
+        case 'CERTIFICATION_CERTIFICATE_PDF_REUSED':
+          return refusedWith('certificatePdfReused', true);
         case 'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN':
           return refusedWith('certificateNumberTaken');
         case 'CERTIFICATION_EXCHANGE_IN_FUTURE':

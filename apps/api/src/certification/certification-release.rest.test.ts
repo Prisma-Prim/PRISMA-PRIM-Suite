@@ -2,26 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CERTIFICATION_APPROVER as APPROVER,
-  CERTIFICATION_AUDITOR as AUDITOR,
   CERTIFICATION_OWNER as MANAGER,
   CERTIFICATION_READER as READER,
   openCertificationFixture,
   record,
   text,
-  type CertificationSubject,
 } from './certification.test-support.js';
-import { DOSSIER_ITEMS } from './certification-decision.js';
+import {
+  certificateReleaseCommands,
+  CERTIFICATE_TEXTS as TEXTS,
+} from './certification-release.test-support.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
-const TEXTS = [
-  {
-    language: 'ro',
-    holderName: 'Lactis Demo SRL',
-    address: 'Str. Exemplu 1, Demo City',
-    scope: 'Production of milk',
-  },
-];
 
 withPostgres('Certificate release', { timeout: 60_000 }, () => {
   let fixture: Awaited<ReturnType<typeof openCertificationFixture>>;
@@ -62,160 +55,93 @@ withPostgres('Certificate release', { timeout: 60_000 }, () => {
       );
   }, 240_000);
   afterAll(async () => fixture?.close());
-  const base = (id: string) => `/certification-cases/${id}`;
-  async function read(id: string) {
-    return record(await (await fixture.call(MANAGER, base(id))).json());
-  }
-  async function post(
-    id: string,
-    subject: CertificationSubject,
-    path: string,
-    value: Record<string, unknown>,
-    key?: string,
-  ) {
-    return fixture.call(subject, `${base(id)}/${path}`, {
-      method: 'POST',
-      body: { expectedRevision: (await read(id)).revision, ...value },
-      ...(key ? { key } : {}),
-    });
-  }
-  async function ok(
-    id: string,
-    subject: CertificationSubject,
-    path: string,
-    value: Record<string, unknown>,
-  ) {
-    return fixture.created(await post(id, subject, path, value));
-  }
-  async function attach(id: string, role: string) {
-    return fixture.attach(id, role, Number((await read(id)).revision));
-  }
-  async function granted() {
-    const id = await fixture.approvedTeamCase();
-    for (const [stage, startDate, days] of [
-      ['stage-1', '2026-10-01', '1'],
-      ['stage-2', '2026-10-20', '1.5'],
-    ]) {
-      await ok(id, MANAGER, `stages/${stage}/plan`, {
-        startDate,
-        endDate: startDate,
-        onSiteDays: days,
-        remoteDays: '0',
-        objectives: 'Fictional audit',
-        scope: 'Milk',
-        planAttachmentId: await attach(id, 'plan'),
-        sentToClientOn: null,
-        deviationNote: null,
-      });
-      await ok(id, AUDITOR, `stages/${stage}/report`, {
-        reportDate: startDate,
-        reportAttachmentId: await attach(id, 'report'),
-        ...(stage === 'stage-1'
-          ? {
-              documentReviewCompleted: true,
-              conclusion: 'ready',
-              conclusionNote: 'Ready',
-            }
-          : { summary: 'Completed' }),
-      });
-    }
-    await ok(id, AUDITOR, 'recommendation', {
-      recommendation: 'grant',
-      basis: 'No nonconformities',
-    });
-    await ok(id, MANAGER, 'certificate-data', {
-      texts: TEXTS,
-      agreedOn: '2026-10-21',
-      agreementAttachmentId: await attach(id, 'certificate_data'),
-    });
-    await ok(id, APPROVER, 'dossier-review', {
-      items: Object.fromEntries(
-        DOSSIER_ITEMS.map((item) => [
-          item,
-          {
-            answer: ['findings_follow_up', 'participant_lists'].includes(item)
-              ? 'not_applicable'
-              : 'present',
-            note: null,
-          },
-        ]),
-      ),
-      conclusion: 'Complete',
-      independenceAttested: true,
-    });
-    await ok(id, APPROVER, 'decision', {
-      decision: 'granted',
-      decidedOn: '2026-11-06',
-      decidedBy: 'Independent Demo',
-      independenceAttested: true,
-      grantedTexts: TEXTS,
-      rationale: 'Grant',
-    });
-    return id;
-  }
-  async function draft(id: string, number = 'DEMO-0001', reason?: string) {
-    const attachmentId = await attach(id, 'certificate_draft');
-    const current = await read(id);
-    return ok(id, MANAGER, 'certificate-draft', {
-      attachmentId,
-      number,
-      draftedOn: '2026-11-06',
-      decisionVersionId: record(current.decision).id,
-      certificateDataVersionId: record(current.certificateData).id,
-      ...(reason ? { reason } : {}),
-    });
-  }
+  const {
+    base,
+    read,
+    post,
+    ok,
+    attach,
+    granted,
+    draft,
+    skip,
+    approve,
+    approved,
+    issue,
+    exchange,
+    records,
+  } = certificateReleaseCommands(() => fixture);
 
-  function records(value: unknown): Record<string, unknown>[] {
-    if (!Array.isArray(value)) throw new Error('Expected list');
-    return value.map(record);
-  }
-  async function skip(id: string, reason?: string) {
-    return ok(id, MANAGER, 'client-opinion', {
-      draftVersionId: record((await read(id)).release).currentDraftId,
-      outcome: 'skipped',
-      businessDate: '2026-11-06',
-      skipReason: 'texts_already_agreed',
-      note: null,
-      ...(reason ? { reason } : {}),
-    });
-  }
-  async function approve(id: string) {
-    return ok(id, APPROVER, 'certificate-draft-approval', {
-      draftVersionId: record((await read(id)).release).currentDraftId,
-      approvedOn: '2026-11-06',
-      textsConfirmed: true,
-      numberConfirmed: true,
-      validityConfirmed: true,
+  it('revises an issued Certificate while preserving its original number and validity', async () => {
+    const id = await approved('REVISION-1295-FIRST');
+    const correctedPdf = await attach(id, 'certificate');
+    await issue(id, 'REVISION-1295-FIRST');
+    const original = record((await read(id)).certificate);
+    await ok(id, APPROVER, 'certificate-revisions', {
+      reason: 'Correct the English city typo in the PDF.',
+      revisedOn: '2026-11-07',
+      attachmentId: correctedPdf,
+      revisionMarked: true,
       independenceAttested: true,
     });
-  }
-  async function approved(number: string) {
-    const id = await granted();
-    await draft(id, number);
-    await skip(id);
-    await approve(id);
-    return id;
-  }
-  async function issue(id: string, number: string) {
-    return ok(id, APPROVER, 'certificate', {
-      number,
-      issuedOn: '2026-11-06',
-      attachmentId: await attach(id, 'certificate'),
+    const current = await read(id);
+    expect(current.certificate).toEqual(original);
+    expect(record(current.release)).toMatchObject({
+      currentRevisionIndex: 1,
+      revisionRequired: false,
+      revisions: [{ index: 1, attachmentId: correctedPdf }],
+    });
+    expect(original).toMatchObject({
+      number: 'REVISION-1295-FIRST',
+      validFrom: '2026-11-06',
+      validUntil: '2029-11-05',
+      firstSurveillanceBy: '2027-11-06',
+    });
+  });
+
+  it('keeps post-issuance text corrections pending until a revision applies the matching Data and Decision', async () => {
+    const id = await approved('REVISION-TEXTS-1295');
+    await issue(id, 'REVISION-TEXTS-1295');
+    const issued = record((await read(id)).certificate);
+    const agreementAttachmentId = await attach(id, 'certificate_data');
+    const corrected = TEXTS.map((text) => ({
+      ...text,
+      address: 'Str. Exemplu 1, Correct Demo City',
+    }));
+    await ok(id, MANAGER, 'certificate-data', {
+      reason: 'Correct the recorded city spelling.',
+      texts: corrected,
+      agreedOn: '2026-11-07',
+      agreementAttachmentId,
+    });
+    expect(record((await read(id)).release).revisionRequired).toBe(true);
+    const attachmentId = await attach(id, 'certificate');
+    const revision = {
+      reason: 'Apply the corrected city.',
+      revisedOn: '2026-11-07',
+      attachmentId,
+      revisionMarked: true,
       independenceAttested: true,
+    };
+    expect(
+      (await post(id, APPROVER, 'certificate-revisions', revision)).status,
+    ).toBe(409);
+    const current = await read(id);
+    const previous = record(record(current.decision).value);
+    await ok(id, APPROVER, 'decision', {
+      ...previous,
+      reason: 'Correct the recorded city only.',
+      grantedTexts: corrected,
     });
-  }
-  async function exchange(id: string, value: Record<string, unknown>) {
-    return ok(id, MANAGER, 'exchanges', {
-      direction: 'sent',
-      itemKind: 'certificate_draft',
-      attachmentIds: [],
-      counterpart: { kind: 'client', name: 'Lactis Demo SRL' },
-      businessDate: '2026-11-06',
-      channel: 'email',
-      ...value,
+    expect(record((await read(id)).release).revisionRequired).toBe(true);
+    expect((await read(id)).certificate).toEqual(issued);
+    await ok(id, APPROVER, 'certificate-revisions', revision);
+    expect(record((await read(id)).release)).toMatchObject({
+      revisionRequired: false,
+      currentRevisionIndex: 1,
+      revisions: [{ texts: corrected }],
     });
-  }
+    expect((await read(id)).certificate).toEqual(issued);
+  });
 
   it('records an exact draft only after a grant and preserves its decision and data versions', async () => {
     const id = await granted();

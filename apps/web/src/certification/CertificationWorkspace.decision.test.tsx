@@ -804,14 +804,21 @@ describe('Certification recommendation, decision and Certificate', () => {
     expect(screen.getByText(CERTIFIED_NOTE)).toBeVisible();
     expect(caseDefinition('Next step')).toBe('None');
     expect(stepState('Certificate')).toBe('Recorded — DEMO-0001');
-    expect(screen.queryByRole('form')).not.toBeInTheDocument();
-    // Only the exchange register stays open after issuance (dossier control
-    // PRD §1.2): exchanges and items to re-verify are still recorded.
+    expect(
+      screen.getByRole('form', { name: 'Record a Certificate revision' }),
+    ).toBeVisible();
+    // Issuance stays frozen; corrections and separately recorded transmissions remain available.
     expect(
       screen
         .queryAllByRole('button', { name: /^(Record|Correct|Add|Remove)\b/u })
         .map((button) => button.textContent),
-    ).toEqual(['Record an exchange', 'Add an item to re-verify']);
+    ).toEqual([
+      'Record an exchange',
+      'Add an item to re-verify',
+      'Correct the Certificate data',
+      'Correct the decision texts',
+      'Record the revision',
+    ]);
     expect(timelineTitles().slice(-4)).toEqual([
       'Certificate draft — version 1',
       'Client opinion — version 1',
