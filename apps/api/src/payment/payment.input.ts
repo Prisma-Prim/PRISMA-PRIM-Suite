@@ -1,3 +1,4 @@
+import { continuationCursorMaximumLength } from '../continuation-cursor/continuation-cursor.js';
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 
@@ -202,7 +203,9 @@ export function paymentQuery(value: unknown): string | undefined {
   if (
     Object.keys(v).some((k) => k !== 'cursor') ||
     ('cursor' in v &&
-      (typeof v.cursor !== 'string' || !v.cursor || v.cursor.length > 2048))
+      (typeof v.cursor !== 'string' ||
+        !v.cursor ||
+        v.cursor.length > continuationCursorMaximumLength('payment')))
   )
     throw invalid();
   return typeof v.cursor === 'string' ? v.cursor : undefined;

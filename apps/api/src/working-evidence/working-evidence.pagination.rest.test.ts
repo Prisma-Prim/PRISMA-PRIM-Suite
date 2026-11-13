@@ -15,6 +15,7 @@ withPostgres('Working Evidence exact-source selector paging', () => {
   let path: string;
   let documentId: string;
   let originalVersionId: string;
+  let originalRepresentationId: string;
   beforeAll(async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     fixture = await openWorkingEvidenceFixture(databaseUrl);
@@ -25,6 +26,7 @@ withPostgres('Working Evidence exact-source selector paging', () => {
     const first = await fixture.source();
     documentId = first.documentId;
     originalVersionId = first.versionId;
+    originalRepresentationId = first.representationId;
     let revision = 3;
     for (let version = 2; version <= 26; version++) {
       const drafted = await fixture.call(`/documents/${documentId}/versions`, {
@@ -64,6 +66,39 @@ withPostgres('Working Evidence exact-source selector paging', () => {
     }
   });
   afterAll(async () => fixture?.close());
+
+  it('continues an exact-source cursor across an application restart', async () => {
+    const firstResponse = await fixture.call(path);
+    expect(firstResponse.status).toBe(200);
+    const first = await json(firstResponse);
+    expect(first.items).toHaveLength(25);
+    const cursor = text(first.nextCursor);
+    expect(cursor.length).toBeLessThanOrEqual(256);
+    const continuationPath = path + '?cursor=' + encodeURIComponent(cursor);
+    const expectedPage = {
+      format: 'WORKING_EVIDENCE_CASE_SOURCE_PAGE/1',
+      items: [
+        {
+          documentId,
+          versionId: originalVersionId,
+          versionNumber: 1,
+          representationId: originalRepresentationId,
+          sourceTitle: 'Fictional received working source',
+        },
+      ],
+      nextCursor: null,
+    };
+    const beforeRestart = await fixture.call(continuationPath);
+    expect(beforeRestart.status).toBe(200);
+    expect(await json(beforeRestart)).toEqual(expectedPage);
+
+    await fixture.restart();
+
+    const continued = await fixture.call(continuationPath);
+    const page = await json(continued);
+    expect(continued.status, JSON.stringify(page)).toBe(200);
+    expect(page).toEqual(expectedPage);
+  });
 
   it('continues within the same immutable Document creation instant and keeps unrelated grants outside the cursor lifetime', async () => {
     const response = await fixture.call(path);
