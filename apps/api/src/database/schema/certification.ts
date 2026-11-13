@@ -81,6 +81,7 @@ export const CERTIFICATION_EVENT_ACTIONS = [
   'certification_case.decision_recorded',
   'certification_case.certificate_data_agreed',
   'certification_case.certificate_recorded',
+  'certification_case.certificate_revised',
   'certification_case.certificate_draft_recorded',
   'certification_case.client_opinion_recorded',
   'certification_case.certificate_draft_approved',
@@ -108,6 +109,7 @@ export const CERTIFICATION_COMMAND_KINDS = [
   'decision',
   'certificate_data',
   'certificate',
+  'certificate_revision',
   'certificate_draft',
   'client_opinion',
   'certificate_draft_approval',
@@ -312,7 +314,7 @@ export const certificationReceipts = pgTable(
     ),
     check(
       'certification_receipts_kind_check',
-      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate', 'certificate_draft', 'client_opinion', 'certificate_draft_approval', 'discrepancy', 'discrepancy_resolution', 'exchange', 'reverification_item', 'reverification_withdrawal')`,
+      sql`${table.commandKind} IN ('open', 'application', 'application_review', 'duration', 'document', 'agreement', 'team', 'team_decision', 'stage_plan', 'stage_report', 'finding', 'finding_record', 'recommendation', 'dossier_review', 'decision', 'certificate_data', 'certificate', 'certificate_revision', 'certificate_draft', 'client_opinion', 'certificate_draft_approval', 'discrepancy', 'discrepancy_resolution', 'exchange', 'reverification_item', 'reverification_withdrawal')`,
     ),
     foreignKey({
       name: 'certification_receipts_case_fk',
@@ -358,7 +360,7 @@ export const certificationEvents = pgTable(
     ),
     check(
       'certification_events_action_check',
-      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded', 'certification_case.certificate_draft_recorded', 'certification_case.client_opinion_recorded', 'certification_case.certificate_draft_approved', 'certification_case.discrepancy_recorded', 'certification_case.discrepancy_resolved', 'certification_case.exchange_recorded', 'certification_case.reverification_item_added', 'certification_case.reverification_item_withdrawn') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
+      sql`${table.action} IN ('certification_case.opened', 'certification_case.application_recorded', 'certification_case.application_reviewed', 'certification_case.duration_confirmed', 'certification_case.document_attached', 'certification_case.agreement_recorded', 'certification_case.team_proposed', 'certification_case.team_decided', 'certification_case.stage_planned', 'certification_case.stage_reported', 'certification_case.finding_recorded', 'certification_case.finding_corrected', 'certification_case.finding_reclassified', 'certification_case.nonconformity_response_recorded', 'certification_case.nonconformity_plan_judged', 'certification_case.nonconformity_verified', 'certification_case.recommendation_recorded', 'certification_case.dossier_reviewed', 'certification_case.decision_recorded', 'certification_case.certificate_data_agreed', 'certification_case.certificate_recorded', 'certification_case.certificate_revised', 'certification_case.certificate_draft_recorded', 'certification_case.client_opinion_recorded', 'certification_case.certificate_draft_approved', 'certification_case.discrepancy_recorded', 'certification_case.discrepancy_resolved', 'certification_case.exchange_recorded', 'certification_case.reverification_item_added', 'certification_case.reverification_item_withdrawn') AND ${table.revision} > 0 AND jsonb_typeof(${table.metadata}) = 'object'`,
     ),
     foreignKey({
       name: 'certification_events_case_fk',
@@ -689,6 +691,124 @@ export const certificationCertificates = pgTable(
     check(
       'certification_certificates_values_check',
       sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.texts}) = 'array'`,
+    ),
+  ],
+);
+
+/** Immutable corrections of an issued Certificate; original issuance is index0. */
+export const certificationCertificateRevisions = pgTable(
+  'certification_certificate_revisions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    caseId: uuid('case_id').notNull(),
+    index: integer('index').notNull(),
+    caseRevision: integer('case_revision').notNull(),
+    reason: text('reason').notNull(),
+    revisedOn: date('revised_on', { mode: 'string' }).notNull(),
+    attachmentId: uuid('attachment_id').notNull(),
+    documentVersionId: uuid('document_version_id').notNull(),
+    decisionVersionId: uuid('decision_version_id').notNull(),
+    certificateDataVersionId: uuid('certificate_data_version_id').notNull(),
+    texts: jsonb('texts').$type<unknown>().notNull(),
+    revisionMarked: boolean('revision_marked').notNull(),
+    independenceAttested: boolean('independence_attested').notNull(),
+    onBehalf: jsonb('on_behalf').$type<unknown>(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorDisplayName: text('actor_display_name').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('certification_certificate_revisions_index_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.index,
+    ),
+    uniqueIndex('certification_certificate_revisions_case_revision_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.caseRevision,
+    ),
+    uniqueIndex('certification_certificate_revisions_pdf_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.caseId,
+      table.documentVersionId,
+    ),
+    foreignKey({
+      name: 'certification_certificate_revisions_certificate_fk',
+      columns: [table.workspaceId, table.companyId, table.caseId],
+      foreignColumns: [
+        certificationCertificates.workspaceId,
+        certificationCertificates.companyId,
+        certificationCertificates.caseId,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_certificate_revisions_attachment_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.attachmentId,
+      ],
+      foreignColumns: [
+        certificationCaseDocuments.workspaceId,
+        certificationCaseDocuments.companyId,
+        certificationCaseDocuments.caseId,
+        certificationCaseDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_certificate_revisions_decision_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.decisionVersionId,
+      ],
+      foreignColumns: [
+        certificationStepVersions.workspaceId,
+        certificationStepVersions.companyId,
+        certificationStepVersions.caseId,
+        certificationStepVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_certificate_revisions_data_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.caseId,
+        table.certificateDataVersionId,
+      ],
+      foreignColumns: [
+        certificationStepVersions.workspaceId,
+        certificationStepVersions.companyId,
+        certificationStepVersions.caseId,
+        certificationStepVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'certification_certificate_revisions_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'certification_certificate_revisions_values_check',
+      sql`${table.index} > 0 AND ${table.caseRevision} > 1 AND length(btrim(${table.reason})) BETWEEN 1 AND 2000 AND ${table.independenceAttested} = true AND jsonb_typeof(${table.texts}) = 'array' AND (${table.onBehalf} IS NULL OR jsonb_typeof(${table.onBehalf}) = 'object')`,
     ),
   ],
 );

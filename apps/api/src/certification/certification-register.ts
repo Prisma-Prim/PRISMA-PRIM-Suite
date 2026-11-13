@@ -147,6 +147,7 @@ export function certificationRegister(
           language,
           source.entries.find((entry) => entry.kind === 'certificate')
             ?.certificate ?? null,
+          source.documents,
         )
       : []),
     { kind: 'section', text: labels.sections.documents },
