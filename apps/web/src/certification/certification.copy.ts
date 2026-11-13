@@ -294,6 +294,10 @@ const keys = [
   'roleCertificateDraft',
   'roleClientOpinion',
   'approvalOnBehalf',
+  'issuedDecisionCorrectionHelp',
+  'issuedDecisionFixed',
+  'certificatePdfReused',
+  'revisionOnBehalf',
   'releaseDraftTimeline',
   'releaseOpinionTimeline',
   'releaseApprovalTimeline',
@@ -1206,6 +1210,13 @@ export const certificationMessages = defineMessages(keys, {
     roleEvidence: 'Evidence',
     roleCertificateDraft: 'Certificate draft',
     roleClientOpinion: 'Client opinion',
+    issuedDecisionCorrectionHelp:
+      'After issuance a correction changes only the granted texts. The outcome, date, decision maker, function, signed form, rationale and additional information stay as recorded. Match the latest agreed data and state the reason.',
+    issuedDecisionFixed:
+      'After issuance only the granted texts may change. Reload the Case before correcting the decision.',
+    certificatePdfReused:
+      'A revision needs a different exact Document Version from every earlier Certificate.',
+    revisionOnBehalf: 'Person revising for the certification body',
     approvalOnBehalf: 'Draft approver for the certification body',
     releaseDraftTimeline: 'Certificate draft — version {version}',
     releaseOpinionTimeline: 'Client opinion — version {version}',
@@ -2327,6 +2338,13 @@ export const certificationMessages = defineMessages(keys, {
     roleEvidence: 'Preuve',
     roleCertificateDraft: 'Projet de certificat',
     roleClientOpinion: 'Avis du client',
+    issuedDecisionCorrectionHelp:
+      'Après émission, seuls les textes accordés changent. Le résultat, la date, le décideur, sa fonction, le formulaire signé, le motif et les informations complémentaires restent enregistrés. Respectez les dernières données convenues et indiquez le motif.',
+    issuedDecisionFixed:
+      'Après émission, seuls les textes accordés peuvent changer. Rechargez le dossier avant de corriger la décision.',
+    certificatePdfReused:
+      'La révision exige une autre version exacte de document que les certificats précédents.',
+    revisionOnBehalf: 'Personne révisant pour l’organisme de certification',
     approvalOnBehalf: 'Approbateur du projet pour l’organisme de certification',
     releaseDraftTimeline: 'Projet de certificat — version {version}',
     releaseOpinionTimeline: 'Avis du client — version {version}',
@@ -3471,6 +3489,14 @@ export const certificationMessages = defineMessages(keys, {
     roleEvidence: 'Dovadă',
     roleCertificateDraft: 'Proiectul certificatului',
     roleClientOpinion: 'Opinia clientului',
+    issuedDecisionCorrectionHelp:
+      'După emitere se corectează numai textele acordate. Rezultatul, data, decidentul, funcția, formularul semnat, justificarea și informațiile suplimentare rămân înregistrate. Respectați ultimele date convenite și indicați motivul.',
+    issuedDecisionFixed:
+      'După emitere se pot modifica numai textele acordate. Reîncărcați dosarul înainte de corectare.',
+    certificatePdfReused:
+      'Revizia necesită o altă versiune exactă de document decât certificatele anterioare.',
+    revisionOnBehalf:
+      'Persoana care revizuiește pentru organismul de certificare',
     approvalOnBehalf:
       'Aprobatorul proiectului pentru organismul de certificare',
     releaseDraftTimeline: 'Proiectul certificatului — versiunea {version}',
@@ -4611,6 +4637,13 @@ export const certificationMessages = defineMessages(keys, {
     roleEvidence: 'Свидетельство',
     roleCertificateDraft: 'Проект сертификата',
     roleClientOpinion: 'Мнение клиента',
+    issuedDecisionCorrectionHelp:
+      'После выдачи меняются только утверждённые тексты. Результат, дата, лицо, должность, подписанная форма, обоснование и дополнительные сведения сохраняются. Укажите причину и согласуйте тексты с последними данными.',
+    issuedDecisionFixed:
+      'После выдачи можно менять только утверждённые тексты. Перезагрузите дело перед исправлением решения.',
+    certificatePdfReused:
+      'Для исправления нужна другая точная версия документа, отличная от всех прежних сертификатов.',
+    revisionOnBehalf: 'Лицо, исправляющее от органа по сертификации',
     approvalOnBehalf: 'Утверждающий проект от органа по сертификации',
     releaseDraftTimeline: 'Проект сертификата — версия {version}',
     releaseOpinionTimeline: 'Мнение клиента — версия {version}',

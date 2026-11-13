@@ -1,3 +1,4 @@
+import type { CertificateRevision } from './certification-revisions.js';
 import type { ActAttribution } from './certification-attribution.js';
 import type { ExchangeRecordVersion } from './certification-exchanges.js';
 import type { CertificationActorReference } from './certification.types.js';
@@ -66,6 +67,9 @@ export type ReleaseBlocker = (typeof RELEASE_BLOCKERS)[number];
 
 /** The read section is complete even when the exchange register is paged. */
 export interface CertificateRelease {
+  revisions: CertificateRevision[];
+  currentRevisionIndex: number | null;
+  revisionRequired: boolean;
   drafts: ReleaseVersion<CertificateDraftValue>[];
   opinions: ReleaseVersion<ClientOpinionValue>[];
   approvals: ReleaseVersion<CertificateDraftApprovalValue>[];
@@ -108,6 +112,7 @@ import {
 export function certificateRelease(input: {
   steps: readonly CertificationStepVersion[];
   certificate: CertificateRecord | null;
+  revisions?: readonly CertificateRevision[];
   exchanges: readonly ExchangeRecordVersion[];
   discrepanciesOpen: boolean;
   today: string;
@@ -167,6 +172,39 @@ export function certificateRelease(input: {
   if (!approval || approvalNeedsRenewal({ approval, opinion }))
     issuanceBlockers.push('approval_missing');
   const certificate = input.certificate;
+  const certificateAttachments = new Set([
+    ...(certificate ? [certificate.attachmentId] : []),
+    ...(input.revisions ?? []).map((revision) => revision.attachmentId),
+  ]);
+  const revisions = (input.revisions ?? []).map((revision) => ({
+    ...revision,
+    transmission:
+      currentExchanges(input.exchanges)
+        .filter(
+          (exchange) =>
+            exchange.direction === 'sent' &&
+            exchange.itemKind === 'certificate' &&
+            exchange.counterpart.kind === 'client' &&
+            exchange.attachmentIds.includes(revision.attachmentId) &&
+            exchange.attachmentIds.filter((id) =>
+              certificateAttachments.has(id),
+            ).length === 1 &&
+            exchange.businessDate >= revision.revisedOn,
+        )
+        .sort(
+          (left, right) =>
+            left.businessDate.localeCompare(right.businessDate) ||
+            left.sequence - right.sequence,
+        )[0] ?? null,
+  }));
+  const effectiveTexts = revisions.at(-1)?.texts ?? certificate?.texts;
+  const revisionRequired =
+    certificate !== null &&
+    effectiveTexts !== undefined &&
+    (!data ||
+      decision?.value.decision !== 'granted' ||
+      !sameCertificateTexts(effectiveTexts, data.value.texts) ||
+      !sameCertificateTexts(effectiveTexts, decision.value.grantedTexts));
   const transmission = certificate
     ? (currentExchanges(input.exchanges)
         .filter(
@@ -185,6 +223,9 @@ export function certificateRelease(input: {
         )[0] ?? null)
     : null;
   return {
+    revisions,
+    currentRevisionIndex: certificate ? (revisions.at(-1)?.index ?? 0) : null,
+    revisionRequired,
     drafts,
     opinions,
     approvals,

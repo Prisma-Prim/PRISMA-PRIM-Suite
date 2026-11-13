@@ -1,9 +1,14 @@
 import {
+  revisionMessages,
+  type RevisionMessageKey,
+} from '../src/certification/certification-revisions.copy';
+import { fictionalCertificatePdf } from './certification-certificate-pdf.fixture';
+import {
   releaseMessages,
   type ReleaseMessageKey,
 } from '../src/certification/certification-release.copy';
-import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import { expect, test, type Locator } from '@playwright/test';
 import {
   compactPdfText,
@@ -36,6 +41,8 @@ import {
 } from './certification-journey.acceptance.fixture';
 import { selectOption } from './select-option';
 
+const revisionCopy = (key: RevisionMessageKey) =>
+  resolveMessage(revisionMessages, 'en', key);
 const releaseCopy = (key: ReleaseMessageKey) =>
   resolveMessage(releaseMessages, 'en', key);
 const copy = (key: CertificationMessageKey) =>
@@ -1385,9 +1392,22 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
   });
 
   await test.step('an independent approver explicitly approves and issues the current draft; courier transmission follows', async () => {
+    const releaseState = record(
+      record(await journey.read(approver, journey.base)).release,
+    );
+    const validity = record(releaseState.validity);
+    const issuedPdf = await fictionalCertificatePdf({
+      validity: {
+        validFrom: text(validity.validFrom),
+        validUntil: text(validity.validUntil),
+        firstSurveillanceBy: text(validity.firstSurveillanceBy),
+      },
+      version: { kind: 'issued' },
+    });
     const issued = await journey.attach(
       'certificate',
       'Issued bilingual Certificate',
+      issuedPdf,
     );
     let article = await openCase(approver);
     let release = article.getByRole('region', {
@@ -1498,6 +1518,289 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     });
   });
 
+  await test.step('revision 1 corrects the actual English PDF city and is transmitted separately by e-mail', async () => {
+    const before = record(await journey.read(approver, journey.base));
+    const original = record(before.certificate);
+    const issuedBytes = await journey.download(
+      reader,
+      `${journey.base}/documents/${text(original.attachmentId)}/content`,
+    );
+    const issuedPages = await inspectCommercialPdf(issuedBytes);
+    expect(issuedPages).toHaveLength(2);
+    expect(compactPdfText(issuedPages[1]?.text ?? '')).toContain(
+      compactPdfText('1 Example Street, Demo Ctiy'),
+    );
+    const revisedBytes = await fictionalCertificatePdf({
+      validity: {
+        validFrom: text(original.validFrom),
+        validUntil: text(original.validUntil),
+        firstSurveillanceBy: text(original.firstSurveillanceBy),
+      },
+      version: { kind: 'revision', revisedOn: journey.today },
+    });
+    const attachmentId = await journey.attach(
+      'certificate',
+      'Revision 1 corrects English city',
+      revisedBytes,
+    );
+    const article = await openCase(approver);
+    const release = article.getByRole('region', {
+      name: releaseCopy('title'),
+      exact: true,
+    });
+    const revisions = release.getByRole('region', {
+      name: revisionCopy('title'),
+      exact: true,
+    });
+    const form = revisions.getByRole('form', {
+      name: revisionCopy('form'),
+      exact: true,
+    });
+    await expect(form.getByRole('radio', { checked: true })).toHaveCount(0);
+    await expect(form.getByRole('checkbox', { checked: true })).toHaveCount(0);
+    await selectOption(form.getByLabel(revisionCopy('pdf'), { exact: true }), {
+      value: attachmentId,
+    });
+    await form
+      .getByLabel(revisionCopy('date'), { exact: true })
+      .fill(journey.today);
+    await form
+      .getByLabel(revisionCopy('reason'), { exact: true })
+      .fill('Correct Demo Ctiy to Demo City on the fictional English page.');
+    await form
+      .getByRole('radio', { name: revisionCopy('yes'), exact: true })
+      .check();
+    await form
+      .getByRole('checkbox', { name: revisionCopy('attestation'), exact: true })
+      .check();
+    await form
+      .getByRole('button', { name: revisionCopy('submit'), exact: true })
+      .click();
+    await expect(
+      revisions.getByRole('heading', {
+        name: formatMessage(revisionCopy('revision'), {
+          index: 1,
+          state: revisionCopy('current'),
+        }),
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      revisions.getByRole('heading', {
+        name: formatMessage(revisionCopy('original'), {
+          state: revisionCopy('superseded'),
+        }),
+        exact: true,
+      }),
+    ).toBeVisible();
+    const current = record(await journey.read(approver, journey.base));
+    expect(current.certificate).toEqual(original);
+    expect(record(current.decision).id).toBe(record(before.decision).id);
+    expect(record(current.certificateData).id).toBe(
+      record(before.certificateData).id,
+    );
+    expect(record(current.release)).toMatchObject({
+      currentRevisionIndex: 1,
+      revisionRequired: false,
+      revisions: [{ index: 1, attachmentId, revisionMarked: true }],
+    });
+    const received = await journey.download(
+      reader,
+      `${journey.base}/documents/${attachmentId}/content`,
+    );
+    const pages = await inspectCommercialPdf(received);
+    expect(pages).toHaveLength(2);
+    const english = compactPdfText(pages[1]?.text ?? '');
+    for (const expected of [
+      '1 Example Street, Demo City',
+      'Revision 1',
+      `Revision date: ${journey.today}`,
+    ])
+      expect(english).toContain(compactPdfText(expected));
+    expect(english).not.toContain(compactPdfText('Demo Ctiy'));
+    const digest = (bytes: Uint8Array) =>
+      createHash('sha256').update(bytes).digest('hex');
+    expect(digest(received)).toBe(digest(revisedBytes));
+    expect(digest(received)).not.toBe(digest(issuedBytes));
+    const documents = records(
+      (await journey.read(reader, `${journey.base}/documents`)).items,
+    );
+    const attached = documents.find((entry) => entry.id === attachmentId);
+    const initial = documents.find(
+      (entry) => entry.id === original.attachmentId,
+    );
+    expect(attached?.sha256).toBe(digest(received));
+    expect(attached?.versionId).not.toBe(initial?.versionId);
+    await writeFile(
+      info.outputPath(`certificate-original-${width}.pdf`),
+      issuedBytes,
+    );
+    await writeFile(
+      info.outputPath(`certificate-revision-1-${width}.pdf`),
+      received,
+    );
+    await revisions
+      .getByRole('heading', { name: revisionCopy('title'), exact: true })
+      .click();
+    await revisions.screenshot({
+      path: info.outputPath(`certificate-revision-1-pending-${width}.png`),
+    });
+    await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'sent',
+      itemKind: 'certificate',
+      attachmentIds: [attachmentId],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: journey.today,
+      channel: 'email',
+      reference: null,
+      note: 'Fictional corrected English page.',
+    });
+    readerCase = await openCase(reader);
+    const history = readerCase.getByRole('region', {
+      name: revisionCopy('title'),
+      exact: true,
+    });
+    await expect(history.getByRole('form')).toHaveCount(0);
+    const revision = history.getByRole('listitem').filter({
+      has: page.getByRole('heading', {
+        name: formatMessage(revisionCopy('revision'), {
+          index: 1,
+          state: revisionCopy('current'),
+        }),
+        exact: true,
+      }),
+    });
+    await expect(revision).toContainText(exchangeCopy('channelEmail'));
+    await expect(
+      revision.getByText(revisionCopy('pending'), { exact: true }),
+    ).toHaveCount(0);
+    const state = record(
+      record(await journey.read(reader, journey.base)).release,
+    );
+    expect(record(state.transmission).channel).toBe('courier');
+    expect(record(records(state.revisions)[0]?.transmission).channel).toBe(
+      'email',
+    );
+    await history
+      .getByRole('heading', { name: revisionCopy('title'), exact: true })
+      .click();
+    await history.screenshot({
+      path: info.outputPath(
+        `certificate-revision-1-transmitted-reader-${width}.png`,
+      ),
+    });
+  });
+
+  await test.step('an explicitly unmarked later revision is retained with a visible warning', async () => {
+    const before = record(await journey.read(approver, journey.base));
+    const original = record(before.certificate);
+    const bytes = await fictionalCertificatePdf({
+      validity: {
+        validFrom: text(original.validFrom),
+        validUntil: text(original.validUntil),
+        firstSurveillanceBy: text(original.firstSurveillanceBy),
+      },
+      version: { kind: 'unmarked_revision' },
+    });
+    const attachmentId = await journey.attach(
+      'certificate',
+      'Fictional corrected copy without revision mark',
+      bytes,
+    );
+    const article = await openCase(approver);
+    const revisions = article.getByRole('region', {
+      name: revisionCopy('title'),
+      exact: true,
+    });
+    const form = revisions.getByRole('form', {
+      name: revisionCopy('form'),
+      exact: true,
+    });
+    await selectOption(form.getByLabel(revisionCopy('pdf'), { exact: true }), {
+      value: attachmentId,
+    });
+    await form
+      .getByLabel(revisionCopy('date'), { exact: true })
+      .fill(journey.today);
+    await form
+      .getByLabel(revisionCopy('reason'), { exact: true })
+      .fill(
+        'The fictional producer omitted the revision mark on this corrected copy.',
+      );
+    await form
+      .getByRole('radio', { name: revisionCopy('no'), exact: true })
+      .check();
+    await form
+      .getByRole('checkbox', { name: revisionCopy('attestation'), exact: true })
+      .check();
+    await form
+      .getByRole('button', { name: revisionCopy('submit'), exact: true })
+      .click();
+    await expect(
+      revisions.getByText(revisionCopy('unmarked'), { exact: true }),
+    ).toBeVisible();
+    const exact = await journey.download(
+      reader,
+      `${journey.base}/documents/${attachmentId}/content`,
+    );
+    expect(createHash('sha256').update(exact).digest('hex')).toBe(
+      createHash('sha256').update(bytes).digest('hex'),
+    );
+    const pages = await inspectCommercialPdf(exact);
+    expect(pages).toHaveLength(2);
+    expect(compactPdfText(pages[1]?.text ?? '')).toContain(
+      compactPdfText('1 Example Street, Demo City'),
+    );
+    expect(
+      compactPdfText(pages.map((page) => page.text).join(' ')),
+    ).not.toContain(compactPdfText('Revision 1'));
+    await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'sent',
+      itemKind: 'certificate',
+      attachmentIds: [attachmentId],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: journey.today,
+      channel: 'email',
+      reference: null,
+      note: null,
+    });
+    readerCase = await openCase(reader);
+    const history = readerCase.getByRole('region', {
+      name: revisionCopy('title'),
+      exact: true,
+    });
+    await expect(
+      history.getByText(revisionCopy('unmarked'), { exact: true }),
+    ).toBeVisible();
+    await expect(
+      history.getByRole('heading', {
+        name: formatMessage(revisionCopy('revision'), {
+          index: 2,
+          state: revisionCopy('current'),
+        }),
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      history.getByRole('heading', {
+        name: formatMessage(revisionCopy('revision'), {
+          index: 1,
+          state: revisionCopy('superseded'),
+        }),
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(history.getByRole('form')).toHaveCount(0);
+    await history
+      .getByRole('heading', { name: revisionCopy('title'), exact: true })
+      .click();
+    await history.screenshot({
+      path: info.outputPath(
+        `certificate-revision-unmarked-reader-${width}.png`,
+      ),
+    });
+  });
+
   await test.step('the reader downloads the dossier register by keyboard', async () => {
     if (!readerCase) throw new Error('The reader has not opened the Case.');
     const article = readerCase;
@@ -1540,6 +1843,13 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       'Lactis Demo SRL',
       journey.orderReference,
       'DEMO-0001',
+      'Revision 0',
+      'Revision 1',
+      'Revision 2',
+      'revision not marked on the Certificate',
+      'Superseded',
+      'Current',
+      'Correct Demo Ctiy to Demo City on the fictional English page.',
     ];
     const timeline = records(
       (await journey.read(reader, `${journey.base}/timeline`)).entries,
@@ -1598,7 +1908,7 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     const documents = records(
       (await journey.read(reader, `${journey.base}/documents`)).items,
     );
-    expect(documents).toHaveLength(14);
+    expect(documents).toHaveLength(16);
     // The dossier consistency section lists the resolved Discrepancies.
     expected.push(
       'Dossier consistency',

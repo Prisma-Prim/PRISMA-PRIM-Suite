@@ -225,7 +225,18 @@ export async function prepareCertificationJourney(
         'certification-approver',
       ],
     ],
-    [reader, ['context', 'project', 'director-client', 'certification-reader']],
+    [
+      reader,
+      [
+        'context',
+        'project',
+        'director-client',
+        'certification-reader',
+        'document-registrar',
+        'received-audit-source-access',
+        'document-content-reader',
+      ],
+    ],
   ];
   for (const [member, granted] of bundles) {
     const workspaceMembershipId = await membership(member);
@@ -286,7 +297,7 @@ export async function prepareCertificationJourney(
     return created(member, path, { expectedRevision: current, ...body });
   }
   /** Registers, uploads, designates and attaches one synthetic signed PDF. */
-  async function attach(role: string, title: string) {
+  async function attach(role: string, title: string, bytes: Uint8Array = pdf) {
     const document = await created(manager, '/documents', {
       type: 'received-audit-source',
       clientId,
@@ -304,7 +315,7 @@ export async function prepareCertificationJourney(
           'idempotency-key': randomUUID(),
           'content-type': 'application/pdf',
         },
-        data: pdf,
+        data: Buffer.from(bytes),
       },
     );
     expect(uploaded.status(), title).toBe(201);
@@ -547,6 +558,14 @@ export async function prepareCertificationJourney(
     base,
     today,
     read,
+    async download(member: Identity, path: string) {
+      const response = await request.get(`${api}${path}`, {
+        headers: headers(member),
+      });
+      expect(response.status()).toBe(200);
+      expect(response.headers()['content-type']).toContain('application/pdf');
+      return response.body();
+    },
     post,
     step,
     attach,

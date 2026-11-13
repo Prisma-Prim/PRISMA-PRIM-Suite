@@ -378,12 +378,21 @@ export function certificationDecisionFromDraft(
   {
     register,
     correcting,
+    frozen,
   }: {
     register: readonly CertificationAttachment[];
     /** The recorded decision's outcome when this draft corrects it. */
     correcting: CertificationOutcome | null;
+    frozen?: CertificationDecision;
   },
 ): DecisionCheck {
+  if (frozen) {
+    if (frozen.decision !== 'granted') return { status: 'incomplete' };
+    const grantedTexts = certificateTextsFromDraft(draft.grantedTexts);
+    if (!grantedTexts) return { status: 'incomplete' };
+    if (!draft.independenceAttested) return { status: 'attestation' };
+    return withReason({ ...frozen, grantedTexts }, draft.reason, true);
+  }
   const outcome = correcting ?? draft.decision;
   const decidedOn = draft.decidedOn.trim();
   const decidedBy = required(draft.decidedBy, DECISION_LIMITS.person);

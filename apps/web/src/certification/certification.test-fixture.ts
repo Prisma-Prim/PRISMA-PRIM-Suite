@@ -449,6 +449,7 @@ type StoredCase = {
   attachments: StoredAttachment[];
   findings: StoredFinding[];
   certificate: StoredCertificate | null;
+  certificateRevisions: Record<string, unknown>[];
   /** The consistency section's Discrepancies, seeded or recorded. */
   consistency: {
     open: Record<string, unknown>[];
@@ -1083,7 +1084,7 @@ export class FakeCertificationServer {
         : this.reportStage(staged, which, request.body);
     }
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/certificate-draft|\/client-opinion|\/certificate-draft-approval|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/certificate-revisions|\/certificate-draft|\/client-opinion|\/certificate-draft-approval|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
@@ -1132,6 +1133,8 @@ export class FakeCertificationServer {
         return this.decide(stored, request.body);
       case '/certificate-data':
         return this.agreeCertificateData(stored, request.body);
+      case '/certificate-revisions':
+        return this.reviseCertificate(stored, request.body);
       case '/certificate-draft':
         return this.recordRelease(stored, 'certificate_draft', request.body);
       case '/client-opinion':
@@ -1349,7 +1352,8 @@ export class FakeCertificationServer {
     )
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
     const closed =
-      stored.status === 'refused' && expectedRevision === stored.revision
+      ['refused', 'certified'].includes(stored.status) &&
+      expectedRevision === stored.revision
         ? undefined
         : this.lockOpen(stored, expectedRevision);
     if (closed) return closed;
@@ -1385,6 +1389,19 @@ export class FakeCertificationServer {
       rationale,
       additionalInformation,
     };
+    if (stored.status === 'certified') {
+      if (
+        !previous ||
+        !sameValue(
+          { ...previous.value, grantedTexts: null },
+          { ...value, grantedTexts: null },
+        )
+      )
+        return refusal(409, 'CERTIFICATION_ISSUED_DECISION_FIXED');
+      const agreed = latestStep(stored, 'certificate_data');
+      if (!agreed || !sameTexts(list(agreed.value.texts), list(texts)))
+        return refusal(409, 'CERTIFICATION_CERTIFICATE_DATA_DIFFERS');
+    }
     const stated = nonblank(reason) ? reason : null;
     if (!previous !== (stated === null))
       return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
@@ -1420,7 +1437,10 @@ export class FakeCertificationServer {
       !optionalText(reason)
     )
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
-    const closed = this.lockOpen(stored, expectedRevision);
+    const closed = this.lockOpen(stored, expectedRevision, [
+      'open',
+      'certified',
+    ]);
     if (closed) return closed;
     if (!latestStep(stored, 'stage_2_report'))
       return refusal(409, 'CERTIFICATION_STAGE_2_NOT_REPORTED');
@@ -1609,7 +1629,47 @@ export class FakeCertificationServer {
             : [];
         })
         .at(0) ?? null;
+    const revisions = stored.certificateRevisions.map(
+      (revision): Record<string, unknown> => ({
+        ...revision,
+        transmission:
+          stored.exchanges.records
+            .flatMap((entry) => {
+              const version = entry.versions.at(-1);
+              return version &&
+                version.direction === 'sent' &&
+                version.itemKind === 'certificate' &&
+                record(version.counterpart).kind === 'client' &&
+                list(version.attachmentIds).includes(revision.attachmentId) &&
+                typeof version.businessDate === 'string' &&
+                typeof revision.revisedOn === 'string' &&
+                version.businessDate >= revision.revisedOn &&
+                !list(version.attachmentIds).includes(issued?.attachmentId) &&
+                stored.certificateRevisions.filter((other) =>
+                  list(version.attachmentIds).includes(other.attachmentId),
+                ).length === 1
+                ? [version]
+                : [];
+            })
+            .sort(
+              (left, right) =>
+                String(left.businessDate).localeCompare(
+                  String(right.businessDate),
+                ) || Number(left.sequence) - Number(right.sequence),
+            )
+            .at(0) ?? null,
+      }),
+    );
+    const effective = revisions.at(-1)?.texts ?? issued?.texts;
     return {
+      revisions,
+      currentRevisionIndex: issued ? revisions.length : null,
+      revisionRequired:
+        issued !== null &&
+        (!data ||
+          decision?.value.decision !== 'granted' ||
+          !sameTexts(list(effective), list(data.value.texts)) ||
+          !sameTexts(list(effective), list(decision.value.grantedTexts))),
       validity:
         decision?.value.decision === 'granted'
           ? {
@@ -1741,14 +1801,93 @@ export class FakeCertificationServer {
     return Response.json(this.detail(stored), { status: 201 });
   }
 
+  private reviseCertificate(stored: StoredCase, body: unknown): Response {
+    if (!holdsApprover(this.actor()))
+      return new Response(null, { status: 403 });
+    const input = record(body);
+    const allowed = [
+      'expectedRevision',
+      'reason',
+      'revisedOn',
+      'attachmentId',
+      'revisionMarked',
+      'independenceAttested',
+      'onBehalf',
+    ];
+    if (
+      Object.keys(input).some((key) => !allowed.includes(key)) ||
+      !bounded(input.reason, 2000) ||
+      !calendarDate(input.revisedOn) ||
+      !nonblank(input.attachmentId) ||
+      typeof input.revisionMarked !== 'boolean'
+    )
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    if (input.independenceAttested !== true)
+      return refusal(400, 'CERTIFICATION_INDEPENDENCE_ATTESTATION');
+    const closed = this.lockOpen(stored, input.expectedRevision, ['certified']);
+    if (closed) return closed;
+    if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+    if (input.revisedOn > this.latestBusinessDate())
+      return refusal(409, 'CERTIFICATION_ACT_IN_FUTURE');
+    const onBehalf = input.onBehalf ?? null;
+    if (!actingInput(onBehalf))
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    const acting = this.actingRefusal(stored, onBehalf);
+    if (acting) return acting;
+    const decision = latestStep(stored, 'decision');
+    const data = latestStep(stored, 'certificate_data');
+    if (
+      !stored.certificate ||
+      decision?.value.decision !== 'granted' ||
+      !data ||
+      !sameTexts(list(data.value.texts), list(decision.value.grantedTexts))
+    )
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_DATA_DIFFERS');
+    const attached = stored.attachments.find(
+      (entry) =>
+        entry.id === input.attachmentId && entry.role === 'certificate',
+    );
+    if (!attached) return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+    const used = [
+      stored.certificate.attachmentId,
+      ...stored.certificateRevisions.map((entry) => entry.attachmentId),
+    ];
+    if (
+      stored.attachments.some(
+        (entry) =>
+          used.includes(entry.id) && entry.versionId === attached.versionId,
+      )
+    )
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_PDF_REUSED');
+    stored.revision += 1;
+    stored.certificateRevisions.push({
+      id: crypto.randomUUID(),
+      index: stored.certificateRevisions.length + 1,
+      caseRevision: stored.revision,
+      reason: input.reason.trim(),
+      revisedOn: input.revisedOn,
+      attachmentId: input.attachmentId,
+      texts: structuredClone(data.value.texts),
+      decisionVersionId: decision.id,
+      certificateDataVersionId: data.id,
+      revisionMarked: input.revisionMarked,
+      independenceAttested: true,
+      onBehalf,
+      recordedBy: me,
+      recordedAt: this.tick(),
+    });
+    return Response.json(this.detail(stored), { status: 201 });
+  }
+
   /** The stale and closed refusals every Case command checks first. */
   private lockOpen(
     stored: StoredCase,
     expectedRevision: unknown,
+    statuses: readonly StoredCase['status'][] = ['open'],
   ): Response | undefined {
     if (expectedRevision !== stored.revision)
       return refusal(409, 'STALE_VERSION');
-    if (stored.status !== 'open')
+    if (!statuses.includes(stored.status))
       return refusal(409, 'CERTIFICATION_CASE_CLOSED');
     return undefined;
   }
@@ -1869,8 +2008,19 @@ export class FakeCertificationServer {
     const input = record(body);
     if (input.expectedRevision !== stored.revision)
       return refusal(409, 'STALE_VERSION');
-    if (stored.status !== 'open')
+    if (stored.status !== 'open' && stored.status !== 'certified')
       return refusal(409, 'CERTIFICATION_CASE_CLOSED');
+    if (
+      stored.status === 'certified' &&
+      ![
+        'certificate',
+        'certificate_data',
+        'evidence',
+        'other',
+        'correspondence',
+      ].includes(String(input.role))
+    )
+      return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
     if (!this.documentAccess) return new Response(null, { status: 403 });
     const source = this.sources.find(
       (entry) =>
@@ -2874,6 +3024,7 @@ export class FakeCertificationServer {
       attachments: [],
       findings: [],
       certificate: null,
+      certificateRevisions: [],
       consistency: { open: [], resolved: [] },
       exchanges: { records: [], entries: [], items: [] },
     };
