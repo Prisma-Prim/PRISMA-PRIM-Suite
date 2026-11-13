@@ -14,7 +14,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, desc, DrizzleQueryError, eq, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -22,6 +22,7 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
+import { readConsistently } from '../database/consistent-read.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   contracts,
@@ -1015,7 +1016,7 @@ export class OfferService {
       permissions: ['commercial.offer.read'],
       lock: false,
     });
-    return this.readConsistently(async () => {
+    return this.clientReferenceRead(async () => {
       const companyId = (
         await this.authorization.requirePermissions(actor, {
           permissions: ['commercial.offer.read'],
@@ -1162,7 +1163,7 @@ export class OfferService {
       )
     )
       throw new NotFoundException();
-    return this.readConsistently(async () => {
+    return this.clientReferenceRead(async () => {
       const companyId = (
         await this.authorization.requirePermissions(actor, {
           permissions: ['commercial.offer.read'],
@@ -1246,7 +1247,7 @@ export class OfferService {
   }) {
     requirePdfIds(input.opportunityId, input.versionId);
     const expected = readPdfQuery(input.query);
-    return this.readConsistently(async () => {
+    return this.clientReferenceRead(async () => {
       const companyId = (
         await this.authorization.requirePermissions(input.actor, {
           permissions: ['commercial.offer.read'],
@@ -1298,36 +1299,22 @@ export class OfferService {
     });
   }
 
-  private async readConsistently<T>(read: () => Promise<T>): Promise<T> {
-    // A profile or assignment refresh can invalidate a locked row after the
-    // snapshot began. Restart the entire read, including live authority checks;
-    // never continue an aborted transaction or retry a mutation here.
-    for (let attempt = 1; ; attempt += 1) {
-      try {
-        return await runClientReferenceTransaction({
-          database: this.databaseContext,
-          work: read,
-          config: {
-            isolationLevel: 'repeatable read',
-          },
-        });
-      } catch (error) {
-        const cause = error instanceof DrizzleQueryError ? error.cause : error;
-        if (
-          attempt >= 8 ||
-          typeof cause !== 'object' ||
-          cause === null ||
-          !('code' in cause) ||
-          cause.code !== '40001'
-        )
-          throw error;
-        // Bounded backoff lets parallel identity refreshes settle. Eight attempts
-        // add at most 1.125 seconds of delay without weakening the snapshot.
-        await new Promise<void>((resolve) =>
-          setTimeout(resolve, Math.min(25 * 2 ** (attempt - 1), 250)),
-        );
-      }
-    }
+  /**
+   * The shared consistent read, each attempt also recovering from Client
+   * reference drift.
+   */
+  private clientReferenceRead<T>(read: () => Promise<T>): Promise<T> {
+    return readConsistently(
+      {
+        transaction: (work, config) =>
+          runClientReferenceTransaction({
+            database: this.databaseContext,
+            work,
+            config,
+          }),
+      },
+      read,
+    );
   }
 
   async runQualityChecks(input: {
