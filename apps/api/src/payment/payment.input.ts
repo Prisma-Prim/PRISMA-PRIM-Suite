@@ -1,9 +1,6 @@
 import { continuationCursorMaximumLength } from '../continuation-cursor/continuation-cursor.js';
 import { BadRequestException } from '@nestjs/common';
-import {
-  requireBoundedIdempotencyKey,
-  requireUuid,
-} from '../access/access-command-validation.js';
+import { requireUuid } from '../access/access-command-validation.js';
 
 export type PaymentCurrency = 'MDL' | 'EUR' | 'RON' | 'USD';
 export interface PaymentValues {
@@ -214,8 +211,7 @@ export function paymentQuery(value: unknown): string | undefined {
   return typeof v.cursor === 'string' ? v.cursor : undefined;
 }
 // payment_commands stores keys of 1 to 200 characters.
-export const paymentKey = (value: string | undefined) =>
-  requireBoundedIdempotencyKey(value, 200);
+export const PAYMENT_KEY_MAX_LENGTH = 200;
 function invalid() {
   return new BadRequestException({
     code: 'PAYMENT_INPUT_INVALID',

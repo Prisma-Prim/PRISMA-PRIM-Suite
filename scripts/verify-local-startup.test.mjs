@@ -15,6 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { runLocalVerification, verificationFamilies } from './verify-local.mjs';
 import { createProcessGroupController } from './process-group.mjs';
+import { plan as localBrowserPlan } from './verify-local-browser.mjs';
 
 // System-boundary doubles in disposable repositories. These tests never attest
 // application builds, browser journeys, databases, or the full merge gate.
@@ -100,6 +101,28 @@ test('the public full plan selects two closed prebuild helpers and preserves the
       .args,
     ['scripts/verify-acceptance-evidence.mjs'],
   );
+});
+
+// #1317: the canonical web servers build before they serve, and CI builds took
+// up to 64 s, so Playwright's 60 s default failed browser jobs before any test.
+test('the canonical browser and acceptance web servers allow the local startup budget for their build', async () => {
+  const { startupMilliseconds } = localBrowserPlan('.', '.', 'acceptance');
+  for (const config of [
+    'playwright.config.ts',
+    'playwright.acceptance.config.ts',
+  ]) {
+    const source = await readFile(
+      new URL(`../apps/web/${config}`, import.meta.url),
+      'utf8',
+    );
+    const webServer = source.slice(source.indexOf('webServer: {'));
+    const timeout = /\n {4}timeout: ([\d_]+),/u.exec(webServer)?.[1];
+    assert.equal(
+      Number(timeout?.replaceAll('_', '')),
+      startupMilliseconds,
+      `${config} must set webServer.timeout to the local startup budget`,
+    );
+  }
 });
 
 const identity = {
