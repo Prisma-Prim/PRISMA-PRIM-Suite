@@ -1,3 +1,9 @@
+import type {
+  CertificateDraftValue,
+  ClientOpinionValue,
+  CertificateDraftApprovalValue,
+  CertificateRelease,
+} from './certification-release.js';
 import type { AuditTeam, TeamDecision } from './certification-team.js';
 import type { FindingView } from './certification-findings.js';
 import type {
@@ -133,6 +139,8 @@ export type CertificationDocumentRole =
   | 'evidence'
   | 'certificate'
   | 'certificate_data'
+  | 'certificate_draft'
+  | 'client_opinion'
   | 'decision_form'
   | 'correspondence'
   | 'other';
@@ -173,7 +181,16 @@ export type CertificationStepVersion =
   | (StepVersionBase & { step: 'recommendation'; value: Recommendation })
   | (StepVersionBase & { step: 'dossier_review'; value: DossierReview })
   | (StepVersionBase & { step: 'decision'; value: CertificationDecision })
-  | (StepVersionBase & { step: 'certificate_data'; value: CertificateData });
+  | (StepVersionBase & { step: 'certificate_data'; value: CertificateData })
+  | (StepVersionBase & {
+      step: 'certificate_draft';
+      value: CertificateDraftValue;
+    })
+  | (StepVersionBase & { step: 'client_opinion'; value: ClientOpinionValue })
+  | (StepVersionBase & {
+      step: 'certificate_draft_approval';
+      value: CertificateDraftApprovalValue;
+    });
 
 export type ApplicationVersion = Extract<
   CertificationStepVersion,
@@ -296,13 +313,14 @@ export interface CertificationCaseDetail extends CertificationCaseSummary {
     { step: 'certificate_data' }
   > | null;
   certificate: CertificateRecord | null;
+  release: CertificateRelease;
   /** The Dossier Consistency Check over the Case's current records. */
   consistency: ConsistencySection;
   /** The exchange register, its deadline states and the Re-verification Items. */
   exchanges: ExchangeRegister & { reverification: ReverificationSection };
 }
 
-export interface CertificateRecord {
+export type CertificateRecord = {
   id: string;
   number: string;
   validFrom: string;
@@ -321,7 +339,10 @@ export interface CertificateRecord {
   attachmentId: string;
   recordedBy: CertificationActorReference;
   recordedAt: string;
-}
+} & (
+  | { issuedOn: null; approvedDraftVersionId: null }
+  | { issuedOn: string; approvedDraftVersionId: string }
+);
 
 export interface CertificationCaseList {
   projectId: string;

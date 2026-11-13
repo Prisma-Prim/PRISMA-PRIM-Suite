@@ -129,6 +129,11 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
           version: entry.version,
         });
         break;
+      case 'company_certificate_number':
+        record = formatMessage(t('sourceCompanyCertificateNumber'), {
+          number: entry.number,
+        });
+        break;
       case 'certificate':
         record = formatMessage(t('sourceCertificate'), {
           number: entry.number,
@@ -151,6 +156,8 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
 
   function subject(entry: DiscrepancySubject): string {
     switch (entry.kind) {
+      case 'certificate_number':
+        return t('subjectCertificateNumber');
       case 'duration_proposal':
         return t('subjectDurationProposal');
       case 'prior_certification_reduction':
@@ -339,7 +346,7 @@ export function ConsistencyRegion(props: ConsistencyRegionProps) {
               ? t('neverBlocks')
               : entry.blocks === 'decision'
                 ? t('blocksDecision')
-                : entry.blocks === 'certificate'
+                : entry.blocks === 'certificate_draft_approval'
                   ? t('blocksCertificate')
                   : t('blocksNothing')}
           </p>
@@ -796,6 +803,8 @@ export function ruleLabel(rule: ConsistencyRule): ConsistencyMessageKey {
       return 'ruleR11';
     case 'R12':
       return 'ruleR12';
+    case 'R13':
+      return 'ruleR13';
     case 'R14':
       return 'ruleR14';
     case 'R15':
@@ -850,6 +859,10 @@ function dateLabel(fact: DateFact): ConsistencyMessageKey {
       return 'dateDossierApproved';
     case 'decision':
       return 'dateDecision';
+    case 'draft_sent':
+      return 'dateDraftSent';
+    case 'client_opinion':
+      return 'dateClientOpinion';
   }
   return unexpected(fact);
 }
@@ -916,6 +929,12 @@ function stepLabel(step: SourceStep): ConsistencyMessageKey {
       return 'stepDecision';
     case 'certificate_data':
       return 'stepCertificateData';
+    case 'certificate_draft':
+      return 'stepCertificateDraft';
+    case 'client_opinion':
+      return 'stepClientOpinion';
+    case 'certificate_draft_approval':
+      return 'stepCertificateDraftApproval';
   }
   return unexpected(step);
 }

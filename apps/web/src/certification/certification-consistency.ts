@@ -19,6 +19,7 @@ export const CONSISTENCY_RULES = [
   'R10',
   'R11',
   'R12',
+  'R13',
   'R14',
   'R15',
   'R16',
@@ -65,6 +66,8 @@ export const DATE_FACTS = [
   'dossier_reviewed',
   'dossier_approved',
   'decision',
+  'draft_sent',
+  'client_opinion',
 ] as const;
 export type DateFact = (typeof DATE_FACTS)[number];
 
@@ -97,6 +100,7 @@ export type AuditStage = 'stage_1' | 'stage_2';
 
 export type DiscrepancySubject =
   | { kind: 'duration_proposal' }
+  | { kind: 'certificate_number' }
   | { kind: 'prior_certification_reduction' }
   | { kind: 'stage_share'; stage: AuditStage }
   | { kind: 'stage_capacity'; stage: AuditStage }
@@ -141,10 +145,14 @@ export const SOURCE_STEPS = [
   'dossier_review',
   'decision',
   'certificate_data',
+  'certificate_draft',
+  'client_opinion',
+  'certificate_draft_approval',
 ] as const;
 export type SourceStep = (typeof SOURCE_STEPS)[number];
 
 export type DiscrepancySource =
+  | { kind: 'company_certificate_number'; number: string; attachment: null }
   | {
       kind: 'step';
       step: SourceStep;
@@ -197,7 +205,7 @@ export type DiscrepancyResolution =
       source: DiscrepancySource | null;
     };
 
-export type DiscrepancyBlock = 'decision' | 'certificate';
+export type DiscrepancyBlock = 'decision' | 'certificate_draft_approval';
 
 type DiscrepancyCore = {
   id: string;
@@ -507,7 +515,12 @@ function discrepancy(value: unknown): Discrepancy {
     const blocks =
       body.blocks === null
         ? null
-        : oneOf(['decision', 'certificate'] as const, body.blocks);
+        : oneOf(
+            ['decision', 'certificate_draft_approval'] as const,
+            body.blocks === 'certificate'
+              ? 'certificate_draft_approval'
+              : body.blocks,
+          );
     if (blocks !== null && core.verdict === 'to_clarify') invalid();
     return { ...core, ...origin, status: 'open', blocks, resolution: null };
   }
@@ -557,6 +570,7 @@ function subject(value: unknown): DiscrepancySubject {
   const body = object(value);
   switch (body.kind) {
     case 'duration_proposal':
+    case 'certificate_number':
     case 'prior_certification_reduction':
       return { kind: body.kind };
     case 'stage_share':
@@ -668,6 +682,13 @@ function discrepancySource(value: unknown): DiscrepancySource {
         sequence: positive(body.sequence),
         version: positive(body.version),
         attachment: attachment(body.attachment),
+      };
+    case 'company_certificate_number':
+      if (body.attachment !== null) return invalid();
+      return {
+        kind: 'company_certificate_number',
+        number: text(body.number, 64),
+        attachment: null,
       };
     case 'certificate':
       return {

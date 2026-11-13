@@ -1,3 +1,13 @@
+import { observedNumbers } from './certification-number-observations.js';
+import {
+  approvalNeedsRenewal,
+  certificateRelease,
+} from './certification-release.js';
+import {
+  certificateDraft,
+  clientOpinion,
+  certificateDraftApproval,
+} from './certification-release.validation.js';
 import {
   exchangePage,
   exchangePosition,
@@ -13,7 +23,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ne } from 'drizzle-orm';
 import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import type { ActorContext } from '../access/access.types.js';
 import {
@@ -34,6 +44,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   CERTIFICATION_STEPS,
   certificationCertificates,
+  certificationNumberObservations,
   certificationDeadlineSets,
   certificationDiscrepancyResolutions,
   certificationEvents,
@@ -1659,6 +1670,7 @@ export class CertificationService {
       ...input,
       role: 'approver',
       kind: 'decision',
+      statuses: ['open', 'refused'],
       step: 'decision',
       parse: certificationDecision,
       action: 'certification_case.decision_recorded',
@@ -1760,6 +1772,204 @@ export class CertificationService {
     });
   }
 
+  recordCertificateDraft(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'programme_manager',
+      kind: 'certificate_draft',
+      step: 'certificate_draft',
+      parse: certificateDraft,
+      action: 'certification_case.certificate_draft_recorded',
+      check: async ({ steps, companyId, payload }) => {
+        const decision = latest(steps, 'decision');
+        const data = latest(steps, 'certificate_data');
+        if (!decision || decisionVersion(decision).value.decision !== 'granted')
+          throw stepConflict(
+            'CERTIFICATION_NOT_GRANTED',
+            'A Certificate draft follows a granting decision.',
+          );
+        if (
+          decision.id !== payload.decisionVersionId ||
+          data?.id !== payload.certificateDataVersionId
+        )
+          throw stepConflict(
+            'CERTIFICATION_DRAFT_OUTDATED',
+            'The draft must state the latest decision and Certificate data versions.',
+          );
+        this.requireReleaseDate(payload.draftedOn);
+        if (payload.draftedOn < decisionVersion(decision).value.decidedOn)
+          throw stepConflict(
+            'CERTIFICATION_RELEASE_DATE',
+            'The draft follows the decision date.',
+          );
+        await this.requireAttachment(
+          input.actor,
+          companyId,
+          requireUuid(input.caseId),
+          payload.attachmentId,
+          ['certificate_draft'],
+        );
+        return {};
+      },
+    });
+  }
+
+  recordClientOpinion(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'programme_manager',
+      kind: 'client_opinion',
+      step: 'client_opinion',
+      parse: clientOpinion,
+      action: 'certification_case.client_opinion_recorded',
+      check: async ({ steps, companyId, payload }) => {
+        const draft = latest(steps, 'certificate_draft');
+        if (!draft || draft.id !== payload.draftVersionId)
+          throw stepConflict(
+            'CERTIFICATION_DRAFT_OUTDATED',
+            'Record the opinion against the current draft.',
+          );
+        this.requireReleaseDate(payload.businessDate);
+        if (
+          payload.businessDate < certificateDraftVersion(draft).value.draftedOn
+        )
+          throw stepConflict(
+            'CERTIFICATION_RELEASE_DATE',
+            'The opinion follows the draft date.',
+          );
+        const previous = steps
+          .filter((step) => step.step === 'client_opinion')
+          .map(clientOpinionVersion)
+          .filter((step) => step.value.draftVersionId === draft.id);
+        if (previous.some((step) => step.value.outcome === 'changes_requested'))
+          throw stepConflict(
+            'CERTIFICATION_NEW_DRAFT_REQUIRED',
+            'Record a new draft after changes are requested.',
+          );
+        if (payload.outcome !== 'skipped') {
+          const exchanges = await this.exchangeVersions(
+            input.actor,
+            companyId,
+            requireUuid(input.caseId),
+          );
+          const received = exchanges.find(
+            (exchange) => exchange.id === payload.exchangeRecordId,
+          );
+          const sent = currentExchanges(exchanges).find(
+            (exchange) =>
+              exchange.direction === 'sent' &&
+              exchange.itemKind === 'certificate_draft' &&
+              exchange.counterpart.kind === 'client' &&
+              exchange.attachmentIds.includes(
+                certificateDraftVersion(draft).value.attachmentId,
+              ),
+          );
+          if (
+            !received ||
+            received.direction !== 'received' ||
+            received.itemKind !== 'client_opinion' ||
+            received.counterpart.kind !== 'client' ||
+            !sent ||
+            received.businessDate !== payload.businessDate
+          )
+            throw stepConflict(
+              'CERTIFICATION_OPINION_EXCHANGE',
+              'Record the draft sending and exact received client opinion first.',
+            );
+          for (const id of received.attachmentIds)
+            await this.requireAttachment(
+              input.actor,
+              companyId,
+              requireUuid(input.caseId),
+              id,
+              ['client_opinion'],
+            );
+        }
+        return { outcome: payload.outcome };
+      },
+    });
+  }
+
+  approveCertificateDraft(input: CaseCommandInput): Promise<unknown> {
+    return this.versionedStep({
+      ...input,
+      role: 'approver',
+      kind: 'certificate_draft_approval',
+      step: 'certificate_draft_approval',
+      parse: certificateDraftApproval,
+      action: 'certification_case.certificate_draft_approved',
+      check: async ({ steps, companyId, payload, current }) => {
+        this.requireIndependent(input.actor, steps);
+        this.requireNotNamedOnTeam(steps, payload.onBehalf?.actedBy);
+        await this.requireAct(
+          input.actor,
+          companyId,
+          requireUuid(input.caseId),
+          payload.onBehalf,
+        );
+        this.requireReleaseDate(payload.approvedOn);
+        if (payload.onBehalf && payload.onBehalf.actedOn !== payload.approvedOn)
+          throw stepConflict(
+            'CERTIFICATION_RELEASE_DATE',
+            'The approval date must match the recorded act.',
+          );
+        const release = await this.release(
+          input.actor,
+          companyId,
+          current,
+          steps,
+        );
+        if (
+          release.currentDraftId !== payload.draftVersionId ||
+          release.approvalBlockers.length
+        )
+          throw new ConflictException({
+            code: 'CERTIFICATION_DRAFT_APPROVAL_PRECONDITIONS',
+            message: 'Resolve the draft approval preconditions.',
+            failures:
+              release.currentDraftId !== payload.draftVersionId
+                ? ['draft_outdated']
+                : release.approvalBlockers,
+          });
+        const opinion = release.opinions
+          .filter(
+            (entry) => entry.value.draftVersionId === payload.draftVersionId,
+          )
+          .at(-1);
+        if (opinion && payload.approvedOn < opinion.value.businessDate)
+          throw stepConflict(
+            'CERTIFICATION_RELEASE_DATE',
+            'Approval follows the client opinion.',
+          );
+        return {};
+      },
+    });
+  }
+
+  private requireReleaseDate(date: string): void {
+    if (date > latestBusinessDate(this.clock.now()))
+      throw stepConflict(
+        'CERTIFICATION_RELEASE_DATE',
+        'A release act cannot be dated after today.',
+      );
+  }
+
+  private async release(
+    actor: ActorContext,
+    companyId: string,
+    row: CaseRow,
+    steps: readonly StepRow[],
+  ) {
+    return certificateRelease({
+      steps: steps.map(stepVersion),
+      certificate: await this.certificate(actor, companyId, row.id),
+      exchanges: await this.exchangeVersions(actor, companyId, row.id),
+      discrepanciesOpen:
+        (await this.blocking(actor, companyId, row, steps)).length > 0,
+      today: this.clock.now().toISOString().slice(0, 10),
+    });
+  }
+
   /** The approver records the Certificate after a granting decision. */
   recordCertificate({
     actor,
@@ -1804,21 +2014,29 @@ export class CertificationService {
             'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
             'The agreed Certificate data must state exactly what the decision grants.',
           );
-        // Until the draft approval carries this gate (#1294), the Certificate
-        // is refused while a critical or unaccepted error Discrepancy is open.
-        const discrepancies = await this.blocking(
-          actor,
-          companyId,
-          current,
-          steps,
+        const release = await this.release(actor, companyId, current, steps);
+        const approvedDraft = release.drafts.find(
+          (draft) => draft.id === release.currentDraftId,
         );
-        if (discrepancies.length)
+        if (release.issuanceBlockers.length || !approvedDraft)
           throw new ConflictException({
-            code: 'CERTIFICATION_DISCREPANCIES_OPEN',
-            message:
-              'Resolve the open critical and error Discrepancies before recording the Certificate.',
-            discrepancies,
+            code: 'CERTIFICATION_CERTIFICATE_APPROVAL_REQUIRED',
+            message: 'Approve the current draft before issuance.',
+            failures: release.issuanceBlockers,
           });
+        if (input.number !== approvedDraft.value.number)
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_NUMBER_DIFFERS',
+            'Issue the approved draft number.',
+          );
+        if (
+          input.issuedOn < decision.decidedOn ||
+          input.issuedOn > latestBusinessDate(this.clock.now())
+        )
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_ISSUE_DATE',
+            'The issue date must be between the decision date and today.',
+          );
         const signatory = input.signedBy;
         this.requireNotNamedOnTeam(steps, signatory ?? undefined);
         await this.requireAttachment(
@@ -1853,6 +2071,8 @@ export class CertificationService {
             caseId: targetId,
             caseRevision: current.revision + 1,
             number: input.number,
+            issuedOn: input.issuedOn,
+            approvedDraftVersionId: approvedDraft.id,
             ...validity,
             texts: data.texts,
             signedBy: input.signedBy,
@@ -1870,7 +2090,7 @@ export class CertificationService {
           current,
           at: now,
           action: 'certification_case.certificate_recorded',
-          metadata: { validUntil: validity.validUntil },
+          metadata: {},
           status: 'certified',
         });
       },
@@ -1894,6 +2114,7 @@ export class CertificationService {
         current: CaseRow;
       }) => Promise<Record<string, string | number>>;
       status?: (payload: T) => CaseRow['status'] | undefined;
+      statuses?: readonly CaseRow['status'][];
     },
   ): Promise<unknown> {
     const idempotencyKey = requireIdempotencyKey(input.key);
@@ -1914,6 +2135,7 @@ export class CertificationService {
           companyId,
           targetId,
           command.expectedRevision,
+          input.statuses,
         );
         const steps = await this.steps(input.actor, companyId, targetId);
         const metadata = await input.check({
@@ -1929,6 +2151,18 @@ export class CertificationService {
             'CERTIFICATION_CORRECTION_REASON',
             'A new version states its reason; a first record has none.',
           );
+        // The draft is approved again after a corrected opinion. This is a
+        // new context, so truthful same-day confirmations may stay identical.
+        // Every other unchanged correction, including a still-valid approval,
+        // keeps the ordinary no-op guard.
+        const opinion = latest(steps, 'client_opinion');
+        const renewApproval =
+          input.step === 'certificate_draft_approval' &&
+          previous !== undefined &&
+          approvalNeedsRenewal({
+            approval: certificateDraftApprovalVersion(previous),
+            opinion: opinion ? clientOpinionVersion(opinion) : undefined,
+          });
         const status = input.status?.(command.payload);
         return this.appendStep({
           actor: input.actor,
@@ -1936,7 +2170,7 @@ export class CertificationService {
           current,
           step: input.step,
           version,
-          replaces: previous,
+          ...(renewApproval ? {} : { replaces: previous }),
           payload: command.payload,
           reason: command.reason,
           action: input.action,
@@ -1980,6 +2214,8 @@ export class CertificationService {
     const reviewed = latest(steps, 'dossier_review');
     if (!reviewed || !dossierComplete(dossierReviewVersion(reviewed).value))
       failures.push('DOSSIER_REVIEW_INCOMPLETE');
+    if (decision.decision === 'granted' && !latest(steps, 'certificate_data'))
+      failures.push('CERTIFICATE_DATA_MISSING');
     if (decision.decidedOn > latestBusinessDate(this.clock.now()))
       failures.push('DECISION_IN_FUTURE');
     return failures;
@@ -2052,10 +2288,20 @@ export class CertificationService {
         ),
       );
     if (!row) return null;
+    const release =
+      row.issuedOn === null && row.approvedDraftVersionId === null
+        ? { issuedOn: null, approvedDraftVersionId: null }
+        : row.issuedOn !== null && row.approvedDraftVersionId !== null
+          ? {
+              issuedOn: row.issuedOn,
+              approvedDraftVersionId: row.approvedDraftVersionId,
+            }
+          : unreadableCertificate();
     const texts = persisted(() => certificateTexts(row.texts));
     return {
       id: row.id,
       number: row.number,
+      ...release,
       validFrom: row.validFrom,
       validUntil: row.validUntil,
       firstSurveillanceBy: row.firstSurveillanceBy,
@@ -2382,6 +2628,13 @@ export class CertificationService {
       )
       .returning({ id: certificationCases.id });
     if (!updated) throw new InternalServerErrorException();
+    await this.observeCertificateNumbers(
+      actor,
+      companyId,
+      current.id,
+      revision,
+      now,
+    );
     await this.accountability.recordCertificationEvent({
       actor,
       companyId,
@@ -2392,6 +2645,59 @@ export class CertificationService {
       metadata: { revision, ...input.metadata },
     });
     return { caseId: current.id, at: now };
+  }
+
+  /** Snapshot only source presence for this Case's own numbers, in its command transaction. */
+  private async observeCertificateNumbers(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+    caseRevision: number,
+    at: Date,
+  ): Promise<void> {
+    const drafts = (await this.steps(actor, companyId, caseId))
+      .filter((step) => step.step === 'certificate_draft')
+      .map(certificateDraftVersion);
+    if (drafts.length === 0) return;
+    const ownNumbers = new Set(drafts.map((draft) => draft.value.number));
+    const issued = await this.issuedCompanyNumbers(actor, companyId, caseId);
+    await this.database.connection
+      .insert(certificationNumberObservations)
+      .values({
+        workspaceId: actor.workspaceId,
+        companyId,
+        caseId,
+        caseRevision,
+        numbers: issued
+          .filter((item) => ownNumbers.has(item.number))
+          .map((item) => item.number)
+          .sort(),
+        recordedAt: at,
+      });
+  }
+
+  private async issuedCompanyNumbers(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ) {
+    const rows = await this.database.connection
+      .select({
+        number: certificationCertificates.number,
+        recordedAt: certificationCertificates.recordedAt,
+      })
+      .from(certificationCertificates)
+      .where(
+        and(
+          eq(certificationCertificates.workspaceId, actor.workspaceId),
+          eq(certificationCertificates.companyId, companyId),
+          ne(certificationCertificates.caseId, caseId),
+        ),
+      );
+    return rows.map((issued) => ({
+      number: issued.number,
+      recordedAt: issued.recordedAt.toISOString(),
+    }));
   }
 
   private async lockOpenCase(
@@ -2509,6 +2815,7 @@ export class CertificationService {
         certificateDataVersion,
       ),
       certificate: await this.certificate(actor, companyId, caseId),
+      release: await this.release(actor, companyId, row, steps),
       stages: STAGE_STEPS.flatMap((step) => {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
@@ -2626,6 +2933,24 @@ export class CertificationService {
         records: finding.records,
       })),
       certificate,
+      issuedNumbers: await this.issuedCompanyNumbers(actor, companyId, row.id),
+      numberObservations: await this.database.connection
+        .select()
+        .from(certificationNumberObservations)
+        .where(
+          and(
+            eq(certificationNumberObservations.workspaceId, actor.workspaceId),
+            eq(certificationNumberObservations.companyId, companyId),
+            eq(certificationNumberObservations.caseId, row.id),
+          ),
+        )
+        .orderBy(asc(certificationNumberObservations.caseRevision))
+        .then((rows) =>
+          rows.map((observation) => ({
+            caseRevision: observation.caseRevision,
+            numbers: persisted(() => observedNumbers(observation.numbers)),
+          })),
+        ),
       revision: row.revision,
       status: row.status,
       manual: manual.map(manualDiscrepancyRecord),
@@ -3488,6 +3813,7 @@ export class CertificationService {
         ...(certificate ? [{ kind: 'certificate' as const, certificate }] : []),
       ],
       documents: documents.map(attachment),
+      release: await this.release(actor, companyId, row, steps),
       ...(await this.checkedSections(
         actor,
         companyId,
@@ -3848,6 +4174,11 @@ export class CertificationService {
       return await work();
     } catch (error) {
       if (error instanceof HttpException) throw error;
+      if (certificateNumberConflict(error))
+        throw stepConflict(
+          'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN',
+          'This Certificate number is already used in the Company.',
+        );
       throw new InternalServerErrorException(
         'Certification operation is unavailable.',
       );
@@ -3887,9 +4218,9 @@ function nextStep(
   if (!latest(steps, 'stage_2_report')) return 'stage_2_report';
   if (findings.some(findingBlocks)) return 'findings_follow_up';
   if (!latest(steps, 'recommendation')) return 'recommendation';
+  if (!latest(steps, 'certificate_data')) return 'certificate_data';
   if (!latest(steps, 'dossier_review')) return 'dossier_review';
   if (!latest(steps, 'decision')) return 'decision';
-  if (!latest(steps, 'certificate_data')) return 'certificate_data';
   return 'certificate';
 }
 
@@ -4372,6 +4703,12 @@ function stepVersion(row: StepRow): CertificationStepVersion {
       return decisionVersion(row);
     case 'certificate_data':
       return certificateDataVersion(row);
+    case 'certificate_draft':
+      return certificateDraftVersion(row);
+    case 'client_opinion':
+      return clientOpinionVersion(row);
+    case 'certificate_draft_approval':
+      return certificateDraftApprovalVersion(row);
   }
   return unexpectedStep(row.step);
 }
@@ -4393,4 +4730,56 @@ function registerStep(row: StepRow): CertificationRegisterEntry {
 
 function unexpectedStep(value: never): never {
   throw new InternalServerErrorException(`Unexpected step ${String(value)}`);
+}
+
+function certificateDraftVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'certificate_draft' }> {
+  return {
+    ...base(row),
+    step: 'certificate_draft',
+    value: persisted(() => certificateDraft(row.payload)),
+  };
+}
+function clientOpinionVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'client_opinion' }> {
+  return {
+    ...base(row),
+    step: 'client_opinion',
+    value: persisted(() => clientOpinion(row.payload)),
+  };
+}
+function certificateDraftApprovalVersion(
+  row: StepRow,
+): Extract<CertificationStepVersion, { step: 'certificate_draft_approval' }> {
+  return {
+    ...base(row),
+    step: 'certificate_draft_approval',
+    value: persisted(() => certificateDraftApproval(row.payload)),
+  };
+}
+
+/** Drizzle wraps the PostgreSQL error in a cause; inspect only its closed code/constraint. */
+function certificateNumberConflict(error: unknown): boolean {
+  let candidate = error;
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (candidate === null || typeof candidate !== 'object') return false;
+    if (
+      'code' in candidate &&
+      candidate.code === '23505' &&
+      'constraint' in candidate &&
+      candidate.constraint === 'certification_certificates_number_unique'
+    )
+      return true;
+    if (!('cause' in candidate)) return false;
+    candidate = candidate.cause;
+  }
+  return false;
+}
+
+function unreadableCertificate(): never {
+  throw new InternalServerErrorException(
+    'A recorded Certificate is unreadable.',
+  );
 }

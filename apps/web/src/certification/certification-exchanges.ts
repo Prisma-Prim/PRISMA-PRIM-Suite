@@ -485,8 +485,8 @@ export function parseDeadlineSet(value: unknown): DeadlineSetVersion {
 
 function exchangeRecord(value: unknown): ExchangeRecord {
   const body = object(value);
-  const current = exchangeVersion(body.current);
-  const versions = collection(body.versions).map(exchangeVersion);
+  const current = parseExchangeVersion(body.current);
+  const versions = collection(body.versions).map(parseExchangeVersion);
   const sequence = positive(body.sequence);
   if (
     current.sequence !== sequence ||
@@ -497,7 +497,7 @@ function exchangeRecord(value: unknown): ExchangeRecord {
   return { sequence, current, versions };
 }
 
-function exchangeVersion(value: unknown): ExchangeVersion {
+export function parseExchangeVersion(value: unknown): ExchangeVersion {
   const body = object(value);
   const counterpart = object(body.counterpart);
   const version = positive(body.version);

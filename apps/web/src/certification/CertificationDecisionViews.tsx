@@ -121,6 +121,8 @@ export function preconditionLabel(
       return 'preconditionGrantAgainstRecommendation';
     case 'DOSSIER_REVIEW_INCOMPLETE':
       return 'preconditionDossierReviewIncomplete';
+    case 'CERTIFICATE_DATA_MISSING':
+      return 'preconditionCertificateDataMissing';
     case 'DECISION_IN_FUTURE':
       return 'preconditionDecisionInFuture';
     case 'DISCREPANCIES_OPEN':

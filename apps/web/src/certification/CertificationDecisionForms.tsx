@@ -416,6 +416,7 @@ export function CertificateForm(
   props: FormBase<CertificateDraft> & {
     /** The register's attachments with the Certificate role. */
     pdfs: readonly CertificationAttachment[];
+    notBefore?: string;
   },
 ) {
   const { draft, onChange } = props;
@@ -429,12 +430,18 @@ export function CertificateForm(
       help="certificateHelp"
       submit="certificateSubmit"
     >
-      <TextInput
+      <div className="certification-field">
+        <label htmlFor={`${props.idPrefix}-number`}>
+          {copy('certificateNumber')}
+        </label>
+        <input id={`${props.idPrefix}-number`} value={draft.number} readOnly />
+      </div>
+      <DateField
         {...props}
-        field="number"
-        label="certificateNumber"
-        limit={DECISION_LIMITS.number}
-        required
+        field="issuedOn"
+        min={props.notBefore}
+        label="certificateIssuedOn"
+        max={latestBusinessDate()}
       />
       <label htmlFor={pdfId}>{copy('certificatePdf')}</label>
       <Select
@@ -719,6 +726,7 @@ function DateField<Field extends string, Draft extends Record<Field, string>>(
     field: Field;
     label: CertificationMessageKey;
     max?: string;
+    min?: string;
     optional?: boolean;
   },
 ) {
@@ -732,6 +740,7 @@ function DateField<Field extends string, Draft extends Record<Field, string>>(
         type="date"
         value={props.draft[props.field]}
         max={props.max}
+        min={props.min}
         disabled={props.disabled}
         required={!props.optional}
         aria-invalid={invalidField(

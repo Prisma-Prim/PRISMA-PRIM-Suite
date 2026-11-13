@@ -168,6 +168,41 @@ withPostgres(
       };
     }
 
+    async function current(caseId: string) {
+      return record(
+        await (
+          await fixture.call(
+            CERTIFICATION_OWNER,
+            `/certification-cases/${caseId}`,
+          )
+        ).json(),
+      );
+    }
+    async function send(
+      caseId: string,
+      subject: Subject,
+      path: string,
+      value: Record<string, unknown>,
+    ) {
+      return ok(subject, `/certification-cases/${caseId}/${path}`, {
+        expectedRevision: (await current(caseId)).revision,
+        ...value,
+      });
+    }
+    async function data(caseId: string, texts = TEXTS, reason?: string) {
+      const attachmentId = await fixture.attach(
+        caseId,
+        'certificate_data',
+        Number((await current(caseId)).revision),
+      );
+      return send(caseId, CERTIFICATION_OWNER, 'certificate-data', {
+        texts,
+        agreedOn: '2026-10-21',
+        agreementAttachmentId: attachmentId,
+        ...(reason ? { reason } : {}),
+      });
+    }
+
     beforeAll(async () => {
       if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
       fixture = await openCertificationFixture({
@@ -181,71 +216,126 @@ withPostgres(
       await fixture?.close();
     });
 
+    it('refuses a granting decision without recorded Certificate data', async () => {
+      const caseId = await recommendedCase();
+      const base = `/certification-cases/${caseId}`;
+      await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
+        expectedRevision: 17,
+        ...review(),
+      });
+      const before = await fixture.eventCount(caseId);
+      const denied = await post(
+        CERTIFICATION_APPROVER,
+        `${base}/decision`,
+        decision(18),
+      );
+      expect(denied.status).toBe(409);
+      expect(record(await denied.json()).failures).toContain(
+        'CERTIFICATE_DATA_MISSING',
+      );
+      expect(await fixture.eventCount(caseId)).toBe(before);
+    });
+
     it('decides and records the Certificate with its computed validity', async () => {
       const caseId = await recommendedCase();
       const base = `/certification-cases/${caseId}`;
+      await data(caseId);
       expect(
-        await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
-          expectedRevision: 17,
-          ...review(),
-        }),
-      ).toMatchObject({ revision: 18, nextStep: 'decision' });
+        await send(caseId, CERTIFICATION_APPROVER, 'dossier-review', review()),
+      ).toMatchObject({ nextStep: 'decision' });
+      const state = await current(caseId);
       expect(
-        await ok(CERTIFICATION_APPROVER, `${base}/decision`, decision(18)),
+        await send(
+          caseId,
+          CERTIFICATION_APPROVER,
+          'decision',
+          decision(Number(state.revision)),
+        ),
       ).toMatchObject({
-        revision: 19,
-        nextStep: 'certificate_data',
+        nextStep: 'certificate',
         decision: { value: { decision: 'granted', decidedOn: '2026-11-06' } },
       });
-      // What the decision relied on is frozen once it is recorded.
-      const evidence = await fixture.attach(caseId, 'evidence', 19);
-      const lateFinding = await post(
-        CERTIFICATION_AUDITOR,
-        `${base}/findings`,
+      const evidence = await fixture.attach(
+        caseId,
+        'evidence',
+        Number((await current(caseId)).revision),
+      );
+      const revision = (await current(caseId)).revision;
+      for (const [path, value] of [
+        [
+          'findings',
+          {
+            stage: 'stage_2',
+            classification: 'major_nonconformity',
+            clause: '8.5.1',
+            area: 'Receiving',
+            statement: 'Found after the decision.',
+            evidenceAttachmentIds: [evidence],
+          },
+        ],
+        [
+          'stages/stage-2/report',
+          {
+            reason: 'Changed after decision',
+            reportDate: '2026-10-21',
+            summary: 'Revised',
+            reportAttachmentId: evidence,
+          },
+        ],
+      ] satisfies [string, Record<string, unknown>][]) {
+        const late = await post(CERTIFICATION_AUDITOR, `${base}/${path}`, {
+          expectedRevision: revision,
+          ...value,
+        });
+        expect(late.status).toBe(409);
+        expect(record(await late.json()).code).toBe('CERTIFICATION_DECIDED');
+      }
+      const draftAttachment = await fixture.attach(
+        caseId,
+        'certificate_draft',
+        Number(revision),
+      );
+      const beforeDraft = await current(caseId);
+      const drafted = await send(
+        caseId,
+        CERTIFICATION_OWNER,
+        'certificate-draft',
         {
-          expectedRevision: 20,
-          stage: 'stage_2',
-          classification: 'major_nonconformity',
-          clause: '8.5.1',
-          area: 'Receiving',
-          statement: 'Found after the decision.',
-          evidenceAttachmentIds: [evidence],
-        },
-      );
-      expect(lateFinding.status).toBe(409);
-      expect(record(await lateFinding.json()).code).toBe(
-        'CERTIFICATION_DECIDED',
-      );
-      const lateReport = await post(
-        CERTIFICATION_AUDITOR,
-        `${base}/stages/stage-2/report`,
-        {
-          expectedRevision: 20,
-          reason: 'Changed after the decision.',
-          reportDate: '2026-10-21',
-          summary: 'Stage 2 completed, revised.',
-          reportAttachmentId: evidence,
-        },
-      );
-      expect(record(await lateReport.json()).code).toBe(
-        'CERTIFICATION_DECIDED',
-      );
-      const form = await fixture.attach(caseId, 'certificate_data', 20);
-      expect(
-        await ok(CERTIFICATION_OWNER, `${base}/certificate-data`, {
-          expectedRevision: 21,
-          texts: TEXTS,
-          agreedOn: '2026-10-21',
-          agreementAttachmentId: form,
-        }),
-      ).toMatchObject({ revision: 22, nextStep: 'certificate' });
-      const pdf = await fixture.attach(caseId, 'certificate', 22);
-      const certified = await ok(
-        CERTIFICATION_APPROVER,
-        `${base}/certificate`,
-        {
-          expectedRevision: 23,
+          attachmentId: draftAttachment,
           number: 'DEMO-0001',
+          draftedOn: '2026-11-06',
+          decisionVersionId: record(beforeDraft.decision).id,
+          certificateDataVersionId: record(beforeDraft.certificateData).id,
+        },
+      );
+      const draftVersionId = record(drafted.release).currentDraftId;
+      await send(caseId, CERTIFICATION_OWNER, 'client-opinion', {
+        draftVersionId,
+        outcome: 'skipped',
+        skipReason: 'texts_already_agreed',
+        note: null,
+        businessDate: '2026-11-06',
+      });
+      await send(caseId, CERTIFICATION_APPROVER, 'certificate-draft-approval', {
+        draftVersionId,
+        approvedOn: '2026-11-06',
+        textsConfirmed: true,
+        numberConfirmed: true,
+        validityConfirmed: true,
+        independenceAttested: true,
+      });
+      const pdf = await fixture.attach(
+        caseId,
+        'certificate',
+        Number((await current(caseId)).revision),
+      );
+      const certified = await send(
+        caseId,
+        CERTIFICATION_APPROVER,
+        'certificate',
+        {
+          number: 'DEMO-0001',
+          issuedOn: '2026-11-06',
           attachmentId: pdf,
           signedBy: 'Decision Maker Demo',
           signedByFunction: 'Head of the certification body',
@@ -265,72 +355,15 @@ withPostgres(
           independenceAttested: true,
         },
       });
-      expect(await fixture.eventCount(caseId)).toBe(24);
-      const read = record(
-        await (await fixture.call(CERTIFICATION_OWNER, base)).json(),
-      );
-      expect(read).toMatchObject({
+      expect(await current(caseId)).toMatchObject({
         certificate: { number: 'DEMO-0001', independenceAttested: true },
       });
       const second = await post(
         CERTIFICATION_APPROVER,
         `${base}/decision`,
-        decision(24),
+        decision(Number(certified.revision)),
       );
       expect(second.status).toBe(409);
-      const other = await recommendedCase();
-      const otherBase = `/certification-cases/${other}`;
-      await ok(CERTIFICATION_APPROVER, `${otherBase}/dossier-review`, {
-        expectedRevision: 17,
-        ...review(),
-      });
-      await ok(CERTIFICATION_APPROVER, `${otherBase}/decision`, decision(18));
-      const otherForm = await fixture.attach(other, 'certificate_data', 19);
-      await ok(CERTIFICATION_OWNER, `${otherBase}/certificate-data`, {
-        expectedRevision: 20,
-        texts: [{ ...TEXTS[1], scope: 'Production of milk' }],
-        agreedOn: '2026-10-21',
-        agreementAttachmentId: otherForm,
-      });
-      const otherPdf = await fixture.attach(other, 'certificate', 21);
-      const certificate = {
-        number: 'DEMO-0001',
-        attachmentId: otherPdf,
-        signedBy: null,
-        signedByFunction: null,
-        independenceAttested: true,
-      };
-      const differs = await post(
-        CERTIFICATION_APPROVER,
-        `${otherBase}/certificate`,
-        { expectedRevision: 22, ...certificate },
-      );
-      expect(record(await differs.json()).code).toBe(
-        'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
-      );
-      const unattested = await post(
-        CERTIFICATION_APPROVER,
-        `${otherBase}/certificate`,
-        { expectedRevision: 22, ...certificate, independenceAttested: false },
-      );
-      expect(record(await unattested.json()).code).toBe(
-        'CERTIFICATION_INDEPENDENCE_ATTESTATION',
-      );
-      await ok(CERTIFICATION_OWNER, `${otherBase}/certificate-data`, {
-        expectedRevision: 22,
-        reason: 'Texts aligned with the decision.',
-        texts: TEXTS,
-        agreedOn: '2026-10-22',
-        agreementAttachmentId: otherForm,
-      });
-      const duplicate = await post(
-        CERTIFICATION_APPROVER,
-        `${otherBase}/certificate`,
-        { expectedRevision: 23, ...certificate },
-      );
-      expect(record(await duplicate.json()).code).toBe(
-        'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN',
-      );
     });
 
     it('keeps every team member, past ones included, apart from the review and the decision', async () => {
@@ -583,12 +616,21 @@ withPostgres(
     it('corrects the decided texts with a reason and keeps the decided outcome', async () => {
       const caseId = await recommendedCase();
       const base = `/certification-cases/${caseId}`;
-      await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
-        expectedRevision: 17,
-        ...review(),
-      });
-      await ok(CERTIFICATION_APPROVER, `${base}/decision`, decision(18));
-      const corrected = decision(19, {
+      await data(caseId);
+      await send(caseId, CERTIFICATION_APPROVER, 'dossier-review', review());
+      await send(
+        caseId,
+        CERTIFICATION_APPROVER,
+        'decision',
+        decision(Number((await current(caseId)).revision)),
+      );
+      await data(
+        caseId,
+        [TEXTS[0]],
+        'The English text is not part of the agreed Certificate.',
+      );
+      const revision = Number((await current(caseId)).revision);
+      const corrected = decision(revision, {
         grantedTexts: [TEXTS[0]],
         decidedOn: '2026-11-07',
       });
@@ -600,28 +642,30 @@ withPostgres(
       expect(record(await unexplained.json()).code).toBe(
         'CERTIFICATION_CORRECTION_REASON',
       );
-      expect(
-        await ok(CERTIFICATION_APPROVER, `${base}/decision`, {
-          ...corrected,
-          reason: 'The English text is not part of the decision.',
-        }),
-      ).toMatchObject({
-        revision: 20,
-        nextStep: 'certificate_data',
+      const changed = await send(caseId, CERTIFICATION_APPROVER, 'decision', {
+        ...corrected,
+        reason: 'The English text is not part of the decision.',
+      });
+      expect(changed).toMatchObject({
+        nextStep: 'certificate',
         decision: {
           version: 2,
           value: { decision: 'granted', grantedTexts: [TEXTS[0]] },
         },
       });
+      const before = await fixture.eventCount(caseId);
       const reversed = await post(CERTIFICATION_APPROVER, `${base}/decision`, {
-        ...decision(20, { decision: 'refused', grantedTexts: null }),
+        ...decision(Number(changed.revision), {
+          decision: 'refused',
+          grantedTexts: null,
+        }),
         reason: 'Outcome changed.',
       });
       expect(reversed.status).toBe(409);
       expect(record(await reversed.json()).code).toBe(
         'CERTIFICATION_DECISION_OUTCOME_FIXED',
       );
-      expect(await fixture.eventCount(caseId)).toBe(20);
+      expect(await fixture.eventCount(caseId)).toBe(before);
     });
 
     it('refuses a decision with unmet preconditions, against the recommendation or by a team member', async () => {
@@ -647,7 +691,10 @@ withPostgres(
       );
       const earlyBody = record(await early.json());
       expect(earlyBody.code).toBe('CERTIFICATION_DECISION_PRECONDITIONS');
-      expect(earlyBody.failures).toEqual(['DOSSIER_REVIEW_INCOMPLETE']);
+      expect(earlyBody.failures).toEqual([
+        'DOSSIER_REVIEW_INCOMPLETE',
+        'CERTIFICATE_DATA_MISSING',
+      ]);
       await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
         expectedRevision: 17,
         ...review('participant_lists'),
@@ -659,6 +706,7 @@ withPostgres(
       );
       expect(record(await incomplete.json()).failures).toEqual([
         'DOSSIER_REVIEW_INCOMPLETE',
+        'CERTIFICATE_DATA_MISSING',
         'DECISION_IN_FUTURE',
       ]);
       const namedOnTeam = await post(
@@ -704,6 +752,7 @@ withPostgres(
       );
       expect(record(await against.json()).failures).toEqual([
         'GRANT_AGAINST_RECOMMENDATION',
+        'CERTIFICATE_DATA_MISSING',
       ]);
       const refused = await ok(
         CERTIFICATION_APPROVER,
@@ -715,11 +764,30 @@ withPostgres(
         }),
       );
       expect(refused).toMatchObject({ status: 'refused', nextStep: null });
+      const correction = await ok(
+        CERTIFICATION_APPROVER,
+        `${negativeBase}/decision`,
+        {
+          ...decision(19, {
+            decision: 'refused',
+            grantedTexts: null,
+            rationale: 'Recommendation not to grant accepted.',
+            decidedBy: 'Corrected Independent Decider',
+          }),
+          reason: 'Correct the decider reference.',
+        },
+      );
+      expect(correction).toMatchObject({
+        status: 'refused',
+        nextStep: null,
+        decision: { version: 2, value: { decision: 'refused' } },
+      });
+
       const closed = await post(
         CERTIFICATION_OWNER,
         `${negativeBase}/certificate-data`,
         {
-          expectedRevision: 19,
+          expectedRevision: 20,
           texts: TEXTS,
           agreedOn: '2026-10-21',
           agreementAttachmentId: '00000000-0000-4000-8000-000000000001',

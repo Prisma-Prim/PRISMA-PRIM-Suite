@@ -262,6 +262,7 @@ export function certificateCommand(value: unknown): {
   expectedRevision: number;
   number: string;
   attachmentId: string;
+  issuedOn: string;
   signedBy: string | null;
   signedByFunction: string | null;
   /** The recording approver attests the signatory is not on the audit team. */
@@ -271,6 +272,7 @@ export function certificateCommand(value: unknown): {
     'expectedRevision',
     'number',
     'attachmentId',
+    'issuedOn',
     'signedBy',
     'signedByFunction',
     'independenceAttested',
@@ -290,6 +292,7 @@ export function certificateCommand(value: unknown): {
     expectedRevision: body.expectedRevision,
     number: text(body.number, 64).trim(),
     attachmentId: requireUuid(body.attachmentId),
+    issuedOn: date(body.issuedOn),
     signedBy:
       body.signedBy === undefined || body.signedBy === null
         ? null

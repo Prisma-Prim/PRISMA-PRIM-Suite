@@ -423,3 +423,29 @@
     flex: 1 1 100%;
   }
 }
+
+.certification-release-steps {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.certification-release-steps > li {
+  border: 1px solid var(--border, #dce3eb);
+  border-radius: 0.6rem;
+  padding: 1rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.certification-release-steps h6 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+.certification-release-steps form {
+  display: grid;
+  gap: 0.75rem;
+}
+.certification-release-steps select {
+  max-width: 100%;
+  min-width: 0;
+}

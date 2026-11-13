@@ -71,6 +71,13 @@ function ready(overrides: Partial<DecisionContext> = {}): DecisionContext {
       },
     },
     dossierReview: { value: complete },
+    certificateData: {
+      value: {
+        texts: CERTIFICATE_TEXTS,
+        agreedOn: '2026-11-05',
+        agreementAttachmentId: 'data-form',
+      },
+    },
     consistency: {
       ruleSetVersion: 'dossier-consistency-2026-11',
       counts: { critical: 0, error: 0, toClarify: 0 },

@@ -1,3 +1,8 @@
+import {
+  parseCertificateDraft,
+  parseClientOpinion,
+  parseDraftApproval,
+} from './certification-release';
 import { vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -347,7 +352,13 @@ const STAGE_STEPS = [
 ] as const;
 /** The steps of the recommendation, review, decision and Certificate data. */
 type DecisionStep =
-  'recommendation' | 'dossier_review' | 'decision' | 'certificate_data';
+  | 'recommendation'
+  | 'dossier_review'
+  | 'decision'
+  | 'certificate_data'
+  | 'certificate_draft'
+  | 'client_opinion'
+  | 'certificate_draft_approval';
 type Step = {
   id: string;
   step:
@@ -412,6 +423,8 @@ const FINDING_CLASSIFICATION_VALUES = [
 ];
 type StoredCertificate = {
   id: string;
+  issuedOn: string | null;
+  approvedDraftVersionId: string | null;
   number: string;
   validFrom: string;
   validUntil: string;
@@ -1070,7 +1083,7 @@ export class FakeCertificationServer {
         : this.reportStage(staged, which, request.body);
     }
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/certificate-draft|\/client-opinion|\/certificate-draft-approval|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
@@ -1119,6 +1132,16 @@ export class FakeCertificationServer {
         return this.decide(stored, request.body);
       case '/certificate-data':
         return this.agreeCertificateData(stored, request.body);
+      case '/certificate-draft':
+        return this.recordRelease(stored, 'certificate_draft', request.body);
+      case '/client-opinion':
+        return this.recordRelease(stored, 'client_opinion', request.body);
+      case '/certificate-draft-approval':
+        return this.recordRelease(
+          stored,
+          'certificate_draft_approval',
+          request.body,
+        );
       case '/certificate':
         return this.recordCertificate(stored, request.body);
       case '/discrepancies':
@@ -1325,7 +1348,10 @@ export class FakeCertificationServer {
       !(additionalInformation === null || bounded(additionalInformation, 4000))
     )
       return refusal(400, 'INVALID_CERTIFICATION_INPUT');
-    const closed = this.lockOpen(stored, expectedRevision);
+    const closed =
+      stored.status === 'refused' && expectedRevision === stored.revision
+        ? undefined
+        : this.lockOpen(stored, expectedRevision);
     if (closed) return closed;
     if (this.onTeam(stored)) return refusal(409, 'CERTIFICATION_INDEPENDENCE');
     const previous = latestStep(stored, 'decision');
@@ -1422,6 +1448,7 @@ export class FakeCertificationServer {
     const {
       expectedRevision,
       number,
+      issuedOn,
       attachmentId,
       signedBy = null,
       signedByFunction = null,
@@ -1434,6 +1461,7 @@ export class FakeCertificationServer {
       Object.keys(rest).length > 0 ||
       typeof expectedRevision !== 'number' ||
       !bounded(number, 64) ||
+      !calendarDate(issuedOn) ||
       !nonblank(attachmentId) ||
       !(signedBy === null || bounded(signedBy, 200)) ||
       !(signedByFunction === null || bounded(signedByFunction, 200))
@@ -1445,6 +1473,18 @@ export class FakeCertificationServer {
     const decided = latestStep(stored, 'decision');
     if (decided?.value.decision !== 'granted')
       return refusal(409, 'CERTIFICATION_NOT_GRANTED');
+    const release = this.release(stored);
+    if (release.issuanceBlockers.length)
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_APPROVAL_REQUIRED');
+    const draft = latestStep(stored, 'certificate_draft');
+    if (draft?.value.number !== number)
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_NUMBER_DIFFERS');
+    if (
+      !calendarDate(issuedOn) ||
+      issuedOn < String(decided.value.decidedOn) ||
+      issuedOn > this.latestBusinessDate()
+    )
+      return refusal(409, 'CERTIFICATION_CERTIFICATE_ISSUE_DATE');
     const agreed = latestStep(stored, 'certificate_data');
     if (!agreed) return refusal(409, 'CERTIFICATION_CERTIFICATE_DATA_MISSING');
     const texts = list(agreed.value.texts);
@@ -1466,6 +1506,8 @@ export class FakeCertificationServer {
       String(decided.value.decidedOn),
       {
         number: trimmed,
+        issuedOn,
+        approvedDraftVersionId: draft.id,
         attachmentId,
         signedBy,
         signedByFunction,
@@ -1483,6 +1525,8 @@ export class FakeCertificationServer {
     decidedOn: string,
     input: {
       number: string;
+      issuedOn?: string | null;
+      approvedDraftVersionId?: string | null;
       attachmentId: string;
       signedBy: string | null;
       signedByFunction: string | null;
@@ -1496,12 +1540,205 @@ export class FakeCertificationServer {
     stored.certificate = {
       id: `11310000-0000-4000-8000-9000000000${String(++this.sequence).padStart(2, '0')}`,
       ...input,
+      issuedOn: input.issuedOn ?? null,
+      approvedDraftVersionId: input.approvedDraftVersionId ?? null,
       validFrom: decidedOn,
       validUntil: addDays(addMonths(decidedOn, 36), -1),
       firstSurveillanceBy: addMonths(decidedOn, 12),
       recordedBy: by,
       recordedAt: this.tick(),
     };
+  }
+
+  /** Complete release facts for the response, independent of paged exchanges. */
+  private release(stored: StoredCase) {
+    const drafts = stored.steps.filter(
+      (entry) => entry.step === 'certificate_draft',
+    );
+    const opinions = stored.steps.filter(
+      (entry) => entry.step === 'client_opinion',
+    );
+    const approvals = stored.steps.filter(
+      (entry) => entry.step === 'certificate_draft_approval',
+    );
+    const draft = drafts.at(-1);
+    const decision = latestStep(stored, 'decision');
+    const data = latestStep(stored, 'certificate_data');
+    const outdated =
+      draft !== undefined &&
+      (draft.value.decisionVersionId !== decision?.id ||
+        draft.value.certificateDataVersionId !== data?.id);
+    const opinion = opinions
+      .filter((entry) => entry.value.draftVersionId === draft?.id)
+      .at(-1);
+    const approval = approvals
+      .filter((entry) => entry.value.draftVersionId === draft?.id)
+      .at(-1);
+    const approvalBlockers: string[] = [];
+    if (decision?.value.decision !== 'granted')
+      approvalBlockers.push('not_granted');
+    if (!draft) approvalBlockers.push('draft_missing');
+    if (outdated) approvalBlockers.push('draft_outdated');
+    if (!opinion) approvalBlockers.push('opinion_missing');
+    else if (opinion.value.outcome === 'changes_requested')
+      approvalBlockers.push('changes_requested');
+    if (
+      decision?.value.decision === 'granted' &&
+      data &&
+      !sameTexts(list(data.value.texts), list(decision.value.grantedTexts))
+    )
+      approvalBlockers.push('texts_differ');
+    if (stored.consistency.open.some((entry) => entry.verdict !== 'to_clarify'))
+      approvalBlockers.push('discrepancies_open');
+    const issuanceBlockers = approvalBlockers.filter(
+      (entry) => entry !== 'discrepancies_open',
+    );
+    if (!approval || (opinion && opinion.caseRevision > approval.caseRevision))
+      issuanceBlockers.push('approval_missing');
+    const issued = stored.certificate;
+    const transmission =
+      stored.exchanges.records
+        .flatMap((entry) => {
+          const version = entry.versions.at(-1);
+          return version &&
+            version.direction === 'sent' &&
+            version.itemKind === 'certificate' &&
+            record(version.counterpart).kind === 'client' &&
+            list(version.attachmentIds).includes(issued?.attachmentId)
+            ? [version]
+            : [];
+        })
+        .at(0) ?? null;
+    return {
+      validity:
+        decision?.value.decision === 'granted'
+          ? {
+              validFrom: String(decision.value.decidedOn),
+              validUntil: addDays(
+                addMonths(String(decision.value.decidedOn), 36),
+                -1,
+              ),
+              firstSurveillanceBy: addMonths(
+                String(decision.value.decidedOn),
+                12,
+              ),
+            }
+          : null,
+      drafts,
+      opinions,
+      approvals,
+      currentDraftId: draft?.id ?? null,
+      outdated,
+      approvalBlockers: issued ? [] : approvalBlockers,
+      issuanceBlockers: issued ? [] : issuanceBlockers,
+      transmission,
+      daysSinceIssuance:
+        issued?.issuedOn && !transmission
+          ? Math.max(
+              0,
+              Math.floor(
+                (Date.parse(this.latestBusinessDate()) -
+                  Date.parse(issued.issuedOn)) /
+                  86400000,
+              ),
+            )
+          : null,
+      legacyIssuance: issued !== null && issued.issuedOn === null,
+    };
+  }
+
+  private recordRelease(
+    stored: StoredCase,
+    step: 'certificate_draft' | 'client_opinion' | 'certificate_draft_approval',
+    body: unknown,
+  ): Response {
+    if (
+      step === 'certificate_draft_approval'
+        ? !holdsApprover(this.actor())
+        : !holdsManager(this.actor())
+    )
+      return new Response(null, { status: 403 });
+    const command = record(body);
+    const closed = this.lockOpen(stored, command.expectedRevision);
+    if (closed) return closed;
+    if (latestStep(stored, 'decision')?.value.decision !== 'granted')
+      return refusal(409, 'CERTIFICATION_NOT_GRANTED');
+    const previous = latestStep(stored, step);
+    const reason = nonblank(command.reason) ? command.reason : null;
+    if ((previous === undefined) !== (reason === null))
+      return refusal(409, 'CERTIFICATION_CORRECTION_REASON');
+    let value: Record<string, unknown>;
+    try {
+      if (step === 'certificate_draft') {
+        const draft = parseCertificateDraft(command);
+        if (
+          draft.decisionVersionId !== latestStep(stored, 'decision')?.id ||
+          draft.certificateDataVersionId !==
+            latestStep(stored, 'certificate_data')?.id
+        )
+          return refusal(409, 'CERTIFICATION_DRAFT_OUTDATED');
+        if (
+          !this.hasAttachment(stored, draft.attachmentId, ['certificate_draft'])
+        )
+          return refusal(409, 'CERTIFICATION_ATTACHMENT_ROLE');
+        value = { ...draft };
+      } else if (step === 'client_opinion') {
+        const opinion = parseClientOpinion(command);
+        const draft = latestStep(stored, 'certificate_draft');
+        if (
+          draft?.id !== opinion.draftVersionId ||
+          this.release(stored).outdated
+        )
+          return refusal(409, 'CERTIFICATION_DRAFT_OUTDATED');
+        if (
+          this.release(stored).opinions.some(
+            (entry) =>
+              entry.value.draftVersionId === opinion.draftVersionId &&
+              entry.value.outcome === 'changes_requested',
+          )
+        )
+          return refusal(409, 'CERTIFICATION_DRAFT_CHANGES_REQUESTED');
+        if (opinion.outcome !== 'skipped') {
+          const received = stored.exchanges.records
+            .flatMap((entry) => entry.versions)
+            .find((entry) => entry.id === opinion.exchangeRecordId);
+          if (
+            !received ||
+            received.direction !== 'received' ||
+            received.itemKind !== 'client_opinion' ||
+            record(received.counterpart).kind !== 'client'
+          )
+            return refusal(409, 'CERTIFICATION_OPINION_EXCHANGE_REQUIRED');
+        }
+        value = { ...opinion };
+      } else {
+        const approval = parseDraftApproval(command);
+        if (
+          this.onTeam(stored) ||
+          (approval.onBehalf &&
+            this.namesTeamMember(stored, approval.onBehalf.actedBy))
+        )
+          return refusal(409, 'CERTIFICATION_INDEPENDENCE');
+        if (
+          approval.draftVersionId !==
+            latestStep(stored, 'certificate_draft')?.id ||
+          this.release(stored).approvalBlockers.length
+        )
+          return refusal(409, 'CERTIFICATION_DRAFT_APPROVAL_PRECONDITIONS');
+        value = { ...approval };
+      }
+    } catch {
+      return refusal(400, 'INVALID_CERTIFICATION_INPUT');
+    }
+    if (
+      step === 'certificate_draft_approval' &&
+      previous &&
+      sameValue(previous.value, value) &&
+      !this.release(stored).issuanceBlockers.includes('approval_missing')
+    )
+      return refusal(409, 'CERTIFICATION_CORRECTION_UNCHANGED');
+    this.append(stored, step, value, reason, me);
+    return Response.json(this.detail(stored), { status: 201 });
   }
 
   /** The stale and closed refusals every Case command checks first. */
@@ -1570,6 +1807,8 @@ export class FakeCertificationServer {
       )
     )
       failures.push('DOSSIER_REVIEW_INCOMPLETE');
+    if (decision === 'granted' && !latestStep(stored, 'certificate_data'))
+      failures.push('CERTIFICATE_DATA_MISSING');
     if (decidedOn > this.latestBusinessDate())
       failures.push('DECISION_IN_FUTURE');
     return failures;
@@ -2685,12 +2924,12 @@ export class FakeCertificationServer {
                 ? 'findings_follow_up'
                 : !latest('recommendation')
                   ? 'recommendation'
-                  : !latest('dossier_review')
-                    ? 'dossier_review'
-                    : !latest('decision')
-                      ? 'decision'
-                      : !latest('certificate_data')
-                        ? 'certificate_data'
+                  : !latest('certificate_data')
+                    ? 'certificate_data'
+                    : !latest('dossier_review')
+                      ? 'dossier_review'
+                      : !latest('decision')
+                        ? 'decision'
                         : 'certificate';
     return {
       id: stored.id,
@@ -2748,6 +2987,7 @@ export class FakeCertificationServer {
       decision: latest('decision'),
       certificateData: latest('certificate_data'),
       certificate: stored.certificate,
+      release: this.release(stored),
       consistency: {
         ruleSetVersion: 'dossier-consistency-2026-11',
         counts: {

@@ -31,7 +31,11 @@ export interface ConsistencyLabels {
     reason: string;
     note: string;
   };
-  blocks: { decision: string; certificate: string; nothing: string };
+  blocks: {
+    decision: string;
+    certificate_draft_approval: string;
+    nothing: string;
+  };
   resolutions: {
     acceptance: string;
     justification: string;
@@ -46,6 +50,7 @@ export interface ConsistencyLabels {
     dateOrder: string;
     dossierItem: string;
     certificateText: string;
+    certificateNumber: string;
     addressNumbers: string;
     documentVersion: string;
     planSending: string;
@@ -92,6 +97,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R09: 'Dossier item answered missing or not applicable while recorded',
       R10: 'Record changed after the dossier review',
       R11: 'Granted texts against the agreed Certificate data',
+      R13: 'Draft number against issued Certificates',
       R12: 'House numbers and postal codes of the addresses',
       R14: 'Record relying on an older Document Version',
       R15: 'Outgoing reference carried by several sendings',
@@ -119,7 +125,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
     },
     blocks: {
       decision: 'The Certification Decision',
-      certificate: 'The recording of the Certificate',
+      certificate_draft_approval: 'Draft approval',
       nothing: 'Nothing',
     },
     resolutions: {
@@ -129,6 +135,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       resolution: 'Corrected',
     },
     subjects: {
+      certificateNumber: 'Certificate number',
       durationProposal: 'Duration proposal',
       priorCertification: 'Prior-certification reduction',
       stageShare: 'Stage share of the duration',
@@ -149,6 +156,8 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       language: 'language',
     },
     dates: {
+      draft_sent: 'Draft sent',
+      client_opinion: 'Client opinion',
       agreement_signed: 'Agreement signed',
       team_approved: 'Team approved on behalf',
       stage_1_start: 'Stage 1 first day',
@@ -214,6 +223,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R09: 'Élément du dossier déclaré manquant ou sans objet alors qu’il est enregistré',
       R10: 'Enregistrement modifié après la revue du dossier',
       R11: 'Textes accordés par rapport aux données du certificat convenues',
+      R13: 'Numéro du projet comparé aux certificats émis',
       R12: 'Numéros de rue et codes postaux des adresses',
       R14: 'Enregistrement fondé sur une version de document antérieure',
       R15: 'Référence sortante portée par plusieurs envois',
@@ -241,7 +251,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
     },
     blocks: {
       decision: 'La décision de certification',
-      certificate: 'L’enregistrement du certificat',
+      certificate_draft_approval: 'Approbation du projet',
       nothing: 'Rien',
     },
     resolutions: {
@@ -251,6 +261,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       resolution: 'Corrigée',
     },
     subjects: {
+      certificateNumber: 'Numéro du certificat',
       durationProposal: 'Proposition de durée',
       priorCertification: 'Réduction pour certification antérieure',
       stageShare: 'Part de l’étape dans la durée',
@@ -271,6 +282,8 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       language: 'langue',
     },
     dates: {
+      draft_sent: 'Projet envoyé',
+      client_opinion: 'Avis du client',
       agreement_signed: 'Signature du contrat',
       team_approved: 'Équipe approuvée au nom de l’organisme',
       stage_1_start: 'Premier jour de l’étape 1',
@@ -336,6 +349,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R09: 'Element al dosarului declarat lipsă sau neaplicabil deși este înregistrat',
       R10: 'Înregistrare modificată după analiza dosarului',
       R11: 'Textele acordate față de datele certificatului convenite',
+      R13: 'Numărul proiectului față de certificatele emise',
       R12: 'Numerele de stradă și codurile poștale ale adreselor',
       R14: 'Înregistrare bazată pe o versiune anterioară a documentului',
       R15: 'Referință de ieșire purtată de mai multe trimiteri',
@@ -363,7 +377,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
     },
     blocks: {
       decision: 'Decizia de certificare',
-      certificate: 'Înregistrarea certificatului',
+      certificate_draft_approval: 'Aprobarea proiectului',
       nothing: 'Nimic',
     },
     resolutions: {
@@ -373,6 +387,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       resolution: 'Corectată',
     },
     subjects: {
+      certificateNumber: 'Numărul certificatului',
       durationProposal: 'Propunerea de durată',
       priorCertification: 'Reducerea pentru certificare anterioară',
       stageShare: 'Cota etapei din durată',
@@ -393,6 +408,8 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       language: 'limbă',
     },
     dates: {
+      draft_sent: 'Proiect transmis',
+      client_opinion: 'Opinia clientului',
       agreement_signed: 'Semnarea contractului',
       team_approved: 'Echipă aprobată în numele organismului',
       stage_1_start: 'Prima zi a etapei 1',
@@ -458,6 +475,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       R09: 'Элемент досье отмечен как отсутствующий или неприменимый, хотя запись есть',
       R10: 'Запись изменена после анализа досье',
       R11: 'Предоставленные тексты в сравнении с согласованными данными сертификата',
+      R13: 'Номер проекта в сравнении с выданными сертификатами',
       R12: 'Номера домов и почтовые индексы в адресах',
       R14: 'Запись основана на более ранней версии документа',
       R15: 'Исходящий номер у нескольких отправок',
@@ -485,7 +503,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
     },
     blocks: {
       decision: 'Решение о сертификации',
-      certificate: 'Запись сертификата',
+      certificate_draft_approval: 'Утверждение проекта',
       nothing: 'Ничего',
     },
     resolutions: {
@@ -495,6 +513,7 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       resolution: 'Исправлено',
     },
     subjects: {
+      certificateNumber: 'Номер сертификата',
       durationProposal: 'Предложение продолжительности',
       priorCertification: 'Сокращение за предыдущую сертификацию',
       stageShare: 'Доля этапа в продолжительности',
@@ -515,6 +534,8 @@ export const CONSISTENCY_LABELS: Record<RegisterLanguage, ConsistencyLabels> = {
       language: 'язык',
     },
     dates: {
+      draft_sent: 'Проект отправлен',
+      client_opinion: 'Мнение клиента',
       agreement_signed: 'Подписание договора',
       team_approved: 'Группа утверждена от имени органа',
       stage_1_start: 'Первый день этапа 1',

@@ -87,6 +87,7 @@ export interface CertificateDataDraft {
 /** The Certificate as typed: no attestation preselected. */
 export interface CertificateDraft {
   number: string;
+  issuedOn: string;
   attachmentId: string;
   signedBy: string;
   signedByFunction: string;
@@ -114,7 +115,7 @@ export type DecisionCheck =
 /** The command the Certificate records; the server computes its validity. */
 export type CertificateCommand = Pick<
   Certificate,
-  'number' | 'attachmentId' | 'signedBy' | 'signedByFunction'
+  'number' | 'issuedOn' | 'attachmentId' | 'signedBy' | 'signedByFunction'
 >;
 
 /** A correction starts from the latest values; a first record starts empty. */
@@ -166,10 +167,14 @@ export function emptyCertificateText(): CertificateTextDraft {
   return { language: '', holderName: '', address: '', scope: '' };
 }
 
-export function emptyCertificationDecisionDraft(): CertificationDecisionDraft {
+export function emptyCertificationDecisionDraft(
+  data: CertificateData | null = null,
+): CertificationDecisionDraft {
   return {
     decision: null,
-    grantedTexts: [emptyCertificateText()],
+    grantedTexts: data?.texts.map((text) => ({ ...text })) ?? [
+      emptyCertificateText(),
+    ],
     decidedOn: '',
     decidedBy: '',
     decidedByFunction: '',
@@ -226,6 +231,7 @@ export function certificateDataDraftFor(
 export function emptyCertificateDraft(): CertificateDraft {
   return {
     number: '',
+    issuedOn: '',
     attachmentId: '',
     signedBy: '',
     signedByFunction: '',
@@ -472,6 +478,7 @@ export function certificateFromDraft(
   );
   if (
     number === undefined ||
+    !isCalendarDate(draft.issuedOn) ||
     signedBy === undefined ||
     signedByFunction === undefined ||
     !attachmentsWithRole(register, 'certificate').some(
@@ -484,6 +491,7 @@ export function certificateFromDraft(
     status: 'valid',
     value: {
       number,
+      issuedOn: draft.issuedOn,
       attachmentId: draft.attachmentId,
       signedBy,
       signedByFunction,

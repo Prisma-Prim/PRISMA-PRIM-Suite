@@ -510,6 +510,51 @@ export class CertificationController {
     });
   }
 
+  @Post('certification-cases/:caseId/certificate-draft')
+  recordCertificateDraft(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordCertificateDraft({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/client-opinion')
+  recordClientOpinion(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.recordClientOpinion({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
+  @Post('certification-cases/:caseId/certificate-draft-approval')
+  approveCertificateDraft(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.certification.approveCertificateDraft({
+      actor: requireActorContext(request),
+      caseId,
+      body,
+      key,
+    });
+  }
+
   @Post('certification-cases/:caseId/certificate')
   recordCertificate(
     @Req() request: ActorContextRequest,

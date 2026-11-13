@@ -210,18 +210,30 @@ export async function openCertificationFixture(input: {
       client.release();
     }
   }
+  /** Count internal immutable source observations for transaction/replay proof. */
+  async function numberObservationCount(caseId: string): Promise<number> {
+    if (!harness) throw new Error('Fixture is closed.');
+    const result = await harness.pool.query<{ total: number }>(
+      'SELECT count(*)::int AS total FROM certification_number_observations WHERE case_id=$1',
+      [caseId],
+    );
+    return result.rows[0]?.total ?? 0;
+  }
   /**
    * Holds every access to one table from another transaction until released,
    * to pin a concurrent request at its first statement on that table; what
    * that transaction writes meanwhile commits on release.
    */
-  async function holdTable(table: string) {
+  async function holdTable(
+    table: string,
+    mode: 'ACCESS EXCLUSIVE' | 'SHARE' = 'ACCESS EXCLUSIVE',
+  ) {
     if (!harness) throw new Error('Fixture is closed.');
     if (!/^[a-z_]+$/.test(table)) throw new Error('Not a table name.');
     const pool = harness.pool;
     const client = await pool.connect();
     await client.query('BEGIN');
-    await client.query(`LOCK TABLE ${table} IN ACCESS EXCLUSIVE MODE`);
+    await client.query(`LOCK TABLE ${table} IN ${mode} MODE`);
     let released = false;
     return {
       /** Whether a request now waits on the held table. */
@@ -233,6 +245,14 @@ export async function openCertificationFixture(input: {
           [table],
         );
         return Number(result.rows[0]?.total) > 0;
+      },
+      /** Number of operations pinned behind the holder (a SHARE lock allows the preceding reads). */
+      async waitingCount(): Promise<number> {
+        const result = await pool.query<{ total: string }>(
+          `SELECT count(*)::text AS total FROM pg_locks WHERE relation = $1::regclass AND NOT granted AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
+          [table],
+        );
+        return Number(result.rows[0]?.total);
       },
       /** Writes in the holding transaction, visible to others on release. */
       async write(statement: string, values: unknown[]): Promise<void> {
@@ -630,6 +650,7 @@ export async function openCertificationFixture(input: {
     created,
     grant,
     eventCount,
+    numberObservationCount,
     eventMetadata,
     procedureEvents,
     storeAsEarlierRelease,

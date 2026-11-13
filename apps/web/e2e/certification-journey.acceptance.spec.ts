@@ -1,3 +1,7 @@
+import {
+  releaseMessages,
+  type ReleaseMessageKey,
+} from '../src/certification/certification-release.copy';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator } from '@playwright/test';
@@ -32,6 +36,8 @@ import {
 } from './certification-journey.acceptance.fixture';
 import { selectOption } from './select-option';
 
+const releaseCopy = (key: ReleaseMessageKey) =>
+  resolveMessage(releaseMessages, 'en', key);
 const copy = (key: CertificationMessageKey) =>
   resolveMessage(certificationMessages, 'en', key);
 const consistencyCopy = (key: ConsistencyMessageKey) =>
@@ -58,6 +64,9 @@ const STEP_TITLES = new Map<string, CertificationMessageKey>([
   ['dossier_review', 'timelineDossierReview'],
   ['decision', 'timelineCertificationDecision'],
   ['certificate_data', 'timelineCertificateData'],
+  ['certificate_draft', 'releaseDraftTimeline'],
+  ['client_opinion', 'releaseOpinionTimeline'],
+  ['certificate_draft_approval', 'releaseApprovalTimeline'],
 ]);
 /** The step name a timeline title starts with, before its dash. */
 function stepNameOf(title: string): string {
@@ -819,6 +828,61 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     );
   });
 
+  await test.step('the programme manager agrees Certificate data after the recommendation and before the dossier review', async () => {
+    const data = await journey.attach(
+      'certificate_data',
+      'Signed Certificate data form',
+    );
+    const article = await openCase(manager);
+    const panel = region(article, 'certificateDataTitle');
+    const form = panel.getByRole('form', {
+      name: copy('recordCertificateData'),
+      exact: true,
+    });
+    const textGroup = form.getByRole('group', {
+      name: formatMessage(copy('certificateTextHeading'), { position: 1 }),
+      exact: true,
+    });
+    await textGroup
+      .getByLabel(copy('certificateLanguage'), { exact: true })
+      .fill(CERTIFICATE_TEXT.language);
+    await textGroup
+      .getByLabel(copy('certificateHolderName'), { exact: true })
+      .fill(CERTIFICATE_TEXT.holderName);
+    await textGroup
+      .getByLabel(copy('certificateAddress'), { exact: true })
+      .fill(CERTIFICATE_TEXT.address);
+    await textGroup
+      .getByLabel(copy('certificateScope'), { exact: true })
+      .fill(CERTIFICATE_TEXT.scope);
+    await form
+      .getByLabel(copy('certificateDataAgreedOn'), { exact: true })
+      .fill(journey.today);
+    await selectOption(
+      form.getByLabel(copy('certificateDataDocument'), { exact: true }),
+      { value: data },
+    );
+    await form
+      .getByRole('button', { name: copy('certificateDataSubmit'), exact: true })
+      .click();
+    await expect(
+      panel.getByRole('button', {
+        name: copy('correctCertificateData'),
+        exact: true,
+      }),
+    ).toBeVisible();
+    const labels = await article
+      .getByRole('list', { name: copy('steps'), exact: true })
+      .locator(':scope > li > strong')
+      .allTextContents();
+    expect(labels.indexOf(copy('stepCertificateData'))).toBe(
+      labels.indexOf(copy('stepRecommendation')) + 1,
+    );
+    await panel.screenshot({
+      path: info.outputPath(`certificate-data-before-review-${width}.png`),
+    });
+  });
+
   await test.step('the decision before the dossier review is blocked with its reason, then recorded', async () => {
     const article = await openCase(approver);
     decisionPosts.length = 0;
@@ -859,18 +923,18 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       name: formatMessage(copy('certificateTextHeading'), { position: 1 }),
       exact: true,
     });
-    await granted
-      .getByLabel(copy('certificateLanguage'), { exact: true })
-      .fill(CERTIFICATE_TEXT.language);
-    await granted
-      .getByLabel(copy('certificateHolderName'), { exact: true })
-      .fill(CERTIFICATE_TEXT.holderName);
-    await granted
-      .getByLabel(copy('certificateAddress'), { exact: true })
-      .fill(CERTIFICATE_TEXT.address);
-    await granted
-      .getByLabel(copy('certificateScope'), { exact: true })
-      .fill(CERTIFICATE_TEXT.scope);
+    await expect(
+      granted.getByLabel(copy('certificateLanguage'), { exact: true }),
+    ).toHaveValue(CERTIFICATE_TEXT.language);
+    await expect(
+      granted.getByLabel(copy('certificateHolderName'), { exact: true }),
+    ).toHaveValue(CERTIFICATE_TEXT.holderName);
+    await expect(
+      granted.getByLabel(copy('certificateAddress'), { exact: true }),
+    ).toHaveValue(CERTIFICATE_TEXT.address);
+    await expect(
+      granted.getByLabel(copy('certificateScope'), { exact: true }),
+    ).toHaveValue(CERTIFICATE_TEXT.scope);
     await form
       .getByLabel(copy('decidedOn'), { exact: true })
       .fill(journey.today);
@@ -949,18 +1013,8 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     });
     expect(decisionPosts).toEqual([]);
 
-    // The programme manager records the Certificate data after the
-    // recommendation; the approver reviews the dossier; the kept draft is
-    // then recorded.
-    const data = await journey.attach(
-      'certificate_data',
-      'Signed Certificate data form',
-    );
-    await journey.step(manager, `${journey.base}/certificate-data`, {
-      texts: [CERTIFICATE_TEXT],
-      agreedOn: journey.today,
-      agreementAttachmentId: data,
-    });
+    // The approver reviews the already agreed data; the kept decision draft
+    // is then recorded without silently reseeding the user's edits.
     await journey.reviewDossier();
     await article
       .getByRole('button', { name: copy('reload'), exact: true })
@@ -1042,26 +1096,405 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     ).toBeVisible();
   });
 
-  await test.step('the Certificate is recorded, valid three years minus one day', async () => {
-    const issued = await journey.attach('certificate', 'Issued Certificate');
-    const certified = await journey.step(
-      approver,
-      `${journey.base}/certificate`,
-      {
-        number: `DEMO-${journey.orderReference}`,
-        attachmentId: issued,
-        signedBy: DECISION_FACTS.decidedBy,
-        signedByFunction: DECISION_FACTS.decidedByFunction,
-        independenceAttested: true,
-      },
+  const englishText = {
+    language: 'en',
+    holderName: 'Lactis Demo SRL',
+    address: '1 Example Street, Demo City',
+    scope: 'Production of pasteurised milk (example)',
+  };
+  await test.step('draft Version 1 DEMO-0001 is sent and the client asks by e-mail to add English', async () => {
+    const draftPdf = await journey.attach(
+      'certificate_draft',
+      'Certificate draft Version 1',
     );
+    let article = await openCase(manager);
+    let release = article.getByRole('region', {
+      name: releaseCopy('title'),
+      exact: true,
+    });
+    const form = release.getByRole('form', {
+      name: releaseCopy('recordDraft'),
+      exact: true,
+    });
+    await form
+      .getByLabel(releaseCopy('draftPdf'), { exact: true })
+      .selectOption(draftPdf);
+    await form
+      .getByLabel(releaseCopy('number'), { exact: true })
+      .fill('DEMO-0001');
+    await form
+      .getByLabel(releaseCopy('draftDate'), { exact: true })
+      .fill(journey.today);
+    await form
+      .getByRole('button', { name: releaseCopy('recordDraft'), exact: true })
+      .click();
+    await expect(
+      release.getByText(releaseCopy('current'), { exact: false }),
+    ).toBeVisible();
+    await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'sent',
+      itemKind: 'certificate_draft',
+      attachmentIds: [draftPdf],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: journey.today,
+      channel: 'email',
+      reference: null,
+      note: null,
+    });
+    const responsePdf = await journey.attach(
+      'client_opinion',
+      'Client opinion requesting English',
+    );
+    const received = await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'received',
+      itemKind: 'client_opinion',
+      attachmentIds: [responsePdf],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: journey.today,
+      channel: 'email',
+      reference: null,
+      note: 'Fictional client asks to add the English text.',
+    });
+    const receivedExchange = records(record(received.exchanges).records)
+      .map((entry) => record(entry.current))
+      .find((entry) => entry.itemKind === 'client_opinion');
+    article = await openCase(manager);
+    release = article.getByRole('region', {
+      name: releaseCopy('title'),
+      exact: true,
+    });
+    const opinion = release.getByRole('form', {
+      name: releaseCopy('recordOpinion'),
+      exact: true,
+    });
+    await opinion
+      .getByLabel(releaseCopy('opinionDate'), { exact: true })
+      .fill(journey.today);
+    await opinion
+      .getByLabel(releaseCopy('outcome'), { exact: true })
+      .selectOption('changes_requested');
+    await opinion
+      .getByLabel(releaseCopy('opinionExchange'), { exact: true })
+      .selectOption(text(receivedExchange?.id));
+    await opinion
+      .getByLabel(releaseCopy('requestedChange'), { exact: true })
+      .fill('Please add the English text.');
+    await opinion
+      .getByRole('button', { name: releaseCopy('recordOpinion'), exact: true })
+      .click();
+    for (const title of [releaseCopy('approval'), releaseCopy('issuance')]) {
+      const step = release.getByRole('listitem').filter({
+        has: page.getByRole('heading', { name: title, exact: true }),
+      });
+      await expect(
+        step.getByText(releaseCopy('changes_requested'), { exact: true }),
+      ).toBeVisible();
+    }
+    await release
+      .getByRole('heading', { name: releaseCopy('title'), exact: true })
+      .click();
+    await release.screenshot({
+      path: info.outputPath(
+        `certificate-release-changes-requested-${width}.png`,
+      ),
+    });
+  });
+
+  await test.step('agreed data and the fixed-outcome decision gain English, then draft Version 2 records the opinion skip', async () => {
+    const data = await journey.attach(
+      'certificate_data',
+      'Signed bilingual Certificate data form',
+    );
+    let article = await openCase(manager);
+    const dataPanel = region(article, 'certificateDataTitle');
+    await dataPanel
+      .getByRole('button', {
+        name: copy('correctCertificateData'),
+        exact: true,
+      })
+      .click();
+    const dataForm = dataPanel.getByRole('form', {
+      name: copy('correctCertificateData'),
+      exact: true,
+    });
+    await dataForm
+      .getByRole('button', {
+        name: copy('addCertificateLanguage'),
+        exact: true,
+      })
+      .click();
+    const second = dataForm.getByRole('group', {
+      name: formatMessage(copy('certificateTextHeading'), { position: 2 }),
+      exact: true,
+    });
+    await second
+      .getByLabel(copy('certificateLanguage'), { exact: true })
+      .fill(englishText.language);
+    await second
+      .getByLabel(copy('certificateHolderName'), { exact: true })
+      .fill(englishText.holderName);
+    await second
+      .getByLabel(copy('certificateAddress'), { exact: true })
+      .fill(englishText.address);
+    await second
+      .getByLabel(copy('certificateScope'), { exact: true })
+      .fill(englishText.scope);
+    await selectOption(
+      dataForm.getByLabel(copy('certificateDataDocument'), { exact: true }),
+      { value: data },
+    );
+    await dataForm
+      .getByLabel(copy('correctionReason'), { exact: true })
+      .fill('Client requested English text.');
+    await dataForm
+      .getByRole('button', { name: copy('certificateDataSubmit'), exact: true })
+      .click();
+    await expect(
+      dataPanel.getByRole('button', {
+        name: copy('correctCertificateData'),
+        exact: true,
+      }),
+    ).toBeVisible();
+    article = await openCase(approver);
+    const decisionPanel = region(article, 'certificationDecisionTitle');
+    await decisionPanel
+      .getByRole('button', { name: copy('correctDecisionTexts'), exact: true })
+      .click();
+    const decisionForm = decisionPanel.getByRole('form', {
+      name: copy('correctDecisionTexts'),
+      exact: true,
+    });
+    await expect(decisionForm.getByRole('radio')).toHaveCount(0);
+    await decisionForm
+      .getByRole('button', {
+        name: copy('addCertificateLanguage'),
+        exact: true,
+      })
+      .click();
+    const grantedEnglish = decisionForm.getByRole('group', {
+      name: formatMessage(copy('certificateTextHeading'), { position: 2 }),
+      exact: true,
+    });
+    await grantedEnglish
+      .getByLabel(copy('certificateLanguage'), { exact: true })
+      .fill(englishText.language);
+    await grantedEnglish
+      .getByLabel(copy('certificateHolderName'), { exact: true })
+      .fill(englishText.holderName);
+    await grantedEnglish
+      .getByLabel(copy('certificateAddress'), { exact: true })
+      .fill(englishText.address);
+    await grantedEnglish
+      .getByLabel(copy('certificateScope'), { exact: true })
+      .fill(englishText.scope);
+    await decisionForm
+      .getByLabel(copy('correctionReason'), { exact: true })
+      .fill('Add the agreed English text; outcome unchanged.');
+    await decisionForm
+      .getByRole('checkbox', {
+        name: copy('decisionIndependenceAttestation'),
+        exact: true,
+      })
+      .check();
+    await decisionForm
+      .getByRole('button', { name: copy('saveCorrection'), exact: true })
+      .click();
+    await expect(
+      decisionPanel.getByRole('button', {
+        name: copy('correctDecisionTexts'),
+        exact: true,
+      }),
+    ).toBeVisible();
+    const draftPdf = await journey.attach(
+      'certificate_draft',
+      'Certificate draft Version 2 bilingual',
+    );
+    article = await openCase(manager);
+    const release = article.getByRole('region', {
+      name: releaseCopy('title'),
+      exact: true,
+    });
+    const draft = release.getByRole('form', {
+      name: releaseCopy('recordDraft'),
+      exact: true,
+    });
+    await draft
+      .getByLabel(releaseCopy('draftPdf'), { exact: true })
+      .selectOption(draftPdf);
+    await draft
+      .getByLabel(releaseCopy('number'), { exact: true })
+      .fill('DEMO-0001');
+    await draft
+      .getByLabel(releaseCopy('draftDate'), { exact: true })
+      .fill(journey.today);
+    await draft
+      .getByLabel(releaseCopy('reason'), { exact: true })
+      .fill('Bilingual draft follows the corrected decision.');
+    await draft
+      .getByRole('button', { name: releaseCopy('recordDraft'), exact: true })
+      .click();
+    const opinion = release.getByRole('form', {
+      name: releaseCopy('recordOpinion'),
+      exact: true,
+    });
+    await expect(opinion).toBeVisible();
+    await opinion
+      .getByLabel(releaseCopy('opinionDate'), { exact: true })
+      .fill(journey.today);
+    await opinion
+      .getByLabel(releaseCopy('outcome'), { exact: true })
+      .selectOption('skipped');
+    await opinion
+      .getByLabel(releaseCopy('skipReason'), { exact: true })
+      .selectOption('texts_already_agreed');
+    await opinion
+      .getByLabel(releaseCopy('reason'), { exact: true })
+      .fill('The client agreed the bilingual data.');
+    await opinion
+      .getByRole('button', { name: releaseCopy('recordOpinion'), exact: true })
+      .click();
+    const opinionStep = release.getByRole('listitem').filter({
+      has: page.getByRole('heading', {
+        name: releaseCopy('opinion'),
+        exact: true,
+      }),
+    });
+    const recordedSkipReason = opinionStep
+      .getByRole('paragraph')
+      .filter({ hasText: releaseCopy('skipTexts') });
+    await expect(recordedSkipReason).toHaveText(releaseCopy('skipTexts'));
+    await expect(recordedSkipReason).toBeVisible();
+    const state = record(await journey.read(manager, journey.base));
+    expect(record(state.decision)).toMatchObject({
+      version: 2,
+      value: {
+        decision: 'granted',
+        grantedTexts: [CERTIFICATE_TEXT, englishText],
+      },
+    });
+    expect(record(state.certificateData)).toMatchObject({
+      version: 2,
+      value: { texts: [CERTIFICATE_TEXT, englishText] },
+    });
+    await release
+      .getByRole('heading', { name: releaseCopy('title'), exact: true })
+      .click();
+    await release.screenshot({
+      path: info.outputPath(`certificate-release-draft-2-skipped-${width}.png`),
+    });
+  });
+
+  await test.step('an independent approver explicitly approves and issues the current draft; courier transmission follows', async () => {
+    const issued = await journey.attach(
+      'certificate',
+      'Issued bilingual Certificate',
+    );
+    let article = await openCase(approver);
+    let release = article.getByRole('region', {
+      name: releaseCopy('title'),
+      exact: true,
+    });
+    const approval = release.getByRole('form', {
+      name: releaseCopy('approve'),
+      exact: true,
+    });
+    await expect(approval.getByRole('checkbox', { checked: true })).toHaveCount(
+      0,
+    );
+    await approval
+      .getByLabel(releaseCopy('approvalDate'), { exact: true })
+      .fill(journey.today);
+    for (const key of [
+      'textsConfirmation',
+      'numberConfirmation',
+      'validityConfirmation',
+      'independence',
+    ] as const)
+      await approval
+        .getByRole('checkbox', { name: releaseCopy(key), exact: true })
+        .check();
+    await approval
+      .getByRole('button', { name: releaseCopy('approve'), exact: true })
+      .click();
+    const issue = release.getByRole('form', {
+      name: copy('recordCertificate'),
+      exact: true,
+    });
+    await expect(issue).toBeVisible();
+    await expect(
+      issue.getByLabel(copy('certificateNumber'), { exact: true }),
+    ).toHaveValue('DEMO-0001');
+    await issue
+      .getByLabel(copy('certificateIssuedOn'), { exact: true })
+      .fill(journey.today);
+    await selectOption(
+      issue.getByLabel(copy('certificatePdf'), { exact: true }),
+      { value: issued },
+    );
+    await issue
+      .getByLabel(copy('certificateSignedBy'), { exact: true })
+      .fill(DECISION_FACTS.decidedBy);
+    await issue
+      .getByLabel(copy('certificateSignedByFunction'), { exact: true })
+      .fill(DECISION_FACTS.decidedByFunction);
+    await issue
+      .getByRole('checkbox', {
+        name: copy('certificateIndependenceAttestation'),
+        exact: true,
+      })
+      .check();
+    await issue
+      .getByRole('button', { name: copy('certificateSubmit'), exact: true })
+      .click();
+    await expect(
+      release.getByText(
+        formatMessage(releaseCopy('pendingDays'), { days: 0 }),
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await release
+      .getByRole('heading', { name: releaseCopy('title'), exact: true })
+      .click();
+    await release.screenshot({
+      path: info.outputPath(`certificate-release-issued-pending-${width}.png`),
+    });
+    const certified = record(await journey.read(approver, journey.base));
     expect(certified).toMatchObject({
       status: 'certified',
       nextStep: null,
       certificate: {
+        number: 'DEMO-0001',
+        issuedOn: journey.today,
         validFrom: journey.today,
         validUntil: addDays(addMonths(journey.today, 36), -1),
       },
+    });
+    await journey.step(manager, `${journey.base}/exchanges`, {
+      direction: 'sent',
+      itemKind: 'certificate',
+      attachmentIds: [issued],
+      counterpart: { kind: 'client', name: 'Lactis Demo SRL, quality manager' },
+      businessDate: journey.today,
+      channel: 'courier',
+      reference: null,
+      note: null,
+    });
+    article = await openCase(reader);
+    readerCase = article;
+    release = article.getByRole('region', {
+      name: releaseCopy('title'),
+      exact: true,
+    });
+    await expect(release).toContainText(exchangeCopy('channelCourier'));
+    await expect(release.getByText(/Days since issuance/u)).toHaveCount(0);
+    await expect(release.getByRole('form')).toHaveCount(0);
+    await release
+      .getByRole('heading', { name: releaseCopy('title'), exact: true })
+      .click();
+    await release.screenshot({
+      path: info.outputPath(
+        `certificate-release-transmitted-reader-${width}.png`,
+      ),
     });
   });
 
@@ -1106,7 +1539,7 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       'Dossier register',
       'Lactis Demo SRL',
       journey.orderReference,
-      `DEMO-${journey.orderReference}`,
+      'DEMO-0001',
     ];
     const timeline = records(
       (await journey.read(reader, `${journey.base}/timeline`)).entries,
@@ -1130,6 +1563,13 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       'certificate_data',
       'dossier_review',
       'decision',
+      'certificate_draft',
+      'client_opinion',
+      'certificate_data',
+      'decision',
+      'certificate_draft',
+      'client_opinion',
+      'certificate_draft_approval',
     ]);
     // The reader's timeline is complete once it ends with the Certificate.
     const titles = region(article, 'timelineTitle').locator(
@@ -1137,7 +1577,7 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     );
     await expect(titles.last()).toHaveText(
       formatMessage(copy('timelineCertificate'), {
-        number: `DEMO-${journey.orderReference}`,
+        number: 'DEMO-0001',
       }),
     );
     const shown = await titles.allTextContents();
@@ -1158,7 +1598,7 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     const documents = records(
       (await journey.read(reader, `${journey.base}/documents`)).items,
     );
-    expect(documents).toHaveLength(10);
+    expect(documents).toHaveLength(14);
     // The dossier consistency section lists the resolved Discrepancies.
     expected.push(
       'Dossier consistency',

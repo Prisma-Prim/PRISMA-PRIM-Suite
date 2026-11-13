@@ -45,6 +45,9 @@ const STEP_LABELS: Record<string, string> = {
   dossier_review: 'Dossier review',
   decision: 'Certification Decision',
   certificate_data: 'Certificate data',
+  certificate_draft: 'Certificate draft',
+  client_opinion: 'Client opinion',
+  certificate_draft_approval: 'Certificate draft approval',
 };
 
 const TEXTS = [
@@ -155,18 +158,19 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
       recommendation: 'grant',
       basis: 'No nonconformity; system effectively implemented.',
     });
+    await ok(CERTIFICATION_OWNER, `${base}/certificate-data`, {
+      expectedRevision: 19,
+      texts: TEXTS,
+      agreedOn: '2026-10-21',
+      agreementAttachmentId: await fixture.attach(id, 'certificate_data', 18),
+    });
     await ok(CERTIFICATION_APPROVER, `${base}/dossier-review`, {
-      expectedRevision: 18,
+      expectedRevision: 20,
       items: Object.fromEntries(
         DOSSIER_ITEMS.map((item) => [
           item,
           {
-            // Nothing stands for these items at the review here.
-            answer: [
-              'findings_follow_up',
-              'participant_lists',
-              'certificate_data',
-            ].includes(item)
+            answer: ['findings_follow_up', 'participant_lists'].includes(item)
               ? 'not_applicable'
               : 'present',
             note: null,
@@ -179,27 +183,48 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
     await ok(
       CERTIFICATION_APPROVER,
       `${base}/decision`,
-      decision(19, 'Recommendation accepted.'),
+      decision(21, 'Recommendation accepted.'),
     );
-    await ok(CERTIFICATION_APPROVER, `${base}/decision`, {
-      ...decision(20, 'Recommendation accepted after the dossier review.'),
+    const decided = await ok(CERTIFICATION_APPROVER, `${base}/decision`, {
+      ...decision(22, 'Recommendation accepted after the dossier review.'),
       reason: CORRECTION_REASON,
     });
-    await ok(CERTIFICATION_OWNER, `${base}/certificate-data`, {
-      expectedRevision: 22,
-      texts: TEXTS,
-      agreedOn: '2026-10-21',
-      agreementAttachmentId: await fixture.attach(id, 'certificate_data', 21),
+    const draft = await ok(CERTIFICATION_OWNER, `${base}/certificate-draft`, {
+      expectedRevision: 24,
+      attachmentId: await fixture.attach(id, 'certificate_draft', 23),
+      number: 'DEMO-1153-0001',
+      draftedOn: '2026-11-06',
+      decisionVersionId: record(decided.decision).id,
+      certificateDataVersionId: record(decided.certificateData).id,
+    });
+    const draftVersionId = record(draft.release).currentDraftId;
+    await ok(CERTIFICATION_OWNER, `${base}/client-opinion`, {
+      expectedRevision: 25,
+      draftVersionId,
+      outcome: 'skipped',
+      skipReason: 'texts_already_agreed',
+      note: null,
+      businessDate: '2026-11-06',
+    });
+    await ok(CERTIFICATION_APPROVER, `${base}/certificate-draft-approval`, {
+      expectedRevision: 26,
+      draftVersionId,
+      approvedOn: '2026-11-06',
+      textsConfirmed: true,
+      numberConfirmed: true,
+      validityConfirmed: true,
+      independenceAttested: true,
     });
     const certified = await ok(CERTIFICATION_APPROVER, `${base}/certificate`, {
-      expectedRevision: 24,
+      expectedRevision: 28,
       number: 'DEMO-1153-0001',
-      attachmentId: await fixture.attach(id, 'certificate', 23),
+      issuedOn: '2026-11-06',
+      attachmentId: await fixture.attach(id, 'certificate', 27),
       signedBy: 'Decision Maker Demo',
       signedByFunction: 'Head of the fictional body',
       independenceAttested: true,
     });
-    expect(certified).toMatchObject({ status: 'certified', revision: 25 });
+    expect(certified).toMatchObject({ status: 'certified', revision: 29 });
     return id;
   }
   function register(
@@ -268,17 +293,24 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
       'Finding 1 (Stage 1) — Classification — version 1',
       'Area of concern',
       'Certificate',
+      'Certificate release',
+      'Draft',
+      'Client opinion',
+      'Draft approval',
+      'Issuance',
+      'Transmission',
+      'Days since issuance: 1',
       'DEMO-1153-0001',
       '2026-11-07 08:00:00 UTC',
     ];
     const timeline = await listed(`/certification-cases/${caseId}/timeline`);
-    expect(timeline).toHaveLength(15);
+    expect(timeline).toHaveLength(18);
     for (const entry of timeline)
       expected.push(
         `${STEP_LABELS[text(entry.step)]} — version ${String(entry.version)}`,
       );
     const documents = await listed(`/certification-cases/${caseId}/documents`);
-    expect(documents).toHaveLength(7);
+    expect(documents).toHaveLength(8);
     for (const document of documents)
       expected.push(
         text(document.versionId),
