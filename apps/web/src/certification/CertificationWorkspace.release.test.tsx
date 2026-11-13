@@ -365,6 +365,66 @@ describe('Certificate release region', () => {
     ).toHaveValue('');
     expect(server.mutations()).toEqual([]);
   });
+  it('lists an earlier draft by its number and date alone, and ends the current draft with its state', async () => {
+    const actor = certificationActor({ manager: false });
+    const server = new FakeCertificationServer({ actor: () => actor });
+    const { caseId, draftPdf } = grantedCase(server, 'CERT-RELEASE-DRAFTS');
+    const stored = server.cases.get(caseId);
+    if (!stored) throw new Error('Expected the granted Case.');
+    const decision = stored.steps
+      .filter((entry) => entry.step === 'decision')
+      .at(-1);
+    const data = stored.steps
+      .filter((entry) => entry.step === 'certificate_data')
+      .at(-1);
+    if (!decision || !data)
+      throw new Error('Expected the granted texts and agreed data.');
+    const draft = (draftedOn: string) => ({
+      attachmentId: draftPdf,
+      number: 'DEMO-0001',
+      decisionVersionId: decision.id,
+      certificateDataVersionId: data.id,
+      draftedOn,
+    });
+    server.recordStepAsColleague(
+      caseId,
+      'certificate_draft',
+      draft('2026-11-05'),
+    );
+    server.recordStepAsColleague(
+      caseId,
+      'certificate_draft',
+      draft('2026-11-06'),
+      'Fictional corrected draft.',
+    );
+    server.install();
+    render(
+      <CertificationWorkspace
+        actor={actor}
+        identity={certificationIdentity}
+        projectId={certificationIds.project}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'CERT-RELEASE-DRAFTS' }),
+    );
+    const region = await screen.findByRole('region', {
+      name: 'Certificate release',
+    });
+    expect(
+      within(region)
+        .getAllByText(
+          (_, element) =>
+            element?.tagName === 'P' &&
+            (element.textContent ?? '').startsWith('DEMO-0001 · '),
+        )
+        .map((line) => line.textContent),
+    ).toEqual([
+      'DEMO-0001 · Nov 5, 2026',
+      'DEMO-0001 · Nov 6, 2026 · Current draft',
+    ]);
+  });
+
   it('requires a fresh same-day approval after a corrected client opinion and never rebinds old confirmations', async () => {
     const actor = certificationActor({ manager: true, approver: true });
     const server = new FakeCertificationServer({ actor: () => actor });

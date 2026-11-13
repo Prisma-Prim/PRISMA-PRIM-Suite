@@ -1386,6 +1386,19 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
     await release
       .getByRole('heading', { name: releaseCopy('title'), exact: true })
       .click();
+    // Each draft version reads cleanly: the earlier one ends with its date,
+    // the current one with its state (#1315).
+    const draftLines = release
+      .locator('p')
+      .filter({ hasText: /^DEMO-0001 · /u });
+    await expect(draftLines).toHaveCount(2);
+    const [earlierDraft, currentDraft] = (
+      await draftLines.allTextContents()
+    ).map((line) => line.trim());
+    expect(earlierDraft).not.toMatch(/·$/u);
+    expect(currentDraft).toMatch(
+      new RegExp(` · ${releaseCopy('current')}$`, 'u'),
+    );
     await release.screenshot({
       path: info.outputPath(`certificate-release-draft-2-skipped-${width}.png`),
     });
