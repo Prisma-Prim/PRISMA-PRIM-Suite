@@ -4,7 +4,10 @@ import {
   type Consistency,
 } from './certification-consistency';
 import { findingBlocks, type Finding } from './certification-findings';
-import type { CertificationActorReference } from './certification-response';
+import type {
+  CertificationActorReference,
+  CaseStatus,
+} from './certification-response';
 import { approvedTeam } from './certification-stages';
 import type { AuditTeam } from './certification-team';
 
@@ -171,6 +174,7 @@ export function missingItems(review: DossierReview): number {
 
 /** The facts of the read Case the decision preconditions depend on. */
 export type DecisionContext = {
+  status?: CaseStatus;
   applicationReview: { value: { outcome: 'accepted' | 'rejected' } } | null;
   duration: object | null;
   agreement: object | null;
@@ -218,7 +222,10 @@ export function decisionPreconditions(
   if (outcome === 'granted' && !current.certificateData)
     failures.push('CERTIFICATE_DATA_MISSING');
   // The decision itself may raise more (its date, its texts): the server says.
-  if (blockingDecision(current.consistency).length)
+  if (
+    current.status !== 'certified' &&
+    blockingDecision(current.consistency).length
+  )
     failures.push('DISCREPANCIES_OPEN');
   return failures;
 }

@@ -1,3 +1,5 @@
+import type { CertificateText } from './certification-decision';
+import { certificateTexts } from './certification-response';
 import type { ActAttribution } from './certification-attribution';
 import {
   parseExchangeVersion,
@@ -59,7 +61,36 @@ export const RELEASE_BLOCKERS = [
   'approval_missing',
 ] as const;
 export type ReleaseBlocker = (typeof RELEASE_BLOCKERS)[number];
+export interface CertificateRevision {
+  id: string;
+  index: number;
+  caseRevision: number;
+  reason: string;
+  revisedOn: string;
+  attachmentId: string;
+  texts: CertificateText[];
+  decisionVersionId: string;
+  certificateDataVersionId: string;
+  revisionMarked: boolean;
+  independenceAttested: true;
+  onBehalf: ActAttribution | null;
+  recordedBy: CertificationActorReference;
+  recordedAt: string;
+  transmission: ExchangeVersion | null;
+}
+export interface CertificateRevisionValue {
+  reason: string;
+  revisedOn: string;
+  attachmentId: string;
+  revisionMarked: boolean;
+  independenceAttested: true;
+  onBehalf: ActAttribution | null;
+}
+
 export interface CertificateRelease {
+  revisions: CertificateRevision[];
+  currentRevisionIndex: number | null;
+  revisionRequired: boolean;
   validity: {
     validFrom: string;
     validUntil: string;
@@ -77,6 +108,11 @@ export interface CertificateRelease {
   legacyIssuance: boolean;
 }
 export type ReleaseCommand =
+  | {
+      kind: 'certificateRevision';
+      path: 'certificate-revisions';
+      value: CertificateRevisionValue;
+    }
   | {
       kind: 'certificateDraft';
       path: 'certificate-draft';
@@ -165,7 +201,10 @@ export function parseDraftApproval(
 }
 
 /** Additive HTTP fields are accepted; every consumed release field is proved. */
-export function parseCertificateRelease(value: unknown): CertificateRelease {
+export function parseCertificateRelease(
+  value: unknown,
+  context?: { hasCertificate: boolean },
+): CertificateRelease {
   const body = object(value);
   const validityBody =
     body.validity === undefined || body.validity === null
@@ -213,7 +252,68 @@ export function parseCertificateRelease(value: unknown): CertificateRelease {
       days !== null)
   )
     invalid();
+  const additions = [
+    body.revisions,
+    body.currentRevisionIndex,
+    body.revisionRequired,
+  ];
+  const legacy = additions.every((entry) => entry === undefined);
+  if (!legacy && additions.some((entry) => entry === undefined)) invalid();
+  const revisions = legacy
+    ? []
+    : list(body.revisions).map(parseCertificateRevision);
+  if (
+    revisions.some(
+      (entry, index) =>
+        entry.index !== index + 1 ||
+        (index > 0 &&
+          entry.caseRevision <= (revisions[index - 1]?.caseRevision ?? 0)),
+    ) ||
+    new Set(revisions.map((entry) => entry.id)).size !== revisions.length ||
+    new Set(revisions.map((entry) => entry.attachmentId)).size !==
+      revisions.length
+  )
+    invalid();
+  const currentRevisionIndex = legacy
+    ? context?.hasCertificate
+      ? 0
+      : null
+    : body.currentRevisionIndex === null
+      ? null
+      : nonnegative(body.currentRevisionIndex);
+  if (
+    (revisions.length > 0 &&
+      currentRevisionIndex !== revisions.at(-1)?.index) ||
+    (revisions.length === 0 &&
+      currentRevisionIndex !== 0 &&
+      currentRevisionIndex !== null) ||
+    (context &&
+      (context.hasCertificate
+        ? currentRevisionIndex === null
+        : currentRevisionIndex !== null))
+  )
+    invalid();
+  const transmissions = revisions.flatMap((revision) =>
+    revision.transmission ? [revision.transmission] : [],
+  );
+  if (
+    new Set(transmissions.map((entry) => entry.id)).size !==
+      transmissions.length ||
+    transmissions.some(
+      (entry) =>
+        entry.id === transmission?.id ||
+        revisions.filter((revision) =>
+          entry.attachmentIds.includes(revision.attachmentId),
+        ).length !== 1,
+    )
+  )
+    invalid();
+  const revisionRequired = legacy ? false : flag(body.revisionRequired);
+  if (currentRevisionIndex === null && revisionRequired) invalid();
   return {
+    revisions,
+    currentRevisionIndex,
+    revisionRequired,
     validity,
     drafts,
     opinions,
@@ -309,4 +409,57 @@ function oneOf<const Values extends readonly string[]>(
 }
 function invalid(): never {
   throw new Error('Invalid Certificate release response.');
+}
+
+export function parseCertificateRevision(value: unknown): CertificateRevision {
+  const body = object(value);
+  if (body.independenceAttested !== true) return invalid();
+  const author = object(body.recordedBy);
+  const recordedAt = text(body.recordedAt);
+  if (!Number.isFinite(Date.parse(recordedAt))) invalid();
+  const attachmentId = text(body.attachmentId);
+  const revisedOn = calendar(body.revisedOn);
+  const transmission =
+    body.transmission === null ? null : parseExchangeVersion(body.transmission);
+  if (
+    transmission &&
+    (transmission.direction !== 'sent' ||
+      transmission.itemKind !== 'certificate' ||
+      transmission.counterpart.kind !== 'client' ||
+      !transmission.attachmentIds.includes(attachmentId) ||
+      transmission.businessDate < revisedOn)
+  )
+    invalid();
+  const act = body.onBehalf === null ? null : object(body.onBehalf);
+  return {
+    id: text(body.id),
+    index: positive(body.index),
+    caseRevision: positive(body.caseRevision),
+    reason: text(body.reason, 2000),
+    revisedOn,
+    attachmentId,
+    texts: certificateTexts(body.texts),
+    decisionVersionId: text(body.decisionVersionId),
+    certificateDataVersionId: text(body.certificateDataVersionId),
+    revisionMarked: flag(body.revisionMarked),
+    independenceAttested: true,
+    onBehalf:
+      act === null
+        ? null
+        : {
+            actedBy: text(act.actedBy, 200),
+            actedByFunction: text(act.actedByFunction, 200),
+            actedOn: calendar(act.actedOn),
+            formAttachmentId: nullableText(act.formAttachmentId),
+          },
+    recordedBy: {
+      workspaceMembershipId: text(author.workspaceMembershipId),
+      displayName: text(author.displayName, 200),
+    },
+    recordedAt,
+    transmission,
+  };
+}
+function nonnegative(value: unknown): number {
+  return value === 0 ? 0 : positive(value);
 }

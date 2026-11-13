@@ -646,6 +646,11 @@ export async function openCertificationFixture(input: {
   }
 
   return {
+    /** Schema-level migration and transaction-failure proofs use the actual isolated boundary. */
+    get databasePool() {
+      if (!harness) throw new Error('Fixture is closed.');
+      return harness.pool;
+    },
     call,
     created,
     grant,
