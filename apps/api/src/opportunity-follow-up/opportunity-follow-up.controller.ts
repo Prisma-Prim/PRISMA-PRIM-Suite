@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Header,
   Headers,
@@ -16,12 +15,9 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { OpportunityFollowUpService } from './opportunity-follow-up.service.js';
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
-}
 @Controller('commercial-intake/opportunities/:opportunityId/follow-up')
 @UseGuards(ActorContextAdapter)
 export class OpportunityFollowUpController {
@@ -31,14 +27,22 @@ export class OpportunityFollowUpController {
     @Param('opportunityId', new ParseUUIDPipe()) id: string,
     @Query() query: unknown,
   ) {
-    return this.followUp.read(actor(request), id.toLowerCase(), query);
+    return this.followUp.read(
+      requireActorContext(request),
+      id.toLowerCase(),
+      query,
+    );
   }
   @Get('history') @Header('Cache-Control', 'private, no-store') history(
     @Req() request: ActorContextRequest,
     @Param('opportunityId', new ParseUUIDPipe()) id: string,
     @Query() query: unknown,
   ) {
-    return this.followUp.history(actor(request), id.toLowerCase(), query);
+    return this.followUp.history(
+      requireActorContext(request),
+      id.toLowerCase(),
+      query,
+    );
   }
   @Post() @HttpCode(200) @Header('Cache-Control', 'private, no-store') record(
     @Req() request: ActorContextRequest,
@@ -46,7 +50,12 @@ export class OpportunityFollowUpController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.followUp.record(actor(request), id.toLowerCase(), body, key);
+    return this.followUp.record(
+      requireActorContext(request),
+      id.toLowerCase(),
+      body,
+      key,
+    );
   }
 }
 @Controller('commercial-intake/opportunity-follow-ups')
@@ -57,6 +66,6 @@ export class OpportunityFollowUpDiscoveryController {
     @Req() request: ActorContextRequest,
     @Query() query: unknown,
   ) {
-    return this.followUp.discover(actor(request), query);
+    return this.followUp.discover(requireActorContext(request), query);
   }
 }

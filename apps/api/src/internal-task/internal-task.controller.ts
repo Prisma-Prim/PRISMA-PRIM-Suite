@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { InternalTaskService } from './internal-task.service.js';
 
@@ -27,15 +27,15 @@ export class InternalTaskController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.tasks.create(actor(request), body, key);
+    return this.tasks.create(requireActorContext(request), body, key);
   }
   @Get()
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.tasks.list(actor(request), query);
+    return this.tasks.list(requireActorContext(request), query);
   }
   @Get('eligible-assignees')
   eligible(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.tasks.eligible(actor(request), query);
+    return this.tasks.eligible(requireActorContext(request), query);
   }
   @Get(':taskId')
   detail(
@@ -43,7 +43,7 @@ export class InternalTaskController {
     @Param('taskId') id: string,
     @Query() query: unknown,
   ) {
-    return this.tasks.detail(actor(request), id, query);
+    return this.tasks.detail(requireActorContext(request), id, query);
   }
   @Post(':taskId/changes')
   @HttpCode(200)
@@ -53,10 +53,6 @@ export class InternalTaskController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.tasks.change(actor(request), id, body, key);
+    return this.tasks.change(requireActorContext(request), id, body, key);
   }
-}
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

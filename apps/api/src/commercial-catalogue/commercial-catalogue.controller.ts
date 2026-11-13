@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { CommercialCatalogueService } from './commercial-catalogue.service.js';
 
@@ -29,7 +29,7 @@ export class CommercialCatalogueController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.catalogue.createServiceDefinition(
-      actorFrom(request),
+      requireActorContext(request),
       body,
       idempotencyKey,
     );
@@ -42,7 +42,7 @@ export class CommercialCatalogueController {
     @Query('limit') limit: unknown,
   ) {
     return this.catalogue.listServiceDefinitions(
-      actorFrom(request),
+      requireActorContext(request),
       cursor,
       limit,
     );
@@ -55,7 +55,7 @@ export class CommercialCatalogueController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.catalogue.createCompanyServiceOffering(
-      actorFrom(request),
+      requireActorContext(request),
       body,
       idempotencyKey,
     );
@@ -68,7 +68,7 @@ export class CommercialCatalogueController {
     @Query('limit') limit: unknown,
   ) {
     return this.catalogue.listCompanyServiceOfferings(
-      actorFrom(request),
+      requireActorContext(request),
       cursor,
       limit,
     );
@@ -80,13 +80,8 @@ export class CommercialCatalogueController {
     @Param('offeringId', new ParseUUIDPipe()) offeringId: string,
   ) {
     return this.catalogue.getCompanyServiceOffering(
-      actorFrom(request),
+      requireActorContext(request),
       offeringId,
     );
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

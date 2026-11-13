@@ -7,7 +7,6 @@ import { ReportedContractSigningService } from './reported-contract-signing.serv
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -20,6 +19,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ContractService } from './contract.service.js';
 import { ContractProjectsService } from './contract-projects.service.js';
@@ -47,7 +47,7 @@ export class ContractController {
   ) {
     return readCommercialPdfAttachment(response, (signal) =>
       this.pdf.read({
-        actor: actorFrom(request),
+        actor: requireActorContext(request),
         opportunityId,
         versionId,
         query,
@@ -61,7 +61,7 @@ export class ContractController {
     @Param('opportunityId') opportunityId: string,
   ) {
     return this.projects.candidates({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
     });
   }
@@ -72,7 +72,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projects.link({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -85,7 +85,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projectCreation.createFromMissionPlan({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -98,7 +98,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projectCreation.create({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -111,14 +111,16 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.createDirect({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
     });
   }
   @Get('model-selection') modelSelection(@Req() request: ActorContextRequest) {
-    return this.models.selectableForContract({ actor: actorFrom(request) });
+    return this.models.selectableForContract({
+      actor: requireActorContext(request),
+    });
   }
   @Post('from-approved-model') prepareModel(
     @Req() request: ActorContextRequest,
@@ -127,7 +129,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.modelContracts.prepare({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -140,7 +142,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.modelContracts.createVersion({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -153,7 +155,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.prepare({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -166,7 +168,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.create({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -177,7 +179,7 @@ export class ContractController {
     @Param('opportunityId') opportunityId: string,
   ) {
     return this.contracts.readOpportunity({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
     });
   }
@@ -189,7 +191,7 @@ export class ContractController {
     @Query('cursor') cursor: string | undefined,
   ) {
     return this.signing.candidates({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       cursor,
@@ -203,7 +205,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.signing.declare({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       payload,
@@ -218,7 +220,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.recordSignature({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       payload,
@@ -233,7 +235,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       kind: 'APPROVE',
@@ -249,7 +251,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       kind: 'REJECT',
@@ -265,7 +267,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.runQualityChecks({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       payload,
@@ -280,7 +282,7 @@ export class ContractController {
     @Query('cursor') cursor: string | undefined,
   ) {
     return this.contracts.listQualityRuns({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       limit,
@@ -294,7 +296,7 @@ export class ContractController {
     @Param('runId') runId: string,
   ) {
     return this.contracts.readQualityRun({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       runId,
@@ -307,7 +309,7 @@ export class ContractController {
     @Query('cursor') cursor: string | undefined,
   ) {
     return this.contracts.listVersions({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       limit,
       cursor,
@@ -320,7 +322,7 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.createVersion({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -333,7 +335,7 @@ export class ContractController {
   ) {
     return {
       contract: await this.contracts.read({
-        actor: actorFrom(request),
+        actor: requireActorContext(request),
         opportunityId,
         versionId,
       }),
@@ -345,7 +347,7 @@ export class ContractController {
     @Param('versionId') versionId: string,
   ) {
     const contract = await this.contracts.read({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
     });
@@ -357,10 +359,6 @@ export class ContractController {
     };
   }
 }
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
-}
 
 @Controller('contracts/projects')
 @UseGuards(ActorContextAdapter)
@@ -370,6 +368,9 @@ export class ProjectContractsController {
     @Req() request: ActorContextRequest,
     @Param('projectId') projectId: string,
   ) {
-    return this.projects.forProject({ actor: actorFrom(request), projectId });
+    return this.projects.forProject({
+      actor: requireActorContext(request),
+      projectId,
+    });
   }
 }

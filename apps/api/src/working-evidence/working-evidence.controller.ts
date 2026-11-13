@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Header,
   Param,
@@ -14,15 +13,12 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { WorkingEvidenceService } from './working-evidence.service.js';
 import { noQuery, refuse } from './working-evidence.contract.js';
 
 type Request = ActorContextRequest & { body?: unknown };
-function actor(request: Request) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
-}
 function readRequest(request: Request) {
   const length = request.header('content-length');
   if (
@@ -40,7 +36,7 @@ function readRequest(request: Request) {
     )
   )
     return refuse('invalid_request');
-  return actor(request);
+  return requireActorContext(request);
 }
 @Controller()
 @UseGuards(ActorContextAdapter)
@@ -54,7 +50,7 @@ export class WorkingEvidenceController {
     @Query() query: unknown,
   ) {
     noQuery(query);
-    return this.cases.record(actor(request), projectId, body);
+    return this.cases.record(requireActorContext(request), projectId, body);
   }
   @Post('working-evidence-cases/:caseId/corrections')
   correct(
@@ -64,7 +60,7 @@ export class WorkingEvidenceController {
     @Query() query: unknown,
   ) {
     noQuery(query);
-    return this.cases.correct(actor(request), caseId, body);
+    return this.cases.correct(requireActorContext(request), caseId, body);
   }
   @Header('Cache-Control', 'private, no-store')
   @Header('X-Content-Type-Options', 'nosniff')

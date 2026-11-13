@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -12,6 +11,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { DocumentProjectsService } from './document-projects.service.js';
 @Controller()
@@ -23,14 +23,18 @@ export class DocumentProjectsController {
     @Req() request: ActorContextRequest,
     @Param('projectId') projectId: string,
   ) {
-    return this.associations.list(actor(request), projectId);
+    return this.associations.list(requireActorContext(request), projectId);
   }
   @Get('projects/:projectId/eligible-documents')
   eligible(
     @Req() request: ActorContextRequest,
     @Param('projectId') projectId: string,
   ) {
-    return this.associations.list(actor(request), projectId, true);
+    return this.associations.list(
+      requireActorContext(request),
+      projectId,
+      true,
+    );
   }
   @Post('documents/:documentId/project-association')
   mutate(
@@ -39,10 +43,11 @@ export class DocumentProjectsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.associations.mutate(actor(request), documentId, body, key);
+    return this.associations.mutate(
+      requireActorContext(request),
+      documentId,
+      body,
+      key,
+    );
   }
-}
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }
