@@ -10,6 +10,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
 import { PDF_B } from '../documents/mission-document.test-support.js';
 import {
   openWorkingEvidenceFixture,
@@ -458,7 +459,10 @@ withPostgres(
         },
       });
       expect(changedKey.status).toBe(409);
-      expect(await changedKey.json()).toEqual({ code: 'conflict' });
+      expect(await changedKey.json()).toEqual({
+        code: 'IDEMPOTENCY_CONFLICT',
+        message: 'Idempotency-Key was already used for another command.',
+      });
     });
 
     it('keeps exact committed replay before Project closure while refusing new use', async () => {
@@ -485,6 +489,104 @@ withPostgres(
       expect(refused.status).toBe(409);
       expect(await refused.json()).toEqual({ code: 'new_use_unavailable' });
       expect((await call(revisionPath(receipt) + '/annex')).status).toBe(200);
+    });
+
+    describe('shared versioned command protocol: Working Evidence correction', () => {
+      // The command's key is its body's commandId, so a submission carries the
+      // kit's key there.
+      async function attempt(path: string, value: unknown, key: string) {
+        if (typeof value !== 'object' || value === null)
+          throw new Error('Expected a correction payload.');
+        const response = await post(path, { ...value, commandId: key });
+        const body: unknown = await response.json();
+        return { status: response.status, body };
+      }
+      // Records a Case and answers its corrections path and recorded values.
+      async function recordCase() {
+        const body = fixture.recordBody([await fixture.source()]);
+        const recorded = await post(casesPath(), body);
+        expect(recorded.status).toBe(201);
+        const caseId = text((await json(recorded)).caseId);
+        return {
+          caseId,
+          path: `/working-evidence-cases/${caseId}/corrections`,
+          values: body.values,
+        };
+      }
+      function correction(
+        values: ReturnType<WorkingEvidenceFixture['values']>,
+        expectedRevision: number,
+        statement: string,
+      ) {
+        return {
+          format: 'WORKING_EVIDENCE_CASE_COMMAND/1',
+          expectedRevision,
+          reason: 'Fictional observer clarified the statement',
+          values: { ...values, statement },
+        };
+      }
+      async function effects() {
+        return (
+          await fixture.pool.query(`SELECT
+            (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM working_evidence_cases t) AS cases,
+            (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM working_evidence_revisions t) AS revisions,
+            (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM working_evidence_supports t) AS supports,
+            (SELECT jsonb_agg(to_jsonb(t) ORDER BY revision_id) FROM working_evidence_outputs t) AS outputs,
+            (SELECT jsonb_agg(to_jsonb(t) ORDER BY command_id) FROM working_evidence_receipts t) AS receipts,
+            (SELECT jsonb_agg(to_jsonb(t) ORDER BY revision_id) FROM working_evidence_events t) AS events,
+            (SELECT jsonb_agg(jsonb_build_array(id,version) ORDER BY id) FROM client_accounts) AS clients`)
+        ).rows;
+      }
+      for (const scenario of versionedCommandProtocolScenarios({
+        acceptedStatus: 201,
+        staleCode: 'conflict',
+        receipt: (value) => value,
+        arrange: async () => {
+          const { caseId, path, values } = await recordCase();
+          const version = async () => {
+            const current = record(
+              (await json(await call(`/working-evidence-cases/${caseId}`)))
+                .current,
+            ).revisionNumber;
+            if (typeof current !== 'number')
+              throw new Error('Expected a Case revision number.');
+            return current;
+          };
+          return {
+            payload: ({ expectedVersion, variant }) =>
+              correction(
+                values,
+                expectedVersion,
+                `Working statement ${variant}`,
+              ),
+            submit: ({ value, key }) => attempt(path, value, key),
+            version,
+            writes: effects,
+            changeLater: async () => {
+              const later = await attempt(
+                path,
+                correction(values, await version(), 'Later working statement'),
+                randomUUID(),
+              );
+              expect(later.status).toBe(201);
+            },
+            revokeAuthority: () =>
+              fixture.revoke(
+                '/company-working-evidence-case-recorder-assignments',
+              ),
+          };
+        },
+        arrangeElsewhere: async () => {
+          const { path } = await recordCase();
+          return {
+            submit: ({ value, key }) => attempt(path, value, key),
+            writes: effects,
+          };
+        },
+      }))
+        // Each scenario registers and designates a native source Document
+        // and records a Case before several commands and effect snapshots.
+        it(scenario.name, scenario.run, 60_000);
     });
   },
 );

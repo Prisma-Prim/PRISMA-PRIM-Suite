@@ -1,5 +1,4 @@
 import { BadRequestException } from '@nestjs/common';
-import { requireIdempotencyKey } from '../access/access-command-validation.js';
 
 export function fields(
   value: unknown,
@@ -101,5 +100,7 @@ export function followUpQuery(
     cursor,
   };
 }
-export { requireIdempotencyKey as followUpKey };
+// The App sends UUID keys; the bound matches the other keyed commands'
+// receipt stores, so an over-long key is a client error, never an outage.
+export const FOLLOW_UP_KEY_MAX_LENGTH = 200;
 export type FollowUpInput = ReturnType<typeof followUpInput>;
