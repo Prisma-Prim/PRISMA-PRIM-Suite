@@ -27,7 +27,7 @@ import type {
  * versioned rule set over one Case's recorded facts. It never reads PDF
  * content and never changes a record; a person resolves what it raises.
  */
-export const CONSISTENCY_RULE_SET_VERSION = 'dossier-consistency-2026-11.3';
+export const CONSISTENCY_RULE_SET_VERSION = 'dossier-consistency-2026-11.4';
 
 export const CONSISTENCY_RULES = [
   'R01',
@@ -625,7 +625,10 @@ export function blockingDiscrepancies(
 /**
  * The house numbers and postal codes of an address: digit groups with an
  * optional one-letter suffix, after case and Latin–Cyrillic look-alike
- * folding, in a stable order so that wording and order never count.
+ * folding, in a stable order so that wording and order never count. The
+ * suffix may follow the digits directly ("12b") or after one space or
+ * hyphen ("12 b", "12-b"); a separated letter followed by a period is an
+ * abbreviation ("r." for a district), not a suffix.
  */
 export function addressNumbers(address: string): string[] {
   const folded = Array.from(
@@ -633,8 +636,8 @@ export function addressNumbers(address: string): string[] {
     (character) => LOOK_ALIKES.get(character) ?? character,
   ).join('');
   const numbers = Array.from(
-    folded.matchAll(/(\d+)(?:([a-z])(?![a-z\d]))?/gu),
-    (match) => `${match[1] ?? ''}${match[2] ?? ''}`,
+    folded.matchAll(/(\d+)(?:([a-z])(?![a-z\d])|[ -]([a-z])(?![a-z\d.]))?/gu),
+    (match) => `${match[1] ?? ''}${match[2] ?? match[3] ?? ''}`,
   );
   return numbers.sort();
 }

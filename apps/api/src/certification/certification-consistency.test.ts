@@ -920,6 +920,58 @@ describe('Dossier Consistency Check rules (PRD §8.1 vectors)', () => {
     ]);
   });
 
+  it('R12 reads a house-number letter written after a space or a hyphen', () => {
+    expect(addressNumbers('Strada Exemplu 12 b, Demo City')).toEqual(['12b']);
+    expect(addressNumbers('Strada Exemplu 12-b, Demo City')).toEqual(['12b']);
+    expect(addressNumbers('Strada Exemplu 12b, Demo City')).toEqual(['12b']);
+    // A Cyrillic look-alike letter folds to Latin after the space too.
+    expect(addressNumbers('ул. Пример 12 а')).toEqual(['12a']);
+    // A word, an abbreviation or a postal code after the number stays apart.
+    expect(addressNumbers('1st Example Street 12')).toEqual(['1', '12']);
+    expect(addressNumbers('12 Example Street')).toEqual(['12']);
+    expect(addressNumbers('Bl. 3 ap. 5')).toEqual(['3', '5']);
+    expect(addressNumbers('nr. 7 r. Demo')).toEqual(['7']);
+    expect(addressNumbers('Demo City, MD-2001')).toEqual(['2001']);
+    expect(addressNumbers('Demo City, MD 2001')).toEqual(['2001']);
+
+    const builder = reportedCase();
+    builder.record({
+      step: 'application',
+      value: facts({ declaredAddress: 'Strada Exemplu 12 b, Demo City' }),
+    });
+    const form = builder.attach('certificate_data', 'data-form');
+    builder.record({
+      step: 'certificate_data',
+      value: {
+        texts: [
+          { ...TEXT, address: 'Strada Exemplu 12, Demo City' },
+          {
+            language: 'en',
+            holderName: 'Lactis Demo SRL',
+            address: '12 Example Street, Demo City',
+            scope: 'Production of pasteurised milk (example)',
+          },
+        ],
+        agreedOn: '2026-10-25',
+        agreementAttachmentId: form,
+      },
+    });
+    expect(only(checkConsistency(builder.snapshot()), 'R12')).toEqual(
+      ['ro', 'en'].map((language) =>
+        expect.objectContaining({
+          verdict: 'to_clarify',
+          subject: { kind: 'address_numbers', language },
+          left: expect.objectContaining({
+            value: { kind: 'numbers', numbers: ['12b'] },
+          }),
+          right: expect.objectContaining({
+            value: { kind: 'numbers', numbers: ['12'] },
+          }),
+        }),
+      ),
+    );
+  });
+
   it('R14 asks to clarify a record relying on a Version older than an unused attached one', () => {
     const builder = plannedCase();
     builder.attach('plan', 'plan-1', 2);
@@ -1004,6 +1056,42 @@ describe('Discrepancy history, acceptance and persistence (PRD §9.1)', () => {
           caseRevision: builder.revision,
           reason: 'Headcount corrected',
           source: expect.objectContaining({ step: 'duration', version: 2 }),
+        }),
+      }),
+    ]);
+  });
+
+  it('keeps an acceptance recorded under an earlier rule-set version, with that version', () => {
+    const builder = plannedCase({ stage2End: S2_START });
+    const [r04] = consistencySection(input(builder)).open;
+    if (!r04) throw new Error('Expected R04.');
+    const earlier = 'dossier-consistency-2026-11.3';
+    expect(CONSISTENCY_RULE_SET_VERSION).not.toBe(earlier);
+    builder.revision += 1;
+    const acceptance: ResolutionRecord = {
+      id: 'resolution-earlier',
+      discrepancyId: r04.id,
+      manualDiscrepancyId: null,
+      kind: 'accepted',
+      verdict: 'to_clarify',
+      reason: 'Fictional long audit day agreed with the client',
+      correctedBy: null,
+      ruleSetVersion: earlier,
+      caseRevision: builder.revision,
+      recordedBy: MANAGER,
+      recordedAt: '2026-10-10T00:00:00.000Z',
+    };
+    const section = consistencySection(
+      input(builder, { resolutions: [acceptance] }),
+    );
+    expect(section.ruleSetVersion).toBe(CONSISTENCY_RULE_SET_VERSION);
+    expect(section.open).toEqual([]);
+    expect(section.resolved).toEqual([
+      expect.objectContaining({
+        id: r04.id,
+        resolution: expect.objectContaining({
+          kind: 'accepted',
+          ruleSetVersion: earlier,
         }),
       }),
     ]);
