@@ -431,9 +431,9 @@ export function CertificateReleaseRegion(props: Props) {
             <div key={entry.id}>
               <VersionAttribution version={entry} />
               <p>
-                {entry.value.number} · {businessDate(entry.value.draftedOn)} ·{' '}
+                {entry.value.number} · {businessDate(entry.value.draftedOn)}
                 {entry.id === release.currentDraftId
-                  ? t(release.outdated ? 'outdated' : 'current')
+                  ? ` · ${t(release.outdated ? 'outdated' : 'current')}`
                   : null}
               </p>
               <p>{attachedDraftName(entry.value.attachmentId)}</p>
