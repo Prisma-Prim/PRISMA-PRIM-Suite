@@ -22,11 +22,7 @@ import {
   type PaymentInput,
   type PaymentSource,
 } from './payment.input.js';
-import {
-  paymentCursor,
-  readPaymentCursor,
-  type PaymentCursorBinding,
-} from './payment.cursor.js';
+import { paymentCursors, type PaymentCursorBinding } from './payment.cursor.js';
 import { PaymentStore } from './payment.store.js';
 import type {
   PaymentScope,
@@ -44,13 +40,16 @@ function conflict(code: string): never {
 }
 @Injectable()
 export class PaymentService {
+  private readonly cursors: ReturnType<typeof paymentCursors>;
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: CompanyContextAuthorization,
     private readonly source: DocumentPaymentSource,
     private readonly store: PaymentStore,
     private readonly accountability: PaymentAccountability,
-  ) {}
+  ) {
+    this.cursors = paymentCursors(({ scope }) => this.store.cursorKey(scope));
+  }
   /**
    * Whether the frozen Source still qualifies for new use. A native refusal is
    * an answer here, not a failure, so it must not abort the surrounding read.
@@ -221,11 +220,14 @@ export class PaymentService {
       items: page.items,
       nextCursor:
         page.hasMore && last
-          ? paymentCursor(await this.store.cursorKey(scope), binding, {
-              kind: 'history',
-              paymentId: id,
-              headRevision,
-              before: last.revision,
+          ? await this.cursors.issue({
+              binding,
+              position: {
+                kind: 'history',
+                paymentId: id,
+                headRevision,
+                before: last.revision,
+              },
             })
           : null,
     };
@@ -246,10 +248,8 @@ export class PaymentService {
         },
         binding = this.binding(actor, scope, capture.readCapture);
       const position = cursor
-        ? readPaymentCursor(await this.store.cursorKey(scope), cursor, binding)
+        ? await this.cursors.read({ value: cursor, binding, kind: 'inventory' })
         : undefined;
-      if (position && position.kind !== 'inventory')
-        throw new BadRequestException();
       const page = await this.store.inventory(scope, position),
         last = page.items.at(-1);
       return {
@@ -259,10 +259,13 @@ export class PaymentService {
         items: page.items,
         nextCursor:
           page.hasMore && last
-            ? paymentCursor(await this.store.cursorKey(scope), binding, {
-                kind: 'inventory',
-                id: last.id,
-                createdAt: last.createdAt,
+            ? await this.cursors.issue({
+                binding,
+                position: {
+                  kind: 'inventory',
+                  id: last.id,
+                  createdAt: last.createdAt,
+                },
               })
             : null,
       };
@@ -382,13 +385,12 @@ export class PaymentService {
       const current = await this.store.current(scope, id);
       let before: number | undefined;
       if (cursor) {
-        const position = readPaymentCursor(
-          await this.store.cursorKey(scope),
-          cursor,
+        const position = await this.cursors.read({
+          value: cursor,
           binding,
-        );
-        if (position.kind !== 'history' || position.paymentId !== id)
-          throw new BadRequestException();
+          kind: 'history',
+        });
+        if (position.paymentId !== id) throw new BadRequestException();
         if (position.headRevision !== current.row.revision)
           conflict('PAYMENT_HISTORY_CHANGED');
         before = position.before;
@@ -440,10 +442,8 @@ export class PaymentService {
         ),
         cursor = paymentQuery(query);
       const position = cursor
-        ? readPaymentCursor(await this.store.cursorKey(scope), cursor, binding)
+        ? await this.cursors.read({ value: cursor, binding, kind: 'source' })
         : undefined;
-      if (position && position.kind !== 'source')
-        throw new BadRequestException();
       const page = await this.source.selectable(actor, position?.source),
         last = page.items.at(-1);
       return {
@@ -453,9 +453,12 @@ export class PaymentService {
         items: page.items,
         nextCursor:
           page.hasMore && last
-            ? paymentCursor(await this.store.cursorKey(scope), binding, {
-                kind: 'source',
-                source: last.source,
+            ? await this.cursors.issue({
+                binding,
+                position: {
+                  kind: 'source',
+                  source: last.source,
+                },
               })
             : null,
       };

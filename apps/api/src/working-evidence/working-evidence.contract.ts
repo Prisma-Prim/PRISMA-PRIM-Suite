@@ -1,3 +1,4 @@
+import { continuationCursorMaximumLength } from '../continuation-cursor/continuation-cursor.js';
 import { MAXIMUM_DOCUMENT_PDF_BYTES } from '../documents/document-pdf.types.js';
 import { HttpException } from '@nestjs/common';
 
@@ -271,7 +272,11 @@ export function cursorQuery(value: unknown): string | null {
   const keys = Object.keys(value);
   if (!keys.length) return null;
   const v = object(value, ['cursor']);
-  if (typeof v.cursor !== 'string' || !/^[\x21-\x7e]{1,256}$/.test(v.cursor))
+  if (
+    typeof v.cursor !== 'string' ||
+    !/^[\x21-\x7e]+$/.test(v.cursor) ||
+    v.cursor.length > continuationCursorMaximumLength('working-evidence')
+  )
     return refuse('invalid_request');
   return v.cursor;
 }
