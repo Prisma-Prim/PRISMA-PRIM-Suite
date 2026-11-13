@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
+import { activate, openRequestCase } from './opportunity-follow-up-case';
 import { resolveMessage } from '../src/localization/messages';
 import { followUpMessages } from '../src/opportunity-follow-up/follow-up.copy';
 import {
@@ -53,13 +54,6 @@ function gate() {
     open = resolve;
   });
   return { promise, open };
-}
-async function activate(control: Locator) {
-  await expect(control).toBeEnabled();
-  await control.scrollIntoViewIfNeeded();
-  await control.focus();
-  await expect(control).toBeFocused();
-  await control.press('Enter');
 }
 async function chooseCompany(
   page: Page,
@@ -416,36 +410,7 @@ for (const frame of ['prisme', 'classic'] as const) {
       if (frame === 'classic') await enterClassicCompatibility(page);
     }
     async function openCase(target: NativeCase) {
-      await expect(intake.locator('.commercial-intake-list')).toBeVisible();
-      const row = intake
-        .locator('.commercial-intake-list > li')
-        .filter({ hasText: target.subject });
-      const older = intake.getByRole('button', {
-        name: 'Show older Requests',
-        exact: true,
-      });
-      // A row can be attached before it is visible. Counting it as progress
-      // and then waiting only for the next page leaves the case unopened
-      // when that page button is not there (#1243).
-      while (!(await row.isVisible())) {
-        await expect
-          .poll(async () => {
-            if (await row.isVisible()) return 'row';
-            return (await older.isVisible()) && (await older.isEnabled())
-              ? 'older'
-              : 'waiting';
-          })
-          .not.toBe('waiting');
-        if (await row.isVisible()) break;
-        await activate(older);
-      }
-      await activate(row.getByRole('button').first());
-      await expect(
-        intake.getByRole('article', { name: target.subject, exact: true }),
-      ).toBeVisible();
-      await expect(
-        intake.getByText(target.originalText, { exact: true }),
-      ).toBeVisible();
+      await openRequestCase(intake, target);
     }
     const panel = panelIn(page);
     const discovery = discoveryIn(page);
