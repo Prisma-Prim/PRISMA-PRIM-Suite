@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
+import { revokeModelContractFixtureGrant } from '../contract/model-contract.test-fixture.js';
 import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
 import {
   openEstimateOfferFixture,
@@ -7,7 +9,9 @@ import {
   responseString,
 } from '../offer/offer-estimate-preparation.test-support.js';
 import {
+  fictionalInvoiceValues,
   invoiceRecordEffects,
+  prepareAdditionalInvoiceRecordSource,
   prepareInvoiceRecordSource,
 } from './invoice-record.proof-support.js';
 const withPostgres = process.env.TEST_DATABASE_URL ? describe : describe.skip;
@@ -294,5 +298,102 @@ withPostgres('External Invoice Record complete native journey', () => {
           .values,
       ).toEqual(values);
     }
+  });
+  describe('shared versioned command protocol: Invoice Record correction', () => {
+    type Source = Awaited<ReturnType<typeof prepareInvoiceRecordSource>>;
+    // The kit hands back the target it arranged; this finds its Source.
+    const sources = new WeakMap<object, Source>();
+    async function record(source: Source) {
+      const created = await source.create();
+      expect(created.status, await created.clone().text()).toBe(201);
+      return responseString(responseRecord(await created.json()), 'recordId');
+    }
+    async function attempt(response: Promise<Response>) {
+      const settled = await response;
+      const body: unknown = await settled.json();
+      return { status: settled.status, body };
+    }
+    function correction(expectedRevision: number, grossMinor: string) {
+      return {
+        action: 'CORRECT',
+        expectedRevision,
+        values: { ...fictionalInvoiceValues(), grossMinor },
+        reason: 'Fictional transcription check',
+      };
+    }
+    for (const scenario of versionedCommandProtocolScenarios({
+      acceptedStatus: 201,
+      staleCode: 'STALE_INVOICE_RECORD',
+      receipt: (value) => value,
+      arrange: async () => {
+        const source = await prepareInvoiceRecordSource(fixture);
+        const id = await record(source);
+        const version = async () => {
+          const revision = responseRecord(
+            (await source.read(`/invoice-records/${id}`)).record,
+          ).revision;
+          if (typeof revision !== 'number')
+            throw new Error('Expected a native revision.');
+          return revision;
+        };
+        const target = {
+          payload: ({
+            expectedVersion,
+            variant,
+          }: {
+            readonly expectedVersion: number;
+            readonly variant: 'first' | 'second';
+          }) =>
+            correction(
+              expectedVersion,
+              variant === 'first' ? '125550' : '125575',
+            ),
+          submit: ({ value, key }: { value: unknown; key: string }) =>
+            attempt(source.command({ recordId: id, body: value, key })),
+          version,
+          writes: () => invoiceRecordEffects(fixture),
+          changeLater: async () => {
+            const later = await source.command({
+              recordId: id,
+              body: correction(await version(), '125600'),
+            });
+            expect(later.status, await later.clone().text()).toBe(201);
+          },
+          revokeAuthority: async () => {
+            await revokeModelContractFixtureGrant(
+              fixture,
+              '/company-invoice-recorder-assignments',
+              source.companyId,
+              source.membershipId,
+            );
+          },
+        };
+        sources.set(target, source);
+        return target;
+      },
+      arrangeElsewhere: async (target) => {
+        const source = sources.get(target);
+        if (!source) throw new Error('Expected the arranged Invoice source.');
+        const other = await prepareAdditionalInvoiceRecordSource(fixture, {
+          target: source.target,
+          body: source.body,
+          title: 'Second fictional invoice — not a fiscal document',
+        });
+        const created = await other.create();
+        expect(created.status, await created.clone().text()).toBe(201);
+        const otherId = responseString(
+          responseRecord(await created.json()),
+          'recordId',
+        );
+        return {
+          submit: ({ value, key }) =>
+            attempt(source.command({ recordId: otherId, body: value, key })),
+          writes: () => invoiceRecordEffects(fixture),
+        };
+      },
+    }))
+      // Each scenario arranges a signed Contract and its Document natively,
+      // twice for the mismatch, before several commands and effect snapshots.
+      it(scenario.name, scenario.run, 30_000);
   });
 });

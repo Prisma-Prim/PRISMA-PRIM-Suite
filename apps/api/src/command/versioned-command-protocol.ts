@@ -50,6 +50,15 @@ export interface VersionedCommandProtocol {
    * command guards another counter, such as a configuration revision.
    */
   readonly staleCode?: string;
+  /**
+   * Arranges, beside `target`, another target the same actor may change with
+   * the same payload, in another Company or as another record. A key already
+   * used on `target` must conflict there. Omitted when the command has a
+   * single target per Company and no other Company to arrange.
+   */
+  arrangeElsewhere?(
+    target: VersionedCommandTarget,
+  ): Promise<Pick<VersionedCommandTarget, 'submit' | 'writes'>>;
 }
 
 export interface ProtocolScenario {
@@ -82,7 +91,7 @@ export function versionedCommandProtocolScenarios(
   }
 
   async function expectNoWrite(
-    target: VersionedCommandTarget,
+    target: Pick<VersionedCommandTarget, 'writes'>,
     attempt: () => Promise<CommandAttempt>,
   ): Promise<CommandAttempt> {
     const before = await target.writes();
@@ -90,6 +99,24 @@ export function versionedCommandProtocolScenarios(
     assert.deepEqual(await target.writes(), before);
     return result;
   }
+
+  const arrangeElsewhere = protocol.arrangeElsewhere?.bind(protocol);
+  const mismatch: readonly ProtocolScenario[] = arrangeElsewhere
+    ? [
+        {
+          name: 'refuses the same key and payload on another target or Company without writing',
+          run: async () => {
+            const { target, key, value } = await accepted();
+            const elsewhere = await arrangeElsewhere(target);
+            const refused = await expectNoWrite(target, () =>
+              expectNoWrite(elsewhere, () => elsewhere.submit({ value, key })),
+            );
+            assert.equal(refused.status, 409);
+            assert.equal(code(refused.body), 'IDEMPOTENCY_CONFLICT');
+          },
+        },
+      ]
+    : [];
 
   return [
     {
@@ -159,6 +186,30 @@ export function versionedCommandProtocolScenarios(
           target.submit({ value, key }),
         );
         assert.equal(denied.status, 403);
+      },
+    },
+    ...mismatch,
+    {
+      name: 'answers concurrent identical keys with one change and one receipt',
+      run: async () => {
+        const target = await protocol.arrange();
+        const key = randomUUID();
+        const observed = await target.version();
+        const value = target.payload({
+          expectedVersion: observed,
+          variant: 'first',
+        });
+        const attempts = await Promise.all([
+          target.submit({ value, key }),
+          target.submit({ value, key }),
+        ]);
+        for (const attempt of attempts)
+          assert.equal(attempt.status, protocol.acceptedStatus);
+        const [first, second] = attempts.map((attempt) =>
+          protocol.receipt(attempt.body),
+        );
+        assert.deepEqual(second, first);
+        assert.equal(await target.version(), observed + 1);
       },
     },
   ];

@@ -58,5 +58,9 @@ export default defineConfig({
     },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
+    // The command builds the API and the web application before it serves:
+    // CI took up to 64 s, over Playwright's 60 s default (#1317). Same budget
+    // as the local startup plan in scripts/verify-local-browser.mjs.
+    timeout: 180_000,
   },
 });

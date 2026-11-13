@@ -1,8 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import {
-  requireBoundedIdempotencyKey,
-  requireUuid,
-} from '../access/access-command-validation.js';
+import { requireUuid } from '../access/access-command-validation.js';
 
 export type InvoiceCurrency = 'MDL' | 'EUR' | 'RON' | 'USD';
 export interface InvoiceValues {
@@ -195,8 +192,7 @@ export function invoiceQuery(value: unknown): string | undefined {
   return typeof v.cursor === 'string' ? v.cursor : undefined;
 }
 // invoice_record_commands stores keys of 1 to 200 characters.
-export const invoiceKey = (value: string | undefined) =>
-  requireBoundedIdempotencyKey(value, 200);
+export const INVOICE_KEY_MAX_LENGTH = 200;
 function invalid() {
   return new BadRequestException({
     code: 'INVOICE_INPUT_INVALID',
