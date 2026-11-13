@@ -29,6 +29,7 @@ import {
   readPaymentCursor,
   type PaymentCursorBinding,
 } from './payment.cursor.js';
+import type { RevisionPage } from '../revision-history/revision-history.js';
 import { PaymentStore } from './payment.store.js';
 import type {
   PaymentScope,
@@ -37,6 +38,7 @@ import type {
   PaymentHistory,
   PaymentSourcePage,
   PaymentHistoryPage,
+  PaymentRevision,
 } from './payment.types.js';
 function conflict(code: string): never {
   throw new ConflictException({
@@ -220,10 +222,9 @@ export class PaymentService {
     id: string,
     headRevision: number,
     binding: PaymentCursorBinding,
-    before?: number,
+    page: RevisionPage<PaymentRevision>,
   ): Promise<PaymentHistoryPage> {
-    const page = await this.store.history(scope, id, before),
-      last = page.items.at(-1);
+    const last = page.items.at(-1);
     return {
       items: page.items,
       nextCursor:
@@ -291,6 +292,7 @@ export class PaymentService {
           companyId: capture.companyId,
         },
         current = await this.store.current(scope, id),
+        payment = await this.store.summary(current),
         binding = this.binding(actor, scope, capture.readCapture);
       let canWithdraw = false,
         canCorrect = false,
@@ -339,9 +341,7 @@ export class PaymentService {
       ) {
         try {
           await this.source.requireFreshCopyAuthority(actor);
-          canReplace =
-            (await this.store.summary(current.row)).replacementPaymentId ===
-            null;
+          canReplace = payment.replacementPaymentId === null;
         } catch (e) {
           if (!(e instanceof ForbiddenException)) throw e;
         }
@@ -350,7 +350,7 @@ export class PaymentService {
         format: 'PAYMENT_OBSERVATION/1',
         companyId: scope.companyId,
         readCapture: capture.readCapture,
-        payment: await this.store.summary(current.row),
+        payment,
         actor: current.head.actor,
         recordedAt: current.head.recordedAt,
         capabilities: {
@@ -366,6 +366,7 @@ export class PaymentService {
           id,
           current.row.revision,
           binding,
+          current.history,
         ),
       };
     }).catch(unavailable);
@@ -411,7 +412,9 @@ export class PaymentService {
           id,
           current.row.revision,
           binding,
-          before,
+          before === undefined
+            ? current.history
+            : await this.store.history(scope, id, before),
         )),
       };
     }).catch(unavailable);

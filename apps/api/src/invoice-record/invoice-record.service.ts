@@ -27,6 +27,7 @@ import {
   readInvoiceCursor,
   type InvoiceCursorBinding,
 } from './invoice-record.cursor.js';
+import type { RevisionPage } from '../revision-history/revision-history.js';
 import { InvoiceRecordStore } from './invoice-record.store.js';
 import type {
   InvoiceScope,
@@ -35,6 +36,7 @@ import type {
   InvoiceHistory,
   InvoiceSourcePage,
   InvoiceHistoryPage,
+  InvoiceRevision,
 } from './invoice-record.types.js';
 function conflict(code: string): never {
   throw new ConflictException({
@@ -166,10 +168,9 @@ export class InvoiceRecordService {
     id: string,
     headRevision: number,
     binding: InvoiceCursorBinding,
-    before?: number,
+    page: RevisionPage<InvoiceRevision>,
   ): Promise<InvoiceHistoryPage> {
-    const page = await this.store.history(scope, id, before),
-      last = page.items.at(-1);
+    const last = page.items.at(-1);
     return {
       items: page.items,
       nextCursor:
@@ -274,7 +275,7 @@ export class InvoiceRecordService {
         format: 'EXTERNAL_INVOICE_RECORD/1',
         companyId: scope.companyId,
         readCapture: capture.readCapture,
-        record: await this.store.summary(current.row),
+        record: await this.store.summary(current),
         actor: current.head.actor,
         recordedAt: current.head.recordedAt,
         capabilities: { canCorrect, canWithdraw },
@@ -284,6 +285,7 @@ export class InvoiceRecordService {
           id,
           current.row.revision,
           binding,
+          current.history,
         ),
       };
     }).catch(unavailable);
@@ -329,7 +331,9 @@ export class InvoiceRecordService {
           id,
           current.row.revision,
           binding,
-          before,
+          before === undefined
+            ? current.history
+            : await this.store.history(scope, id, before),
         )),
       };
     }).catch(unavailable);
