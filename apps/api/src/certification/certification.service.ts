@@ -1,3 +1,8 @@
+import {
+  certificateRevisionCommand,
+  certificateRevisionValue,
+  type CertificateRevision,
+} from './certification-revisions.js';
 import { observedNumbers } from './certification-number-observations.js';
 import {
   approvalNeedsRenewal,
@@ -44,6 +49,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   CERTIFICATION_STEPS,
   certificationCertificates,
+  certificationCertificateRevisions,
   certificationNumberObservations,
   certificationDeadlineSets,
   certificationDiscrepancyResolutions,
@@ -563,7 +569,22 @@ export class CertificationService {
           companyId,
           targetId,
           input.expectedRevision,
+          ['open', 'certified'],
         );
+        if (
+          current.status === 'certified' &&
+          ![
+            'certificate',
+            'certificate_data',
+            'evidence',
+            'other',
+            'correspondence',
+          ].includes(input.role)
+        )
+          throw stepConflict(
+            'CERTIFICATION_CASE_CLOSED',
+            'Only revision and transmission evidence is attached after issuance.',
+          );
         const source = await this.sources.qualifyWithinWriteTransaction({
           actor,
           context: { companyId, originalClientId: current.clientAccountId },
@@ -1670,7 +1691,7 @@ export class CertificationService {
       ...input,
       role: 'approver',
       kind: 'decision',
-      statuses: ['open', 'refused'],
+      statuses: ['open', 'refused', 'certified'],
       step: 'decision',
       parse: certificationDecision,
       action: 'certification_case.decision_recorded',
@@ -1687,6 +1708,43 @@ export class CertificationService {
             'CERTIFICATION_DECISION_OUTCOME_FIXED',
             'A correction keeps the decided outcome; only its texts and references change.',
           );
+        if (current.status === 'certified') {
+          const original = previous
+            ? decisionVersion(previous).value
+            : undefined;
+          const fixed = [
+            'decision',
+            'decidedOn',
+            'decidedBy',
+            'decidedByFunction',
+            'decisionFormAttachmentId',
+            'independenceAttested',
+            'rationale',
+            'additionalInformation',
+          ] as const;
+          if (
+            !original ||
+            original.decision !== 'granted' ||
+            fixed.some((key) => original[key] !== payload[key])
+          )
+            throw stepConflict(
+              'CERTIFICATION_ISSUED_DECISION_FIXED',
+              'After issuance only the granted texts may change.',
+            );
+          const agreed = latest(steps, 'certificate_data');
+          if (
+            payload.decision !== 'granted' ||
+            !agreed ||
+            !sameCertificateTexts(
+              payload.grantedTexts,
+              certificateDataVersion(agreed).value.texts,
+            )
+          )
+            throw stepConflict(
+              'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
+              'The corrected decision must state exactly the latest agreed Certificate data.',
+            );
+        }
         this.requireNotNamedOnTeam(steps, payload.decidedBy);
         if (payload.decisionFormAttachmentId)
           await this.requireAttachment(
@@ -1705,31 +1763,35 @@ export class CertificationService {
         );
         // The check runs again here, on the Case as this decision would leave
         // it: its dates and granted texts are compared too (R05, R11).
-        const discrepancies = await this.blocking(
-          input.actor,
-          companyId,
-          current,
-          steps,
-          (snapshot) => ({
-            ...snapshot,
-            steps: [
-              ...snapshot.steps,
-              {
-                id: 'candidate-decision',
-                version: (previous?.version ?? 0) + 1,
-                caseRevision: current.revision + 1,
-                reason: null,
-                recordedBy: {
-                  workspaceMembershipId: input.actor.workspaceMembershipId,
-                  displayName: input.actor.displayName,
-                },
-                recordedAt: this.clock.now().toISOString(),
-                step: 'decision',
-                value: payload,
-              },
-            ],
-          }),
-        );
+        const discrepancies =
+          current.status === 'certified'
+            ? []
+            : await this.blocking(
+                input.actor,
+                companyId,
+                current,
+                steps,
+                (snapshot) => ({
+                  ...snapshot,
+                  steps: [
+                    ...snapshot.steps,
+                    {
+                      id: 'candidate-decision',
+                      version: (previous?.version ?? 0) + 1,
+                      caseRevision: current.revision + 1,
+                      reason: null,
+                      recordedBy: {
+                        workspaceMembershipId:
+                          input.actor.workspaceMembershipId,
+                        displayName: input.actor.displayName,
+                      },
+                      recordedAt: this.clock.now().toISOString(),
+                      step: 'decision',
+                      value: payload,
+                    },
+                  ],
+                }),
+              );
         if (discrepancies.length) failures.push('DISCREPANCIES_OPEN');
         if (failures.length)
           throw new ConflictException({
@@ -1751,6 +1813,7 @@ export class CertificationService {
       ...input,
       role: 'programme_manager',
       kind: 'certificate_data',
+      statuses: ['open', 'certified'],
       step: 'certificate_data',
       parse: certificateData,
       action: 'certification_case.certificate_data_agreed',
@@ -1963,6 +2026,7 @@ export class CertificationService {
     return certificateRelease({
       steps: steps.map(stepVersion),
       certificate: await this.certificate(actor, companyId, row.id),
+      revisions: await this.certificateRevisions(actor, companyId, row.id),
       exchanges: await this.exchangeVersions(actor, companyId, row.id),
       discrepanciesOpen:
         (await this.blocking(actor, companyId, row, steps)).length > 0,
@@ -2095,6 +2159,174 @@ export class CertificationService {
         });
       },
     });
+  }
+
+  /** An independent correction appends a new PDF, never changes issuance0. */
+  recordCertificateRevision({
+    actor,
+    caseId,
+    body,
+    key,
+  }: CaseCommandInput): Promise<unknown> {
+    const idempotencyKey = requireIdempotencyKey(key);
+    const targetId = requireUuid(caseId);
+    return this.command({
+      actor,
+      role: 'approver',
+      kind: 'certificate_revision',
+      key: idempotencyKey,
+      fingerprint: commandFingerprint({ caseId, body }),
+      execute: async (companyId) => {
+        const command = certificateRevisionCommand(body);
+        const input = command.value;
+        const current = await this.lockOpenCase(
+          actor,
+          companyId,
+          targetId,
+          command.expectedRevision,
+          ['certified'],
+        );
+        const certificate = await this.certificate(actor, companyId, targetId);
+        const steps = await this.steps(actor, companyId, targetId);
+        this.requireIndependent(actor, steps);
+        this.requireNotNamedOnTeam(steps, input.onBehalf?.actedBy);
+        await this.requireAct(actor, companyId, targetId, input.onBehalf);
+        this.requireReleaseDate(input.revisedOn);
+        const decided = latest(steps, 'decision');
+        const agreed = latest(steps, 'certificate_data');
+        const decision = decided ? decisionVersion(decided).value : undefined;
+        if (
+          !certificate ||
+          !decided ||
+          !agreed ||
+          decision?.decision !== 'granted'
+        )
+          throw stepConflict(
+            'CERTIFICATION_NOT_GRANTED',
+            'A revision follows an issued Certificate.',
+          );
+        const data = certificateDataVersion(agreed).value;
+        if (!sameCertificateTexts(decision.grantedTexts, data.texts))
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_DATA_DIFFERS',
+            'The latest decision and Certificate data must agree before a revision.',
+          );
+        await this.requireAttachment(
+          actor,
+          companyId,
+          targetId,
+          input.attachmentId,
+          ['certificate'],
+        );
+        const attachments = await this.database.connection
+          .select({
+            id: certificationCaseDocuments.id,
+            versionId: certificationCaseDocuments.versionId,
+          })
+          .from(certificationCaseDocuments)
+          .where(
+            and(
+              eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+              eq(certificationCaseDocuments.companyId, companyId),
+              eq(certificationCaseDocuments.caseId, targetId),
+            ),
+          );
+        const attached = attachments.find(
+          (item) => item.id === input.attachmentId,
+        );
+        if (!attached) throw new InternalServerErrorException();
+        const revisions = await this.certificateRevisions(
+          actor,
+          companyId,
+          targetId,
+        );
+        const priorAttachments = new Set([
+          certificate.attachmentId,
+          ...revisions.map((item) => item.attachmentId),
+        ]);
+        if (
+          attachments.some(
+            (item) =>
+              priorAttachments.has(item.id) &&
+              item.versionId === attached.versionId,
+          )
+        )
+          throw stepConflict(
+            'CERTIFICATION_CERTIFICATE_PDF_REUSED',
+            'A revision needs a different exact Document Version from every earlier Certificate.',
+          );
+        const index = (revisions.at(-1)?.index ?? 0) + 1;
+        const now = this.clock.now();
+        await this.database.connection
+          .insert(certificationCertificateRevisions)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            caseId: targetId,
+            index,
+            caseRevision: current.revision + 1,
+            ...input,
+            texts: data.texts,
+            documentVersionId: attached.versionId,
+            decisionVersionId: decided.id,
+            certificateDataVersionId: agreed.id,
+            actorMembershipId: actor.workspaceMembershipId,
+            actorInternalUserId: actor.internalUserId,
+            actorDisplayName: actor.displayName,
+            recordedAt: now,
+          });
+        return this.advance({
+          actor,
+          companyId,
+          current,
+          at: now,
+          action: 'certification_case.certificate_revised',
+          metadata: { index },
+        });
+      },
+    });
+  }
+
+  private async certificateRevisions(
+    actor: ActorContext,
+    companyId: string,
+    caseId: string,
+  ): Promise<CertificateRevision[]> {
+    const rows = await this.database.connection
+      .select()
+      .from(certificationCertificateRevisions)
+      .where(
+        and(
+          eq(certificationCertificateRevisions.workspaceId, actor.workspaceId),
+          eq(certificationCertificateRevisions.companyId, companyId),
+          eq(certificationCertificateRevisions.caseId, caseId),
+        ),
+      )
+      .orderBy(asc(certificationCertificateRevisions.index));
+    return rows.map((row) => ({
+      ...persisted(() =>
+        certificateRevisionValue({
+          reason: row.reason,
+          revisedOn: row.revisedOn,
+          attachmentId: row.attachmentId,
+          revisionMarked: row.revisionMarked,
+          independenceAttested: row.independenceAttested,
+          onBehalf: row.onBehalf,
+        }),
+      ),
+      id: row.id,
+      index: row.index,
+      caseRevision: row.caseRevision,
+      texts: persisted(() => certificateTexts(row.texts)),
+      decisionVersionId: row.decisionVersionId,
+      certificateDataVersionId: row.certificateDataVersionId,
+      recordedBy: {
+        workspaceMembershipId: row.actorMembershipId,
+        displayName: row.actorDisplayName,
+      },
+      recordedAt: row.recordedAt.toISOString(),
+      transmission: null,
+    }));
   }
 
   /** Shared shape of a versioned step command: parse, check, append. */
@@ -3789,6 +4021,24 @@ export class CertificationService {
         };
       }),
     ];
+    const certificate = await this.certificate(actor, companyId, caseId);
+    if (certificate) {
+      const [issuance] = await this.database.connection
+        .select({ caseRevision: certificationCertificates.caseRevision })
+        .from(certificationCertificates)
+        .where(
+          and(
+            eq(certificationCertificates.workspaceId, actor.workspaceId),
+            eq(certificationCertificates.companyId, companyId),
+            eq(certificationCertificates.caseId, caseId),
+          ),
+        );
+      if (!issuance) throw new InternalServerErrorException();
+      ordered.push({
+        order: [issuance.caseRevision, 0, 0, 0],
+        entry: { kind: 'certificate', certificate },
+      });
+    }
     ordered.sort((left, right) => {
       for (const [index, value] of left.order.entries()) {
         const difference = value - (right.order[index] ?? 0);
@@ -3796,7 +4046,6 @@ export class CertificationService {
       }
       return 0;
     });
-    const certificate = await this.certificate(actor, companyId, caseId);
     return {
       caseId: row.id,
       orderReference: row.orderReference,
@@ -3807,11 +4056,7 @@ export class CertificationService {
       revision: row.revision,
       openedAt: row.openedAt.toISOString(),
       revisedAt: (revised?.occurredAt ?? row.openedAt).toISOString(),
-      entries: [
-        ...ordered.map((item) => item.entry),
-        // The Certificate closes the Case, so it is always its last record.
-        ...(certificate ? [{ kind: 'certificate' as const, certificate }] : []),
-      ],
+      entries: ordered.map((item) => item.entry),
       documents: documents.map(attachment),
       release: await this.release(actor, companyId, row, steps),
       ...(await this.checkedSections(

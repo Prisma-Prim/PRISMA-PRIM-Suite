@@ -1,10 +1,23 @@
-import type { CertificateRecord } from './certification.types.js';
+import type {
+  CertificationAttachment,
+  CertificateRecord,
+} from './certification.types.js';
 import type { CertificateRelease } from './certification-release.js';
 import type { RegisterBlock } from './certification-register.js';
 import type { RegisterLanguage } from './certification-register.labels.js';
 
 const COPY = {
   en: {
+    revisionRequired: 'Revision required',
+    revision: 'Revision',
+    current: 'Current',
+    superseded: 'Superseded',
+    reason: 'Reason',
+    pdf: 'Exact PDF Version',
+    texts: 'Texts',
+    warning: 'revision not marked on the Certificate',
+    recordedAt: 'Recording time',
+    onBehalf: 'Act on behalf',
     title: 'Certificate release',
     draft: 'Draft',
     opinion: 'Client opinion',
@@ -22,6 +35,16 @@ const COPY = {
     skipped: 'Skipped',
   },
   fr: {
+    revisionRequired: 'Révision requise',
+    revision: 'Révision',
+    current: 'En vigueur',
+    superseded: 'Remplacée',
+    reason: 'Motif',
+    pdf: 'Version PDF exacte',
+    texts: 'Textes',
+    warning: 'révision non indiquée sur le certificat',
+    recordedAt: 'Heure d’enregistrement',
+    onBehalf: 'Acte pour le compte',
     title: 'Délivrance du certificat',
     draft: 'Projet',
     opinion: 'Avis du client',
@@ -38,6 +61,16 @@ const COPY = {
     skipped: 'Non sollicité',
   },
   ro: {
+    revisionRequired: 'Revizie necesară',
+    revision: 'Revizia',
+    current: 'Curentă',
+    superseded: 'Înlocuită',
+    reason: 'Motiv',
+    pdf: 'Versiunea PDF exactă',
+    texts: 'Texte',
+    warning: 'revizia nu este marcată pe certificat',
+    recordedAt: 'Ora înregistrării',
+    onBehalf: 'Act în numele',
     title: 'Eliberarea certificatului',
     draft: 'Proiect',
     opinion: 'Opinia clientului',
@@ -55,6 +88,16 @@ const COPY = {
     skipped: 'Omisă',
   },
   ru: {
+    revisionRequired: 'Требуется редакция',
+    revision: 'Редакция',
+    current: 'Текущая',
+    superseded: 'Заменена',
+    reason: 'Причина',
+    pdf: 'Точная версия PDF',
+    texts: 'Тексты',
+    warning: 'редакция не отмечена на сертификате',
+    recordedAt: 'Время записи',
+    onBehalf: 'Действие от имени',
     title: 'Выдача сертификата',
     draft: 'Проект',
     opinion: 'Мнение клиента',
@@ -77,6 +120,7 @@ export function releaseRegisterBlocks(
   release: CertificateRelease,
   language: RegisterLanguage,
   certificate: CertificateRecord | null,
+  documents: readonly CertificationAttachment[] = [],
 ): RegisterBlock[] {
   const c = COPY[language];
   const blocks: RegisterBlock[] = [{ kind: 'section', text: c.title }];
@@ -125,7 +169,7 @@ export function releaseRegisterBlocks(
   if (certificate)
     blocks.push(
       entry(
-        c.issue,
+        `${c.issue} · ${c.revision} 0 · ${release.currentRevisionIndex === 0 ? c.current : c.superseded}`,
         certificate.issuedOn ?? certificate.recordedAt,
         certificate.recordedBy.displayName,
       ),
@@ -143,6 +187,54 @@ export function releaseRegisterBlocks(
     );
   else
     blocks.push({ kind: 'paragraph', text: `${c.transmission}: ${c.missing}` });
+  if (release.revisionRequired)
+    blocks.push({ kind: 'paragraph', text: c.revisionRequired });
+  for (const revision of release.revisions) {
+    const attachment = documents.find(
+      (document) => document.id === revision.attachmentId,
+    );
+    blocks.push({
+      kind: 'entry',
+      title: `${c.revision} ${revision.index} · ${revision.index === release.currentRevisionIndex ? c.current : c.superseded}`,
+      fields: [
+        { label: c.date, value: revision.revisedOn },
+        { label: c.reason, value: revision.reason },
+        { label: c.actor, value: revision.recordedBy.displayName },
+        { label: c.recordedAt, value: revision.recordedAt },
+        {
+          label: c.pdf,
+          value: attachment
+            ? `${attachment.sourceTitle} / ${attachment.fileName} / ${attachment.versionId} / ${attachment.sha256}`
+            : revision.attachmentId,
+        },
+        {
+          label: c.texts,
+          value: revision.texts
+            .map(
+              (text) =>
+                `${text.language}: ${text.holderName}; ${text.address}; ${text.scope}`,
+            )
+            .join('\n'),
+        },
+        ...(revision.onBehalf
+          ? [
+              {
+                label: c.onBehalf,
+                value: `${revision.onBehalf.actedBy}; ${revision.onBehalf.actedByFunction}; ${revision.onBehalf.actedOn}`,
+              },
+            ]
+          : []),
+        {
+          label: c.transmission,
+          value: revision.transmission
+            ? `${revision.transmission.businessDate}; ${revision.transmission.recordedBy.displayName}; ${revision.transmission.channel}`
+            : c.missing,
+        },
+      ],
+    });
+    if (!revision.revisionMarked)
+      blocks.push({ kind: 'paragraph', text: c.warning });
+  }
   if (release.daysSinceIssuance !== null)
     blocks.push({
       kind: 'paragraph',

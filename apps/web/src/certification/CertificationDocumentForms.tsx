@@ -27,6 +27,7 @@ export type EligibleView =
   | { status: 'error' | 'denied' | 'unavailable' };
 
 export type AttachFormProps = {
+  certified?: boolean;
   idPrefix: string;
   eligible: EligibleView;
   register: readonly CertificationAttachment[];
@@ -47,6 +48,7 @@ export type AttachFormProps = {
  * note. PDFs already in the register stay listed but cannot be chosen.
  */
 export function AttachForm({
+  certified,
   idPrefix,
   eligible,
   register,
@@ -130,7 +132,17 @@ export function AttachForm({
         required
         invalid={invalid(draft.role === null)}
         describedBy={feedbackId}
-        options={CERTIFICATION_DOCUMENT_ROLES.map((role) => ({
+        options={CERTIFICATION_DOCUMENT_ROLES.filter(
+          (role) =>
+            !certified ||
+            [
+              'certificate',
+              'certificate_data',
+              'evidence',
+              'other',
+              'correspondence',
+            ].includes(role),
+        ).map((role) => ({
           value: role,
           label: copy(documentRoleLabel(role)),
         }))}

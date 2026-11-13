@@ -225,6 +225,7 @@ export function CertificationDecisionForm(
     today: string;
     /** The recorded outcome when this form corrects the decision. */
     correcting: CertificationOutcome | null;
+    textsOnly?: boolean;
   },
 ) {
   const { draft, onChange, correcting } = props;
@@ -243,7 +244,9 @@ export function CertificationDecisionForm(
       help={
         correcting === null
           ? 'certificationDecisionHelp'
-          : 'decisionCorrectionHelp'
+          : props.textsOnly
+            ? 'issuedDecisionCorrectionHelp'
+            : 'decisionCorrectionHelp'
       }
       submit={
         correcting === null ? 'certificationDecisionSubmit' : 'saveCorrection'
@@ -276,57 +279,61 @@ export function CertificationDecisionForm(
           onTexts={(grantedTexts) => onChange({ ...draft, grantedTexts })}
         />
       )}
-      <DateField
-        {...props}
-        field="decidedOn"
-        label="decidedOn"
-        max={props.today}
-      />
-      <TextInput
-        {...props}
-        field="decidedBy"
-        label="decidedBy"
-        limit={DECISION_LIMITS.person}
-        required
-      />
-      <TextInput
-        {...props}
-        field="decidedByFunction"
-        label="decidedByFunction"
-        limit={DECISION_LIMITS.person}
-      />
-      {props.forms.length > 0 && (
+      {!props.textsOnly && (
         <>
-          <label htmlFor={formId}>{copy('decisionForm')}</label>
-          <Select
-            id={formId}
-            value={draft.decisionFormAttachmentId}
-            placeholder={copy('decisionFormNone')}
-            disabled={props.disabled}
-            describedBy={props.feedbackId}
-            options={props.forms.map((attachment) => ({
-              value: attachment.id,
-              label: reference(attachment),
-            }))}
-            onValueChange={(decisionFormAttachmentId) =>
-              onChange({ ...draft, decisionFormAttachmentId })
-            }
+          <DateField
+            {...props}
+            field="decidedOn"
+            label="decidedOn"
+            max={props.today}
+          />
+          <TextInput
+            {...props}
+            field="decidedBy"
+            label="decidedBy"
+            limit={DECISION_LIMITS.person}
+            required
+          />
+          <TextInput
+            {...props}
+            field="decidedByFunction"
+            label="decidedByFunction"
+            limit={DECISION_LIMITS.person}
+          />
+          {props.forms.length > 0 && (
+            <>
+              <label htmlFor={formId}>{copy('decisionForm')}</label>
+              <Select
+                id={formId}
+                value={draft.decisionFormAttachmentId}
+                placeholder={copy('decisionFormNone')}
+                disabled={props.disabled}
+                describedBy={props.feedbackId}
+                options={props.forms.map((attachment) => ({
+                  value: attachment.id,
+                  label: reference(attachment),
+                }))}
+                onValueChange={(decisionFormAttachmentId) =>
+                  onChange({ ...draft, decisionFormAttachmentId })
+                }
+              />
+            </>
+          )}
+          <TextArea
+            {...props}
+            field="rationale"
+            label="decisionRationale"
+            limit={DECISION_LIMITS.rationale}
+          />
+          <TextArea
+            {...props}
+            field="additionalInformation"
+            label="decisionAdditionalInformation"
+            limit={DECISION_LIMITS.additionalInformation}
+            optional
           />
         </>
       )}
-      <TextArea
-        {...props}
-        field="rationale"
-        label="decisionRationale"
-        limit={DECISION_LIMITS.rationale}
-      />
-      <TextArea
-        {...props}
-        field="additionalInformation"
-        label="decisionAdditionalInformation"
-        limit={DECISION_LIMITS.additionalInformation}
-        optional
-      />
       <Attestation
         {...props}
         label="decisionIndependenceAttestation"
