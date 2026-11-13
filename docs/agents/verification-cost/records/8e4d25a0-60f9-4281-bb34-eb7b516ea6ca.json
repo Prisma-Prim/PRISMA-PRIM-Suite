@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "8e4d25a0-60f9-4281-bb34-eb7b516ea6ca",
+  "date": "2026-11-11",
+  "runType": "pull-request-proof",
+  "issue": 1287,
+  "pullRequest": 1298,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-11T18:12:29.393Z",
+    "end": "2026-11-11T18:21:37.790Z",
+    "durationSeconds": 548
+  },
+  "tokens": {
+    "input": 110,
+    "output": 40037,
+    "cacheCreation": 180423,
+    "cacheRead": 9992093
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 110,
+        "output": 40037,
+        "cacheCreation": 180423,
+        "cacheRead": 9992093
+      },
+      "estimatedPriceUsd": 4.242983
+    }
+  ],
+  "price": {
+    "estimatedUsd": 4.242983,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1
+    },
+    "notes": "Register step labels aligned with the Case page in en, fr, ro, ru; local unit and PostgreSQL register tests; acceptance journey in CI."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1300-pr1310-local-proof",
+  "date": "2026-11-12",
+  "runType": "pull-request-proof",
+  "issue": 1300,
+  "pullRequest": 1310,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-12T18:57:11.960Z",
+    "end": "2026-11-12T19:20:41.000Z",
+    "durationSeconds": 1409
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Own-field regressions red before fixes;485 Certification tests pass,21 owning-file tests rerun after one Spec P2 fix;real journey2/2 with desktop/narrow captures inspected;types/lint/format/docs pass. Window ends at final local correction;later external CI wait excluded. Usage/model/price not reported."
+  }
+}

@@ -52,7 +52,7 @@ An **audit** walks journeys of the [journey map](journey-map.md) as each of thei
      --issue <report issue> --from <start> --to <end> --result <pass|fail> --findings <P1=1,P2=2|none> --append
    ```
 
-   The source follows the harness: `--claude-code` with the session transcript and its folder, `--codex` with the rollout, or the self-reported figures in Codex Cloud. `--result` is `pass` when the audit confirmed no finding and `fail` otherwise; private mode omits `--issue`. Paste the printed line into the report, and ship the ledger line in a pull request that also corrects the journey-map rows the audit found wrong.
+   The source follows the harness: `--claude-code` with the session transcript and its folder, `--codex` with the rollout, or the self-reported figures in Codex Cloud. `--result` is `pass` when the audit confirmed no finding and `fail` otherwise; private mode omits `--issue`. Paste the printed line into the report, and ship the record file in a pull request that also corrects the journey-map rows the audit found wrong.
 
 ## Finding template
 

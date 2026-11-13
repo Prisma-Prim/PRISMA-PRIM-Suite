@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1295-pr1316-local-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1295,
+  "pullRequest": 1316,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-13T18:21:32.000Z",
+    "end": "2026-11-13T19:11:59.000Z",
+    "durationSeconds": 3027
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Measured local proof wall-clock window: doctor, public REST RED/GREEN, migration/history/atomicity, API151, web proofs, native2/2 with exact PDF downloads and warning captures, static/drift gates. Includes preserved work across environment interruption. Formal Standards0/Spec0. Model/tokens/price not reported; CI gates merge separately."
+  }
+}
