@@ -133,6 +133,10 @@ export type Phase =
   | 'decided'
   | 'data-doc'
   | 'data'
+  | 'draft-doc'
+  | 'drafted'
+  | 'opined'
+  | 'release-approved'
   | 'certificate-doc'
   | 'certified'
   | 'rejected';
@@ -157,6 +161,11 @@ export interface CaseModel {
   status: 'open' | 'rejected' | 'certified';
   nextStep: string | null;
   attachmentId: string | null;
+  versions: {
+    decision: string | null;
+    data: string | null;
+    draft: string | null;
+  };
   events: string[];
 }
 export interface Committed {

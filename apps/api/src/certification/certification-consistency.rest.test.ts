@@ -332,7 +332,7 @@ withPostgres(
       const { caseId, base } = await lactisCase();
       const clean = await read(CERTIFICATION_READER, base);
       expect(consistency(clean)).toEqual({
-        ruleSetVersion: 'dossier-consistency-2026-11.2',
+        ruleSetVersion: 'dossier-consistency-2026-11.3',
         counts: { critical: 0, error: 0, toClarify: 0 },
         open: [],
         resolved: [],
@@ -483,7 +483,7 @@ withPostgres(
           via: 'acceptance',
           reason: 'Fictional reason agreed with the client.',
           by: { displayName: `Synthetic ${CERTIFICATION_OWNER}` },
-          ruleSetVersion: 'dossier-consistency-2026-11.2',
+          ruleSetVersion: 'dossier-consistency-2026-11.3',
         },
       });
       const replay = await post(
@@ -764,7 +764,7 @@ withPostgres(
       const refusal = record(await refused.json());
       expect(refusal).toMatchObject({
         code: 'CERTIFICATION_DECISION_PRECONDITIONS',
-        failures: ['DISCREPANCIES_OPEN'],
+        failures: ['CERTIFICATE_DATA_MISSING', 'DISCREPANCIES_OPEN'],
         discrepancies: [
           {
             id: expect.stringMatching(/^R08:/u),
@@ -802,7 +802,7 @@ withPostgres(
       });
       await step(CERTIFICATION_APPROVER, base, '/decision', decision());
 
-      // After the decision, an open manual error refuses the Certificate.
+      // After the decision, an open manual error holds the draft approval.
       const draft = await attach(caseId, 'other');
       const signed = await attach(caseId, 'certificate');
       const manual = await step(CERTIFICATION_OWNER, base, '/discrepancies', {
@@ -817,30 +817,66 @@ withPostgres(
         note: null,
       });
       const blocking = open(manual).find((entry) => entry.origin === 'manual');
-      expect(blocking).toMatchObject({ blocks: 'certificate' });
-      const certificate = {
-        number: `DEMO-${caseId.slice(0, 8)}`,
-        attachmentId: signed,
-        signedBy: 'Decision Maker Demo',
-        signedByFunction: 'Head of the fictional body',
+      expect(blocking).toMatchObject({ blocks: 'certificate_draft_approval' });
+      const current = await read(CERTIFICATION_OWNER, base);
+      const recordedDraft = await step(
+        CERTIFICATION_OWNER,
+        base,
+        '/certificate-draft',
+        {
+          attachmentId: await attach(caseId, 'certificate_draft'),
+          number: `DEMO-${caseId.slice(0, 8)}`,
+          draftedOn: '2026-11-06',
+          decisionVersionId: record(current.decision).id,
+          certificateDataVersionId: record(current.certificateData).id,
+        },
+      );
+      const draftVersionId = record(recordedDraft.release).currentDraftId;
+      await step(CERTIFICATION_OWNER, base, '/client-opinion', {
+        draftVersionId,
+        outcome: 'skipped',
+        skipReason: 'texts_already_agreed',
+        businessDate: '2026-11-06',
+        note: null,
+      });
+      const approval = {
+        draftVersionId,
+        approvedOn: '2026-11-06',
+        textsConfirmed: true,
+        numberConfirmed: true,
+        validityConfirmed: true,
         independenceAttested: true,
       };
-      const held = await post(CERTIFICATION_APPROVER, `${base}/certificate`, {
-        expectedRevision: await revision(base),
-        ...certificate,
-      });
+      const held = await post(
+        CERTIFICATION_APPROVER,
+        `${base}/certificate-draft-approval`,
+        { expectedRevision: await revision(base), ...approval },
+      );
       expect(held.status).toBe(409);
       expect(record(await held.json())).toMatchObject({
-        code: 'CERTIFICATION_DISCREPANCIES_OPEN',
-        discrepancies: [{ id: blocking?.id, rule: 'manual', verdict: 'error' }],
+        code: 'CERTIFICATION_DRAFT_APPROVAL_PRECONDITIONS',
+        failures: ['discrepancies_open'],
       });
       await step(CERTIFICATION_APPROVER, base, '/discrepancy-resolutions', {
         discrepancyId: blocking?.id,
         resolution: 'accepted',
         reason: 'Fictional: the signed Certificate states the decided scope.',
       });
+      await step(
+        CERTIFICATION_APPROVER,
+        base,
+        '/certificate-draft-approval',
+        approval,
+      );
       expect(
-        await step(CERTIFICATION_APPROVER, base, '/certificate', certificate),
+        await step(CERTIFICATION_APPROVER, base, '/certificate', {
+          number: `DEMO-${caseId.slice(0, 8)}`,
+          issuedOn: '2026-11-06',
+          attachmentId: signed,
+          signedBy: 'Decision Maker Demo',
+          signedByFunction: 'Head of the fictional body',
+          independenceAttested: true,
+        }),
       ).toMatchObject({ status: 'certified' });
     });
 
@@ -879,7 +915,7 @@ withPostgres(
       );
       for (const value of [
         'Dossier consistency',
-        'Rule set: dossier-consistency-2026-11.2. Open: 0 critical, 0 error, 1 to clarify',
+        'Rule set: dossier-consistency-2026-11.3. Open: 0 critical, 0 error, 1 to clarify',
         'R04 — Stage plan days against calendar days and auditors on site — To clarify — Open',
         '2 auditor-days',
         '1 calendar day(s) × 1 auditor(s)',

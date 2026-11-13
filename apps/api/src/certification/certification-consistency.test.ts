@@ -734,6 +734,79 @@ describe('Dossier Consistency Check rules (PRD §8.1 vectors)', () => {
     );
   });
 
+  it('R13 compares only the draft number with issued Company numbers without exposing another Case', () => {
+    const builder = reportedCase();
+    builder.record({ step: 'decision', value: decision('2026-10-21') });
+    builder.record({
+      step: 'certificate_data',
+      value: {
+        texts: [TEXT],
+        agreedOn: '2026-10-21',
+        agreementAttachmentId: 'data-v1',
+      },
+    });
+    builder.record({
+      step: 'certificate_draft',
+      value: {
+        number: 'DEMO-0001',
+        attachmentId: 'draft-v1',
+        decisionVersionId: 'decision-1',
+        certificateDataVersionId: 'certificate_data-1',
+        draftedOn: '2026-10-21',
+      },
+    });
+    const snapshot = builder.snapshot();
+    expect(
+      checkConsistency({ ...snapshot, issuedNumbers: [] }).filter(
+        (entry) => entry.rule === 'R13',
+      ),
+    ).toEqual([]);
+    const found = checkConsistency({
+      ...snapshot,
+      issuedNumbers: [
+        { number: 'DEMO-0001', recordedAt: '2026-10-01T00:00:00Z' },
+      ],
+    }).filter((entry) => entry.rule === 'R13');
+    expect(found).toMatchObject([
+      {
+        verdict: 'critical',
+        subject: { kind: 'certificate_number' },
+        left: { value: { kind: 'text', text: 'DEMO-0001' } },
+        right: {
+          source: {
+            kind: 'company_certificate_number',
+            number: 'DEMO-0001',
+            attachment: null,
+          },
+        },
+      },
+    ]);
+    expect(
+      checkConsistency({
+        ...snapshot,
+        issuedNumbers: [
+          { number: 'OTHER-0001', recordedAt: '2026-10-01T00:00:00Z' },
+        ],
+      }).filter((entry) => entry.rule === 'R13'),
+    ).toEqual([]);
+    const history = consistencySection({
+      ...snapshot,
+      revision: builder.revision,
+      status: 'open',
+      manual: [],
+      resolutions: [],
+      issuedNumbers: [
+        { number: 'DEMO-0001', recordedAt: '2026-11-01T00:00:00Z' },
+      ],
+    });
+    expect(history.open.filter((entry) => entry.rule === 'R13')).toMatchObject([
+      { openedRevision: builder.revision },
+    ]);
+    expect(history.resolved.filter((entry) => entry.rule === 'R13')).toEqual(
+      [],
+    );
+  });
+
   it('R10 raises a record corrected after the dossier review until a new review covers it', () => {
     const builder = reportedCase();
     builder.record({ step: 'dossier_review', value: review() });
@@ -1084,7 +1157,7 @@ describe('Discrepancy history, acceptance and persistence (PRD §9.1)', () => {
     ]);
   });
 
-  it('blocks the Certificate after a granting decision and nothing once issued', () => {
+  it('blocks draft approval after a granting decision and nothing once issued', () => {
     const builder = reportedCase();
     builder.record({ step: 'dossier_review', value: review() });
     builder.record({ step: 'decision', value: decision('2026-11-04') });
@@ -1098,7 +1171,10 @@ describe('Discrepancy history, acceptance and persistence (PRD §9.1)', () => {
       },
     });
     expect(consistencySection(input(builder)).open).toEqual([
-      expect.objectContaining({ rule: 'R11', blocks: 'certificate' }),
+      expect.objectContaining({
+        rule: 'R11',
+        blocks: 'certificate_draft_approval',
+      }),
     ]);
     expect(
       consistencySection({ ...input(builder), status: 'certified' }).open,

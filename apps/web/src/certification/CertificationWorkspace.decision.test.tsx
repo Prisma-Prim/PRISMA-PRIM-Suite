@@ -58,13 +58,13 @@ const DOSSIER_INCOMPLETE =
 const GRANT_AGAINST =
   'Certification cannot be granted against a team recommendation that is not to grant.';
 const CERTIFIED_NOTE =
-  'This Case is certified: its Certificate is recorded. Every record is now read-only.';
+  'This Case is certified: its issued Certificate is preserved. Transmission can still be recorded in the exchange register.';
 const DECISION_VALIDATION =
   'Complete the decision: choose the outcome and state the decision date, the decision maker and function (at most 200 characters each) and the rationale (at most 4,000 characters). A grant states one to four Certificate texts, one per language, each with the holder name, address and scope.';
 const STALE =
   'This Case changed since you opened it. Reload it before saving; your draft is kept.';
 const REFUSED_NOTE =
-  'This Case is closed: certification was refused. Every record is now read-only; a new application needs a new Case.';
+  'Certification was refused and the outcome is fixed. An independent approver may correct the decision references with a reason.';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -302,7 +302,115 @@ function recommend(
   });
 }
 
+/** Certificate data recorded through the predecessor public step before a grant. */
+function agreeData(
+  server: FakeCertificationServer,
+  caseId: string,
+  formId?: string,
+) {
+  const agreementAttachmentId =
+    formId ??
+    server.attachAsColleague(
+      caseId,
+      server.addSource('Certificate data form'),
+      'certificate_data',
+    );
+  server.recordStepAsColleague(caseId, 'certificate_data', {
+    texts: CERTIFICATE_TEXTS,
+    agreedOn: '2026-11-05',
+    agreementAttachmentId,
+  });
+}
+/** An independently approved exact draft, for issuance-focused predecessor tests. */
+function approvedDraft(
+  server: FakeCertificationServer,
+  caseId: string,
+  number = 'DEMO-0001',
+) {
+  const stored = server.cases.get(caseId);
+  if (!stored) throw new Error('Expected the seeded Case.');
+  const decision = stored.steps
+    .filter((entry) => entry.step === 'decision')
+    .at(-1);
+  const data = stored.steps
+    .filter((entry) => entry.step === 'certificate_data')
+    .at(-1);
+  if (!decision || !data)
+    throw new Error('Expected the grant and agreed data.');
+  const attachmentId = server.attachAsColleague(
+    caseId,
+    server.addSource('Certificate draft'),
+    'certificate_draft',
+  );
+  server.recordStepAsColleague(caseId, 'certificate_draft', {
+    attachmentId,
+    number,
+    decisionVersionId: decision.id,
+    certificateDataVersionId: data.id,
+    draftedOn: '2026-11-06',
+  });
+  const draft = stored.steps.at(-1);
+  if (!draft) throw new Error('Expected the recorded draft.');
+  server.recordStepAsColleague(caseId, 'client_opinion', {
+    draftVersionId: draft.id,
+    businessDate: '2026-11-06',
+    outcome: 'skipped',
+    skipReason: 'texts_already_agreed',
+    note: null,
+  });
+  server.recordStepAsColleague(caseId, 'certificate_draft_approval', {
+    draftVersionId: draft.id,
+    approvedOn: '2026-11-06',
+    textsConfirmed: true,
+    numberConfirmed: true,
+    validityConfirmed: true,
+    independenceAttested: true,
+    onBehalf: null,
+  });
+}
+
 describe('Certification recommendation, decision and Certificate', () => {
+  it('shows Certificate data after the recommendation and seeds a first decision from the agreed texts', async () => {
+    const { server, actor } = serve({ manager: true, approver: true });
+    const caseId = reportedCase(server, {
+      reference: 'CERT-DATA-FIRST',
+      leader: certificationIds.colleague,
+    });
+    const { dataForm } = attachClosingDocuments(server, caseId);
+    recommend(server, caseId);
+    server.recordStepAsColleague(caseId, 'certificate_data', {
+      texts: CERTIFICATE_TEXTS,
+      agreedOn: '2026-11-05',
+      agreementAttachmentId: dataForm,
+    });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-DATA-FIRST');
+    const labels = [
+      ...screen.getByRole('list', { name: 'Steps' }).querySelectorAll('strong'),
+    ].map((item) => item.textContent);
+    expect(labels.indexOf('Certificate data')).toBe(
+      labels.indexOf(RECOMMENDATION) + 1,
+    );
+    const decisionForm = form(DECISION, 'Record the Certification Decision');
+    choose(decisionForm, 'Decision', 'Certification granted');
+    const text = within(decisionForm).getByRole('group', {
+      name: 'Certificate text 1',
+    });
+    expect(within(text).getByLabelText('Holder name')).toHaveValue(
+      'Lactis Demo SRL',
+    );
+    expect(within(text).getByLabelText('Address')).toHaveValue(
+      'Str. Exemplu 1, Demo City',
+    );
+    expect(
+      within(decisionForm).getByRole('group', { name: 'Certificate text 2' }),
+    ).toBeVisible();
+    expect(
+      within(decisionForm).queryAllByRole('checkbox', { checked: true }),
+    ).toEqual([]);
+  });
+
   it('lets the team leader recommend, then correct the recommendation from its latest values with a reason', async () => {
     const { server, actor } = serve({ manager: false, auditor: true });
     const caseId = reportedCase(server, {
@@ -365,7 +473,7 @@ describe('Certification recommendation, decision and Certificate', () => {
     ]);
     expect(server.mutations()[0]?.key).toBeTruthy();
     expect(screen.getByText(SAVED)).toBeVisible();
-    expect(caseDefinition('Next step')).toBe('Dossier review');
+    expect(caseDefinition('Next step')).toBe(DATA);
     expect(stepState('Team recommendation')).toBe(
       'Grant certification — version 1',
     );
@@ -432,7 +540,8 @@ describe('Certification recommendation, decision and Certificate', () => {
       reference: 'CERT-GRANT',
       leader: certificationIds.colleague,
     });
-    const { decisionForm } = attachClosingDocuments(server, caseId);
+    const { decisionForm, dataForm } = attachClosingDocuments(server, caseId);
+    agreeData(server, caseId, dataForm);
     recommend(server, caseId);
     server.install();
     renderWorkspace(actor);
@@ -484,7 +593,7 @@ describe('Certification recommendation, decision and Certificate', () => {
     expect(server.mutations()[0]).toEqual(
       expect.objectContaining({
         path: `/api/certification-cases/${caseId}/dossier-review`,
-        body: { expectedRevision: 20, ...dossierReview() },
+        body: { expectedRevision: 21, ...dossierReview() },
       }),
     );
     expect(definition(region(DOSSIER), 'Participant lists')).toBe('Present');
@@ -515,7 +624,6 @@ describe('Certification recommendation, decision and Certificate', () => {
     ).not.toBeInTheDocument();
     choose(decisionFormElement, 'Decision', 'Certification granted');
     fillText(decisionFormElement, 1, CERTIFICATE_TEXTS[0]);
-    click(decisionFormElement, 'Add a Certificate language');
     fillText(decisionFormElement, 2, CERTIFICATE_TEXTS[1]);
     fillDecision(decisionFormElement);
     selectOptionByLabel(
@@ -540,7 +648,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       expect.objectContaining({
         path: `/api/certification-cases/${caseId}/decision`,
         body: {
-          expectedRevision: 21,
+          expectedRevision: 22,
           ...certificationDecision({ decisionFormAttachmentId: decisionForm }),
         },
       }),
@@ -565,7 +673,7 @@ describe('Certification recommendation, decision and Certificate', () => {
         .map((button) => button.textContent),
     ).toEqual(['Correct the decision texts']);
     expect(caseDefinition('Status')).toBe('Open');
-    expect(caseDefinition('Next step')).toBe(DATA);
+    expect(caseDefinition('Next step')).toBe(CERTIFICATE);
     expect(timelineTitles().slice(-3)).toEqual([
       'Team recommendation — Grant certification (version 1)',
       'Dossier review — version 1',
@@ -636,12 +744,17 @@ describe('Certification recommendation, decision and Certificate', () => {
       }),
     ).not.toBeInTheDocument();
 
+    approvedDraft(server, caseId);
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
+    await screen.findByRole('form', { name: 'Record the issued Certificate' });
+
     // The Certificate, with the validity the server computes.
     const certificateForm = form(CERTIFICATE, 'Record the issued Certificate');
     change(
       within(certificateForm).getByLabelText('Certificate number'),
       ' DEMO-0001 ',
     );
+    change(within(certificateForm).getByLabelText('Issue date'), '2026-11-06');
     selectOptionByLabel(
       within(certificateForm).getByLabelText('Certificate PDF'),
       CERTIFICATE_PDF,
@@ -669,7 +782,8 @@ describe('Certification recommendation, decision and Certificate', () => {
     click(certificateForm, 'Record the Certificate');
     await waitFor(() => expect(caseDefinition('Status')).toBe('Certified'));
     expect(server.mutations()[1]?.body).toEqual({
-      expectedRevision: 23,
+      expectedRevision: 27,
+      issuedOn: '2026-11-06',
       number: 'DEMO-0001',
       attachmentId: pdf,
       signedBy: 'Decision Maker Demo',
@@ -698,11 +812,10 @@ describe('Certification recommendation, decision and Certificate', () => {
         .queryAllByRole('button', { name: /^(Record|Correct|Add|Remove)\b/u })
         .map((button) => button.textContent),
     ).toEqual(['Record an exchange', 'Add an item to re-verify']);
-    expect(timelineTitles().slice(-5)).toEqual([
-      'Team recommendation — Grant certification (version 1)',
-      'Dossier review — version 1',
-      'Certification Decision — Certification granted',
-      'Certificate data — version 1',
+    expect(timelineTitles().slice(-4)).toEqual([
+      'Certificate draft — version 1',
+      'Client opinion — version 1',
+      'Certificate draft approval — version 1',
       'Certificate DEMO-0001 recorded',
     ]);
   });
@@ -742,6 +855,7 @@ describe('Certification recommendation, decision and Certificate', () => {
     ).toBeVisible();
     expect(listed(refusal, 'Unmet decision preconditions')).toEqual([
       GRANT_AGAINST,
+      'Agree the Certificate data with the client before granting certification.',
     ]);
     expect(server.mutations()).toEqual([]);
 
@@ -792,7 +906,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       screen
         .queryAllByRole('button', { name: /^(Record|Correct)\b/u })
         .map((button) => button.textContent),
-    ).toEqual(['Record an exchange']);
+    ).toEqual(['Record an exchange', 'Correct the decision texts']);
     expect(timelineTitles().at(-1)).toBe(
       'Certification Decision — Certification refused',
     );
@@ -804,6 +918,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       reference: 'CERT-PRECONDITIONS',
       leader: certificationIds.colleague,
     });
+    agreeData(server, caseId);
     recommend(server, caseId);
     server.recordStepAsColleague(
       caseId,
@@ -882,7 +997,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       ),
     );
     expect(server.mutations()[0]?.body).toEqual({
-      expectedRevision: 18,
+      expectedRevision: 20,
       reason: 'Signed participant list received.',
       ...dossierReview(),
     });
@@ -932,7 +1047,7 @@ describe('Certification recommendation, decision and Certificate', () => {
         'Certification granted',
       ),
     );
-    expect(caseDefinition('Next step')).toBe(DATA);
+    expect(caseDefinition('Next step')).toBe(CERTIFICATE);
   });
 
   it('marks no decision field invalid when preconditions block the decision, and marks only the field left blank', async () => {
@@ -941,6 +1056,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       reference: 'CERT-BLOCKED-FIELDS',
       leader: certificationIds.colleague,
     });
+    agreeData(server, caseId);
     recommend(server, caseId);
     server.recordStepAsColleague(
       caseId,
@@ -975,6 +1091,7 @@ describe('Certification recommendation, decision and Certificate', () => {
       reference: 'CERT-STALE-FIELDS',
       leader: certificationIds.colleague,
     });
+    agreeData(server, caseId);
     recommend(server, caseId);
     server.recordStepAsColleague(caseId, 'dossier_review', dossierReview());
     server.install();
@@ -1060,7 +1177,14 @@ describe('Certification recommendation, decision and Certificate', () => {
       agreedOn: '2026-10-21',
       agreementAttachmentId: dataForm,
     });
-    expect(form(CERTIFICATE, 'Record the issued Certificate')).toBeVisible();
+    expect(
+      within(region(CERTIFICATE)).getByText(
+        'The current draft must be approved before the Certificate can be issued.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(region(CERTIFICATE)).queryByRole('form'),
+    ).not.toBeInTheDocument();
   });
 
   it('tells an approver on the audit team that an approver outside it reviews and decides', async () => {

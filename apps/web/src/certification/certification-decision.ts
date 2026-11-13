@@ -106,7 +106,7 @@ export interface CertificateData {
 }
 
 /** The recorded Certificate with the validity the server computed. */
-export interface Certificate {
+export type Certificate = {
   id: string;
   number: string;
   validFrom: string;
@@ -120,7 +120,10 @@ export interface Certificate {
   attachmentId: string;
   recordedBy: CertificationActorReference;
   recordedAt: string;
-}
+} & (
+  | { issuedOn: null; approvedDraftVersionId: null }
+  | { issuedOn: string; approvedDraftVersionId: string }
+);
 
 /** The server's bounds for these records. */
 export const DECISION_LIMITS = {
@@ -151,6 +154,7 @@ export const DECISION_PRECONDITIONS = [
   'RECOMMENDATION_MISSING',
   'GRANT_AGAINST_RECOMMENDATION',
   'DOSSIER_REVIEW_INCOMPLETE',
+  'CERTIFICATE_DATA_MISSING',
   'DECISION_IN_FUTURE',
   'DISCREPANCIES_OPEN',
 ] as const;
@@ -180,6 +184,7 @@ export type DecisionContext = {
   recommendation: { value: Recommendation } | null;
   dossierReview: { value: DossierReview } | null;
   consistency: Consistency;
+  certificateData: { value: CertificateData } | null;
 };
 
 /**
@@ -210,6 +215,8 @@ export function decisionPreconditions(
     failures.push('GRANT_AGAINST_RECOMMENDATION');
   if (!current.dossierReview || !dossierComplete(current.dossierReview.value))
     failures.push('DOSSIER_REVIEW_INCOMPLETE');
+  if (outcome === 'granted' && !current.certificateData)
+    failures.push('CERTIFICATE_DATA_MISSING');
   // The decision itself may raise more (its date, its texts): the server says.
   if (blockingDecision(current.consistency).length)
     failures.push('DISCREPANCIES_OPEN');

@@ -1,3 +1,7 @@
+import {
+  CertificateReleaseRegion,
+  useCertificateReleaseForm,
+} from './CertificationRelease';
 import './certification.css';
 import {
   useEffect,
@@ -348,7 +352,10 @@ type ClosingKind =
   | 'dossierReview'
   | 'certificationDecision'
   | 'certificateData'
-  | 'certificate';
+  | 'certificate'
+  | 'certificateDraft'
+  | 'clientOpinion'
+  | 'draftApproval';
 /** The Stage records, each with its own form and feedback. */
 type StageKind = 'stage1Plan' | 'stage2Plan' | 'stage1Report' | 'stage2Report';
 /**
@@ -424,6 +431,9 @@ const CLOSING_KINDS: readonly ClosingKind[] = [
   'certificationDecision',
   'certificateData',
   'certificate',
+  'certificateDraft',
+  'clientOpinion',
+  'draftApproval',
 ];
 const NO_PROPOSAL: Proposal = { status: 'idle' };
 const NO_DOWNLOAD: Download = { status: 'idle' };
@@ -463,6 +473,7 @@ function CertificationRegistry(
   const copy = useCertificationCopy();
   const { locale, formatDateTime, formatNumber } = useInterfaceLocale();
   const prefix = useId();
+  const releaseForm = useCertificateReleaseForm();
   const callbacks = useRef(props);
   callbacks.current = props;
   const listOperation = useScopedOperation(props.scope);
@@ -589,6 +600,12 @@ function CertificationRegistry(
   );
   const [certificateFeedback, setCertificateFeedback] =
     useState<Feedback>(IDLE);
+  const [certificateDraftFeedback, setCertificateDraftFeedback] =
+    useState<Feedback>(IDLE);
+  const [clientOpinionFeedback, setClientOpinionFeedback] =
+    useState<Feedback>(IDLE);
+  const [draftApprovalFeedback, setDraftApprovalFeedback] =
+    useState<Feedback>(IDLE);
   /** The manual Discrepancy form is open; its draft is kept through a reload. */
   const [manualOpen, setManualOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualDraft>(emptyManualDraft);
@@ -635,6 +652,9 @@ function CertificationRegistry(
     certificationDecision: certificationDecisionFeedback,
     certificateData: certificateDataFeedback,
     certificate: certificateFeedback,
+    certificateDraft: certificateDraftFeedback,
+    clientOpinion: clientOpinionFeedback,
+    draftApproval: draftApprovalFeedback,
   };
   const [download, setDownload] = useState<Download>(NO_DOWNLOAD);
   const [registerPdf, setRegisterPdf] = useState<RegisterPdf>(NO_REGISTER_PDF);
@@ -712,6 +732,12 @@ function CertificationRegistry(
         return setCertificateDataFeedback;
       case 'certificate':
         return setCertificateFeedback;
+      case 'certificateDraft':
+        return setCertificateDraftFeedback;
+      case 'clientOpinion':
+        return setClientOpinionFeedback;
+      case 'draftApproval':
+        return setDraftApprovalFeedback;
     }
     return unexpected(kind);
   }
@@ -729,6 +755,10 @@ function CertificationRegistry(
         return setCertificateDataDraft(null);
       case 'certificate':
         return setCertificateDraft(emptyCertificateDraft());
+      case 'certificateDraft':
+      case 'clientOpinion':
+      case 'draftApproval':
+        return releaseForm.reset(kind);
     }
     return unexpected(kind);
   }
@@ -1157,6 +1187,9 @@ function CertificationRegistry(
       case 'certificationDecision':
       case 'certificateData':
       case 'certificate':
+      case 'certificateDraft':
+      case 'clientOpinion':
+      case 'draftApproval':
         resetClosingDraft(kind);
         break;
       default:
@@ -1791,7 +1824,10 @@ function CertificationRegistry(
     const recorded = view.caseDetail.decision;
     if (recorded && !certificationDecisionDraft) return;
     const check = certificationDecisionFromDraft(
-      certificationDecisionDraft ?? emptyCertificationDecisionDraft(),
+      certificationDecisionDraft ??
+        emptyCertificationDecisionDraft(
+          view.caseDetail.certificateData?.value ?? null,
+        ),
       {
         register: view.register.items,
         correcting: recorded?.value.decision ?? null,
@@ -1871,7 +1907,13 @@ function CertificationRegistry(
     event.preventDefault();
     const view = closingView('certificate');
     if (!view || certificateHold(view) !== null) return;
-    const check = certificateFromDraft(certificateDraft, view.register.items);
+    const check = certificateFromDraft(
+      {
+        ...certificateDraft,
+        number: view.caseDetail.release.drafts.at(-1)?.value.number ?? '',
+      },
+      view.register.items,
+    );
     if (check.status !== 'valid') {
       setCertificateFeedback(
         refusedWith(
@@ -1915,7 +1957,12 @@ function CertificationRegistry(
    * Case, or corrects it until the Certificate closes the Case.
    */
   function decisionOffered(view: CaseView): boolean {
-    return findingRoles(view).independentApprover;
+    return (
+      (view.caseDetail.status === 'open' ||
+        view.caseDetail.status === 'refused') &&
+      authority.approve &&
+      !linkedToAnyTeamVersion(view.timeline, actor.workspaceMembershipId)
+    );
   }
 
   /**
@@ -1937,6 +1984,8 @@ function CertificationRegistry(
       certificateTextDifferences(decided.grantedTexts, data.value.texts).length
     )
       return 'blockedCertificateDataDiffers';
+    if (current.release.issuanceBlockers.length > 0)
+      return 'blockedCertificateApprovalMissing';
     if (attachmentsWithRole(view.register.items, 'certificate').length === 0)
       return 'certificateNoPdf';
     return null;
@@ -2847,6 +2896,9 @@ function CertificationRegistry(
     certificationDecision: `${prefix}-certification-decision-feedback`,
     certificateData: `${prefix}-certificate-data-feedback`,
     certificate: `${prefix}-certificate-feedback`,
+    certificateDraft: `${prefix}-certificate-draft-feedback`,
+    clientOpinion: `${prefix}-client-opinion-feedback`,
+    draftApproval: `${prefix}-draft-approval-feedback`,
   } satisfies Record<MutationKind, string>;
 
   /** A step's confirmation is shown above the Case and survives its reload. */
@@ -3385,18 +3437,62 @@ function CertificationRegistry(
                 stageSection(caseView, 'stage_2')}
               {caseView.caseDetail.stage2Report !== null &&
                 recommendationSection(caseView)}
+              {(caseView.caseDetail.certificateData !== null ||
+                (caseView.caseDetail.stage2Report !== null &&
+                  caseView.caseDetail.status === 'open')) &&
+                certificateDataSection(caseView)}
               {caseView.caseDetail.recommendation !== null && (
                 <>
                   {dossierSection(caseView)}
                   {decisionSection(caseView)}
                 </>
               )}
-              {(caseView.caseDetail.certificateData !== null ||
-                (caseView.caseDetail.stage2Report !== null &&
-                  caseView.caseDetail.status === 'open')) &&
-                certificateDataSection(caseView)}
-              {caseView.caseDetail.decision?.value.decision === 'granted' &&
-                certificateSection(caseView)}
+              <CertificateReleaseRegion
+                form={releaseForm}
+                key={caseView.caseDetail.id}
+                current={caseView.caseDetail}
+                register={caseView.register}
+                manage={authority.manage}
+                approve={
+                  authority.approve &&
+                  findingRoles(caseView).independentApprover
+                }
+                disabled={busy}
+                blocked={{
+                  certificateDraft: blockedUntilReload(
+                    certificateDraftFeedback,
+                  ),
+                  clientOpinion: blockedUntilReload(clientOpinionFeedback),
+                  draftApproval: blockedUntilReload(draftApprovalFeedback),
+                }}
+                feedback={{
+                  certificateDraft: feedbackMessage(
+                    'certificateDraft',
+                    certificateDraftFeedback,
+                  ),
+                  clientOpinion: feedbackMessage(
+                    'clientOpinion',
+                    clientOpinionFeedback,
+                  ),
+                  draftApproval: feedbackMessage(
+                    'draftApproval',
+                    draftApprovalFeedback,
+                  ),
+                }}
+                onCommand={(command) =>
+                  sendClosing(
+                    command.kind,
+                    caseView.caseDetail,
+                    command.path,
+                    command.value,
+                  )
+                }
+                issuance={
+                  caseView.caseDetail.decision?.value.decision === 'granted'
+                    ? certificateSection(caseView)
+                    : null
+                }
+              />
               <section aria-labelledby={`${prefix}-register-pdf-title`}>
                 <h5 id={`${prefix}-register-pdf-title`}>
                   {copy('registerPdfTitle')}
@@ -4585,7 +4681,7 @@ function CertificationRegistry(
   function certificationDecisionStep(view: CaseView) {
     const current = view.caseDetail;
     const recorded = current.decision;
-    if (current.status !== 'open') return null;
+    if (current.status !== 'open' && current.status !== 'refused') return null;
     if (!authority.approve)
       return recorded ? null : (
         <p className="certification-note">
@@ -4615,7 +4711,8 @@ function CertificationRegistry(
         </button>
       );
     const draft =
-      certificationDecisionDraft ?? emptyCertificationDecisionDraft();
+      certificationDecisionDraft ??
+      emptyCertificationDecisionDraft(current.certificateData?.value ?? null);
     const outcome = recorded?.value.decision ?? null;
     const unmet = decisionPreconditions(current, outcome ?? draft.decision);
     // A blocked submit's alert lists them; the standing notice then yields.
@@ -4773,7 +4870,11 @@ function CertificationRegistry(
     return (
       <CertificateForm
         {...closingForm('certificate', 'certificate')}
-        draft={certificateDraft}
+        notBefore={view.caseDetail.decision?.value.decidedOn}
+        draft={{
+          ...certificateDraft,
+          number: view.caseDetail.release.drafts.at(-1)?.value.number ?? '',
+        }}
         pdfs={attachmentsWithRole(view.register.items, 'certificate')}
         onChange={(draft) => {
           setCertificateDraft(draft);
@@ -5111,6 +5212,9 @@ function correctionReasonRefusal(kind: MutationKind): CertificationMessageKey {
     case 'dossierReview':
     case 'certificationDecision':
     case 'certificateData':
+    case 'certificateDraft':
+    case 'clientOpinion':
+    case 'draftApproval':
     case 'certificate':
       return 'blockedVersionCorrectionReason';
     case 'open':
@@ -5144,9 +5248,12 @@ function independenceRefusal(kind: MutationKind): Feedback {
     // The named decision maker or signatory may be corrected in the draft.
     case 'certificationDecision':
       return refusedWith('decisionMakerIndependence');
+    case 'certificateDraft':
+    case 'clientOpinion':
     case 'certificate':
       return refusedWith('certificateIndependence');
     // Only the person approving on behalf of the certification body is checked.
+    case 'draftApproval':
     case 'stage1Report':
     case 'stage2Report':
       return refusedWith('actingOnTeam');
@@ -5181,6 +5288,9 @@ function attachmentRoleRefusal(kind: MutationKind): CertificationMessageKey {
       return 'decisionFormRole';
     case 'certificateData':
       return 'certificateDataDocumentRole';
+    case 'certificateDraft':
+    case 'clientOpinion':
+    case 'draftApproval':
     case 'certificate':
       return 'certificatePdfRole';
     case 'discrepancy':
@@ -5216,6 +5326,9 @@ function attestationRefusal(kind: MutationKind): CertificationMessageKey {
       return 'teamDecisionAttestationRequired';
     case 'dossierReview':
       return 'dossierAttestationRequired';
+    case 'certificateDraft':
+    case 'clientOpinion':
+    case 'draftApproval':
     case 'certificate':
       return 'certificateAttestationRequired';
     case 'certificationDecision':
@@ -5318,6 +5431,11 @@ function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
   const steps = new Set(timeline.entries.map((entry) => entry.caseRevision));
   return (
     (last === undefined || last.caseRevision <= detail.revision) &&
+    [
+      ...detail.release.drafts,
+      ...detail.release.opinions,
+      ...detail.release.approvals,
+    ].every((version) => recorded(version.id, version.version)) &&
     detail.findings.every((finding) =>
       finding.records.every((record) => !steps.has(record.caseRevision)),
     ) &&
@@ -5455,6 +5573,13 @@ function closingAttachmentsOf(
         ? []
         : [{ role: 'decision_form', attachmentId: form }];
     }
+    case 'certificate_draft':
+      return [
+        { role: 'certificate_draft', attachmentId: entry.value.attachmentId },
+      ];
+    case 'client_opinion':
+    case 'certificate_draft_approval':
+      return [];
     case 'certificate_data':
       return [
         {
@@ -5485,7 +5610,7 @@ function closingAttachmentsOf(
  * team's impartiality analysis.
  */
 function citedAttachmentsOf(entry: CaseTimeline['entries'][number]): string[] {
-  const forms = (...acts: (ActAttribution | null)[]) =>
+  const form = (...acts: (ActAttribution | null)[]) =>
     acts.flatMap((act) =>
       act?.formAttachmentId ? [act.formAttachmentId] : [],
     );
@@ -5493,21 +5618,24 @@ function citedAttachmentsOf(entry: CaseTimeline['entries'][number]): string[] {
     case 'application_review':
     case 'duration':
     case 'team_decision':
-      return forms(entry.value.onBehalf);
-    case 'stage_1_report':
-    case 'stage_2_report':
-      return forms(entry.value.certificationBodyApproval);
+      return form(entry.value.onBehalf);
     case 'dossier_review':
-      return forms(entry.value.reviewedBy, entry.value.approvedBy);
+      return form(entry.value.reviewedBy, entry.value.approvedBy);
     case 'team':
       return entry.value.impartialityAnalysis?.evidenceAttachmentIds ?? [];
+    case 'certificate_draft_approval':
+      return form(entry.value.onBehalf);
     case 'application':
     case 'agreement':
     case 'stage_1_plan':
+    case 'stage_1_report':
     case 'stage_2_plan':
+    case 'stage_2_report':
     case 'recommendation':
     case 'decision':
     case 'certificate_data':
+    case 'certificate_draft':
+    case 'client_opinion':
       return [];
   }
   return unexpected(entry);
@@ -5531,6 +5659,9 @@ function stageAttachmentsOf(entry: CaseTimeline['entries'][number]) {
     case 'dossier_review':
     case 'decision':
     case 'certificate_data':
+    case 'certificate_draft':
+    case 'client_opinion':
+    case 'certificate_draft_approval':
       return [];
   }
   return unexpected(entry);
@@ -5760,6 +5891,13 @@ function commandFeedback(
           return refusedWith('blockedCertificateDataMissing', true);
         case 'CERTIFICATION_CERTIFICATE_DATA_DIFFERS':
           return refusedWith('certificateDataDiffers', true);
+        case 'CERTIFICATION_CERTIFICATE_APPROVAL_REQUIRED':
+        case 'CERTIFICATION_DRAFT_APPROVAL_PRECONDITIONS':
+        case 'CERTIFICATION_DRAFT_OUTDATED':
+          return refusedWith('blockedCertificateApprovalMissing', true);
+        case 'CERTIFICATION_CERTIFICATE_NUMBER_DIFFERS':
+        case 'CERTIFICATION_CERTIFICATE_ISSUE_DATE':
+          return refusedWith('certificateValidation');
         case 'CERTIFICATION_CERTIFICATE_NUMBER_TAKEN':
           return refusedWith('certificateNumberTaken');
         case 'CERTIFICATION_EXCHANGE_IN_FUTURE':

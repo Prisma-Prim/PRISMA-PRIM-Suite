@@ -145,6 +145,8 @@ function subject(
       return `${s.dateOrder}: ${labels.dates[value.earlier]} ≤ ${labels.dates[value.later]}`;
     case 'dossier_item':
       return `${s.dossierItem} — ${labels.items[value.item]}`;
+    case 'certificate_number':
+      return s.certificateNumber;
     case 'certificate_text':
       return `${s.certificateText} — ${value.language}, ${labels.textFields[value.field]}`;
     case 'address_numbers':
@@ -213,6 +215,7 @@ function source(
       return `${register.steps[value.step]}, ${labels.units.version} ${String(value.version)}${attachment ? `; ${attachment}` : ''}`;
     case 'finding':
       return `${labels.units.finding} ${String(value.sequence)}${attachment ? `; ${attachment}` : ''}`;
+    case 'company_certificate_number':
     case 'certificate':
       return `${labels.units.certificate} ${value.number}${attachment ? `; ${attachment}` : ''}`;
     case 'exchange':

@@ -1,3 +1,4 @@
+import type { NumberObservation } from './certification-number-observations.js';
 import { createHash } from 'node:crypto';
 import { proposeForApplication } from './certification-duration.js';
 import {
@@ -26,7 +27,7 @@ import type {
  * versioned rule set over one Case's recorded facts. It never reads PDF
  * content and never changes a record; a person resolves what it raises.
  */
-export const CONSISTENCY_RULE_SET_VERSION = 'dossier-consistency-2026-11.2';
+export const CONSISTENCY_RULE_SET_VERSION = 'dossier-consistency-2026-11.3';
 
 export const CONSISTENCY_RULES = [
   'R01',
@@ -41,6 +42,7 @@ export const CONSISTENCY_RULES = [
   'R10',
   'R11',
   'R12',
+  'R13',
   'R14',
   'R15',
   'R16',
@@ -88,6 +90,8 @@ export const DATE_FACTS = [
   'dossier_reviewed',
   'dossier_approved',
   'decision',
+  'draft_sent',
+  'client_opinion',
 ] as const;
 export type DateFact = (typeof DATE_FACTS)[number];
 
@@ -107,6 +111,7 @@ export type DiscrepancySubject =
       language: string;
       field: CertificateTextField;
     }
+  | { kind: 'certificate_number' }
   | { kind: 'address_numbers'; language: string }
   | { kind: 'document_version'; documentId: string }
   | { kind: 'plan_sending'; stage: AuditStage }
@@ -161,6 +166,7 @@ export type DiscrepancySource =
       version: number;
       attachment: AttachmentReference | null;
     }
+  | { kind: 'company_certificate_number'; number: string; attachment: null }
   | { kind: 'attachment'; attachment: AttachmentReference };
 
 /** One side of a comparison: the compared value, a fuller text, its source. */
@@ -205,6 +211,9 @@ export interface ConsistencyCertificate {
 
 /** The recorded facts of one Case as of one revision. */
 export interface ConsistencySnapshot {
+  numberObservations?: readonly NumberObservation[];
+  /** Other Cases' issued numbers only, without their identities or evidence. */
+  issuedNumbers?: readonly { number: string; recordedAt: string }[];
   steps: readonly CertificationStepVersion[];
   attachments: readonly CertificationAttachment[];
   findings: readonly ConsistencyFinding[];
@@ -262,7 +271,7 @@ export interface ConsistencyInput extends ConsistencySnapshot {
   resolutions: readonly ResolutionRecord[];
 }
 
-export type DiscrepancyBlock = 'decision' | 'certificate';
+export type DiscrepancyBlock = 'decision' | 'certificate_draft_approval';
 
 export type DiscrepancyResolution =
   | {
@@ -361,6 +370,7 @@ export function checkConsistency(
     ...dossierItems(facts),
     ...reviewedVersions(facts),
     ...certificateTexts(facts),
+    ...issuedDraftNumber(facts),
     ...addressNumbersRule(facts),
     ...laterDocumentVersions(facts),
     ...planSendingDates(facts),
@@ -426,7 +436,7 @@ export function consistencySection(
       left: discrepancy.left,
       right: discrepancy.right,
       openedRevision: start,
-      opened: marks.get(start)?.mark ?? null,
+      opened: occurrence.external ? null : (marks.get(start)?.mark ?? null),
       endedRevision: end,
     };
     let resolution: DiscrepancyResolution | null = null;
@@ -931,6 +941,45 @@ function dateOrder(facts: Facts): RuleDiscrepancy[] {
   ].filter((entry): entry is DatedFact => entry !== null);
   for (let index = 1; index < chain.length; index += 1)
     pairs.push([chain[index - 1] ?? null, chain[index] ?? null, 'error']);
+  for (const version of [facts.latest('client_opinion')]) {
+    if (
+      !version ||
+      version.step !== 'client_opinion' ||
+      version.value.outcome === 'skipped'
+    )
+      continue;
+    const opinionValue = version.value;
+    const received = facts.snapshot.exchanges.find(
+      (exchange) => exchange.id === opinionValue.exchangeRecordId,
+    );
+    const draft = facts.snapshot.steps.find(
+      (step) =>
+        step.step === 'certificate_draft' &&
+        step.id === opinionValue.draftVersionId,
+    );
+    if (!received || !draft || draft.step !== 'certificate_draft') continue;
+    const sent = currentExchanges(facts.snapshot.exchanges).find(
+      (exchange) =>
+        exchange.direction === 'sent' &&
+        exchange.itemKind === 'certificate_draft' &&
+        exchange.counterpart.kind === 'client' &&
+        exchange.attachmentIds.includes(draft.value.attachmentId),
+    );
+    if (sent && received.businessDate < sent.businessDate)
+      pairs.push([
+        {
+          fact: 'draft_sent',
+          date: sent.businessDate,
+          source: facts.exchangeSource(sent),
+        },
+        {
+          fact: 'client_opinion',
+          date: received.businessDate,
+          source: facts.source(version),
+        },
+        'error',
+      ]);
+  }
   return pairs.flatMap(([earlier, later, verdict]) =>
     earlier && later && earlier.date > later.date
       ? [
@@ -1156,6 +1205,34 @@ function certificateTexts(facts: Facts): RuleDiscrepancy[] {
     if (!granted.some((entry) => entry.language === text.language))
       found.push(language(text, 'right'));
   return found;
+}
+
+/** R13 reveals number availability in this Company, never the other Case. */
+function issuedDraftNumber(facts: Facts): RuleDiscrepancy[] {
+  const draft = facts.latest('certificate_draft');
+  if (
+    !draft ||
+    !facts.snapshot.issuedNumbers?.some(
+      (issued) => issued.number === draft.value.number,
+    )
+  )
+    return [];
+  return [
+    raise(
+      'R13',
+      'critical',
+      { kind: 'certificate_number' },
+      side({ kind: 'text', text: draft.value.number }, facts.source(draft)),
+      side(
+        { kind: 'state', state: 'recorded' },
+        {
+          kind: 'company_certificate_number',
+          number: draft.value.number,
+          attachment: null,
+        },
+      ),
+    ),
+  ];
 }
 
 /** R12: the numbers of each agreed address against the declared address. */
@@ -1494,6 +1571,7 @@ function normalReference(value: string): string {
 function primaryAttachment(version: CertificationStepVersion): string | null {
   switch (version.step) {
     case 'agreement':
+    case 'certificate_draft':
       return version.value.attachmentId;
     case 'stage_1_plan':
     case 'stage_2_plan':
@@ -1512,6 +1590,8 @@ function primaryAttachment(version: CertificationStepVersion): string | null {
     case 'team_decision':
     case 'recommendation':
     case 'dossier_review':
+    case 'client_opinion':
+    case 'certificate_draft_approval':
       return null;
   }
   return unexpected(version);
@@ -1534,7 +1614,12 @@ function stepAttachments(version: CertificationStepVersion): string[] {
     case 'team_decision':
       return forms(version.value.onBehalf);
     case 'agreement':
+    case 'certificate_draft':
       return [version.value.attachmentId];
+    case 'client_opinion':
+      return [];
+    case 'certificate_draft_approval':
+      return forms(version.value.onBehalf);
     case 'team':
       return version.value.impartialityAnalysis?.evidenceAttachmentIds ?? [];
     case 'stage_1_plan':
@@ -1597,6 +1682,7 @@ type Occurrence = {
   discrepancy: RuleDiscrepancy;
   start: number;
   end: number | null;
+  external?: boolean;
 };
 
 /** The check over every recorded revision: when each Discrepancy appeared and ended. */
@@ -1609,10 +1695,43 @@ function replay(input: ConsistencyInput): Occurrence[] {
     for (const record of finding.records) revisions.add(record.caseRevision);
   if (input.certificate) revisions.add(input.certificate.caseRevision);
   for (const exchange of input.exchanges) revisions.add(exchange.caseRevision);
+  for (const observation of input.numberObservations ?? [])
+    revisions.add(observation.caseRevision);
   const occurrences: Occurrence[] = [];
   const current = new Map<string, Occurrence>();
+  let previousRevision: number | undefined;
   for (const revision of [...revisions].sort((left, right) => left - right)) {
     if (revision > input.revision) break;
+    // A source first observed at this command may have changed while the
+    // previous local revision was current. It has no local opening actor.
+    if (
+      previousRevision !== undefined &&
+      input.numberObservations !== undefined
+    ) {
+      const earlier = asOf(input, previousRevision);
+      const observed = asOf(input, revision).issuedNumbers;
+      for (const discrepancy of checkConsistency({
+        ...earlier,
+        issuedNumbers: observed,
+      }).filter((item) => item.rule === 'R13')) {
+        const id = discrepancyId(
+          discrepancy.rule,
+          discrepancy.subject,
+          discrepancy.left.value,
+          discrepancy.right.value,
+        );
+        if (!current.has(id)) {
+          const occurrence: Occurrence = {
+            discrepancy,
+            start: previousRevision,
+            end: null,
+            external: true,
+          };
+          current.set(id, occurrence);
+          occurrences.push(occurrence);
+        }
+      }
+    }
     const seen = new Set<string>();
     for (const discrepancy of checkConsistency(asOf(input, revision))) {
       const id = discrepancyId(
@@ -1635,6 +1754,25 @@ function replay(input: ConsistencyInput): Occurrence[] {
         occurrence.end = revision;
         current.delete(id);
       }
+    previousRevision = revision;
+  }
+  const live = checkConsistency(input).filter(
+    (discrepancy) => discrepancy.rule === 'R13',
+  );
+  for (const discrepancy of live) {
+    const id = discrepancyId(
+      discrepancy.rule,
+      discrepancy.subject,
+      discrepancy.left.value,
+      discrepancy.right.value,
+    );
+    if (!current.has(id))
+      occurrences.push({
+        discrepancy,
+        start: input.revision,
+        end: null,
+        external: true,
+      });
   }
   return occurrences;
 }
@@ -1662,6 +1800,24 @@ function asOf(
       (exchange) => exchange.caseRevision <= revision,
     ),
     deadlineDays: input.deadlineDays,
+    numberObservations: input.numberObservations?.filter(
+      (observation) => observation.caseRevision <= revision,
+    ),
+    issuedNumbers:
+      input.numberObservations !== undefined
+        ? (
+            input.numberObservations
+              .filter((observation) => observation.caseRevision <= revision)
+              .at(-1)?.numbers ?? []
+          ).map((number) => ({ number, recordedAt: '' }))
+        : input.issuedNumbers?.filter((issued) => {
+            const at = input.steps
+              .filter((step) => step.caseRevision <= revision)
+              .map((step) => step.recordedAt)
+              .sort()
+              .at(-1);
+            return at !== undefined && issued.recordedAt <= at;
+          }),
   };
 }
 
@@ -1766,9 +1922,24 @@ function blockOf(
   if (verdict === 'to_clarify' || input.status !== 'open') return null;
   const decision = new Facts(input).latest('decision');
   if (!decision) return 'decision';
-  return decision.value.decision === 'granted' && input.certificate === null
-    ? 'certificate'
-    : null;
+  if (decision.value.decision !== 'granted' || input.certificate !== null)
+    return null;
+  const facts = new Facts(input);
+  const draft = facts.latest('certificate_draft');
+  const data = facts.latest('certificate_data');
+  const approval = facts.latest('certificate_draft_approval');
+  const opinion = facts.latest('client_opinion');
+  const passed =
+    draft &&
+    approval &&
+    opinion &&
+    approval.value.draftVersionId === draft.id &&
+    opinion.value.draftVersionId === draft.id &&
+    opinion.value.outcome !== 'changes_requested' &&
+    approval.caseRevision > opinion.caseRevision &&
+    draft.value.decisionVersionId === decision.id &&
+    draft.value.certificateDataVersionId === data?.id;
+  return passed ? null : 'certificate_draft_approval';
 }
 
 function daysBetween(start: string, end: string): number {

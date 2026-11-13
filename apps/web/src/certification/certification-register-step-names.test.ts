@@ -38,6 +38,21 @@ interface PageName {
 }
 
 const PAGE_NAMES: Readonly<Record<StepVersion['step'], PageName>> = {
+  certificate_draft: {
+    timeline: 'releaseDraftTimeline',
+    stepList: null,
+    consistency: 'stepCertificateDraft',
+  },
+  client_opinion: {
+    timeline: 'releaseOpinionTimeline',
+    stepList: null,
+    consistency: 'stepClientOpinion',
+  },
+  certificate_draft_approval: {
+    timeline: 'releaseApprovalTimeline',
+    stepList: null,
+    consistency: 'stepCertificateDraftApproval',
+  },
   application: {
     timeline: 'timelineApplication',
     stepList: 'stepApplication',

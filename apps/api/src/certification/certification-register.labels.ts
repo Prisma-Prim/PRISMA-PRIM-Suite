@@ -97,6 +97,7 @@ export interface RegisterLabels {
       string
     >;
     decision: Record<'granted' | 'refused', string>;
+    clientOpinion: Record<'agreed' | 'changes_requested' | 'skipped', string>;
     classification: Record<FindingClassification, string>;
     planJudgment: Record<'adequate' | 'inadequate', string>;
     verification: Record<'effective' | 'not_effective', string>;
@@ -141,6 +142,9 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       dossier_review: 'Dossier review',
       decision: 'Certification Decision',
       certificate_data: 'Certificate data',
+      certificate_draft: 'Certificate draft',
+      client_opinion: 'Client opinion',
+      certificate_draft_approval: 'Certificate draft approval',
     },
     unrecognizedStep: 'Recorded step',
     finding: 'Finding',
@@ -210,6 +214,11 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       sha256: 'SHA-256',
     },
     values: {
+      clientOpinion: {
+        agreed: 'Agreed',
+        changes_requested: 'Changes requested',
+        skipped: 'Skipped',
+      },
       status: {
         open: 'Open',
         rejected: 'Application rejected',
@@ -251,6 +260,8 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
         evidence: 'Evidence',
         certificate: 'Certificate',
         certificate_data: 'Certificate data',
+        certificate_draft: 'Certificate draft',
+        client_opinion: 'Client opinion',
         decision_form: 'Decision form',
         correspondence: 'Correspondence',
         other: 'Other',
@@ -283,6 +294,9 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       dossier_review: 'Revue du dossier',
       decision: 'Décision de certification',
       certificate_data: 'Données du certificat',
+      certificate_draft: 'Projet de certificat',
+      client_opinion: 'Avis du client',
+      certificate_draft_approval: 'Approbation du projet de certificat',
     },
     unrecognizedStep: 'Étape enregistrée',
     finding: 'Constat',
@@ -352,6 +366,11 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       sha256: 'SHA-256',
     },
     values: {
+      clientOpinion: {
+        agreed: 'Accordé',
+        changes_requested: 'Modifications demandées',
+        skipped: 'Non sollicité',
+      },
       status: {
         open: 'Ouvert',
         rejected: 'Demande rejetée',
@@ -396,6 +415,8 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
         evidence: 'Preuve',
         certificate: 'Certificat',
         certificate_data: 'Données du certificat',
+        certificate_draft: 'Projet de certificat',
+        client_opinion: 'Avis du client',
         decision_form: 'Formulaire de décision',
         correspondence: 'Correspondance',
         other: 'Autre',
@@ -428,6 +449,9 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       dossier_review: 'Analiza dosarului',
       decision: 'Decizia de certificare',
       certificate_data: 'Datele certificatului',
+      certificate_draft: 'Proiectul certificatului',
+      client_opinion: 'Opinia clientului',
+      certificate_draft_approval: 'Aprobarea proiectului certificatului',
     },
     unrecognizedStep: 'Etapă înregistrată',
     finding: 'Constatare',
@@ -497,6 +521,11 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       sha256: 'SHA-256',
     },
     values: {
+      clientOpinion: {
+        agreed: 'De acord',
+        changes_requested: 'Modificări solicitate',
+        skipped: 'Omisă',
+      },
       status: {
         open: 'Deschis',
         rejected: 'Cerere respinsă',
@@ -541,6 +570,8 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
         evidence: 'Dovadă',
         certificate: 'Certificat',
         certificate_data: 'Datele certificatului',
+        certificate_draft: 'Proiectul certificatului',
+        client_opinion: 'Opinia clientului',
         decision_form: 'Formular de decizie',
         correspondence: 'Corespondență',
         other: 'Altul',
@@ -573,6 +604,9 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       dossier_review: 'Анализ досье',
       decision: 'Решение о сертификации',
       certificate_data: 'Данные сертификата',
+      certificate_draft: 'Проект сертификата',
+      client_opinion: 'Мнение клиента',
+      certificate_draft_approval: 'Утверждение проекта сертификата',
     },
     unrecognizedStep: 'Записанный шаг',
     finding: 'Наблюдение',
@@ -642,6 +676,11 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
       sha256: 'SHA-256',
     },
     values: {
+      clientOpinion: {
+        agreed: 'Согласовано',
+        changes_requested: 'Запрошены изменения',
+        skipped: 'Пропущено',
+      },
       status: {
         open: 'Открыто',
         rejected: 'Заявка отклонена',
@@ -689,6 +728,8 @@ export const REGISTER_LABELS: Record<RegisterLanguage, RegisterLabels> = {
         evidence: 'Свидетельство',
         certificate: 'Сертификат',
         certificate_data: 'Данные сертификата',
+        certificate_draft: 'Проект сертификата',
+        client_opinion: 'Мнение клиента',
         decision_form: 'Форма решения',
         correspondence: 'Переписка',
         other: 'Другое',

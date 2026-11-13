@@ -1,4 +1,14 @@
 import {
+  parseCertificateRelease,
+  parseCertificateDraft,
+  parseClientOpinion,
+  parseDraftApproval,
+  type CertificateRelease,
+  type CertificateDraftValue,
+  type ClientOpinionValue,
+  type CertificateDraftApprovalValue,
+} from './certification-release';
+import {
   ATTRIBUTION_LIMITS,
   type ActAttribution,
 } from './certification-attribution';
@@ -125,6 +135,8 @@ export const CERTIFICATION_DOCUMENT_ROLES = [
   'evidence',
   'certificate',
   'certificate_data',
+  'certificate_draft',
+  'client_opinion',
   'decision_form',
   'correspondence',
   'other',
@@ -238,7 +250,16 @@ export type StepVersion =
   | (StepVersionBase & { step: 'recommendation'; value: Recommendation })
   | (StepVersionBase & { step: 'dossier_review'; value: DossierReview })
   | (StepVersionBase & { step: 'decision'; value: CertificationDecision })
-  | (StepVersionBase & { step: 'certificate_data'; value: CertificateData });
+  | (StepVersionBase & { step: 'certificate_data'; value: CertificateData })
+  | (StepVersionBase & {
+      step: 'certificate_draft';
+      value: CertificateDraftValue;
+    })
+  | (StepVersionBase & { step: 'client_opinion'; value: ClientOpinionValue })
+  | (StepVersionBase & {
+      step: 'certificate_draft_approval';
+      value: CertificateDraftApprovalValue;
+    });
 export type ApplicationVersion = Extract<StepVersion, { step: 'application' }>;
 export type ApplicationReviewVersion = Extract<
   StepVersion,
@@ -350,6 +371,7 @@ export interface CaseDetail extends CaseSummary {
   certificateData: CertificateDataVersion | null;
   /** The recorded Certificate, present exactly when the Case is certified. */
   certificate: Certificate | null;
+  release: CertificateRelease;
   /** The Dossier Consistency Check over the Case's current records. */
   consistency: Consistency;
   /** The exchange register, its deadline states and the Re-verification Items. */
@@ -502,6 +524,10 @@ export function parseCaseDetail(
         : certificateDataVersion(body.certificateData),
     certificate:
       body.certificate === null ? null : certificateValue(body.certificate),
+    release:
+      body.release === undefined
+        ? legacyRelease(body.certificate)
+        : parseCertificateRelease(body.release),
     consistency: parseConsistency(body.consistency),
     exchanges: parseExchanges(body.exchanges),
   };
@@ -826,6 +852,7 @@ function caseStatus(value: unknown): CaseStatus {
 
 /** The server derives status and next step from the recorded steps. */
 function consistent(detail: CaseDetail): boolean {
+  if (!releaseConsistent(detail)) return false;
   const {
     application,
     applicationReview: review,
@@ -1104,9 +1131,9 @@ function expectedNextStep(detail: CaseDetail): CertificationNextStep {
   if (!detail.stage2Report) return 'stage_2_report';
   if (detail.findings.some(findingBlocks)) return 'findings_follow_up';
   if (!detail.recommendation) return 'recommendation';
+  if (!detail.certificateData) return 'certificate_data';
   if (!detail.dossierReview) return 'dossier_review';
   if (!detail.decision) return 'decision';
-  if (!detail.certificateData) return 'certificate_data';
   return 'certificate';
 }
 
@@ -1207,6 +1234,24 @@ function parseStepVersion(value: unknown): StepVersion {
       };
     case 'decision':
       return { ...stage, step: 'decision', value: decisionValue(row.value) };
+    case 'certificate_draft':
+      return {
+        ...stage,
+        step: 'certificate_draft',
+        value: parseCertificateDraft(row.value),
+      };
+    case 'client_opinion':
+      return {
+        ...stage,
+        step: 'client_opinion',
+        value: parseClientOpinion(row.value),
+      };
+    case 'certificate_draft_approval':
+      return {
+        ...stage,
+        step: 'certificate_draft_approval',
+        value: parseDraftApproval(row.value),
+      };
     case 'certificate_data':
       return {
         ...stage,
@@ -1332,7 +1377,13 @@ function certificateTexts(value: unknown): CertificateText[] {
 /** The recorded Certificate with the validity the server computed. */
 function certificateValue(value: unknown): Certificate {
   const row = object(value);
-  return {
+  const issuedOn = optionalDate(row.issuedOn);
+  const approvedDraftVersionId =
+    row.approvedDraftVersionId === undefined ||
+    row.approvedDraftVersionId === null
+      ? null
+      : text(row.approvedDraftVersionId);
+  const base = {
     id: text(row.id),
     number: text(row.number, DECISION_LIMITS.number),
     validFrom: calendarDate(row.validFrom),
@@ -1350,6 +1401,12 @@ function certificateValue(value: unknown): Certificate {
     recordedBy: actorReference(row.recordedBy),
     recordedAt: instant(row.recordedAt),
   };
+  if (issuedOn === null) {
+    if (approvedDraftVersionId !== null) return invalid();
+    return { ...base, issuedOn: null, approvedDraftVersionId: null };
+  }
+  if (approvedDraftVersionId === null) return invalid();
+  return { ...base, issuedOn, approvedDraftVersionId };
 }
 
 /** Only a correction states a reason; the first version never does. */
@@ -2213,4 +2270,71 @@ function invalid(): never {
 
 function unexpectedValue(value: never): never {
   throw new Error(`Unexpected Certification value: ${String(value)}`);
+}
+
+/** Older live payloads predate release; immutable command receipts have their own reader. */
+function legacyRelease(certificate: unknown): CertificateRelease {
+  return {
+    validity: null,
+    drafts: [],
+    opinions: [],
+    approvals: [],
+    currentDraftId: null,
+    outdated: false,
+    approvalBlockers: ['draft_missing'],
+    issuanceBlockers: ['draft_missing', 'approval_missing'],
+    transmission: null,
+    daysSinceIssuance: null,
+    legacyIssuance: certificate !== null,
+  };
+}
+
+/** Immutable release references stay readable while a later draft is outdated. */
+function releaseConsistent(detail: CaseDetail): boolean {
+  const release = detail.release;
+  const drafts = release.drafts;
+  const current = drafts.at(-1);
+  const versions = [...drafts, ...release.opinions, ...release.approvals];
+  if (versions.some((version) => version.caseRevision > detail.revision))
+    return false;
+  if (
+    new Set(versions.map((version) => version.caseRevision)).size !==
+    versions.length
+  )
+    return false;
+  for (const version of [...release.opinions, ...release.approvals]) {
+    const draft = drafts.find(
+      (entry) => entry.id === version.value.draftVersionId,
+    );
+    if (!draft || draft.caseRevision >= version.caseRevision) return false;
+  }
+  if (
+    current &&
+    release.outdated !==
+      (current.value.decisionVersionId !== detail.decision?.id ||
+        current.value.certificateDataVersionId !== detail.certificateData?.id)
+  )
+    return false;
+  const certificate = detail.certificate;
+  if (!certificate)
+    return (
+      release.transmission === null &&
+      release.daysSinceIssuance === null &&
+      !release.legacyIssuance
+    );
+  if (certificate.issuedOn === null)
+    return release.legacyIssuance && release.daysSinceIssuance === null;
+  if (certificate.issuedOn < certificate.validFrom || release.legacyIssuance)
+    return false;
+  return (
+    drafts.some(
+      (draft) =>
+        draft.id === certificate.approvedDraftVersionId &&
+        draft.value.number === certificate.number,
+    ) &&
+    release.approvals.some(
+      (approval) =>
+        approval.value.draftVersionId === certificate.approvedDraftVersionId,
+    )
+  );
 }

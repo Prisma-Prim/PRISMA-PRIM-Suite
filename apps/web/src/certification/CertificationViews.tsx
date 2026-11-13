@@ -259,6 +259,10 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
         <strong>{copy('stepRecommendation')}</strong>{' '}
         {recommendationState(detail)}
       </li>
+      <li data-current={detail.nextStep === 'certificate_data'}>
+        <strong>{copy('stepCertificateData')}</strong>{' '}
+        {certificateDataState(detail)}
+      </li>
       <li data-current={detail.nextStep === 'dossier_review'}>
         <strong>{copy('stepDossierReview')}</strong>{' '}
         {dossierReviewState(detail)}
@@ -266,10 +270,6 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       <li data-current={detail.nextStep === 'decision'}>
         <strong>{copy('stepCertificationDecision')}</strong>{' '}
         {decisionState(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'certificate_data'}>
-        <strong>{copy('stepCertificateData')}</strong>{' '}
-        {certificateDataState(detail)}
       </li>
       <li data-current={detail.nextStep === 'certificate'}>
         <strong>{copy('stepCertificate')}</strong> {certificateState(detail)}
@@ -622,6 +622,27 @@ function TimelineEntry({
           decision={entry.value}
           register={register}
         />,
+      );
+    case 'certificate_draft':
+      return values(
+        formatMessage(copy('releaseDraftTimeline'), { version: entry.version }),
+        <p>
+          {entry.value.number} · {entry.value.draftedOn}
+        </p>,
+      );
+    case 'client_opinion':
+      return values(
+        formatMessage(copy('releaseOpinionTimeline'), {
+          version: entry.version,
+        }),
+        <p>{entry.value.businessDate}</p>,
+      );
+    case 'certificate_draft_approval':
+      return values(
+        formatMessage(copy('releaseApprovalTimeline'), {
+          version: entry.version,
+        }),
+        <p>{entry.value.approvedOn}</p>,
       );
     case 'certificate_data':
       return values(

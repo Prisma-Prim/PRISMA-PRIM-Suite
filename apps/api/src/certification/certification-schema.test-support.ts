@@ -18,6 +18,7 @@ export const certificationTables = [
   'certification_finding_records',
   'certification_findings',
   'certification_manual_discrepancies',
+  'certification_number_observations',
   'certification_procedure_events',
   'certification_receipts',
   'certification_reverification_items',

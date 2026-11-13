@@ -823,6 +823,16 @@ describe('Certification Decision text correction', () => {
   it('corrects the decided texts from the latest values with a reason and keeps the outcome', async () => {
     const { server, actor } = serve({ manager: false, approver: true });
     const caseId = grantedCase(server, 'CERT-ACT-CORRECT');
+    const dataForm = server.attachAsColleague(
+      caseId,
+      server.addSource('Certificate data form'),
+      'certificate_data',
+    );
+    server.recordStepAsColleague(caseId, 'certificate_data', {
+      texts: [CERTIFICATE_TEXTS[0]],
+      agreedOn: '2026-11-06',
+      agreementAttachmentId: dataForm,
+    });
     server.interceptions.push({
       match: (request) =>
         request.method === 'POST' && request.path.endsWith('/decision'),
@@ -908,7 +918,7 @@ describe('Certification Decision text correction', () => {
       expect.objectContaining({
         path: `/api/certification-cases/${caseId}/decision`,
         body: {
-          expectedRevision: 19,
+          expectedRevision: 21,
           reason: 'The English text is not part of the decision.',
           ...certificationDecision({ grantedTexts: [CERTIFICATE_TEXTS[0]] }),
         },
@@ -929,7 +939,7 @@ describe('Certification Decision text correction', () => {
     expect(definition(decided, 'Decision')).toBe('Certification granted');
   });
 
-  it('offers no correction once the Case is certified or refused', async () => {
+  it('preserves issued decisions and offers an independent correction for a refused decision', async () => {
     const { server, actor } = serve({ manager: false, approver: true });
     const certified = grantedCase(server, 'CERT-ACT-CERTIFIED');
     const dataForm = server.attachAsColleague(
@@ -965,15 +975,42 @@ describe('Certification Decision text correction', () => {
     );
     server.install();
     renderWorkspace(actor);
-    for (const reference of ['CERT-ACT-CERTIFIED', 'CERT-ACT-REFUSED']) {
-      await openSeededCase(reference);
+    await openSeededCase('CERT-ACT-CERTIFIED');
+    expect(
+      within(region('Certification Decision')).queryByRole('button'),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to Certification Cases' }),
+    );
+    await openSeededCase('CERT-ACT-REFUSED');
+    click(region('Certification Decision'), 'Correct the decision texts');
+    const correction = form(
+      'Certification Decision',
+      'Correct the decision texts',
+    );
+    expect(within(correction).queryByRole('radio')).not.toBeInTheDocument();
+    change(
+      within(correction).getByLabelText('Decision maker'),
+      'Corrected Independent Decider',
+    );
+    change(
+      within(correction).getByLabelText('Correction reason'),
+      'Correct the decider reference.',
+    );
+    fireEvent.click(
+      within(correction).getByRole('checkbox', {
+        name: 'I attest that the decision maker is not a member of the audit team.',
+      }),
+    );
+    click(correction, 'Record the correction');
+    await waitFor(() =>
       expect(
-        within(region('Certification Decision')).queryByRole('button'),
-      ).not.toBeInTheDocument();
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Back to Certification Cases' }),
-      );
-    }
+        definition(region('Certification Decision'), 'Decision maker'),
+      ).toBe('Corrected Independent Decider'),
+    );
+    expect(definition(region('Certification Decision'), 'Decision')).toBe(
+      'Certification refused',
+    );
   });
 });
 

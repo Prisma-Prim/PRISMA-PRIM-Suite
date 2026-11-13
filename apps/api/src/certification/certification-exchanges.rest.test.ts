@@ -898,7 +898,42 @@ withPostgres(
         '/decision',
         decision(),
       );
+      const decided = await read(CERTIFICATION_OWNER, certified.base);
+      const drafted = await step(
+        CERTIFICATION_OWNER,
+        certified.base,
+        '/certificate-draft',
+        {
+          attachmentId: await attach(certified.caseId, 'certificate_draft'),
+          number: `DEMO-${certified.caseId.slice(0, 8)}`,
+          draftedOn: '2026-11-06',
+          decisionVersionId: record(decided.decision).id,
+          certificateDataVersionId: record(decided.certificateData).id,
+        },
+      );
+      const draftVersionId = record(drafted.release).currentDraftId;
+      await step(CERTIFICATION_OWNER, certified.base, '/client-opinion', {
+        draftVersionId,
+        outcome: 'skipped',
+        skipReason: 'texts_already_agreed',
+        note: null,
+        businessDate: '2026-11-06',
+      });
+      await step(
+        CERTIFICATION_APPROVER,
+        certified.base,
+        '/certificate-draft-approval',
+        {
+          draftVersionId,
+          approvedOn: '2026-11-06',
+          textsConfirmed: true,
+          numberConfirmed: true,
+          validityConfirmed: true,
+          independenceAttested: true,
+        },
+      );
       await step(CERTIFICATION_APPROVER, certified.base, '/certificate', {
+        issuedOn: '2026-11-06',
         number: `DEMO-${certified.caseId.slice(0, 8)}`,
         attachmentId: await attach(certified.caseId, 'certificate'),
         signedBy: 'Decision Maker Demo',

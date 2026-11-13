@@ -1,3 +1,5 @@
+import { releaseRegisterBlocks } from './certification-release-register.js';
+import type { CertificateRelease } from './certification-release.js';
 import { BadRequestException } from '@nestjs/common';
 import type { ActAttribution } from './certification-attribution.js';
 import type { ConsistencySection } from './certification-consistency.js';
@@ -42,6 +44,7 @@ export type CertificationRegisterEntry =
 
 /** Everything the register prints, read at one Case revision. */
 export interface CertificationRegisterSource {
+  release?: CertificateRelease;
   caseId: string;
   orderReference: string;
   status: CertificationCaseSummary['status'];
@@ -138,6 +141,14 @@ export function certificationRegister(
     ...source.entries.map((entry) => entryBlock(entry, labels)),
     ...consistencyRegisterBlocks(source.consistency, language),
     ...exchangeRegisterBlocks(source.exchanges, source.documents, language),
+    ...(source.release
+      ? releaseRegisterBlocks(
+          source.release,
+          language,
+          source.entries.find((entry) => entry.kind === 'certificate')
+            ?.certificate ?? null,
+        )
+      : []),
     { kind: 'section', text: labels.sections.documents },
   ];
   if (source.documents.length === 0)
@@ -345,6 +356,21 @@ function stepSummary(
               ? step.value.decidedBy
               : `${step.value.decidedBy}, ${step.value.decidedByFunction}`,
         },
+      ];
+    case 'certificate_draft':
+      return [
+        { label: f.certificateNumber, value: step.value.number },
+        { label: f.dates, value: step.value.draftedOn },
+      ];
+    case 'client_opinion':
+      return [
+        { label: f.outcome, value: v.clientOpinion[step.value.outcome] },
+        { label: f.dates, value: step.value.businessDate },
+      ];
+    case 'certificate_draft_approval':
+      return [
+        { label: f.dates, value: step.value.approvedOn },
+        ...onBehalf(f.onBehalf, step.value.onBehalf),
       ];
     case 'certificate_data':
       return [

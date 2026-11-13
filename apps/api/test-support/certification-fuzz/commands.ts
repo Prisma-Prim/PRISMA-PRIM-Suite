@@ -186,6 +186,20 @@ function adopt(
   item.status = next.status;
   item.nextStep = next.nextStep;
   item.events.push(next.action);
+  if (body.decision !== null)
+    item.versions.decision = text(
+      object(body.decision, 'decision').id,
+      'decision version',
+    );
+  if (body.certificateData !== null)
+    item.versions.data = text(
+      object(body.certificateData, 'data').id,
+      'data version',
+    );
+  item.versions.draft =
+    object(body.release, 'release').currentDraftId === null
+      ? null
+      : text(object(body.release, 'release').currentDraftId, 'draft version');
   return body;
 }
 async function refuse(input: {
@@ -226,15 +240,17 @@ function needsSource(phase: Phase) {
     phase === 's1-planned' ||
     phase === 's1-reported' ||
     phase === 's2-planned' ||
+    phase === 'recommended' ||
     phase === 'decided' ||
-    phase === 'data'
+    phase === 'release-approved'
   );
 }
 function roleFor(phase: Phase): Bundle {
   if (
     phase === 'team' ||
-    phase === 'recommended' ||
+    phase === 'data' ||
     phase === 'reviewed' ||
+    phase === 'opined' ||
     phase === 'certificate-doc'
   )
     return 'approver';
@@ -298,6 +314,7 @@ class OpenCase extends Step {
       status: 'open',
       nextStep: 'application',
       attachmentId: null,
+      versions: { decision: null, data: null, draft: null },
       events: ['certification_case.opened'],
     };
     if (
@@ -416,7 +433,8 @@ function attachRole(phase: Phase) {
   if (phase === 'duration') return 'agreement';
   if (phase === 'approved' || phase === 's1-reported') return 'plan';
   if (phase === 's1-planned' || phase === 's2-planned') return 'report';
-  if (phase === 'decided') return 'certificate_data';
+  if (phase === 'recommended') return 'certificate_data';
+  if (phase === 'decided') return 'certificate_draft';
   return 'certificate';
 }
 function docPhase(phase: Phase): Phase {
@@ -425,7 +443,8 @@ function docPhase(phase: Phase): Phase {
   if (phase === 's1-planned') return 's1-report-doc';
   if (phase === 's1-reported') return 's2-plan-doc';
   if (phase === 's2-planned') return 's2-report-doc';
-  if (phase === 'decided') return 'data-doc';
+  if (phase === 'recommended') return 'data-doc';
+  if (phase === 'decided') return 'draft-doc';
   return 'certificate-doc';
 }
 
@@ -657,12 +676,12 @@ function commandFor(
         next: {
           phase: 'recommended',
           status: 'open',
-          nextStep: 'dossier_review',
+          nextStep: 'certificate_data',
           action: 'certification_case.recommendation_recorded',
         },
         consumeAttachment: false,
       };
-    case 'recommended':
+    case 'data':
       return {
         path: `${base}/dossier-review`,
         body: { expectedRevision, ...dossier() },
@@ -692,7 +711,7 @@ function commandFor(
         next: {
           phase: 'decided',
           status: 'open',
-          nextStep: 'certificate_data',
+          nextStep: 'certificate',
           action: 'certification_case.decision_recorded',
         },
         consumeAttachment: false,
@@ -709,10 +728,68 @@ function commandFor(
         next: {
           phase: 'data',
           status: 'open',
-          nextStep: 'certificate',
+          nextStep: 'dossier_review',
           action: 'certification_case.certificate_data_agreed',
         },
         consumeAttachment: true,
+      };
+    case 'draft-doc':
+      return {
+        path: `${base}/certificate-draft`,
+        body: {
+          expectedRevision,
+          attachmentId,
+          number: `C-${item.company}-${item.orderReference}`,
+          draftedOn: '2026-11-06',
+          decisionVersionId: item.versions.decision,
+          certificateDataVersionId: item.versions.data,
+        },
+        next: {
+          phase: 'drafted',
+          status: 'open',
+          nextStep: 'certificate',
+          action: 'certification_case.certificate_draft_recorded',
+        },
+        consumeAttachment: true,
+      };
+    case 'drafted':
+      return {
+        path: `${base}/client-opinion`,
+        body: {
+          expectedRevision,
+          draftVersionId: item.versions.draft,
+          businessDate: '2026-11-06',
+          outcome: 'skipped',
+          skipReason: 'texts_already_agreed',
+          note: null,
+        },
+        next: {
+          phase: 'opined',
+          status: 'open',
+          nextStep: 'certificate',
+          action: 'certification_case.client_opinion_recorded',
+        },
+        consumeAttachment: false,
+      };
+    case 'opined':
+      return {
+        path: `${base}/certificate-draft-approval`,
+        body: {
+          expectedRevision,
+          draftVersionId: item.versions.draft,
+          approvedOn: '2026-11-06',
+          textsConfirmed: true,
+          numberConfirmed: true,
+          validityConfirmed: true,
+          independenceAttested: true,
+        },
+        next: {
+          phase: 'release-approved',
+          status: 'open',
+          nextStep: 'certificate',
+          action: 'certification_case.certificate_draft_approved',
+        },
+        consumeAttachment: false,
       };
     case 'certificate-doc':
       return {
@@ -720,6 +797,7 @@ function commandFor(
         body: {
           expectedRevision,
           number: `C-${item.company}-${item.orderReference}`,
+          issuedOn: '2026-11-06',
           attachmentId,
           signedBy: 'Decision Maker Demo',
           signedByFunction: 'Head of the certification body',
@@ -935,7 +1013,11 @@ function prematureReady(model: Model, item: CaseModel) {
     item.phase === 'decided' ||
     item.phase === 'data-doc' ||
     item.phase === 'data' ||
-    item.phase === 'certificate-doc'
+    item.phase === 'certificate-doc' ||
+    item.phase === 'draft-doc' ||
+    item.phase === 'drafted' ||
+    item.phase === 'opined' ||
+    item.phase === 'release-approved'
   )
     return false;
   return holders(model, item.company, 'approver', 'cora').length > 0;

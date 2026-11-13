@@ -291,6 +291,12 @@ const keys = [
   'roleParticipantList',
   'roleReport',
   'roleEvidence',
+  'roleCertificateDraft',
+  'roleClientOpinion',
+  'approvalOnBehalf',
+  'releaseDraftTimeline',
+  'releaseOpinionTimeline',
+  'releaseApprovalTimeline',
   'roleCertificate',
   'roleOther',
   'attachToggle',
@@ -682,12 +688,15 @@ const keys = [
   'preconditionRecommendationMissing',
   'preconditionGrantAgainstRecommendation',
   'preconditionDossierReviewIncomplete',
+  'preconditionCertificateDataMissing',
   'preconditionDecisionInFuture',
   'decisionMakerIndependence',
   'certificationDecisionAwaitingApprover',
   'certificationDecisionIndependence',
   'decisionFormRole',
   'certificateDataTitle',
+  'certificateIssuedOn',
+  'blockedCertificateApprovalMissing',
   'certificateDataMissing',
   'recordCertificateData',
   'correctCertificateData',
@@ -1195,6 +1204,12 @@ export const certificationMessages = defineMessages(keys, {
     roleParticipantList: 'Participant list',
     roleReport: 'Audit report',
     roleEvidence: 'Evidence',
+    roleCertificateDraft: 'Certificate draft',
+    roleClientOpinion: 'Client opinion',
+    approvalOnBehalf: 'Draft approver for the certification body',
+    releaseDraftTimeline: 'Certificate draft — version {version}',
+    releaseOpinionTimeline: 'Client opinion — version {version}',
+    releaseApprovalTimeline: 'Certificate draft approval — version {version}',
     roleCertificate: 'Certificate',
     roleOther: 'Other document',
     attachToggle: 'Attach a document',
@@ -1715,6 +1730,8 @@ export const certificationMessages = defineMessages(keys, {
     preconditionRecommendationMissing: 'No team recommendation is recorded.',
     preconditionGrantAgainstRecommendation:
       'Certification cannot be granted against a team recommendation that is not to grant.',
+    preconditionCertificateDataMissing:
+      'Agree the Certificate data with the client before granting certification.',
     preconditionDossierReviewIncomplete:
       'The dossier review is not recorded, or it lists a missing item.',
     preconditionDecisionInFuture: 'The decision date is in the future.',
@@ -1727,6 +1744,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionFormRole:
       'The signed decision form must be a PDF of this Case attached as a decision form. Reload the Case and choose again.',
     certificateDataTitle: 'Certificate data agreed with the client',
+    certificateIssuedOn: 'Issue date',
+    blockedCertificateApprovalMissing:
+      'The current draft must be approved before the Certificate can be issued.',
     certificateDataMissing: 'No Certificate data are agreed yet.',
     recordCertificateData: 'Record the Certificate data',
     correctCertificateData: 'Correct the Certificate data',
@@ -1759,7 +1779,7 @@ export const certificationMessages = defineMessages(keys, {
     certificateMissing: 'No Certificate is recorded yet.',
     recordCertificate: 'Record the issued Certificate',
     certificateHelp:
-      'An approver who is not on the audit team records the issued Certificate once: its number, unique in the Company, the exact Certificate PDF and its signatory. The server computes the validity from the decision date.',
+      'Record the exact issued PDF and issue date after approval of the current draft. The number comes from that draft; validity is computed from the decision date.',
     certificateNumber: 'Certificate number',
     certificatePdf: 'Certificate PDF',
     selectCertificatePdf: 'Choose the Certificate PDF',
@@ -1769,7 +1789,7 @@ export const certificationMessages = defineMessages(keys, {
       'I attest that the signatory is not a member of the audit team.',
     certificateSubmit: 'Record the Certificate',
     certificateValidation:
-      'Complete the Certificate: its number (at most 64 characters) and the Certificate PDF of this Case; the signatory and the function take at most 200 characters each.',
+      'Choose the exact issued Certificate PDF and a real issue date between the decision date and today. The number must match the approved draft.',
     certificateAttestationRequired:
       'Confirm that the signatory is not a member of the audit team.',
     certificateNoPdf:
@@ -1824,9 +1844,9 @@ export const certificationMessages = defineMessages(keys, {
     statusRefused: 'Closed — certification refused',
     statusCertified: 'Certified',
     caseCertifiedNote:
-      'This Case is certified: its Certificate is recorded. Every record is now read-only.',
+      'This Case is certified: its issued Certificate is preserved. Transmission can still be recorded in the exchange register.',
     caseRefusedNote:
-      'This Case is closed: certification was refused. Every record is now read-only; a new application needs a new Case.',
+      'Certification was refused and the outcome is fixed. An independent approver may correct the decision references with a reason.',
     caseClosedRefusal: 'This Case is closed. Reload it to see its final state.',
     nextDossierReview: 'Dossier review',
     nextCertificationDecision: 'Certification Decision',
@@ -2305,6 +2325,13 @@ export const certificationMessages = defineMessages(keys, {
     roleParticipantList: 'Liste des participants',
     roleReport: 'Rapport d’audit',
     roleEvidence: 'Preuve',
+    roleCertificateDraft: 'Projet de certificat',
+    roleClientOpinion: 'Avis du client',
+    approvalOnBehalf: 'Approbateur du projet pour l’organisme de certification',
+    releaseDraftTimeline: 'Projet de certificat — version {version}',
+    releaseOpinionTimeline: 'Avis du client — version {version}',
+    releaseApprovalTimeline:
+      'Approbation du projet de certificat — version {version}',
     roleCertificate: 'Certificat',
     roleOther: 'Autre document',
     attachToggle: 'Joindre un document',
@@ -2844,6 +2871,8 @@ export const certificationMessages = defineMessages(keys, {
       'Aucune recommandation de l’équipe n’est enregistrée.',
     preconditionGrantAgainstRecommendation:
       'La certification ne peut pas être accordée contre une recommandation de l’équipe qui n’est pas d’accorder.',
+    preconditionCertificateDataMissing:
+      'Convenez des données du certificat avec le client avant d’accorder la certification.',
     preconditionDossierReviewIncomplete:
       'La revue du dossier n’est pas enregistrée, ou elle indique un élément manquant.',
     preconditionDecisionInFuture: 'La date de la décision est dans le futur.',
@@ -2856,6 +2885,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionFormRole:
       'Le formulaire de décision signé doit être un PDF de ce dossier joint comme formulaire de décision. Rechargez le dossier et choisissez à nouveau.',
     certificateDataTitle: 'Données du certificat convenues avec le client',
+    certificateIssuedOn: 'Date d’émission',
+    blockedCertificateApprovalMissing:
+      'Le projet actuel doit être approuvé avant l’émission du certificat.',
     certificateDataMissing:
       'Aucune donnée du certificat n’est encore convenue.',
     recordCertificateData: 'Enregistrer les données du certificat',
@@ -2889,7 +2921,7 @@ export const certificationMessages = defineMessages(keys, {
     certificateMissing: 'Aucun certificat n’est encore enregistré.',
     recordCertificate: 'Enregistrer le certificat émis',
     certificateHelp:
-      'Un approbateur qui ne fait pas partie de l’équipe d’audit enregistre une seule fois le certificat émis : son numéro, unique dans la Société, le PDF exact du certificat et son signataire. Le serveur calcule la validité à partir de la date de la décision.',
+      'Enregistrez le PDF exact émis et la date d’émission après approbation du projet actuel. Le numéro provient de ce projet ; la validité est calculée depuis la décision.',
     certificateNumber: 'Numéro du certificat',
     certificatePdf: 'PDF du certificat',
     selectCertificatePdf: 'Sélectionnez le PDF du certificat',
@@ -2899,7 +2931,7 @@ export const certificationMessages = defineMessages(keys, {
       'J’atteste que le signataire n’est pas membre de l’équipe d’audit.',
     certificateSubmit: 'Enregistrer le certificat',
     certificateValidation:
-      'Complétez le certificat : son numéro (64 caractères au plus) et le PDF du certificat de ce dossier ; le signataire et la fonction prennent 200 caractères au plus chacun.',
+      'Choisissez le PDF exact du certificat émis et une date d’émission entre la décision et aujourd’hui. Le numéro doit correspondre au projet approuvé.',
     certificateAttestationRequired:
       'Confirmez que le signataire n’est pas membre de l’équipe d’audit.',
     certificateNoPdf:
@@ -2955,9 +2987,9 @@ export const certificationMessages = defineMessages(keys, {
     statusRefused: 'Clos — certification refusée',
     statusCertified: 'Certifié',
     caseCertifiedNote:
-      'Ce dossier est certifié : son certificat est enregistré. Chaque enregistrement est désormais en lecture seule.',
+      'Ce dossier est certifié : son certificat émis est conservé. Sa transmission peut encore être enregistrée dans le registre des échanges.',
     caseRefusedNote:
-      'Ce dossier est clos : la certification a été refusée. Chaque enregistrement est désormais en lecture seule ; une nouvelle demande exige un nouveau dossier.',
+      'La certification a été refusée et le résultat est fixé. Un approbateur indépendant peut corriger les références de la décision avec un motif.',
     caseClosedRefusal:
       'Ce dossier est clos. Rechargez-le pour voir son état final.',
     nextDossierReview: 'Revue du dossier',
@@ -3437,6 +3469,14 @@ export const certificationMessages = defineMessages(keys, {
     roleParticipantList: 'Lista participanților',
     roleReport: 'Raport de audit',
     roleEvidence: 'Dovadă',
+    roleCertificateDraft: 'Proiectul certificatului',
+    roleClientOpinion: 'Opinia clientului',
+    approvalOnBehalf:
+      'Aprobatorul proiectului pentru organismul de certificare',
+    releaseDraftTimeline: 'Proiectul certificatului — versiunea {version}',
+    releaseOpinionTimeline: 'Opinia clientului — versiunea {version}',
+    releaseApprovalTimeline:
+      'Aprobarea proiectului certificatului — versiunea {version}',
     roleCertificate: 'Certificat',
     roleOther: 'Alt document',
     attachToggle: 'Atașați un document',
@@ -3974,6 +4014,8 @@ export const certificationMessages = defineMessages(keys, {
       'Nicio recomandare a echipei nu este înregistrată.',
     preconditionGrantAgainstRecommendation:
       'Certificarea nu poate fi acordată împotriva unei recomandări a echipei care nu este de acordare.',
+    preconditionCertificateDataMissing:
+      'Agrează datele certificatului cu clientul înainte de acordarea certificării.',
     preconditionDossierReviewIncomplete:
       'Analiza dosarului nu este înregistrată sau indică un element lipsă.',
     preconditionDecisionInFuture: 'Data deciziei este în viitor.',
@@ -3986,6 +4028,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionFormRole:
       'Formularul de decizie semnat trebuie să fie un PDF al acestui dosar atașat ca formular de decizie. Reîncărcați dosarul și alegeți din nou.',
     certificateDataTitle: 'Datele certificatului convenite cu clientul',
+    certificateIssuedOn: 'Data emiterii',
+    blockedCertificateApprovalMissing:
+      'Proiectul curent trebuie aprobat înainte de emiterea certificatului.',
     certificateDataMissing:
       'Nicio dată a certificatului nu este încă convenită.',
     recordCertificateData: 'Înregistrați datele certificatului',
@@ -4019,7 +4064,7 @@ export const certificationMessages = defineMessages(keys, {
     certificateMissing: 'Niciun certificat nu este încă înregistrat.',
     recordCertificate: 'Înregistrați certificatul emis',
     certificateHelp:
-      'Un aprobator care nu face parte din echipa de audit înregistrează o singură dată certificatul emis: numărul lui, unic în Companie, PDF-ul exact al certificatului și semnatarul. Serverul calculează valabilitatea pornind de la data deciziei.',
+      'Înregistrează PDF-ul exact emis și data emiterii după aprobarea proiectului curent. Numărul provine din proiect; valabilitatea se calculează de la data deciziei.',
     certificateNumber: 'Numărul certificatului',
     certificatePdf: 'PDF-ul certificatului',
     selectCertificatePdf: 'Selectați PDF-ul certificatului',
@@ -4029,7 +4074,7 @@ export const certificationMessages = defineMessages(keys, {
       'Atest că semnatarul nu este membru al echipei de audit.',
     certificateSubmit: 'Înregistrați certificatul',
     certificateValidation:
-      'Completați certificatul: numărul (cel mult 64 de caractere) și PDF-ul certificatului din acest dosar; semnatarul și funcția au cel mult 200 de caractere fiecare.',
+      'Selectează PDF-ul exact al certificatului emis și o dată a emiterii între data deciziei și astăzi. Numărul trebuie să corespundă proiectului aprobat.',
     certificateAttestationRequired:
       'Confirmați că semnatarul nu este membru al echipei de audit.',
     certificateNoPdf:
@@ -4086,9 +4131,9 @@ export const certificationMessages = defineMessages(keys, {
     statusRefused: 'Închis — certificare refuzată',
     statusCertified: 'Certificat',
     caseCertifiedNote:
-      'Acest dosar este certificat: certificatul lui este înregistrat. Fiecare înregistrare poate fi acum doar consultată.',
+      'Acest dosar este certificat: certificatul emis este păstrat. Transmiterea poate fi înregistrată în registrul schimburilor.',
     caseRefusedNote:
-      'Acest dosar este închis: certificarea a fost refuzată. Fiecare înregistrare poate fi acum doar consultată; o cerere nouă necesită un dosar nou.',
+      'Certificarea a fost refuzată, iar rezultatul este fix. Un aprobator independent poate corecta referințele deciziei cu un motiv.',
     caseClosedRefusal:
       'Acest dosar este închis. Reîncărcați-l pentru a vedea starea finală.',
     nextDossierReview: 'Analiza dosarului',
@@ -4564,6 +4609,13 @@ export const certificationMessages = defineMessages(keys, {
     roleParticipantList: 'Список участников',
     roleReport: 'Отчёт об аудите',
     roleEvidence: 'Свидетельство',
+    roleCertificateDraft: 'Проект сертификата',
+    roleClientOpinion: 'Мнение клиента',
+    approvalOnBehalf: 'Утверждающий проект от органа по сертификации',
+    releaseDraftTimeline: 'Проект сертификата — версия {version}',
+    releaseOpinionTimeline: 'Мнение клиента — версия {version}',
+    releaseApprovalTimeline:
+      'Утверждение проекта сертификата — версия {version}',
     roleCertificate: 'Сертификат',
     roleOther: 'Другой документ',
     attachToggle: 'Приложить документ',
@@ -5084,6 +5136,8 @@ export const certificationMessages = defineMessages(keys, {
     preconditionRecommendationMissing: 'Рекомендация группы не записана.',
     preconditionGrantAgainstRecommendation:
       'Нельзя выдать сертификацию вопреки рекомендации группы, которая не рекомендует её выдавать.',
+    preconditionCertificateDataMissing:
+      'Согласуйте данные сертификата с клиентом до предоставления сертификации.',
     preconditionDossierReviewIncomplete:
       'Анализ досье не записан или в нём указан отсутствующий элемент.',
     preconditionDecisionInFuture: 'Дата решения находится в будущем.',
@@ -5096,6 +5150,9 @@ export const certificationMessages = defineMessages(keys, {
     decisionFormRole:
       'Подписанная форма решения должна быть PDF этого дела, приложенным как форма решения. Загрузите дело заново и выберите снова.',
     certificateDataTitle: 'Данные сертификата, согласованные с клиентом',
+    certificateIssuedOn: 'Дата выдачи',
+    blockedCertificateApprovalMissing:
+      'Текущий проект должен быть утверждён до выдачи сертификата.',
     certificateDataMissing: 'Данные сертификата ещё не согласованы.',
     recordCertificateData: 'Записать данные сертификата',
     correctCertificateData: 'Исправить данные сертификата',
@@ -5128,7 +5185,7 @@ export const certificationMessages = defineMessages(keys, {
     certificateMissing: 'Сертификат ещё не записан.',
     recordCertificate: 'Записать выданный сертификат',
     certificateHelp:
-      'Утверждающий, не входящий в аудиторскую группу, один раз записывает выданный сертификат: его номер, уникальный в Компании, точный PDF сертификата и подписанта. Срок действия сервер вычисляет от даты решения.',
+      'Зарегистрируйте точный выданный PDF и дату выдачи после утверждения текущего проекта. Номер берётся из проекта; срок действия рассчитывается от даты решения.',
     certificateNumber: 'Номер сертификата',
     certificatePdf: 'PDF сертификата',
     selectCertificatePdf: 'Выберите PDF сертификата',
@@ -5138,7 +5195,7 @@ export const certificationMessages = defineMessages(keys, {
       'Подтверждаю, что подписант не входит в аудиторскую группу.',
     certificateSubmit: 'Записать сертификат',
     certificateValidation:
-      'Заполните сертификат: его номер (не более 64 символов) и PDF сертификата этого дела; подписант и должность — не более 200 символов каждое.',
+      'Выберите точный PDF выданного сертификата и дату выдачи между датой решения и сегодняшним днём. Номер должен совпадать с утверждённым проектом.',
     certificateAttestationRequired:
       'Подтвердите, что подписант не входит в аудиторскую группу.',
     certificateNoPdf:
@@ -5193,9 +5250,9 @@ export const certificationMessages = defineMessages(keys, {
     statusRefused: 'Закрыто — в сертификации отказано',
     statusCertified: 'Сертифицировано',
     caseCertifiedNote:
-      'Это дело сертифицировано: его сертификат записан. Теперь все записи доступны только для чтения.',
+      'Это дело сертифицировано: выданный сертификат сохранён. Передачу можно зарегистрировать в реестре обменов.',
     caseRefusedNote:
-      'Это дело закрыто: в сертификации отказано. Теперь все записи доступны только для чтения; для новой заявки нужно новое дело.',
+      'В сертификации отказано, результат зафиксирован. Независимое утверждающее лицо может исправить реквизиты решения с указанием причины.',
     caseClosedRefusal:
       'Это дело закрыто. Загрузите его заново, чтобы увидеть итоговое состояние.',
     nextDossierReview: 'Анализ досье',

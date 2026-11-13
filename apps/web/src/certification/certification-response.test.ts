@@ -2565,18 +2565,18 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
     expect(
       next({
         revision: 18,
-        nextStep: 'dossier_review',
+        nextStep: 'certificate_data',
         recommendation: recommended,
       }),
-    ).toBe('dossier_review');
+    ).toBe('certificate_data');
     expect(
       next({
         revision: 19,
-        nextStep: 'decision',
+        nextStep: 'certificate_data',
         recommendation: recommended,
         dossierReview: reviewed,
       }),
-    ).toBe('decision');
+    ).toBe('certificate_data');
     expect(
       next({
         revision: 20,
@@ -2602,7 +2602,11 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
     const parsed = parseCaseDetail(certifiedDetail(), { ...scope, caseId });
     expect(parsed.status).toBe('certified');
     expect(parsed.nextStep).toBeNull();
-    expect(parsed.certificate).toEqual(certificate);
+    expect(parsed.certificate).toEqual({
+      ...certificate,
+      issuedOn: null,
+      approvedDraftVersionId: null,
+    });
     expect(
       parseCaseDetail(
         certifiedDetail({ signedBy: null, signedByFunction: null }),
@@ -2622,6 +2626,20 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
           caseId,
         }),
       ).toThrow();
+  });
+
+  it('rejects a partial issue date and approved-draft link while preserving legacy absence', () => {
+    for (const partial of [
+      { issuedOn: '2026-11-06', approvedDraftVersionId: null },
+      { issuedOn: null, approvedDraftVersionId: 'draft-1' },
+    ]) {
+      expect(() =>
+        parseCaseDetail(certifiedDetail(partial), { ...scope, caseId }),
+      ).toThrow();
+    }
+    expect(
+      parseCaseDetail(certifiedDetail(), { ...scope, caseId }).certificate,
+    ).toMatchObject({ issuedOn: null, approvedDraftVersionId: null });
   });
 
   it('reads a refusal that closes the Case', () => {
