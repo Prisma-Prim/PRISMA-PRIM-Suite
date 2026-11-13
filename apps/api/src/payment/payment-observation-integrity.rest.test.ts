@@ -8,6 +8,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
 import {
   createPaymentEvidenceFixture,
   paymentRecord,
@@ -18,6 +19,7 @@ import {
   authorSourceCreateBody,
   authorSourceJson,
   authorSourceReceipt,
+  authorSourceRevision,
   authorSourceValues,
   prepareAuthorSource,
 } from './payment-observation-author-source.test-support.js';
@@ -216,6 +218,94 @@ withPostgres('Payment native literal intent, replay and atomic effects', () => {
         ],
       },
     });
+  });
+  describe('shared versioned command protocol: Payment draft correction', () => {
+    // The Recorder under test is not the Company owner, so its authority can
+    // be withdrawn; the owner arranges the drafts and commits later changes.
+    const recorder = () => fixture.ready.membershipIds.reader;
+    const RECORDER = '/company-payment-recorder-assignments';
+    async function draft() {
+      const created = await authorSourceReceipt(await create(), {
+        action: 'CREATE',
+        revision: 1,
+      });
+      return paymentText(created.paymentId);
+    }
+    function correct(
+      id: string,
+      input: { value: unknown; key: string },
+      identity: 'reader' | 'owner' = 'reader',
+    ) {
+      return fixture.call(`/payments/${id}/commands`, {
+        method: 'POST',
+        identity,
+        key: input.key,
+        body: input.value,
+      });
+    }
+    async function attempt(response: Promise<Response>) {
+      const settled = await response;
+      const body: unknown = await settled.json();
+      return { status: settled.status, body };
+    }
+    function correction(expectedRevision: number, amountMinor: string) {
+      return {
+        action: 'CORRECT_DRAFT',
+        expectedRevision,
+        values: { ...authorSourceValues, amountMinor },
+        reason: 'Fictional transcription check',
+      };
+    }
+    for (const scenario of versionedCommandProtocolScenarios({
+      acceptedStatus: 201,
+      staleCode: 'STALE_PAYMENT',
+      receipt: (value) => value,
+      arrange: async () => {
+        const granted = await fixture.grant(RECORDER, recorder());
+        expect(granted.status, await granted.clone().text()).toBe(201);
+        const id = await draft();
+        const version = async () =>
+          authorSourceRevision(
+            paymentRecord(
+              (await authorSourceJson(await fixture.call(`/payments/${id}`)))
+                .payment,
+            ).revision,
+          );
+        return {
+          payload: ({ expectedVersion, variant }) =>
+            correction(
+              expectedVersion,
+              variant === 'first' ? '125550' : '125575',
+            ),
+          submit: (input) => attempt(correct(id, input)),
+          version,
+          writes: effects,
+          changeLater: async () => {
+            const later = await correct(
+              id,
+              {
+                value: correction(await version(), '125600'),
+                key: randomUUID(),
+              },
+              'owner',
+            );
+            expect(later.status, await later.clone().text()).toBe(201);
+          },
+          revokeAuthority: async () => {
+            const revoked = await fixture.revoke(RECORDER, recorder());
+            expect(revoked.status, await revoked.clone().text()).toBe(200);
+          },
+        };
+      },
+      arrangeElsewhere: async () => {
+        const other = await draft();
+        return {
+          submit: (input) => attempt(correct(other, input)),
+          writes: effects,
+        };
+      },
+    }))
+      it(scenario.name, scenario.run);
   });
   describe.each([
     'final event',

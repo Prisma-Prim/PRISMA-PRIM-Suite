@@ -6,18 +6,19 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { DrizzleQueryError, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { InvoiceRecordAccountability } from '../accountability/invoice-record-accountability.js';
+import { runKeyedCommand } from '../command/idempotent-command.js';
+import { readConsistently } from '../database/consistent-read.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { DocumentInvoiceRecordSource } from '../documents/document-invoice-record-source.js';
 import {
+  INVOICE_KEY_MAX_LENGTH,
   invoiceCommand,
   invoiceCreate,
-  invoiceKey,
   invoiceQuery,
   type InvoiceInput,
 } from './invoice-record.input.js';
@@ -62,7 +63,7 @@ export class InvoiceRecordService {
     };
   }
   async create(actor: ActorContext, body: unknown, key: string | undefined) {
-    return this.command(actor, null, invoiceCreate(body), invoiceKey(key));
+    return this.command(actor, null, invoiceCreate(body), key);
   }
   async change(
     actor: ActorContext,
@@ -70,16 +71,20 @@ export class InvoiceRecordService {
     body: unknown,
     key: string | undefined,
   ) {
-    return this.command(actor, id, invoiceCommand(body), invoiceKey(key));
+    return this.command(actor, id, invoiceCommand(body), key);
   }
   private async command(
     actor: ActorContext,
     id: string | null,
     body: InvoiceInput,
-    key: string,
+    key: string | undefined,
   ) {
-    return this.database
-      .transaction(async () => {
+    return runKeyedCommand(this.database, {
+      name: 'invoice-record-command',
+      actor,
+      key,
+      maxKeyLength: INVOICE_KEY_MAX_LENGTH,
+      authorize: async () => {
         const capture = await this.access.requireInvoiceRecordAccess(actor, {
           manage: true,
           lock: true,
@@ -96,21 +101,17 @@ export class InvoiceRecordService {
             actor,
             body.action === 'CREATE' ? body.source : observed?.snapshot.source,
           );
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['invoice-record-command', actor.workspaceId, actor.workspaceMembershipId, key])},0))`,
-        );
-        const saved = await this.store.findReceipt(actor, key);
-        if (saved) {
-          const target = id ?? saved.recordId;
-          if (
-            !isDeepStrictEqual(
-              saved.intent,
-              this.store.intent(actor, scope, target, body),
-            )
-          )
-            conflict('IDEMPOTENCY_CONFLICT');
-          return this.store.replay(saved);
-        }
+        return { scope, assignmentId: capture.assignmentId, sourceCaptures };
+      },
+      findReceipt: ({ key: used }) => this.store.findReceipt(actor, used),
+      recordedIntent: (receipt) => receipt.intent,
+      intent: ({ scope: { scope }, receipt }) =>
+        this.store.intent(actor, scope, id ?? receipt.recordId, body),
+      replay: ({ receipt }) => this.store.replay(receipt),
+      execute: async ({
+        scope: { scope, assignmentId, sourceCaptures },
+        key: used,
+      }) => {
         const recordId = id ?? randomUUID();
         if (body.action === 'CREATE')
           await this.source.qualify(actor, body.source);
@@ -137,8 +138,8 @@ export class InvoiceRecordService {
           scope,
           recordId,
           body,
-          key,
-          assignmentId: capture.assignmentId,
+          key: used,
+          assignmentId,
           sourceCaptures,
         });
         await this.accountability.record({
@@ -157,8 +158,8 @@ export class InvoiceRecordService {
         });
         // Decode and couple the response inside the transaction; failure rolls back every effect.
         return this.store.replay(recorded.row);
-      })
-      .catch(unavailable);
+      },
+    }).catch(unavailable);
   }
   private async historyPage(
     scope: InvoiceScope,
@@ -186,7 +187,7 @@ export class InvoiceRecordService {
     actor: ActorContext,
     query: unknown,
   ): Promise<InvoiceInventory> {
-    return this.readConsistently<InvoiceInventory>(async () => {
+    return readConsistently<InvoiceInventory>(this.database, async () => {
       const capture = await this.access.requireInvoiceRecordAccess(actor, {
         manage: false,
         lock: true,
@@ -225,7 +226,7 @@ export class InvoiceRecordService {
     id: string,
     query: unknown,
   ): Promise<InvoiceCurrent> {
-    return this.readConsistently<InvoiceCurrent>(async () => {
+    return readConsistently<InvoiceCurrent>(this.database, async () => {
       const capture = await this.access.requireInvoiceRecordAccess(actor, {
         manage: false,
         lock: true,
@@ -292,7 +293,7 @@ export class InvoiceRecordService {
     id: string,
     query: unknown,
   ): Promise<InvoiceHistory> {
-    return this.readConsistently<InvoiceHistory>(async () => {
+    return readConsistently<InvoiceHistory>(this.database, async () => {
       const capture = await this.access.requireInvoiceRecordAccess(actor, {
           manage: false,
           lock: true,
@@ -337,7 +338,7 @@ export class InvoiceRecordService {
     actor: ActorContext,
     query: unknown,
   ): Promise<InvoiceSourcePage> {
-    return this.readConsistently<InvoiceSourcePage>(async () => {
+    return readConsistently<InvoiceSourcePage>(this.database, async () => {
       const capture = await this.access.requireInvoiceRecordAccess(actor, {
         manage: true,
         lock: true,
@@ -379,7 +380,7 @@ export class InvoiceRecordService {
     }).catch(unavailable);
   }
   async download(actor: ActorContext, id: string, query: unknown) {
-    return this.readConsistently(async () => {
+    return readConsistently(this.database, async () => {
       const capture = await this.access.requireInvoiceRecordAccess(actor, {
         manage: false,
         lock: true,
@@ -391,32 +392,6 @@ export class InvoiceRecordService {
       );
       return this.source.download(actor, current.snapshot.source);
     }).catch(unavailable);
-  }
-  private async readConsistently<T>(read: () => Promise<T>): Promise<T> {
-    // Concurrent native identity-profile observations can invalidate a locked
-    // row after the snapshot starts. Restart the whole read and its authority
-    // checks; never reuse an aborted snapshot or retry a business command here.
-    for (let attempt = 1; ; attempt += 1) {
-      try {
-        return await this.database.transaction(read, {
-          isolationLevel: 'repeatable read',
-        });
-      } catch (error) {
-        const cause = error instanceof DrizzleQueryError ? error.cause : error;
-        if (
-          attempt >= 8 ||
-          typeof cause !== 'object' ||
-          cause === null ||
-          !('code' in cause) ||
-          cause.code !== '40001'
-        )
-          throw error;
-        // Match the established bounded read policy: at most1.125s of backoff.
-        await new Promise<void>((resolve) =>
-          setTimeout(resolve, Math.min(25 * 2 ** (attempt - 1), 250)),
-        );
-      }
-    }
   }
 }
 function unavailable(error: unknown): never {

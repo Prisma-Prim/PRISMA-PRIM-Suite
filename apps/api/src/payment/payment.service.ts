@@ -6,18 +6,20 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { DrizzleQueryError, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { PaymentAccountability } from '../accountability/payment-accountability.js';
+import { runKeyedCommand } from '../command/idempotent-command.js';
+import { readConsistently } from '../database/consistent-read.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { DocumentPaymentSource } from '../documents/document-payment-source.js';
 import {
+  PAYMENT_KEY_MAX_LENGTH,
   paymentCommand,
   paymentCreate,
-  paymentKey,
   paymentQuery,
   type PaymentInput,
   type PaymentSource,
@@ -85,7 +87,7 @@ export class PaymentService {
     };
   }
   async create(actor: ActorContext, body: unknown, key: string | undefined) {
-    return this.command(actor, null, paymentCreate(body), paymentKey(key));
+    return this.command(actor, null, paymentCreate(body), key);
   }
   async change(
     actor: ActorContext,
@@ -93,16 +95,20 @@ export class PaymentService {
     body: unknown,
     key: string | undefined,
   ) {
-    return this.command(actor, id, paymentCommand(body), paymentKey(key));
+    return this.command(actor, id, paymentCommand(body), key);
   }
   private async command(
     actor: ActorContext,
     id: string | null,
     body: PaymentInput,
-    key: string,
+    key: string | undefined,
   ) {
-    return this.database
-      .transaction(async () => {
+    return runKeyedCommand(this.database, {
+      name: 'payment-command',
+      actor,
+      key,
+      maxKeyLength: PAYMENT_KEY_MAX_LENGTH,
+      authorize: async () => {
         const capture = await this.access.requirePaymentObservationAccess(
           actor,
           {
@@ -128,21 +134,22 @@ export class PaymentService {
             body.action === 'CREATE' ? body.source : observed?.snapshot.source,
             body.action === 'CONFIRM' ? 'confirm' : 'record',
           );
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['payment-command', actor.workspaceId, actor.workspaceMembershipId, key])},0))`,
-        );
-        const saved = await this.store.findReceipt(actor, key);
-        if (saved) {
-          const target = id ?? saved.paymentId;
-          if (
-            !isDeepStrictEqual(
-              saved.intent,
-              this.store.intent(actor, scope, target, body),
-            )
-          )
-            conflict('IDEMPOTENCY_CONFLICT');
-          return this.store.replay(saved);
-        }
+        return {
+          scope,
+          assignmentId: capture.assignmentId,
+          observed,
+          sourceCaptures,
+        };
+      },
+      findReceipt: ({ key: used }) => this.store.findReceipt(actor, used),
+      recordedIntent: (receipt) => receipt.intent,
+      intent: ({ scope: { scope }, receipt }) =>
+        this.store.intent(actor, scope, id ?? receipt.paymentId, body),
+      replay: ({ receipt }) => this.store.replay(receipt),
+      execute: async ({
+        scope: { scope, assignmentId, observed, sourceCaptures },
+        key: used,
+      }) => {
         const paymentId = id ?? randomUUID();
         if (body.action === 'CREATE') {
           await this.source.requireFreshCopyAuthority(actor);
@@ -181,8 +188,8 @@ export class PaymentService {
           scope,
           paymentId,
           body,
-          key,
-          assignmentId: capture.assignmentId,
+          key: used,
+          assignmentId,
           sourceCaptures,
         });
         await this.accountability.record({
@@ -205,8 +212,8 @@ export class PaymentService {
         });
         // Decode and couple the response inside the transaction; failure rolls back every effect.
         return this.store.replay(recorded.row);
-      })
-      .catch(unavailable);
+      },
+    }).catch(unavailable);
   }
   private async historyPage(
     scope: PaymentScope,
@@ -234,7 +241,7 @@ export class PaymentService {
     actor: ActorContext,
     query: unknown,
   ): Promise<PaymentInventory> {
-    return this.readConsistently<PaymentInventory>(async () => {
+    return readConsistently<PaymentInventory>(this.database, async () => {
       const capture = await this.access.requirePaymentObservationAccess(actor, {
         action: 'read',
         lock: true,
@@ -273,7 +280,7 @@ export class PaymentService {
     id: string,
     query: unknown,
   ): Promise<PaymentCurrent> {
-    return this.readConsistently<PaymentCurrent>(async () => {
+    return readConsistently<PaymentCurrent>(this.database, async () => {
       const capture = await this.access.requirePaymentObservationAccess(actor, {
         action: 'read',
         lock: true,
@@ -368,7 +375,7 @@ export class PaymentService {
     id: string,
     query: unknown,
   ): Promise<PaymentHistory> {
-    return this.readConsistently<PaymentHistory>(async () => {
+    return readConsistently<PaymentHistory>(this.database, async () => {
       const capture = await this.access.requirePaymentObservationAccess(actor, {
           action: 'read',
           lock: true,
@@ -413,7 +420,7 @@ export class PaymentService {
     actor: ActorContext,
     query: unknown,
   ): Promise<PaymentSourcePage> {
-    return this.readConsistently<PaymentSourcePage>(async () => {
+    return readConsistently<PaymentSourcePage>(this.database, async () => {
       const capture = await this.access.requirePaymentObservationAccess(actor, {
         action: 'record',
         lock: true,
@@ -462,7 +469,7 @@ export class PaymentService {
     }).catch(unavailable);
   }
   async download(actor: ActorContext, id: string, query: unknown) {
-    return this.readConsistently(async () => {
+    return readConsistently(this.database, async () => {
       const capture = await this.access.requirePaymentObservationAccess(actor, {
         action: 'read',
         lock: true,
@@ -474,32 +481,6 @@ export class PaymentService {
       );
       return this.source.download(actor, current.snapshot.source);
     }).catch(unavailable);
-  }
-  private async readConsistently<T>(read: () => Promise<T>): Promise<T> {
-    // Concurrent native identity-profile observations can invalidate a locked
-    // row after the snapshot starts. Restart the whole read and its authority
-    // checks; never reuse an aborted snapshot or retry a business command here.
-    for (let attempt = 1; ; attempt += 1) {
-      try {
-        return await this.database.transaction(read, {
-          isolationLevel: 'repeatable read',
-        });
-      } catch (error) {
-        const cause = error instanceof DrizzleQueryError ? error.cause : error;
-        if (
-          attempt >= 8 ||
-          typeof cause !== 'object' ||
-          cause === null ||
-          !('code' in cause) ||
-          cause.code !== '40001'
-        )
-          throw error;
-        // Match the established bounded read policy: at most1.125s of backoff.
-        await new Promise<void>((resolve) =>
-          setTimeout(resolve, Math.min(25 * 2 ** (attempt - 1), 250)),
-        );
-      }
-    }
   }
 }
 const NATIVE_SOURCE_REFUSALS: ReadonlySet<unknown> = new Set([
