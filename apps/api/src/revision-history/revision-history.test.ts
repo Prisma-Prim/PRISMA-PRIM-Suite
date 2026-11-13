@@ -37,11 +37,15 @@ function fact(revision: number, changes: Partial<TestFact> = {}): TestFact {
   };
 }
 
+/** Every fact stored in a test row; decoding returns the stored fact itself. */
+const storedFacts: TestFact[] = [];
+
 /** Rows newest first, each row coupled to its fact unless overridden. */
 function rows(
   facts: readonly TestFact[],
   row: (fact: TestFact) => Partial<StoredRevision> = () => ({}),
 ): StoredRevision[] {
+  storedFacts.push(...facts);
   return facts.map((value) => ({
     revision: value.revision,
     commandId: value.commandId,
@@ -59,11 +63,8 @@ function verify(
     targetId: TARGET,
     rows: stored,
     before,
-    // The rows carry the fixture facts themselves: decoding finds that exact fact.
     decode: (value) => {
-      const decoded = stored
-        .map((row) => row.fact)
-        .filter((candidate): candidate is TestFact => candidate === value)[0];
+      const decoded = storedFacts.find((candidate) => candidate === value);
       if (!decoded) throw new Error('Unknown test fact.');
       return decoded;
     },
