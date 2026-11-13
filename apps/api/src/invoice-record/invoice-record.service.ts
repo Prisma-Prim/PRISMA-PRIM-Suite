@@ -23,8 +23,7 @@ import {
   type InvoiceInput,
 } from './invoice-record.input.js';
 import {
-  invoiceCursor,
-  readInvoiceCursor,
+  invoiceCursors,
   type InvoiceCursorBinding,
 } from './invoice-record.cursor.js';
 import { InvoiceRecordStore } from './invoice-record.store.js';
@@ -44,13 +43,18 @@ function conflict(code: string): never {
 }
 @Injectable()
 export class InvoiceRecordService {
+  private readonly cursors: ReturnType<typeof invoiceCursors>;
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: CompanyContextAuthorization,
     private readonly source: DocumentInvoiceRecordSource,
     private readonly store: InvoiceRecordStore,
     private readonly accountability: InvoiceRecordAccountability,
-  ) {}
+  ) {
+    this.cursors = invoiceCursors(({ scope, operation, kind }) =>
+      this.store.cursorKey(scope, operation === 'issue' && kind === 'source'),
+    );
+  }
   private binding(
     actor: ActorContext,
     scope: InvoiceScope,
@@ -174,11 +178,14 @@ export class InvoiceRecordService {
       items: page.items,
       nextCursor:
         page.hasMore && last
-          ? invoiceCursor(await this.store.cursorKey(scope), binding, {
-              kind: 'history',
-              recordId: id,
-              headRevision,
-              before: last.revision,
+          ? await this.cursors.issue({
+              binding,
+              position: {
+                kind: 'history',
+                recordId: id,
+                headRevision,
+                before: last.revision,
+              },
             })
           : null,
     };
@@ -199,10 +206,8 @@ export class InvoiceRecordService {
         },
         binding = this.binding(actor, scope, capture.readCapture);
       const position = cursor
-        ? readInvoiceCursor(await this.store.cursorKey(scope), cursor, binding)
+        ? await this.cursors.read({ value: cursor, binding, kind: 'inventory' })
         : undefined;
-      if (position && position.kind !== 'inventory')
-        throw new BadRequestException();
       const page = await this.store.inventory(scope, position),
         last = page.items.at(-1);
       return {
@@ -212,10 +217,13 @@ export class InvoiceRecordService {
         items: page.items,
         nextCursor:
           page.hasMore && last
-            ? invoiceCursor(await this.store.cursorKey(scope), binding, {
-                kind: 'inventory',
-                id: last.id,
-                createdAt: last.createdAt,
+            ? await this.cursors.issue({
+                binding,
+                position: {
+                  kind: 'inventory',
+                  id: last.id,
+                  createdAt: last.createdAt,
+                },
               })
             : null,
       };
@@ -307,13 +315,12 @@ export class InvoiceRecordService {
       const current = await this.store.current(scope, id);
       let before: number | undefined;
       if (cursor) {
-        const position = readInvoiceCursor(
-          await this.store.cursorKey(scope),
-          cursor,
+        const position = await this.cursors.read({
+          value: cursor,
           binding,
-        );
-        if (position.kind !== 'history' || position.recordId !== id)
-          throw new BadRequestException();
+          kind: 'history',
+        });
+        if (position.recordId !== id) throw new BadRequestException();
         if (position.headRevision !== current.row.revision)
           conflict('INVOICE_HISTORY_CHANGED');
         before = position.before;
@@ -358,10 +365,8 @@ export class InvoiceRecordService {
         ),
         cursor = invoiceQuery(query);
       const position = cursor
-        ? readInvoiceCursor(await this.store.cursorKey(scope), cursor, binding)
+        ? await this.cursors.read({ value: cursor, binding, kind: 'source' })
         : undefined;
-      if (position && position.kind !== 'source')
-        throw new BadRequestException();
       const page = await this.source.selectable(actor, position?.source),
         last = page.items.at(-1);
       return {
@@ -371,9 +376,12 @@ export class InvoiceRecordService {
         items: page.items,
         nextCursor:
           page.hasMore && last
-            ? invoiceCursor(await this.store.cursorKey(scope, true), binding, {
-                kind: 'source',
-                source: last.source,
+            ? await this.cursors.issue({
+                binding,
+                position: {
+                  kind: 'source',
+                  source: last.source,
+                },
               })
             : null,
       };

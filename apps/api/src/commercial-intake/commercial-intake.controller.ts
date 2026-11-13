@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -15,6 +14,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { CommercialIntakeService } from './commercial-intake.service.js';
 import { RequestClientAssociationService } from './request-client-association.service.js';
@@ -33,7 +33,11 @@ export class CommercialIntakeController {
     @Body() body: unknown,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
-    return this.intake.create(actorFrom(request), body, idempotencyKey);
+    return this.intake.create(
+      requireActorContext(request),
+      body,
+      idempotencyKey,
+    );
   }
 
   @Get()
@@ -43,7 +47,11 @@ export class CommercialIntakeController {
     @Query('cursor') cursor: unknown,
     @Query() viewQuery: unknown,
   ) {
-    return this.intake.list(actorFrom(request), { limit, cursor, viewQuery });
+    return this.intake.list(requireActorContext(request), {
+      limit,
+      cursor,
+      viewQuery,
+    });
   }
 
   @Get(':requestId')
@@ -51,7 +59,7 @@ export class CommercialIntakeController {
     @Req() request: ActorContextRequest,
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ) {
-    return this.intake.read(actorFrom(request), requestId);
+    return this.intake.read(requireActorContext(request), requestId);
   }
 
   @Post(':requestId/client-association')
@@ -63,7 +71,7 @@ export class CommercialIntakeController {
     @Body() body: unknown,
   ) {
     return this.clientAssociation.associate(
-      actorFrom(request),
+      requireActorContext(request),
       requestId,
       body,
       idempotencyKey,
@@ -90,7 +98,7 @@ export class CommercialIntakeOpportunityController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.intake.updateNextAction(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       body,
       idempotencyKey,
@@ -106,7 +114,7 @@ export class CommercialIntakeOpportunityController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.intake.changeResponsible(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       body,
       idempotencyKey,
@@ -122,7 +130,7 @@ export class CommercialIntakeOpportunityController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.intake.changeOutcome(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       body,
       idempotencyKey,
@@ -136,7 +144,7 @@ export class CommercialIntakeOpportunityController {
     @Query('cursor') cursor: unknown,
   ) {
     return this.intake.outcomeHistory(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       cursor,
     );
@@ -151,7 +159,7 @@ export class CommercialIntakeOpportunityController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.intake.setStage(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       body,
       idempotencyKey,
@@ -164,7 +172,11 @@ export class CommercialIntakeOpportunityController {
     @Param('opportunityId', new ParseUUIDPipe()) opportunityId: string,
     @Query('cursor') cursor: unknown,
   ) {
-    return this.intake.stageHistory(actorFrom(request), opportunityId, cursor);
+    return this.intake.stageHistory(
+      requireActorContext(request),
+      opportunityId,
+      cursor,
+    );
   }
 
   @Get(':opportunityId/eligible-responsible-actors')
@@ -173,13 +185,8 @@ export class CommercialIntakeOpportunityController {
     @Param('opportunityId', new ParseUUIDPipe()) opportunityId: string,
   ) {
     return this.intake.eligibleResponsibleActors(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
     );
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

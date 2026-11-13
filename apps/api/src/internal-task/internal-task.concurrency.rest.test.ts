@@ -259,7 +259,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
             ).rows,
           ).toEqual([{ n: ordering === 'command-first' ? 2 : 1 }]);
         });
-    it('retires a captured actor while its key is held through revoke and explicit identical-permission regrant', async () => {
+    it('rechecks a captured actor before waiting for its held key, so revoke commits after it and only an explicit regrant replays', async () => {
       const c = await prepare(),
         key = 'held-regrant',
         db = await fixture.pool.connect();
@@ -285,42 +285,39 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
           body: {
             kind: 'EDIT',
             expectedVersion: 1,
-            title: 'Fresh authority only',
+            title: 'Authority held while waiting',
           },
         },
-        pending = fixture.request(
-          '/company-internal-tasks/' + c.id + '/changes',
-          options,
-        );
+        path = '/company-internal-tasks/' + c.id + '/changes',
+        pending = fixture.request(path, options);
+      let revocation: Promise<Response> | undefined;
       try {
-        await blockedBy(pid);
-        expect(
-          (
-            await fixture.request(
-              `/company-internal-task-manager-assignments/${c.membershipId}/${c.companyId}`,
-              { method: 'DELETE' },
-            )
-          ).status,
-        ).toBe(200);
+        const command = await blockedBy(pid);
+        // The command already holds its authority: the revocation waits for it.
+        revocation = fixture.request(
+          `/company-internal-task-manager-assignments/${c.membershipId}/${c.companyId}`,
+          { method: 'DELETE' },
+        );
+        await blockedBy(command);
+        await db.query('COMMIT');
+        const committed = await pending;
+        expect(committed.status).toBe(200);
+        const receipt = await json(committed);
+        expect((await revocation).status).toBe(200);
+        expect((await fixture.request(path, options)).status).toBe(403);
         const fresh = await fixture.created(
           '/company-internal-task-manager-assignments',
           { companyId: c.companyId, workspaceMembershipId: c.membershipId },
         );
         expect(fresh.id).not.toBe(c.assignmentId);
-        await db.query('COMMIT');
-        expect((await pending).status).toBe(403);
-        expect(
-          (
-            await fixture.request(
-              '/company-internal-tasks/' + c.id + '/changes',
-              options,
-            )
-          ).status,
-        ).toBe(200);
+        const replayed = await fixture.request(path, options);
+        expect(replayed.status).toBe(200);
+        expect(await json(replayed)).toEqual(receipt);
       } finally {
         await db.query('ROLLBACK');
         db.release();
         await pending.catch(() => undefined);
+        await revocation?.catch(() => undefined);
       }
     });
     it('reads current and its history from one repeatable snapshot while a material command commits between reads', async () => {

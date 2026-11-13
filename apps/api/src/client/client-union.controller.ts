@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   Headers,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -14,14 +13,10 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ClientUnionService } from './client-union.service.js';
 import { unionRecord } from './client-union-validation.js';
-
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new NotFoundException();
-  return request.actorContext;
-}
 
 @Controller()
 @UseGuards(ActorContextAdapter)
@@ -30,7 +25,7 @@ export class ClientUnionController {
 
   @Get('client-union-sources')
   sources(@Req() request: ActorContextRequest) {
-    return this.unions.supersededSources(actor(request));
+    return this.unions.supersededSources(requireActorContext(request));
   }
 
   @Post('clients/:clientId/union-reviews')
@@ -43,7 +38,7 @@ export class ClientUnionController {
       throw new BadRequestException(
         'Client union comparison uses only the persisted dossier.',
       );
-    return this.unions.beginReview(actor(request), clientId);
+    return this.unions.beginReview(requireActorContext(request), clientId);
   }
 
   @Get('client-union-reviews/:reference')
@@ -51,7 +46,7 @@ export class ClientUnionController {
     @Req() request: ActorContextRequest,
     @Param('reference', new ParseUUIDPipe()) reference: string,
   ) {
-    return this.unions.review(actor(request), reference);
+    return this.unions.review(requireActorContext(request), reference);
   }
 
   @Post('client-union-reviews/:reference/confirm')
@@ -62,7 +57,7 @@ export class ClientUnionController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.unions.confirm({
-      actor: actor(request),
+      actor: requireActorContext(request),
       reference,
       value: body,
       key,
@@ -74,7 +69,7 @@ export class ClientUnionController {
     @Req() request: ActorContextRequest,
     @Param('clientId', new ParseUUIDPipe()) clientId: string,
   ) {
-    return this.unions.history(actor(request), clientId);
+    return this.unions.history(requireActorContext(request), clientId);
   }
 
   @Get('client-union-operations/:reference')
@@ -82,7 +77,7 @@ export class ClientUnionController {
     @Req() request: ActorContextRequest,
     @Param('reference', new ParseUUIDPipe()) reference: string,
   ) {
-    return this.unions.detail(actor(request), reference);
+    return this.unions.detail(requireActorContext(request), reference);
   }
 
   @Post('client-union-operations/:reference/reversal')
@@ -93,7 +88,7 @@ export class ClientUnionController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.unions.reverse({
-      actor: actor(request),
+      actor: requireActorContext(request),
       reference,
       value: body,
       key,

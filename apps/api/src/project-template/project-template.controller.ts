@@ -2,7 +2,6 @@ import { ProjectTemplateVersionService } from './project-template-version.servic
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -15,6 +14,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProjectStageService } from './project-stage.service.js';
 import { ProjectTemplateService } from './project-template.service.js';
@@ -35,7 +35,7 @@ export class ProjectTemplateController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.readiness.read(actor(request), projectId);
+    return this.readiness.read(requireActorContext(request), projectId);
   }
 
   @Get('projects/:projectId/stage-progress')
@@ -43,7 +43,7 @@ export class ProjectTemplateController {
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.stages.read(actor(request), projectId);
+    return this.stages.read(requireActorContext(request), projectId);
   }
   @Post('projects/:projectId/stage-advance')
   advance(
@@ -52,7 +52,12 @@ export class ProjectTemplateController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.stages.advance({ actor: actor(request), projectId, body, key });
+    return this.stages.advance({
+      actor: requireActorContext(request),
+      projectId,
+      body,
+      key,
+    });
   }
   @Get('project-templates')
   catalogue(
@@ -61,7 +66,7 @@ export class ProjectTemplateController {
     @Query('templateKey') templateKey?: string,
   ) {
     return this.versions.catalogue({
-      actor: actor(request),
+      actor: requireActorContext(request),
       beforeVersion,
       templateKey,
     });
@@ -72,7 +77,11 @@ export class ProjectTemplateController {
     @Param('templateKey') templateKey: string,
     @Param('version') version: string,
   ) {
-    return this.versions.read(actor(request), templateKey, version);
+    return this.versions.read(
+      requireActorContext(request),
+      templateKey,
+      version,
+    );
   }
   @Post('project-templates/:templateKey/versions')
   publish(
@@ -82,7 +91,7 @@ export class ProjectTemplateController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.versions.publish({
-      actor: actor(request),
+      actor: requireActorContext(request),
       templateKey,
       body,
       key,
@@ -94,17 +103,13 @@ export class ProjectTemplateController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.templates.create(actor(request), body, key);
+    return this.templates.create(requireActorContext(request), body, key);
   }
   @Get('projects/:projectId/template')
   read(
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.templates.read(actor(request), projectId);
+    return this.templates.read(requireActorContext(request), projectId);
   }
-}
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

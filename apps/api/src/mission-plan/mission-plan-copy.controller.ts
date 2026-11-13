@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { MissionPlanCopyService } from './mission-plan-copy.service.js';
 import { MissionPlanCurrentWorkService } from './mission-plan-current-work.service.js';
@@ -29,23 +29,23 @@ export class MissionPlanCopyController {
     @Param('projectId') projectId: string,
     @Query() query: unknown,
   ) {
-    return this.currentWork.read({ actor: actor(r), projectId, query });
+    return this.currentWork.read({
+      actor: requireActorContext(r),
+      projectId,
+      query,
+    });
   }
   @Post('from-mission-plan') create(
     @Req() r: ActorContextRequest,
     @Body() payload: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.plans.create({ actor: actor(r), payload, key });
+    return this.plans.create({ actor: requireActorContext(r), payload, key });
   }
   @Get(':projectId/mission-plan') read(
     @Req() r: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.plans.read({ actor: actor(r), projectId });
+    return this.plans.read({ actor: requireActorContext(r), projectId });
   }
-}
-function actor(r: ActorContextRequest) {
-  if (!r.actorContext) throw new ForbiddenException();
-  return r.actorContext;
 }

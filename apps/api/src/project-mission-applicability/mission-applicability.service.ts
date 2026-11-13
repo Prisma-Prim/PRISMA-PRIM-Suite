@@ -8,11 +8,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
+import {
+  runKeyedCommand,
+  staleVersionConflict,
+} from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { ProjectService } from '../project/project.service.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
@@ -20,9 +23,9 @@ import { MissionReadinessService } from '../project-template/mission-readiness.s
 import { ProjectTemplateService } from '../project-template/project-template.service.js';
 import { TaskResultsService } from '../task/task-results.service.js';
 import {
+  APPLICABILITY_KEY_MAX_LENGTH,
   applicabilityHistoryQuery,
   applicabilityInput,
-  applicabilityIdempotencyKey,
 } from './mission-applicability.input.js';
 import {
   MissionApplicabilityStore,
@@ -224,10 +227,14 @@ export class MissionApplicabilityService {
     body: unknown,
     key: string | undefined,
   ) {
-    const input = applicabilityInput(body),
-      idempotencyKey = applicabilityIdempotencyKey(key);
-    return this.database
-      .transaction(async () => {
+    const input = applicabilityInput(body);
+    const intent = (companyId: string) => ({ companyId, projectId, ...input });
+    return runKeyedCommand(this.database, {
+      name: 'mission.applicability.command',
+      actor,
+      key,
+      maxKeyLength: APPLICABILITY_KEY_MAX_LENGTH,
+      authorize: async () => {
         await this.access.requireSourceReadWithinTransaction(actor, true);
         await this.templates.requirePilotReviewWithinTransaction(actor);
         const capture =
@@ -261,32 +268,24 @@ export class MissionApplicabilityService {
             actor,
             taskId: row.task.id,
           });
-        const command = JSON.stringify({
-          companyId: scope.companyId,
-          projectId,
-          ...input,
-        });
-        const mutex = JSON.stringify([
-          'mission.applicability.command',
-          actor.workspaceId,
-          actor.workspaceMembershipId,
-          idempotencyKey,
-        ]);
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${mutex},0))`,
-        );
-        const receipt = await this.store.receipt(actor, idempotencyKey);
-        if (receipt) {
-          if (receipt.command !== command)
-            throw new ConflictException(
-              'Idempotency-Key was used for another applicability intent.',
-            );
-          const fact = await this.store.fact(scope, receipt.factId);
-          await this.store.view(actor, fact);
-          if (receipt.applicabilityRevision !== fact.revision)
-            throw new Error('Invalid immutable applicability receipt.');
-          return this.store.response(receipt);
-        }
+        return { capture, scope, source };
+      },
+      findReceipt: ({ key: used }) => this.store.receipt(actor, used),
+      // Receipts record their intent as its JSON spelling.
+      recordedIntent: (receipt): unknown => JSON.parse(receipt.command),
+      intent: ({ scope: { scope } }) => intent(scope.companyId),
+      replay: async ({ scope: { scope }, receipt }) => {
+        const fact = await this.store.fact(scope, receipt.factId);
+        await this.store.view(actor, fact);
+        if (receipt.applicabilityRevision !== fact.revision)
+          throw new Error('Invalid immutable applicability receipt.');
+        return this.store.response(receipt);
+      },
+      execute: async ({
+        scope: { capture, scope, source },
+        key: idempotencyKey,
+      }) => {
+        const command = JSON.stringify(intent(scope.companyId));
         if (!source.mutable)
           throw new ConflictException(
             'New applicability facts require an open Project and active original Client.',
@@ -329,7 +328,7 @@ export class MissionApplicabilityService {
           input.expectedTaskVersion !== target.task.version ||
           input.expectedResultRevision !== (target.current?.revision ?? 0)
         )
-          throw new ConflictException(
+          throw staleVersionConflict(
             'The observed mission facts changed. Reload and review again.',
           );
         const last = await this.store.latest(scope, input.taskId);
@@ -418,8 +417,8 @@ export class MissionApplicabilityService {
           applicabilityRevision: fact.revision,
           action: 'recorded',
         });
-      })
-      .catch(applicabilityFailure);
+      },
+    }).catch(applicabilityFailure);
   }
 }
 

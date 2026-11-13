@@ -1,5 +1,4 @@
 import { BadRequestException } from '@nestjs/common';
-import { requireIdempotencyKey } from '../access/access-command-validation.js';
 
 export const MAX_NEXT_ACTION_REVISION = 2147483647;
 export function normalizeNextActionText(value: unknown): string | null {
@@ -64,5 +63,6 @@ export function nextActionQuery(query: unknown) {
     throw new BadRequestException('Expected one canonical history cursor.');
   return revision(Number(value.beforeRevision));
 }
-export { requireIdempotencyKey as nextActionKey };
+// The keyed command module bounds keys as every other keyed receipt store does.
+export const NEXT_ACTION_KEY_MAX_LENGTH = 200;
 export type NextActionInput = ReturnType<typeof nextActionInput>;

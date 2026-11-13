@@ -4,7 +4,6 @@ import { OfferPdfService } from './offer-pdf.service.js';
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -17,6 +16,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { OfferService } from './offer.service.js';
 import { EstimateOfferPreparationService } from './offer-estimate-preparation.service.js';
@@ -41,7 +41,7 @@ export class OfferController {
     response.setHeader('Cache-Control', 'private, no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     return this.offers.readMessagePreparation({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       versionId,
       query,
@@ -59,7 +59,7 @@ export class OfferController {
   ) {
     return readCommercialPdfAttachment(response, (signal) =>
       this.pdf.read({
-        actor: actorFrom(request),
+        actor: requireActorContext(request),
         opportunityId,
         versionId,
         query,
@@ -76,7 +76,7 @@ export class OfferController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.estimateOffers.createFromModel({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       key,
@@ -91,7 +91,7 @@ export class OfferController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.estimateOffers.createModelVersion({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       key,
@@ -106,7 +106,7 @@ export class OfferController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.estimateOffers.create({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       key,
@@ -121,7 +121,7 @@ export class OfferController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.estimateOffers.createVersion({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       key,
@@ -136,7 +136,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.create(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       body,
       idempotencyKey,
@@ -148,7 +148,12 @@ export class OfferController {
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,
   ) {
-    return { offer: await this.offers.read(actorFrom(request), opportunityId) };
+    return {
+      offer: await this.offers.read(
+        requireActorContext(request),
+        opportunityId,
+      ),
+    };
   }
 
   @Post('versions/:offerVersionId/quality-checks')
@@ -160,7 +165,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.runQualityChecks({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       offerVersionId,
       payload,
@@ -176,7 +181,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.createVersion({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       payload,
       idempotencyKey,
@@ -191,7 +196,7 @@ export class OfferController {
     @Query('limit') limit: string | undefined,
   ) {
     return this.offers.listVersions({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       cursor,
       limit,
@@ -206,7 +211,7 @@ export class OfferController {
   ) {
     return {
       offer: await this.offers.read(
-        actorFrom(request),
+        requireActorContext(request),
         opportunityId,
         offerVersionId,
       ),
@@ -222,7 +227,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       offerVersionId,
       payload,
@@ -240,7 +245,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.recordTransmission({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       offerVersionId,
       payload,
@@ -257,7 +262,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.recordClientResponse({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       offerVersionId,
       payload,
@@ -274,7 +279,7 @@ export class OfferController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.offers.decide({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       offerVersionId,
       payload,
@@ -282,9 +287,4 @@ export class OfferController {
       kind: 'REJECT',
     });
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

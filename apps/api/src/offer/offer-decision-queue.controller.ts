@@ -1,14 +1,8 @@
-import {
-  Controller,
-  ForbiddenException,
-  Get,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { OfferDecisionQueueService } from './offer-decision-queue.service.js';
 
@@ -18,7 +12,6 @@ export class OfferDecisionQueueController {
   constructor(private readonly queue: OfferDecisionQueueService) {}
   @Get()
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    if (!request.actorContext) throw new ForbiddenException();
-    return this.queue.list({ actor: request.actorContext, query });
+    return this.queue.list({ actor: requireActorContext(request), query });
   }
 }
