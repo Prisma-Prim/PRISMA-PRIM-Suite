@@ -6,21 +6,22 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
-import {
-  requireIdempotencyKey,
-  requireUuid,
-} from '../access/access-command-validation.js';
+import { requireUuid } from '../access/access-command-validation.js';
 import { InternalTaskAccessService } from '../access/internal-task-access.service.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
+import {
+  runKeyedCommand,
+  staleVersionConflict,
+} from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   changeInput,
   createInput,
   history,
   historyQuery,
+  INTERNAL_TASK_KEY_MAX_LENGTH,
   listQuery,
   MAX_VERSION,
   memberQuery,
@@ -79,9 +80,7 @@ export class InternalTaskService {
       .catch(unavailable);
   }
   create(actor: ActorContext, body: unknown, key: string | undefined) {
-    const input = createInput(body),
-      normalizedKey = requireIdempotencyKey(key);
-    return this.execute(actor, undefined, input, normalizedKey);
+    return this.execute(actor, undefined, createInput(body), key);
   }
   change(
     actor: ActorContext,
@@ -90,71 +89,75 @@ export class InternalTaskService {
     key: string | undefined,
   ) {
     const taskId = requireUuid(id),
-      input = changeInput(body),
-      normalizedKey = requireIdempotencyKey(key);
-    return this.execute(actor, taskId, input, normalizedKey);
+      input = changeInput(body);
+    return this.execute(actor, taskId, input, key);
   }
   private execute(
     actor: ActorContext,
     target: string | undefined,
     input: Create | Change,
-    key: string,
+    key: string | undefined,
   ): Promise<Receipt> {
-    return this.database
-      .transaction(async () => {
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['company-internal-task', actor.workspaceId, actor.workspaceMembershipId, key])},0))`,
-        );
+    const intent = (companyId: string, taskId: string) => ({
+      format: 'company-internal-task-command-v1',
+      workspaceId: actor.workspaceId,
+      actorMembershipId: actor.workspaceMembershipId,
+      companyId,
+      taskId,
+      kind: target ? 'CHANGE' : 'CREATE',
+      body: input,
+    });
+    return runKeyedCommand(this.database, {
+      name: 'company-internal-task',
+      actor,
+      key,
+      maxKeyLength: INTERNAL_TASK_KEY_MAX_LENGTH,
+      authorize: async () => {
         const capture = await this.access.requireActor(actor, true),
           scope = {
             workspaceId: actor.workspaceId,
             companyId: capture.companyId,
           };
         if (target) await this.store.visible(scope, target);
-        const saved = await this.store.command(actor, key),
-          taskId = target ?? saved?.taskId ?? randomUUID();
-        const intent = {
-          format: 'company-internal-task-command-v1',
-          workspaceId: actor.workspaceId,
-          actorMembershipId: actor.workspaceMembershipId,
-          companyId: capture.companyId,
-          taskId,
-          kind: target ? 'CHANGE' : 'CREATE',
-          body: input,
-        };
-        if (saved) {
-          // Validate the whole persisted command before treating it as a matching intent.
-          const stored = savedIntent(saved.intent);
-          if (
-            stored.workspaceId !== saved.workspaceId ||
-            stored.companyId !== saved.companyId ||
-            stored.taskId !== saved.taskId ||
-            stored.actorMembershipId !== saved.actorMembershipId
-          )
-            throw new ServiceUnavailableException({
-              code: 'INTERNAL_TASK_UNAVAILABLE',
-            });
-          if (stable(stored) !== stable(intent))
-            throw new ConflictException(
-              'Idempotency-Key belongs to another Internal Task intent.',
-            );
-          await this.store.visible(scope, taskId);
-          const result = receipt(saved.response);
-          if (
-            result.task.id !== saved.taskId ||
-            result.task.workspaceId !== saved.workspaceId ||
-            result.task.companyId !== saved.companyId ||
-            result.task.version !== saved.version ||
-            result.changed !== (saved.changed === 1) ||
-            (result.history &&
-              (result.history.actorMembershipId !== saved.actorMembershipId ||
-                result.history.recordedAt !== saved.recordedAt.toISOString()))
-          )
-            throw new ServiceUnavailableException({
-              code: 'INTERNAL_TASK_UNAVAILABLE',
-            });
-          return result;
-        }
+        return { scope, assignmentId: capture.assignmentId };
+      },
+      findReceipt: ({ key: used }) => this.store.command(actor, used),
+      // Validate the whole persisted command before treating it as a matching intent.
+      recordedIntent: (saved) => {
+        const stored = savedIntent(saved.intent);
+        if (
+          stored.workspaceId !== saved.workspaceId ||
+          stored.companyId !== saved.companyId ||
+          stored.taskId !== saved.taskId ||
+          stored.actorMembershipId !== saved.actorMembershipId
+        )
+          throw new ServiceUnavailableException({
+            code: 'INTERNAL_TASK_UNAVAILABLE',
+          });
+        return stored;
+      },
+      intent: ({ scope: { scope }, receipt: saved }) =>
+        intent(scope.companyId, target ?? saved.taskId),
+      replay: async ({ scope: { scope }, receipt: saved }) => {
+        await this.store.visible(scope, saved.taskId);
+        const result = receipt(saved.response);
+        if (
+          result.task.id !== saved.taskId ||
+          result.task.workspaceId !== saved.workspaceId ||
+          result.task.companyId !== saved.companyId ||
+          result.task.version !== saved.version ||
+          result.changed !== (saved.changed === 1) ||
+          (result.history &&
+            (result.history.actorMembershipId !== saved.actorMembershipId ||
+              result.history.recordedAt !== saved.recordedAt.toISOString()))
+        )
+          throw new ServiceUnavailableException({
+            code: 'INTERNAL_TASK_UNAVAILABLE',
+          });
+        return result;
+      },
+      execute: async ({ scope: { scope, assignmentId }, key: used }) => {
+        const taskId = target ?? randomUUID();
         const now = this.clock.now(),
           recordedAt = now.toISOString();
         let before: Snapshot | null = null,
@@ -190,7 +193,7 @@ export class InternalTaskService {
           const change = changeInput(input);
           before = await this.store.current(scope, target, true);
           if (change.expectedVersion !== before.version)
-            throw new ConflictException('Reload the current Internal Task.');
+            throw staleVersionConflict('Reload the current Internal Task.');
           kind = change.kind;
           const open =
             before.status === 'todo' ||
@@ -228,9 +231,9 @@ export class InternalTaskService {
               const response = this.store.response(before, null);
               await this.store.remember({
                 actor,
-                assignmentId: capture.assignmentId,
-                key,
-                intent,
+                assignmentId,
+                key: used,
+                intent: intent(scope.companyId, taskId),
                 response,
                 recordedAt: now,
               });
@@ -295,15 +298,15 @@ export class InternalTaskService {
         const response = this.store.response(after, fact);
         await this.store.remember({
           actor,
-          assignmentId: capture.assignmentId,
-          key,
-          intent,
+          assignmentId,
+          key: used,
+          intent: intent(scope.companyId, taskId),
           response,
           recordedAt: now,
         });
         return response;
-      })
-      .catch(unavailable);
+      },
+    }).catch(unavailable);
   }
 }
 export function successor(current: number) {
