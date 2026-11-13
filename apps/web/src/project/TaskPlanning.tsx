@@ -150,7 +150,7 @@ export function TaskPlanning(props: Props) {
         companyContextId: props.companyId,
         signal: controller.signal,
       };
-      const listingResult = await api.request<unknown>(
+      const listingResult = await api.request(
         `/projects/${encodeURIComponent(props.projectId)}/tasks`,
         options,
       );
@@ -163,7 +163,7 @@ export function TaskPlanning(props: Props) {
       let availability: PlanningAvailability;
       if (props.projectClosed) availability = { kind: 'closed' };
       else if (listing.mutable) {
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/projects/${encodeURIComponent(props.projectId)}/eligible-task-assignees`,
           options,
         );
@@ -175,7 +175,7 @@ export function TaskPlanning(props: Props) {
       } else {
         // Native mutable=false combines Client and Project state. Resolve the lifecycle after that read;
         // closed Projects cannot reopen, so a current open Project identifies the historical-Client restriction.
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/projects/${encodeURIComponent(props.projectId)}`,
           options,
         );
@@ -219,7 +219,7 @@ export function TaskPlanning(props: Props) {
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live(controller)) return;
-      const result = await api.request<unknown>(attempt.path, {
+      const result = await api.request(attempt.path, {
         companyContextId: props.companyId,
         signal: controller.signal,
         method: 'POST',

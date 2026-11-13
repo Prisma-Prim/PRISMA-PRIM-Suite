@@ -356,7 +356,7 @@ export function ProjectWorkspace({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/projects/${encodeURIComponent(staleProjectId)}`,
           { companyContextId: companyId, signal: controller.signal },
         );
@@ -485,7 +485,7 @@ export function ProjectWorkspace({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/projects/${encodeURIComponent(projectId)}`,
         { companyContextId: companyId, signal: controller.signal },
       );
@@ -559,7 +559,7 @@ export function ProjectWorkspace({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       phase = 'sent';
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         companyContextId: companyId,
         signal: controller.signal,
         ...(command

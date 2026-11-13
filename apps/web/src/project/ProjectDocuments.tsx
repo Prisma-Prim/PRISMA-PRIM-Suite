@@ -100,7 +100,7 @@ function ProjectDocumentSession({
   ): Promise<Load> {
     const api = await createAuthenticatedApiClient(identity);
     if (controller.signal.aborted) return { kind: 'loading' };
-    const result = await api.request<unknown>(
+    const result = await api.request(
       `/projects/${encodeURIComponent(projectId)}/${eligible ? 'eligible-documents' : 'documents'}`,
       { companyContextId: companyId, signal: controller.signal },
     );
@@ -184,7 +184,7 @@ function ProjectDocumentSession({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/documents/${encodeURIComponent(command.documentId)}/project-association`,
         {
           companyContextId: companyId,

@@ -118,7 +118,7 @@ export function ReportedSigningForm(props: {
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         base +
           '/pdf-candidates' +
           (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''),
@@ -214,7 +214,7 @@ export function ReportedSigningForm(props: {
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(base, {
+      const result = await api.request(base, {
         method: 'POST',
         companyContextId: props.companyId,
         signal: controller.signal,

@@ -306,7 +306,7 @@ export function useModelContractJourney(
     path: string,
     signal: AbortSignal,
   ) {
-    const result = await api.request<unknown>(path, {
+    const result = await api.request(path, {
       companyContextId: companyId,
       signal,
     });
@@ -601,7 +601,7 @@ export function useModelContractJourney(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (signal.aborted) return;
-      const result = await api.request<unknown>(command.path, {
+      const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: companyId,
         signal,

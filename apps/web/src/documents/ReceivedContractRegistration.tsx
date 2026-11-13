@@ -76,7 +76,7 @@ export function ReceivedContractRegistration({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           '/documents/received-contract-sources' +
             (page.cursor ? '?cursor=' + encodeURIComponent(page.cursor) : ''),
           { companyContextId: companyId, signal: request.signal },
@@ -145,7 +145,7 @@ export function ReceivedContractRegistration({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>('/documents', {
+      const result = await api.request('/documents', {
         method: 'POST',
         companyContextId: companyId,
         signal: request.signal,

@@ -43,7 +43,7 @@ export function OverdueTasksPanel({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(`/overdue-tasks?offset=${offset}`, {
+        api.request(`/overdue-tasks?offset=${offset}`, {
           companyContextId: company.id,
           signal,
         }),

@@ -200,7 +200,7 @@ function LifecycleSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(`${path}/lifecycle`, {
+      const result = await api.request(`${path}/lifecycle`, {
         companyContextId: companyId,
         signal: controller.signal,
       });
@@ -254,7 +254,7 @@ function LifecycleSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${path}/eligible-start-exception-members`,
         { companyContextId: companyId, signal: controller.signal },
       );
@@ -310,18 +310,15 @@ function LifecycleSection({
       if (controller.signal.aborted) return;
       // No abort signal: a later read, reload or authority change never
       // cancels a submitted write; its reply is only ignored.
-      const result = await api.request<unknown>(
-        `${path}/lifecycle-transitions`,
-        {
-          companyContextId: companyId,
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'idempotency-key': command.key,
-          },
-          body: JSON.stringify(command.body),
+      const result = await api.request(`${path}/lifecycle-transitions`, {
+        companyContextId: companyId,
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': command.key,
         },
-      );
+        body: JSON.stringify(command.body),
+      });
       if (controller.signal.aborted) return;
       if (result.status === 'unauthorized') {
         await identity.rejectSession();

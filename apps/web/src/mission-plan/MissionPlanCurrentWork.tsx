@@ -145,10 +145,10 @@ function CurrentWorkOwner({
         pending,
         identity,
         execute: (api, signal) =>
-          api.request<unknown>(
-            `/projects/${projectId}/mission-plan/current-work`,
-            { companyContextId: authority.companyId, signal },
-          ),
+          api.request(`/projects/${projectId}/mission-plan/current-work`, {
+            companyContextId: authority.companyId,
+            signal,
+          }),
         onResult: (result) => {
           if (generation !== resultGeneration.current.generation) return;
           if (result.status === 'ok') {

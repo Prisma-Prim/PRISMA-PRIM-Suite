@@ -71,7 +71,7 @@ export function useRiskJournalStatement({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!live()) return undefined;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}/journal/${encodeURIComponent(root)}`,
         { companyContextId: companyId, signal: controller.signal },
       );

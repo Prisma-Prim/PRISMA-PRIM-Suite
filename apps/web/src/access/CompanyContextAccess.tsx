@@ -298,7 +298,7 @@ export function CompanyContextAccess({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (!current()) return false;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           '/company-context-assignments/administration',
           { signal: request.signal },
         );
@@ -413,7 +413,7 @@ export function CompanyContextAccess({
       const api = await createAuthenticatedApiClient(identity);
       if (!current()) return;
       const assignmentPath = ASSIGNMENT_PATHS[bundle];
-      const result = await api.request<unknown>(
+      const result = await api.request(
         submission === 'grant'
           ? assignmentPath
           : `${assignmentPath}/${encodeURIComponent(workspaceMembershipId)}/${encodeURIComponent(companyId)}`,

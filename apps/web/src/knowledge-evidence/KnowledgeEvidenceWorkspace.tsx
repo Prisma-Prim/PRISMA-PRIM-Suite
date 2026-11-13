@@ -108,7 +108,7 @@ function EvidenceOwner(
     if (!owner.live()) return;
     const api = await createAuthenticatedApiClient(props.identity);
     if (!owner.live()) return;
-    const result = await api.request<unknown>(path, {
+    const result = await api.request(path, {
       companyContextId: props.authority.companyId,
       signal: owner.signal,
       cache: 'no-store',

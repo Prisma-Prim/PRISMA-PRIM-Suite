@@ -71,7 +71,7 @@ export function EvidenceEditor(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!request.current()) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/projects/${props.projectId}/working-evidence-sources${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         {
           companyContextId: props.actor.activeCompany?.id,
@@ -135,7 +135,7 @@ export function EvidenceEditor(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!request.current()) return;
-      const result = await api.request<unknown>(command.path, {
+      const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: props.actor.activeCompany?.id,
         signal: request.controller.signal,

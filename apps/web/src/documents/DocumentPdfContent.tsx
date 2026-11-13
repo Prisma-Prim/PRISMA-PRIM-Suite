@@ -156,7 +156,7 @@ export function DocumentPdfContent({
       // A retired owner must not dispatch a file after asynchronous token lookup.
       // Commands already sent retain their existing durable-receipt policy.
       if (!current()) return;
-      const result = await api.request<unknown>(command.path, {
+      const result = await api.request(command.path, {
         method: 'POST',
         ...(request ? { signal: request.signal } : {}),
         companyContextId: companyId,
@@ -348,7 +348,7 @@ export function DocumentPdfContent({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!allowed() || controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${path}/history${beforeRevision === undefined ? '' : `?beforeRevision=${beforeRevision}`}`,
         { companyContextId: companyId, signal: controller.signal },
       );

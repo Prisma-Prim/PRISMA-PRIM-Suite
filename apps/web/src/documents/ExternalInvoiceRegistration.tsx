@@ -77,7 +77,7 @@ export function ExternalInvoiceRegistration({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           '/documents/external-invoice-sources' +
             (page.cursor ? '?cursor=' + encodeURIComponent(page.cursor) : ''),
           { companyContextId: companyId, signal: request.signal },
@@ -146,7 +146,7 @@ export function ExternalInvoiceRegistration({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>('/documents', {
+      const result = await api.request('/documents', {
         method: 'POST',
         companyContextId: companyId,
         signal: request.signal,

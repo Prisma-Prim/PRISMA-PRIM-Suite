@@ -66,7 +66,7 @@ export function ContractRepresentationViewer({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/contracts/opportunities/${encodeURIComponent(opportunityId)}${kind === 'CONTRACT' ? '' : '/agreements/' + encodeURIComponent(contractId)}/versions/${encodeURIComponent(versionId)}/representation`,
           { companyContextId: companyId, signal },
         );

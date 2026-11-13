@@ -101,7 +101,7 @@ function MissionOwner(
         pending,
         identity: callbacks.current.identity,
         execute: (api, signal) =>
-          api.request<unknown>(
+          api.request(
             `/projects?clientDossierId=${encodeURIComponent(props.clientDossierId)}&offset=${nextOffset}`,
             { companyContextId: props.company.id, signal },
           ),

@@ -20,7 +20,6 @@ import {
   ClientContactEditor,
   contactDraft,
   normalizedContacts,
-  type ClientContact,
   type ClientContactDraft,
   type ClientContactValidationIssue,
 } from './ClientContactEditor';
@@ -39,21 +38,11 @@ import { ApplicationPresentation } from '../production-shell/application-present
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import { ClientCorrectionHistory } from './ClientCorrectionHistory';
 import { ClientLegalEntities } from './ClientLegalEntities';
+import {
+  readClientDossier,
+  type ClientDossierView,
+} from './client-dossier-response';
 import './client-dossier.css';
-
-interface ClientDossierView {
-  id: string;
-  displayName: string;
-  relatedToActiveCompany: boolean;
-  taxId: string | null;
-  address: string | null;
-  telephone: string | null;
-  generalEmail: string | null;
-  contacts: ClientContact[];
-  businessActivity: string | null;
-  version: number;
-  involvedCompanyDisplayNames: string[];
-}
 
 interface DossierDraft {
   displayName: string;
@@ -175,10 +164,10 @@ export function ClientDossierPanel({
         pending: pendingDossier,
         identity,
         execute: (api, signal) =>
-          api.request<ClientDossierView>(
-            `/clients/${encodeURIComponent(selectedClientId)}`,
-            { companyContextId, signal },
-          ),
+          api.request(`/clients/${encodeURIComponent(selectedClientId)}`, {
+            companyContextId,
+            signal,
+          }),
         async onResult(result, signal) {
           if (signal.aborted) return;
           const rejection = await handleAuthenticatedAccessRejection({
@@ -205,9 +194,12 @@ export function ClientDossierPanel({
             setDossierState({ status: 'error' });
             return;
           }
+          const dossier = readClientDossier(result.value, {
+            clientAccountId: selectedClientId,
+          });
           draftEdited.current = false;
-          setDraft(draftFrom(result.value));
-          setDossierState({ status: 'ready', dossier: result.value });
+          setDraft(draftFrom(dossier));
+          setDossierState({ status: 'ready', dossier });
         },
         onError: () => setDossierState({ status: 'error' }),
       });
@@ -238,6 +230,7 @@ export function ClientDossierPanel({
   async function correctDossier(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canUpdate || dossierState.status !== 'ready') return;
+    const correctionClientId = dossierState.dossier.id;
     if (!draft.displayName.trim()) {
       setCorrectionState({
         status: 'validation',
@@ -278,19 +271,16 @@ export function ClientDossierPanel({
       pending: pendingCorrection,
       identity,
       execute: (api, signal) =>
-        api.request<ClientDossierView>(
-          `/clients/${encodeURIComponent(dossierState.dossier.id)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'content-type': 'application/json',
-              'idempotency-key': command.idempotencyKey,
-            },
-            companyContextId,
-            body: command.serializedBody,
-            signal,
+        api.request(`/clients/${encodeURIComponent(correctionClientId)}`, {
+          method: 'PATCH',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': command.idempotencyKey,
           },
-        ),
+          companyContextId,
+          body: command.serializedBody,
+          signal,
+        }),
       async onResult(result, signal) {
         if (signal.aborted) return;
         const rejection = await handleAuthenticatedAccessRejection({
@@ -349,10 +339,13 @@ export function ClientDossierPanel({
           setCorrectionState({ status: 'error' });
           return;
         }
+        const dossier = readClientDossier(result.value, {
+          clientAccountId: correctionClientId,
+        });
         correctionRetryCommand.current = undefined;
         draftEdited.current = false;
-        setDraft(draftFrom(result.value));
-        setDossierState({ status: 'ready', dossier: result.value });
+        setDraft(draftFrom(dossier));
+        setDossierState({ status: 'ready', dossier });
         setCorrectionState({ status: 'success' });
         void onActivityRecorded();
         await onClientsChanged();

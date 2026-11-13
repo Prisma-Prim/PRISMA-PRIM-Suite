@@ -237,7 +237,7 @@ export function ClientWorkspace({
         pending: pendingList,
         identity,
         execute: (api, signal) =>
-          api.request<unknown>('/clients', {
+          api.request('/clients', {
             companyContextId,
             signal,
           }),
@@ -340,7 +340,7 @@ export function ClientWorkspace({
       pending: pendingCreate,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>('/clients', {
+        api.request('/clients', {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -405,10 +405,10 @@ export function ClientWorkspace({
       pending: pendingSearch,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(
-          `/clients/search?query=${encodeURIComponent(query)}`,
-          { companyContextId: activeCompany.id, signal },
-        ),
+        api.request(`/clients/search?query=${encodeURIComponent(query)}`, {
+          companyContextId: activeCompany.id,
+          signal,
+        }),
       async onResult(result, signal) {
         if (await handleAccessRejection(result, activeCompany.id, signal)) {
           if (!signal.aborted) setSearchState({ status: 'forbidden' });
@@ -434,7 +434,7 @@ export function ClientWorkspace({
       pending: pendingAttach,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(
+        api.request(
           `/clients/${encodeURIComponent(clientAccountId)}/active-company-relationship`,
           {
             method: 'PUT',

@@ -5,6 +5,7 @@ import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useWorkspaceMembershipSuspensionCopy } from './workspace-membership-suspension.copy';
+import { confirmsWorkspaceMembershipSuspension } from './workspace-membership-suspension-response';
 
 export interface SuspensionMemberOption {
   readonly workspaceMembershipId: string;
@@ -127,10 +128,7 @@ export function WorkspaceMembershipSuspension({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<{
-        workspaceMembershipId: string;
-        status: 'inactive';
-      }>('/workspace-membership-suspensions', {
+      const result = await api.request('/workspace-membership-suspensions', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -146,8 +144,14 @@ export function WorkspaceMembershipSuspension({
         await identity.rejectSession();
         return;
       }
-      if (
+      const confirmed =
         result.status === 'ok' &&
+        confirmsWorkspaceMembershipSuspension({
+          value: result.value,
+          workspaceMembershipId: command.workspaceMembershipId,
+        });
+      if (
+        confirmed &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase()
       ) {
@@ -155,13 +159,13 @@ export function WorkspaceMembershipSuspension({
         await onWorkspaceAccessRejected();
         return;
       }
-      if (result.status === 'ok') {
+      if (confirmed) {
         await onActivityRecorded();
         if (request.signal.aborted) return;
       }
       const refreshed = await reloadAdministration(request);
       if (request.signal.aborted) return;
-      if (result.status === 'ok' && refreshed) {
+      if (confirmed && refreshed) {
         retryCommand.current = undefined;
         setWorkspaceMembershipId('');
         setState({ status: 'ready' });

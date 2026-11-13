@@ -118,12 +118,12 @@ export function useProjectDirectory(input: {
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
         const [projects, clients] = await Promise.all([
-          api.request<unknown>(
+          api.request(
             view === 'mine_open' ? '/projects?view=mine_open' : '/projects',
             { companyContextId: companyId, signal: controller.signal },
           ),
           readClients
-            ? api.request<unknown>('/clients', {
+            ? api.request('/clients', {
                 companyContextId: companyId,
                 signal: controller.signal,
               })

@@ -84,7 +84,7 @@ it.each([
 
     async function rejectProtectedRequest() {
       const api = await createAuthenticatedApiClient(identity);
-      const rejected = await api.request<unknown>('/protected', {
+      const rejected = await api.request('/protected', {
         companyContextId: 'company-a',
       });
       await handleAuthenticatedAccessRejection({

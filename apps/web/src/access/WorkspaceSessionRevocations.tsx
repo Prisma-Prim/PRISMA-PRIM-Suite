@@ -60,7 +60,7 @@ export function WorkspaceSessionRevocations({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       if (retryMembershipId) {
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/workspace-session-revocations/${retryMembershipId}/retry`,
           { method: 'POST', signal: request.signal },
         );
@@ -79,7 +79,7 @@ export function WorkspaceSessionRevocations({
         await onActivityRecorded();
         if (request.signal.aborted) return;
       }
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/workspace-session-revocations${after ? `?after=${encodeURIComponent(after)}` : ''}`,
         { signal: request.signal },
       );

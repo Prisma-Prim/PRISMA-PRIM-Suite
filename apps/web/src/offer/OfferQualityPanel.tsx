@@ -71,7 +71,7 @@ export function OfferQualityPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}/versions/${encodeURIComponent(offerVersionId)}/quality-checks`,
         {
           method: 'POST',

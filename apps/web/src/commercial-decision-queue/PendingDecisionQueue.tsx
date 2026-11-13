@@ -122,7 +122,7 @@ function QueueOwner<Item extends Row>(
           callbacks.current.identity,
         );
         if (controller.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `${props.endpoint}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
           { companyContextId: props.company.id, signal: controller.signal },
         );

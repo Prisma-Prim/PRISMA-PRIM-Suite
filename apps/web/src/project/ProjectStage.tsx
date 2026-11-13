@@ -79,7 +79,7 @@ function StageSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(`${path}/stage-progress`, {
+      const result = await api.request(`${path}/stage-progress`, {
         companyContextId: companyId,
         signal: controller.signal,
       });
@@ -116,7 +116,7 @@ function StageSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(`${path}/stage-advance`, {
+      const result = await api.request(`${path}/stage-advance`, {
         method: 'POST',
         body: command.body,
         headers: {

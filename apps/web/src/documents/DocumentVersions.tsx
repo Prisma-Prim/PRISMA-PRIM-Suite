@@ -410,10 +410,10 @@ function VersionsSection({
       pending: readRequest,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(
-          `/documents/${encodeURIComponent(documentId)}/versions`,
-          { companyContextId: companyId, signal },
-        ),
+        api.request(`/documents/${encodeURIComponent(documentId)}/versions`, {
+          companyContextId: companyId,
+          signal,
+        }),
       async onResult(result) {
         if (receivedAddendum && !current()) return;
         if (result.status === 'unauthorized') {
@@ -478,7 +478,7 @@ function VersionsSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (receivedAddendum && !current()) return;
-      const result = await api.request<unknown>(next.path, {
+      const result = await api.request(next.path, {
         ...(request ? { signal: request.signal } : {}),
         method: 'POST',
         companyContextId: companyId,

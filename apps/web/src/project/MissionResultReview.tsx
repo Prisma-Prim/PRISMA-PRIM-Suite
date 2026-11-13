@@ -162,7 +162,7 @@ function MissionReviewReader({
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        const response = await api.request<unknown>(
+        const response = await api.request(
           `/projects/${projectId}/mission-result-reviews`,
           { companyContextId: companyId, signal: controller.signal },
         );
@@ -192,7 +192,7 @@ function MissionReviewReader({
           setHistory(null);
           return;
         }
-        const historyResponse = await api.request<unknown>(
+        const historyResponse = await api.request(
           `/projects/${projectId}/mission-result-reviews/history`,
           { companyContextId: companyId, signal: controller.signal },
         );
@@ -241,7 +241,7 @@ function MissionReviewReader({
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        const response = await api.request<unknown>(
+        const response = await api.request(
           `/projects/${projectId}/mission-result-reviews/history?beforeRevision=${older}`,
           { companyContextId: companyId, signal: controller.signal },
         );

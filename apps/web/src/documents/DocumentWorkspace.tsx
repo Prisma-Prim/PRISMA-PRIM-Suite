@@ -557,11 +557,11 @@ function DocumentSession({
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return;
         const [documents, clients] = await Promise.all([
-          api.request<unknown>('/documents', {
+          api.request('/documents', {
             companyContextId: companyId,
             signal: request.signal,
           }),
-          api.request<unknown>('/clients', {
+          api.request('/clients', {
             companyContextId: companyId,
             signal: request.signal,
           }),
@@ -638,7 +638,7 @@ function DocumentSession({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return;
-        const reopened = await api.request<unknown>(
+        const reopened = await api.request(
           `/documents/${encodeURIComponent(documentId)}`,
           { companyContextId: companyId, signal: request.signal },
         );
@@ -808,10 +808,10 @@ function DocumentSession({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted || !financialCurrent()) return;
-      const result = await api.request<unknown>(
-        `/documents/${encodeURIComponent(id)}`,
-        { companyContextId: companyId, signal: request.signal },
-      );
+      const result = await api.request(`/documents/${encodeURIComponent(id)}`, {
+        companyContextId: companyId,
+        signal: request.signal,
+      });
       if (request.signal.aborted || !financialCurrent()) return;
       if (result.status === 'unauthorized') {
         await identity.rejectSession();
@@ -855,11 +855,11 @@ function DocumentSession({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const [documentResult, documentsResult] = await Promise.all([
-        api.request<unknown>(`/documents/${encodeURIComponent(documentId)}`, {
+        api.request(`/documents/${encodeURIComponent(documentId)}`, {
           companyContextId: companyId,
           signal: request.signal,
         }),
-        api.request<unknown>('/documents', {
+        api.request('/documents', {
           companyContextId: companyId,
           signal: request.signal,
         }),
@@ -956,7 +956,7 @@ function DocumentSession({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/documents/${encodeURIComponent(detail.id)}`,
         {
           method: 'PATCH',
@@ -1017,11 +1017,11 @@ function DocumentSession({
       const sequence = reserveListWrite();
       const startedUnderRevision = identityRevision.current;
       const [documentResult, documentsResult] = await Promise.all([
-        api.request<unknown>(`/documents/${encodeURIComponent(detail.id)}`, {
+        api.request(`/documents/${encodeURIComponent(detail.id)}`, {
           companyContextId: companyId,
           signal: request.signal,
         }),
-        api.request<unknown>('/documents', {
+        api.request('/documents', {
           companyContextId: companyId,
           signal: request.signal,
         }),
@@ -1135,7 +1135,7 @@ function DocumentSession({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>('/documents', {
+      const result = await api.request('/documents', {
         method: 'POST',
         companyContextId: companyId,
         signal: request.signal,

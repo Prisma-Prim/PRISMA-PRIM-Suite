@@ -235,7 +235,7 @@ export function OperationalRiskWorkspace({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted || !mounted.current) return false;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/operational-risks${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         { companyContextId: companyId, signal: request.signal },
       );
@@ -293,7 +293,7 @@ export function OperationalRiskWorkspace({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted || !mounted.current) return undefined;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}`,
         { companyContextId: companyId, signal: request.signal },
       );
@@ -313,7 +313,7 @@ export function OperationalRiskWorkspace({
       if (result.status !== 'ok') throw new Error('Risk detail failed.');
       const value = readRiskRecord({ value: result.value, companyId, riskId });
       observeRevision(riskId, value.revision);
-      const entries = await api.request<unknown>(
+      const entries = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}/history`,
         { companyContextId: companyId, signal: request.signal },
       );
@@ -362,7 +362,7 @@ export function OperationalRiskWorkspace({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted || !mounted.current) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}/history?cursor=${encodeURIComponent(cursor)}`,
         { companyContextId: companyId, signal: request.signal },
       );
@@ -409,7 +409,7 @@ export function OperationalRiskWorkspace({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted || !mounted.current) return;
-      const result = await api.request<unknown>(command.path, {
+      const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: companyId,
         headers: {

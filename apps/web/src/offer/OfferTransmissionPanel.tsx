@@ -105,7 +105,7 @@ export function OfferTransmissionPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}/versions/${encodeURIComponent(offer.version.id)}/transmission`,
         {
           method: 'POST',

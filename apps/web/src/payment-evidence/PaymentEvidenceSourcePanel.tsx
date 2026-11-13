@@ -144,7 +144,7 @@ function AvailablePaymentEvidencePanel({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (!current()) return;
-        const result = await api.request<unknown>('/documents', {
+        const result = await api.request('/documents', {
           companyContextId: authority.companyId,
           signal: request.signal,
           cache: 'no-store',

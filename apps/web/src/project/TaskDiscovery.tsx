@@ -62,7 +62,7 @@ function DiscoveryPage({ actor, identity, onOpenTask, kind }: Props) {
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(`/${kind}-tasks?offset=${offset}`, {
+        api.request(`/${kind}-tasks?offset=${offset}`, {
           companyContextId: companyId,
           signal,
         }),

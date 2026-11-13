@@ -59,7 +59,7 @@ export function PaymentEvidencePayerPicker({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (!current()) return;
-        const result = await api.request<unknown>('/clients', {
+        const result = await api.request('/clients', {
           companyContextId: companyId,
           signal: request.signal,
           cache: 'no-store',
@@ -90,11 +90,11 @@ export function PaymentEvidencePayerPicker({
         const api = await createAuthenticatedApiClient(identity);
         if (!current()) return;
         const [dossier, entities] = await Promise.all([
-          api.request<unknown>('/clients/' + encodeURIComponent(clientId), {
+          api.request('/clients/' + encodeURIComponent(clientId), {
             companyContextId: companyId,
             signal: request.signal,
           }),
-          api.request<unknown>(
+          api.request(
             '/clients/' + encodeURIComponent(clientId) + '/legal-entities',
             { companyContextId: companyId, signal: request.signal },
           ),

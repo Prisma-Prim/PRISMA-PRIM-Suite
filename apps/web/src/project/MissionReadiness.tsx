@@ -104,7 +104,7 @@ function MissionReadinessOwner({
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        const response = await api.request<unknown>(
+        const response = await api.request(
           `/projects/${projectId}/mission-readiness`,
           { companyContextId: companyId, signal: controller.signal },
         );

@@ -151,7 +151,7 @@ export function PaymentEvidenceVersionCommand({
           : '/' +
             encodeURIComponent(command.versionId) +
             '/official-designation');
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         method: 'POST',
         companyContextId: companyId,
         signal: request.signal,
