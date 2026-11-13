@@ -9,11 +9,11 @@ import {
   Query,
   Req,
   UseGuards,
-  ForbiddenException,
 } from '@nestjs/common';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { ProjectService } from './project.service.js';
 import { readProjectDirectorySelection } from './project-directory-selection.js';
@@ -25,15 +25,15 @@ export class ProjectController {
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
     const selection = readProjectDirectorySelection(query);
     return selection && 'clientDossierId' in selection
-      ? this.projects.listForClient(actorFrom(request), selection)
-      : this.projects.list(actorFrom(request), selection);
+      ? this.projects.listForClient(requireActorContext(request), selection)
+      : this.projects.list(requireActorContext(request), selection);
   }
   @Get(':projectId')
   read(
     @Req() request: ActorContextRequest,
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
   ) {
-    return this.projects.read(actorFrom(request), projectId);
+    return this.projects.read(requireActorContext(request), projectId);
   }
   @Post()
   create(
@@ -41,10 +41,6 @@ export class ProjectController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.projects.create(actorFrom(request), body, key);
+    return this.projects.create(requireActorContext(request), body, key);
   }
-}
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

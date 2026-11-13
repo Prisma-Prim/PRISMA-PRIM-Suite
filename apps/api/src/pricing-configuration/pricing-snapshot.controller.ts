@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Param,
@@ -13,6 +12,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { PricingSnapshotService } from './pricing-snapshot.service.js';
 
@@ -29,7 +29,7 @@ export class PricingSnapshotController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.snapshots.calculate(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       body,
       idempotencyKey,
@@ -44,7 +44,7 @@ export class PricingSnapshotController {
     @Query('limit') limit: unknown,
   ) {
     return this.snapshots.list(
-      actorFrom(request),
+      requireActorContext(request),
       opportunityId,
       cursor,
       limit,
@@ -60,14 +60,9 @@ export class PricingSnapshotController {
     @Param('snapshotId') snapshotId: string,
   ) {
     return this.snapshots.read({
-      actor: actorFrom(request),
+      actor: requireActorContext(request),
       opportunityId,
       snapshotId,
     });
   }
-}
-
-function actorFrom(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

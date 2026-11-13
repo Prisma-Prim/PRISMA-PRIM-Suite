@@ -1,6 +1,5 @@
 import {
   Controller,
-  ForbiddenException,
   Get,
   Header,
   Param,
@@ -11,6 +10,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { KnowledgeService } from './knowledge.service.js';
 
@@ -23,13 +23,13 @@ export class KnowledgeWebController {
   @Get('sources')
   @Header('Cache-Control', 'private, no-store')
   list(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.knowledge.list(actor(request), query);
+    return this.knowledge.list(requireActorContext(request), query);
   }
 
   @Get('search')
   @Header('Cache-Control', 'private, no-store')
   search(@Req() request: ActorContextRequest, @Query() query: unknown) {
-    return this.knowledge.search(actor(request), query);
+    return this.knowledge.search(requireActorContext(request), query);
   }
 
   @Get('sources/:sourceId/passages/:locator')
@@ -40,11 +40,11 @@ export class KnowledgeWebController {
     @Param('locator') locator: string,
     @Query() query: unknown,
   ) {
-    return this.knowledge.getPassage(actor(request), sourceId, locator, query);
+    return this.knowledge.getPassage(
+      requireActorContext(request),
+      sourceId,
+      locator,
+      query,
+    );
   }
-}
-
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }

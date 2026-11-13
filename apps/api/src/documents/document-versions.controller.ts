@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   Header,
@@ -14,6 +13,7 @@ import {
 import {
   ActorContextAdapter,
   type ActorContextRequest,
+  requireActorContext,
 } from '../access/actor-context.adapter.js';
 import { DocumentVersionsService } from './document-versions.service.js';
 import type {
@@ -32,7 +32,7 @@ export class DocumentVersionsController {
     @Req() request: ActorContextRequest,
     @Param('documentId') documentId: string,
   ): Promise<DocumentVersionsRead> {
-    return this.versions.list(actor(request), documentId);
+    return this.versions.list(requireActorContext(request), documentId);
   }
 
   /** Starts a new draft Version: `201` with a `drafted` receipt. */
@@ -43,7 +43,11 @@ export class DocumentVersionsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ): Promise<DocumentVersionReceipt> {
-    return this.versions.startDraft(actor(request), { documentId, body, key });
+    return this.versions.startDraft(requireActorContext(request), {
+      documentId,
+      body,
+      key,
+    });
   }
 
   /** Designates the draft as official: `200` with its receipt. */
@@ -56,7 +60,7 @@ export class DocumentVersionsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ): Promise<DocumentVersionReceipt> {
-    return this.versions.designate(actor(request), {
+    return this.versions.designate(requireActorContext(request), {
       documentId,
       versionId,
       body,
@@ -73,7 +77,7 @@ export class DocumentVersionsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ): Promise<DocumentVersionReceipt> {
-    return this.versions.addRepresentation(actor(request), {
+    return this.versions.addRepresentation(requireActorContext(request), {
       documentId,
       versionId,
       body,
@@ -92,7 +96,7 @@ export class DocumentVersionsController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ): Promise<DocumentVersionReceipt> {
-    return this.versions.removeRepresentation(actor(request), {
+    return this.versions.removeRepresentation(requireActorContext(request), {
       documentId,
       versionId,
       representationId,
@@ -100,9 +104,4 @@ export class DocumentVersionsController {
       key,
     });
   }
-}
-
-function actor(request: ActorContextRequest) {
-  if (!request.actorContext) throw new ForbiddenException();
-  return request.actorContext;
 }
