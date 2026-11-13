@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
@@ -9,9 +9,11 @@ import {
   idempotencyConflict,
   insertionOrderFingerprint,
   runIdempotentCommand,
+  runKeyedCommand,
   staleVersionConflict,
   type CommandDatabase,
   type IdempotentCommand,
+  type KeyedCommand,
 } from './idempotent-command.js';
 
 const dialect = new PgDialect();
@@ -176,6 +178,163 @@ describe('runIdempotentCommand', () => {
       'execute company-1',
       'end',
     ]);
+  });
+});
+
+describe('runKeyedCommand', () => {
+  interface StoredReceipt {
+    readonly intent: unknown;
+    readonly targetId: string;
+    readonly answer: string;
+  }
+  const ACTOR = {
+    workspaceId: 'workspace-1',
+    workspaceMembershipId: 'member-1',
+  };
+  const KEYED_LOCK =
+    'lock SELECT pg_advisory_xact_lock(hashtextextended($1, 0)) ["[\\"example.keyed\\",\\"workspace-1\\",\\"member-1\\",\\"key-1\\"]"]';
+
+  // A create command whose target is generated, so a replay's intent names
+  // the recorded target rather than a new one.
+  function keyed(
+    steps: string[],
+    recorded: StoredReceipt | undefined,
+    overrides: Partial<KeyedCommand<string, StoredReceipt, string>> = {},
+  ): KeyedCommand<string, StoredReceipt, string> {
+    return {
+      name: 'example.keyed',
+      actor: ACTOR,
+      key: '  key-1 ',
+      maxKeyLength: 5,
+      authorize: async () => {
+        steps.push('authorize');
+        return 'company-1';
+      },
+      findReceipt: async ({ scope, key }) => {
+        steps.push(`find ${scope} ${key}`);
+        return recorded;
+      },
+      intent: ({ scope, receipt }) => ({
+        companyId: scope,
+        targetId: receipt.targetId,
+        payload: { label: 'Audit', lines: [1, 2] },
+      }),
+      recordedIntent: (receipt) => receipt.intent,
+      replay: async ({ scope, receipt }) => {
+        steps.push(`replay ${scope}`);
+        return receipt.answer;
+      },
+      execute: async ({ scope, key }) => {
+        steps.push(`execute ${scope} ${key}`);
+        return 'created';
+      },
+      ...overrides,
+    };
+  }
+
+  it('refuses a missing or over-long key as a client error before any transaction', async () => {
+    for (const key of [undefined, '   ', 'key-10']) {
+      const steps: string[] = [];
+      await expect(
+        runKeyedCommand(
+          recordingDatabase(steps),
+          keyed(steps, undefined, { key }),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(steps).toEqual([]);
+    }
+  });
+
+  it('authorizes, then locks the trimmed key in the actor namespace, then executes a first use', async () => {
+    const steps: string[] = [];
+    expect(
+      await runKeyedCommand(recordingDatabase(steps), keyed(steps, undefined)),
+    ).toBe('created');
+    expect(steps).toEqual([
+      'begin',
+      'authorize',
+      KEYED_LOCK,
+      'find company-1 key-1',
+      'execute company-1 key-1',
+      'end',
+    ]);
+  });
+
+  it('replays a recorded intent equal to the submitted one whatever its key order', async () => {
+    const steps: string[] = [];
+    const recorded = {
+      targetId: 'target-1',
+      answer: 'recorded',
+      // As read back from a jsonb column: keys reordered.
+      intent: {
+        payload: { lines: [1, 2], label: 'Audit' },
+        targetId: 'target-1',
+        companyId: 'company-1',
+      },
+    };
+    expect(
+      await runKeyedCommand(recordingDatabase(steps), keyed(steps, recorded)),
+    ).toBe('recorded');
+    expect(steps).toEqual([
+      'begin',
+      'authorize',
+      KEYED_LOCK,
+      'find company-1 key-1',
+      'replay company-1',
+      'end',
+    ]);
+  });
+
+  it('refuses a changed intent with the shared conflict before replay or execution', async () => {
+    for (const intent of [
+      {
+        companyId: 'company-2',
+        targetId: 'target-1',
+        payload: { label: 'Audit', lines: [1, 2] },
+      },
+      {
+        companyId: 'company-1',
+        targetId: 'target-1',
+        payload: { label: 'Audit', lines: [2, 1] },
+      },
+    ]) {
+      const steps: string[] = [];
+      const refusal = runKeyedCommand(
+        recordingDatabase(steps),
+        keyed(steps, { targetId: 'target-1', answer: 'recorded', intent }),
+      );
+      await expect(refusal).rejects.toBeInstanceOf(ConflictException);
+      await expect(refusal).rejects.toMatchObject({
+        response: {
+          code: 'IDEMPOTENCY_CONFLICT',
+          message: 'Idempotency-Key was already used for another command.',
+        },
+      });
+      expect(steps).toEqual([
+        'begin',
+        'authorize',
+        KEYED_LOCK,
+        'find company-1 key-1',
+        'end',
+      ]);
+    }
+  });
+
+  it('stops a denied actor before the key lock and the receipt', async () => {
+    const steps: string[] = [];
+    const denial = new Error('denied');
+    await expect(
+      runKeyedCommand(
+        recordingDatabase(steps),
+        keyed(steps, undefined, {
+          authorize: async () => {
+            steps.push('authorize');
+            throw denial;
+          },
+        }),
+      ),
+    ).rejects.toBe(denial);
+    expect(steps).toEqual(['begin', 'authorize', 'end']);
   });
 });
 
