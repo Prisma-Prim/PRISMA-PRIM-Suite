@@ -1,5 +1,6 @@
 import { changeValue } from './test/select-option';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -129,6 +130,7 @@ function installTransport(
     united: options.united ?? false,
     administrator: options.administrator ?? false,
     documentReads: 0,
+    dossierReads: 0,
     grants: 0,
   };
   const documentsFor = (companyId: string | null) =>
@@ -236,12 +238,14 @@ function installTransport(
       const dossier = [firstClient, secondClient].find((client) =>
         path.endsWith(`/clients/${client.id}`),
       );
-      if (dossier)
+      if (dossier) {
+        state.dossierReads += 1;
         return respond({
           ...dossier,
           relatedToActiveCompany: true,
           involvedCompanyDisplayNames: [companyA.displayName],
         });
+      }
       if (path.endsWith('/legal-entities'))
         return respond({ clientVersion: 1, legalEntities: [] });
       throw new Error('Unexpected API request: ' + path);
@@ -283,6 +287,39 @@ async function openDossier(displayName: string) {
   if (!row) throw new Error(`Expected a directory row for ${displayName}`);
   fireEvent.click(within(row).getByRole('button', { name: 'Open dossier' }));
   return screen.findByRole('region', { name: displayName });
+}
+/** Requests the dossier through App's shared intent, not the directory. */
+async function requestDossierFromDocument() {
+  await openLoadedDocuments();
+  fireEvent.click(
+    within(documentsRegion()).getByRole('button', {
+      name: workingDocument.title,
+    }),
+  );
+  await within(documentsRegion()).findByRole('heading', {
+    name: workingDocument.title,
+  });
+  fireEvent.click(
+    within(documentsRegion()).getByRole('button', {
+      name: 'Open Client dossier',
+    }),
+  );
+  return screen.findByRole('region', { name: firstClient.displayName });
+}
+// App keeps the requested dossier while its Company stays active, so a remounted
+// Client workspace receives it again. Only the workspace's own reset on mount,
+// declared after its request effect, keeps the dossier closed. This guards #1193.
+async function expectNoDossierReopened(
+  transport: { dossierReads: number },
+  dossierReadsBefore: number,
+) {
+  navigateTo('Clients');
+  await screen.findAllByRole('button', { name: 'Open dossier' });
+  await act(async () => new Promise<void>((done) => setTimeout(done, 0)));
+  expect(
+    screen.queryByRole('region', { name: firstClient.displayName }),
+  ).not.toBeInTheDocument();
+  expect(transport.dossierReads).toBe(dossierReadsBefore);
 }
 async function openClientDocuments(dossier: HTMLElement) {
   fireEvent.click(
@@ -537,5 +574,61 @@ describe('Client dossier and working Document navigation through App', () => {
     navigateTo('Working Documents');
     await waitFor(() => expect(documentTitles()).toHaveLength(2));
     expect(documentFilter()).toHaveValue('');
+  });
+
+  it('does not reopen a requested Client dossier after a Company A to B to A round trip', async () => {
+    const transport = installTransport();
+    // The production root renders under StrictMode, which replays mount effects.
+    render(<App identity={deterministicBrowserIdentity()} />, {
+      reactStrictMode: true,
+    });
+    await requestDossierFromDocument();
+    const dossierReadsBefore = transport.dossierReads;
+
+    navigateTo('Working Documents');
+    const company = screen.getByLabelText('Active Company', { exact: true });
+    changeValue(company, companyB.id);
+    await waitFor(() =>
+      expect(documentTitles()).toEqual([
+        expect.stringContaining('Other Company questionnaire'),
+      ]),
+    );
+    changeValue(company, companyA.id);
+    await waitFor(() => expect(documentTitles()).toHaveLength(2));
+
+    await expectNoDossierReopened(transport, dossierReadsBefore);
+  });
+
+  it('does not reopen a requested Client dossier after a Client authority change', async () => {
+    const transport = installTransport({ administrator: true });
+    render(<App identity={deterministicBrowserIdentity()} />, {
+      reactStrictMode: true,
+    });
+    await requestDossierFromDocument();
+    const dossierReadsBefore = transport.dossierReads;
+
+    navigateTo('Team & access');
+    const access = await screen.findByRole('region', {
+      name: 'Company access',
+    });
+    changeValue(
+      within(access).getByLabelText('Workspace member'),
+      membershipId,
+    );
+    changeValue(
+      within(access).getByLabelText('Company', { exact: true }),
+      companyA.id,
+    );
+    changeValue(
+      within(access).getByLabelText('Access bundle'),
+      'director-client',
+    );
+    fireEvent.click(
+      within(access).getByRole('button', { name: 'Grant access' }),
+    );
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(transport.grants).toBe(1);
+
+    await expectNoDossierReopened(transport, dossierReadsBefore);
   });
 });
