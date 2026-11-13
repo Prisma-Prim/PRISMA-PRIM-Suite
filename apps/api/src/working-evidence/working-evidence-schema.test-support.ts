@@ -10,6 +10,7 @@ import {
 export const workingEvidenceTables = [
   'received_audit_source_registrations',
   'working_evidence_cases',
+  'working_evidence_cursor_keys',
   'working_evidence_events',
   'working_evidence_outputs',
   'working_evidence_receipts',
@@ -17,6 +18,7 @@ export const workingEvidenceTables = [
   'working_evidence_supports',
 ];
 export const workingEvidenceExistingTableTriggers = [
+  'companies.working_evidence_company_cursor',
   'document_correction_commands.received_audit_source_correction',
   'document_representations.received_audit_source_no_reference',
   'document_versions.received_audit_source_designation',
