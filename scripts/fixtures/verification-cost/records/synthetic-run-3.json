@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "runId": "synthetic-run-3",
+  "date": "2026-11-05",
+  "runType": "journey-audit",
+  "issue": 1004,
+  "pullRequest": "not reported",
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-05T14:00:00.000Z",
+    "end": "2026-11-05T14:20:00.000Z",
+    "durationSeconds": 1200
+  },
+  "tokens": {
+    "input": 2000,
+    "output": 400,
+    "cacheCreation": 600,
+    "cacheRead": 8000
+  },
+  "models": [
+    {
+      "model": "claude-haiku-5-5",
+      "tokens": {
+        "input": 500,
+        "output": 100,
+        "cacheCreation": 0,
+        "cacheRead": 0
+      },
+      "estimatedPriceUsd": 0.3
+    },
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 1500,
+        "output": 300,
+        "cacheCreation": 600,
+        "cacheRead": 8000
+      },
+      "estimatedPriceUsd": 1.2
+    }
+  ],
+  "price": {
+    "estimatedUsd": 1.5,
+    "priceTable": "fixture-a"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 1
+    },
+    "notes": ""
+  }
+}

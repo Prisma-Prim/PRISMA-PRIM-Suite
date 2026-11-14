@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1178-pr1296-local-proof",
+  "date": "2026-11-11",
+  "runType": "pull-request-proof",
+  "issue": 1178,
+  "pullRequest": 1296,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-11T16:01:17.849Z",
+    "end": "2026-11-11T17:10:38.991Z",
+    "durationSeconds": 4161
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Prepared REST/PostgreSQL proof:753+83 passed;one existing opt-in real-ClamAV skip;distinct historical-byte rerun passed.One P2 Working Evidence outage regression corrected.Standards/Spec and confirmation:zero findings.Model and token usage unavailable.Excludes GitHub CI."
+  }
+}
