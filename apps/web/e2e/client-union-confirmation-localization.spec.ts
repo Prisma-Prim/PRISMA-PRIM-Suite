@@ -282,7 +282,7 @@ for (const copy of Object.values(confirmationLocaleCases)) {
     page,
   }, info) => {
     const state = await installConfirmationLocalizationFixture({ page });
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     const english = confirmationLocaleCases.en;
     let currentForm = await openComparison({ page, copy: english });
     for (const control of await currentForm.getByRole('combobox').all())
@@ -476,7 +476,7 @@ for (const copy of Object.values(confirmationLocaleCases)) {
       (code) => localStorage.setItem('prisma-prim.interface-locale', code),
       copy.code,
     );
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     let currentForm = await openComparison({ page, copy });
     await currentForm
       .getByRole('button', { name: copy.confirm, exact: true })
@@ -583,7 +583,7 @@ for (const copy of Object.values(confirmationLocaleCases)) {
       (code) => localStorage.setItem('prisma-prim.interface-locale', code),
       copy.code,
     );
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     await page
       .getByRole('button', { name: copy.openDossier, exact: true })
       .first()

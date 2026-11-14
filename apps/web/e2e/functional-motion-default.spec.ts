@@ -12,7 +12,7 @@ test('starts functional journeys with still graphics and can enable live motion'
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   await expect(
     page.getByRole('button', { name: 'Reduced motion', exact: true }),
   ).toBeDisabled();

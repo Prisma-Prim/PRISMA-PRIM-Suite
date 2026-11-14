@@ -196,7 +196,7 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
     }
     return route.fulfill({ json: { items: [], nextCursor: null } });
   });
-  await page.goto('/?frame=prisme#requests');
+  await page.goto('/#requests');
   await page
     .getByRole('button')
     .filter({ has: page.getByText(requestSubject, { exact: true }) })

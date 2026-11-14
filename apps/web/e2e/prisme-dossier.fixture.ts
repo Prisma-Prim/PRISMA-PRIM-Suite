@@ -244,7 +244,7 @@ function serveLegalEntities(
 }
 
 export async function openDossier(page: Page) {
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await page.getByRole('button', { name: 'Open dossier', exact: true }).click();
   await expect(page.getByText('Version 1', { exact: true })).toBeVisible();
 }

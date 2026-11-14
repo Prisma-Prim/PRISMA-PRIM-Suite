@@ -251,7 +251,7 @@ for (const locale of locales) {
     const state = await install(page);
     const delayed = gate();
     state.firstActivityGate = delayed.promise;
-    await page.goto('/?frame=prisme#activity');
+    await page.goto('/#activity');
     await expect(
       page.getByText('Loading activity…', { exact: true }),
     ).toBeVisible();
@@ -403,7 +403,7 @@ for (const locale of locales) {
     const state = await install(page);
     const retry = gate();
     state.retryGate = retry.promise;
-    await page.goto('/?frame=prisme#activity');
+    await page.goto('/#activity');
     await expect(
       page
         .getByRole('region', { name: 'Activity Log', exact: true })

@@ -170,7 +170,7 @@ async function openLocalizedDossier(
     (code) => window.localStorage.setItem('prisma-prim.interface-locale', code),
     locale.code,
   );
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   const open = page.getByRole('button', { name: locale.open, exact: true });
   await open.focus();
   await page.keyboard.press('Enter');

@@ -223,7 +223,7 @@ async function installProjectDocumentsFixture(page: Page) {
 }
 
 async function openProject(page: Page, testInfo: TestInfo) {
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -232,7 +232,7 @@ async function openProject(page: Page, testInfo: TestInfo) {
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await page
     .getByRole('button', {
       name: `${project.title} Client: ${project.clientDisplayName}`,
@@ -645,7 +645,7 @@ test(`opens the linked Project of a superseded original Client from its Working 
       projectReads.push(request.url());
   });
   const narrow = testInfo.project.name === 'narrow';
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   const activeCompany = page.getByLabel('Active Company', { exact: true });

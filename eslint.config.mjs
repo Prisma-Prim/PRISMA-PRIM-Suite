@@ -31,6 +31,34 @@ const legacyNameRestriction = {
     'Do not name something legacy: nothing is deployed before launch, so move the data, fixtures and readers to the new shape (#1343, docs/agents/typescript-discipline.md); a product variant gets its real name.',
 };
 
+// The `frame` URL parameter selects nothing since the Classic frame was retired
+// (#1355), so no test or source opens a URL carrying it (#1401). The test that
+// proves a retired `?frame=classic` link opens Prisme, and its browser
+// counterpart, keep the link on purpose (frameParameterExemptFiles). Spread into
+// every `no-restricted-syntax` block covering apps/web/e2e or apps/web/src,
+// because a later block replaces an earlier one's options for the same files.
+const frameParameterMessage =
+  'The `frame` URL parameter is ignored since #1355: open the plain URL (use page.reload() or page.goto() of it when a full page load is needed).';
+const frameParameterRestrictions = [
+  {
+    selector: 'Literal[value=/[?&]frame=/]',
+    message: frameParameterMessage,
+  },
+  {
+    selector: 'TemplateElement[value.raw=/[?&]frame=/]',
+    message: frameParameterMessage,
+  },
+];
+const frameParameterExemptFiles = [
+  'apps/web/e2e/prisme-frame.spec.ts',
+  'apps/web/src/App.clients.test.tsx',
+];
+const unrouteRestriction = {
+  selector: 'CallExpression[callee.property.name=/^unroute(All)?$/]',
+  message:
+    'Use removeRoute(page, pattern, handler?) from ./route-removal to keep in-flight Chromium reads alive.',
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -133,23 +161,42 @@ export default tseslint.config(
             'Do not hand-roll an AbortController: take the signal from useScopedOperation(scope).begin() (apps/web/src/api/use-scoped-operation.ts), and pass it as `signal` to runLatestAuthenticatedRequest.',
         },
         legacyNameRestriction,
+        ...frameParameterRestrictions,
       ],
+    },
+  },
+  {
+    // The frame-parameter restriction for web test files, which the block above
+    // ignores (#1401). Extend this block rather than configuring the rule again.
+    files: [
+      'apps/web/src/**/*.{test,spec}.{ts,tsx}',
+      'apps/web/src/**/*.test-*.{ts,tsx}',
+      'apps/web/src/test/**/*.{ts,tsx}',
+    ],
+    ignores: frameParameterExemptFiles,
+    rules: {
+      'no-restricted-syntax': ['error', ...frameParameterRestrictions],
     },
   },
   {
     // Removing the final Playwright route can strand Chromium reads (#1097,
     // #1098). The helper keeps interception enabled until the page closes.
     files: ['apps/web/e2e/**/*.ts'],
-    ignores: ['apps/web/e2e/route-removal.ts'],
+    ignores: ['apps/web/e2e/route-removal.ts', ...frameParameterExemptFiles],
     rules: {
       'no-restricted-syntax': [
         'error',
-        {
-          selector: 'CallExpression[callee.property.name=/^unroute(All)?$/]',
-          message:
-            'Use removeRoute(page, pattern, handler?) from ./route-removal to keep in-flight Chromium reads alive.',
-        },
+        unrouteRestriction,
+        ...frameParameterRestrictions,
       ],
+    },
+  },
+  {
+    // The browser counterpart of the retired `?frame=classic` link test keeps
+    // that link (#1401) and still refuses a hand-rolled route removal.
+    files: ['apps/web/e2e/prisme-frame.spec.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', unrouteRestriction],
     },
   },
   {

@@ -414,3 +414,48 @@ test('legacy names stay allowed in tests, test support and fixtures, and the exi
   assert.match(together.output, /useScopedOperation/);
   assert.equal(together.output.match(/nothing is deployed/g)?.length, 2);
 });
+
+const frameParameterError = /The `frame` URL parameter is ignored since #1355/g;
+const frameUrls = [
+  "export const url = '/?frame=prisme#clients';",
+  "export const other = '/?source=preserved&frame=classic#companies';",
+  'export const templated = `/?frame=${"prisme"}#access`;',
+  '',
+].join('\n');
+
+test('a new URL with the ignored frame parameter fails lint in browser specs, web code and web tests', async () => {
+  const result = await lintFiles({
+    'apps/web/e2e/clients.spec.ts': frameUrls,
+    'apps/web/e2e/clients.fixture.ts': frameUrls,
+    'apps/web/src/links.ts': frameUrls,
+    'apps/web/src/links.test.ts': frameUrls,
+    'apps/web/src/test/links.ts': frameUrls,
+  });
+
+  assert.equal(result.status, lintErrors, result.output);
+  assert.equal(result.output.match(frameParameterError)?.length, 15);
+});
+
+test('the retired-link tests keep the frame parameter, a plain URL passes, and the existing restrictions still fire beside it', async () => {
+  const allowed = await lintFiles({
+    'apps/web/src/App.clients.test.tsx': frameUrls,
+    'apps/web/e2e/prisme-frame.spec.ts': frameUrls,
+    'apps/web/e2e/clients.spec.ts':
+      "export const url = '/#clients'; export const note = 'frame=1';\n",
+  });
+  assert.equal(allowed.status, 0, allowed.output);
+
+  const reset =
+    'export const reset = (page: { unrouteAll(): void }) => page.unrouteAll();\n';
+  const together = await lintFiles({
+    'apps/web/e2e/clients.spec.ts': `${reset}export const url = '/?frame=prisme';\n`,
+    'apps/web/src/offer.ts':
+      "export const controller = new AbortController();\nexport const url = '/?frame=prisme';\n",
+    'apps/web/src/offer.test.ts': "export const url = '/?frame=prisme';\n",
+    'apps/web/e2e/prisme-frame.spec.ts': reset,
+  });
+  assert.equal(together.status, lintErrors, together.output);
+  assert.equal(together.output.match(frameParameterError)?.length, 3);
+  assert.equal(together.output.match(/removeRoute/g)?.length, 2);
+  assert.match(together.output, /useScopedOperation/);
+});

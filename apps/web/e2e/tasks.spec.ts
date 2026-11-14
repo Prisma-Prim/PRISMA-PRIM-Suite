@@ -267,7 +267,7 @@ test('manages manual Tasks through the production shell with retained retry and 
     return route.fulfill({ json: { mutable: !superseded, task } });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -276,7 +276,7 @@ test('manages manual Tasks through the production shell with retained retry and 
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await page
     .getByRole('button', {
       name: `${project.title} Client: ${project.clientDisplayName}`,
@@ -690,7 +690,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   const state = tasks.locator('.task-panel .task-status');
   const myTasks = page.getByRole('region', { name: 'My Tasks', exact: true });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -699,7 +699,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   );
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await openTask();
   await expect(state).toHaveText('To do');
 

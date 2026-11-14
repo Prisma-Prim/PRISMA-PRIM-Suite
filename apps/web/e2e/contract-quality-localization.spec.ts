@@ -261,7 +261,7 @@ async function installRoutes(page: Page, readOnly = false) {
 }
 
 async function openRequest(page: Page) {
-  await page.goto('/?frame=prisme#requests');
+  await page.goto('/#requests');
   const subject = contractLocaleRequest.subject;
   if (!subject) throw new Error('Missing synthetic Request subject');
   await page

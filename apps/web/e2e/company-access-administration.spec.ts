@@ -104,7 +104,7 @@ test('administers both existing Company access bundles by member and Company nam
     },
   );
 
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   const access = page.getByRole('region', { name: 'Company access' });
   await expect(access).toHaveClass(/company-access--prisme/);
   await expect(
@@ -138,7 +138,7 @@ test('administers both existing Company access bundles by member and Company nam
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page
       .getByRole('region', { name: 'Activity Log', exact: true })
@@ -149,7 +149,7 @@ test('administers both existing Company access bundles by member and Company nam
       .getByRole('region', { name: 'Activity Log', exact: true })
       .getByText('Target: Mila Popescu — BIC'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   const memberSelect = page.getByLabel('Workspace member');
   await memberSelect.click();
   await expect(
@@ -180,11 +180,11 @@ test('administers both existing Company access bundles by member and Company nam
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page.getByText('Ada Ionescu revoked Company Context Access'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await selectTargets('Company Director Client Access');
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
@@ -205,22 +205,22 @@ test('administers both existing Company access bundles by member and Company nam
     ),
     fullPage: true,
   });
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page.getByText('Ada Ionescu granted Company Director Client Access'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await selectTargets('Company Director Client Access');
 
   await page.getByRole('button', { name: 'Revoke access' }).click();
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page.getByText('Ada Ionescu revoked Company Director Client Access'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await expect(access).toHaveClass(/company-access--prisme/);
   await page.screenshot({
     path: testInfo.outputPath(`company-access-${testInfo.project.name}.png`),
@@ -374,7 +374,7 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
     });
   });
 
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await selectOption(page.getByLabel('Member to suspend'), {
     label: 'Mila Popescu — mila@example.test',
   });
@@ -392,7 +392,7 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
   await expect(
     page.getByText('Member suspended. Server state refreshed.'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page
       .getByRole('region', { name: 'Activity Log', exact: true })
@@ -403,7 +403,7 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
       .getByRole('region', { name: 'Activity Log', exact: true })
       .getByText('Target: Mila Popescu'),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   const suspensionMember = page.getByRole('combobox', {
     name: 'Member to suspend',
   });
@@ -457,7 +457,7 @@ test('leaves an already-open shell when the next protected request confirms peer
     (route) => route.fulfill({ status: 403, json: { message: 'Forbidden' } }),
   );
 
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
 
   await expect(
     page.getByRole('alert').filter({
@@ -515,7 +515,7 @@ test('recovers from last-holder suspension protection without reporting success'
     return route.fulfill({ status: 409, json: { message: 'Conflict' } });
   });
 
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await selectOption(page.getByLabel('Member to suspend'), {
     label: 'Mila Popescu — mila@example.test',
   });
@@ -596,7 +596,7 @@ test('keeps suspension committed while provider-session revocation fails and ret
     },
   );
 
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await page.getByRole('button', { name: 'Check session revocations' }).click();
   const record = page.getByRole('listitem').filter({
     hasText: 'Suspended Member',

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "a1abb245-0698-4410-adcb-26d09ff6a565:a1ae315c45ee79790",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1401,
+  "pullRequest": 1403,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T17:16:46.175Z",
+    "end": "2026-11-14T17:41:07.343Z",
+    "durationSeconds": 1461
+  },
+  "tokens": {
+    "input": 120,
+    "output": 21947,
+    "cacheCreation": 139938,
+    "cacheRead": 6476115
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 120,
+        "output": 21947,
+        "cacheCreation": 139938,
+        "cacheRead": 6476115
+      },
+      "estimatedPriceUsd": 1.217167
+    }
+  ],
+  "price": {
+    "estimatedUsd": 1.217167,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Mocked browser specs for 46 changed files plus eslint boundary tests; two load-induced timeouts passed on rerun."
+  }
+}

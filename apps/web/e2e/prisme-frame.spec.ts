@@ -305,7 +305,7 @@ test('keeps registration retries, section selection and focus', async ({
     }
     return route.fulfill({ json: [] });
   });
-  await page.goto('/?source=preserved&frame=prisme#companies');
+  await page.goto('/?source=preserved#companies');
   await page.evaluate(() =>
     history.replaceState({ workspaceRecovery: 'opaque' }, '', location.href),
   );
@@ -313,7 +313,7 @@ test('keeps registration retries, section selection and focus', async ({
   await name.fill('Company draft');
   await page.getByRole('button', { name: 'Register Company' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
-  await expect(page).toHaveURL(/\?source=preserved&frame=prisme#companies$/);
+  await expect(page).toHaveURL(/\?source=preserved#companies$/);
   await expectValue(name, 'Company draft');
   expect(await page.evaluate(() => history.state)).toEqual({
     workspaceRecovery: 'opaque',

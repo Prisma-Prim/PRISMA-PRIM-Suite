@@ -73,7 +73,7 @@ test('shows the registration time of listed and opened Working Documents', async
     );
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#documents');
+  await page.goto('/#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(

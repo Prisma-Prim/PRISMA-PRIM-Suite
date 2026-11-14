@@ -131,7 +131,7 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   const union = unionPanel(page);
   await expect(
     union.getByRole('button', { name: 'Review existing duplicates' }),

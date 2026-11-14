@@ -300,7 +300,7 @@ for (const locale of interfaceLocales)
       return route.fulfill({ json: { items: [], nextCursor: null } });
     });
     async function open(id: string) {
-      await page.goto('/?frame=prisme#requests');
+      await page.goto('/#requests');
       await page.reload();
       await page
         .getByRole('button')
