@@ -221,7 +221,7 @@ for (const locale of interfaceLocales) {
         workspaceId: contractLocaleIds.workspace,
       },
     );
-    await page.goto('/?frame=prisme#requests');
+    await page.goto('/#requests');
     await openRequest(page);
     const panel = page.locator('.contract-panel');
     const conditions = panel.getByRole('textbox', {

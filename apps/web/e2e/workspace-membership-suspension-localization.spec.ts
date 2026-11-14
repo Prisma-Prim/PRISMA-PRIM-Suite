@@ -144,7 +144,7 @@ for (const locale of cases) {
       });
     });
 
-    await page.goto('/?frame=prisme#access');
+    await page.goto('/#access');
     await expect(
       page.getByRole('combobox', { name: 'Member to suspend', exact: true }),
     ).toBeVisible();
@@ -276,8 +276,8 @@ for (const locale of cases) {
     ).toHaveCount(0);
     expect(administrationReads).toBe(4);
     expect(commands).toHaveLength(2);
-    await page.goto('/?frame=prisme#activity');
-    await page.goto('/?frame=prisme#access');
+    await page.goto('/#activity');
+    await page.goto('/#access');
     await expect(panel.getByText(locale.empty, { exact: true })).toBeVisible();
     expect(commands).toHaveLength(2);
     expect(

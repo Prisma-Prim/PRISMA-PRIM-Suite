@@ -55,7 +55,7 @@ test('registers, reads and server-activates the first Company after an exact unc
     authoritativeRead = route;
   });
 
-  await page.goto('/?frame=prisme#companies');
+  await page.goto('/#companies');
   const registration = page.getByRole('region', {
     name: 'Provider Company',
   });
@@ -181,7 +181,7 @@ test('server-denied registration reveals no protected Company metadata', async (
       : route.fulfill({ json: [] }),
   );
 
-  await page.goto('/?frame=prisme#companies');
+  await page.goto('/#companies');
   const registration = page.getByRole('region', {
     name: 'Provider Company',
   });

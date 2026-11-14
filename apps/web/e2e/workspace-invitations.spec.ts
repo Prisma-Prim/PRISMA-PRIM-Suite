@@ -65,7 +65,7 @@ test('Owner retries an uncertain issue exactly, refreshes it and revokes it with
     },
   );
 
-  await page.goto('/?frame=prisme#invitations');
+  await page.goto('/#invitations');
   const invitations = page.getByRole('region', {
     name: 'Workspace invitations',
   });
@@ -149,7 +149,7 @@ test('Owner recovers a failed invitation list into the genuine empty state', asy
       : route.fulfill({ json: { invitations: [], nextCursor: null } });
   });
 
-  await page.goto('/?frame=prisme#invitations');
+  await page.goto('/#invitations');
   const invitations = page.getByRole('region', {
     name: 'Workspace invitations',
   });
@@ -194,7 +194,7 @@ test('server-denied invitation administration leaves the protected Workspace', a
     route.fulfill({ status: 403, json: { message: 'Forbidden' } }),
   );
 
-  await page.goto('/?frame=prisme#invitations');
+  await page.goto('/#invitations');
   await expect(
     page.getByRole('alert').filter({
       hasText: 'Your access to this workspace is inactive.',

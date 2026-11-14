@@ -156,7 +156,7 @@ for (const locale of locales) {
   }, testInfo) => {
     const observed = await installRoutes(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     if (testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Open navigation' }).click();
     await selectOption(

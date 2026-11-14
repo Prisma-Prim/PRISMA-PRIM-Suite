@@ -230,7 +230,7 @@ for (const locale of interfaceLocales)
         name: copy('history'),
         exact: true,
       });
-      await page.goto('/?frame=prisme#requests');
+      await page.goto('/#requests');
       await openRequest();
       await expect(
         history.getByRole('button', {

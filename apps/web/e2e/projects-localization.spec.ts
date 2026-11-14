@@ -290,14 +290,14 @@ test('localizes the complete Project-owned journey and preserves exact retries',
   }
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await openNavigation(page, testInfo.project.name);
   await selectOption(
     page.getByLabel('Active Company', { exact: true }),
     company.id,
   );
   await closeNavigation(page, testInfo.project.name);
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
 
   const registration = page.locator('form.project-registration');
   await expectNoHorizontalOverflow(page);

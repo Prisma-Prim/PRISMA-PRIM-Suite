@@ -72,7 +72,7 @@ test('presents real Activity Log events in server order', async ({
     return route.fulfill({ json: [] });
   });
 
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page.getByRole('heading', { name: 'Activity Log', exact: true }).first(),
   ).toBeVisible();
@@ -284,7 +284,7 @@ test('keeps the real Activity Log loading and empty states distinct in Prisme', 
     return route.fulfill({ json: [] });
   });
 
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   const activity = page.getByRole('region', { name: 'Activity Log' });
   await expect(activity.getByRole('status')).toHaveText('Loading activity…');
   if (!releaseActivity) throw new Error('Expected the Activity Log request.');
@@ -305,7 +305,7 @@ test('keeps the real Activity Log error state distinct in Prisme', async ({
     return route.fulfill({ json: [] });
   });
 
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   await expect(
     page.getByRole('region', { name: 'Activity Log' }).getByRole('alert'),
   ).toHaveText('We could not load the Activity Log. Please try again.');

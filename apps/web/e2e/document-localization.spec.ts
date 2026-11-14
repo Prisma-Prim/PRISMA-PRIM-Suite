@@ -372,7 +372,7 @@ for (const locale of interfaceLocales) {
         workspaceId: actorContextFixture.workspaceId,
       },
     );
-    await page.goto('/?frame=prisme#documents');
+    await page.goto('/#documents');
     let workspace = page.getByRole('region', {
       name: doc('en', 'title'),
       exact: true,

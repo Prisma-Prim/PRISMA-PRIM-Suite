@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 test('pauses the fiber at its current phase and honors live reduced motion', async ({
   page,
 }, testInfo) => {
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   const pause = page.getByRole('button', { name: 'Pause animation' });
   await expect(pause).toBeVisible();
   const canvas = page.locator('.fiber-motion canvas');
@@ -51,7 +51,7 @@ test('uses the original local artwork when WebGL is unavailable', async ({
     // Only the browser graphics boundary is unavailable; API and React run normally.
     HTMLCanvasElement.prototype.getContext = () => null;
   });
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   await expect(
     page.getByRole('button', { name: 'Static artwork' }),
   ).toBeDisabled();
@@ -79,7 +79,7 @@ test('uses the original local artwork when WebGL is unavailable', async ({
 test('recovers from context loss and disposes the previous canvas on navigation', async ({
   page,
 }) => {
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   await expect(
     page.getByRole('button', { name: 'Pause animation' }),
   ).toBeVisible();
@@ -139,7 +139,7 @@ test('stops frames while hidden or offscreen and caps high-density raster size',
       value: 4,
     }),
   );
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   await expect(
     page.getByRole('button', { name: 'Pause animation' }),
   ).toBeVisible();
@@ -195,7 +195,7 @@ test('keeps forms usable while the graphics chunk is delayed and cancels its lat
   await page.route('**/assets/fiber-renderer-*.js', (route) => {
     pendingGraphics = route;
   });
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();

@@ -195,7 +195,7 @@ for (const copy of unionHistoryLocaleCases) {
     await page.addInitScript((code) => {
       localStorage.setItem('prisma-prim.interface-locale', code);
     }, copy.code);
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     const panel = page.getByRole('region', { name: copy.title });
     await expect(panel).toBeVisible();
     await expect(page.locator('#client-dossier-title')).toHaveCount(0);
@@ -405,7 +405,7 @@ for (const copy of unionHistoryLocaleCases) {
       (code) => localStorage.setItem('prisma-prim.interface-locale', code),
       copy.code,
     );
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     let panel = await openDetail({ page, copy });
     await expect(panel.getByText(copy.blocked, { exact: true })).toBeVisible();
     await expect(panel.getByRole('form')).toHaveCount(0);

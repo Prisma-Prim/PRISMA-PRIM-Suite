@@ -36,7 +36,7 @@ for (const locale of assignmentLocaleCases) {
     const state = await installAssignmentBoundary({ page });
     state.active = true;
     state.version = 'v1';
-    await page.goto('/?frame=prisme#access');
+    await page.goto('/#access');
     await chooseCompanyAssignment({ page, locale, keyboard: true });
     const access = page.getByRole('region', { name: locale.title });
     await expect(access).toHaveClass(/company-access--prisme/u);
@@ -167,7 +167,7 @@ for (const locale of assignmentLocaleCases) {
     const pending = deferredDecision<'commit' | 'uncertain'>();
     state.nextMutation = pending;
     try {
-      await page.goto('/?frame=prisme#access');
+      await page.goto('/#access');
       await chooseCompanyAssignment({ page, locale });
       await page.getByRole('button', { name: locale.grant }).click();
       await expect.poll(() => state.commands.length).toBe(1);
@@ -246,7 +246,7 @@ for (const locale of assignmentLocaleCases) {
     const pending = deferredDecision<'ready' | 'failure' | 'empty'>();
     state.nextAdministration = pending;
     try {
-      await page.goto('/?frame=prisme#access');
+      await page.goto('/#access');
       const access = page.getByRole('region', { name: locale.title });
       await expect(access.getByRole('status')).toHaveText(locale.loading);
       await expect.poll(() => state.administrationReads).toBe(1);
@@ -287,7 +287,7 @@ test('defaults the Company assignment form to Romanian independently of browser 
   const pending = deferredDecision<'commit' | 'uncertain'>();
   state.nextMutation = pending;
   try {
-    await page.goto('/?frame=prisme#access');
+    await page.goto('/#access');
     const romanian = assignmentLocaleCases[0];
     await chooseCompanyAssignment({ page, locale: romanian });
     await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
