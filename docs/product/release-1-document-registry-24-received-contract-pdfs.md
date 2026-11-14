@@ -257,7 +257,7 @@ The runtime child begins with failing authenticated isolated PostgreSQL REST pro
   Client archive/union and source/family/ordinary authority changes; scan versus
   revocation, concurrent registration/upload/designation and rollback of every
   coupled effect on forced final-event/response failure.
-- Genuine pre-slice upgrade with existing questionnaire/mission PDFs, official and
+- From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), genuine pre-slice upgrade with existing questionnaire/mission PDFs, official and
   superseded Versions, old grants/receipts/associations/results and model-based
   Contracts; compare old rows/bytes/digests, prove no grant backfill and repeat safely.
 

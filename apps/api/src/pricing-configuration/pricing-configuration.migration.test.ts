@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -17,73 +15,22 @@ const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 const FOREIGN_KEY_VIOLATION = '23503';
 
-// Every bundle and captured version delivered before this migration,
-// including superseded versions kept as revoked history.
-const PRESERVED_ASSIGNMENTS: ReadonlyArray<
-  readonly [bundle: string, version: string | null, revoked: boolean]
-> = [
-  ['company_context_access', null, false],
-  ['company_director_client_access', 'v1', true],
-  ['company_director_client_access', 'v2', false],
-  ['company_document_registrar', 'v1', true],
-  ['company_document_registrar', 'v2', false],
-  ['company_commercial_intake', 'v1', true],
-  ['company_commercial_intake', 'v2', false],
-  ['company_project_access', 'v1', true],
-  ['company_project_access', 'v2', false],
-  ['company_task_manager', 'v1', false],
-  ['company_document_project_organizer', 'v1', false],
-  ['company_service_catalogue', 'v1', false],
-  ['company_commercial_activity_reader', 'v1', false],
-];
-
 it.skipIf(!databaseUrl)(
-  'upgrades through 0032 preserving every captured bundle and enforcing the Pricing Rule Version invariants',
+  'enforces the Pricing Configuration bundle, Pricing Rule Version, event and receipt invariants on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'pricing_rule_upgrade',
+      namePrefix: 'pricing_rule_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries.slice(0, 32);
-      const tags = entries.map((entry) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      expect(tags.at(-1)).toBe('0031_project_responsible');
-      previous = await mkdtemp(join(tmpdir(), 'prisma-360-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries }),
-      );
-      for (const tag of tags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved access')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Pricing access')`,
         [WORKSPACE],
       );
       await query(
@@ -98,51 +45,9 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-pricing-company')`,
+         VALUES ($1, $2, 'Pricing Company', $3, $4, 'pricing-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
       );
-      for (const [bundle, version, revoked] of PRESERVED_ASSIGNMENTS)
-        await query(
-          `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id,
-             bundle, permission_set_version, revoked_at)
-           VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 THEN now() ELSE NULL END)`,
-          [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version, revoked],
-        );
-      const preserved = [
-        'company_role_assignments',
-        'activity_log_events',
-        'service_definitions',
-        'company_service_offerings',
-      ];
-      const snapshot = () =>
-        Promise.all(
-          preserved.map(
-            async (table) =>
-              (await query('SELECT * FROM ' + table + ' ORDER BY id')).rows,
-          ),
-        );
-      const before = await snapshot();
-      expect(before[0]).toHaveLength(PRESERVED_ASSIGNMENTS.length);
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      // Additive: no existing assignment gains, loses or changes a version,
-      // and no backfill confers the new bundle.
-      expect(await snapshot()).toEqual(before);
-      expect(
-        (
-          await query(
-            `SELECT count(*)::int AS count FROM company_role_assignments
-              WHERE bundle = 'company_pricing_configuration'`,
-          )
-        ).rows,
-      ).toEqual([{ count: 0 }]);
-      for (const table of [
-        'pricing_rule_versions',
-        'pricing_configuration_commands',
-        'pricing_configuration_events',
-      ])
-        expect((await query('SELECT * FROM ' + table)).rows).toEqual([]);
 
       const insertAssignment = (bundle: string, version: string | null) =>
         query(
@@ -151,9 +56,6 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, $3, $4, $5, now())`,
           [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version],
         );
-      // The rewritten constraint keeps every delivered bundle and version.
-      for (const [bundle, version] of PRESERVED_ASSIGNMENTS)
-        await insertAssignment(bundle, version);
       await insertAssignment('company_pricing_configuration', 'v1');
       await insertAssignment('company_commercial_intake', 'v3');
       for (const [bundle, version] of [
@@ -393,17 +295,9 @@ it.skipIf(!databaseUrl)(
       await expect(
         insertReceipt('published', 'UNCHANGED'),
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-360-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  20_000,
+  60_000,
 );

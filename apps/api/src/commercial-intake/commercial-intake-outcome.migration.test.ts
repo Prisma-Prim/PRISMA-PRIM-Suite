@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -11,73 +9,29 @@ const WORKSPACE = '00000000-0000-4000-8000-000000000571';
 const USER = '00000000-0000-4000-8000-000000005711';
 const MEMBERSHIP = '00000000-0000-4000-8000-000000005712';
 const COMPANY = '00000000-0000-4000-8000-000000005713';
-const REQUESTS = [
-  '00000000-0000-4000-8000-000000005714',
-  '00000000-0000-4000-8000-000000005715',
-] as const;
-const OPPORTUNITIES = [
-  '00000000-0000-4000-8000-000000005716',
-  '00000000-0000-4000-8000-000000005717',
-] as const;
-const CAPTURED_AT = [
-  '2026-03-02T08:15:00.123456Z',
-  '2026-07-19T16:40:00.654321Z',
-] as const;
+const REQUEST = '00000000-0000-4000-8000-000000005714';
+const OPPORTUNITY = '00000000-0000-4000-8000-000000005716';
 const CHECK_VIOLATION = '23514';
 const FOREIGN_KEY_VIOLATION = '23503';
 const UNIQUE_VIOLATION = '23505';
 
 it.skipIf(!databaseUrl)(
-  'keeps existing Opportunities OPEN since their capture time and enforces the outcome status contract',
+  'enforces the Opportunity outcome status, history, receipt and event contract on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'opp_outcome_upgrade',
+      namePrefix: 'opp_outcome_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags: string[] = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const target = tags.indexOf('0065_opportunity_outcome_status');
-      expect(target).toBeGreaterThan(0);
-      previous = await mkdtemp(join(tmpdir(), 'prisma-570-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, target),
-        }),
-      );
-      for (const tag of tags.slice(0, target))
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved outcome')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Outcome intake')`,
         [WORKSPACE],
       );
       await query(
@@ -93,72 +47,21 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-outcome-company')`,
+         VALUES ($1, $2, 'Outcome Company', $3, $4, 'outcome-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
       );
       await query(
-        `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version)
-         VALUES ($1, $2, $3, 'company_opportunity_manager', 'v1')`,
-        [WORKSPACE, COMPANY, MEMBERSHIP],
+        `INSERT INTO client_requests (id, workspace_id, company_id, original_text, captured_by_internal_user_id,
+           captured_by_workspace_membership_id)
+         VALUES ($1, $2, $3, 'Outcome request text', $4, $5)`,
+        [REQUEST, WORKSPACE, COMPANY, USER, MEMBERSHIP],
       );
-      for (const [index, request] of REQUESTS.entries()) {
-        await query(
-          `INSERT INTO client_requests (id, workspace_id, company_id, original_text, captured_by_internal_user_id,
-             captured_by_workspace_membership_id, captured_at)
-           VALUES ($1, $2, $3, 'Preserved request text', $4, $5, $6)`,
-          [request, WORKSPACE, COMPANY, USER, MEMBERSHIP, CAPTURED_AT[index]],
-        );
-        // The second Opportunity was later updated: a mutation never moved
-        // the status, so its status-entered time is still its capture time.
-        await query(
-          `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title, next_action,
-             responsible_internal_user_id, responsible_workspace_membership_id, created_at, version,
-             last_updated_by_internal_user_id, last_updated_by_workspace_membership_id, last_updated_at)
-           VALUES ($1, $2, $3, $4, 'Preserved Opportunity', 'Preserved next action', $5, $6, $7, $8,
-             $9, $10, $11)`,
-          [
-            OPPORTUNITIES[index],
-            WORKSPACE,
-            COMPANY,
-            request,
-            USER,
-            MEMBERSHIP,
-            CAPTURED_AT[index],
-            index + 1,
-            index === 0 ? null : USER,
-            index === 0 ? null : MEMBERSHIP,
-            index === 0 ? null : '2026-08-01T10:00:00Z',
-          ],
-        );
-      }
-      const opportunitiesBefore = (
-        await query('SELECT * FROM opportunities ORDER BY id')
-      ).rows;
-      const assignmentsBefore = (
-        await query('SELECT * FROM company_role_assignments ORDER BY id')
-      ).rows;
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      // Existing Opportunities stay OPEN, unchanged and without a history
-      // entry, so each reads as OPEN since its capture time.
-      // 0066 later adds the Sales Stage, which no migration assigns.
-      expect(
-        (await query('SELECT * FROM opportunities ORDER BY id')).rows,
-      ).toEqual(
-        opportunitiesBefore.map((row) => ({ ...row, sales_stage_id: null })),
+      await query(
+        `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title, next_action,
+           responsible_internal_user_id, responsible_workspace_membership_id)
+         VALUES ($1, $2, $3, $4, 'Outcome Opportunity', 'Call back', $5, $6)`,
+        [OPPORTUNITY, WORKSPACE, COMPANY, REQUEST, USER, MEMBERSHIP],
       );
-      expect(
-        (await query('SELECT * FROM company_role_assignments ORDER BY id'))
-          .rows,
-      ).toEqual(assignmentsBefore);
-      for (const table of [
-        'opportunity_outcome_history',
-        'commercial_intake_outcome_commands',
-      ])
-        expect(
-          (await query(`SELECT count(*)::int AS count FROM ${table}`)).rows,
-        ).toEqual([{ count: 0 }]);
 
       // Exactly the six statuses.
       for (const status of [
@@ -170,20 +73,20 @@ it.skipIf(!databaseUrl)(
       ])
         await query(
           'UPDATE opportunities SET status = $1 WHERE id = $2 RETURNING id',
-          [status, OPPORTUNITIES[0]],
+          [status, OPPORTUNITY],
         );
       for (const status of ['CLOSED', 'open', 'PENDING'])
         await expect(
           query('UPDATE opportunities SET status = $1 WHERE id = $2', [
             status,
-            OPPORTUNITIES[0],
+            OPPORTUNITY,
           ]),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       await query("UPDATE opportunities SET status = 'OPEN' WHERE id = $1", [
-        OPPORTUNITIES[0],
+        OPPORTUNITY,
       ]);
 
-      // The captured manager bundle admits v1 and v2 only.
+      // The manager bundle admits its captured versions only.
       const insertManager = (version: string | null) =>
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
@@ -218,7 +121,7 @@ it.skipIf(!databaseUrl)(
           [
             WORKSPACE,
             COMPANY,
-            OPPORTUNITIES[0],
+            OPPORTUNITY,
             version,
             entry.previous,
             entry.next,
@@ -295,7 +198,7 @@ it.skipIf(!databaseUrl)(
             COMPANY,
             MEMBERSHIP,
             key,
-            OPPORTUNITIES[0],
+            OPPORTUNITY,
             expected,
             result,
             ...statuses,
@@ -325,8 +228,8 @@ it.skipIf(!databaseUrl)(
           [
             WORKSPACE,
             COMPANY,
-            REQUESTS[0],
-            OPPORTUNITIES[0],
+            REQUEST,
+            OPPORTUNITY,
             USER,
             MEMBERSHIP,
             JSON.stringify(metadata),
@@ -393,13 +296,7 @@ it.skipIf(!databaseUrl)(
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-570-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );

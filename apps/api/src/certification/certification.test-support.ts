@@ -76,7 +76,6 @@ export async function openCertificationFixture(input: {
   databaseUrl: string;
   namePrefix: string;
   workspaceId: string;
-  migrationsFolder?: string;
 }) {
   let database: IsolatedPostgresTestDatabase | undefined;
   let scanner:
@@ -517,7 +516,6 @@ export async function openCertificationFixture(input: {
     });
     harness = await createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
-      migrationsFolder: input.migrationsFolder,
       serverClock: { now: () => new Date('2026-11-07T08:00:00.000Z') },
       environment: {
         NODE_ENV: 'test',

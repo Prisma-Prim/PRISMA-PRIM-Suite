@@ -9,6 +9,7 @@ import {
   json,
   object,
   openInternalTaskFixture,
+  string,
   workspaceId,
   type InternalTaskFixture,
 } from './internal-task.test-support.js';
@@ -103,6 +104,81 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
         ).rows,
       ).toEqual([{ projects: 0, clients: 0 }]);
     });
+
+    it('keeps private work out of public Task, Home and Activity reads and replays its exact receipt after two application restarts', async () => {
+      const c = await fixture.setup(),
+        actor = { companyId: c.companyId, subject: 'manager' };
+      for (const bundle of ['director-client', 'project', 'task-manager'])
+        await fixture.created('/company-' + bundle + '-assignments', {
+          companyId: c.companyId,
+          workspaceMembershipId: c.membershipId,
+        });
+      async function publicReads() {
+        const reads: Record<string, string> = {};
+        for (const path of [
+          '/assigned-tasks',
+          '/unassigned-tasks',
+          '/team-tasks',
+          '/blocked-tasks',
+          '/due-soon-tasks',
+          '/attention-tasks',
+          '/overdue-tasks',
+          '/operational-home',
+          '/activity-log',
+        ]) {
+          const response = await fixture.request(path, actor);
+          expect(response.status, path).toBe(200);
+          reads[path] = await response.text();
+        }
+        return reads;
+      }
+      const before = await publicReads();
+      const createBody = {
+        title: 'Private Company-only inventory',
+        description: 'Literal Ж\r\n  instructions',
+        assigneeMembershipId: c.membershipId,
+        dueDate: '2026-10-30',
+        priority: 'critical',
+      };
+      const created = await fixture.request('/company-internal-tasks', {
+        ...actor,
+        method: 'POST',
+        key: 'private-before-restart',
+        body: createBody,
+      });
+      expect(created.status).toBe(201);
+      const receipt = await json(created);
+      const path = '/company-internal-tasks/' + string(object(receipt.task).id);
+      const blocked = await fixture.request(path + '/changes', {
+        ...actor,
+        method: 'POST',
+        body: {
+          kind: 'MOVE',
+          expectedVersion: 1,
+          status: 'blocked',
+          reason: 'Private blockage',
+        },
+      });
+      expect(blocked.status).toBe(200);
+      expect(await publicReads()).toEqual(before);
+      const detail = await json(await fixture.request(path, actor));
+      expect(object(detail.task)).toMatchObject({
+        version: 2,
+        status: 'blocked',
+      });
+      for (let restart = 0; restart < 2; restart++) {
+        await fixture.restart();
+        expect(await json(await fixture.request(path, actor))).toEqual(detail);
+        const replayed = await fixture.request('/company-internal-tasks', {
+          ...actor,
+          method: 'POST',
+          key: 'private-before-restart',
+          body: createBody,
+        });
+        expect(replayed.status).toBe(201);
+        expect(await json(replayed)).toEqual(receipt);
+      }
+    }, 30_000);
     describe('shared versioned command protocol: Internal Task change', () => {
       type Context = Awaited<ReturnType<InternalTaskFixture['setup']>>;
       // The kit hands back the target it arranged; this finds its Company.

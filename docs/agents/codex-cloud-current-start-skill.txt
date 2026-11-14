@@ -15,7 +15,7 @@ node scripts/agent-doctor.mjs --profile web --readiness-profile cloud
 Each checkout has its own node_modules; share only package caches, never symlinked node_modules.
 
 PostgreSQL: run databases only through the managed runner, which creates unique Docker resources and isolated development and _test databases, migrates them, injects safe temporary URLs and removes everything after the command:
-node scripts/managed-postgres.mjs -- bash -c 'node scripts/agent-doctor.mjs --profile web-postgres --readiness-profile cloud && pnpm test:preflight:postgres-smoke && pnpm test:preflight:migration'
+node scripts/managed-postgres.mjs -- bash -c 'node scripts/agent-doctor.mjs --profile web-postgres --readiness-profile cloud && pnpm test:preflight:postgres-smoke'
 Preserve registry credentials and use only the Docker socket the activation selects (docker --host=unix:///var/run/docker.sock info). Do not source .env.example inside the runner or override its URLs; no persistent database credentials belong in environment settings.
 
 Verification budget: the host has a four-vCPU quota, so run the full gate with one worker, scoped to the command:

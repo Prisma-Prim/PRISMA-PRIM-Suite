@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -11,59 +9,27 @@ const WORKSPACE = '00000000-0000-4000-8000-000000000312';
 const USER = '00000000-0000-4000-8000-000000003121';
 const MEMBERSHIP = '00000000-0000-4000-8000-000000003122';
 const COMPANY = '00000000-0000-4000-8000-000000003123';
-const ASSIGNMENT = '00000000-0000-4000-8000-000000003124';
 const REQUEST = '00000000-0000-4000-8000-000000003125';
 const OPPORTUNITY = '00000000-0000-4000-8000-000000003126';
 const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 
 it.skipIf(!databaseUrl)(
-  'upgrades through 0028 without expanding captured permissions and enforces the next-action contract',
+  'enforces the Opportunity next-action version, event and receipt contract on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'next_action_upgrade',
+      namePrefix: 'next_action_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries.slice(0, 27);
-      const tags = entries.map((entry) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      expect(tags.at(-1)).toBe('0026_flawless_black_crow');
-      previous = await mkdtemp(join(tmpdir(), 'prisma-312-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries }),
-      );
-      for (const tag of tags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved intake')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Next-action intake')`,
         [WORKSPACE],
       );
       await query(
@@ -78,99 +44,30 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-intake-company')`,
+         VALUES ($1, $2, 'Next-action Company', $3, $4, 'next-action-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
-      );
-      await query(
-        `INSERT INTO company_role_assignments (id, workspace_id, company_id, workspace_membership_id, bundle, permission_set_version)
-         VALUES ($1, $2, $3, $4, 'company_commercial_intake', 'v1')`,
-        [ASSIGNMENT, WORKSPACE, COMPANY, MEMBERSHIP],
       );
       await query(
         `INSERT INTO client_requests (id, workspace_id, company_id, original_text, captured_by_internal_user_id,
            captured_by_workspace_membership_id)
-         VALUES ($1, $2, $3, 'Preserved request text', $4, $5)`,
+         VALUES ($1, $2, $3, 'Request text', $4, $5)`,
         [REQUEST, WORKSPACE, COMPANY, USER, MEMBERSHIP],
       );
       await query(
         `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title, next_action,
            responsible_internal_user_id, responsible_workspace_membership_id)
-         VALUES ($1, $2, $3, $4, 'Preserved Opportunity', 'Preserved next action', $5, $6)`,
+         VALUES ($1, $2, $3, $4, 'Next-action Opportunity', 'First next action', $5, $6)`,
         [OPPORTUNITY, WORKSPACE, COMPANY, REQUEST, USER, MEMBERSHIP],
       );
+      // The creation event the duplicate check below collides with.
       await query(
         `INSERT INTO commercial_intake_events (workspace_id, company_id, action, client_request_id, opportunity_id,
            actor_internal_user_id, actor_workspace_membership_id, metadata)
-         VALUES ($1, $2, 'client_request.created', $3, $4, $5, $6, '{"requestVersion": 1}'::jsonb),
-                ($1, $2, 'opportunity.created', $3, $4, $5, $6, '{"opportunityVersion": 1}'::jsonb)`,
+         VALUES ($1, $2, 'opportunity.created', $3, $4, $5, $6, '{"opportunityVersion": 1}'::jsonb)`,
         [WORKSPACE, COMPANY, REQUEST, OPPORTUNITY, USER, MEMBERSHIP],
       );
-      const preserved = [
-        'company_role_assignments',
-        'client_requests',
-        'commercial_intake_events',
-      ];
-      const before = await Promise.all(
-        preserved.map(
-          async (table) =>
-            (await query('SELECT * FROM ' + table + ' ORDER BY id')).rows,
-        ),
-      );
-      const opportunityBefore = (
-        await query('SELECT * FROM opportunities ORDER BY id')
-      ).rows;
 
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      const after = await Promise.all(
-        preserved.map(
-          async (table) =>
-            (await query('SELECT * FROM ' + table + ' ORDER BY id')).rows,
-        ),
-      );
-      expect(after).toEqual(before);
-      expect(
-        (await query('SELECT * FROM opportunities ORDER BY id')).rows,
-      ).toEqual(
-        opportunityBefore.map((row) => ({
-          ...row,
-          last_updated_by_internal_user_id: null,
-          last_updated_by_workspace_membership_id: null,
-          last_updated_at: null,
-          // 0066 adds the Sales Stage, which no migration assigns.
-          sales_stage_id: null,
-        })),
-      );
-      expect(
-        (await query('SELECT * FROM commercial_intake_next_action_commands'))
-          .rows,
-      ).toEqual([]);
-
-      // The captured v1 assignment received no backfill. Later grants may
-      // capture the delivered v2 and v3 contracts; unknown versions fail closed.
-      expect(
-        (
-          await query(
-            'SELECT permission_set_version FROM company_role_assignments WHERE id = $1',
-            [ASSIGNMENT],
-          )
-        ).rows,
-      ).toEqual([{ permission_set_version: 'v1' }]);
-      await query(
-        `UPDATE company_role_assignments SET revoked_at = now() WHERE id = $1`,
-        [ASSIGNMENT],
-      );
-      await query(
-        `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version)
-         VALUES ($1, $2, $3, 'company_commercial_intake', 'v2')`,
-        [WORKSPACE, COMPANY, MEMBERSHIP],
-      );
-      await query(
-        `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
-           permission_set_version, revoked_at)
-         VALUES ($1, $2, $3, 'company_commercial_intake', 'v3', now())`,
-        [WORKSPACE, COMPANY, MEMBERSHIP],
-      );
+      // Unknown Commercial Intake versions fail closed.
       await expect(
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
@@ -180,8 +77,7 @@ it.skipIf(!databaseUrl)(
         ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 
-      // Migration 0028 preserves the Activity reader bundle introduced by
-      // 0027 while widening only Commercial Intake to captured v2.
+      // The Activity reader bundle admits its captured v1 only.
       await query(
         "INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version) VALUES ($1, $2, $3, 'company_commercial_activity_reader', 'v1')",
         [WORKSPACE, COMPANY, MEMBERSHIP],
@@ -214,14 +110,6 @@ it.skipIf(!databaseUrl)(
           WHERE id = $1`,
         [OPPORTUNITY, USER, MEMBERSHIP],
       );
-      expect(
-        (
-          await query(
-            'SELECT version, original_text FROM client_requests WHERE id = $1',
-            [REQUEST],
-          )
-        ).rows,
-      ).toEqual([{ version: 1, original_text: 'Preserved request text' }]);
       await expect(
         query('UPDATE client_requests SET version = 2 WHERE id = $1', [
           REQUEST,
@@ -327,17 +215,9 @@ it.skipIf(!databaseUrl)(
         ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       await insertEvent('{"opportunityVersion": 2147483647}');
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-312-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  20_000,
+  60_000,
 );

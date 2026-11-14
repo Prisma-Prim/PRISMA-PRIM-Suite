@@ -190,6 +190,44 @@ withPostgres('Governed Knowledge source public REST', () => {
     expect((await call('/knowledge/sources')).status).toBe(403);
   });
 
+  it('attributes one empty search to its actor, Company and server time without source references', async () => {
+    // The Reader's native Client, Document and content read prerequisites.
+    for (const bundle of [
+      'director-client',
+      'document-registrar',
+      'document-content-reader',
+    ]) {
+      const prerequisite = await call(`/company-${bundle}-assignments`, {
+        method: 'POST',
+        company: null,
+        body: { workspaceMembershipId: membershipId, companyId },
+      });
+      expect(prerequisite.status, bundle).toBe(201);
+    }
+    await grant('readers');
+    const response = await call('/knowledge/search?query=nothing');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ items: [], nextCursor: null });
+    expect(
+      (
+        await harness.pool.query(
+          `SELECT workspace_id, company_id, actor_membership_id, capability_version,
+             operation, source_references, recorded_at FROM knowledge_interactions`,
+        )
+      ).rows,
+    ).toEqual([
+      {
+        workspace_id: workspaceId,
+        company_id: companyId,
+        actor_membership_id: membershipId,
+        capability_version: '1',
+        operation: 'search',
+        source_references: [],
+        recorded_at: new Date('2026-10-30T12:00:00.000Z'),
+      },
+    ]);
+  }, 30_000);
+
   it('admits an attested exact PDF Version, returns its literal citation and retires it on revocation', async () => {
     const source = await admitted();
     expect(source.admission).toMatchObject({ revision: 2, state: 'admitted' });

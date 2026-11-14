@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -14,7 +12,6 @@ const CREATOR_USER = '00000000-0000-4000-8000-000000004003';
 const CREATOR = '00000000-0000-4000-8000-000000004004';
 const COMPANY = '00000000-0000-4000-8000-000000004005';
 const CLIENT = '00000000-0000-4000-8000-000000004006';
-const PROJECT = '00000000-0000-4000-8000-000000004007';
 const DOCUMENT = '00000000-0000-4000-8000-000000004008';
 const VERSION = '00000000-0000-4000-8000-000000004009';
 const REFERENCE = '00000000-0000-4000-8000-000000004010';
@@ -30,81 +27,23 @@ const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 const RAISED = 'P0001';
 
-// Every bundle and captured version delivered before this migration,
-// including superseded versions kept as revoked history.
-const PRESERVED_ASSIGNMENTS: ReadonlyArray<
-  readonly [bundle: string, version: string | null, revoked: boolean]
-> = [
-  ['company_context_access', null, false],
-  ['company_director_client_access', 'v1', true],
-  ['company_director_client_access', 'v2', false],
-  ['company_document_registrar', 'v1', true],
-  ['company_document_registrar', 'v2', false],
-  ['company_commercial_intake', 'v1', true],
-  ['company_commercial_intake', 'v2', false],
-  ['company_project_access', 'v1', true],
-  ['company_project_access', 'v2', false],
-  ['company_task_manager', 'v1', false],
-  ['company_document_project_organizer', 'v1', false],
-  ['company_service_catalogue', 'v1', false],
-  ['company_pricing_configuration', 'v1', false],
-  ['company_commercial_activity_reader', 'v1', false],
-];
-
 it.skipIf(!databaseUrl)(
-  'upgrades existing Documents to Version 1 drafts and enforces the Version, bundle and frozen-row invariants',
+  'enforces the Version, bundle and frozen-row invariants on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'document_versions_upgrade',
+      namePrefix: 'document_versions_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const allTags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      // Locate this migration by name so journal renumbering keeps the seam:
-      // every earlier migration builds the pre-Version schema.
-      const versionsIndex = allTags.findIndex((tag) =>
-        tag.endsWith('_official_document_versions'),
-      );
-      expect(versionsIndex).toBeGreaterThan(0);
-      const entries: unknown[] = journal.entries.slice(0, versionsIndex);
-      const tags = allTags.slice(0, versionsIndex);
-      previous = await mkdtemp(join(tmpdir(), 'prisma-400-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries }),
-      );
-      for (const tag of tags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved Documents')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Versioned Documents')`,
         [WORKSPACE],
       );
       await query(
@@ -121,13 +60,13 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-document-company')`,
+         VALUES ($1, $2, 'Versioned Company', $3, $4, 'versioned-document-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
       );
       await query(
         `INSERT INTO client_accounts (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id)
-         VALUES ($1, $2, 'Preserved Client', $3, $4)`,
+         VALUES ($1, $2, 'Versioned Client', $3, $4)`,
         [CLIENT, WORKSPACE, USER, MEMBERSHIP],
       );
       await query(
@@ -136,149 +75,30 @@ it.skipIf(!databaseUrl)(
          VALUES ($1, $2, $3, $4, $5)`,
         [WORKSPACE, CLIENT, COMPANY, USER, MEMBERSHIP],
       );
+      // One corrected working Document with its draft Version 1 and reference.
       await query(
-        `INSERT INTO projects (id, workspace_id, company_id, client_account_id, title,
-           created_by_internal_user_id, created_by_workspace_membership_id, idempotency_key)
-         VALUES ($1, $2, $3, $4, 'Preserved Project', $5, $6, 'preserved-project')`,
-        [PROJECT, WORKSPACE, COMPANY, CLIENT, USER, MEMBERSHIP],
-      );
-      // One corrected working Document attached to a Project.
-      await query(
-        `INSERT INTO working_documents (id, workspace_id, company_id, client_id, project_id,
-           project_revision, working_revision, title, purpose, created_by_membership_id,
+        `INSERT INTO working_documents (id, workspace_id, company_id, client_id,
+           working_revision, title, purpose, created_by_membership_id,
            created_at, idempotency_key, request_fingerprint)
-         VALUES ($1, $2, $3, $4, $5, 1, 2, 'Corrected questionnaire', 'Preserved purpose', $6,
-           $7, 'preserved-document', 'preserved-fingerprint')`,
-        [DOCUMENT, WORKSPACE, COMPANY, CLIENT, PROJECT, CREATOR, CREATED_AT],
+         VALUES ($1, $2, $3, $4, 2, 'Corrected questionnaire', 'Questionnaire purpose', $5,
+           $6, 'versioned-document', 'versioned-fingerprint')`,
+        [DOCUMENT, WORKSPACE, COMPANY, CLIENT, CREATOR, CREATED_AT],
       );
       await query(
-        `INSERT INTO document_versions (id, workspace_id, company_id, document_id)
-         VALUES ($1, $2, $3, $4)`,
-        [VERSION, WORKSPACE, COMPANY, DOCUMENT],
+        `INSERT INTO document_versions (id, workspace_id, company_id, document_id, number,
+           created_by_membership_id, created_at)
+         VALUES ($1, $2, $3, $4, 1, $5, $6)`,
+        [VERSION, WORKSPACE, COMPANY, DOCUMENT, CREATOR, CREATED_AT],
       );
       await query(
-        `INSERT INTO document_representations (id, workspace_id, company_id, version_id, url)
-         VALUES ($1, $2, $3, $4, 'https://example.test/preserved')`,
-        [REFERENCE, WORKSPACE, COMPANY, VERSION],
+        `INSERT INTO document_representations (id, workspace_id, company_id, version_id, url,
+           added_by_membership_id)
+         VALUES ($1, $2, $3, $4, 'https://example.test/questionnaire', $5)`,
+        [REFERENCE, WORKSPACE, COMPANY, VERSION, CREATOR],
       );
-      await query(
-        `INSERT INTO document_registration_events (workspace_id, company_id, document_id,
-           actor_membership_id, occurred_at)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [WORKSPACE, COMPANY, DOCUMENT, CREATOR, CREATED_AT],
-      );
-      await query(
-        `INSERT INTO document_correction_commands (workspace_id, company_id, document_id,
-           actor_membership_id, idempotency_key, request_fingerprint, expected_revision, revision,
-           outcome, before_title, before_purpose, before_url, after_title, after_purpose, after_url)
-         VALUES ($1, $2, $3, $4, 'preserved-correction', 'preserved-correction-fingerprint', 1, 2,
-           'corrected', 'Initial questionnaire', 'Preserved purpose', 'https://example.test/preserved',
-           'Corrected questionnaire', 'Preserved purpose', 'https://example.test/preserved')`,
-        [WORKSPACE, COMPANY, DOCUMENT, MEMBERSHIP],
-      );
-      await query(
-        `INSERT INTO document_project_events (workspace_id, company_id, document_id, project_id,
-           action, expected_revision, revision, actor_membership_id, idempotency_key)
-         VALUES ($1, $2, $3, $4, 'link', 0, 1, $5, 'preserved-link')`,
-        [WORKSPACE, COMPANY, DOCUMENT, PROJECT, MEMBERSHIP],
-      );
-      for (const [bundle, version, revoked] of PRESERVED_ASSIGNMENTS)
-        await query(
-          `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id,
-             bundle, permission_set_version, revoked_at)
-           VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 THEN now() ELSE NULL END)`,
-          [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version, revoked],
-        );
-      const preserved = [
-        'working_documents',
-        'document_representations',
-        'document_registration_events',
-        'document_correction_commands',
-        'document_project_events',
-        'projects',
-        'company_role_assignments',
-        'activity_log_events',
-      ];
-      const projectsIndex = preserved.indexOf('projects');
-      const representationsIndex = preserved.indexOf(
-        'document_representations',
-      );
-      const snapshot = () =>
-        Promise.all(
-          preserved.map(
-            async (table) =>
-              (await query('SELECT * FROM ' + table + ' ORDER BY id')).rows,
-          ),
-        );
-      const before = await snapshot();
-      expect(before[6]).toHaveLength(PRESERVED_ASSIGNMENTS.length);
 
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      // Additive: the Version row and the later Project lifecycle column are
-      // the only changes, and no backfill confers Registrar v3 or the Approver.
-      const after = await snapshot();
-      expect(after).toEqual(
-        before.map((rows, index) =>
-          index === projectsIndex
-            ? rows.map((row) => ({ ...row, lifecycle_revision: 0 }))
-            : index === representationsIndex
-              ? rows.map((row) => ({
-                  ...row,
-                  position: 1,
-                  form: 'other',
-                  added_by_membership_id: CREATOR,
-                  added_at: new Date(CREATED_AT),
-                  appended_after_designation: false,
-                  removed_by_membership_id: null,
-                  removed_at: null,
-                }))
-              : rows,
-        ),
-      );
-      expect(after[projectsIndex].map((row) => row.lifecycle_revision)).toEqual(
-        [0],
-      );
-      expect(
-        (
-          await query(
-            `SELECT id, document_id, number, status, created_by_membership_id,
-                    created_at, designated_by_membership_id, designated_at,
-                    frozen_title, frozen_purpose, superseded_at, superseded_by_version_id
-               FROM document_versions`,
-          )
-        ).rows,
-      ).toEqual([
-        {
-          id: VERSION,
-          document_id: DOCUMENT,
-          number: 1,
-          status: 'draft',
-          created_by_membership_id: CREATOR,
-          created_at: new Date(CREATED_AT),
-          designated_by_membership_id: null,
-          designated_at: null,
-          frozen_title: null,
-          frozen_purpose: null,
-          superseded_at: null,
-          superseded_by_version_id: null,
-        },
-      ]);
-      expect(
-        (
-          await query(
-            `SELECT count(*)::int AS count FROM company_role_assignments
-              WHERE bundle::text = 'company_document_approver'
-                 OR permission_set_version = 'v3'`,
-          )
-        ).rows,
-      ).toEqual([{ count: 0 }]);
-      expect(
-        (await query('SELECT * FROM document_version_commands')).rows,
-      ).toEqual([]);
-
-      // The rewritten permission-set rule keeps every delivered bundle and
-      // version, accepts Registrar v3 and Approver v1 only, and fails closed.
+      // The permission-set rule accepts Registrar v3 and Approver v1 only,
+      // and fails closed.
       const insertAssignment = (bundle: string, version: string | null) =>
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id,
@@ -286,8 +106,6 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, $3, $4, $5, now())`,
           [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version],
         );
-      for (const [bundle, version] of PRESERVED_ASSIGNMENTS)
-        await insertAssignment(bundle, version);
       await insertAssignment('company_document_registrar', 'v3');
       await insertAssignment('company_document_approver', 'v1');
       await insertAssignment('company_commercial_intake', 'v3');
@@ -322,7 +140,7 @@ it.skipIf(!databaseUrl)(
       await query(
         `UPDATE document_versions
             SET status = 'official', designated_by_membership_id = $2, designated_at = now(),
-                frozen_title = 'Corrected questionnaire', frozen_purpose = 'Preserved purpose'
+                frozen_title = 'Corrected questionnaire', frozen_purpose = 'Questionnaire purpose'
           WHERE id = $1`,
         [VERSION, MEMBERSHIP],
       );
@@ -501,7 +319,6 @@ it.skipIf(!databaseUrl)(
         ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
     } finally {
-      if (previous) await rm(previous, { recursive: true, force: true });
       await database.close();
     }
   },
@@ -509,61 +326,22 @@ it.skipIf(!databaseUrl)(
 );
 
 it.skipIf(!databaseUrl)(
-  'upgrades the complete main schema while preserving draft, official and superseded references',
+  'freezes official and superseded references and only soft-removes draft references on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'typed_refs_upgrade',
+      namePrefix: 'typed_refs_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const allTags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const typedReferencesIndex = allTags.findIndex((tag) =>
-        tag.endsWith('_lethal_spyke'),
-      );
-      expect(typedReferencesIndex).toBeGreaterThan(0);
-      const entries: unknown[] = journal.entries.slice(0, typedReferencesIndex);
-      const tags = allTags.slice(0, typedReferencesIndex);
-      expect(tags).toHaveLength(43);
-      expect(tags[0]).toMatch(/^0000_/u);
-      expect(tags.at(-1)).toBe('0042_offer_first_version');
-      previous = await mkdtemp(join(tmpdir(), 'prisma-401-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries }),
-      );
-      for (const tag of tags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Typed reference upgrade')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Typed reference Workspace')`,
         [WORKSPACE],
       );
       await query(
@@ -599,7 +377,7 @@ it.skipIf(!databaseUrl)(
         `INSERT INTO working_documents (id, workspace_id, company_id, client_id,
            working_revision, title, purpose, created_by_membership_id, created_at,
            idempotency_key, request_fingerprint)
-         VALUES ($1, $2, $3, $4, 5, 'Versioned questionnaire', 'Upgrade proof', $5, $6,
+         VALUES ($1, $2, $3, $4, 5, 'Versioned questionnaire', 'Reference proof', $5, $6,
            'typed-reference-document', 'typed-reference-fingerprint')`,
         [DOCUMENT, WORKSPACE, COMPANY, CLIENT, CREATOR, CREATED_AT],
       );
@@ -626,9 +404,10 @@ it.skipIf(!databaseUrl)(
           [id, WORKSPACE, COMPANY, DOCUMENT, number, creator, createdAt],
         );
         await query(
-          `INSERT INTO document_representations (id, workspace_id, company_id, version_id, url)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [referenceId, WORKSPACE, COMPANY, id, url],
+          `INSERT INTO document_representations (id, workspace_id, company_id, version_id, url,
+             added_by_membership_id, added_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [referenceId, WORKSPACE, COMPANY, id, url, creator, createdAt],
         );
       };
       const designate = (id: string, title: string) =>
@@ -636,7 +415,7 @@ it.skipIf(!databaseUrl)(
           `UPDATE document_versions
               SET status = 'official', designated_by_membership_id = $2,
                   designated_at = '2026-09-10T10:00:00.000Z', frozen_title = $3,
-                  frozen_purpose = 'Upgrade proof'
+                  frozen_purpose = 'Reference proof'
             WHERE id = $1`,
           [id, MEMBERSHIP, title],
         );
@@ -674,68 +453,6 @@ it.skipIf(!databaseUrl)(
         referenceId: DRAFT_REFERENCE,
         url: 'https://example.test/draft',
       });
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      expect(
-        (
-          await query(
-            `SELECT version.number, version.status, representation.id,
-                    representation.url, representation.position, representation.form,
-                    representation.added_by_membership_id, representation.added_at,
-                    representation.appended_after_designation,
-                    representation.removed_by_membership_id, representation.removed_at
-               FROM document_versions AS version
-               JOIN document_representations AS representation
-                 ON representation.workspace_id = version.workspace_id
-                AND representation.company_id = version.company_id
-                AND representation.version_id = version.id
-              WHERE version.document_id = $1
-              ORDER BY version.number`,
-            [DOCUMENT],
-          )
-        ).rows,
-      ).toEqual([
-        {
-          number: 1,
-          status: 'superseded',
-          id: SUPERSEDED_REFERENCE,
-          url: 'https://example.test/superseded',
-          position: 1,
-          form: 'other',
-          added_by_membership_id: CREATOR,
-          added_at: new Date(CREATED_AT),
-          appended_after_designation: false,
-          removed_by_membership_id: null,
-          removed_at: null,
-        },
-        {
-          number: 2,
-          status: 'official',
-          id: OFFICIAL_REFERENCE,
-          url: 'https://example.test/official',
-          position: 1,
-          form: 'other',
-          added_by_membership_id: MEMBERSHIP,
-          added_at: new Date(OFFICIAL_CREATED_AT),
-          appended_after_designation: false,
-          removed_by_membership_id: null,
-          removed_at: null,
-        },
-        {
-          number: 3,
-          status: 'draft',
-          id: DRAFT_REFERENCE,
-          url: 'https://example.test/draft',
-          position: 1,
-          form: 'other',
-          added_by_membership_id: CREATOR,
-          added_at: new Date(DRAFT_CREATED_AT),
-          appended_after_designation: false,
-          removed_by_membership_id: null,
-          removed_at: null,
-        },
-      ]);
 
       const frozen = {
         code: RAISED,
@@ -811,7 +528,6 @@ it.skipIf(!databaseUrl)(
         ]),
       ).rejects.toMatchObject({ code: RAISED });
     } finally {
-      if (previous) await rm(previous, { recursive: true, force: true });
       await database.close();
     }
   },

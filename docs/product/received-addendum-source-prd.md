@@ -361,7 +361,8 @@ and actual 1440/390 fit must be demonstrated in Prisme. Preserve
 The highest seam is actual App → authenticated native HTTP → isolated PostgreSQL
 and scanner fixture, composing existing public Contract/Document/Access owners.
 Use behavior assertions and original browser artifacts; private table-layout
-assertions are reserved for the separate genuine integrity/upgrade proof.
+assertions are reserved for the separate genuine integrity proof and, from launch on
+([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), upgrade proof.
 
 Construct fictional ordinary Company-model parent **P-17 / Version 2** through
 native Offer/model/Contract approval and genuine §31 reported-signing commands.
@@ -426,7 +427,7 @@ delivery workflow, not a substituted checklist pass here.
 ## 11. Migration, ownership and twelve readiness gates
 
 At runtime launch, inspect actual main, owner interfaces and the then-current
-journal/snapshot. Create a genuine populated immediate predecessor containing
+journal/snapshot. From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), create a genuine populated immediate predecessor containing
 delivered Source, Date, Invoice Records and any intervening selected capability.
 Compare all old rows, captures, receipts, reads/events, exact PDF/ZIP bytes and
 native protocols through the additive migration twice and two restarts. Add no

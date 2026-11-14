@@ -322,7 +322,7 @@ The runtime child proves through authenticated isolated PostgreSQL REST:
   Client, model and authority changes; first-slot/key/revision competition,
   successor versus decision and forced final-event/response rollback. Assert
   scoped immutable storage and all counters/events/receipts/fences, not timing.
-- Upgrade from genuine pre-slice schema with all legacy origins/quality versions,
+- From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), upgrade from genuine pre-slice schema with all legacy origins/quality versions,
   executed agreements/Project links, old captures/receipts and delivered model
   states/full generated Offers; compare old rows/bytes/digests and repeat migration.
 - Explicit refusal of new-mode simulated signature, Addendum and Project linking,
@@ -343,8 +343,7 @@ numbering policy, PDF provider, actual content or repeated source request.
 [#868](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/868) delivers the
 named Contract preparation, exact copied reads, bounded history, checks and
 internal decisions in one schema/API/UI outcome. The
-[public PostgreSQL REST tests](../../apps/api/src/contract/model-contract.rest.test.ts),
-[genuine pre-slice upgrade](../../apps/api/src/contract/model-contract.migration.test.ts)
+[public PostgreSQL REST tests](../../apps/api/src/contract/model-contract.rest.test.ts)
 and [registered actual App journey](../../apps/web/e2e/model-contract.acceptance.spec.ts)
 own reproducible synthetic proof; the linked delivery PR owns its exact review,
 source/base/tree and final integration evidence. Installation creates no models,

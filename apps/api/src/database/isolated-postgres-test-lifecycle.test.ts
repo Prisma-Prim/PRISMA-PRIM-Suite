@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   cleanupIsolatedTargetDatabase,
-  runPreviousSchemaTestLifecycle,
   waitForPostgresCallbackOrAbort,
   waitForTargetDatabaseConnectionsToClose,
-} from './previous-schema-test-lifecycle.js';
+} from './isolated-postgres-test-lifecycle.js';
 
-describe('previous-schema test lifecycle', () => {
+describe('isolated PostgreSQL test database lifecycle', () => {
   it('waits for a closing target connection before dropping the database', async () => {
     let targetConnectionCount = 1;
     const lateConnectionErrors: Error[] = [];
@@ -24,30 +23,23 @@ describe('previous-schema test lifecycle', () => {
       }
     });
 
-    await runPreviousSchemaTestLifecycle(
-      async () => undefined,
-      [
-        { name: 'application pool', cleanup: async () => undefined },
-        { name: 'migration pool', cleanup: async () => undefined },
-        {
-          name: 'target database connections',
-          cleanup: () =>
-            waitForTargetDatabaseConnectionsToClose(getConnectionCount, {
-              timeoutMs: 10,
-              pollIntervalMs: 1,
-              now: () => 0,
-              sleep: async () => {
-                targetConnectionCount = 0;
-              },
-            }),
-        },
-        { name: 'isolated target database', cleanup: dropDatabase },
-      ],
-    );
+    await cleanupIsolatedTargetDatabase({
+      waitForConnectionsToClose: () =>
+        waitForTargetDatabaseConnectionsToClose(getConnectionCount, {
+          timeoutMs: 10,
+          pollIntervalMs: 1,
+          now: () => 0,
+          sleep: async () => {
+            targetConnectionCount = 0;
+          },
+        }),
+      dropDatabase,
+    });
 
     await Promise.resolve();
     expect(getConnectionCount).toHaveBeenCalledTimes(2);
     expect(dropDatabase).toHaveBeenCalledTimes(1);
+    expect(dropDatabase).toHaveBeenCalledWith(false);
     expect(lateConnectionErrors).toEqual([]);
   });
 
@@ -140,42 +132,22 @@ describe('previous-schema test lifecycle', () => {
       'Timed out waiting for 1 target database connection(s) to close.',
     );
     let targetDatabaseExists = true;
-    const cleanupAfterDrop = vi.fn(async () => undefined);
     const dropDatabase = vi.fn(async (force: boolean) => {
       expect(force).toBe(true);
       targetDatabaseExists = false;
     });
-    const primaryFailure = new Error('health assertion failed');
 
-    let lifecycleFailure: unknown;
-    try {
-      await runPreviousSchemaTestLifecycle(async () => {
-        throw primaryFailure;
-      }, [
-        {
-          name: 'isolated target database',
-          cleanup: () =>
-            cleanupIsolatedTargetDatabase({
-              waitForConnectionsToClose: async () => {
-                throw waitFailure;
-              },
-              dropDatabase,
-            }),
+    await expect(
+      cleanupIsolatedTargetDatabase({
+        waitForConnectionsToClose: async () => {
+          throw waitFailure;
         },
-        { name: 'temporary migrations', cleanup: cleanupAfterDrop },
-      ]);
-    } catch (error) {
-      lifecycleFailure = error;
-    }
+        dropDatabase,
+      }),
+    ).rejects.toBe(waitFailure);
 
     expect(targetDatabaseExists).toBe(false);
     expect(dropDatabase).toHaveBeenCalledTimes(1);
-    expect(cleanupAfterDrop).toHaveBeenCalledTimes(1);
-    expect(lifecycleFailure).toBeInstanceOf(AggregateError);
-    const aggregate = lifecycleFailure as AggregateError;
-    expect(aggregate.cause).toBe(primaryFailure);
-    expect(aggregate.errors[0]).toBe(primaryFailure);
-    expect((aggregate.errors[1] as Error).cause).toBe(waitFailure);
   });
 
   it('reports both graceful and forced database cleanup failures', async () => {
@@ -186,7 +158,7 @@ describe('previous-schema test lifecycle', () => {
       throw forceDropFailure;
     });
 
-    let lifecycleFailure: unknown;
+    let cleanupFailure: unknown;
     try {
       await cleanupIsolatedTargetDatabase({
         waitForConnectionsToClose: async () => {
@@ -195,86 +167,13 @@ describe('previous-schema test lifecycle', () => {
         dropDatabase,
       });
     } catch (error) {
-      lifecycleFailure = error;
+      cleanupFailure = error;
     }
 
-    expect(lifecycleFailure).toBeInstanceOf(AggregateError);
-    const aggregate = lifecycleFailure as AggregateError;
-    expect(aggregate.cause).toBe(waitFailure);
-    expect(aggregate.errors).toEqual([waitFailure, forceDropFailure]);
+    if (!(cleanupFailure instanceof AggregateError))
+      throw new Error('Expected an AggregateError cleanup failure.');
+    expect(cleanupFailure.cause).toBe(waitFailure);
+    expect(cleanupFailure.errors).toEqual([waitFailure, forceDropFailure]);
     expect(dropDatabase).toHaveBeenCalledTimes(1);
-  });
-
-  it('attempts every cleanup once and preserves the primary failure', async () => {
-    const primaryFailure = new Error('health assertion failed');
-    const cleanupFailure = new Error('application pool close failed');
-    const firstCleanup = vi.fn(async () => {
-      throw cleanupFailure;
-    });
-    const secondCleanup = vi.fn(async () => undefined);
-
-    let lifecycleFailure: unknown;
-    try {
-      await runPreviousSchemaTestLifecycle(async () => {
-        throw primaryFailure;
-      }, [
-        { name: 'application pool', cleanup: firstCleanup },
-        { name: 'migration pool', cleanup: secondCleanup },
-      ]);
-    } catch (error) {
-      lifecycleFailure = error;
-    }
-
-    expect(lifecycleFailure).toBeInstanceOf(AggregateError);
-    const aggregate = lifecycleFailure as AggregateError;
-    expect(aggregate.cause).toBe(primaryFailure);
-    expect(aggregate.errors[0]).toBe(primaryFailure);
-    expect((aggregate.errors[1] as Error).cause).toBe(cleanupFailure);
-    expect(firstCleanup).toHaveBeenCalledTimes(1);
-    expect(secondCleanup).toHaveBeenCalledTimes(1);
-  });
-
-  it('rethrows an injected preflight failure after successful cleanup', async () => {
-    const primaryFailure = new Error('migration failed');
-    const cleanup = vi.fn(async () => undefined);
-
-    let lifecycleFailure: unknown;
-    try {
-      await runPreviousSchemaTestLifecycle(async () => {
-        throw primaryFailure;
-      }, [{ name: 'migration pool', cleanup }]);
-    } catch (error) {
-      lifecycleFailure = error;
-    }
-
-    expect(lifecycleFailure).toBe(primaryFailure);
-    expect(cleanup).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps an unexpected PostgreSQL connection error fatal', async () => {
-    const connectionError = Object.assign(
-      new Error('unexpected PostgreSQL connection error'),
-      { code: '57P01' },
-    );
-
-    let lifecycleFailure: unknown;
-    try {
-      await runPreviousSchemaTestLifecycle(
-        async () => undefined,
-        [
-          {
-            name: 'migration pool',
-            cleanup: async () => {
-              throw connectionError;
-            },
-          },
-        ],
-      );
-    } catch (error) {
-      lifecycleFailure = error;
-    }
-
-    expect(lifecycleFailure).toBeInstanceOf(Error);
-    expect((lifecycleFailure as Error).cause).toBe(connectionError);
   });
 });

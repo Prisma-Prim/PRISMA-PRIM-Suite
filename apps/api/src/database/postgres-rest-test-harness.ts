@@ -38,7 +38,6 @@ export interface CreatePostgresRestTestHarnessOptions {
   readonly databaseUrl: string;
   readonly environment: Readonly<Record<string, string>>;
   readonly listenPort?: number;
-  readonly migrationsFolder?: string;
   /** Real pool capacity/deadline for public resource-exhaustion proof; no owning service is mocked. */
   readonly applicationPoolConfiguration?: {
     max: number;
@@ -71,7 +70,6 @@ export async function createPostgresRestTestHarness({
   databaseUrl,
   environment,
   listenPort = 0,
-  migrationsFolder = './drizzle',
   sessionRevoker,
   serverClock,
   applicationPoolConfiguration,
@@ -123,7 +121,7 @@ export async function createPostgresRestTestHarness({
     await app.listen(listenPort, '127.0.0.1');
     const origin = await app.getUrl();
 
-    await migrate(database, { migrationsFolder });
+    await migrate(database, { migrationsFolder: './drizzle' });
     const pool = new Pool({ connectionString: databaseUrl });
     ownedResources.unshift({
       name: 'raw PostgreSQL pool',

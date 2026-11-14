@@ -214,6 +214,39 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
+    it('requires the captured stage advance grant once both required Tasks are done', async () => {
+      await grant('template');
+      const projectId = string((await createTemplate()).id);
+      const progressPath = `/projects/${projectId}/stage-progress`;
+      const initial = object((await read(progressPath)).progress);
+      for (const task of objects(initial.requiredTasks))
+        await command(`/tasks/${string(task.taskId)}/complete`, {
+          expectedVersion: 1,
+        });
+      expect(await read(progressPath)).toMatchObject({
+        progress: {
+          currentStageKey: 'scoping',
+          stageRevision: 0,
+          gate: 'advance_authority_required',
+          canAdvance: false,
+          transitions: [],
+        },
+      });
+      expect(
+        await command('/company-project-stage-advancer-assignments', {
+          workspaceMembershipId: membershipId,
+          companyId,
+        }),
+      ).toMatchObject({ permissionSetVersion: 'v1', active: true });
+      expect(await read(progressPath)).toMatchObject({
+        progress: {
+          currentStageKey: 'scoping',
+          gate: 'ready',
+          canAdvance: true,
+        },
+      });
+    });
+
     it('deliberately advances only after both stable required Tasks are done and preserves proof after an ordinary reopening', async () => {
       await grant('template');
       const projectId = string((await createTemplate()).id);

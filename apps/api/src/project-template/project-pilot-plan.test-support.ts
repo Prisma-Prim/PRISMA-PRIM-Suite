@@ -34,7 +34,7 @@ interface Options {
 }
 export async function createPilotPlanFixture(
   baseDatabaseUrl: string,
-  options: { migrationsFolder?: string; serverClock?: ServerClock } = {},
+  options: { serverClock?: ServerClock } = {},
 ) {
   const workspaceId = '00000000-0000-4000-8000-000000000838';
   const database = await createIsolatedPostgresTestDatabase({

@@ -19,7 +19,7 @@ import {
   responseRecord,
   responseString,
 } from '../offer/offer-estimate-preparation.test-support.js';
-import { predecessorSnapshot } from './external-invoice-migration.test-support.js';
+import type { Pool } from 'pg';
 import { fictionalInvoiceValues } from '../invoice-record/invoice-record.proof-support.js';
 import { openDocumentScannerFixture } from './document-scanner.test-support.js';
 import {
@@ -216,10 +216,7 @@ withPostgres.each(['received-addendum', 'received-audit-source'])(
         'document_versions',
         'document_pdfs',
       ];
-      const beforeRefusals = await predecessorSnapshot(
-        fixture.pool,
-        protectedTables,
-      );
+      const beforeRefusals = await tableSnapshot(fixture.pool, protectedTables);
       const wrongPayment = await post('/payments', paymentBody);
       expect(wrongPayment.status).toBe(409);
       expect(await wrongPayment.json()).toMatchObject({
@@ -250,7 +247,7 @@ withPostgres.each(['received-addendum', 'received-audit-source'])(
         code: '23514',
         constraint: 'invoice_native_source',
       });
-      expect(await predecessorSnapshot(fixture.pool, protectedTables)).toEqual(
+      expect(await tableSnapshot(fixture.pool, protectedTables)).toEqual(
         beforeRefusals,
       );
       expect(
@@ -442,3 +439,18 @@ withPostgres.each(['received-addendum', 'received-audit-source'])(
     });
   },
 );
+
+/** Every complete JSONB row of each named table, in a stable order. */
+async function tableSnapshot(pool: Pool, tables: string[]) {
+  const result: Record<string, unknown> = {};
+  for (const table of tables) {
+    if (!/^[a-z_]+$/u.test(table))
+      throw new Error('Invalid snapshot table identifier.');
+    result[table] = (
+      await pool.query<{ row: unknown }>(
+        `SELECT to_jsonb(t) AS row FROM "${table}" t ORDER BY to_jsonb(t)::text`,
+      )
+    ).rows;
+  }
+  return result;
+}

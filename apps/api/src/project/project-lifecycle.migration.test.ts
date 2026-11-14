@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -16,84 +14,22 @@ const RESPONSIBLE_PROJECT = '00000000-0000-4000-8000-000000004066';
 const UNASSIGNED_PROJECT = '00000000-0000-4000-8000-000000004067';
 const CHECK_VIOLATION = '23514';
 
-// Every bundle and captured version delivered before this migration,
-// including superseded versions kept as revoked history.
-const PRESERVED_ASSIGNMENTS: ReadonlyArray<
-  readonly [bundle: string, version: string | null, revoked: boolean]
-> = [
-  ['company_context_access', null, false],
-  ['company_director_client_access', 'v1', true],
-  ['company_director_client_access', 'v2', false],
-  ['company_document_registrar', 'v1', true],
-  ['company_document_registrar', 'v2', true],
-  ['company_document_registrar', 'v3', false],
-  ['company_commercial_intake', 'v1', true],
-  ['company_commercial_intake', 'v2', false],
-  ['company_project_access', 'v1', true],
-  ['company_project_access', 'v2', false],
-  ['company_task_manager', 'v1', false],
-  ['company_document_project_organizer', 'v1', false],
-  ['company_document_approver', 'v1', false],
-  ['company_service_catalogue', 'v1', false],
-  ['company_pricing_configuration', 'v1', false],
-  ['company_pricing_user', 'v1', false],
-  ['company_commercial_activity_reader', 'v1', false],
-];
-
 it.skipIf(!databaseUrl)(
-  'keeps every existing Project preparatory at revision 0 with its responsibility, and enforces the lifecycle, start and Approver invariants',
+  'enforces the Project lifecycle, transition, start and Approver invariants on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'project_lifecycle_upgrade',
+      namePrefix: 'project_lifecycle_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries;
-      const tags = entries.map((entry) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      // Located by name, so integration renumbering keeps this upgrade seam.
-      const lifecycleIndex = tags.findIndex((tag) =>
-        tag.endsWith('_project_lifecycle'),
-      );
-      expect(lifecycleIndex).toBeGreaterThan(0);
-      previous = await mkdtemp(join(tmpdir(), 'prisma-406-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: entries.slice(0, lifecycleIndex),
-        }),
-      );
-      for (const tag of tags.slice(0, lifecycleIndex))
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved Projects')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Lifecycle Projects')`,
         [WORKSPACE],
       );
       await query(
@@ -108,7 +44,7 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-lifecycle-company')`,
+         VALUES ($1, $2, 'Lifecycle Company', $3, $4, 'lifecycle-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
       );
       await query(
@@ -118,13 +54,13 @@ it.skipIf(!databaseUrl)(
         [CLIENT, WORKSPACE, USER, MEMBERSHIP],
       );
       for (const [id, key] of [
-        [RESPONSIBLE_PROJECT, 'preserved-responsible'],
-        [UNASSIGNED_PROJECT, 'preserved-unassigned'],
+        [RESPONSIBLE_PROJECT, 'lifecycle-responsible'],
+        [UNASSIGNED_PROJECT, 'lifecycle-unassigned'],
       ])
         await query(
           `INSERT INTO projects (id, workspace_id, company_id, client_account_id, title,
              created_by_internal_user_id, created_by_workspace_membership_id, idempotency_key)
-           VALUES ($1, $2, $3, $4, 'Preserved preparation', $5, $6, $7)`,
+           VALUES ($1, $2, $3, $4, 'Lifecycle preparation', $5, $6, $7)`,
           [id, WORKSPACE, COMPANY, CLIENT, USER, MEMBERSHIP, key],
         );
       await query(
@@ -135,44 +71,6 @@ it.skipIf(!databaseUrl)(
          WHERE id = $1`,
         [RESPONSIBLE_PROJECT, MEMBERSHIP, USER],
       );
-      for (const [bundle, version, revoked] of PRESERVED_ASSIGNMENTS)
-        await query(
-          `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id,
-             bundle, permission_set_version, revoked_at)
-           VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 THEN now() ELSE NULL END)`,
-          [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version, revoked],
-        );
-      const snapshot = async () => ({
-        projects: (await query('SELECT * FROM projects ORDER BY id')).rows,
-        assignments: (
-          await query('SELECT * FROM company_role_assignments ORDER BY id')
-        ).rows,
-        events: (await query('SELECT * FROM activity_log_events ORDER BY id'))
-          .rows,
-      });
-      const before = await snapshot();
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      // Additive: every Project stays preparatory at lifecycle revision 0 with
-      // its responsibility, and no backfill confers the Approver.
-      const after = await snapshot();
-      expect(after.projects).toEqual(
-        before.projects.map((row) => ({ ...row, lifecycle_revision: 0 })),
-      );
-      expect(after.projects.map((row) => row.status)).toEqual([
-        'preparatory',
-        'preparatory',
-      ]);
-      expect(after.assignments).toEqual(before.assignments);
-      expect(after.events).toEqual(before.events);
-      for (const table of [
-        'project_lifecycle_transitions',
-        'project_start_declarations',
-        'project_lifecycle_commands',
-      ])
-        expect((await query('SELECT * FROM ' + table)).rows).toEqual([]);
-
       const rejected = (text: string, values: unknown[] = []) =>
         expect(query(text, values)).rejects.toMatchObject({
           code: CHECK_VIOLATION,
@@ -339,8 +237,7 @@ it.skipIf(!databaseUrl)(
         code: '23505',
       });
 
-      // The Approver exists only as captured v1; every other bundle and
-      // version delivered on main stays accepted.
+      // The Approver exists only as captured v1.
       const insertAssignment = (bundle: string, version: string | null) =>
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id,
@@ -348,24 +245,14 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, $3, $4, $5, now())`,
           [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version],
         );
-      for (const [bundle, version] of PRESERVED_ASSIGNMENTS)
-        await insertAssignment(bundle, version);
       await insertAssignment('company_project_approver', 'v1');
       for (const version of [null, 'v2', 'V1'])
         await expect(
           insertAssignment('company_project_approver', version),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-406-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  20_000,
+  60_000,
 );

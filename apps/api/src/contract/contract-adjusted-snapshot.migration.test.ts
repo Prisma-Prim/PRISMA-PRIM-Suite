@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { Pool, PoolClient } from 'pg';
@@ -9,7 +7,6 @@ import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgre
 
 // Synthetic records only; nothing here is a real price, Contract or Client.
 const databaseUrl = process.env.TEST_DATABASE_URL;
-const MIGRATION_SUFFIX = '_contract_adjusted_snapshot';
 const WORKSPACE = '00000000-0000-4000-8000-000000005610';
 const USER = '00000000-0000-4000-8000-000000005611';
 const MEMBERSHIP = '00000000-0000-4000-8000-000000005612';
@@ -28,8 +25,7 @@ const PLAIN = {
   contract: '00000000-0000-4000-8000-000000005624',
   version: '00000000-0000-4000-8000-000000005625',
 } as const;
-// Opportunity two holds a pending direct Contract over an adjusted Snapshot with
-// an older rule set v1 run recorded before rule set v2 existed.
+// Opportunity two holds a pending direct Contract over an adjusted Snapshot.
 const ADJUSTED = {
   request: '00000000-0000-4000-8000-000000005630',
   opportunity: '00000000-0000-4000-8000-000000005631',
@@ -43,71 +39,33 @@ const APPROVAL_RUN = '00000000-0000-4000-8000-000000005640';
 const DECISION = '00000000-0000-4000-8000-000000005641';
 const SIGNATURE_RUN = '00000000-0000-4000-8000-000000005642';
 const SIGNATURE = '00000000-0000-4000-8000-000000005643';
-const LEGACY_RUN = '00000000-0000-4000-8000-000000005644';
 const CALCULATED_AT = '2026-10-01T12:00:00.000Z';
 const CREATED_AT = '2026-10-01T12:00:02.000Z';
 const APPROVED_AT = '2026-10-01T12:00:03.000Z';
 const SIGNED_AT = '2026-10-01T12:00:04.000Z';
 const CHECKSUM = 'c'.repeat(64);
-const DIRECT_RESULTS = (coherent: 'PASS' | 'ERROR') =>
-  JSON.stringify([
-    { code: 'SOURCE_COMPANY_MATCHES', status: 'PASS' },
-    { code: 'PARTY_AVAILABLE', status: 'PASS' },
-    { code: 'PARTY_IDENTITY_CURRENT', status: 'PASS' },
-    { code: 'PARTY_TAX_ID_RECORDED', status: 'PASS' },
-    { code: 'PRICING_SNAPSHOT_COHERENT', status: coherent },
-    { code: 'DIRECT_ORIGIN_REVIEWED', status: 'WARNING' },
-    { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
-  ]);
+const DIRECT_RESULTS = JSON.stringify([
+  { code: 'SOURCE_COMPANY_MATCHES', status: 'PASS' },
+  { code: 'PARTY_AVAILABLE', status: 'PASS' },
+  { code: 'PARTY_IDENTITY_CURRENT', status: 'PASS' },
+  { code: 'PARTY_TAX_ID_RECORDED', status: 'PASS' },
+  { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+  { code: 'DIRECT_ORIGIN_REVIEWED', status: 'WARNING' },
+  { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+]);
 
 it.skipIf(!databaseUrl)(
-  'admits Contract rule set v2 only for adjusted Snapshots and keeps delivered v1 evidence valid',
+  'binds Contract rule set v1 to unadjusted and v2 to adjusted Snapshots in runs and approval and signature events on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'contract_561_upgrade',
+      namePrefix: 'contract_561_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const index = tags.findIndex((tag) => tag.endsWith(MIGRATION_SUFFIX));
-      expect(index).toBeGreaterThan(
-        tags.indexOf('0063_offer_adjusted_snapshot'),
-      );
-      previous = await mkdtemp(join(tmpdir(), 'prisma-561-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, index),
-        }),
-      );
-      for (const tag of tags.slice(0, index))
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const pool = database.targetPool;
       const query = (text: string, values: unknown[] = []) =>
         pool.query(text, values);
@@ -115,57 +73,8 @@ it.skipIf(!databaseUrl)(
       await query(baseRecords());
       await query(executedPlainContract());
       await query(pendingAdjustedContract());
-      // Before the upgrade only rule set v1 exists.
-      await expect(
-        insertRun(pool, PLAIN, 2, DIRECT_RESULTS('PASS')),
-      ).rejects.toMatchObject({ code: '23514' });
 
-      const evidence = () =>
-        Promise.all(
-          [
-            'contracts',
-            'contract_versions',
-            'contract_quality_runs',
-            'contract_decisions',
-            'contract_signatures',
-            'contract_commands',
-            'contract_events',
-            'pricing_snapshots',
-            'pricing_snapshot_lines',
-            'pricing_snapshot_adjustments',
-          ].map(
-            async (table) =>
-              (
-                await query(
-                  `SELECT to_jsonb(row_value)${table === 'contract_versions' ? "-ARRAY['source_offer_version_id','model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']" : table === 'contract_decisions' ? "-'review_basis'" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
-                )
-              ).rows,
-          ),
-        );
-      const before = await evidence();
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-      // Every pre-existing field is byte-identical; the additive source column stays NULL on legacy Versions.
-      expect(await evidence()).toEqual(before);
-      expect(
-        (
-          await query(
-            'SELECT id FROM contract_versions WHERE source_offer_version_id IS NOT NULL',
-          )
-        ).rowCount,
-      ).toBe(0);
-      expect(
-        (
-          await query(
-            'SELECT contract_version_id AS version, rule_set_version AS rule FROM contract_quality_runs ORDER BY sequence',
-          )
-        ).rows,
-      ).toEqual([
-        { version: PLAIN.version, rule: 1 },
-        { version: PLAIN.version, rule: 1 },
-        { version: ADJUSTED.version, rule: 1 },
-      ]);
-
-      // New runs use the binding derived from the immutable Snapshot.
+      // Runs use the binding derived from the immutable Snapshot.
       for (const [target, ruleSetVersion] of [
         [ADJUSTED, 1],
         [PLAIN, 2],
@@ -173,10 +82,10 @@ it.skipIf(!databaseUrl)(
         [PLAIN, 0],
       ] as const)
         await expect(
-          insertRun(pool, target, ruleSetVersion, DIRECT_RESULTS('PASS')),
+          insertRun(pool, target, ruleSetVersion),
         ).rejects.toMatchObject({ code: '23514' });
-      await insertRun(pool, PLAIN, 1, DIRECT_RESULTS('PASS'));
-      await insertRun(pool, ADJUSTED, 2, DIRECT_RESULTS('PASS'));
+      await insertRun(pool, PLAIN, 1);
+      await insertRun(pool, ADJUSTED, 2);
 
       // Approval and signature events name the bound rule set as a JSON number.
       for (const [target, action, ruleSetVersion] of [
@@ -225,7 +134,7 @@ it.skipIf(!databaseUrl)(
           )
         ).rows,
       ).toEqual([{ rule: 1 }, { rule: 2 }]);
-      // Delivered v1 approval and signature events stay bound to v1 runs.
+      // Every approval and signature event names its Version's bound rule set.
       expect(
         (
           await query(
@@ -238,26 +147,15 @@ it.skipIf(!databaseUrl)(
       ).toEqual([{ unbound: 0 }]);
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-561-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );
 
 type Target = typeof PLAIN | typeof ADJUSTED;
 type Executor = Pick<PoolClient, 'query'>;
 
-function insertRun(
-  pool: Executor,
-  target: Target,
-  ruleSetVersion: number,
-  results: string,
-) {
+function insertRun(pool: Executor, target: Target, ruleSetVersion: number) {
   return pool.query(
     `INSERT INTO contract_quality_runs (workspace_id, company_id, contract_id, contract_version_id, rule_set_version, actor_internal_user_id, actor_workspace_membership_id, evaluated_at, results)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
@@ -270,7 +168,7 @@ function insertRun(
       USER,
       MEMBERSHIP,
       SIGNED_AT,
-      results,
+      DIRECT_RESULTS,
     ],
   );
 }
@@ -377,9 +275,9 @@ function baseRecords() {
         '${TARIFF}', 1, 'illustrative-unit', '300.0000', 'EUR', '15.00', 'Illustrative tax',
         '1.000', '1', 'UNIT_PRICE_TIMES_QUANTITY', '300.0000000', '300.00', '45.0000000', '45.00');`;
   return `
-    INSERT INTO workspaces (id, name) VALUES ('${WORKSPACE}', 'Synthetic #561 upgrade');
+    INSERT INTO workspaces (id, name) VALUES ('${WORKSPACE}', 'Synthetic #561 rule set binding');
     INSERT INTO internal_users (id, external_provider, external_subject, display_name, email)
-      VALUES ('${USER}', 'deterministic-test', 'c561-upgrade', 'C561 Owner', 'c561@example.test');
+      VALUES ('${USER}', 'deterministic-test', 'c561-binding', 'C561 Owner', 'c561@example.test');
     INSERT INTO workspace_memberships (id, workspace_id, internal_user_id)
       VALUES ('${MEMBERSHIP}', '${WORKSPACE}', '${USER}');
     INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
@@ -471,7 +369,7 @@ function approval(target: Target, run: string, ruleSetVersion: number) {
       actor_workspace_membership_id, evaluated_at, results)
       VALUES ('${run}', '${WORKSPACE}', '${COMPANY}', '${target.contract}', '${target.version}',
         ${ruleSetVersion}, '${USER}', '${MEMBERSHIP}', '${APPROVED_AT}',
-        '${DIRECT_RESULTS('PASS')}');
+        '${DIRECT_RESULTS}');
     INSERT INTO contract_decisions (id, workspace_id, company_id, contract_id,
       contract_version_id, kind, result_revision, actor_internal_user_id,
       actor_workspace_membership_id, decided_at, quality_run_id, representation_checksum,
@@ -505,7 +403,7 @@ function executedPlainContract() {
       evaluated_at, results)
       VALUES ('${SIGNATURE_RUN}', '${WORKSPACE}', '${COMPANY}', '${PLAIN.contract}',
         '${PLAIN.version}', '${USER}', '${MEMBERSHIP}', '${SIGNED_AT}',
-        '${DIRECT_RESULTS('PASS')}');
+        '${DIRECT_RESULTS}');
     INSERT INTO contract_signatures (id, workspace_id, company_id, contract_id,
       contract_version_id, result_revision, actor_internal_user_id,
       actor_workspace_membership_id, recorded_at, provider_signatory_label,
@@ -534,12 +432,6 @@ function executedPlainContract() {
 function pendingAdjustedContract() {
   return `BEGIN;
     ${createdDirectContract(ADJUSTED, 2)}
-    INSERT INTO contract_quality_runs (id, workspace_id, company_id, contract_id,
-      contract_version_id, actor_internal_user_id, actor_workspace_membership_id,
-      evaluated_at, results)
-      VALUES ('${LEGACY_RUN}', '${WORKSPACE}', '${COMPANY}', '${ADJUSTED.contract}',
-        '${ADJUSTED.version}', '${USER}', '${MEMBERSHIP}', '${CREATED_AT}',
-        '${DIRECT_RESULTS('ERROR')}');
     COMMIT;`;
 }
 
