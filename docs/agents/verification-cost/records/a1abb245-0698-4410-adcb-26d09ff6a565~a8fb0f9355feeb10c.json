@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "a1abb245-0698-4410-adcb-26d09ff6a565:a8fb0f9355feeb10c",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1353,
+  "pullRequest": 1391,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T13:57:22.684Z",
+    "end": "2026-11-14T15:02:08.055Z",
+    "durationSeconds": 3885
+  },
+  "tokens": {
+    "input": 404,
+    "output": 92758,
+    "cacheCreation": 542810,
+    "cacheRead": 41194812
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 404,
+        "output": 92758,
+        "cacheCreation": 542810,
+        "cacheRead": 41194812
+      },
+      "estimatedPriceUsd": 12.809788
+    }
+  ],
+  "price": {
+    "estimatedUsd": 12.809788,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Includes the stopped retirement investigation before the owner re-scoped #1353 to a rename."
+  }
+}
