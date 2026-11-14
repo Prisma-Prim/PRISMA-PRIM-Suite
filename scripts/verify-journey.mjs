@@ -8,16 +8,29 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stripVTControlCharacters } from 'node:util';
 import { Worker } from 'node:worker_threads';
 import { assertLocalTestDatabaseUrl } from '../apps/api/test-support/postgres-database-target.mjs';
+import {
+  CHAOS_FIXTURE_IMPORT,
+  CHAOS_SEED_VARIABLE,
+  chaosReplayCommand,
+  chaosRunSeed,
+  parseChaosSeed,
+  randomChaosSeed,
+} from './ui-chaos.mjs';
 import { plan as localBrowserPlan } from './verify-local-browser.mjs';
 
 // One named acceptance journey (apps/web/e2e/<name>.acceptance.spec.ts) at the
 // canonical desktop and narrow projects, each repetition on a fresh isolated
 // database created by the acceptance global setup. See .agents/skills/verify.
+// `--chaos` replays it under seeded UI chaos (#1376, scripts/ui-chaos.mjs).
 const schema = 'prisma-prim-journey-verification/v1';
 const specSuffix = '.acceptance.spec.ts';
 const maximumRepeat = 100;
+const maximumBudgetMinutes = 600;
+// Under chaos an answer can arrive about 4 s late, so one assertion may wait
+// for a few of them in a row.
+const chaosAssertionMilliseconds = 20_000;
 const usage =
-  'Usage: pnpm verify:journey <journey> [--repeat N] [--cpu-load[=THREADS]] [--output DIR] | --list | --help';
+  'Usage: pnpm verify:journey <journey> [--repeat N] [--cpu-load[=THREADS]] [--chaos SEED|random] [--budget-minutes M] [--output DIR] | --list | --help';
 const exitCodes = Object.freeze({
   passed: 0,
   failed: 1,
@@ -44,6 +57,8 @@ export function parseJourneyArguments(argv) {
     journey: null,
     repeat: 1,
     cpuLoad: null,
+    chaos: null,
+    budgetMinutes: null,
     output: null,
   };
   const words = [...argv];
@@ -71,6 +86,19 @@ export function parseJourneyArguments(argv) {
     else if (flag === '--cpu-load')
       options.cpuLoad =
         inline === undefined ? 'auto' : positiveInteger(flag, inline, 256);
+    else if (flag === '--chaos') {
+      const value = inline ?? words.shift();
+      options.chaos = value === 'random' ? 'random' : parseChaosSeed(value);
+      if (options.chaos === null)
+        throw new JourneyUsageError(
+          '--chaos expects random or a seed, a whole number from 1 to 2147483647.',
+        );
+    } else if (flag === '--budget-minutes')
+      options.budgetMinutes = positiveInteger(
+        flag,
+        inline ?? words.shift(),
+        maximumBudgetMinutes,
+      );
     else if (flag === '--output') {
       options.output = inline ?? words.shift() ?? null;
       if (!options.output)
@@ -91,6 +119,19 @@ export async function listJourneys(root) {
     .sort();
 }
 
+/** The journeys whose spec opts into UI chaos by importing its fixture. */
+export async function listChaosJourneys(root) {
+  const journeys = [];
+  for (const journey of await listJourneys(root)) {
+    const spec = await readFile(
+      join(root, 'apps/web/e2e', `${journey}${specSuffix}`),
+      'utf8',
+    );
+    if (spec.includes(CHAOS_FIXTURE_IMPORT)) journeys.push(journey);
+  }
+  return journeys;
+}
+
 // Anchored to a path separator so "contract" never selects "model-contract".
 export function journeyTestMatch(journey) {
   const escaped = `${journey}${specSuffix}`.replaceAll('.', '\\.');
@@ -107,6 +148,9 @@ export function planJourneyVerification({
   journey,
   repeat,
   cpuLoad,
+  chaosSeed = null,
+  chaosJourneys = [],
+  budgetMinutes = null,
   output,
   parallelism,
   playwrightCli,
@@ -115,6 +159,10 @@ export function planJourneyVerification({
   if (!journeys.includes(journey))
     throw new JourneyUsageError(
       `Unknown journey "${journey}". Journeys: ${journeys.join(', ')}.`,
+    );
+  if (chaosSeed !== null && !chaosJourneys.includes(journey))
+    throw new JourneyUsageError(
+      `Journey "${journey}" has not opted into UI chaos. Chaos journeys: ${chaosJourneys.join(', ') || 'none'}.`,
     );
   const web = join(root, 'apps/web');
   // Absolute, because Playwright resolves outputDir against the wrapper config.
@@ -130,6 +178,8 @@ export function planJourneyVerification({
     repeat,
     cpuLoadThreads:
       cpuLoad === 'auto' ? parallelism : cpuLoad === null ? 0 : cpuLoad,
+    chaosSeed,
+    budgetMinutes,
     startedAt: startedAt.toISOString(),
     evidenceDirectory,
     summaryFile: join(evidenceDirectory, 'summary.json'),
@@ -149,8 +199,12 @@ export function planJourneyVerification({
     runs: Array.from({ length: repeat }, (_, index) => {
       const directory = join(evidenceDirectory, `run-${index + 1}`);
       const config = join(directory, 'playwright.config.mjs');
+      const seed =
+        chaosSeed === null ? null : chaosRunSeed(chaosSeed, index + 1);
       return {
         run: index + 1,
+        chaosSeed: seed,
+        replay: seed === null ? null : chaosReplayCommand(journey, seed),
         directory,
         config,
         results: join(directory, 'results'),
@@ -165,8 +219,13 @@ export function planJourneyVerification({
 }
 
 // Same pattern as the Codex Cloud aligned config: import the canonical config
-// and change only startup, selection and evidence, never test deadlines.
+// and change only startup, selection and evidence, never test deadlines,
+// except the assertion wait under chaos (see chaosAssertionMilliseconds).
 export function renderJourneyConfig(plan, run) {
+  const chaos =
+    plan.chaosSeed === null
+      ? ''
+      : `\n  expect: { ...base.expect, timeout: ${chaosAssertionMilliseconds} },`;
   return `import path from 'node:path';
 import base from ${JSON.stringify(pathToFileURL(plan.canonicalConfig).href)};
 
@@ -181,7 +240,7 @@ export default {
   globalSetup: path.resolve(web, base.globalSetup),
   outputDir: ${JSON.stringify(run.results)},
   reporter: [['list'], ['json', { outputFile: ${JSON.stringify(run.report)} }]],
-  use: { ...base.use, trace: 'on', screenshot: 'on' },
+  use: { ...base.use, trace: 'on', screenshot: 'on' },${chaos}
   webServer: {
     ...base.webServer,
     cwd: web,
@@ -199,6 +258,18 @@ function sanitize(text) {
     .slice(0, 500);
 }
 
+// The first line of the failing result's first error, for a short report.
+function firstError(entry) {
+  const message = entry.results?.at(-1)?.errors?.[0]?.message;
+  if (typeof message !== 'string') return null;
+  return (
+    sanitize(message)
+      .split('\n')
+      .find((line) => line.trim() !== '')
+      ?.trim() ?? null
+  );
+}
+
 function failedTests(suite, titles = []) {
   const path = suite.title ? [...titles, suite.title] : titles;
   return [
@@ -208,6 +279,7 @@ function failedTests(suite, titles = []) {
         .map((entry) => ({
           title: [...path, spec.title].join(' › '),
           project: entry.projectName,
+          error: firstError(entry),
         })),
     ),
     ...(suite.suites ?? []).flatMap((child) => failedTests(child, path)),
@@ -258,6 +330,8 @@ async function runOutcome(run, result, signal) {
     run: run.run,
     status,
     exitCode: result.exitCode,
+    chaosSeed: run.chaosSeed,
+    replay: run.replay,
     tests,
     failures: (report?.suites ?? []).flatMap((suite) => failedTests(suite)),
     message:
@@ -323,6 +397,7 @@ export async function runJourneyVerification(
     startCpuLoad: load = startCpuLoad,
     signal = new AbortController().signal,
     report = (line) => console.log(line),
+    now = () => Date.now(),
   } = {},
 ) {
   const summary = {
@@ -333,6 +408,9 @@ export async function runJourneyVerification(
     exitCode: null,
     repeat: plan.repeat,
     cpuLoadThreads: plan.cpuLoadThreads,
+    chaosSeed: plan.chaosSeed,
+    budgetMinutes: plan.budgetMinutes,
+    stoppedByBudget: false,
     startedAt: plan.startedAt,
     finishedAt: null,
     evidenceDirectory: plan.evidenceDirectory,
@@ -342,6 +420,8 @@ export async function runJourneyVerification(
     message: null,
   };
   const env = { ...process.env, ...plan.environment };
+  // Only --chaos turns UI chaos on, never a variable left in the shell.
+  delete env[CHAOS_SEED_VARIABLE];
   try {
     await mkdir(plan.evidenceDirectory, { recursive: true });
     // Only the generated outputs the shared local startup protocol names.
@@ -372,20 +452,45 @@ export async function runJourneyVerification(
       ? load(plan.cpuLoadThreads)
       : async () => {};
     try {
+      const firstRunStart = now();
+      let longestRun = 0;
       for (const run of plan.runs) {
+        // A budget never starts a run it expects to overrun.
+        if (
+          plan.budgetMinutes !== null &&
+          run.run > 1 &&
+          now() - firstRunStart + longestRun > plan.budgetMinutes * 60_000
+        ) {
+          summary.stoppedByBudget = true;
+          report(
+            `Budget of ${plan.budgetMinutes} minutes reached after ${run.run - 1} run(s).`,
+          );
+          break;
+        }
         await mkdir(run.directory, { recursive: true });
         await writeFile(run.config, renderJourneyConfig(plan, run));
         report(
-          `Run ${run.run}/${plan.repeat}: ${plan.journey}, fresh database${plan.cpuLoadThreads ? `, ${plan.cpuLoadThreads} CPU load threads` : ''}.`,
+          `Run ${run.run}/${plan.repeat}: ${plan.journey}, fresh database${plan.cpuLoadThreads ? `, ${plan.cpuLoadThreads} CPU load threads` : ''}${run.chaosSeed === null ? '' : `, UI chaos seed ${run.chaosSeed}`}.`,
         );
+        const runStart = now();
         const outcome = await runOutcome(
           run,
           await execute(
-            { command: run.command, args: run.args, cwd: run.cwd, env },
+            {
+              command: run.command,
+              args: run.args,
+              cwd: run.cwd,
+              env:
+                run.chaosSeed === null
+                  ? env
+                  : { ...env, [CHAOS_SEED_VARIABLE]: String(run.chaosSeed) },
+            },
             { log: run.log, echo: true, signal },
           ),
           signal,
         );
+        outcome.durationMilliseconds = now() - runStart;
+        longestRun = Math.max(longestRun, outcome.durationMilliseconds);
         summary.runs.push(outcome);
         if (outcome.status !== 'passed') break;
       }
@@ -435,10 +540,13 @@ async function main(argv, environment) {
       console.log(`${usage}\nJourneys: ${journeys.join(', ')}`);
       return 0;
     }
+    const { chaos, ...rest } = options;
     plan = planJourneyVerification({
       root,
       journeys,
-      ...options,
+      ...rest,
+      chaosSeed: chaos === 'random' ? randomChaosSeed() : chaos,
+      chaosJourneys: chaos === null ? [] : await listChaosJourneys(root),
       parallelism: availableParallelism(),
       playwrightCli: createRequire(join(root, 'apps/web/package.json')).resolve(
         '@playwright/test/cli',
@@ -479,8 +587,12 @@ async function main(argv, environment) {
   process.removeListener('SIGTERM', interrupt);
   const last = summary.runs.at(-1);
   console.log(
-    `\nJourney ${summary.journey}: ${summary.status} after ${summary.runs.length}/${summary.repeat} run(s).${summary.message ? ` ${summary.message}` : ''}`,
+    `\nJourney ${summary.journey}: ${summary.status} after ${summary.runs.length}/${summary.repeat} run(s)${summary.stoppedByBudget ? `, within the ${summary.budgetMinutes}-minute budget` : ''}.${summary.message ? ` ${summary.message}` : ''}`,
   );
+  if (last && last.chaosSeed !== null && last.status !== 'passed')
+    console.log(
+      `UI chaos seed ${last.chaosSeed} ${last.status}. Replay: ${last.replay}`,
+    );
   for (const path of last?.screenshots ?? [])
     console.log(`Screenshot: ${path}`);
   for (const path of last?.traces ?? []) console.log(`Trace: ${path}`);

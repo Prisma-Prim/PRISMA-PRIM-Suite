@@ -1,16 +1,14 @@
 import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import {
-  expect,
-  test,
   type APIRequestContext,
   type Locator,
   type Page,
-  type Request,
   type Route,
   type TestInfo,
 } from '@playwright/test';
 import { expectValue, selectOption } from './select-option';
+import { expect, pendingApiRequests, test } from './ui-chaos.fixture';
 
 type Scope = { companyId?: string; owner?: boolean };
 type Company = { id: string; name: string };
@@ -127,8 +125,10 @@ async function seed(request: APIRequestContext, suffix: string) {
     );
   const sharedName = `Shared consolidated Client — Société ${suffix}`;
   const shared = await client(a.id, sharedName);
-  const second = await client(a.id, `Primary local enterprise ${suffix}`);
-  await client(a.id, `Primary distinct organization ${suffix}`);
+  const aLocalName = `Primary local enterprise ${suffix}`;
+  const second = await client(a.id, aLocalName);
+  const aDistinctName = `Primary distinct organization ${suffix}`;
+  await client(a.id, aDistinctName);
   const bOnlyName = `Secondary independent organization ${suffix}`;
   await client(b.id, bOnlyName);
   const relation = await request.put(
@@ -159,7 +159,8 @@ async function seed(request: APIRequestContext, suffix: string) {
   }
   const aProjectTitle = `Preparation A — Révision / Проверка ${suffix}`;
   const aProject = await project(a.id, shared, aProjectTitle);
-  await project(a.id, second, `Preparation second ${suffix}`);
+  const aSecondProjectTitle = `Preparation second ${suffix}`;
+  await project(a.id, second, aSecondProjectTitle);
   const bProjectTitle = `Preparation B — Révision / Проверка ${suffix}`;
   const bProject = await project(b.id, shared, bProjectTitle);
   // Dates come from the owning server read, never from the browser's clock.
@@ -198,8 +199,10 @@ async function seed(request: APIRequestContext, suffix: string) {
     empty,
     bOnlyName,
     sharedName,
+    aOnlyClientNames: [aLocalName, aDistinctName],
     aProject,
     aProjectTitle,
+    aSecondProjectTitle,
     bProjectTitle,
     bTaskTitle,
     bTask,
@@ -381,18 +384,26 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? '390' : '1440';
   const fixture = await seed(request, suffix);
-  const pending = new Set<Request>();
+  const pending = pendingApiRequests(page);
   const calls: string[] = [];
+  /** Once every answer has arrived and rendered, none of these texts shows. */
+  async function expectNoneOnceSettled(view: Locator, texts: string[]) {
+    await expect.poll(() => pending.size, { timeout: 20_000 }).toBe(0);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    for (const text of texts) await expect(view).not.toContainText(text);
+  }
   page.on('request', (entry) => {
     const url = new URL(entry.url());
     if (!url.pathname.startsWith('/api/')) return;
-    pending.add(entry);
     calls.push(
       `${entry.method()} ${url.pathname}${url.search} @${entry.headers()['x-company-context-id'] ?? ''}`,
     );
   });
-  page.on('requestfinished', (entry) => pending.delete(entry));
-  page.on('requestfailed', (entry) => pending.delete(entry));
   async function revoke(assignment: Assignment) {
     const response = await request.delete(
       `/api${assignment.path}/${fixture.memberId}/${assignment.companyId}`,
@@ -645,11 +656,33 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
     }
 
     // Each Continue uses the real selection owner and then the existing native
-    // destination's read. The shared Client appears in both independent sets.
+    // destination's read. The shared Client appears in both independent sets;
+    // A's own records never appear once B is active.
     for (const destination of [
-      { label: 'Active Clients', path: '/api/clients', hash: '#clients' },
-      { label: 'Open Projects', path: '/api/projects', hash: '#projects' },
-      { label: 'Overdue Tasks', path: '/api/overdue-tasks', hash: '#overview' },
+      {
+        label: 'Active Clients',
+        path: '/api/clients',
+        hash: '#clients',
+        view: page.locator('.client-workspace'),
+        previous: fixture.aOnlyClientNames,
+      },
+      {
+        label: 'Open Projects',
+        path: '/api/projects',
+        hash: '#projects',
+        view: page.locator('.project-workspace'),
+        previous: [fixture.aProjectTitle, fixture.aSecondProjectTitle],
+      },
+      {
+        label: 'Overdue Tasks',
+        path: '/api/overdue-tasks',
+        hash: '#overview',
+        view: page.getByRole('region', {
+          name: `Overdue Tasks in ${fixture.b.name}`,
+          exact: true,
+        }),
+        previous: ['Primary overdue'],
+      },
     ]) {
       await page.goto('/');
       await selectWorkingCompany(page, fixture.a, narrow);
@@ -695,7 +728,25 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
           overdue.getByRole('button', { name: 'Next page', exact: true }),
         ).toBeDisabled();
       }
+      await expectNoneOnceSettled(destination.view, destination.previous);
     }
+
+    // Switching again while A's reads are still in flight: UI chaos (#1376)
+    // holds them, so they can answer after B's.
+    await page.goto('/');
+    await selectWorkingCompany(page, fixture.a, narrow);
+    await selectWorkingCompany(page, fixture.b, narrow);
+    await openSection(page, 'Projects', narrow);
+    const switchedProjects = page.locator('.project-workspace');
+    await expect(switchedProjects).toContainText(fixture.bProjectTitle);
+    await expectNoneOnceSettled(switchedProjects, [
+      fixture.aProjectTitle,
+      fixture.aSecondProjectTitle,
+    ]);
+    await openSection(page, 'Clients', narrow);
+    const switchedClients = page.locator('.client-workspace');
+    await expect(switchedClients).toContainText(fixture.bOnlyName);
+    await expectNoneOnceSettled(switchedClients, fixture.aOnlyClientNames);
 
     // A genuine current server denial must retire Company context according to
     // its existing owner; Cancel's preservation is not a promise to restore A.

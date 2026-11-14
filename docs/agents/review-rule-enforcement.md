@@ -29,6 +29,7 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 | Company leak, a review of unfinished work or false history in mission reviews | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1257  |
 | Company leak, a step out of order or false history in Offers                  | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1259  |
 | Company leak, a stale head accepted or false history in pricing configuration | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1205, #1261  |
+| Stale data after a Company switch, endless loading or a missing access denial | Nightly `nightly-ui-chaos.yml` on two journeys; nights land in the weekly inspection     | #1155, #1376  |
 | Request-supplied or missing scope in a query or command                       | Review only                                                                              | ADR 0006      |
 | Hidden and missing records answered differently                               | Review only                                                                              | ADR 0006      |
 | Authority from payload, role names or controller conditions                   | Review only                                                                              | Access module |

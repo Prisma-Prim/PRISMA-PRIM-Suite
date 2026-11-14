@@ -190,10 +190,12 @@ export async function reportNightlyFuzz({
     log(`No verdict for ${result} on ${run.ref}: nothing to report.`);
     return;
   }
+  // Only this script's own tracking issues: a bug the nightly UI chaos found
+  // (#1376) is also labelled fuzz-found, without this report's marker.
   const open = (
     await api('GET', `issues?labels=${LABEL}&state=open&per_page=100`)
   )
-    .filter((issue) => !issue.pull_request)
+    .filter((issue) => !issue.pull_request && issue.body?.includes(FAILED))
     .sort((left, right) => left.number - right.number);
 
   if (verdict === 'passed') {

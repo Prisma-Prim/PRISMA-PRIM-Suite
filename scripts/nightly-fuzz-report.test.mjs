@@ -485,6 +485,37 @@ test('the first passing night after a failure comments once and never closes the
   assert.deepEqual(again.writes(), []);
 });
 
+test('a fuzz-found bug filed from the nightly UI chaos is never taken for the tracking issue', async () => {
+  // #1376: a triaged UI chaos bug carries the label, not this report's marker.
+  const chaosBug = { number: 5, body: 'Stale Projects, UI chaos seed `77`.' };
+  const failing = github({ issues: [chaosBug] });
+  await reportNightlyFuzz({
+    result: 'failure',
+    reports: [report],
+    run,
+    api: failing.api,
+    log: quiet,
+  });
+  assert.deepEqual(
+    failing.writes().map(({ method, path }) => `${method} ${path}`),
+    ['POST labels', 'POST issues'],
+  );
+
+  const passing = github({
+    issues: [chaosBug, { number: 9, body: failedMarker }],
+  });
+  await reportNightlyFuzz({
+    result: 'success',
+    run,
+    api: passing.api,
+    log: quiet,
+  });
+  assert.deepEqual(
+    passing.writes().map(({ method, path }) => `${method} ${path}`),
+    ['POST issues/9/comments'],
+  );
+});
+
 test('cancelled runs and other branches report nothing', async () => {
   for (const [result, ref] of [
     ['cancelled', 'refs/heads/main'],

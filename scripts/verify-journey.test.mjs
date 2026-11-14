@@ -13,8 +13,10 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { plan as localBrowserPlan } from './verify-local-browser.mjs';
+import { chaosRunSeed } from './ui-chaos.mjs';
 import {
   journeyTestMatch,
+  listChaosJourneys,
   listJourneys,
   parseJourneyArguments,
   planJourneyVerification,
@@ -52,6 +54,8 @@ test('parses one journey with single-run defaults', () => {
     journey: 'ideas',
     repeat: 1,
     cpuLoad: null,
+    chaos: null,
+    budgetMinutes: null,
     output: null,
   });
 });
@@ -62,6 +66,8 @@ test('parses every flag in its separate and inline forms', () => {
     journey: 'ideas',
     repeat: 3,
     cpuLoad: 'auto',
+    chaos: 1234,
+    budgetMinutes: 15,
     output: 'evidence',
   };
   assert.deepEqual(
@@ -70,6 +76,10 @@ test('parses every flag in its separate and inline forms', () => {
       '3',
       'ideas',
       '--cpu-load',
+      '--chaos',
+      '1234',
+      '--budget-minutes',
+      '15',
       '--output',
       'evidence',
     ]),
@@ -80,9 +90,11 @@ test('parses every flag in its separate and inline forms', () => {
       'ideas',
       '--repeat=3',
       '--cpu-load=2',
+      '--chaos=random',
+      '--budget-minutes=15',
       '--output=evidence',
     ]),
-    { ...expected, cpuLoad: 2 },
+    { ...expected, cpuLoad: 2, chaos: 'random' },
   );
   assert.equal(parseJourneyArguments(['--list']).action, 'list');
   assert.equal(parseJourneyArguments(['--help']).action, 'help');
@@ -100,6 +112,12 @@ test('refuses missing, extra and malformed arguments as usage errors', () => {
     ['ideas', '--cpu-load=0'],
     ['ideas', '--cpu-load=two'],
     ['ideas', '--output'],
+    ['ideas', '--chaos'],
+    ['ideas', '--chaos', '0'],
+    ['ideas', '--chaos', 'seed'],
+    ['ideas', '--chaos=2147483648'],
+    ['ideas', '--budget-minutes', '0'],
+    ['ideas', '--budget-minutes=601'],
     ['ideas', '--fast'],
     ['--list', 'ideas'],
   ])
@@ -168,6 +186,8 @@ test('plans the shared acceptance prebuild once and one fresh run per repetition
   assert.equal(plan.runs.length, 2);
   assert.deepEqual(plan.runs[1], {
     run: 2,
+    chaosSeed: null,
+    replay: null,
     directory: join(output, 'run-2'),
     config: join(output, 'run-2', 'playwright.config.mjs'),
     results: join(output, 'run-2', 'results'),
@@ -236,6 +256,66 @@ test('refuses an unknown journey and names the known ones', () => {
   );
 });
 
+test('names the journeys that opt into UI chaos and refuses chaos on any other', async (t) => {
+  const fixture = await temporary(t, 'verify-journey-chaos-');
+  await mkdir(join(fixture, 'apps/web/e2e'), { recursive: true });
+  await writeFile(
+    join(fixture, 'apps/web/e2e/a.acceptance.spec.ts'),
+    "import { expect, test } from './ui-chaos.fixture';\n",
+  );
+  await writeFile(
+    join(fixture, 'apps/web/e2e/b.acceptance.spec.ts'),
+    "import { expect, test } from '@playwright/test';\n",
+  );
+  assert.deepEqual(await listChaosJourneys(fixture), ['a']);
+  assert.deepEqual(await listChaosJourneys(root), [
+    'certification-journey',
+    'multi-company-home',
+  ]);
+
+  const options = {
+    root,
+    journeys: ['contract', 'ideas'],
+    repeat: 2,
+    cpuLoad: null,
+    output: null,
+    parallelism: 1,
+    playwrightCli: '/playwright/cli.js',
+    startedAt,
+  };
+  assert.throws(
+    () =>
+      planJourneyVerification({
+        ...options,
+        journey: 'contract',
+        chaosSeed: 5,
+        chaosJourneys: ['ideas'],
+      }),
+    {
+      name: 'JourneyUsageError',
+      message:
+        /"contract" has not opted into UI chaos\. Chaos journeys: ideas/u,
+    },
+  );
+  const plan = planJourneyVerification({
+    ...options,
+    journey: 'ideas',
+    chaosSeed: 5,
+    chaosJourneys: ['ideas'],
+  });
+  assert.equal(plan.chaosSeed, 5);
+  assert.deepEqual(
+    plan.runs.map(({ chaosSeed, replay }) => [chaosSeed, replay]),
+    [
+      [5, 'pnpm verify:journey ideas --chaos 5'],
+      [
+        chaosRunSeed(5, 2),
+        `pnpm verify:journey ideas --chaos ${chaosRunSeed(5, 2)}`,
+      ],
+    ],
+  );
+});
+
 test('wraps the canonical acceptance config with full evidence and a preview-only server', async () => {
   const plan = planJourneyVerification({
     root,
@@ -275,7 +355,19 @@ test('wraps the canonical acceptance config with full evidence and a preview-onl
   assert.ok(text.includes('timeout: 180000'));
 });
 
-async function runFixture(t, { repeat = 1, cpuLoad = null, outcomes }) {
+async function runFixture(
+  t,
+  {
+    repeat = 1,
+    cpuLoad = null,
+    chaosSeed = null,
+    budgetMinutes = null,
+    runMinutes = 0,
+    outcomes,
+  },
+) {
+  // A fake clock that each Playwright run advances by runMinutes.
+  let clock = 0;
   const fixture = await temporary(t, 'verify-journey-run-');
   await mkdir(join(fixture, 'apps/web/e2e'), { recursive: true });
   await mkdir(join(fixture, 'apps/web/dist'), { recursive: true });
@@ -287,12 +379,16 @@ async function runFixture(t, { repeat = 1, cpuLoad = null, outcomes }) {
     journey: 'ideas',
     repeat,
     cpuLoad,
+    chaosSeed,
+    chaosJourneys: ['ideas'],
+    budgetMinutes,
     output,
     parallelism: 3,
     playwrightCli: '/playwright/cli.js',
     startedAt,
   });
   const events = [];
+  const seeds = [];
   const execute = async (step, { log }) => {
     await writeFile(log, 'log\n');
     if (step.command !== process.execPath) {
@@ -301,6 +397,8 @@ async function runFixture(t, { repeat = 1, cpuLoad = null, outcomes }) {
     }
     const run = plan.runs.find((candidate) => candidate.log === log);
     events.push(`run ${run.run}`);
+    seeds.push(step.env.UI_CHAOS_SEED);
+    clock += runMinutes * 60_000;
     const outcome = outcomes.runs[run.run - 1];
     const evidence = join(run.results, 'ideas-desktop');
     await mkdir(evidence, { recursive: true });
@@ -318,8 +416,9 @@ async function runFixture(t, { repeat = 1, cpuLoad = null, outcomes }) {
     execute,
     startCpuLoad,
     report: () => {},
+    now: () => clock,
   });
-  return { fixture, plan, events, summary };
+  return { fixture, plan, events, seeds, summary };
 }
 
 function playwrightReport({
@@ -345,6 +444,16 @@ function playwrightReport({
                 {
                   projectName: 'operational-acceptance-narrow',
                   status: 'unexpected',
+                  results: [
+                    {
+                      errors: [
+                        {
+                          message:
+                            '\n\u001b[31mError: Timed out waiting for the idea\u001b[39m\n\n  at ideas.acceptance.spec.ts:12',
+                        },
+                      ],
+                    },
+                  ],
                 },
               ],
             })),
@@ -422,8 +531,85 @@ test('stops at the first failed repetition and names the failing test', async (t
     {
       title: 'ideas.acceptance.spec.ts › Ideas › records a deferred idea',
       project: 'operational-acceptance-narrow',
+      error: 'Error: Timed out waiting for the idea',
     },
   ]);
+});
+
+test('hands each chaos repetition its own seed and replay command, never a stale one', async (t) => {
+  process.env.UI_CHAOS_SEED = '999';
+  t.after(() => delete process.env.UI_CHAOS_SEED);
+  const failing = playwrightReport({
+    expected: 1,
+    unexpected: 1,
+    failures: ['records a deferred idea'],
+  });
+  const chaos = await runFixture(t, {
+    repeat: 3,
+    chaosSeed: 1234,
+    outcomes: {
+      runs: [
+        { exitCode: 0, report: playwrightReport({ expected: 2 }) },
+        { exitCode: 1, report: failing },
+      ],
+    },
+  });
+  const second = chaosRunSeed(1234, 2);
+  assert.deepEqual(chaos.seeds, ['1234', String(second)]);
+  assert.equal(chaos.summary.chaosSeed, 1234);
+  assert.equal(chaos.summary.status, 'failed');
+  assert.deepEqual(
+    chaos.summary.runs.map(({ chaosSeed, replay }) => ({ chaosSeed, replay })),
+    [
+      {
+        chaosSeed: 1234,
+        replay: 'pnpm verify:journey ideas --chaos 1234',
+      },
+      {
+        chaosSeed: second,
+        replay: `pnpm verify:journey ideas --chaos ${second}`,
+      },
+    ],
+  );
+  const config = await readFile(chaos.plan.runs[1].config, 'utf8');
+  assert.ok(config.includes('expect: { ...base.expect, timeout: 20000 }'));
+
+  // Without --chaos, a seed left in the shell never reaches the journey.
+  const plain = await runFixture(t, {
+    outcomes: {
+      runs: [{ exitCode: 0, report: playwrightReport({ expected: 2 }) }],
+    },
+  });
+  assert.deepEqual(plain.seeds, [undefined]);
+  assert.equal(plain.summary.runs[0].chaosSeed, null);
+  assert.ok(
+    !(await readFile(plain.plan.runs[0].config, 'utf8')).includes('expect:'),
+  );
+});
+
+test('a time budget never starts a repetition it expects to overrun', async (t) => {
+  // Each run lasts 6 minutes on the fake clock; the budget is 15 minutes:
+  // after two runs, a third would end at 18.
+  const passing = { exitCode: 0, report: playwrightReport({ expected: 2 }) };
+  const { events, summary } = await runFixture(t, {
+    repeat: 10,
+    chaosSeed: 7,
+    budgetMinutes: 15,
+    runMinutes: 6,
+    outcomes: { runs: Array.from({ length: 10 }, () => passing) },
+  });
+  assert.deepEqual(
+    events.filter((event) => event.startsWith('run')),
+    ['run 1', 'run 2'],
+  );
+  assert.equal(summary.status, 'passed');
+  assert.equal(summary.exitCode, 0);
+  assert.equal(summary.stoppedByBudget, true);
+  assert.equal(summary.budgetMinutes, 15);
+  assert.deepEqual(
+    summary.runs.map((run) => run.durationMilliseconds),
+    [360_000, 360_000],
+  );
 });
 
 test('reports a failed prebuild as an environment error without running the journey', async (t) => {
@@ -487,6 +673,14 @@ test('command line: a bad flag is a usage error', () => {
   assert.equal(child.status, 2);
   assert.match(child.stderr, /--repeat/u);
   assert.equal(child.final.exitCode, 2);
+});
+
+test('command line: chaos on a journey without the chaos fixture is a usage error', () => {
+  const child = cli(['ideas', '--chaos', 'random']);
+  assert.equal(child.status, 2);
+  assert.match(child.stderr, /"ideas" has not opted into UI chaos/u);
+  assert.match(child.stderr, /certification-journey, multi-company-home/u);
+  assert.equal(child.final.status, 'usage-error');
 });
 
 test('command line: --list prints one journey name per line', () => {

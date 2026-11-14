@@ -9,7 +9,7 @@ import {
 } from '../src/certification/certification-release.copy';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
-import { expect, test, type Locator } from '@playwright/test';
+import { type Locator } from '@playwright/test';
 import {
   compactPdfText,
   inspectCommercialPdf,
@@ -40,6 +40,7 @@ import {
   type Identity,
 } from './certification-journey.acceptance.fixture';
 import { selectOption } from './select-option';
+import { expect, test } from './ui-chaos.fixture';
 
 const revisionCopy = (key: RevisionMessageKey) =>
   resolveMessage(revisionMessages, 'en', key);

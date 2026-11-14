@@ -1,0 +1,111 @@
+name: Nightly UI chaos
+
+# Seeded UI chaos (#1376, stage 2 of #1155): the certification journey and
+# the Company switch and access loss of the multi-company home journey run on
+# a throwaway PostgreSQL database under seeded response delays, out-of-order
+# responses, a slowed CPU, double submits and back navigation
+# (apps/web/e2e/ui-chaos.fixture.ts). No model or API cost. It runs on main
+# every night after the nightly fuzz, and by hand; it never gates a pull
+# request. Each journey is one matrix job with its own time budget. `report`
+# adds the night to the week's comment on the open weekly-inspection issue.
+# Scheduled in the owner's Paris night, after the nightly fuzz (01:30 UTC),
+# off the hour GitHub loads most (#1207).
+on:
+  schedule:
+    - cron: '20 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# No workflow concurrency: nothing cancels a run and hides its failure.
+
+jobs:
+  chaos:
+    name: chaos (${{ matrix.journey }})
+    strategy:
+      # One journey's failure never cancels another journey's night.
+      fail-fast: false
+      matrix:
+        journey:
+          - certification-journey
+          - multi-company-home
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
+      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor:web-postgres
+
+      # A random seed each night; every repetition gets its own seed and a
+      # fresh database, and a failing one prints its seed and replay command.
+      # No new repetition starts once it would end past the 15-minute budget:
+      # with the build and setup, the aim is about 20 minutes per job; the
+      # report records each job's real runtime.
+      - name: Replay the journey under seeded UI chaos
+        env:
+          JOURNEY: ${{ matrix.journey }}
+          CHAOS_EVIDENCE: ${{ runner.temp }}/ui-chaos/${{ matrix.journey }}
+        run: pnpm verify:journey "$JOURNEY" --chaos random --repeat 20 --budget-minutes 15 --output "$CHAOS_EVIDENCE"
+
+      - name: Upload the chaos summary
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-ui-chaos-summary-${{ matrix.journey }}
+          path: ${{ runner.temp }}/ui-chaos/${{ matrix.journey }}/summary.json
+          if-no-files-found: ignore
+
+      - name: Upload the failure evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-ui-chaos-evidence-${{ matrix.journey }}
+          path: ${{ runner.temp }}/ui-chaos/${{ matrix.journey }}
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    needs: chaos
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    # One report at a time, so two nights never write the same week at once.
+    concurrency:
+      group: nightly-ui-chaos-report
+      cancel-in-progress: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # A journey whose job failed before its summary has none.
+      - name: Download the chaos summaries
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nightly-ui-chaos-summary-*
+          path: ${{ runner.temp }}/ui-chaos-summaries
+
+      - name: Add the night to the weekly inspection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHAOS_SUMMARIES: ${{ runner.temp }}/ui-chaos-summaries
+        run: node scripts/nightly-ui-chaos-report.mjs
