@@ -8,7 +8,7 @@ import {
   within,
 } from './test/render-with-interface-locale';
 import { App } from './App';
-import { companyGrants } from './access/company-grants.test-fixture';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 import { preparatoryLifecycle } from './project/project-lifecycle.test-fixtures';
 import {
@@ -231,9 +231,11 @@ it.each([200, 403])(
       ...administrator,
       activeCompany: {
         ...actor.activeCompany,
-        missionResultReviewPermissions: ['project.mission_result.review'],
-        missionResultReviewerAssignmentId: 'reviewer-old-capture',
-        missionResultReviewerPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_mission_result_reviewer',
+          version: 'v1',
+          assignmentId: 'reviewer-old-capture',
+        }),
       },
     };
     const freshActor = {
@@ -241,7 +243,11 @@ it.each([200, 403])(
       displayName: 'Fresh Actor DEMO',
       activeCompany: {
         ...oldActor.activeCompany,
-        missionResultReviewerAssignmentId: 'reviewer-current-capture',
+        grants: withCompanyGrants(oldActor.activeCompany.grants, {
+          bundle: 'company_mission_result_reviewer',
+          version: 'v1',
+          assignmentId: 'reviewer-current-capture',
+        }),
       },
     };
     let currentActor: unknown = administrator,
@@ -402,9 +408,11 @@ it.each(
       workspacePermissions: ['client.manage', 'company.assignment.manage'],
       activeCompany: {
         ...actor.activeCompany,
-        taskResultPermissions: ['task.result.record'],
-        taskResultRecorderAssignmentId: 'result-recorder-demo',
-        taskResultRecorderPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_task_result_recorder',
+          version: 'v1',
+          assignmentId: 'result-recorder-demo',
+        }),
       },
     };
     const attribution = {
@@ -509,30 +517,16 @@ it.each(
             displayName: 'Fresh independent Actor DEMO',
             activeCompany: {
               ...recorder.activeCompany,
-              ...(grant === 'risk'
-                ? {
-                    grants: companyGrants({
-                      bundle: 'company_operational_risk_reader',
-                      version: 'v1',
-                      assignmentId: publishedAssignment.id,
-                    }),
-                  }
-                : grant === 'internal-task'
-                  ? {
-                      grants: companyGrants({
-                        bundle: 'company_internal_task_manager',
-                        version: 'v1',
-                        assignmentId: publishedAssignment.id,
-                      }),
-                    }
-                  : {
-                      projectNextActionPermissions: [
-                        'project.next_action.update',
-                      ],
-                      projectNextActionCoordinatorAssignmentId:
-                        publishedAssignment.id,
-                      projectNextActionCoordinatorPermissionSetVersion: 'v1',
-                    }),
+              grants: withCompanyGrants(recorder.activeCompany.grants, {
+                bundle:
+                  grant === 'risk'
+                    ? 'company_operational_risk_reader'
+                    : grant === 'internal-task'
+                      ? 'company_internal_task_manager'
+                      : 'company_project_next_action_coordinator',
+                version: 'v1',
+                assignmentId: publishedAssignment.id,
+              }),
             },
           };
           return Response.json(publishedAssignment, { status: 201 });

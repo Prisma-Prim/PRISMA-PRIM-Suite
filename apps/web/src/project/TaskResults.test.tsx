@@ -9,6 +9,11 @@ import {
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { TaskResults } from './TaskResults';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { selectOption } from '../test/select-option';
 
 const actor: ActorContext = {
@@ -23,29 +28,39 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Company DEMO',
-    projectPermissions: ['project.read'],
-    projectPermissionAssignmentId: 'projects',
-    projectPermissionSetVersion: 'v2',
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'tasks',
-    taskPermissionSetVersion: 'v1',
-    taskResultPermissions: ['task.result.record'],
-    taskResultRecorderAssignmentId: 'recorder',
-    taskResultRecorderPermissionSetVersion: 'v1',
-    clientPermissions: ['client.read'],
-    clientPermissionAssignmentId: 'clients',
-    clientPermissionSetVersion: 'v2',
-    documentPermissions: [
-      'document.read',
-      'document.content.read',
-      'document.mission_deliverable.access',
-    ],
-    documentPermissionSetVersion: 'v3',
-    documentPermissionAssignmentId: 'documents',
-    documentContentReaderAssignmentId: 'reader',
-    documentContentReaderPermissionSetVersion: 'v1',
-    missionDeliverableAccessAssignmentId: 'mission',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'projects',
+      },
+      { bundle: 'company_task_manager', version: 'v1', assignmentId: 'tasks' },
+      {
+        bundle: 'company_task_result_recorder',
+        version: 'v1',
+        assignmentId: 'recorder',
+      },
+      {
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'clients',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'documents',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'reader',
+      },
+      {
+        bundle: 'company_mission_deliverable_access',
+        version: 'v1',
+        assignmentId: 'mission',
+      },
+    ),
   },
 };
 const reference = {
@@ -242,9 +257,10 @@ function workspaceClientManager(): ActorContext {
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...actor.activeCompany,
-      clientPermissions: [],
-      clientPermissionAssignmentId: undefined,
-      clientPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_director_client_access',
+      ),
     },
   };
 }
@@ -621,21 +637,54 @@ it.each([
       workspaceId: kind === 'Workspace' ? 'other' : actor.workspaceId,
       activeCompany: {
         ...actor.activeCompany,
-        ...(kind === 'recorder'
-          ? { taskResultRecorderAssignmentId: 'new-recorder' }
-          : {}),
-        ...(kind === 'reader'
-          ? { documentContentReaderAssignmentId: 'new-reader' }
-          : {}),
-        ...(kind === 'mission'
-          ? { missionDeliverableAccessAssignmentId: 'new-mission' }
-          : {}),
-        ...(kind === 'Project capture'
-          ? { projectPermissionAssignmentId: 'new-project-grant' }
-          : {}),
-        ...(kind === 'Document capture'
-          ? { documentPermissionAssignmentId: 'new-document-grant' }
-          : {}),
+        grants: withCompanyGrants(
+          actor.activeCompany.grants,
+          ...(kind === 'recorder'
+            ? [
+                {
+                  bundle: 'company_task_result_recorder',
+                  version: 'v1',
+                  assignmentId: 'new-recorder',
+                } as const,
+              ]
+            : []),
+          ...(kind === 'reader'
+            ? [
+                {
+                  bundle: 'company_document_content_reader',
+                  version: 'v1',
+                  assignmentId: 'new-reader',
+                } as const,
+              ]
+            : []),
+          ...(kind === 'mission'
+            ? [
+                {
+                  bundle: 'company_mission_deliverable_access',
+                  version: 'v1',
+                  assignmentId: 'new-mission',
+                } as const,
+              ]
+            : []),
+          ...(kind === 'Project capture'
+            ? [
+                {
+                  bundle: 'company_project_access',
+                  version: 'v2',
+                  assignmentId: 'new-project-grant',
+                } as const,
+              ]
+            : []),
+          ...(kind === 'Document capture'
+            ? [
+                {
+                  bundle: 'company_document_registrar',
+                  version: 'v3',
+                  assignmentId: 'new-document-grant',
+                } as const,
+              ]
+            : []),
+        ),
         ...(kind === 'Company' ? { id: 'other' } : {}),
       },
     };
@@ -668,8 +717,10 @@ it('reads history without Recorder and shows an authorized empty state separatel
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      taskResultPermissions: [],
-      taskResultRecorderAssignmentId: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_task_result_recorder',
+      ),
     },
   };
   let denied = false;

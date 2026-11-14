@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { expectedPilotActivities } from '../project/project-pilot-plan.test-fixtures';
 import { preparatoryLifecycle } from '../project/project-lifecycle.test-fixtures';
 export const companyId = '10000000-0000-4000-8000-000000000001',
@@ -42,14 +43,6 @@ export const actor = {
     taskPermissions: ['task.read', 'task.manage'],
     taskPermissionAssignmentId: 'task-grant',
     taskPermissionSetVersion: 'v1',
-    projectTemplatePermissions: [
-      'project.template.read',
-      'project.template.instantiate',
-      'project.template.pilot.read',
-      'project.template.pilot.instantiate',
-    ],
-    projectTemplatePermissionAssignmentId: 'template-grant',
-    projectTemplatePermissionSetVersion: 'v2',
     documentPermissions: [
       'document.read',
       'document.content.read',
@@ -61,17 +54,48 @@ export const actor = {
     documentContentReaderPermissionSetVersion: 'v1',
     missionDeliverableAccessAssignmentId: 'mission-grant',
     missionDeliverableAccessPermissionSetVersion: 'v1',
-    missionApplicabilityProposalPermissions: [
-      'project.mission_applicability.propose',
-    ],
-    missionApplicabilityCoordinatorAssignmentId: 'coordinator-grant',
-    missionApplicabilityCoordinatorPermissionSetVersion: 'v1',
-    missionApplicabilityDecisionPermissions: [
-      'project.mission_applicability.decide',
-      'project.mission_applicability.restore',
-    ],
-    missionApplicabilityApproverAssignmentId: 'approver-grant',
-    missionApplicabilityApproverPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'project-grant',
+      },
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      },
+      {
+        bundle: 'company_project_template_user',
+        version: 'v2',
+        assignmentId: 'template-grant',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'registrar-grant',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'content-grant',
+      },
+      {
+        bundle: 'company_mission_deliverable_access',
+        version: 'v1',
+        assignmentId: 'mission-grant',
+      },
+      {
+        bundle: 'company_mission_applicability_coordinator',
+        version: 'v1',
+        assignmentId: 'coordinator-grant',
+      },
+      {
+        bundle: 'company_mission_applicability_approver',
+        version: 'v1',
+        assignmentId: 'approver-grant',
+      },
+    ),
   },
 };
 export function snapshot() {

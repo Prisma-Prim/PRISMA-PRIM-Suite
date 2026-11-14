@@ -12,6 +12,10 @@ import { ProjectDocuments } from './ProjectDocuments';
 import { ProjectLifecycle } from './ProjectLifecycle';
 import { ProjectResponsible } from './ProjectResponsible';
 import { preparatoryLifecycle } from './project-lifecycle.test-fixtures';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const companyId = 'company';
 const projectId = 'project';
@@ -24,12 +28,11 @@ const company = {
   contractPermissions: ['commercial.contract.read'],
   contractPermissionAssignmentId: 'contract-grant',
   contractPermissionSetVersion: 'v1',
-  projectTemplatePermissions: [
-    'project.template.read',
-    'project.template.instantiate',
-  ],
-  projectTemplatePermissionAssignmentId: 'template-grant',
-  projectTemplatePermissionSetVersion: 'v1',
+  grants: companyGrants({
+    bundle: 'company_project_template_user',
+    version: 'v1',
+    assignmentId: 'template-grant',
+  }),
 } satisfies NonNullable<ActorContext['activeCompany']>;
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -46,7 +49,11 @@ const changedActor: ActorContext = {
   ...actor,
   activeCompany: {
     ...company,
-    projectTemplatePermissionAssignmentId: 'replacement-template-grant',
+    grants: withCompanyGrants(company.grants, {
+      bundle: 'company_project_template_user',
+      version: 'v1',
+      assignmentId: 'replacement-template-grant',
+    }),
   },
 };
 type Owner = 'lifecycle' | 'responsible' | 'documents' | 'contracts';

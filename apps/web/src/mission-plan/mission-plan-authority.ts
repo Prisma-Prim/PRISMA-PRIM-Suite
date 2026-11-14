@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 export function uuid(value: unknown): value is string {
   return (
     typeof value === 'string' &&
@@ -8,45 +9,21 @@ export function uuid(value: unknown): value is string {
   );
 }
 type Purpose = 'configure' | 'create' | 'copy';
-function capture(values: unknown, role: 'configuration' | 'user') {
-  if (!Array.isArray(values)) return null;
-  const rows: unknown[] = values;
-  const matches = rows.filter(
-    (value) =>
-      typeof value === 'object' &&
-      value !== null &&
-      'bundle' in value &&
-      value.bundle === `company_mission_plan_${role}`,
-  );
-  if (matches.length !== 1) return null;
-  const value = matches[0];
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    !('assignmentId' in value) ||
-    !uuid(value.assignmentId) ||
-    !('permissionSetVersion' in value) ||
-    value.permissionSetVersion !== 'v1' ||
-    !('permissions' in value) ||
-    !Array.isArray(value.permissions)
-  )
-    return null;
-  const permissions: unknown[] = value.permissions;
-  const expected = [
-    'project.mission_plan.read',
+function capture(
+  company: ActorContext['activeCompany'],
+  role: 'configuration' | 'user',
+) {
+  const grant = grantOf(
+    company,
     role === 'configuration'
-      ? 'project.mission_plan.publish'
-      : 'project.mission_plan.instantiate',
-  ];
-  if (
-    permissions.length !== 2 ||
-    !expected.every((p) => permissions.includes(p))
-  )
-    return null;
+      ? 'company_mission_plan_configuration'
+      : 'company_mission_plan_user',
+  );
+  if (!grant || !uuid(grant.assignmentId)) return null;
   return {
     role,
-    assignmentId: value.assignmentId.toLowerCase(),
-    version: 'v1',
+    assignmentId: grant.assignmentId.toLowerCase(),
+    version: grant.permissionSetVersion,
   };
 }
 /** Each region consumes only its own capture; unrelated grants preserve its owner. */
@@ -62,8 +39,8 @@ export function missionPlanAuthority(actor: ActorContext, purpose: Purpose) {
     ].every(uuid)
   )
     return null;
-  const config = capture(c.missionPlanGrants, 'configuration'),
-    user = capture(c.missionPlanGrants, 'user');
+  const config = capture(c, 'configuration'),
+    user = capture(c, 'user');
   const grant =
     purpose === 'create'
       ? user
@@ -77,34 +54,38 @@ export function missionPlanAuthority(actor: ActorContext, purpose: Purpose) {
     membershipId: actor.workspaceMembershipId,
     internalUserId: actor.internalUserId,
   };
+  const project = grantOf(c, 'company_project_access'),
+    task = grantOf(c, 'company_task_manager'),
+    client = grantOf(c, 'company_director_client_access');
   const native =
     purpose === 'configure'
       ? null
       : {
           projectPermissions:
             purpose === 'copy'
-              ? c.projectPermissions?.filter((p) => p === 'project.read')
-              : c.projectPermissions,
-          projectAssignment: c.projectPermissionAssignmentId,
-          projectVersion: c.projectPermissionSetVersion,
+              ? project?.permissions.filter((p) => p === 'project.read')
+              : project?.permissions,
+          projectAssignment: project?.assignmentId,
+          projectVersion: project?.permissionSetVersion,
           taskPermissions:
             purpose === 'copy'
-              ? c.taskPermissions?.filter((p) => p === 'task.read')
-              : c.taskPermissions,
-          taskAssignment: c.taskPermissionAssignmentId,
-          taskVersion: c.taskPermissionSetVersion,
-          clientPermissions: c.clientPermissions?.filter(
+              ? task?.permissions.filter((p) => p === 'task.read')
+              : task?.permissions,
+          taskAssignment: task?.assignmentId,
+          taskVersion: task?.permissionSetVersion,
+          clientPermissions: client?.permissions.filter(
             (p) => p === 'client.read',
           ),
-          clientAssignment: c.clientPermissionAssignmentId,
-          clientVersion: c.clientPermissionSetVersion,
+          clientAssignment: client?.assignmentId,
+          clientVersion: client?.permissionSetVersion,
           clientManage: actor.workspacePermissions.includes('client.manage'),
         };
   if (
     native &&
-    (!c.projectPermissions?.includes('project.read') ||
-      !c.taskPermissions?.includes('task.read') ||
-      (!native.clientManage && !c.clientPermissions?.includes('client.read')))
+    (!holds(c, 'company_project_access', 'project.read') ||
+      !holds(c, 'company_task_manager', 'task.read') ||
+      (!native.clientManage &&
+        !holds(c, 'company_director_client_access', 'client.read')))
   )
     return null;
   return {
@@ -112,10 +93,8 @@ export function missionPlanAuthority(actor: ActorContext, purpose: Purpose) {
     canPublish: config !== null,
     canCreate:
       purpose === 'create' &&
-      Boolean(
-        c.projectPermissions?.includes('project.create') &&
-        c.taskPermissions?.includes('task.manage'),
-      ),
+      holds(c, 'company_project_access', 'project.create') &&
+      holds(c, 'company_task_manager', 'task.manage'),
     key: JSON.stringify([base, grant, native]),
   };
 }

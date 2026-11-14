@@ -10,9 +10,10 @@ import {
   actor,
   source,
   cataloguePage,
-  userGrant,
+  userRequest,
   scope,
 } from '../mission-plan/mission-plan.fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { ContractProjectsPanel } from './ContractProjectsPanel';
 const identity = deterministicBrowserIdentity();
 afterEach(() => vi.unstubAllGlobals());
@@ -269,21 +270,13 @@ it.each(['company', 'session', 'grant'] as const)(
               ? '10000000-0000-4000-8000-000000000999'
               : scope.companyId,
           displayName: 'Synthetic Company',
-          missionPlanGrants:
+          grants:
             change === 'grant'
-              ? [
-                  {
-                    ...userGrant,
-                    bundle: 'company_mission_plan_user',
-                    assignmentId: '40000000-0000-4000-8000-000000000999',
-                    permissionSetVersion: 'v1',
-                    permissions: [
-                      'project.mission_plan.read',
-                      'project.mission_plan.instantiate',
-                    ],
-                  },
-                ]
-              : actor.activeCompany?.missionPlanGrants,
+              ? withCompanyGrants(actor.activeCompany?.grants, {
+                  ...userRequest,
+                  assignmentId: '40000000-0000-4000-8000-000000000999',
+                })
+              : actor.activeCompany?.grants,
         },
       };
       view.rerender(

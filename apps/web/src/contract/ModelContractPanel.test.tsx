@@ -1,7 +1,11 @@
 import {
   source as planSource,
-  userGrant,
+  userRequest,
 } from '../mission-plan/mission-plan.fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import {
   signingActor,
   approvedSigningContract,
@@ -558,12 +562,35 @@ it('wires scoped plan rejection through the actual Company-model Contract parent
       displayName: 'Synthetic Company',
       projectPermissions: ['project.read', 'project.create'],
       taskPermissions: ['task.read', 'task.manage'],
-      missionPlanGrants: [userGrant],
+      grants: companyGrants(
+        userRequest,
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'synthetic-project-access',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'synthetic-task-manager',
+        },
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'client-877',
+        },
+      ),
     },
   } satisfies typeof signingActor;
   const revised = {
       ...current,
-      activeCompany: { ...current.activeCompany, missionPlanGrants: [] },
+      activeCompany: {
+        ...current.activeCompany,
+        grants: withoutCompanyGrants(
+          current.activeCompany.grants,
+          'company_mission_plan_user',
+        ),
+      },
     },
     revalidated = vi.fn();
   const source = { ...planSource, companyId, workspaceId: current.workspaceId },

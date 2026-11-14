@@ -3,6 +3,7 @@ import {
   source as planSource,
   cataloguePage as planCatalogue,
 } from '../mission-plan/mission-plan.fixture';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { contractRecordedLocales } from '../test/contract-recorded-values-fixture';
 import { contractDirectMessages } from './contract-direct.copy';
 import { contractQualityLocales } from '../test/contract-quality-localization-fixture';
@@ -5934,7 +5935,7 @@ it('wires scoped plan rejection through the actual illustrative Contract parent 
         ...native.activeCompany,
         id: planSource.companyId,
         displayName: 'Synthetic Company',
-        missionPlanGrants: planActor.activeCompany?.missionPlanGrants,
+        grants: planActor.activeCompany?.grants,
         taskPermissions: ['task.read', 'task.manage'],
       },
     };
@@ -5944,7 +5945,11 @@ it('wires scoped plan rejection through the actual illustrative Contract parent 
         ...current.activeCompany,
         id: planSource.companyId,
         displayName: 'Synthetic Company',
-        missionPlanGrants: [],
+        grants: withoutCompanyGrants(
+          current.activeCompany?.grants,
+          'company_mission_plan_configuration',
+          'company_mission_plan_user',
+        ),
       },
     },
     revalidated = vi.fn();

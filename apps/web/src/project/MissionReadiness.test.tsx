@@ -8,6 +8,11 @@ import {
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { MissionReadiness } from './MissionReadiness';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { expectedPilotActivities } from './project-pilot-plan.test-fixtures';
 import {
   pilotTemplateKey,
@@ -27,17 +32,23 @@ const actor = {
   activeCompany: {
     id: 'company',
     displayName: 'Company',
-    documentPermissionAssignmentId: 'registrar',
-    documentPermissionSetVersion: 'v3',
-    documentPermissions: [
-      'document.read',
-      'document.content.read',
-      'document.mission_deliverable.access',
-    ],
-    documentContentReaderAssignmentId: 'reader',
-    documentContentReaderPermissionSetVersion: 'v1',
-    missionDeliverableAccessAssignmentId: 'mission',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'registrar',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'reader',
+      },
+      {
+        bundle: 'company_mission_deliverable_access',
+        version: 'v1',
+        assignmentId: 'mission',
+      },
+    ),
   },
 } satisfies ActorContext;
 const identity = deterministicBrowserIdentity();
@@ -122,7 +133,10 @@ it('retires held evidence across revoke/regrant while keeping independent Task f
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          documentContentReaderAssignmentId: undefined,
+          grants: withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_document_content_reader',
+          ),
         },
       }}
     />,
@@ -137,7 +151,11 @@ it('retires held evidence across revoke/regrant while keeping independent Task f
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          documentContentReaderAssignmentId: 'regranted',
+          grants: withCompanyGrants(actor.activeCompany.grants, {
+            bundle: 'company_document_content_reader',
+            version: 'v1',
+            assignmentId: 'regranted',
+          }),
         },
       }}
     />,

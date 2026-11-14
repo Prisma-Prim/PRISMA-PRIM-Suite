@@ -8,6 +8,7 @@ import {
 } from '../localization/interface-locale';
 import { changeValue } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
+import { companyGrants } from './company-grants.test-fixture';
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const companyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -241,14 +242,11 @@ it('revalidates self Template authority without retiring independent Client or P
           ...self,
           activeCompany: {
             ...self.activeCompany,
-            projectTemplatePermissionSetVersion: 'v2',
-            projectTemplatePermissionAssignmentId: 'new-grant',
-            projectTemplatePermissions: [
-              'project.template.read',
-              'project.template.instantiate',
-              'project.template.pilot.read',
-              'project.template.pilot.instantiate',
-            ],
+            grants: companyGrants({
+              bundle: 'company_project_template_user',
+              version: 'v2',
+              assignmentId: 'new-grant',
+            }),
           },
         });
       if (

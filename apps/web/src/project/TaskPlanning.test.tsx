@@ -18,6 +18,10 @@ import {
 } from '../localization/interface-locale';
 import { taskPlanningMessages } from './task-planning.copy';
 
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -34,6 +38,11 @@ const actor: ActorContext = {
     taskPermissions: ['task.read', 'task.manage'],
     taskPermissionAssignmentId: 'task-grant',
     taskPermissionSetVersion: 'v1',
+    grants: companyGrants({
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    }),
   },
 };
 const attribution = {
@@ -436,6 +445,14 @@ it.each(['Company', 'session', 'grant'])(
                           ? { id: 'company-b' }
                           : {
                               taskPermissionAssignmentId: 'replacement-grant',
+                              grants: withCompanyGrants(
+                                actor.activeCompany.grants,
+                                {
+                                  bundle: 'company_task_manager',
+                                  version: 'v1',
+                                  assignmentId: 'replacement-grant',
+                                },
+                              ),
                             }),
                       }
                     : undefined,

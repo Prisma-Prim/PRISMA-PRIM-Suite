@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import type { CopiedPilotTemplatePlan } from './project-template-response';
@@ -53,27 +54,13 @@ export function MissionResultReview(props: Props) {
     actor.active,
     actor.workspacePermissions.includes('client.manage'),
     c?.id,
-    c?.projectPermissionAssignmentId,
-    c?.projectPermissionSetVersion,
-    c?.projectPermissions,
-    c?.taskPermissionAssignmentId,
-    c?.taskPermissionSetVersion,
-    c?.taskPermissions,
-    c?.clientPermissionAssignmentId,
-    c?.clientPermissionSetVersion,
-    c?.clientPermissions,
-    c?.projectTemplatePermissionAssignmentId,
-    c?.projectTemplatePermissionSetVersion,
-    c?.projectTemplatePermissions,
-    c?.documentPermissionAssignmentId,
-    c?.documentPermissionSetVersion,
-    c?.documentPermissions?.includes('document.read'),
-    c?.documentPermissions?.includes('document.content.read'),
-    c?.documentPermissions?.includes('document.mission_deliverable.access'),
-    c?.documentContentReaderAssignmentId,
-    c?.documentContentReaderPermissionSetVersion,
-    c?.missionDeliverableAccessAssignmentId,
-    c?.missionDeliverableAccessPermissionSetVersion,
+    grantOf(c, 'company_project_access'),
+    grantOf(c, 'company_task_manager'),
+    grantOf(c, 'company_director_client_access'),
+    grantOf(c, 'company_project_template_user'),
+    grantOf(c, 'company_document_registrar'),
+    grantOf(c, 'company_document_content_reader'),
+    grantOf(c, 'company_mission_deliverable_access'),
   ]);
   return <MissionReviewScope key={key} {...props} />;
 }
@@ -96,9 +83,7 @@ function MissionReviewScope(props: Props) {
   });
   const company = props.actor.activeCompany;
   const reviewerKey = JSON.stringify([
-    company?.missionResultReviewPermissions,
-    company?.missionResultReviewerAssignmentId,
-    company?.missionResultReviewerPermissionSetVersion,
+    grantOf(company, 'company_mission_result_reviewer'),
   ]);
   if (scope.kind === 'sessionRefused')
     return (
@@ -284,17 +269,18 @@ function MissionReviewReader({
   const canWrite =
     deniedReviewerKey !== reviewerKey &&
     actor.active &&
-    company?.missionResultReviewerPermissionSetVersion === 'v1' &&
-    Boolean(company.missionResultReviewerAssignmentId) &&
-    company.missionResultReviewPermissions?.includes(
+    holds(
+      company,
+      'company_mission_result_reviewer',
       'project.mission_result.review',
     ) &&
-    company.projectTemplatePermissionSetVersion === 'v2' &&
-    company.projectTemplatePermissions?.includes(
+    holds(
+      company,
+      'company_project_template_user',
       'project.template.pilot.read',
     ) &&
-    company.taskPermissions?.includes('task.read') &&
-    company.projectPermissions?.includes('project.read');
+    holds(company, 'company_task_manager', 'task.read') &&
+    holds(company, 'company_project_access', 'project.read');
   return (
     <section
       className="project-template-plan mission-result-review"

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -44,8 +45,7 @@ type Mutation =
 
 export function canReadProjectTemplateCatalogue(actor: ActorContext) {
   return (
-    !!actor.activeCompany &&
-    actor.activeCompany.projectPermissions?.includes('project.read') === true &&
+    holds(actor.activeCompany, 'company_project_access', 'project.read') &&
     canUseProjectTemplate(actor)
   );
 }
@@ -56,13 +56,9 @@ export function projectTemplateConfigurationAuthority(actor: ActorContext) {
     actor.workspaceId,
     actor.workspaceMembershipId,
     company?.id,
-    company?.projectPermissions,
-    company?.projectTemplatePermissions,
-    company?.projectTemplatePermissionAssignmentId,
-    company?.projectTemplatePermissionSetVersion,
-    company?.projectTemplateConfigurationPermissions,
-    company?.projectTemplateConfigurationPermissionAssignmentId,
-    company?.projectTemplateConfigurationPermissionSetVersion,
+    grantOf(company, 'company_project_access')?.permissions,
+    grantOf(company, 'company_project_template_user'),
+    grantOf(company, 'company_project_template_configuration'),
   ]);
 }
 
@@ -117,13 +113,11 @@ function ConfigurationSection({
   const readRequest = useRef<AbortController | null>(null);
   const commandRequest = useRef<AbortController | null>(null);
   const companyId = actor.activeCompany?.id;
-  const canPublish =
-    actor.activeCompany?.projectTemplateConfigurationPermissionSetVersion ===
-      'v1' &&
-    !!actor.activeCompany.projectTemplateConfigurationPermissionAssignmentId &&
-    actor.activeCompany.projectTemplateConfigurationPermissions?.includes(
-      'project.template.version.create',
-    ) === true;
+  const canPublish = holds(
+    actor.activeCompany,
+    'company_project_template_configuration',
+    'project.template.version.create',
+  );
   const callbacks = useRef({
     onCatalogueChanged,
     onActivityRecorded,

@@ -1,19 +1,22 @@
 import type { ActorContext } from '../access-types';
-export const configGrant = {
+import {
+  companyGrants,
+  type CompanyGrantRequest,
+} from '../access/company-grants.test-fixture';
+export const configRequest = {
   bundle: 'company_mission_plan_configuration',
+  version: 'v1',
   assignmentId: '40000000-0000-4000-8000-000000000920',
-  permissionSetVersion: 'v1',
-  permissions: ['project.mission_plan.read', 'project.mission_plan.publish'],
-};
-export const userGrant = {
+} as const satisfies CompanyGrantRequest;
+export const userRequest = {
   bundle: 'company_mission_plan_user',
+  version: 'v1',
   assignmentId: '40000000-0000-4000-8000-000000000921',
-  permissionSetVersion: 'v1',
-  permissions: [
-    'project.mission_plan.read',
-    'project.mission_plan.instantiate',
-  ],
-};
+} as const satisfies CompanyGrantRequest;
+export const [configGrant, userGrant] = companyGrants(
+  configRequest,
+  userRequest,
+);
 export const actor: ActorContext = {
   internalUserId: '20000000-0000-4000-8000-000000000920',
   workspaceMembershipId: '30000000-0000-4000-8000-000000000920',
@@ -26,7 +29,27 @@ export const actor: ActorContext = {
   activeCompany: {
     id: '10000000-0000-4000-8000-000000000920',
     displayName: 'Synthetic Company',
-    missionPlanGrants: [configGrant, userGrant],
+    // No native Project, Task or Client assignment: their grants carry
+    // non-native assignment ids that no native check accepts.
+    grants: companyGrants(
+      configRequest,
+      userRequest,
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'synthetic-project-access',
+      },
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'synthetic-task-manager',
+      },
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'synthetic-client-access',
+      },
+    ),
     clientPermissions: ['client.read'],
     projectPermissions: ['project.read', 'project.create'],
     taskPermissions: ['task.read', 'task.manage'],

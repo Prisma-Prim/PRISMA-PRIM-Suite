@@ -1,5 +1,6 @@
 import type { ActorContext } from '../access-types';
-import { configGrant, userGrant } from './mission-plan.fixture';
+import { companyGrants } from '../access/company-grants.test-fixture';
+import { configRequest, userRequest } from './mission-plan.fixture';
 export const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 export const company = { id: id(1), displayName: 'Current Company DEMO' },
@@ -25,7 +26,41 @@ export function currentActor(companyId = company.id): ActorContext {
     workspacePermissions: ['client.manage', 'company.assignment.manage'],
     activeCompany: {
       ...(companyId === company.id ? company : otherCompany),
-      missionPlanGrants: [configGrant, userGrant],
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: id(11),
+        },
+        { bundle: 'company_task_manager', version: 'v1', assignmentId: id(13) },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v3',
+          assignmentId: id(14),
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: id(12),
+        },
+        {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: id(15),
+        },
+        {
+          bundle: 'company_task_result_recorder',
+          version: 'v1',
+          assignmentId: id(17),
+        },
+        {
+          bundle: 'company_mission_deliverable_access',
+          version: 'v1',
+          assignmentId: id(16),
+        },
+        configRequest,
+        userRequest,
+      ),
       clientPermissions: ['client.read'],
       clientPermissionAssignmentId: id(11),
       clientPermissionSetVersion: 'v2',
@@ -47,9 +82,6 @@ export function currentActor(companyId = company.id): ActorContext {
       documentContentReaderPermissionSetVersion: 'v1',
       missionDeliverableAccessAssignmentId: id(16),
       missionDeliverableAccessPermissionSetVersion: 'v1',
-      taskResultPermissions: ['task.result.record'],
-      taskResultRecorderAssignmentId: id(17),
-      taskResultRecorderPermissionSetVersion: 'v1',
     },
   };
 }

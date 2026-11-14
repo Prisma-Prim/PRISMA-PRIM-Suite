@@ -19,6 +19,10 @@ import {
   installParentServer,
 } from './test/mission-applicability-app-fixture';
 import { App } from './App';
+import {
+  withCompanyGrants,
+  type CompanyGrantRequest,
+} from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 
 beforeEach(() => {
@@ -172,22 +176,75 @@ async function prepareProposal(panel: HTMLElement) {
   );
 }
 
-const readCaptures = [
-  'clientPermissionAssignmentId',
-  'projectPermissionAssignmentId',
-  'taskPermissionAssignmentId',
-  'projectTemplatePermissionAssignmentId',
-  'documentPermissionAssignmentId',
-  'documentContentReaderAssignmentId',
-  'missionDeliverableAccessAssignmentId',
-] as const;
+const replacement = 'replacement-live-capture';
+const readCaptures: readonly {
+  field: string;
+  grant: CompanyGrantRequest;
+}[] = [
+  {
+    field: 'clientPermissionAssignmentId',
+    grant: {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: replacement,
+    },
+  },
+  {
+    field: 'projectPermissionAssignmentId',
+    grant: {
+      bundle: 'company_project_access',
+      version: 'v2',
+      assignmentId: replacement,
+    },
+  },
+  {
+    field: 'taskPermissionAssignmentId',
+    grant: {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: replacement,
+    },
+  },
+  {
+    field: 'projectTemplatePermissionAssignmentId',
+    grant: {
+      bundle: 'company_project_template_user',
+      version: 'v2',
+      assignmentId: replacement,
+    },
+  },
+  {
+    field: 'documentPermissionAssignmentId',
+    grant: {
+      bundle: 'company_document_registrar',
+      version: 'v3',
+      assignmentId: replacement,
+    },
+  },
+  {
+    field: 'documentContentReaderAssignmentId',
+    grant: {
+      bundle: 'company_document_content_reader',
+      version: 'v1',
+      assignmentId: replacement,
+    },
+  },
+  {
+    field: 'missionDeliverableAccessAssignmentId',
+    grant: {
+      bundle: 'company_mission_deliverable_access',
+      version: 'v1',
+      assignmentId: replacement,
+    },
+  },
+];
 it.each(
-  readCaptures.flatMap((field) =>
-    [200, 403].map((status) => ({ field, status })),
+  readCaptures.flatMap((capture) =>
+    [200, 403].map((status) => ({ ...capture, status })),
   ),
 )(
   'retires original HTTP $status after actual App accepts an equal-permission replacement $field, without stale render or Actor/Company/Activity effects',
-  async ({ field, status }) => {
+  async ({ field, grant, status }) => {
     const initial =
       field === 'clientPermissionAssignmentId'
         ? {
@@ -198,6 +255,11 @@ it.each(
               clientPermissions: ['client.read'],
               clientPermissionAssignmentId: 'client-capture-demo',
               clientPermissionSetVersion: 'v1',
+              grants: withCompanyGrants(actor.activeCompany.grants, {
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'client-capture-demo',
+              }),
             },
           }
         : administrator;
@@ -206,7 +268,8 @@ it.each(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...initial.activeCompany,
-        [field]: 'replacement-live-capture',
+        ...(field in initial.activeCompany ? { [field]: replacement } : {}),
+        grants: withCompanyGrants(initial.activeCompany.grants, grant),
       },
     };
     let hold = false,
@@ -280,7 +343,11 @@ it.each([200, 403])(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...actor.activeCompany,
-        missionApplicabilityCoordinatorAssignmentId: 'coordinator-regrant-demo',
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_mission_applicability_coordinator',
+          version: 'v1',
+          assignmentId: 'coordinator-regrant-demo',
+        }),
       },
     };
     let finish: ((response: Response) => void) | undefined;
@@ -353,9 +420,11 @@ it.each(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...actor.activeCompany,
-        missionResultReviewPermissions: ['project.mission_result.review'],
-        missionResultReviewerAssignmentId: 'reviewer-fresh-demo',
-        missionResultReviewerPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_mission_result_reviewer',
+          version: 'v1',
+          assignmentId: 'reviewer-fresh-demo',
+        }),
       },
     };
     let denied = false,
@@ -415,7 +484,11 @@ it.each([200, 403])(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...actor.activeCompany,
-        missionApplicabilityApproverAssignmentId: 'approver-regrant-demo',
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_mission_applicability_approver',
+          version: 'v1',
+          assignmentId: 'approver-regrant-demo',
+        }),
       },
     };
     let finish: ((response: Response) => void) | undefined,
@@ -621,9 +694,11 @@ it('conserves a pending proposal through an unrelated Reviewer grant, accepts it
     displayName: 'Fresh parent Actor DEMO',
     activeCompany: {
       ...actor.activeCompany,
-      missionResultReviewPermissions: ['project.mission_result.review'],
-      missionResultReviewerAssignmentId: 'unrelated-reviewer-demo',
-      missionResultReviewerPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(actor.activeCompany.grants, {
+        bundle: 'company_mission_result_reviewer',
+        version: 'v1',
+        assignmentId: 'unrelated-reviewer-demo',
+      }),
     },
   };
   let finish: ((response: Response) => void) | undefined,

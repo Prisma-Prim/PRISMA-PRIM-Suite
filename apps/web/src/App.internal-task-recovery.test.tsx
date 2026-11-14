@@ -19,6 +19,7 @@ import {
   openInternalTaskApp,
   publishInternalActor,
 } from './test/internal-task-app';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -58,9 +59,11 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'])(
       displayName: 'Fresh independent Actor DEMO',
       activeCompany: {
         ...internalTaskActor.activeCompany,
-        missionResultReviewPermissions: ['project.mission_result.review'],
-        missionResultReviewerAssignmentId: 'independent-reviewer',
-        missionResultReviewerPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(internalTaskActor.activeCompany.grants, {
+          bundle: 'company_mission_result_reviewer',
+          version: 'v1',
+          assignmentId: 'independent-reviewer',
+        }),
       },
     };
     server.setNextActor(fresh);
@@ -147,9 +150,11 @@ it.each(
       displayName: 'Fresh recovery Actor DEMO',
       activeCompany: {
         ...internalTaskActor.activeCompany,
-        missionResultReviewPermissions: ['project.mission_result.review'],
-        missionResultReviewerAssignmentId: 'fresh-recovery-reviewer',
-        missionResultReviewerPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(internalTaskActor.activeCompany.grants, {
+          bundle: 'company_mission_result_reviewer',
+          version: 'v1',
+          assignmentId: 'fresh-recovery-reviewer',
+        }),
       },
     };
     const server = installInternalTaskApp(async (path, init) => {
