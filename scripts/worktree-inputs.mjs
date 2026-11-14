@@ -297,7 +297,40 @@ export function watchPreparationInputs(root, inputs) {
   };
 }
 
+function assertOwnedHardlinks(root) {
+  const identities = new Map();
+  const inspect = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (['.git', '.worktrees', '.claude', '.pnpm-home'].includes(entry.name))
+        continue;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) inspect(path);
+      else if (entry.isFile()) {
+        const file = lstatSync(path, { bigint: true });
+        if (file.nlink > 1n) {
+          const key = `${file.dev}:${file.ino}`;
+          const seen = identities.get(key);
+          if (seen && seen.links !== file.nlink)
+            throw new PreparationError(
+              'Dependency link ownership changed during inspection.',
+            );
+          identities.set(key, {
+            links: file.nlink,
+            owned: (seen?.owned ?? 0n) + 1n,
+          });
+        }
+      }
+    }
+  };
+  inspect(root);
+  if ([...identities.values()].some((file) => file.owned !== file.links))
+    throw new PreparationError(
+      'Files have hardlinks outside the private worktree. Preserve this installation and prepare a fresh isolated target.',
+    );
+}
+
 export function privateModules(root) {
+  assertOwnedHardlinks(root);
   const metadata = [];
   const visit = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {

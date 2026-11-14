@@ -14,7 +14,7 @@ The result is one JSON object: `prepared` means the frozen installation and base
 
 ## Isolation and cache
 
-Every target owns its `node_modules`, virtual store, mutable pnpm metadata, links and shims. Package imports use copies, so changing installed bytes in one target cannot change a peer's package bytes through hardlinks. Existing module roots or dependency links pointing outside the target are refused before invoking pnpm. Preserve an old shared installation; stop its consumers and detach only links whose ownership and intended target you have established before retrying.
+Every target owns its `node_modules`, virtual store, mutable pnpm metadata, links and shims. Package imports use copies, so changing installed bytes in one target cannot change a peer's package bytes through hardlinks. Existing module roots or dependency links pointing outside the target are refused before invoking pnpm. Read-only inode accounting also refuses hardlinks whose other names cannot all be accounted for inside the qualified worktree. Fully internal hardlinks remain supported. `--refresh` does not detach existing hardlinks; preserve an unqualified installation and prepare a fresh isolated target. Preserve an old shared installation; stop its consumers and detach only links whose ownership and intended target you have established before retrying.
 
 `--store DIR` selects pnpm's supported shared content-addressable store outside every worktree; without it pnpm uses its normal configured store, subject to the same boundary. `--offline` requires package contents already available there; a cache's existence alone is not that proof. Missing contents fail the normal frozen install. There is no global dependency-check bypass, installer replacement or runtime upgrade.
 

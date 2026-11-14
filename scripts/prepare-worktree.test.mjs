@@ -6,6 +6,7 @@ import {
   chmodSync,
   copyFileSync,
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -843,5 +844,71 @@ test('the normalized global pnpm hook setting never qualifies for automatic reus
   const changed = prepare(f);
   assert.equal(changed.status, 2, changed.stderr);
   assert.match(changed.stderr, /--refresh/u);
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+});
+
+test('existing external hardlinks are refused before refresh without changing either name', () => {
+  const f = fixture();
+  git(
+    f.repo,
+    'worktree',
+    'add',
+    '--quiet',
+    '-b',
+    'feat/synthetic',
+    f.target,
+    'main',
+  );
+  const installed = spawnSync(
+    'bash',
+    [
+      'scripts/agent-pnpm.sh',
+      'install',
+      '--frozen-lockfile',
+      '--offline',
+      '--package-import-method=copy',
+      `--store-dir=${f.store}`,
+    ],
+    { cwd: f.target, encoding: 'utf8', timeout: 30000 },
+  );
+  assert.equal(installed.status, 0, installed.stderr);
+  const dependency = join(
+    f.target,
+    'node_modules/synthetic-dependency/index.cjs',
+  );
+  const external = join(f.parent, 'external.cjs');
+  const original = readFileSync(dependency);
+  linkSync(dependency, external);
+  const result = prepare(f, ['--refresh']);
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /hardlink/iu);
+  assert.deepEqual(readFileSync(dependency), original);
+  assert.deepEqual(readFileSync(external), original);
+  assert.equal(existsSync(f.counter), false);
+});
+
+test('an external hardlink added after readiness prevents automatic reuse', () => {
+  const f = fixture();
+  assert.equal(prepare(f).status, 0);
+  linkSync(
+    join(f.target, 'node_modules/synthetic-dependency/index.cjs'),
+    join(f.parent, 'later-external.cjs'),
+  );
+  const result = prepare(f);
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /hardlink/iu);
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+});
+
+test('fully internal hardlinks remain private and can reuse qualification', () => {
+  const f = fixture();
+  assert.equal(prepare(f).status, 0);
+  linkSync(
+    join(f.target, 'node_modules/synthetic-dependency/index.cjs'),
+    join(f.target, 'node_modules/internal.cjs'),
+  );
+  const result = prepare(f);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).status, 'ready');
   assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
 });
