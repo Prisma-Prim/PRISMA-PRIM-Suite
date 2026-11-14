@@ -13,10 +13,16 @@ import {
   source,
   scope,
   userGrant,
-  configGrant,
+  userRequest,
   cataloguePage,
 } from './mission-plan.fixture';
 import { missionPlanAuthority } from './mission-plan-authority';
+import type { CompanyGrant } from '../access/company-grants';
+import { readCurrentActor } from '../access/current-actor';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 const identity = deterministicBrowserIdentity();
 afterEach(() => vi.unstubAllGlobals());
 function response(value: unknown, status = 200) {
@@ -294,13 +300,10 @@ it('preserves a configuration draft through an unrelated User capture change', (
           ...actor.activeCompany,
           id: scope.companyId,
           displayName: 'Synthetic Company',
-          missionPlanGrants: [
-            configGrant,
-            {
-              ...userGrant,
-              assignmentId: '40000000-0000-4000-8000-000000000999',
-            },
-          ],
+          grants: withCompanyGrants(actor.activeCompany?.grants, {
+            ...userRequest,
+            assignmentId: '40000000-0000-4000-8000-000000000999',
+          }),
         },
       }}
       identity={identity}
@@ -308,37 +311,61 @@ it('preserves a configuration draft through an unrelated User capture change', (
   );
   expect(screen.getByLabelText('Plan name')).toHaveValue('Literal plan');
 });
-it('validates known complete consumed captures and preserves the independent creation owner when configuration changes', () => {
+it('validates known complete consumed captures and preserves the independent creation owner when configuration changes', async () => {
   const native = actor.activeCompany;
   if (!native) throw new Error('Missing Company');
+  const withGrants = (grants: CompanyGrant[]) => ({
+    ...actor,
+    activeCompany: { ...native, grants },
+  });
   const a = missionPlanAuthority(actor, 'create');
   expect(
     missionPlanAuthority(
-      {
-        ...actor,
-        activeCompany: { ...native, missionPlanGrants: [userGrant] },
-      },
+      withGrants(
+        withoutCompanyGrants(
+          native.grants,
+          'company_mission_plan_configuration',
+        ),
+      ),
       'create',
     )?.key,
   ).toBe(a?.key);
-  for (const grant of [
-    null,
+  for (const grants of [
+    withoutCompanyGrants(
+      native.grants,
+      'company_mission_plan_configuration',
+      'company_mission_plan_user',
+    ),
+    withCompanyGrants(native.grants, { ...userRequest, assignmentId: 'x' }),
+  ])
+    expect(missionPlanAuthority(withGrants(grants), 'create')).toBeNull();
+  // An unknown version or permission set refuses the whole current Actor (#1332).
+  const read = (value: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value }) },
+    });
+  expect((await read(actor)).status).toBe('ok');
+  for (const malformed of [
     { ...userGrant, permissionSetVersion: 'v9' },
     { ...userGrant, permissions: ['project.mission_plan.read'] },
-    { ...userGrant, assignmentId: 'x' },
   ])
     expect(
-      missionPlanAuthority(
-        { ...actor, activeCompany: { ...native, missionPlanGrants: [grant] } },
-        'create',
-      ),
-    ).toBeNull();
+      await read({
+        ...actor,
+        activeCompany: {
+          ...native,
+          grants: [
+            ...withoutCompanyGrants(native.grants, 'company_mission_plan_user'),
+            malformed,
+          ],
+        },
+      }),
+    ).toEqual({ status: 'error' });
   expect(
     missionPlanAuthority(
-      {
-        ...actor,
-        activeCompany: { ...native, missionPlanGrants: [configGrant] },
-      },
+      withGrants(
+        withoutCompanyGrants(native.grants, 'company_mission_plan_user'),
+      ),
       'create',
     ),
   ).toBeNull();
@@ -428,7 +455,10 @@ it('retires a denied creation source immediately and forwards current actor whil
           ...actor,
           activeCompany: {
             ...actor.activeCompany,
-            missionPlanGrants: [configGrant],
+            grants: withoutCompanyGrants(
+              actor.activeCompany?.grants,
+              'company_mission_plan_user',
+            ),
           },
         });
       if (init.method === 'POST') return response({}, 403);

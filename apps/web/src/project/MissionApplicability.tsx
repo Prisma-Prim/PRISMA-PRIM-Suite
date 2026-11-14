@@ -1,6 +1,7 @@
 import { useApplicabilityHistory } from './use-applicability-history';
 import { ApplicabilityHistoryView } from './ApplicabilityHistoryView';
 import { clientReadAuthority } from './project-authority';
+import { grantOf, holds } from '../access/company-grants';
 import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -39,6 +40,12 @@ interface Props {
 }
 function readAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
+  const project = grantOf(c, 'company_project_access'),
+    task = grantOf(c, 'company_task_manager'),
+    template = grantOf(c, 'company_project_template_user'),
+    registrar = grantOf(c, 'company_document_registrar'),
+    contentReader = grantOf(c, 'company_document_content_reader'),
+    missionDeliverable = grantOf(c, 'company_mission_deliverable_access');
   return [
     actor.active,
     actor.internalUserId,
@@ -46,64 +53,60 @@ function readAuthority(actor: ActorContext) {
     actor.workspaceMembershipId,
     clientReadAuthority(actor),
     c?.id,
-    c?.projectPermissions?.includes('project.read'),
-    c?.projectPermissionAssignmentId,
-    c?.projectPermissionSetVersion,
-    c?.taskPermissions?.includes('task.read'),
-    c?.taskPermissionAssignmentId,
-    c?.taskPermissionSetVersion,
-    c?.projectTemplatePermissions?.includes('project.template.read'),
-    c?.projectTemplatePermissions?.includes('project.template.pilot.read'),
-    c?.projectTemplatePermissionAssignmentId,
-    c?.projectTemplatePermissionSetVersion,
-    c?.documentPermissions?.includes('document.read'),
-    c?.documentPermissionAssignmentId,
-    c?.documentPermissionSetVersion,
-    c?.documentPermissions?.includes('document.content.read'),
-    c?.documentContentReaderAssignmentId,
-    c?.documentContentReaderPermissionSetVersion,
-    c?.documentPermissions?.includes('document.mission_deliverable.access'),
-    c?.missionDeliverableAccessAssignmentId,
-    c?.missionDeliverableAccessPermissionSetVersion,
+    holds(c, 'company_project_access', 'project.read'),
+    project?.assignmentId,
+    project?.permissionSetVersion,
+    holds(c, 'company_task_manager', 'task.read'),
+    task?.assignmentId,
+    task?.permissionSetVersion,
+    holds(c, 'company_project_template_user', 'project.template.read'),
+    holds(c, 'company_project_template_user', 'project.template.pilot.read'),
+    template?.assignmentId,
+    template?.permissionSetVersion,
+    holds(c, 'company_document_registrar', 'document.read'),
+    registrar?.assignmentId,
+    registrar?.permissionSetVersion,
+    holds(c, 'company_document_content_reader', 'document.content.read'),
+    contentReader?.assignmentId,
+    contentReader?.permissionSetVersion,
+    holds(
+      c,
+      'company_mission_deliverable_access',
+      'document.mission_deliverable.access',
+    ),
+    missionDeliverable?.assignmentId,
+    missionDeliverable?.permissionSetVersion,
   ];
 }
 function coordinatorAuthority(actor: ActorContext) {
-  const c = actor.activeCompany;
   return JSON.stringify([
-    c?.missionApplicabilityProposalPermissions,
-    c?.missionApplicabilityCoordinatorAssignmentId,
-    c?.missionApplicabilityCoordinatorPermissionSetVersion,
+    grantOf(actor.activeCompany, 'company_mission_applicability_coordinator'),
   ]);
 }
 function approverAuthority(actor: ActorContext) {
-  const c = actor.activeCompany;
   return JSON.stringify([
-    c?.missionApplicabilityDecisionPermissions,
-    c?.missionApplicabilityApproverAssignmentId,
-    c?.missionApplicabilityApproverPermissionSetVersion,
+    grantOf(actor.activeCompany, 'company_mission_applicability_approver'),
   ]);
 }
 function canCoordinate(actor: ActorContext) {
-  const c = actor.activeCompany;
-  return Boolean(
-    c?.missionApplicabilityCoordinatorAssignmentId &&
-    c.missionApplicabilityCoordinatorPermissionSetVersion === 'v1' &&
-    c.missionApplicabilityProposalPermissions?.includes(
-      'project.mission_applicability.propose',
-    ),
+  return holds(
+    actor.activeCompany,
+    'company_mission_applicability_coordinator',
+    'project.mission_applicability.propose',
   );
 }
 function canDecide(actor: ActorContext) {
-  const c = actor.activeCompany;
-  return Boolean(
-    c?.missionApplicabilityApproverAssignmentId &&
-    c.missionApplicabilityApproverPermissionSetVersion === 'v1' &&
-    c.missionApplicabilityDecisionPermissions?.includes(
+  return (
+    holds(
+      actor.activeCompany,
+      'company_mission_applicability_approver',
       'project.mission_applicability.decide',
     ) &&
-    c.missionApplicabilityDecisionPermissions.includes(
+    holds(
+      actor.activeCompany,
+      'company_mission_applicability_approver',
       'project.mission_applicability.restore',
-    ),
+    )
   );
 }
 

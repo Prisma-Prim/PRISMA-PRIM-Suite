@@ -21,6 +21,10 @@ import {
   templateFixture,
 } from './project/project-template.test-fixtures';
 
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
 const companyId = '10000000-0000-4000-8000-000000000001';
 const clientId = '20000000-0000-4000-8000-000000000001';
 const projectId = '30000000-0000-4000-8000-000000000001';
@@ -32,6 +36,18 @@ const company = {
   taskPermissions: ['task.read', 'task.manage'],
   taskPermissionAssignmentId: 'task-grant',
   taskPermissionSetVersion: 'v1',
+  grants: companyGrants(
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+    {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    },
+  ),
 } satisfies NonNullable<ActorContext['activeCompany']>;
 const ordinaryActor: ActorContext = {
   internalUserId: 'owner',
@@ -48,15 +64,19 @@ const templateActor: ActorContext = {
   ...ordinaryActor,
   activeCompany: {
     ...company,
-    projectStagePermissions: ['project.stage.advance'],
-    projectStagePermissionAssignmentId: 'stage-grant',
-    projectStagePermissionSetVersion: 'v1',
-    projectTemplatePermissions: [
-      'project.template.read',
-      'project.template.instantiate',
-    ],
-    projectTemplatePermissionAssignmentId: 'template-grant',
-    projectTemplatePermissionSetVersion: 'v1',
+    grants: withCompanyGrants(
+      company.grants,
+      {
+        bundle: 'company_project_stage_advancer',
+        version: 'v1',
+        assignmentId: 'stage-grant',
+      },
+      {
+        bundle: 'company_project_template_user',
+        version: 'v1',
+        assignmentId: 'template-grant',
+      },
+    ),
   },
 };
 const project = {
@@ -328,12 +348,11 @@ it.each(['Template', 'Stage', 'Configuration'] as const)(
               ...templateActor,
               activeCompany: {
                 ...company,
-                projectTemplatePermissions: [
-                  'project.template.read',
-                  'project.template.instantiate',
-                ],
-                projectTemplatePermissionAssignmentId: 'template-grant',
-                projectTemplatePermissionSetVersion: 'v1',
+                grants: withCompanyGrants(company.grants, {
+                  bundle: 'company_project_template_user',
+                  version: 'v1',
+                  assignmentId: 'template-grant',
+                }),
               },
             };
     const initialActor: ActorContext =
@@ -345,12 +364,11 @@ it.each(['Template', 'Stage', 'Configuration'] as const)(
               id: companyId,
               displayName: company.displayName,
               clientPermissions: [],
-              projectTemplateConfigurationPermissions: [
-                'project.template.version.create',
-              ],
-              projectTemplateConfigurationPermissionAssignmentId:
-                'configuration-grant',
-              projectTemplateConfigurationPermissionSetVersion: 'v1',
+              grants: withCompanyGrants(templateActor.activeCompany?.grants, {
+                bundle: 'company_project_template_configuration',
+                version: 'v1',
+                assignmentId: 'configuration-grant',
+              }),
             },
           }
         : templateActor;
@@ -585,15 +603,19 @@ it('shows a blocked copied stage then explicitly advances with an unchanged retr
     activeCompany: {
       ...templateActor.activeCompany,
       ...company,
-      projectTemplatePermissions: [
-        'project.template.read',
-        'project.template.instantiate',
-      ],
-      projectTemplatePermissionAssignmentId: 'template-grant',
-      projectTemplatePermissionSetVersion: 'v1',
-      projectStagePermissions: ['project.stage.advance'],
-      projectStagePermissionAssignmentId: 'stage-grant',
-      projectStagePermissionSetVersion: 'v1',
+      grants: withCompanyGrants(
+        company.grants,
+        {
+          bundle: 'company_project_template_user',
+          version: 'v1',
+          assignmentId: 'template-grant',
+        },
+        {
+          bundle: 'company_project_stage_advancer',
+          version: 'v1',
+          assignmentId: 'stage-grant',
+        },
+      ),
     },
   };
   let done = false;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import type { CopiedPilotTemplatePlan } from './project-template-response';
@@ -51,18 +52,10 @@ export function MissionReadiness(props: Props) {
     actor.active,
     actor.workspacePermissions.includes('client.manage'),
     company?.id,
-    company?.projectPermissionAssignmentId,
-    company?.projectPermissionSetVersion,
-    company?.projectPermissions,
-    company?.taskPermissionAssignmentId,
-    company?.taskPermissionSetVersion,
-    company?.taskPermissions,
-    company?.clientPermissionAssignmentId,
-    company?.clientPermissionSetVersion,
-    company?.clientPermissions,
-    company?.projectTemplatePermissionAssignmentId,
-    company?.projectTemplatePermissionSetVersion,
-    company?.projectTemplatePermissions,
+    grantOf(company, 'company_project_access'),
+    grantOf(company, 'company_task_manager'),
+    grantOf(company, 'company_director_client_access'),
+    grantOf(company, 'company_project_template_user'),
   ]);
   return <MissionReadinessOwner key={key} {...props} />;
 }
@@ -79,17 +72,9 @@ function MissionReadinessOwner({
     taskCopy = useProjectTaskCopy();
   const company = actor.activeCompany;
   const evidenceKey = JSON.stringify([
-    company?.documentPermissionAssignmentId,
-    company?.documentPermissionSetVersion,
-    company?.documentPermissions?.includes('document.read'),
-    company?.documentPermissions?.includes('document.content.read'),
-    company?.documentPermissions?.includes(
-      'document.mission_deliverable.access',
-    ),
-    company?.documentContentReaderAssignmentId,
-    company?.documentContentReaderPermissionSetVersion,
-    company?.missionDeliverableAccessAssignmentId,
-    company?.missionDeliverableAccessPermissionSetVersion,
+    grantOf(company, 'company_document_registrar'),
+    grantOf(company, 'company_document_content_reader'),
+    grantOf(company, 'company_mission_deliverable_access'),
   ]);
   const [evidence, setEvidence] = useState({ key: evidenceKey, generation: 0 });
   if (evidence.key !== evidenceKey)

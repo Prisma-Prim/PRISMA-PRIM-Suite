@@ -14,6 +14,7 @@ import {
 } from './test/mission-applicability-app-fixture';
 import { openDistantHistory } from './test/mission-applicability-history-app';
 import { preferenceKey } from './production-shell/company-context-preference';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 
 beforeEach(() => {
   localStorage.clear();
@@ -312,9 +313,11 @@ it('preserves its held read and native drafts after an unrelated Reviewer grant 
     displayName: 'Fresh parent Actor DEMO',
     activeCompany: {
       ...actor.activeCompany,
-      missionResultReviewPermissions: ['project.mission_result.review'],
-      missionResultReviewerAssignmentId: 'unrelated-reviewer-demo',
-      missionResultReviewerPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(actor.activeCompany.grants, {
+        bundle: 'company_mission_result_reviewer',
+        version: 'v1',
+        assignmentId: 'unrelated-reviewer-demo',
+      }),
     },
   };
   let current: unknown = administrator,

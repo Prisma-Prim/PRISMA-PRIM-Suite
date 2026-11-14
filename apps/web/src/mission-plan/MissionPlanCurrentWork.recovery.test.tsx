@@ -11,6 +11,7 @@ import {
 } from '../test/render-with-interface-locale';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { MissionPlanCurrentWork } from './MissionPlanCurrentWork';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   currentActor,
   currentOverview,
@@ -138,7 +139,11 @@ it.each(
     const next = currentActor(change === 'company' ? id(2) : undefined);
     if (!next.activeCompany) throw new Error('Missing synthetic Company.');
     if (change === 'result')
-      next.activeCompany.documentContentReaderAssignmentId = id(90);
+      next.activeCompany.grants = withCompanyGrants(next.activeCompany.grants, {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: id(90),
+      });
     if (change === 'unmount') view.unmount();
     else {
       view.rerender(
@@ -185,7 +190,14 @@ it.each(
       const restored = currentActor();
       if (!restored.activeCompany)
         throw new Error('Missing synthetic Company.');
-      restored.activeCompany.documentContentReaderAssignmentId = id(91);
+      restored.activeCompany.grants = withCompanyGrants(
+        restored.activeCompany.grants,
+        {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: id(91),
+        },
+      );
       view.rerender(<MissionPlanCurrentWork {...props} actor={restored} />);
     }
     // A genuine whole403 already removed the old page. The reopened child is fresh.
@@ -222,7 +234,11 @@ it('keeps a ready later page and exact Task continuation through optional-result
   });
   const next = currentActor();
   if (!next.activeCompany) throw new Error('Missing synthetic Company.');
-  next.activeCompany.documentContentReaderAssignmentId = id(90);
+  next.activeCompany.grants = withCompanyGrants(next.activeCompany.grants, {
+    bundle: 'company_document_content_reader',
+    version: 'v1',
+    assignmentId: id(90),
+  });
   view.rerender(<MissionPlanCurrentWork {...props} actor={next} />);
   view.rerender(<MissionPlanCurrentWork {...props} />);
   await screen.findByText('Current declaration 26 Ж / é');

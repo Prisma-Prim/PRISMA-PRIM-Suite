@@ -13,6 +13,7 @@ import {
   type StageProgress,
 } from './project-stage-response';
 import { projectTemplateAuthority } from './ProjectTemplate';
+import { grantOf, holds } from '../access/company-grants';
 
 type Props = {
   actor: ActorContext;
@@ -36,13 +37,9 @@ export function ProjectStage(props: Props) {
   const authority = JSON.stringify([
     projectTemplateAuthority(props.actor),
     props.actor.internalUserId,
-    company?.clientPermissionAssignmentId,
-    company?.clientPermissionSetVersion,
-    company?.clientPermissions,
+    grantOf(company, 'company_director_client_access'),
     props.actor.workspacePermissions,
-    company?.projectStagePermissionAssignmentId,
-    company?.projectStagePermissionSetVersion,
-    company?.projectStagePermissions,
+    grantOf(company, 'company_project_stage_advancer'),
   ]);
   return <StageSection key={`${props.projectId}:${authority}`} {...props} />;
 }
@@ -59,10 +56,11 @@ function StageSection({
   const readRequest = useRef<AbortController | null>(null);
   const commandRequest = useRef<AbortController | null>(null);
   const company = actor.activeCompany;
-  const canAdvance =
-    company?.projectStagePermissionSetVersion === 'v1' &&
-    !!company.projectStagePermissionAssignmentId &&
-    company.projectStagePermissions?.includes('project.stage.advance') === true;
+  const canAdvance = holds(
+    company,
+    'company_project_stage_advancer',
+    'project.stage.advance',
+  );
   const companyId = company?.id;
   const path = `/projects/${encodeURIComponent(projectId)}`;
   function retire() {

@@ -18,6 +18,7 @@ import { ProjectWorkspace } from './ProjectWorkspace';
 import { preparatoryLifecycle } from './project-lifecycle.test-fixtures';
 import { templateFixture } from './project-template.test-fixtures';
 
+import { companyGrants } from '../access/company-grants.test-fixture';
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -527,15 +528,26 @@ it.each(['manual', 'template'] as const)(
               ...actor.activeCompany,
               id: 'company',
               displayName: 'PRISMA-PRIM',
-              projectTemplatePermissions: [
-                'project.template.read',
-                'project.template.instantiate',
-              ],
-              projectTemplatePermissionAssignmentId: 'template-grant',
-              projectTemplatePermissionSetVersion: 'v1',
               taskPermissions: ['task.read', 'task.manage'],
               taskPermissionAssignmentId: 'task-grant',
               taskPermissionSetVersion: 'v1',
+              grants: companyGrants(
+                {
+                  bundle: 'company_project_access',
+                  version: 'v1',
+                  assignmentId: 'project-grant',
+                },
+                {
+                  bundle: 'company_task_manager',
+                  version: 'v1',
+                  assignmentId: 'task-grant',
+                },
+                {
+                  bundle: 'company_project_template_user',
+                  version: 'v1',
+                  assignmentId: 'template-grant',
+                },
+              ),
             },
           };
     const writes: RequestRecord[] = [];

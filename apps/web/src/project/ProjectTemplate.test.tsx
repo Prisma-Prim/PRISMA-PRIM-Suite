@@ -21,6 +21,10 @@ import {
   copiedPlanFixture,
   templateFixture,
 } from './project-template.test-fixtures';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -36,6 +40,11 @@ const actor: ActorContext = {
     displayName: 'Company',
     clientPermissions: [],
     projectPermissions: ['project.read'],
+    grants: companyGrants({
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project',
+    }),
   },
 };
 const identity = deterministicBrowserIdentity();
@@ -187,6 +196,11 @@ it('discards the old Company’s late catalogue reply after moving to a Company 
       displayName: 'Other Company',
       clientPermissions: [],
       projectPermissions: ['project.read'],
+      grants: companyGrants({
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project',
+      }),
     },
   };
   view.rerender(
@@ -219,14 +233,18 @@ it('offers the explicitly captured pilot model and renders thirteen preserved ac
       displayName: 'Company',
       clientPermissions: [],
       projectPermissions: ['project.read'],
-      projectTemplatePermissionAssignmentId: 'grant-v2',
-      projectTemplatePermissionSetVersion: 'v2',
-      projectTemplatePermissions: [
-        'project.template.read',
-        'project.template.instantiate',
-        'project.template.pilot.read',
-        'project.template.pilot.instantiate',
-      ],
+      grants: companyGrants(
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project',
+        },
+        {
+          bundle: 'company_project_template_user',
+          version: 'v2',
+          assignmentId: 'grant-v2',
+        },
+      ),
     },
   };
   const choose = vi.fn();
@@ -292,14 +310,18 @@ it('lets a source-only v2 reader inspect the pilot before creation and preserves
       displayName: 'Company',
       clientPermissions: [],
       projectPermissions: ['project.read'],
-      projectTemplatePermissionAssignmentId: 'source-v2',
-      projectTemplatePermissionSetVersion: 'v2',
-      projectTemplatePermissions: [
-        'project.template.read',
-        'project.template.instantiate',
-        'project.template.pilot.read',
-        'project.template.pilot.instantiate',
-      ],
+      grants: companyGrants(
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project',
+        },
+        {
+          bundle: 'company_project_template_user',
+          version: 'v2',
+          assignmentId: 'source-v2',
+        },
+      ),
     },
   };
   const fetch = vi.fn(async (url: string) =>
@@ -370,11 +392,11 @@ it('lets a source-only v2 reader inspect the pilot before creation and preserves
     activeCompany: reader.activeCompany
       ? {
           ...reader.activeCompany,
-          projectTemplatePermissionSetVersion: 'v1',
-          projectTemplatePermissions: [
-            'project.template.read',
-            'project.template.instantiate',
-          ],
+          grants: withCompanyGrants(reader.activeCompany.grants, {
+            bundle: 'company_project_template_user',
+            version: 'v1',
+            assignmentId: 'source-v2',
+          }),
         }
       : undefined,
   };

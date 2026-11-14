@@ -13,6 +13,10 @@ import { changeValue } from './test/select-option';
 import { templateFixture } from './project/project-template.test-fixtures';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 const companyId = '10000000-0000-4000-8000-000000000001';
 const clientId = '20000000-0000-4000-8000-000000000001';
 const actor = {
@@ -32,17 +36,28 @@ const actor = {
     taskPermissions: ['task.read', 'task.manage'],
     taskPermissionAssignmentId: 'task-grant',
     taskPermissionSetVersion: 'v1',
-    projectTemplatePermissions: [
-      'project.template.read',
-      'project.template.instantiate',
-    ],
-    projectTemplatePermissionAssignmentId: 'template-grant',
-    projectTemplatePermissionSetVersion: 'v1',
-    projectTemplateConfigurationPermissions: [
-      'project.template.version.create',
-    ],
-    projectTemplateConfigurationPermissionAssignmentId: 'configuration-grant',
-    projectTemplateConfigurationPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      },
+      {
+        bundle: 'company_project_template_user',
+        version: 'v1',
+        assignmentId: 'template-grant',
+      },
+      {
+        bundle: 'company_project_template_configuration',
+        version: 'v1',
+        assignmentId: 'configuration-grant',
+      },
+    ),
   },
 };
 
@@ -195,6 +210,10 @@ it('offers configuration with catalogue read without Client, Task or Project-cre
       taskPermissions: undefined,
       taskPermissionAssignmentId: undefined,
       taskPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_task_manager',
+      ),
     },
   };
   const forbiddenReads: string[] = [];
@@ -276,6 +295,10 @@ function configurationOnlyActor() {
       taskPermissions: undefined,
       taskPermissionAssignmentId: undefined,
       taskPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_task_manager',
+      ),
     },
   };
 }

@@ -15,6 +15,7 @@ import { browserIdentity } from '../production-shell/production-shell-context.te
 import { readCurrentActor } from './current-actor';
 import { invoiceRecordAuthority } from './invoice-record-authority';
 import { completeActor } from './current-actor.test-fixture';
+import { companyGrants } from './company-grants.test-fixture';
 import {
   clearWorkspaceSelection,
   selectWorkspace,
@@ -488,25 +489,13 @@ describe('current Actor representation', () => {
             ],
           },
         ],
-        missionPlanGrants: [
-          {
-            ...grant,
-            bundle: 'company_mission_plan_configuration',
-            permissionSetVersion: 'v1',
-            permissions: [
-              'project.mission_plan.read',
-              'project.mission_plan.publish',
-            ],
-          },
-          {
-            ...grant,
-            bundle: 'company_mission_plan_user',
-            permissions: [
-              'project.mission_plan.read',
-              'project.mission_plan.instantiate',
-            ],
-          },
-        ],
+        // A Mission Plan grant of an unknown version refuses the whole
+        // Actor (#1332), so only the registry configuration grant is listed.
+        grants: companyGrants({
+          bundle: 'company_mission_plan_configuration',
+          version: 'v1',
+          assignmentId: grant.assignmentId,
+        }),
       },
     });
     if (result.status !== 'ok') throw new Error('Expected a readable Actor');

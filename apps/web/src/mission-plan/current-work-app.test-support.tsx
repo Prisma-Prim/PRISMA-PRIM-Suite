@@ -10,7 +10,11 @@ import {
   preparatoryLifecycle,
 } from '../project/project-lifecycle.test-fixtures';
 import { object } from './mission-plan-response';
-import { configGrant, userGrant } from './mission-plan.fixture';
+import { userGrant, userRequest } from './mission-plan.fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import {
   currentActor,
   currentOverview,
@@ -91,24 +95,63 @@ export function installCurrentWorkApp() {
           new Headers(init.headers).get('x-company-context-id') ?? company.id;
       const actor = currentActor(selected);
       if (actor.activeCompany) {
-        actor.activeCompany.missionPlanGrants = [
-          configGrant,
-          { ...userGrant, assignmentId: state.planId },
-        ];
-        actor.activeCompany.documentPermissionAssignmentId = state.metadataId;
-        actor.activeCompany.missionDeliverableAccessAssignmentId =
-          state.familyId;
-        actor.activeCompany.taskResultRecorderAssignmentId = state.recorderId;
-        actor.activeCompany.missionResultReviewerAssignmentId =
-          state.reviewerId;
+        let grants = withCompanyGrants(
+          actor.activeCompany.grants,
+          { ...userRequest, assignmentId: state.planId },
+          {
+            bundle: 'company_document_registrar',
+            version: 'v3',
+            assignmentId: state.metadataId,
+          },
+          {
+            bundle: 'company_mission_deliverable_access',
+            version: 'v1',
+            assignmentId: state.familyId,
+          },
+          {
+            bundle: 'company_task_result_recorder',
+            version: 'v1',
+            assignmentId: state.recorderId,
+          },
+          {
+            bundle: 'company_mission_result_reviewer',
+            version: 'v1',
+            assignmentId: state.reviewerId,
+          },
+          {
+            bundle: 'company_document_content_reader',
+            version: 'v1',
+            assignmentId: state.readerId,
+          },
+        );
         if (!state.clientRead) {
           actor.workspacePermissions = ['company.assignment.manage'];
-          actor.activeCompany.clientPermissions = [];
+          grants = withoutCompanyGrants(
+            grants,
+            'company_director_client_access',
+          );
         }
-        if (!state.projectRead) actor.activeCompany.projectPermissions = [];
-        actor.activeCompany.documentContentReaderAssignmentId = state.readerId;
-        if (!state.taskRead) actor.activeCompany.taskPermissions = [];
-        if (!state.sourceGrants) actor.activeCompany.missionPlanGrants = [];
+        if (!state.projectRead)
+          grants = withoutCompanyGrants(grants, 'company_project_access');
+        if (!state.taskRead)
+          grants = withoutCompanyGrants(grants, 'company_task_manager');
+        if (!state.sourceGrants)
+          grants = withoutCompanyGrants(
+            grants,
+            'company_mission_plan_configuration',
+            'company_mission_plan_user',
+          );
+        // The wire Actor repeats the same facts in its legacy fields.
+        actor.activeCompany = {
+          ...actor.activeCompany,
+          grants,
+          documentPermissionAssignmentId: state.metadataId,
+          missionDeliverableAccessAssignmentId: state.familyId,
+          documentContentReaderAssignmentId: state.readerId,
+          ...(state.clientRead ? {} : { clientPermissions: [] }),
+          ...(state.projectRead ? {} : { projectPermissions: [] }),
+          ...(state.taskRead ? {} : { taskPermissions: [] }),
+        };
       }
       if (path.endsWith('/access/current-actor')) {
         state.actorReads++;

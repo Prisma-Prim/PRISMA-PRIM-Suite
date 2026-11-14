@@ -13,6 +13,7 @@ import {
   openNextActionApp,
   publishNextActionActor,
 } from './test/project-next-action-app';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 
 beforeEach(() => {
   localStorage.clear();
@@ -31,7 +32,11 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'])(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...nextActionActor.activeCompany,
-        projectNextActionCoordinatorAssignmentId: 'new-independent-coordinator',
+        grants: withCompanyGrants(nextActionActor.activeCompany.grants, {
+          bundle: 'company_project_next_action_coordinator',
+          version: 'v1',
+          assignmentId: 'new-independent-coordinator',
+        }),
       },
     };
     const writes: Array<{

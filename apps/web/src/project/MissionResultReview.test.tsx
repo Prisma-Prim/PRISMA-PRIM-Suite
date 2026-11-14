@@ -8,6 +8,11 @@ import {
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { MissionResultReview } from './MissionResultReview';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { expectedPilotActivities } from './project-pilot-plan.test-fixtures';
 import {
   pilotTemplateKey,
@@ -26,28 +31,39 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Company',
-    projectPermissions: ['project.read'],
-    taskPermissions: ['task.read'],
-    projectTemplatePermissions: [
-      'project.template.read',
-      'project.template.pilot.read',
-    ],
-    projectTemplatePermissionSetVersion: 'v2',
-    projectTemplatePermissionAssignmentId: 'template',
-    documentPermissions: [
-      'document.read',
-      'document.content.read',
-      'document.mission_deliverable.access',
-    ],
-    documentPermissionAssignmentId: 'registrar',
-    documentPermissionSetVersion: 'v3',
-    documentContentReaderAssignmentId: 'reader',
-    documentContentReaderPermissionSetVersion: 'v1',
-    missionDeliverableAccessAssignmentId: 'mission',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
-    missionResultReviewPermissions: ['project.mission_result.review'],
-    missionResultReviewerAssignmentId: 'reviewer',
-    missionResultReviewerPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project',
+      },
+      { bundle: 'company_task_manager', version: 'v1', assignmentId: 'task' },
+      {
+        bundle: 'company_project_template_user',
+        version: 'v2',
+        assignmentId: 'template',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'registrar',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'reader',
+      },
+      {
+        bundle: 'company_mission_deliverable_access',
+        version: 'v1',
+        assignmentId: 'mission',
+      },
+      {
+        bundle: 'company_mission_result_reviewer',
+        version: 'v1',
+        assignmentId: 'reviewer',
+      },
+    ),
   },
 };
 const identity = deterministicBrowserIdentity();
@@ -161,7 +177,10 @@ it('retires a Reviewer draft without losing permitted reads or refetching histor
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          missionResultReviewerAssignmentId: undefined,
+          grants: withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_mission_result_reviewer',
+          ),
         },
       }}
     />,
@@ -242,7 +261,10 @@ it('discards a held command after Reviewer revoke/regrant without losing indepen
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          missionResultReviewerAssignmentId: undefined,
+          grants: withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_mission_result_reviewer',
+          ),
         },
       }}
     />,
@@ -257,7 +279,11 @@ it('discards a held command after Reviewer revoke/regrant without losing indepen
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          missionResultReviewerAssignmentId: 'regranted',
+          grants: withCompanyGrants(actor.activeCompany.grants, {
+            bundle: 'company_mission_result_reviewer',
+            version: 'v1',
+            assignmentId: 'regranted',
+          }),
         },
       }}
     />,
@@ -308,7 +334,10 @@ it('retires held protected reads after evidence capture changes and cannot resto
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          documentContentReaderAssignmentId: undefined,
+          grants: withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_document_content_reader',
+          ),
         },
       }}
     />,
