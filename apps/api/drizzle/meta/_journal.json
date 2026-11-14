@@ -813,6 +813,13 @@
       "when": 1794649223187,
       "tag": "0115_certification_certificate_issue_date",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1794657890970,
+      "tag": "0116_task_receipts_current_shape",
+      "breakpoints": true
     }
   ]
 }

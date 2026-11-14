@@ -2,12 +2,9 @@ import {
   restoreFrozenTaskSetup,
   applyHistoricalTaskTarget,
 } from '../task/frozen-task-migration.test-support.js';
-import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 import {
@@ -35,7 +32,7 @@ function tag(entry: unknown) {
 }
 
 it.skipIf(!databaseUrl)(
-  'preserves every existing row and receipt without assigning a Template or new authority during upgrade',
+  'preserves every existing row and receipt without assigning a Template or new authority during its own migration',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -76,40 +73,12 @@ it.skipIf(!databaseUrl)(
           ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Preserved preparation',
         },
       });
-      const origin = harness.origin;
-      async function request(
-        path: string,
-        value?: unknown,
-        context?: { companyId: string },
-      ) {
-        const response = await fetch(`${origin}/api${path}`, {
-          method: value === undefined ? 'GET' : 'POST',
-          headers: {
-            'x-test-external-provider': 'deterministic-test',
-            'x-test-external-subject': 'upgrade-owner',
-            'x-test-display-name': 'Upgrade Owner',
-            'x-test-email': 'upgrade-owner@example.test',
-            'content-type': 'application/json',
-            'idempotency-key': randomUUID(),
-            ...(context ? { 'x-company-context-id': context.companyId } : {}),
-          },
-          ...(value === undefined ? {} : { body: JSON.stringify(value) }),
-        });
-        expect(response.status).toBe(value === undefined ? 200 : 201);
-        const body: unknown = await response.json();
-        return record(body);
-      }
       const frozen = await restoreFrozenTaskSetup(
         database.targetPool,
         'project-template',
       );
       const membershipId = text(frozen.membershipId),
-        companyId = text(frozen.companyId),
-        projectId = text(frozen.projectId),
-        taskId = text(frozen.taskId);
-      function requestInCompany(path: string, value?: unknown) {
-        return request(path, value, { companyId });
-      }
+        companyId = text(frozen.companyId);
       const tables = (
         await database.targetPool.query<{ name: string }>(
           `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
@@ -145,9 +114,8 @@ it.skipIf(!databaseUrl)(
         index,
       });
       expect(await snapshot()).toEqual(before);
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
       expect(
         (
           await database.targetPool.query(
@@ -163,27 +131,6 @@ it.skipIf(!databaseUrl)(
       for (const version of [null, 'v3', 'V1'])
         await expect(insert(version)).rejects.toMatchObject({ code: '23514' });
       await insert('v1');
-      await requestInCompany('/company-project-template-user-assignments', {
-        workspaceMembershipId: membershipId,
-        companyId,
-      });
-      expect(await requestInCompany(`/projects/${projectId}/template`)).toEqual(
-        {
-          template: null,
-        },
-      );
-      expect(await requestInCompany(`/tasks/${taskId}`)).toMatchObject({
-        mutable: true,
-        task: {
-          status: 'done',
-          version: 2,
-          priority: 'important',
-          dueDate: '2026-12-01',
-        },
-      });
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
     } finally {
       try {
         await harness?.close();

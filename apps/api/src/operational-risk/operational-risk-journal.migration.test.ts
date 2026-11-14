@@ -187,6 +187,7 @@ describe.skipIf(!databaseUrl)(
           projectId,
           clientAccountId: clientId,
           title: 'Preserved Task',
+          description: null,
           assignee: null,
           dueDate: null,
           priority: 'normal',
@@ -216,6 +217,7 @@ describe.skipIf(!databaseUrl)(
               version: 1,
               initial: {
                 title: initialTask.title,
+                description: null,
                 assignee: null,
                 dueDate: null,
                 priority: 'normal',

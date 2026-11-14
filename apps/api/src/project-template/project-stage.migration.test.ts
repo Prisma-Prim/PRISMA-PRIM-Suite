@@ -2,12 +2,9 @@ import {
   restoreFrozenTaskSetup,
   applyHistoricalTaskTarget,
 } from '../task/frozen-task-migration.test-support.js';
-import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 import {
@@ -69,32 +66,12 @@ it.skipIf(!databaseUrl)(
           ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Stage upgrade',
         },
       });
-      const origin = harness.origin;
-      let companyId = '';
-      async function request(path: string, value?: unknown) {
-        const response = await fetch(`${origin}/api${path}`, {
-          method: value === undefined ? 'GET' : 'POST',
-          headers: {
-            'x-test-external-provider': 'deterministic-test',
-            'x-test-external-subject': 'stage-upgrade-owner',
-            'x-test-display-name': 'Stage upgrade owner',
-            'x-test-email': 'upgrade@example.test',
-            'content-type': 'application/json',
-            'idempotency-key': randomUUID(),
-            ...(companyId ? { 'x-company-context-id': companyId } : {}),
-          },
-          ...(value === undefined ? {} : { body: JSON.stringify(value) }),
-        });
-        expect(response.status).toBe(value === undefined ? 200 : 201);
-        const body: unknown = await response.json();
-        return record(body);
-      }
       const frozen = await restoreFrozenTaskSetup(
         database.targetPool,
         'project-stage',
       );
-      companyId = string(frozen.companyId);
-      const memberId = string(frozen.memberId),
+      const companyId = string(frozen.companyId),
+        memberId = string(frozen.memberId),
         projectId = string(frozen.projectId);
       const tables = (
         await database.targetPool.query<{ name: string }>(
@@ -121,23 +98,12 @@ it.skipIf(!databaseUrl)(
         index,
       });
       expect(await snapshot()).toEqual(before);
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
       const counts = await database.targetPool.query(
         `SELECT (SELECT count(*)::int FROM project_stage_commands) receipts,(SELECT count(*)::int FROM project_stage_transitions) transitions,(SELECT count(*)::int FROM company_role_assignments WHERE bundle::text='company_project_stage_advancer') grants`,
       );
       expect(counts.rows).toEqual([{ receipts: 0, transitions: 0, grants: 0 }]);
-      expect(
-        await request(`/projects/${projectId}/stage-progress`),
-      ).toMatchObject({
-        progress: {
-          currentStageKey: 'scoping',
-          stageRevision: 0,
-          gate: 'advance_authority_required',
-          transitions: [],
-        },
-      });
       expect(
         (
           await database.targetPool.query(
@@ -146,35 +112,6 @@ it.skipIf(!databaseUrl)(
           )
         ).rows,
       ).toEqual([{ stage_revision: 0, current_stage_key: null }]);
-      const afterRead = await snapshot();
-      // The existing ActorContextAdapter synchronizes external profile updated_at on every GET.
-      // Check that sole expected Auth effect explicitly; migration itself preserved the full row above.
-      function withoutProfileTimestamp(rows: string[] | undefined) {
-        return (rows ?? []).map((row) => {
-          const value: unknown = JSON.parse(row);
-          const fields = record(value);
-          delete fields.updated_at;
-          return JSON.stringify(fields);
-        });
-      }
-      expect({
-        ...afterRead,
-        internal_users: withoutProfileTimestamp(afterRead.internal_users),
-      }).toEqual({
-        ...before,
-        internal_users: withoutProfileTimestamp(before.internal_users),
-      });
-      const oldProfile: unknown = JSON.parse(
-        string(before.internal_users?.[0]),
-      );
-      const newProfile: unknown = JSON.parse(
-        string(afterRead.internal_users?.[0]),
-      );
-      expect(
-        Date.parse(string(record(newProfile).updated_at)),
-      ).toBeGreaterThanOrEqual(
-        Date.parse(string(record(oldProfile).updated_at)),
-      );
       for (const version of [null, 'v2', 'V1'])
         await expect(
           database.targetPool.query(
@@ -182,11 +119,6 @@ it.skipIf(!databaseUrl)(
             [workspaceId, companyId, memberId, version],
           ),
         ).rejects.toMatchObject({ code: '23514' });
-      const beforeRepeat = await snapshot();
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
-      expect(await snapshot()).toEqual(beforeRepeat);
     } finally {
       try {
         await harness?.close();

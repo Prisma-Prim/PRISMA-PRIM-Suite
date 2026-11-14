@@ -5,10 +5,8 @@ import {
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
-import { PDF_A } from '../documents/mission-document.test-support.js';
 import {
   ESTIMATE_OFFER_PREPARER,
   openEstimateOfferFixture,
@@ -17,7 +15,7 @@ import {
 } from '../offer/offer-estimate-preparation.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
-  'upgrades genuine 0083 preserving received bytes, simulated signing, receipts, grants, links and declared Task results without backfill',
+  'applies the reported signing migration to genuine 0083 preserving received bytes, simulated signing, receipts, grants, links and declared Task results without backfill',
   async () => {
     const previous = await mkdtemp(join(tmpdir(), 'reported-signing-0083-'));
     const scanner = await openDocumentScannerFixture();
@@ -66,34 +64,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         companyId: responseString(rawSource, 'companyId'),
         preparerMembershipId: responseString(rawSource, 'preparerMembershipId'),
       };
-      const rawReceived = responseRecord(frozen.received);
-      const rawReady = responseRecord(rawReceived.ready);
-      const received = {
-        ready: { path: responseString(rawReady, 'path') },
-        contractVersionId: responseString(rawReceived, 'contractVersionId'),
-        call: (suffix: string) =>
-          f.request({
-            path: responseString(rawReceived, 'path') + suffix,
-            companyId: source.companyId,
-            headers: ESTIMATE_OFFER_PREPARER,
-          }),
-      };
       const target = {
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_PREPARER,
       };
-      const command = (
-        path: string,
-        body: unknown,
-        key: string = randomUUID(),
-      ) => f.command({ ...target, path, body, key });
-      const taskId = responseString(frozen, 'taskId'),
-        documentId = responseString(frozen, 'documentId'),
-        documentVersionId = responseString(frozen, 'documentVersionId'),
-        resultKey = responseString(frozen, 'resultKey');
-      const resultIntent = frozen.resultIntent,
-        result = frozen.result,
-        resultBefore = frozen.resultBefore;
       const tables = (
         await f.pool.query<{ tablename: string }>(
           "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
@@ -101,12 +75,12 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       ).rows.map((row) => row.tablename);
       if (tables.some((table) => !/^[a-z_]+$/u.test(table)))
         throw new Error('Invalid isolated migration table.');
-      const facts = async (descriptionAdded = false) => {
+      const facts = async () => {
         const rows: Record<string, unknown> = {};
         for (const table of tables)
           rows[table] = (
             await f.pool.query<{ facts: unknown }>(
-              `SELECT coalesce(jsonb_agg(to_jsonb(t) ${descriptionAdded && table === 'tasks' ? "- 'description'" : ''} ORDER BY to_jsonb(t)::text),'[]'::jsonb) facts FROM ${table} t`,
+              `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb) facts FROM ${table} t`,
             )
           ).rows[0]?.facts;
         return rows;
@@ -148,85 +122,8 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
             [version, source.companyId],
           ),
         ).rejects.toHaveProperty('code', '23514');
-      // The explicit Actor read above synchronizes its profile timestamp.
-      const beforeCurrent = await facts();
-      await f.applyCurrentMigrations();
-      await f.applyCurrentMigrations();
-      expect(await facts(true)).toEqual(beforeCurrent);
-      expect(
-        (await f.pool.query('SELECT description FROM tasks')).rows,
-      ).toEqual([{ description: null }]);
-      const path = `${received.ready.path}/versions/${received.contractVersionId}/signing-declarations`;
-      expect(
-        (await f.request({ ...target, path: path + '/pdf-candidates' })).status,
-      ).toBe(403);
-      await f.restart();
-      expect(
-        Buffer.from(
-          await (
-            await received.call(`/versions/${documentVersionId}/content`)
-          ).arrayBuffer(),
-        ),
-      ).toEqual(PDF_A);
-      expect(
-        await f.read({ ...target, path: `/tasks/${taskId}/results` }),
-      ).toEqual(resultBefore);
-      expect(
-        await command(`/tasks/${taskId}/results`, resultIntent, resultKey),
-      ).toEqual(result);
-      await f.grant({
-        path: '/company-contract-signature-declarer-assignments',
-        companyId: source.companyId,
-        membershipId: source.preparerMembershipId,
-      });
-      const page = responseRecord(
-        await f.read({ ...target, path: path + '/pdf-candidates' }),
-      );
-      if (!Array.isArray(page.items) || !page.items[0])
-        throw new Error('Missing post-upgrade eligible PDF.');
-      const pdf = responseRecord(page.items[0]);
-      expect(
-        await command(path, {
-          expectedContractRevision: 2,
-          documentId,
-          documentVersionId,
-          representationId: responseString(pdf, 'representationId'),
-          providerSignatory: {
-            label: 'Prior reported provider',
-            signedOn: null,
-            mandate: { kind: 'UNKNOWN' },
-          },
-          clientSignatory: {
-            label: 'Prior reported Client',
-            signedOn: '2026-01-01',
-            mandate: { kind: 'UNKNOWN' },
-          },
-          concordanceBasis: 'Exact prior PDF compared',
-          acceptanceBasis: 'Human case statement after explicit new grant',
-          acknowledgedWarningCodes: page.warningCodes,
-        }),
-      ).toMatchObject({ evidenceKind: 'DECLARED_RECEIVED_PDF' });
-      async function insertReportedEvidenceIntoLegacyMode() {
-        const connection = await f.pool.connect();
-        try {
-          await connection.query('BEGIN');
-          const inserted = await connection.query(
-            `INSERT INTO contract_signing_declarations(workspace_id,company_id,contract_id,contract_version_id,approval_decision_id,quality_run_id,representation_checksum,document_id,document_version_id,representation_id,result_revision,actor_workspace_membership_id,actor_internal_user_id,recorded_at,statement,pdf)
-          SELECT v.workspace_id,v.company_id,v.contract_id,v.id,d.id,d.quality_run_id,d.representation_checksum,s.document_id,s.document_version_id,s.representation_id,3,d.actor_workspace_membership_id,d.actor_internal_user_id,d.decided_at,s.statement,s.pdf
-          FROM contract_versions v JOIN contracts c ON c.id=v.contract_id JOIN contract_decisions d ON d.contract_version_id=v.id AND d.kind='APPROVE' CROSS JOIN contract_signing_declarations s
-          WHERE c.company_id=$1 AND c.origin<>'COMPANY_MODEL_OFFER' AND s.contract_version_id=$2 LIMIT 1`,
-            [source.companyId, received.contractVersionId],
-          );
-          expect(inserted.rowCount).toBe(1);
-          await connection.query('SET CONSTRAINTS ALL IMMEDIATE');
-        } finally {
-          await connection.query('ROLLBACK');
-          connection.release();
-        }
-      }
-      await expect(
-        insertReportedEvidenceIntoLegacyMode(),
-      ).rejects.toHaveProperty('code', '23514');
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
     } finally {
       await fixture?.close();
       await scanner.close();

@@ -33,7 +33,13 @@ import type {
   OpportunityLossReasonCode,
   OpportunityOutcomeStatus,
 } from '../commercial-intake/opportunity-outcome.js';
-import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
+import type {
+  TaskActivityEvent,
+  TaskActivityMeaning,
+  TaskEvent,
+  TaskEventMeaning,
+  TaskEventRecord,
+} from '../task/task.types.js';
 import type {
   ProjectResponsibleChangedActivityEvent,
   ProjectResponsibleMember,
@@ -866,10 +872,28 @@ export class AccountabilityService {
       }),
     );
   }
+  /** One Task's native history in version order, with its instructions. */
   async readTaskHistory(
     actor: ActorContext,
-    taskId?: string,
+    taskId: string,
   ): Promise<TaskEvent[]> {
+    return (await this.taskEventRows(actor, taskId)).map(
+      ({ event, taskTitle }) => ({
+        ...readTaskMeaning(event.meaning),
+        ...taskEventRecord(event, taskTitle),
+      }),
+    );
+  }
+  /** The latest Task events of generic Activity, without Task instructions. */
+  private async taskActivityEvents(
+    actor: ActorContext,
+  ): Promise<TaskActivityEvent[]> {
+    return (await this.taskEventRows(actor)).map(({ event, taskTitle }) => ({
+      ...genericTaskMeaning(readTaskMeaning(event.meaning)),
+      ...taskEventRecord(event, taskTitle),
+    }));
+  }
+  private async taskEventRows(actor: ActorContext, taskId?: string) {
     if (
       !actor.activeCompany?.taskPermissions?.includes('task.read') ||
       !actor.activeCompany.projectPermissions?.includes('project.read') ||
@@ -933,25 +957,7 @@ export class AccountabilityService {
         desc(taskEvents.version),
         desc(taskEvents.id),
       );
-    const rows = taskId ? await query : await query.limit(INITIAL_PAGE_SIZE);
-    return rows.map(({ event, taskTitle }) => ({
-      ...(taskId
-        ? readTaskMeaning(event.meaning)
-        : genericTaskMeaning(readTaskMeaning(event.meaning))),
-      id: event.id,
-      occurredAt: event.occurredAt.toISOString(),
-      actor: {
-        internalUserId: event.actorInternalUserId,
-        workspaceMembershipId: event.actorMembershipId,
-        displayName: event.actorDisplayName,
-      },
-      target: {
-        type: 'task',
-        taskId: event.taskId,
-        taskTitle,
-        companyId: event.companyId,
-      },
-    }));
+    return taskId ? await query : await query.limit(INITIAL_PAGE_SIZE);
   }
   /** Immutable publication is its one Activity event, in the caller's transaction. */
   async recordMissionPlanVersionCreated(input: {
@@ -3488,7 +3494,7 @@ export class AccountabilityService {
         target: canonicalTarget(event),
         metadata: event.metadata,
       })),
-      ...(await this.readTaskHistory(actor)),
+      ...(await this.taskActivityEvents(actor)),
       ...(await this.projectEvents(actor)),
       ...(await this.projectResponsibilityEvents(actor)),
       ...(await this.projectLifecycleEvents(actor)),
@@ -3521,11 +3527,16 @@ export class AccountabilityService {
 }
 
 /** Native history owns instructions. Generic Activity preserves only its existing facts. */
-function genericTaskMeaning(meaning: TaskEventMeaning): TaskEventMeaning {
+function genericTaskMeaning(meaning: TaskEventMeaning): TaskActivityMeaning {
   if (meaning.action === 'task.created') {
-    const initial = { ...meaning.metadata.initial };
-    delete initial.description;
-    return { ...meaning, metadata: { ...meaning.metadata, initial } };
+    const { title, assignee, dueDate, priority } = meaning.metadata.initial;
+    return {
+      ...meaning,
+      metadata: {
+        ...meaning.metadata,
+        initial: { title, assignee, dueDate, priority },
+      },
+    };
   }
   if (meaning.action === 'task.updated') {
     const changes = { ...meaning.metadata.changes };
@@ -3533,6 +3544,27 @@ function genericTaskMeaning(meaning: TaskEventMeaning): TaskEventMeaning {
     return { ...meaning, metadata: { ...meaning.metadata, changes } };
   }
   return meaning;
+}
+
+function taskEventRecord(
+  event: typeof taskEvents.$inferSelect,
+  taskTitle: string,
+): TaskEventRecord {
+  return {
+    id: event.id,
+    occurredAt: event.occurredAt.toISOString(),
+    actor: {
+      internalUserId: event.actorInternalUserId,
+      workspaceMembershipId: event.actorMembershipId,
+      displayName: event.actorDisplayName,
+    },
+    target: {
+      type: 'task',
+      taskId: event.taskId,
+      taskTitle,
+      companyId: event.companyId,
+    },
+  };
 }
 
 function persistenceFor(event: CanonicalActivityEvent) {

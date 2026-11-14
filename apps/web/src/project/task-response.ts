@@ -14,11 +14,6 @@ export type TaskFields = {
   dueDate: string | null;
   priority: TaskPriority;
 };
-/** A creation recorded before priority existed has none; it is never shown as Normal. */
-export type TaskInitialFields = Omit<TaskFields, 'priority' | 'description'> & {
-  priority?: TaskPriority;
-  description?: string | null;
-};
 export const taskStates = [
   'todo',
   'in_progress',
@@ -51,10 +46,6 @@ export type TaskView = TaskFields & {
     | { status: 'done'; completion: { actor: TaskActor; occurredAt: string } }
     | { status: 'cancelled'; completion: null; cancellation: TaskDeclaration }
   );
-type RecordedTask<T> = T extends TaskView
-  ? Omit<T, 'description'> & { description?: string | null }
-  : never;
-export type TaskOutcome = RecordedTask<TaskView>;
 export function isOpenTaskState(value: unknown): value is OpenTaskState {
   return openTaskStates.some((state) => state === value);
 }
@@ -100,7 +91,7 @@ export type TaskEvent = {
 } & (
   | {
       action: 'task.created';
-      metadata: { version: number; initial: TaskInitialFields };
+      metadata: { version: number; initial: TaskFields };
     }
   | {
       action: 'task.updated';
@@ -217,30 +208,13 @@ function fields(value: unknown): TaskFields {
     priority: readTaskPriority(row.priority),
   };
 }
-function initialFields(value: unknown): TaskInitialFields {
-  const row = record(value);
-  return {
-    title: title(row.title),
-    assignee: assignee(row.assignee),
-    dueDate: date(row.dueDate),
-    ...('priority' in row ? { priority: readTaskPriority(row.priority) } : {}),
-    ...('description' in row
-      ? { description: readTaskDescription(row.description) }
-      : {}),
-  };
-}
+/** Fresh reads and command receipts share one current shape. */
 export function readTask(value: unknown, scope: TaskScope): TaskView {
-  const row = record(value);
-  return { ...readTaskOutcome(value, scope), ...fields(row) };
-}
-/** Immutable command confirmation preserves legacy absence, separately from fresh reads. */
-export function readTaskOutcome(value: unknown, scope: TaskScope): TaskOutcome {
   const row = record(value);
   if (row.companyId !== scope.companyId || row.projectId !== scope.projectId)
     throw new Error('Invalid Task context');
   const common = {
-    ...initialFields(row),
-    priority: readTaskPriority(row.priority),
+    ...fields(row),
     id: string(row.id),
     companyId: scope.companyId,
     projectId: scope.projectId,
@@ -444,7 +418,7 @@ export function readTaskHistory(
         action: event.action,
         metadata: {
           version: currentVersion,
-          initial: initialFields(metadata.initial),
+          initial: fields(metadata.initial),
         },
       };
     if (event.action === 'task.updated') {
