@@ -218,17 +218,6 @@ export function commandFingerprint(value: unknown): string {
   return sha256(stableJson(value));
 }
 
-/**
- * The fingerprint of commands whose receipts were recorded over the plain
- * JSON spelling of a fixed object, where key order is material. Those
- * commands keep it so every recorded receipt keeps replaying.
- */
-export function insertionOrderFingerprint(
-  value: Record<string, unknown>,
-): string {
-  return sha256(JSON.stringify(value));
-}
-
 export function idempotencyConflict(
   message = 'Idempotency-Key was already used for another command.',
 ): ConflictException {
