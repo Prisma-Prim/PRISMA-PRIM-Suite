@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1368-pr1394-local-proof",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1368,
+  "pullRequest": 1394,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T14:23:30.000Z",
+    "end": "2026-11-14T15:19:19.000Z",
+    "durationSeconds": 3349
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 1,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "1097 scripts pass; one existing Windows-only skip on Linux. All15 real prep regressions pass with Windows autocrlf/LF fixtures. Types, lint, format pass. Corrected real smoke8.073s/11.656s;48 primary/peer metadata/shim entries unchanged. Standards0/Spec1P1 fixed with deterministic red-green regression. Native Windows runs in required CI."
+  }
+}

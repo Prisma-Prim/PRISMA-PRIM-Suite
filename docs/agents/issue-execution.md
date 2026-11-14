@@ -42,7 +42,7 @@ A repository procedure never justifies hiding an unexpectedly large cost from th
 - For any TypeScript implementation, apply the [mandatory TypeScript discipline](typescript-discipline.md) before reading or editing `.ts` or `.tsx` files and keep it active throughout the change.
 - Complete the narrow tracer bullet across every layer the issue requires.
 - Preserve `/ui-baseline` unless the issue explicitly authorizes a change.
-- Work on an isolated branch or worktree when the harness provides Git access.
+- With Git access, [prepare an isolated worktree](worktree-preparation.md).
 
 ## Verification before publication
 

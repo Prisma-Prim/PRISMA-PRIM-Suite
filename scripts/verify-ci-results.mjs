@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 // Always required, whatever the change: the fast checks and the scope
 // classification that decides whether the heavy families may be skipped.
-const alwaysRequiredJobs = ['checks', 'scope'];
+const alwaysRequiredJobs = ['checks', 'scope', 'worktree_windows'];
 // A skip requires a successful scope and either documentation-only status
 // or an explicit, verified proof for that family. Failed jobs never qualify.
 const heavyJobs = [

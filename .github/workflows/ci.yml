@@ -50,6 +50,7 @@ jobs:
       - name: Test scripts
         env:
           CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/scripts.json
+          PRISMA_WORKTREE_REPOSITORY_SMOKE: '1'
         run: pnpm test:scripts
 
       - name: Test documentation contracts
@@ -66,6 +67,25 @@ jobs:
           path: ${{ runner.temp }}/ci-test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  worktree_windows:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # Builtins only; each synthetic fixture uses the real pinned pnpm offline.
+      - name: Prove parallel worktree preparation on Windows
+        run: node --test scripts/prepare-worktree.test.mjs
 
   scope:
     runs-on: ubuntu-24.04
@@ -496,6 +516,7 @@ jobs:
     needs:
       [
         checks,
+        worktree_windows,
         scope,
         postgres_image,
         api,
