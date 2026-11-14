@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { generatedContractModelContent } from '../contract/model-contract.test-fixture.js';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 import { createPostgresRestTestHarness } from '../database/postgres-rest-test-harness.js';
@@ -447,6 +448,69 @@ withPostgres('Company model lifecycle over every kind (REST)', () => {
       expect(await effects(kind)).toEqual(before);
     },
   );
+
+  // Contract model receipts recorded before #1191 fingerprinted the validated
+  // intent with the model code. They keep answering the retries that rule
+  // recognized, so a deployment does not refuse an in-flight retry.
+  it('still replays a Contract model receipt recorded under the parsed-intent fingerprint', async () => {
+    const kind = kinds[1];
+    const companyId = await prepared(kind);
+    const content = {
+      ...kind.content,
+      issuer: { ...kind.content.issuer, contactDetails: null },
+    };
+    const submission = {
+      ...editor(kind, companyId),
+      key: 'recorded-before-1191',
+      body: { expectedModelRevision: 0, content },
+    };
+    const recorded = await success(submission);
+    // Rewrite the receipt as a predecessor recorded it; history is otherwise
+    // immutable.
+    await harness.pool.query(
+      'ALTER TABLE contract_model_commands DISABLE TRIGGER USER',
+    );
+    try {
+      await harness.pool.query(
+        'UPDATE contract_model_commands SET fingerprint=$1 WHERE key=$2',
+        [
+          commandFingerprint({
+            modelCode: kind.code,
+            kind: 'SUBMIT',
+            expectedModelRevision: 0,
+            content,
+          }),
+          submission.key,
+        ],
+      );
+    } finally {
+      await harness.pool.query(
+        'ALTER TABLE contract_model_commands ENABLE TRIGGER USER',
+      );
+    }
+    const before = await effects(kind);
+    expect(await success(submission)).toEqual(recorded);
+    const { legalName, taxId, legalAddress } = content.issuer;
+    expect(
+      await success({
+        ...submission,
+        body: {
+          ...submission.body,
+          content: { ...content, issuer: { legalName, taxId, legalAddress } },
+        },
+      }),
+    ).toEqual(recorded);
+    expect(
+      await refusal({
+        ...submission,
+        body: { ...submission.body, expectedModelRevision: 1 },
+      }),
+    ).toMatchObject({
+      status: 409,
+      body: { code: 'CONTRACT_MODEL_IDEMPOTENCY_CONFLICT' },
+    });
+    expect(await effects(kind)).toEqual(before);
+  });
 
   // Before #1191 a Contract model command validated its payload before
   // reading the actor's authority; it now rechecks authority first, as the

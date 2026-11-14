@@ -41,6 +41,7 @@ export const CONTRACT_MODEL = companyModelKind({
     commands: contractModelCommands,
   },
   fields: contractModelFields,
+  parsedIntentReceipts: true,
   authority: 'contractModel',
   selection: {
     kind: 'APPROVED_COMPANY_CONTRACT_MODEL',
