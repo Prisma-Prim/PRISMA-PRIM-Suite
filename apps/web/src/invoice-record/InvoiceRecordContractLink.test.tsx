@@ -7,6 +7,7 @@ import {
   waitFor,
 } from '../test/render-with-interface-locale';
 import type { ActorContext } from '../access-types';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import type { BrowserIdentity } from '../access-composition';
 import { InvoiceRecordRelations } from './InvoiceRecordRelations';
 import { actor, financeOnly, identity, ids } from './invoice-record.fixture';
@@ -163,6 +164,11 @@ it('retires a held token through equal-permission native Contract A → B → A 
       id: ids.company,
       displayName: 'Fictional Company',
       contractPermissionAssignmentId: '30000000-0000-4000-8000-000000000002',
+      grants: withCompanyGrants(actor.activeCompany?.grants, {
+        bundle: 'company_contract_preparer',
+        version: 'v2',
+        assignmentId: '30000000-0000-4000-8000-000000000002',
+      }),
     },
   };
   rendered.rerender(view(open, replacement, held));

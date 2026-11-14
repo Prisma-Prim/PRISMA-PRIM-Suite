@@ -9,6 +9,8 @@ import {
   type LinkedContract,
 } from './contract-projects-response';
 import { useContractProjectsCopy } from './contract-projects.copy';
+import { holds } from '../access/company-grants';
+import { holdsContractRead } from './contract-grants';
 type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -44,22 +46,16 @@ function ProjectContractsSession({
   const copy = useContractProjectsCopy(),
     { formatDateTime } = useInterfaceLocale();
   const company = actor.activeCompany;
-  const mayRead = Boolean(
-    company &&
-    (((company.contractPermissionSetVersion === 'v1' ||
-      company.contractPermissionSetVersion === 'v2') &&
-      company.contractPermissionAssignmentId) ||
-      ((company.contractApproverPermissionSetVersion === 'v1' ||
-        company.contractApproverPermissionSetVersion === 'v2') &&
-        company.contractApproverAssignmentId)) &&
-    company.contractPermissions?.includes('commercial.contract.read') &&
-    company.commercialIntakePermissions?.includes(
+  const mayRead =
+    holdsContractRead(company) &&
+    holds(
+      company,
+      'company_commercial_intake',
       'commercial.opportunity.read',
     ) &&
-    company.projectPermissions?.includes('project.read') &&
-    (company.clientPermissions?.includes('client.read') ||
-      actor.workspacePermissions.includes('client.manage')),
-  );
+    holds(company, 'company_project_access', 'project.read') &&
+    (holds(company, 'company_director_client_access', 'client.read') ||
+      actor.workspacePermissions.includes('client.manage'));
   useEffect(() => {
     if (!mayRead || !company) return;
     const controller = new AbortController();

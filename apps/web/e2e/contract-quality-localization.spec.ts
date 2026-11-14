@@ -65,6 +65,19 @@ async function chooseLanguage(page: Page, current: Locale, target: Locale) {
   ).toBeFocused();
 }
 
+function supersededVersion<
+  Contract extends { version: Record<string, unknown> },
+>(contract: Contract): Contract {
+  return {
+    ...contract,
+    version: {
+      ...contract.version,
+      supersededByVersionId: '90000000-0000-4000-8000-000000000706',
+      supersededAt: '2026-10-09T08:00:00.000Z',
+    },
+  };
+}
+
 async function installRoutes(page: Page, readOnly = false) {
   const old = contractQualityRun();
   const current = contractQualityRun({
@@ -109,7 +122,11 @@ async function installRoutes(page: Page, readOnly = false) {
     if (request.method() === 'GET' && path === '/api/contract-decision-queue')
       return route.fulfill({ json: { items: [] } });
     if (path === '/api/access/current-actor') {
-      const actor = qualityActor(readOnly ? 'reader' : 'approver');
+      // No registry grant confers the Contract read alone (#1332), so the
+      // browser reader is a preparer of a superseded Version, which offers
+      // neither Run nor Decision; ContractPanel.quality-localization.test.tsx
+      // keeps the read-only grant itself.
+      const actor = qualityActor(readOnly ? 'preparer' : 'approver');
       const { activeCompany, ...base } = actor;
       return route.fulfill({
         json:
@@ -125,6 +142,11 @@ async function installRoutes(page: Page, readOnly = false) {
                         contractApproverPermissionSetVersion: undefined,
                         contractPermissionAssignmentId: undefined,
                         contractPermissionSetVersion: undefined,
+                        grants: withoutCompanyGrants(
+                          activeCompany?.grants,
+                          'company_contract_preparer',
+                          'company_contract_approver',
+                        ),
                       }
                     : {}),
                 },
@@ -135,10 +157,17 @@ async function installRoutes(page: Page, readOnly = false) {
     if (path === contractLocalePath)
       return route.fulfill({
         json: {
-          contract: pendingQualityContract({
-            bindingVersion: 2,
-            latestRun: latest,
-          }),
+          contract: readOnly
+            ? supersededVersion(
+                pendingQualityContract({
+                  bindingVersion: 2,
+                  latestRun: latest,
+                }),
+              )
+            : pendingQualityContract({
+                bindingVersion: 2,
+                latestRun: latest,
+              }),
         },
       });
     if (path === contractLocaleRepresentationPath)

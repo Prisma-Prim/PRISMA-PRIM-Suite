@@ -1,5 +1,8 @@
 import type { ActorContext } from '../access-types';
-import { companyGrants } from '../access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import type { OfferView } from '../offer/offer-response';
 import {
   buildClientRequest,
@@ -95,13 +98,36 @@ export function contractLocaleActor(hasCompany = true) {
             ],
             commercialActivityPermissionSetVersion: 'v1',
             commercialActivityPermissions: ['commercial.activity.read'],
-            // The Pricing screens read this grant; the Contract screens still
-            // read the Pricing User fields above until their area migrates.
-            grants: companyGrants({
-              bundle: 'company_pricing_user',
-              version: 'v1',
-              assignmentId: 'pricing-657',
-            }),
+            // The Pricing and Contract screens read these grants; the
+            // Commercial intake, Client and Offer screens still read the
+            // per-bundle fields above until their areas migrate.
+            grants: companyGrants(
+              {
+                bundle: 'company_commercial_intake',
+                version: 'v1',
+                assignmentId: 'intake-657',
+              },
+              {
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'client-657',
+              },
+              {
+                bundle: 'company_contract_preparer',
+                version: 'v1',
+                assignmentId: 'contract-657',
+              },
+              {
+                bundle: 'company_offer_preparer',
+                version: 'v1',
+                assignmentId: 'offer-657',
+              },
+              {
+                bundle: 'company_pricing_user',
+                version: 'v1',
+                assignmentId: 'pricing-657',
+              },
+            ),
           } satisfies NonNullable<ActorContext['activeCompany']>,
         }
       : {}),
@@ -119,6 +145,10 @@ export function contractLocaleRevokedActor(hasCompany: boolean): ActorContext {
       contractPermissionAssignmentId: undefined,
       contractPermissionSetVersion: undefined,
       contractPermissions: [],
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_contract_preparer',
+      ),
     },
   };
 }

@@ -1,3 +1,4 @@
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
 import {
@@ -147,7 +148,11 @@ it('does not revive a retired read status when the same authority returns', asyn
     ...modelContractActor,
     activeCompany: {
       ...company,
-      commercialIntakePermissionAssignmentId: 'replacement-intake',
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'replacement-intake',
+      }),
     },
   };
   const control: Control = {};

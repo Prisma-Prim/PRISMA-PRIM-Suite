@@ -3,7 +3,12 @@ import {
   source as planSource,
   cataloguePage as planCatalogue,
 } from '../mission-plan/mission-plan.fixture';
-import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+  type CompanyGrantRequest,
+} from '../access/company-grants.test-fixture';
 import { contractRecordedLocales } from '../test/contract-recorded-values-fixture';
 import { contractDirectMessages } from './contract-direct.copy';
 import { contractQualityLocales } from '../test/contract-quality-localization-fixture';
@@ -481,16 +486,21 @@ describe('ContractPanel', () => {
                 ...member,
                 activeCompany: {
                   ...company,
-                  clientPermissions: [],
-                  clientPermissionAssignmentId: undefined,
-                  clientPermissionSetVersion: undefined,
+                  grants: withoutCompanyGrants(
+                    company.grants,
+                    'company_director_client_access',
+                  ),
                 },
               }
             : {
                 ...member,
                 activeCompany: {
                   ...company,
-                  contractEarlyPreparationAssignmentId: 'replacement-grant',
+                  grants: withCompanyGrants(company.grants, {
+                    bundle: 'company_contract_early_preparation',
+                    version: 'v1',
+                    assignmentId: 'replacement-grant',
+                  }),
                 },
               };
       rerender(
@@ -552,16 +562,19 @@ describe('ContractPanel', () => {
         ...baseActor.activeCompany,
         id: 'company-one',
         displayName: 'Company',
-        contractPermissions: [
-          ...(baseActor.activeCompany?.contractPermissions ?? []),
-          'commercial.contract.prepare_pending_offer' as const,
-        ],
-        offerPermissionAssignmentId: 'offer-assignment',
-        offerPermissionSetVersion: 'v1' as const,
-        clientPermissionAssignmentId: 'client-grant',
-        clientPermissionSetVersion: 'v1' as const,
-        contractEarlyPreparationAssignmentId: 'early-assignment',
-        contractEarlyPreparationPermissionSetVersion: 'v1' as const,
+        grants: withCompanyGrants(
+          baseActor.activeCompany?.grants,
+          {
+            bundle: 'company_contract_early_preparation',
+            version: 'v1',
+            assignmentId: 'early-assignment',
+          },
+          {
+            bundle: 'company_director_client_access',
+            version: 'v1',
+            assignmentId: 'client-grant',
+          },
+        ),
       },
     };
     vi.spyOn(globalThis, 'fetch').mockImplementation(
@@ -848,14 +861,7 @@ describe('ContractPanel', () => {
               },
             }
           : { ...executedUiFixture(), addenda: [] };
-      const preparer = actor(true);
-      if (!preparer.activeCompany) throw new Error('Missing Company');
-      preparer.activeCompany.offerPermissions = [];
-      preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
-      preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
-      preparer.activeCompany.pricingUserPermissions = [
-        'commercial.pricing.snapshot.read',
-      ];
+      const preparer = pricingPreparer();
       const commands: Array<{
         path: string;
         body: BodyInit | null | undefined;
@@ -1588,20 +1594,35 @@ describe('ContractPanel', () => {
         activeCompany: {
           ...company,
           id: replacement === 'company' ? 'company-two' : company.id,
-          contractPermissionAssignmentId:
+          grants:
             replacement === 'assignment'
-              ? 'replacement-assignment'
-              : company.contractPermissionAssignmentId,
-          contractPermissionSetVersion:
-            replacement === 'permission-version'
-              ? undefined
-              : company.contractPermissionSetVersion,
-          contractPermissions:
-            replacement === 'contract-read' ? [] : company.contractPermissions,
-          offerPermissions:
-            replacement === 'offer-read' ? [] : company.offerPermissions,
-          clientPermissions:
-            replacement === 'client-read' ? [] : company.clientPermissions,
+              ? withCompanyGrants(company.grants, {
+                  bundle: 'company_contract_preparer',
+                  version: 'v1',
+                  assignmentId: 'replacement-assignment',
+                })
+              : replacement === 'permission-version'
+                ? withCompanyGrants(company.grants, {
+                    bundle: 'company_contract_preparer',
+                    version: 'v2',
+                    assignmentId: 'contract-assignment',
+                  })
+                : replacement === 'contract-read'
+                  ? withoutCompanyGrants(
+                      company.grants,
+                      'company_contract_preparer',
+                    )
+                  : replacement === 'offer-read'
+                    ? withoutCompanyGrants(
+                        company.grants,
+                        'company_offer_approver',
+                      )
+                    : replacement === 'client-read'
+                      ? withoutCompanyGrants(
+                          company.grants,
+                          'company_director_client_access',
+                        )
+                      : company.grants,
         },
       };
       view.rerender(
@@ -2492,14 +2513,7 @@ describe('ContractPanel', () => {
   );
   it('C9 creates DIRECT without Offer access and retains an identical uncertain retry', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    const preparer = actor(true);
-    if (!preparer.activeCompany) throw new Error('Missing Company');
-    preparer.activeCompany.offerPermissions = [];
-    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
-    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
-    preparer.activeCompany.pricingUserPermissions = [
-      'commercial.pricing.snapshot.read',
-    ];
+    const preparer = pricingPreparer();
     const direct = {
       ...fixture(),
       origin: 'DIRECT',
@@ -2581,14 +2595,7 @@ describe('ContractPanel', () => {
   });
   it('C9 revision keeps its recorded Snapshot when it is not on the first loaded page', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    const preparer = actor(true);
-    if (!preparer.activeCompany) throw new Error('Missing Company');
-    preparer.activeCompany.offerPermissions = [];
-    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
-    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
-    preparer.activeCompany.pricingUserPermissions = [
-      'commercial.pricing.snapshot.read',
-    ];
+    const preparer = pricingPreparer();
     const base = fixture();
     const direct = {
       ...base,
@@ -2653,14 +2660,7 @@ describe('ContractPanel', () => {
   });
   it('C9 suppresses a late direct creation after independent Snapshot authority changes', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    const preparer = actor(true);
-    if (!preparer.activeCompany) throw new Error('Missing Company');
-    preparer.activeCompany.offerPermissions = [];
-    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
-    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
-    preparer.activeCompany.pricingUserPermissions = [
-      'commercial.pricing.snapshot.read',
-    ];
+    const preparer = pricingPreparer();
     let resolveLate: ((value: Response) => void) | undefined;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const path = input.toString();
@@ -2711,9 +2711,12 @@ describe('ContractPanel', () => {
           {...props}
           actor={{
             ...preparer,
-            activeCompany: {
+            activeCompany: preparer.activeCompany && {
               ...preparer.activeCompany,
-              pricingUserPermissions: [],
+              grants: withoutCompanyGrants(
+                preparer.activeCompany.grants,
+                'company_pricing_user',
+              ),
             },
           }}
         />
@@ -2896,14 +2899,7 @@ describe('ContractPanel', () => {
         ? response({ items: [current.version], nextCursor: null })
         : response({ contract: current });
     });
-    const preparer = actor(true);
-    if (!preparer.activeCompany) throw new Error('Missing Company');
-    preparer.activeCompany.offerPermissions = [];
-    preparer.activeCompany.pricingUserPermissions = [
-      'commercial.pricing.snapshot.read',
-    ];
-    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
-    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-grant';
+    const preparer = pricingPreparer('pricing-grant');
     render(
       <InterfaceLocaleProvider>
         <ContractPanel
@@ -2967,9 +2963,7 @@ describe('ContractPanel', () => {
           ? response({ items: [parent.version], nextCursor: null })
           : response({ contract: parent });
       });
-      const preparer = actor(true);
-      if (!preparer.activeCompany) throw new Error('Missing Company');
-      preparer.activeCompany.offerPermissions = [];
+      const preparer = withoutOfferRead(actor(true));
       render(
         <InterfaceLocaleProvider>
           <ContractPanel
@@ -3089,10 +3083,8 @@ describe('ContractPanel', () => {
     expect(
       screen.queryByLabelText('Revised special conditions'),
     ).not.toBeInTheDocument();
-    const eligible = actor(true);
+    const eligible = withoutOfferRead(actor(true));
     eligible.workspacePermissions = ['client.manage'];
-    if (!eligible.activeCompany) throw new Error('Missing Company');
-    eligible.activeCompany.offerPermissions = [];
     view.rerender(show(eligible));
     expect(
       await screen.findByRole('button', {
@@ -3174,9 +3166,7 @@ describe('ContractPanel', () => {
     async (locale) => {
       window.localStorage.setItem(interfaceLocaleStorageKey, locale);
       const original = fixture();
-      const current = actor(true);
-      if (!current.activeCompany) throw new Error('Missing Company');
-      current.activeCompany.offerPermissions = [];
+      const current = withoutOfferRead(actor(true));
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
         init?.method === 'POST'
           ? response({}, 400)
@@ -3395,15 +3385,7 @@ describe('ContractPanel', () => {
   );
   it('selects an existing Project and preserves the exact uncertain link retry', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    const current = actor(true);
-    if (!current.activeCompany) throw new Error('Missing Company');
-    current.activeCompany.contractPermissions?.push(
-      'commercial.contract.project.link',
-    );
-    current.activeCompany.projectPermissions = [
-      'project.read',
-      'project.create',
-    ];
+    const current = projectActor();
     const approved = approvedUiFixture();
     const executed = {
       ...approved,
@@ -3692,7 +3674,10 @@ describe('ContractPanel', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     const denied = projectActor();
     if (!denied.activeCompany) throw new Error('Missing Company');
-    denied.activeCompany.contractPermissions = [];
+    denied.activeCompany.grants = withoutCompanyGrants(
+      denied.activeCompany.grants,
+      'company_contract_preparer',
+    );
     rerender(
       <InterfaceLocaleProvider>
         <ProjectContracts
@@ -4121,6 +4106,7 @@ describe('ContractPanel', () => {
         : response({ contract: approvedUiFixture() }),
     );
     const current = signatureActor();
+    if (!current.activeCompany) throw new Error('Missing Company');
     const mounted = render(
       <InterfaceLocaleProvider>
         <ContractPanel
@@ -4162,15 +4148,8 @@ describe('ContractPanel', () => {
   });
   it('preserves the entire uncertain simulated signature for explicit identical retry and shows both declarations', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    const current = actor(false);
+    const current = signatureActor();
     if (!current.activeCompany) throw new Error('Missing Company');
-    current.activeCompany.contractPermissions = [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-      'commercial.contract.signature.record',
-    ];
-    current.activeCompany.contractApproverAssignmentId = 'approver-one';
-    current.activeCompany.contractApproverPermissionSetVersion = 'v1';
     const approval = {
       id: 'approval-one',
       contractVersionId: 'version-one',
@@ -4284,12 +4263,8 @@ describe('ContractPanel', () => {
   it.each([false, true])(
     'shows the committed approval checks immediately with prior run %s and keeps reopened history',
     async (hasPriorRun) => {
-      const current = actor(false);
+      const current = signatureActor();
       if (!current.activeCompany) throw new Error('Missing Company');
-      current.activeCompany.contractPermissions = [
-        'commercial.contract.read',
-        'commercial.contract.approve',
-      ];
       const historical = qualityRun();
       const committed = {
         ...historical,
@@ -4428,12 +4403,8 @@ describe('ContractPanel', () => {
     },
   );
   it('submits only warnings still displayed after a fresh review', async () => {
-    const current = actor(false);
+    const current = signatureActor();
     if (!current.activeCompany) throw new Error('Missing Company');
-    current.activeCompany.contractPermissions = [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-    ];
     const freshRun = {
       ...qualityRun(),
       id: 'fresh-run',
@@ -4500,12 +4471,8 @@ describe('ContractPanel', () => {
     );
   });
   it('keeps a malformed successful decision uncertain and retries the exact submitted intent', async () => {
-    const current = actor(false);
+    const current = signatureActor();
     if (!current.activeCompany) throw new Error('Missing Company');
-    current.activeCompany.contractPermissions = [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-    ];
     const attempts: Array<{
       body: BodyInit | null | undefined;
       key: string | null;
@@ -4571,12 +4538,8 @@ describe('ContractPanel', () => {
     expect(attempts[1]).toEqual(attempts[0]);
   });
   it('discards an in-flight decision when the active Company changes', async () => {
-    const current = actor(false);
+    const current = signatureActor();
     if (!current.activeCompany) throw new Error('Missing Company');
-    current.activeCompany.contractPermissions = [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-    ];
     let finish: ((response: Response) => void) | undefined;
     let reads = 0;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -4647,17 +4610,8 @@ describe('ContractPanel', () => {
     ).not.toBeInTheDocument();
   });
   it('exposes an approver-only decision, preserves an uncertain exact retry and reloads approval evidence', async () => {
-    const current = actor(false);
-    if (!current.activeCompany) throw new Error('Missing fixture Company');
-    current.activeCompany.contractPermissions = [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-      'commercial.contract.signature.record',
-    ];
-    current.activeCompany.contractPermissionAssignmentId = undefined;
-    current.activeCompany.contractPermissionSetVersion = undefined;
-    current.activeCompany.contractApproverAssignmentId = 'approver-one';
-    current.activeCompany.contractApproverPermissionSetVersion = 'v1';
+    const current = signatureActor();
+    if (!current.activeCompany) throw new Error('Missing Company');
     const attempts: Array<{
       body: BodyInit | null | undefined;
       key: string | null;
@@ -4737,12 +4691,8 @@ describe('ContractPanel', () => {
   )(
     'preserves reason text on %s (%s) beside %s and disables stale decisions',
     async (code, message, history) => {
-      const current = actor(false);
+      const current = signatureActor();
       if (!current.activeCompany) throw new Error('Missing Company');
-      current.activeCompany.contractPermissions = [
-        'commercial.contract.read',
-        'commercial.contract.approve',
-      ];
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
         const path = input.toString();
         if (path.endsWith('/approve')) return response({ code }, 409);
@@ -4863,9 +4813,12 @@ describe('ContractPanel', () => {
                     ...current.activeCompany,
                     id: 'company-one',
                     displayName: 'Company',
-                    ...(replacement === 'contract-authority'
-                      ? { contractPermissions: [] }
-                      : { commercialIntakePermissions: [] }),
+                    grants: withoutCompanyGrants(
+                      current.activeCompany?.grants,
+                      replacement === 'contract-authority'
+                        ? 'company_contract_preparer'
+                        : 'company_commercial_intake',
+                    ),
                   },
                 }
               : current
@@ -5148,9 +5101,12 @@ describe('ContractPanel', () => {
                     ...current.activeCompany,
                     id: 'company-one',
                     displayName: 'Company',
-                    ...(replacement === 'contract-authority'
-                      ? { contractPermissions: [] }
-                      : { commercialIntakePermissions: [] }),
+                    grants: withoutCompanyGrants(
+                      current.activeCompany?.grants,
+                      replacement === 'contract-authority'
+                        ? 'company_contract_preparer'
+                        : 'company_commercial_intake',
+                    ),
                   },
                 }
               : current
@@ -5385,8 +5341,7 @@ describe('ContractPanel', () => {
           activeCompany: {
             id: 'company-one',
             displayName: 'Company',
-            contractPermissions: [],
-            commercialIntakePermissions: ['commercial.opportunity.read'],
+            grants: companyGrants(readerGrants[1]),
           },
         }}
         identity={identity}
@@ -5586,16 +5541,24 @@ function earlyActor(): ActorContext {
     ...member,
     activeCompany: {
       ...company,
-      contractPermissions: [
-        ...(company.contractPermissions ?? []),
-        'commercial.contract.prepare_pending_offer',
-      ],
-      offerPermissionAssignmentId: 'offer-grant',
-      offerPermissionSetVersion: 'v1',
-      clientPermissionAssignmentId: 'client-grant',
-      clientPermissionSetVersion: 'v1',
-      contractEarlyPreparationAssignmentId: 'early-grant',
-      contractEarlyPreparationPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(
+        company.grants,
+        {
+          bundle: 'company_contract_early_preparation',
+          version: 'v1',
+          assignmentId: 'early-grant',
+        },
+        {
+          bundle: 'company_offer_approver',
+          version: 'v1',
+          assignmentId: 'offer-grant',
+        },
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+      ),
     },
   };
 }
@@ -5635,41 +5598,86 @@ function actor(prepare: boolean): ActorContext {
     activeCompany: {
       id: 'company-one',
       displayName: 'Company',
-      contractPermissions: [
-        'commercial.contract.read',
-        'commercial.contract.prepare',
-      ],
-      contractPermissionAssignmentId: 'contract-assignment',
-      contractPermissionSetVersion: 'v1',
-      commercialIntakePermissions: ['commercial.opportunity.read'],
-      ...(prepare
-        ? {
-            clientPermissions: ['client.read'],
-            offerPermissions: ['commercial.offer.read'],
-          }
-        : {}),
+      grants: companyGrants(
+        ...readerGrants,
+        ...(prepare ? preparationSourceGrants : []),
+      ),
     },
   };
 }
+/** Contract preparation and the Opportunity read of every Contract reader. */
+const readerGrants = [
+  {
+    bundle: 'company_contract_preparer',
+    version: 'v1',
+    assignmentId: 'contract-assignment',
+  },
+  {
+    bundle: 'company_commercial_intake',
+    version: 'v1',
+    assignmentId: 'intake-assignment',
+  },
+] as const satisfies readonly CompanyGrantRequest[];
+/**
+ * Client and source Offer reads of a preparer. The only registry bundle that
+ * confers the Offer read without pricing snapshot reads is the Offer Approver.
+ */
+const preparationSourceGrants = [
+  {
+    bundle: 'company_director_client_access',
+    version: 'v1',
+    assignmentId: 'client-assignment',
+  },
+  {
+    bundle: 'company_offer_approver',
+    version: 'v1',
+    assignmentId: 'offer-assignment',
+  },
+] as const satisfies readonly CompanyGrantRequest[];
+/** An approver without Contract preparation: the preparer grant is revoked. */
 function signatureActor(): ActorContext {
   const result = actor(false);
   if (!result.activeCompany) throw new Error('Missing Company');
-  result.activeCompany.contractPermissions = [
-    'commercial.contract.read',
-    'commercial.contract.approve',
-    'commercial.contract.signature.record',
-  ];
-  result.activeCompany.contractApproverAssignmentId = 'approver-one';
-  result.activeCompany.contractApproverPermissionSetVersion = 'v1';
+  result.activeCompany.grants = withCompanyGrants(
+    withoutCompanyGrants(
+      result.activeCompany.grants,
+      'company_contract_preparer',
+    ),
+    {
+      bundle: 'company_contract_approver',
+      version: 'v1',
+      assignmentId: 'approver-one',
+    },
+  );
   return result;
 }
 function projectActor(): ActorContext {
   const result = actor(true);
   if (!result.activeCompany) throw new Error('Missing Company');
-  result.activeCompany.contractPermissions?.push(
-    'commercial.contract.project.link',
+  result.activeCompany.grants = withCompanyGrants(result.activeCompany.grants, {
+    bundle: 'company_project_access',
+    version: 'v1',
+    assignmentId: 'project-assignment',
+  });
+  return result;
+}
+/** `base` with its source Offer read withdrawn. */
+function withoutOfferRead(base: ActorContext): ActorContext {
+  if (!base.activeCompany) throw new Error('Missing Company');
+  base.activeCompany.grants = withoutCompanyGrants(
+    base.activeCompany.grants,
+    'company_offer_approver',
   );
-  result.activeCompany.projectPermissions = ['project.read', 'project.create'];
+  return base;
+}
+/** `actor` with its source Offer read withdrawn and a Pricing User grant. */
+function pricingPreparer(assignmentId = 'pricing-one'): ActorContext {
+  const result = actor(true);
+  if (!result.activeCompany) throw new Error('Missing Company');
+  result.activeCompany.grants = withCompanyGrants(
+    withoutCompanyGrants(result.activeCompany.grants, 'company_offer_approver'),
+    { bundle: 'company_pricing_user', version: 'v1', assignmentId },
+  );
   return result;
 }
 function candidateUiFixture() {
@@ -5935,8 +5943,11 @@ it('wires scoped plan rejection through the actual illustrative Contract parent 
         ...native.activeCompany,
         id: planSource.companyId,
         displayName: 'Synthetic Company',
-        grants: planActor.activeCompany?.grants,
-        taskPermissions: ['task.read', 'task.manage'],
+        grants: withCompanyGrants(
+          planActor.activeCompany?.grants,
+          ...readerGrants,
+          preparationSourceGrants[1],
+        ),
       },
     };
   const revised = {

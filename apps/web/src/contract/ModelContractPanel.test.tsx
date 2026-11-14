@@ -3,7 +3,7 @@ import {
   userRequest,
 } from '../mission-plan/mission-plan.fixture';
 import {
-  companyGrants,
+  withCompanyGrants,
   withoutCompanyGrants,
 } from '../access/company-grants.test-fixture';
 import {
@@ -79,15 +79,29 @@ describe('Corresponding Contract component command ownership', () => {
           ...modelContractActor.activeCompany,
           id: source.companyId,
           displayName: 'Captured source Company',
-          clientPermissions: ['client.read'],
-          clientPermissionAssignmentId: 'source-client-v2',
-          clientPermissionSetVersion: 'v2',
-          offerPermissionAssignmentId: 'source-offer-v3',
-          offerPermissionSetVersion: 'v3',
-          offerApproverAssignmentId: 'source-offer-alternative-v2',
-          offerApproverPermissionSetVersion: 'v2',
-          commercialIntakePermissionAssignmentId: 'source-intake-v4',
-          commercialIntakePermissionSetVersion: 'v4',
+          grants: withCompanyGrants(
+            modelContractActor.activeCompany?.grants,
+            {
+              bundle: 'company_director_client_access',
+              version: 'v2',
+              assignmentId: 'source-client-v2',
+            },
+            {
+              bundle: 'company_offer_preparer',
+              version: 'v3',
+              assignmentId: 'source-offer-v3',
+            },
+            {
+              bundle: 'company_offer_approver',
+              version: 'v2',
+              assignmentId: 'source-offer-alternative-v2',
+            },
+            {
+              bundle: 'company_commercial_intake',
+              version: 'v4',
+              assignmentId: 'source-intake-v4',
+            },
+          ),
         },
       };
       let release: ((value: Response) => void) | undefined;
@@ -167,20 +181,26 @@ describe('Corresponding Contract component command ownership', () => {
         kind === 'client'
           ? {
               ...c,
-              clientPermissions: [],
-              clientPermissionAssignmentId: undefined,
-              clientPermissionSetVersion: undefined,
+              grants: withoutCompanyGrants(
+                c.grants,
+                'company_director_client_access',
+              ),
             }
           : kind === 'offer'
             ? {
                 ...c,
-                offerPermissionAssignmentId: undefined,
-                offerPermissionSetVersion: undefined,
+                grants: withoutCompanyGrants(
+                  c.grants,
+                  'company_offer_preparer',
+                ),
               }
             : {
                 ...c,
-                commercialIntakePermissionAssignmentId:
-                  'fresh-source-intake-v4',
+                grants: withCompanyGrants(c.grants, {
+                  bundle: 'company_commercial_intake',
+                  version: 'v4',
+                  assignmentId: 'fresh-source-intake-v4',
+                }),
               };
       view.rerender(panel({ ...actor, activeCompany: changed }));
       await waitFor(() => expect(signal?.aborted).toBe(true));
@@ -256,7 +276,10 @@ describe('Corresponding Contract component command ownership', () => {
         ...modelContractActor.activeCompany,
         id: source.companyId,
         displayName: 'Synthetic Company',
-        clientPermissions: [],
+        grants: withoutCompanyGrants(
+          modelContractActor.activeCompany?.grants,
+          'company_director_client_access',
+        ),
       },
     };
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -336,8 +359,19 @@ describe('Corresponding Contract component command ownership', () => {
           ...modelContractActor.activeCompany,
           id: source.companyId,
           displayName: 'Synthetic Company',
-          contractPermissionSetVersion: 'v1',
-          contractApproverPermissionSetVersion: 'v1',
+          grants: withCompanyGrants(
+            modelContractActor.activeCompany?.grants,
+            {
+              bundle: 'company_contract_preparer',
+              version: 'v1',
+              assignmentId: 'contract-preparer-868',
+            },
+            {
+              bundle: 'company_contract_approver',
+              version: 'v1',
+              assignmentId: 'contract-approver-868',
+            },
+          ),
         },
       }),
     );
@@ -562,7 +596,8 @@ it('wires scoped plan rejection through the actual Company-model Contract parent
       displayName: 'Synthetic Company',
       projectPermissions: ['project.read', 'project.create'],
       taskPermissions: ['task.read', 'task.manage'],
-      grants: companyGrants(
+      grants: withCompanyGrants(
+        signingActor.activeCompany?.grants,
         userRequest,
         {
           bundle: 'company_project_access',

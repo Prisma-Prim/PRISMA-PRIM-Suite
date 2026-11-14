@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -730,14 +731,18 @@ it.each([
         ...actor.activeCompany,
         id:
           change === 'Company' ? 'replacement-company' : actor.activeCompany.id,
-        contractPermissions:
+        grants:
           change === 'Contract grant'
-            ? []
-            : actor.activeCompany.contractPermissions,
-        commercialIntakePermissions:
-          change === 'Opportunity read'
-            ? []
-            : actor.activeCompany.commercialIntakePermissions,
+            ? withoutCompanyGrants(
+                actor.activeCompany.grants,
+                'company_contract_approver',
+              )
+            : change === 'Opportunity read'
+              ? withoutCompanyGrants(
+                  actor.activeCompany.grants,
+                  'company_commercial_intake',
+                )
+              : actor.activeCompany.grants,
       },
     };
     mounted.replaceActor(retired);
