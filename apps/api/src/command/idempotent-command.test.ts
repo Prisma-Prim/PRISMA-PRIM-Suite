@@ -7,7 +7,6 @@ import {
   advisoryTransactionLock,
   commandFingerprint,
   idempotencyConflict,
-  insertionOrderFingerprint,
   runIdempotentCommand,
   runKeyedCommand,
   staleVersionConflict,
@@ -389,16 +388,10 @@ describe('command fingerprints', () => {
       );
   });
 
-  it('ignores object key order in the stable fingerprint but not in the insertion-order one', () => {
+  it('ignores object key order in the stable fingerprint', () => {
     const forward = { a: 1, b: { c: 2, d: 3 } };
     const backward = { b: { d: 3, c: 2 }, a: 1 };
     expect(commandFingerprint(forward)).toBe(commandFingerprint(backward));
-    expect(insertionOrderFingerprint(forward)).not.toBe(
-      insertionOrderFingerprint(backward),
-    );
-    expect(insertionOrderFingerprint(forward)).toBe(
-      createHash('sha256').update(JSON.stringify(forward)).digest('hex'),
-    );
   });
 
   it('keeps the shared refusals and their default message', () => {
