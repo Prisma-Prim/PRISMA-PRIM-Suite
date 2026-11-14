@@ -41,6 +41,11 @@ export default defineConfig(({ mode }) => {
       outputFile: resultsFile ? { json: resultsFile } : undefined,
       exclude: [...configDefaults.exclude, 'e2e/**'],
       setupFiles: ['./src/test/setup.ts'],
+      // Every worker starts in UTC, as on the CI runners, so the dates a test
+      // formats read the same on any machine (#1339). Vitest passes this
+      // environment to each worker it starts; the dev server and the build
+      // ignore the `test` block. src/test/time-zone.test.ts guards it.
+      env: { TZ: 'UTC' },
       // App-level jsdom renders time out at 5 s when every core runs a
       // worker (#571). Half the cores keeps the same wall time locally and
       // is a no-op on 2-vCPU CI runners, where Vitest already uses one.
