@@ -194,68 +194,75 @@ withPostgres('Certification payload current-shape migration', () => {
   );
 
   it('applies over current-shape steps and receipts and leaves them byte-identical', async () => {
-    await withPreviousSchema('certification1370_current', async (database) => {
-      for (const row of [
-        { table: 'step', step: 'application', payload: application },
-        {
-          table: 'step',
-          step: 'application',
-          payload: { ...application, submittedOn: '2026-10-01' },
-        },
-        {
-          table: 'step',
-          step: 'team',
-          payload: {
-            ...team,
-            members: team.members.map((member) => ({
-              ...member,
-              declarations: { ...CONFIRMED, noConsultancy: 'to_verify' },
-              conflictNote: 'Fictional link to verify.',
-            })),
+    await withPreviousSchema(
+      'certification1370_current',
+      async (database, through) => {
+        for (const row of [
+          { table: 'step', step: 'application', payload: application },
+          {
+            table: 'step',
+            step: 'application',
+            payload: { ...application, submittedOn: '2026-10-01' },
           },
-        },
-        { table: 'step', step: 'team_decision', payload: teamDecision },
-        { table: 'step', step: 'dossier_review', payload: dossierReview },
-        {
-          table: 'step',
-          step: 'recommendation',
-          payload: {
-            recommendation: 'grant',
-            basis: 'Fictional',
-            recommendedOn: null,
+          {
+            table: 'step',
+            step: 'team',
+            payload: {
+              ...team,
+              members: team.members.map((member) => ({
+                ...member,
+                declarations: { ...CONFIRMED, noConsultancy: 'to_verify' },
+                conflictNote: 'Fictional link to verify.',
+              })),
+            },
           },
-        },
-        { table: 'receipt', response: caseRead },
-        {
-          table: 'receipt',
-          response: {
-            ...caseRead,
-            exchanges: { ...caseRead.exchanges, nextCursor: 'next-page' },
+          { table: 'step', step: 'team_decision', payload: teamDecision },
+          { table: 'step', step: 'dossier_review', payload: dossierReview },
+          {
+            table: 'step',
+            step: 'recommendation',
+            payload: {
+              recommendation: 'grant',
+              basis: 'Fictional',
+              recommendedOn: null,
+            },
           },
-        },
-      ] satisfies StoredRow[])
-        await insert(database, row);
-      const stored = await storedRows(database);
-      const applied = await appliedMigrations(database);
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
-      expect(await appliedMigrations(database)).toBe((applied ?? 0) + 1);
-      expect(await storedRows(database)).toEqual(stored);
-      expect(stored.steps).toHaveLength(6);
-      expect(stored.receipts).toHaveLength(2);
-    });
+          { table: 'receipt', response: caseRead },
+          {
+            table: 'receipt',
+            response: {
+              ...caseRead,
+              exchanges: { ...caseRead.exchanges, nextCursor: 'next-page' },
+            },
+          },
+        ] satisfies StoredRow[])
+          await insert(database, row);
+        const stored = await storedRows(database);
+        const applied = await appliedMigrations(database);
+        await migrate(drizzle(database.targetPool), {
+          migrationsFolder: through,
+        });
+        expect(await appliedMigrations(database)).toBe((applied ?? 0) + 1);
+        expect(await storedRows(database)).toEqual(stored);
+        expect(stored.steps).toHaveLength(6);
+        expect(stored.receipts).toHaveLength(2);
+      },
+    );
   }, 60_000);
 });
 
 /**
  * Runs `test` on an isolated database migrated up to, but excluding, the
- * current-shape migration. The Case and actor references do not matter to the
+ * current-shape migration; `through` holds the migrations up to and including
+ * it, so a later migration never changes what the test proves. The Case and actor references do not matter to the
  * stored JSON, so the database drops them instead of building those records.
  */
 async function withPreviousSchema(
   namePrefix: string,
-  test: (database: IsolatedPostgresTestDatabase) => Promise<void>,
+  test: (
+    database: IsolatedPostgresTestDatabase,
+    through: string,
+  ) => Promise<void>,
 ) {
   if (!databaseUrl) throw new Error('TEST_DATABASE_URL required');
   const database = await createIsolatedPostgresTestDatabase({
@@ -263,8 +270,10 @@ async function withPreviousSchema(
     namePrefix,
   });
   let previous: string | undefined;
+  let through: string | undefined;
   try {
     previous = await mkdtemp(join(tmpdir(), 'certification1370-previous-'));
+    through = await mkdtemp(join(tmpdir(), 'certification1370-through-'));
     const directory = resolve('drizzle');
     const journal = object(
       JSON.parse(
@@ -280,18 +289,22 @@ async function withPreviousSchema(
         entry.tag.endsWith(CURRENT_SHAPE_MIGRATION),
     );
     expect(index).toBeGreaterThan(0);
-    const old = entries.slice(0, index);
-    await mkdir(join(previous, 'meta'));
-    await writeFile(
-      join(previous, 'meta', '_journal.json'),
-      JSON.stringify({ ...journal, entries: old }),
-    );
-    for (const entry of old) {
-      if (typeof entry.tag !== 'string') throw new Error('Tag required');
-      await cp(
-        join(directory, `${entry.tag}.sql`),
-        join(previous, `${entry.tag}.sql`),
+    for (const [folder, kept] of [
+      [previous, entries.slice(0, index)],
+      [through, entries.slice(0, index + 1)],
+    ] as const) {
+      await mkdir(join(folder, 'meta'));
+      await writeFile(
+        join(folder, 'meta', '_journal.json'),
+        JSON.stringify({ ...journal, entries: kept }),
       );
+      for (const entry of kept) {
+        if (typeof entry.tag !== 'string') throw new Error('Tag required');
+        await cp(
+          join(directory, `${entry.tag}.sql`),
+          join(folder, `${entry.tag}.sql`),
+        );
+      }
     }
     await migrate(drizzle(database.targetPool), { migrationsFolder: previous });
     await database.targetPool.query(
@@ -300,10 +313,11 @@ async function withPreviousSchema(
     await database.targetPool.query(
       'ALTER TABLE certification_receipts DROP CONSTRAINT certification_receipts_case_fk, DROP CONSTRAINT certification_receipts_actor_fk',
     );
-    await test(database);
+    await test(database, through);
   } finally {
     await database.close();
-    if (previous) await rm(previous, { recursive: true, force: true });
+    for (const folder of [previous, through])
+      if (folder) await rm(folder, { recursive: true, force: true });
   }
 }
 

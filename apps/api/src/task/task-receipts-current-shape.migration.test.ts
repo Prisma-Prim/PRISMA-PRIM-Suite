@@ -118,7 +118,7 @@ withPostgres('Task receipt current-shape migration', () => {
   );
 
   it('applies over current-shape receipts and creations and leaves them byte-identical', async () => {
-    await withPreviousSchema('task1348_current', async (database) => {
+    await withPreviousSchema('task1348_current', async (database, through) => {
       for (const row of [
         { table: 'task_commands', result: task },
         grouped([task, { ...task, id: randomUUID(), priority: 'critical' }]),
@@ -138,7 +138,7 @@ withPostgres('Task receipt current-shape migration', () => {
       const stored = await storedRows(database);
       const applied = await appliedMigrations(database);
       await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
+        migrationsFolder: through,
       });
       expect(await appliedMigrations(database)).toBe((applied ?? 0) + 1);
       expect(await storedRows(database)).toEqual(stored);
@@ -150,12 +150,16 @@ withPostgres('Task receipt current-shape migration', () => {
 
 /**
  * Runs `test` on an isolated database migrated up to, but excluding, the
- * current-shape migration. The Task and actor references do not matter to the
+ * current-shape migration; `through` holds the migrations up to and including
+ * it, so a later migration never changes what the test proves. The Task and actor references do not matter to the
  * stored JSON, so the database drops them instead of building those records.
  */
 async function withPreviousSchema(
   namePrefix: string,
-  test: (database: IsolatedPostgresTestDatabase) => Promise<void>,
+  test: (
+    database: IsolatedPostgresTestDatabase,
+    through: string,
+  ) => Promise<void>,
 ) {
   if (!databaseUrl) throw new Error('TEST_DATABASE_URL required');
   const database = await createIsolatedPostgresTestDatabase({
@@ -163,8 +167,10 @@ async function withPreviousSchema(
     namePrefix,
   });
   let previous: string | undefined;
+  let through: string | undefined;
   try {
     previous = await mkdtemp(join(tmpdir(), 'task1348-previous-'));
+    through = await mkdtemp(join(tmpdir(), 'task1348-through-'));
     const directory = resolve('drizzle');
     const journal = object(
       JSON.parse(
@@ -180,18 +186,22 @@ async function withPreviousSchema(
         entry.tag.endsWith(CURRENT_SHAPE_MIGRATION),
     );
     expect(index).toBeGreaterThan(0);
-    const old = entries.slice(0, index);
-    await mkdir(join(previous, 'meta'));
-    await writeFile(
-      join(previous, 'meta', '_journal.json'),
-      JSON.stringify({ ...journal, entries: old }),
-    );
-    for (const entry of old) {
-      if (typeof entry.tag !== 'string') throw new Error('Tag required');
-      await cp(
-        join(directory, `${entry.tag}.sql`),
-        join(previous, `${entry.tag}.sql`),
+    for (const [folder, kept] of [
+      [previous, entries.slice(0, index)],
+      [through, entries.slice(0, index + 1)],
+    ] as const) {
+      await mkdir(join(folder, 'meta'));
+      await writeFile(
+        join(folder, 'meta', '_journal.json'),
+        JSON.stringify({ ...journal, entries: kept }),
       );
+      for (const entry of kept) {
+        if (typeof entry.tag !== 'string') throw new Error('Tag required');
+        await cp(
+          join(directory, `${entry.tag}.sql`),
+          join(folder, `${entry.tag}.sql`),
+        );
+      }
     }
     await migrate(drizzle(database.targetPool), { migrationsFolder: previous });
     await database.targetPool.query(
@@ -200,10 +210,11 @@ async function withPreviousSchema(
     await database.targetPool.query(
       'ALTER TABLE task_events DROP CONSTRAINT task_events_task_fk, DROP CONSTRAINT task_events_actor_fk',
     );
-    await test(database);
+    await test(database, through);
   } finally {
     await database.close();
-    if (previous) await rm(previous, { recursive: true, force: true });
+    for (const folder of [previous, through])
+      if (folder) await rm(folder, { recursive: true, force: true });
   }
 }
 
