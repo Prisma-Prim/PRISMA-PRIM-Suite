@@ -1,0 +1,432 @@
+{
+  "901": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 901,
+            "title": "Show the sample totals row",
+            "url": "https://github.com/example-org/sample-repo/issues/901",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nA totals row under the sample ledger.\n\n## Blocked by\n\n#880, merged last week.\n\n## Exclusions\n\nNo export change.\n",
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "sample-owner"
+                  },
+                  "createdAt": "2026-11-14T09:00:00Z",
+                  "url": "https://github.com/example-org/sample-repo/issues/901#issuecomment-9011",
+                  "body": "Question: should the totals row include archived lines? No competing claim was found yet."
+                }
+              ]
+            },
+            "subIssues": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "blockedBy": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "number": 881,
+                  "state": "CLOSED"
+                }
+              ]
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    },
+    "blockers": {
+      "data": {
+        "repository": {
+          "issue880": {
+            "__typename": "Issue",
+            "number": 880,
+            "state": "CLOSED"
+          }
+        }
+      }
+    }
+  },
+  "902": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 902,
+            "title": "Export the sample ledger as CSV",
+            "url": "https://github.com/example-org/sample-repo/issues/902",
+            "state": "CLOSED",
+            "stateReason": "COMPLETED",
+            "closedAt": "2026-11-13T09:00:00Z",
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "subIssues": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "blockedBy": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "903": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 903,
+            "title": "Validate the sample import header",
+            "url": "https://github.com/example-org/sample-repo/issues/903",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "sample-agent"
+                  },
+                  "createdAt": "2026-11-14T10:00:00Z",
+                  "url": "https://github.com/example-org/sample-repo/issues/903#issuecomment-9031",
+                  "body": "Claimed by a Claude Code subagent (local harness) on branch `fix/903-import-header`."
+                }
+              ]
+            },
+            "subIssues": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "blockedBy": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "904": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 904,
+            "title": "Keep the sample queue order",
+            "url": "https://github.com/example-org/sample-repo/issues/904",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "subIssues": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "blockedBy": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "number": 914,
+                  "url": "https://github.com/example-org/sample-repo/pull/914",
+                  "state": "OPEN",
+                  "isDraft": true,
+                  "headRefName": "feat/904-queue-order"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "905": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 905,
+            "title": "Sample report columns, master specification",
+            "url": "https://github.com/example-org/sample-repo/issues/905",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "subIssues": {
+              "totalCount": 2,
+              "nodes": [
+                {
+                  "number": 921,
+                  "state": "CLOSED"
+                },
+                {
+                  "number": 922,
+                  "state": "CLOSED"
+                }
+              ]
+            },
+            "blockedBy": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "906": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 906,
+            "title": "Sample audit messages, master specification",
+            "url": "https://github.com/example-org/sample-repo/issues/906",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "subIssues": {
+              "totalCount": 3,
+              "nodes": [
+                {
+                  "number": 923,
+                  "state": "CLOSED"
+                },
+                {
+                  "number": 924,
+                  "state": "OPEN"
+                },
+                {
+                  "number": 925,
+                  "state": "OPEN"
+                }
+              ]
+            },
+            "blockedBy": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "907": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 907,
+            "title": "Retry the sample upload",
+            "url": "https://github.com/example-org/sample-repo/issues/907",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nOne retry.\n\n## Blocked by\n\n#883 and #884; pull request #885 must merge first.\n\n## Exclusions\n\nNothing about #886.\n",
+            "comments": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "subIssues": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "blockedBy": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "number": 883,
+                  "state": "OPEN"
+                }
+              ]
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    },
+    "blockers": {
+      "data": {
+        "repository": {
+          "issue884": {
+            "__typename": "Issue",
+            "number": 884,
+            "state": "OPEN"
+          },
+          "issue885": {
+            "__typename": "PullRequest",
+            "number": 885,
+            "state": "MERGED"
+          }
+        }
+      }
+    }
+  },
+  "908": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 908,
+            "title": "Label the sample export",
+            "url": "https://github.com/example-org/sample-repo/issues/908",
+            "state": "OPEN",
+            "stateReason": null,
+            "closedAt": null,
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 2,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "sample-owner"
+                  },
+                  "createdAt": "2026-11-14T08:00:00Z",
+                  "url": "https://github.com/example-org/sample-repo/issues/908#issuecomment-9081",
+                  "body": "@codex Implement this issue in a fresh Codex Cloud task from current main."
+                },
+                {
+                  "author": {
+                    "login": "sample-agent"
+                  },
+                  "createdAt": "2026-11-14T08:05:00Z",
+                  "url": "https://github.com/example-org/sample-repo/issues/908#issuecomment-9082",
+                  "body": "Codex Cloud claims #908 on `feat/908-export-label`."
+                }
+              ]
+            },
+            "subIssues": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "blockedBy": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "number": 887,
+                  "state": "OPEN"
+                }
+              ]
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "number": 918,
+                  "url": "https://github.com/example-org/sample-repo/pull/918",
+                  "state": "OPEN",
+                  "isDraft": false,
+                  "headRefName": "feat/908-export-label"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "909": {
+    "issue": {
+      "data": {
+        "repository": {
+          "issue": {
+            "number": 909,
+            "title": "Revise the sample certificate",
+            "url": "https://github.com/example-org/sample-repo/issues/909",
+            "state": "CLOSED",
+            "stateReason": "COMPLETED",
+            "closedAt": "2026-11-13T20:00:00Z",
+            "body": "## What to build\n\nA sample outcome.\n\nBlocked by: none.\n",
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "sample-agent"
+                  },
+                  "createdAt": "2026-11-13T18:20:00Z",
+                  "url": "https://github.com/example-org/sample-repo/issues/909#issuecomment-9091",
+                  "body": "Claimed in Codex Cloud on feat/909-certificate-revisions after #908 merged."
+                }
+              ]
+            },
+            "subIssues": {
+              "totalCount": 2,
+              "nodes": [
+                {
+                  "number": 926,
+                  "state": "CLOSED"
+                },
+                {
+                  "number": 927,
+                  "state": "CLOSED"
+                }
+              ]
+            },
+            "blockedBy": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "closedByPullRequestsReferences": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        }
+      }
+    }
+  }
+}
