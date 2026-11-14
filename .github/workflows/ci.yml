@@ -67,6 +67,25 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  worktree_windows:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # Builtins only; each synthetic fixture uses the real pinned pnpm offline.
+      - name: Prove parallel worktree preparation on Windows
+        run: node --test scripts/prepare-worktree.test.mjs
+
   scope:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -496,6 +515,7 @@ jobs:
     needs:
       [
         checks,
+        worktree_windows,
         scope,
         postgres_image,
         api,
