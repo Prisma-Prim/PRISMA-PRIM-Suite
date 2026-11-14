@@ -108,7 +108,8 @@ export function captureCompanyPermissions(input: {
   });
 }
 
-function isCapturedCompanyGrant(grant: {
+/** Whether the row is a grant its bundle could have captured; anything else is not. */
+export function isCapturedCompanyGrant(grant: {
   bundle: CompanyRoleBundle;
   assignmentId: string;
   permissionSetVersion: string | null;

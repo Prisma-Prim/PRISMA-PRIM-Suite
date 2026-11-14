@@ -13,6 +13,20 @@ export const completeActor = {
   activeCompany: {
     id: 'sample',
     displayName: 'sample',
+    grants: [
+      {
+        bundle: 'company_context_access',
+        assignmentId: 'sample-context',
+        permissionSetVersion: null,
+        permissions: [],
+      },
+      {
+        bundle: 'company_project_access',
+        assignmentId: 'sample-project',
+        permissionSetVersion: 'v1',
+        permissions: ['project.read', 'project.create'],
+      },
+    ],
     workingEvidenceCasePermissions: { version: 'future', arbitrary: null },
     workingEvidenceCaseReaderAssignmentId: 'sample-working-reader',
     workingEvidenceCaseReaderPermissionSetVersion: 'future',

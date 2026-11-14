@@ -85,6 +85,7 @@ withPostgres('Activity-readable Documents through real PostgreSQL', () => {
       activeCompany: {
         id: companyId,
         displayName: 'Synthetic internal Offer Company',
+        grants: [],
         clientPermissions: ['client.read'],
         documentPermissions: [
           'document.read',

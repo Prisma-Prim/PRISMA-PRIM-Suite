@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 
 /**
  * What the captured Certification grants let this actor attempt. The server
@@ -12,8 +13,9 @@ export type CertificationAuthority =
  * Readers consult Cases; a programme manager also records steps, an approver
  * decides on the proposed audit team and an auditor records audit results
  * when the Case links them to the approved team's leader. Like the server,
- * each role counts only alongside the reader grant. An unrecognized
- * permission, assignment or version fails closed.
+ * each role counts only alongside the reader grant. Grants are read only
+ * through the Company grants accessor, whose parser refuses an unrecognized
+ * bundle, permission, assignment or version.
  */
 export function certificationAuthority(
   actor: ActorContext,
@@ -25,34 +27,26 @@ export function certificationAuthority(
     nonblank(actor.workspaceId) &&
     nonblank(actor.workspaceMembershipId) &&
     nonblank(company?.id) &&
-    (company?.projectPermissions?.includes('project.read') ?? false) &&
-    grant(
-      company?.certificationReaderPermissions,
-      'certification.read',
-      company?.certificationReaderAssignmentId,
-      company?.certificationReaderPermissionSetVersion,
-    );
+    holds(company, 'company_project_access', 'project.read') &&
+    holds(company, 'company_certification_reader', 'certification.read');
   if (!read)
     return { read: false, manage: false, approve: false, audit: false };
   return {
     read: true,
-    manage: grant(
-      company?.certificationProgrammeManagerPermissions,
+    manage: holds(
+      company,
+      'company_certification_programme_manager',
       'certification.programme.manage',
-      company?.certificationProgrammeManagerAssignmentId,
-      company?.certificationProgrammeManagerPermissionSetVersion,
     ),
-    approve: grant(
-      company?.certificationApproverPermissions,
+    approve: holds(
+      company,
+      'company_certification_approver',
       'certification.approve',
-      company?.certificationApproverAssignmentId,
-      company?.certificationApproverPermissionSetVersion,
     ),
-    audit: grant(
-      company?.certificationAuditorPermissions,
+    audit: holds(
+      company,
+      'company_certification_auditor',
       'certification.audit.record',
-      company?.certificationAuditorAssignmentId,
-      company?.certificationAuditorPermissionSetVersion,
     ),
   };
 }
@@ -66,35 +60,12 @@ export function certificationContextKey(actor: ActorContext): string {
     actor.workspaceMembershipId,
     actor.active,
     company?.id,
-    company?.projectPermissions,
-    company?.certificationReaderAssignmentId,
-    company?.certificationReaderPermissionSetVersion,
-    company?.certificationReaderPermissions,
-    company?.certificationProgrammeManagerAssignmentId,
-    company?.certificationProgrammeManagerPermissionSetVersion,
-    company?.certificationProgrammeManagerPermissions,
-    company?.certificationApproverAssignmentId,
-    company?.certificationApproverPermissionSetVersion,
-    company?.certificationApproverPermissions,
-    company?.certificationAuditorAssignmentId,
-    company?.certificationAuditorPermissionSetVersion,
-    company?.certificationAuditorPermissions,
+    grantOf(company, 'company_project_access') ?? null,
+    grantOf(company, 'company_certification_reader') ?? null,
+    grantOf(company, 'company_certification_programme_manager') ?? null,
+    grantOf(company, 'company_certification_approver') ?? null,
+    grantOf(company, 'company_certification_auditor') ?? null,
   ]);
-}
-
-function grant(
-  permissions: readonly string[] | undefined,
-  expected: string,
-  assignmentId: string | undefined,
-  version: string | undefined,
-): boolean {
-  return (
-    version === 'v1' &&
-    nonblank(assignmentId) &&
-    permissions !== undefined &&
-    permissions.length === 1 &&
-    permissions[0] === expected
-  );
 }
 
 function nonblank(value: unknown): value is string {

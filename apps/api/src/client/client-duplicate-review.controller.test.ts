@@ -37,6 +37,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Company',
+    grants: [],
     clientPermissions: [
       'client.read',
       'client.create',

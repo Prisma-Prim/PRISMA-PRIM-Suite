@@ -1,4 +1,5 @@
 import type { ApiRequest, ApiResult } from '../api/authenticated-api-client';
+import { isCompanyGrants } from './company-grants';
 
 type Guard<T> = (value: unknown) => value is T;
 type Value<T> = T extends Guard<infer Result> ? Result : never;
@@ -76,6 +77,10 @@ const isActorContext = object({
     object({
       id: isString,
       displayName: isString,
+      // Read only through the accessors of ./company-grants. Optional until
+      // #1148 step c removes the per-bundle fields below; absent grants
+      // confer nothing.
+      grants: optional(isCompanyGrants),
       missionPlanGrants: optional(isOpaque),
       offerModelGrants: optional(isOpaque),
       contractModelGrants: optional(isOpaque),

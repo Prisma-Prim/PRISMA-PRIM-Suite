@@ -31,6 +31,7 @@ const actor: ActorContext = {
   activeCompany: {
     id,
     displayName: 'Fictional Company',
+    grants: [],
     clientPermissions: [],
   },
 };

@@ -1,4 +1,5 @@
 import type { PaymentCapturedGrant } from './payment-captured-grants.js';
+import type { CompanyGrant } from './company-grants.js';
 import type { ExternalInvoiceCapturedGrant } from './external-invoice-captured-grants.js';
 import type { KnowledgeCapturedGrant } from './knowledge-captured-grants.js';
 import type { MissionPlanActorProjection } from './mission-plan-captured-grants.js';
@@ -72,6 +73,11 @@ export interface ActiveCompanyContext
   offerMessageReadCapture?: string;
   id: string;
   displayName: string;
+  /**
+   * Every live captured Company role grant, derived from the registry. The
+   * per-bundle fields below describe the same grants until #1148 step c.
+   */
+  grants: CompanyGrant[];
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
   documentPermissionSetVersion?: DocumentPermissionSetVersion;

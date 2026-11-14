@@ -1319,7 +1319,9 @@ describe('Certification Case workspace', () => {
       ...actor,
       activeCompany: {
         ...company,
-        certificationReaderPermissionSetVersion: undefined,
+        grants: company.grants?.filter(
+          (grant) => grant.bundle !== 'company_certification_reader',
+        ),
       },
     });
     expect(container).toBeEmptyDOMElement();
