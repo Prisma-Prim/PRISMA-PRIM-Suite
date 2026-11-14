@@ -6,6 +6,7 @@ import test from 'node:test';
 const gate = fileURLToPath(new URL('./verify-ci-results.mjs', import.meta.url));
 const successfulResults = {
   checks: { result: 'success' },
+  worktree_windows: { result: 'success' },
   scope: {
     result: 'success',
     outputs: { docs_only: 'false', repeat_tests: 'true' },
@@ -74,12 +75,14 @@ test('quality accepts skipped heavy families only after a successful docs-only s
   );
   const docsOnly = invoke({
     checks: { result: 'success' },
+    worktree_windows: { result: 'success' },
     scope: { result: 'success', outputs: { docs_only: 'true' } },
     ...skippedHeavy,
   });
   assert.equal(docsOnly.status, 0, docsOnly.stderr);
   const failedScope = invoke({
     checks: { result: 'success' },
+    worktree_windows: { result: 'success' },
     scope: { result: 'failure', outputs: { docs_only: 'true' } },
     ...skippedHeavy,
   });
@@ -199,6 +202,7 @@ test('a documentation-only change needs no repeat proof for its skipped flaky_gu
   ];
   const child = invoke({
     checks: { result: 'success' },
+    worktree_windows: { result: 'success' },
     scope: { result: 'success', outputs: { docs_only: 'true' } },
     ...Object.fromEntries(heavy.map((job) => [job, { result: 'skipped' }])),
   });

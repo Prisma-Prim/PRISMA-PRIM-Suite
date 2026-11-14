@@ -146,6 +146,7 @@ const heavy = [
 function results(scope, heavyResult) {
   return {
     checks: success,
+    worktree_windows: success,
     scope,
     ...Object.fromEntries(heavy.map((job) => [job, heavyResult])),
   };

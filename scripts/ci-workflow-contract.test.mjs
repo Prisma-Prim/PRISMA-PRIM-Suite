@@ -180,13 +180,13 @@ function stepBody(job, step) {
   return job.slice(start, next === -1 ? undefined : next);
 }
 
-test('every canonical CI job uses the supported Ubuntu 24.04 standard runner', async () => {
+test('application CI uses Ubuntu 24.04 and isolated worktree proof uses native Windows', async () => {
   const jobs = jobsIn(await readWorkflow());
   assert.ok(Object.keys(jobs).length > 0);
   for (const [name, job] of Object.entries(jobs)) {
     assert.deepEqual(
       [...job.matchAll(/^ {4}runs-on: (.+)$/gm)].map((match) => match[1]),
-      ['ubuntu-24.04'],
+      [name === 'worktree_windows' ? 'windows-2025' : 'ubuntu-24.04'],
       `${name} must keep the pinned Playwright and packaging toolchain on its supported OS`,
     );
   }
@@ -197,6 +197,7 @@ test('independent test families and packaging share only the fast prerequisite a
   const jobs = jobsIn(await readWorkflow());
   assert.deepEqual(Object.keys(jobs), [
     'checks',
+    'worktree_windows',
     'scope',
     'postgres_image',
     'api',
@@ -254,7 +255,7 @@ test('independent test families and packaging share only the fast prerequisite a
   }
   assert.match(
     jobs.quality.replaceAll(/\s+/g, ' '),
-    / needs: \[ checks, scope, postgres_image, api, web_unit, browser, acceptance, build, packaging, flaky_guard, \] /,
+    / needs: \[ checks, worktree_windows, scope, postgres_image, api, web_unit, browser, acceptance, build, packaging, flaky_guard, \] /,
   );
   assert.match(jobs.quality, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
   const gate = stepBody(jobs.quality, 'Require every verification result');
@@ -412,6 +413,7 @@ test('a controlled failing dependency prevents the workflow aggregate command fr
   assert.equal(dependency.status, 1);
   const results = {
     checks: { result: 'success' },
+    worktree_windows: { result: 'success' },
     scope: {
       result: 'success',
       outputs: { docs_only: 'false', repeat_tests: 'false' },

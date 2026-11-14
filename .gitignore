@@ -1,5 +1,6 @@
 node_modules
 .pnpm-home/
+.worktrees/
 dist/
 coverage/
 playwright-report/
