@@ -363,6 +363,9 @@ export async function createPaymentEvidenceFixture(
     get pool() {
       return harness.pool;
     },
+    measureApplicationQueries<T>(work: () => Promise<T>) {
+      return harness.measureApplicationQueries(work);
+    },
   };
 }
 export type PaymentEvidenceFixture = Awaited<

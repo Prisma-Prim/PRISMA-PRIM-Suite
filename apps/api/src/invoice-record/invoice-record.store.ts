@@ -9,13 +9,32 @@ import {
   invoiceRecordHistory as history,
   invoiceRecordCursorKeys as cursorKeys,
 } from '../database/schema/invoice-record.js';
+import {
+  REVISION_PAGE_SIZE,
+  verifyCommittedRevision,
+  verifyRevisionPage,
+  type RevisionPage,
+} from '../revision-history/revision-history.js';
 import type { InvoiceInput } from './invoice-record.input.js';
 import {
   invoiceHistoryRevision,
   invoiceReceipt,
   invoiceSnapshot,
 } from './invoice-record.representation.js';
-import type { InvoiceScope, InvoiceSummary } from './invoice-record.types.js';
+import type {
+  InvoiceRevision,
+  InvoiceScope,
+  InvoiceSourceSnapshot,
+  InvoiceSummary,
+} from './invoice-record.types.js';
+/** A stored Invoice Record coupled with its source snapshot and verified history head. */
+export interface StoredInvoiceRecord {
+  readonly row: typeof records.$inferSelect;
+  readonly snapshot: InvoiceSourceSnapshot;
+  readonly head: InvoiceRevision;
+  /** The first history page, read once with the root. */
+  readonly history: RevisionPage<InvoiceRevision>;
+}
 @Injectable()
 export class InvoiceRecordStore {
   constructor(private readonly database: DatabaseContext) {}
@@ -32,6 +51,15 @@ export class InvoiceRecordStore {
       );
     const [row] = lock ? await query.for('update') : await query;
     if (!row) throw new NotFoundException();
+    return this.coupled(row);
+  }
+  /**
+   * Couple a stored root with its source snapshot and its first verified
+   * history page. The page is read here once; callers reuse it.
+   */
+  private async coupled(
+    row: typeof records.$inferSelect,
+  ): Promise<StoredInvoiceRecord> {
     const snapshot = stored(() => invoiceSnapshot(row.sourceSnapshot));
     if (
       snapshot.source.documentId !== row.documentId ||
@@ -39,7 +67,10 @@ export class InvoiceRecordStore {
       snapshot.source.representationId !== row.representationId
     )
       throw new Error('Invalid invoice source coupling.');
-    const revisions = await this.history(scope, id);
+    const revisions = await this.history(
+      { workspaceId: row.workspaceId, companyId: row.companyId },
+      row.id,
+    );
     const head = revisions.items[0];
     if (
       !head ||
@@ -50,20 +81,11 @@ export class InvoiceRecordStore {
       throw new Error('Invalid invoice head coupling.');
     return { row, snapshot, head, history: revisions };
   }
-  async summary(row: typeof records.$inferSelect): Promise<InvoiceSummary> {
-    const snapshot = stored(() => invoiceSnapshot(row.sourceSnapshot)),
-      h = await this.history(
-        { workspaceId: row.workspaceId, companyId: row.companyId },
-        row.id,
-      );
-    const head = h.items[0];
-    if (
-      !head ||
-      head.revision !== row.revision ||
-      head.after.entryState !== row.entryState ||
-      !isDeepStrictEqual(head.after.values, row.values)
-    )
-      throw new Error('Invalid invoice inventory head.');
+  async summary({
+    row,
+    snapshot,
+    head,
+  }: StoredInvoiceRecord): Promise<InvoiceSummary> {
     const [replacement] = await this.database.connection
       .select({ id: records.id })
       .from(records)
@@ -106,12 +128,21 @@ export class InvoiceRecordStore {
     // Inside the read transaction the connection is one pg client, which
     // runs one query at a time: build the summaries one after the other.
     const items = [];
-    for (const row of rows.slice(0, 25)) items.push(await this.summary(row));
+    for (const row of rows.slice(0, 25))
+      items.push(await this.summary(await this.coupled(row)));
     return { items, hasMore: rows.length > 25 };
   }
-  async history(scope: InvoiceScope, id: string, before?: number) {
+  async history(
+    scope: InvoiceScope,
+    id: string,
+    before?: number,
+  ): Promise<RevisionPage<InvoiceRevision>> {
     const rows = await this.database.connection
-      .select()
+      .select({
+        revision: history.revision,
+        commandId: history.commandId,
+        fact: history.fact,
+      })
       .from(history)
       .where(
         and(
@@ -122,29 +153,15 @@ export class InvoiceRecordStore {
         ),
       )
       .orderBy(desc(history.revision))
-      .limit(26);
-    const items = rows.map((row) => {
-      const fact = stored(() => invoiceHistoryRevision(row.fact));
-      if (
-        fact.recordId !== id ||
-        fact.revision !== row.revision ||
-        fact.commandId !== row.commandId
-      )
-        throw new Error('Invalid invoice revision coupling.');
-      return fact;
+      .limit(REVISION_PAGE_SIZE + 1);
+    return verifyRevisionPage({
+      subject: 'Invoice Record',
+      targetId: id,
+      rows,
+      before,
+      decode: (fact) => stored(() => invoiceHistoryRevision(fact)),
+      targetOf: (fact) => fact.recordId,
     });
-    for (let i = 0; i < items.length - 1; i++) {
-      const a = items[i],
-        b = items[i + 1];
-      if (
-        !a ||
-        !b ||
-        a.revision !== b.revision + 1 ||
-        !isDeepStrictEqual(a.before, b.after)
-      )
-        throw new Error('Invalid invoice history chain.');
-    }
-    return { items: items.slice(0, 25), hasMore: rows.length > 25 };
   }
   intent(
     actor: ActorContext,
@@ -190,16 +207,12 @@ export class InvoiceRecordStore {
       );
     if (!h) throw new Error('Missing invoice committed revision.');
     const fact = stored(() => invoiceHistoryRevision(h.fact));
-    if (
-      receipt.commandId !== row.id ||
-      receipt.recordId !== row.recordId ||
-      receipt.revision !== row.revision ||
-      fact.commandId !== row.id ||
-      fact.action !== receipt.action ||
-      fact.recordedAt !== receipt.recordedAt ||
-      new Date(receipt.recordedAt).getTime() !== row.createdAt.getTime()
-    )
-      throw new Error('Invalid committed invoice receipt.');
+    verifyCommittedRevision({
+      subject: 'Invoice Record',
+      command: { ...row, targetId: row.recordId },
+      receipt: { ...receipt, targetId: receipt.recordId },
+      fact: { ...fact, targetId: fact.recordId },
+    });
     return receipt;
   }
   async write(input: {
