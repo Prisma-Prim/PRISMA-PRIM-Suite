@@ -19,6 +19,11 @@ import {
 } from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -93,9 +98,23 @@ function actorFor(companyId: string): ActorContext {
       projectPermissions: ['project.read'],
       projectPermissionAssignmentId: 'project-assignment-1',
       projectPermissionSetVersion: 'v2',
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-assignment-1',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'assignment-1',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-assignment-1',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: 'project-assignment-1',
+        },
+      ),
     },
   };
 }
@@ -403,7 +422,10 @@ describe('Client dossier and Project navigation through App', () => {
             const actor = actorFor(companyA.id);
             actor.displayName = 'Current Client recovery Actor';
             if (recovery === 'company' && actor.activeCompany)
-              actor.activeCompany.taskPermissions = [];
+              actor.activeCompany.grants = withoutCompanyGrants(
+                actor.activeCompany.grants,
+                'company_task_manager',
+              );
             else delete actor.activeCompany;
             return respond(actor);
           }
@@ -516,11 +538,18 @@ describe('Client dossier and Project navigation through App', () => {
           'client.manage',
           'company.assignment.manage',
         ];
-        if (actor.activeCompany) {
-          actor.activeCompany.documentContentReaderAssignmentId = capture;
-          actor.activeCompany.documentContentReaderPermissionSetVersion = 'v1';
-          actor.activeCompany.documentPermissions = ['document.content.read'];
-        }
+        if (actor.activeCompany)
+          actor.activeCompany = {
+            ...actor.activeCompany,
+            documentContentReaderAssignmentId: capture,
+            documentContentReaderPermissionSetVersion: 'v1',
+            documentPermissions: ['document.content.read'],
+            grants: withCompanyGrants(actor.activeCompany.grants, {
+              bundle: 'company_document_content_reader',
+              version: 'v1',
+              assignmentId: capture,
+            }),
+          };
         return actor;
       };
       vi.stubGlobal(

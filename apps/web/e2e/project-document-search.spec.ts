@@ -7,7 +7,8 @@ import {
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
-import { documentGrants } from '../src/documents/document-grants.test-fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
+import { projectDocumentGrants } from '../src/project/project-document-grants.test-fixture';
 
 const company = { id: 'company-document-search', displayName: 'PRISMA-PRIM' };
 const client = {
@@ -102,11 +103,23 @@ async function installDocumentSearchFixture(page: Page) {
                     'document.reference.read',
                     'document.project.manage',
                   ],
-                  grants: documentGrants([
-                    'document.read',
-                    'document.reference.read',
-                    'document.project.manage',
-                  ]),
+                  grants: companyGrants(
+                    ...projectDocumentGrants([
+                      'document.read',
+                      'document.reference.read',
+                      'document.project.manage',
+                    ]),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'client-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

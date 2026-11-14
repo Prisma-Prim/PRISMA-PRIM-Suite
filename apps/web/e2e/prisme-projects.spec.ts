@@ -8,7 +8,8 @@ import {
   preparatoryLifecycle,
   operationalHomeFixture,
 } from './actor-context.fixture';
-import { documentGrants } from '../src/documents/document-grants.test-fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
+import { projectDocumentGrants } from '../src/project/project-document-grants.test-fixture';
 
 const ana = {
   workspaceMembershipId: 'ana-membership',
@@ -214,23 +215,31 @@ test('creates and opens a Project, then switches local panels without reloading 
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read', 'project.create'],
-                  projectApproverPermissions: [
-                    'project.lifecycle.transition',
-                    'project.close',
-                  ],
-                  projectApproverPermissionAssignmentId: 'approver-grant',
-                  projectApproverPermissionSetVersion: 'v1',
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-manager-grant',
-                  taskPermissionSetVersion: 'v1',
                   documentPermissions: [
                     'document.read',
                     'document.project.manage',
                   ],
-                  grants: documentGrants([
-                    'document.read',
-                    'document.project.manage',
-                  ]),
+                  grants: companyGrants(
+                    ...projectDocumentGrants([
+                      'document.read',
+                      'document.project.manage',
+                    ]),
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-manager-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                    {
+                      bundle: 'company_project_approver',
+                      version: 'v1',
+                      assignmentId: 'approver-grant',
+                    },
+                  ),
                 },
               }
             : {}),

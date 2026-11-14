@@ -7,6 +7,7 @@ import {
 } from './actor-context.fixture';
 import { selectOption } from './select-option';
 import type { AssignedTask, TaskEvent } from '../src/project/task-response';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const locales = [
   {
@@ -204,9 +205,23 @@ async function installRoutes(page: Page) {
                   ...company,
                   clientPermissions: ['client.read'],
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read'],
-                  taskPermissionSetVersion: 'v1',
-                  taskPermissionAssignmentId: 'task-read-grant',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'client-grant',
+                    },
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-read-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),
@@ -247,6 +262,10 @@ async function installRoutes(page: Page) {
     }
     if (path === `/api/tasks/${first.id}/history`)
       return route.fulfill({ json: { events: [creation] } });
+    // The API grants task.read only with task.manage (#1332), so the opened
+    // Project also reads its eligible members.
+    if (path === `/api/projects/${project.id}/eligible-task-assignees`)
+      return route.fulfill({ json: { members: [] } });
     return route.fulfill({ status: 404 });
   });
   return state;

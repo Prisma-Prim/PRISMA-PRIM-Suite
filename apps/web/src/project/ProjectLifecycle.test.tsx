@@ -16,18 +16,37 @@ import type {
   StartDeclaration,
 } from './project-lifecycle-response';
 import { preparatoryLifecycle } from './project-lifecycle.test-fixtures';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const reader = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
   clientPermissions: ['client.read'],
   projectPermissions: ['project.read', 'project.create'],
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const approverCompany = {
   ...reader,
-  projectApproverPermissions: ['project.lifecycle.transition', 'project.close'],
-  projectApproverPermissionAssignmentId: 'approver-assignment',
-  projectApproverPermissionSetVersion: 'v1',
+  grants: withCompanyGrants(reader.grants, {
+    bundle: 'company_project_approver',
+    version: 'v1',
+    assignmentId: 'approver-assignment',
+  }),
 } satisfies ActorContext['activeCompany'];
 const approver: ActorContext = {
   internalUserId: 'aprobator',
@@ -604,9 +623,11 @@ it('keeps the completion note and offers Tasks when the API reports open Tasks',
       ...approver,
       activeCompany: {
         ...approverCompany,
-        taskPermissionSetVersion: 'v1',
-        taskPermissionAssignmentId: 'task-assignment',
-        taskPermissions: ['task.read'],
+        grants: withCompanyGrants(approverCompany.grants, {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-assignment',
+        }),
       },
     },
     onShowTasks,
@@ -710,7 +731,21 @@ it('keeps ordinary lifecycle actions separate from Project closure authority', a
       ...approver,
       activeCompany: {
         ...approverCompany,
-        projectApproverPermissions: ['project.lifecycle.transition'],
+        // No registry version separates the two permissions, so the current
+        // Actor parser refuses this grant (#1332); the section still checks
+        // each permission on its own.
+        grants: [
+          ...withoutCompanyGrants(
+            approverCompany.grants,
+            'company_project_approver',
+          ),
+          {
+            bundle: 'company_project_approver',
+            assignmentId: 'approver-assignment',
+            permissionSetVersion: 'v1',
+            permissions: ['project.lifecycle.transition'],
+          },
+        ],
       },
     },
   });
@@ -796,7 +831,11 @@ it.each([
       ...approver,
       activeCompany: {
         ...approverCompany,
-        projectApproverPermissionAssignmentId: 'approver-assignment-2',
+        grants: withCompanyGrants(approverCompany.grants, {
+          bundle: 'company_project_approver',
+          version: 'v1',
+          assignmentId: 'approver-assignment-2',
+        }),
       },
     },
   ],

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
+import { holds } from '../access/company-grants';
 import {
   conflictCode,
   createAuthenticatedApiClient,
@@ -100,11 +101,11 @@ function Responsible({
   const companyId = company?.id ?? '';
   const canRead =
     actor.active &&
-    company?.projectPermissions?.includes('project.read') === true &&
+    holds(company, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
-      company.clientPermissions?.includes('client.read') === true);
+      holds(company, 'company_director_client_access', 'client.read'));
   const canUpdate =
-    canRead && company?.projectPermissions?.includes('project.update') === true;
+    canRead && holds(company, 'company_project_access', 'project.update');
   const projectClosed = isClosedProjectStatus(projectStatus);
   const path = `/projects/${encodeURIComponent(projectId)}`;
 

@@ -15,8 +15,11 @@ import {
 } from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
-import { documentGrants } from './documents/document-grants.test-fixture';
-import { withCompanyGrants } from './access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
+import { documentGrantRequests } from './documents/document-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -90,6 +93,24 @@ function actorFor(
   companyId: string,
   projectPermissions: ProjectPermissions,
 ): ActorContext {
+  const grants = companyGrants(
+    ...documentGrantRequests(['document.read']),
+    {
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'client-grant',
+    },
+    {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+  );
   return {
     internalUserId: 'coordinator',
     workspaceMembershipId: 'membership-1',
@@ -105,22 +126,11 @@ function actorFor(
       clientPermissionAssignmentId: 'client-grant',
       clientPermissionSetVersion: 'v2',
       projectPermissions,
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
       documentPermissions: ['document.read'],
-      grants: withCompanyGrants(
-        documentGrants(['document.read']),
-        ...(projectPermissions.includes('project.read')
-          ? [
-              {
-                bundle: 'company_project_access',
-                version: 'v1',
-                assignmentId: 'project-grant',
-              } as const,
-            ]
-          : []),
-      ),
+      grants:
+        projectPermissions.length === 0
+          ? withoutCompanyGrants(grants, 'company_project_access')
+          : grants,
     },
   };
 }

@@ -33,9 +33,6 @@ const company = {
   displayName: 'Company Demo',
   clientPermissions: [],
   projectPermissions: ['project.read', 'project.create'],
-  taskPermissions: ['task.read', 'task.manage'],
-  taskPermissionAssignmentId: 'task-grant',
-  taskPermissionSetVersion: 'v1',
   grants: companyGrants(
     {
       bundle: 'company_project_access',

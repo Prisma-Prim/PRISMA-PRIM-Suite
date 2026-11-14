@@ -6,6 +6,7 @@ import {
   preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 // Public App journey with intercepted HTTP; not live PostgreSQL/Clerk evidence.
 test('finds literal Romanian Projects locally across all interface languages', async ({
@@ -59,6 +60,11 @@ test('finds literal Romanian Projects locally across all interface languages', a
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read', 'project.create'],
+                  grants: companyGrants({
+                    bundle: 'company_project_access',
+                    version: 'v1',
+                    assignmentId: 'project-grant',
+                  }),
                 },
               }
             : {}),

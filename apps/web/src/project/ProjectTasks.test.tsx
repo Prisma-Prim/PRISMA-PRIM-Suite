@@ -19,6 +19,12 @@ import {
   preparatoryLifecycle,
 } from './project-lifecycle.test-fixtures';
 import type { TaskView } from './task-response';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { taskReaderCompany } from './task-reader.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -33,9 +39,18 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      },
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 const project = {
@@ -809,7 +824,7 @@ it('offers the responsible-member filter to a task.read-only actor without any e
   if (!activeCompany) throw new Error('Missing fixture Company');
   const reader: ActorContext = {
     ...actor,
-    activeCompany: { ...activeCompany, taskPermissions: ['task.read'] },
+    activeCompany: taskReaderCompany(activeCompany),
   };
   const tasks = await openFilteredTasks(reader);
   // No member is eligible for this actor, yet every assigned member stays filterable.
@@ -1813,13 +1828,23 @@ it.each(['Company', 'membership', 'identity', 'assignment', 'permission'])(
                 ...actor,
                 activeCompany: {
                   ...activeCompany,
-                  taskPermissionAssignmentId: 'replacement',
+                  grants: withCompanyGrants(activeCompany.grants, {
+                    bundle: 'company_task_manager',
+                    version: 'v1',
+                    assignmentId: 'replacement',
+                  }),
                 },
               }
             : context === 'permission'
               ? {
                   ...actor,
-                  activeCompany: { ...activeCompany, taskPermissions: [] },
+                  activeCompany: {
+                    ...activeCompany,
+                    grants: withoutCompanyGrants(
+                      activeCompany.grants,
+                      'company_task_manager',
+                    ),
+                  },
                 }
               : actor;
     view.rerender(
@@ -2370,10 +2395,8 @@ it('shows states and declarations to a task.read reader without offering transit
     <ProjectWorkspace
       actor={{
         ...actor,
-        activeCompany: actor.activeCompany && {
-          ...actor.activeCompany,
-          taskPermissions: ['task.read'],
-        },
+        activeCompany:
+          actor.activeCompany && taskReaderCompany(actor.activeCompany),
       }}
       identity={deterministicBrowserIdentity()}
     />,

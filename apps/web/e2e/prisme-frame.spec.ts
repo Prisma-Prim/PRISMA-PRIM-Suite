@@ -4,7 +4,8 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
-import { documentGrants } from '../src/documents/document-grants.test-fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
+import { projectDocumentGrants } from '../src/project/project-document-grants.test-fixture';
 
 test('opens retired frame links in Prisme', async ({ page }) => {
   await page.route('**/api/**', (route) => {
@@ -74,7 +75,19 @@ test('keeps every authorized MVP section reachable from the default frame', asyn
                   clientPermissions: ['client.read'],
                   projectPermissions: ['project.read'],
                   documentPermissions: ['document.read'],
-                  grants: documentGrants(['document.read']),
+                  grants: companyGrants(
+                    ...projectDocumentGrants(['document.read']),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'client-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

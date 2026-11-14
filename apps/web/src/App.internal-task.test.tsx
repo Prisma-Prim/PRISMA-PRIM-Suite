@@ -23,6 +23,7 @@ import {
   openInternalTaskApp,
   publishInternalActor,
 } from './test/internal-task-app';
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -301,7 +302,17 @@ it.each([
     window.history.replaceState(null, '', '/#projects');
     const server = installInternalTaskApp(async () => undefined, {
       ...internalTaskActor,
-      activeCompany: { ...internalTaskActor.activeCompany, grants },
+      // The other grants stay, so Projects remain readable.
+      activeCompany: {
+        ...internalTaskActor.activeCompany,
+        grants: [
+          ...withoutCompanyGrants(
+            internalTaskActor.activeCompany.grants,
+            'company_internal_task_manager',
+          ),
+          ...grants,
+        ],
+      },
     });
     render(
       <StrictMode>

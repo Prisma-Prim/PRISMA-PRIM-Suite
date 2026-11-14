@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import type { DocumentVersion } from '../documents/document-response';
@@ -32,31 +33,12 @@ function capture({ actor, projectId, originalClientId }: Props) {
     actor.workspaceMembershipId,
     actor.workspacePermissions.includes('client.manage'),
     c?.id,
-    c?.clientPermissions,
-    c?.clientPermissionAssignmentId,
-    c?.clientPermissionSetVersion,
-    c?.projectPermissions,
-    c?.projectPermissionAssignmentId,
-    c?.projectPermissionSetVersion,
-    c?.documentPermissionAssignmentId,
-    c?.documentPermissionSetVersion,
-    c?.documentPermissions
-      ?.filter((p) =>
-        [
-          'document.read',
-          'document.reference.read',
-          'document.content.read',
-          'document.mission_deliverable.access',
-          'document.received_contract.access',
-        ].includes(p),
-      )
-      .sort(),
-    c?.documentContentReaderAssignmentId,
-    c?.documentContentReaderPermissionSetVersion,
-    c?.missionDeliverableAccessAssignmentId,
-    c?.missionDeliverableAccessPermissionSetVersion,
-    c?.receivedContractAccessAssignmentId,
-    c?.receivedContractAccessPermissionSetVersion,
+    grantOf(c, 'company_director_client_access'),
+    grantOf(c, 'company_project_access'),
+    grantOf(c, 'company_document_registrar'),
+    grantOf(c, 'company_document_content_reader'),
+    grantOf(c, 'company_mission_deliverable_access'),
+    grantOf(c, 'company_received_contract_access'),
   ]);
 }
 /** Each observed scope/identity transition retires the previous owner permanently, including A→B→A. */
@@ -102,13 +84,15 @@ function BundleSession({
   const company = actor.activeCompany;
   const canRead =
     actor.active &&
-    company?.projectPermissions?.includes('project.read') &&
-    company.documentPermissions?.includes('document.read') &&
-    company.documentPermissions.includes('document.content.read') &&
-    company.documentContentReaderPermissionSetVersion === 'v1' &&
-    !!company.documentContentReaderAssignmentId &&
+    holds(company, 'company_project_access', 'project.read') &&
+    holds(company, 'company_document_registrar', 'document.read') &&
+    holds(
+      company,
+      'company_document_content_reader',
+      'document.content.read',
+    ) &&
     (actor.workspacePermissions.includes('client.manage') ||
-      company.clientPermissions?.includes('client.read'));
+      holds(company, 'company_director_client_access', 'client.read'));
   function request() {
     const controller = new AbortController();
     lifetime.current.requests.add(controller);

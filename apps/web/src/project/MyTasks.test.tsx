@@ -8,21 +8,36 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { readCurrentActor } from '../access/current-actor';
 import {
   browserIdentity,
   deferred,
 } from '../production-shell/production-shell-context.test-fixtures';
 import { MyTasks } from './MyTasks';
 import { taskCopy } from './task.copy';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const copy = taskCopy.myTasks;
 const company = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
   projectPermissions: ['project.read'],
-  taskPermissions: ['task.read'],
-  taskPermissionAssignmentId: 'task-grant',
-  taskPermissionSetVersion: 'v1',
+  grants: companyGrants(
+    {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -331,25 +346,24 @@ it.each([
   ['no active Company', { ...actor, activeCompany: undefined }],
   [
     'no task.read',
-    { ...actor, activeCompany: { ...company, taskPermissions: [] } },
-  ],
-  [
-    'no captured Task Manager assignment',
     {
       ...actor,
-      activeCompany: { ...company, taskPermissionAssignmentId: undefined },
-    },
-  ],
-  [
-    'an unsupported Task permission version',
-    {
-      ...actor,
-      activeCompany: { ...company, taskPermissionSetVersion: undefined },
+      activeCompany: {
+        ...company,
+        grants: withoutCompanyGrants(company.grants, 'company_task_manager'),
+      },
     },
   ],
   [
     'no project.read',
-    { ...actor, activeCompany: { ...company, projectPermissions: [] } },
+    {
+      ...actor,
+      activeCompany: {
+        ...company,
+        projectPermissions: [],
+        grants: withoutCompanyGrants(company.grants, 'company_project_access'),
+      },
+    },
   ],
   ['no Client read', { ...actor, workspacePermissions: [] }],
 ] satisfies Array<[string, ActorContext]>)(
@@ -364,6 +378,37 @@ it.each([
   },
 );
 
+// Without a captured assignment or with an unsupported version, the Task
+// Manager grant fails closed for the whole current Actor (#1332), so it never
+// reaches this list.
+it.each([
+  { field: 'assignmentId', value: undefined },
+  { field: 'permissionSetVersion', value: undefined },
+  { field: 'permissionSetVersion', value: 'v2' },
+])(
+  'refuses the whole current Actor when the Task Manager grant has $field $value',
+  async ({ field, value }) => {
+    const read = (current: unknown) =>
+      readCurrentActor({
+        api: { request: async () => ({ status: 'ok', value: current }) },
+      });
+    expect((await read(actor)).status).toBe('ok');
+    expect(
+      await read({
+        ...actor,
+        activeCompany: {
+          ...company,
+          grants: company.grants.map((grant) =>
+            grant.bundle === 'company_task_manager'
+              ? { ...grant, [field]: value }
+              : grant,
+          ),
+        },
+      }),
+    ).toEqual({ status: 'error' });
+  },
+);
+
 it('reads Client authority from Company client.read as well as client.manage', async () => {
   stub(page([october]));
   render(
@@ -371,7 +416,15 @@ it('reads Client authority from Company client.read as well as client.manage', a
       actor={{
         ...actor,
         workspacePermissions: [],
-        activeCompany: { ...company, clientPermissions: ['client.read'] },
+        activeCompany: {
+          ...company,
+          clientPermissions: ['client.read'],
+          grants: withCompanyGrants(company.grants, {
+            bundle: 'company_director_client_access',
+            version: 'v1',
+            assignmentId: 'client-grant',
+          }),
+        },
       }}
       identity={deterministicBrowserIdentity()}
     />,
@@ -559,11 +612,24 @@ it.each(['Company', 'membership', 'identity', 'assignment', 'permission'])(
                 ...actor,
                 activeCompany: {
                   ...company,
-                  taskPermissionAssignmentId: 'replacement',
+                  grants: withCompanyGrants(company.grants, {
+                    bundle: 'company_task_manager',
+                    version: 'v1',
+                    assignmentId: 'replacement',
+                  }),
                 },
               }
             : change === 'permission'
-              ? { ...actor, activeCompany: { ...company, taskPermissions: [] } }
+              ? {
+                  ...actor,
+                  activeCompany: {
+                    ...company,
+                    grants: withoutCompanyGrants(
+                      company.grants,
+                      'company_task_manager',
+                    ),
+                  },
+                }
               : actor;
     view.rerender(
       <MyTasks

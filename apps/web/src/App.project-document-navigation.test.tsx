@@ -14,7 +14,11 @@ import {
 } from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
-import { documentGrants } from './documents/document-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
+import { projectDocumentGrants } from './project/project-document-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -102,11 +106,27 @@ function actorFor(companyId: string, administrator: boolean): ActorContext {
       clientPermissionAssignmentId: 'assignment-1',
       clientPermissionSetVersion: 'v2',
       projectPermissions: ['project.read'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-assignment-1',
-      taskPermissionSetVersion: 'v1',
       documentPermissions: ['document.read'],
-      grants: documentGrants(['document.read']),
+      grants: withCompanyGrants(
+        companyGrants(
+          {
+            bundle: 'company_director_client_access',
+            version: 'v2',
+            assignmentId: 'assignment-1',
+          },
+          {
+            bundle: 'company_task_manager',
+            version: 'v1',
+            assignmentId: 'task-assignment-1',
+          },
+          {
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'project-grant',
+          },
+        ),
+        ...projectDocumentGrants(['document.read']),
+      ),
     },
   };
 }

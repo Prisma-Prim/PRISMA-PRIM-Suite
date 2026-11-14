@@ -2,6 +2,7 @@ import { hasReceivedContractAccess } from '../documents/received-contract-access
 import { hasMissionDeliverableAccess } from '../documents/mission-deliverable-access';
 import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -77,15 +78,20 @@ function ProjectDocumentSession({
   // Only the selector's own read is tracked here, so closing it never touches a command request.
   const selectorRequest = useRef<AbortController | null>(null);
   const companyId = actor.activeCompany?.id;
+  const company = actor.activeCompany;
   const canRead =
-    actor.activeCompany?.documentPermissions?.includes('document.read') &&
-    actor.activeCompany.projectPermissions?.includes('project.read') &&
+    holds(company, 'company_document_registrar', 'document.read') &&
+    holds(company, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
-      actor.activeCompany.clientPermissions?.includes('client.read'));
-  const canManage = actor.activeCompany?.documentPermissions?.includes(
+      holds(company, 'company_director_client_access', 'client.read'));
+  const canManage = holds(
+    company,
+    'company_document_project_organizer',
     'document.project.manage',
   );
-  const canOpen = actor.activeCompany?.documentPermissions?.includes(
+  const canOpen = holds(
+    company,
+    'company_document_registrar',
     'document.reference.read',
   );
   const projectClosed = isClosedProjectStatus(projectStatus);

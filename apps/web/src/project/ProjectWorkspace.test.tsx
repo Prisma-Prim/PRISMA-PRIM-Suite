@@ -18,6 +18,11 @@ import {
   isLifecycleRead,
   preparatoryLifecycle,
 } from './project-lifecycle.test-fixtures';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { projectDocumentGrants } from './project-document-grants.test-fixture';
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -31,6 +36,11 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read', 'project.create'],
+    grants: companyGrants({
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    }),
   },
 };
 afterEach(() => {
@@ -1227,6 +1237,14 @@ it('passes Open Document unchanged to the opened Project’s linked Documents', 
           displayName: 'PRISMA-PRIM',
           projectPermissions: ['project.read'],
           documentPermissions: ['document.read'],
+          grants: withCompanyGrants(
+            companyGrants({
+              bundle: 'company_project_access',
+              version: 'v1',
+              assignmentId: 'project-grant',
+            }),
+            ...projectDocumentGrants(['document.read']),
+          ),
         },
       }}
       identity={deterministicBrowserIdentity()}
@@ -1308,9 +1326,18 @@ describe('Client identity changes', () => {
       id: 'company',
       displayName: 'PRISMA-PRIM',
       projectPermissions: ['project.read', 'project.create'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+      ),
     },
   };
   type ClientFilter = { clientDossierId: string; displayName: string };

@@ -18,7 +18,11 @@ import { ProjectWorkspace } from './ProjectWorkspace';
 import { preparatoryLifecycle } from './project-lifecycle.test-fixtures';
 import { templateFixture } from './project-template.test-fixtures';
 
-import { companyGrants } from '../access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { projectDocumentGrants } from './project-document-grants.test-fixture';
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -32,6 +36,11 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read', 'project.create'],
+    grants: companyGrants({
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    }),
   },
 };
 const mine = {
@@ -393,14 +402,23 @@ it('retains real Task, Document and registration drafts through a pending and un
       ...actor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
       documentPermissions: [
         'document.read',
         'document.reference.read',
         'document.project.manage',
       ],
+      grants: withCompanyGrants(
+        withCompanyGrants(actor.activeCompany?.grants, {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        }),
+        ...projectDocumentGrants([
+          'document.read',
+          'document.reference.read',
+          'document.project.manage',
+        ]),
+      ),
     },
   };
   const identity = deterministicBrowserIdentity();
@@ -528,9 +546,6 @@ it.each(['manual', 'template'] as const)(
               ...actor.activeCompany,
               id: 'company',
               displayName: 'PRISMA-PRIM',
-              taskPermissions: ['task.read', 'task.manage'],
-              taskPermissionAssignmentId: 'task-grant',
-              taskPermissionSetVersion: 'v1',
               grants: companyGrants(
                 {
                   bundle: 'company_project_access',
@@ -1022,9 +1037,18 @@ it('refreshes current Mine membership after the real responsible editor clears t
       id: 'company',
       displayName: 'PRISMA-PRIM',
       projectPermissions: ['project.read', 'project.create', 'project.update'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: 'project-grant',
+        },
+      ),
     },
   };
   transport.onWrite((request) => {
@@ -1091,14 +1115,29 @@ it.each(['clear', 'reassign'] as const)(
         ...changingActor.activeCompany,
         id: 'company',
         displayName: 'PRISMA-PRIM',
-        taskPermissions: ['task.read', 'task.manage'],
-        taskPermissionAssignmentId: 'task-grant',
-        taskPermissionSetVersion: 'v1',
         documentPermissions: [
           'document.read',
           'document.reference.read',
           'document.project.manage',
         ],
+        grants: withCompanyGrants(
+          changingActor.activeCompany?.grants,
+          {
+            bundle: 'company_task_manager',
+            version: 'v1',
+            assignmentId: 'task-grant',
+          },
+          {
+            bundle: 'company_document_project_organizer',
+            version: 'v1',
+            assignmentId: 'organizer-grant',
+          },
+          {
+            bundle: 'company_document_registrar',
+            version: 'v1',
+            assignmentId: 'registrar-grant',
+          },
+        ),
       },
     };
     render(element(deterministicBrowserIdentity(), manager));
@@ -1198,12 +1237,11 @@ it('refreshes Mine after an existing real lifecycle confirmation without discard
       ...actor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      projectApproverPermissions: [
-        'project.lifecycle.transition',
-        'project.close',
-      ],
-      projectApproverPermissionAssignmentId: 'approver-grant',
-      projectApproverPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(actor.activeCompany?.grants, {
+        bundle: 'company_project_approver',
+        version: 'v1',
+        assignmentId: 'approver-grant',
+      }),
     },
   };
   transport.onWrite((request) => {
@@ -1266,9 +1304,11 @@ it('opens an exact readable Task in a Project outside Mine without requiring dir
       ...actor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      taskPermissions: ['task.read'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(actor.activeCompany?.grants, {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      }),
     },
   };
   const view = render(element(identity, taskReader));
@@ -1378,12 +1418,19 @@ const changingActor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read', 'project.create', 'project.update'],
-    projectApproverPermissions: [
-      'project.lifecycle.transition',
-      'project.close',
-    ],
-    projectApproverPermissionAssignmentId: 'approver-grant',
-    projectApproverPermissionSetVersion: 'v1',
+    grants: withCompanyGrants(
+      actor.activeCompany?.grants,
+      {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'project-grant',
+      },
+      {
+        bundle: 'company_project_approver',
+        version: 'v1',
+        assignmentId: 'approver-grant',
+      },
+    ),
   },
 };
 type ConfirmedChange = 'Lifecycle' | 'Responsible';
@@ -1619,9 +1666,11 @@ it('still refreshes current Mine when a newer same-scope Task detail reload supe
       ...changingActor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      taskPermissions: ['task.read'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(changingActor.activeCompany?.grants, {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      }),
     },
   };
   render(element(deterministicBrowserIdentity(), taskReader));

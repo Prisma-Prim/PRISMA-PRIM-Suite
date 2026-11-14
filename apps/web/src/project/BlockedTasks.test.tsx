@@ -15,6 +15,10 @@ import { selectOptionByLabel } from '../test/select-option';
 import { BlockedTasks } from './BlockedTasks';
 import { blockedTasksMessages } from './blocked-tasks.copy';
 import type { BlockedTask } from './blocked-tasks-response';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'reader',
@@ -30,9 +34,23 @@ const actor: ActorContext = {
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read'],
-    taskPermissionAssignmentId: 'read-grant',
-    taskPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'read-grant',
+      },
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 function task(index: number): BlockedTask {
@@ -373,7 +391,10 @@ it.each(['Company', 'membership', 'Task authority', 'identity'] as const)(
                   ...actor.activeCompany,
                   id: 'company',
                   displayName: 'PRISMA-PRIM',
-                  taskPermissions: [],
+                  grants: withoutCompanyGrants(
+                    actor.activeCompany?.grants,
+                    'company_task_manager',
+                  ),
                 },
               }
             : actor;
@@ -563,7 +584,10 @@ it.each(
                 ...actor.activeCompany,
                 id: 'company',
                 displayName: 'PRISMA-PRIM',
-                taskPermissions: [],
+                grants: withoutCompanyGrants(
+                  actor.activeCompany?.grants,
+                  'company_task_manager',
+                ),
               },
             }
           : actor;

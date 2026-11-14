@@ -16,8 +16,10 @@ import {
   preparatoryLifecycle,
 } from './project/project-lifecycle.test-fixtures';
 import { changeValue } from './test/select-option';
-import { documentGrants } from './documents/document-grants.test-fixture';
-import { withCompanyGrants } from './access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const company = { id: id(1), displayName: 'Company A' };
@@ -99,28 +101,40 @@ function actorFor(companyId = company.id): ActorContext {
         'document.content.read',
         'document.mission_deliverable.access',
       ],
-      grants: documentGrants(
-        [
-          'document.read',
-          'document.reference.read',
-          'document.content.read',
-          'document.mission_deliverable.access',
-        ],
-        {
-          company_document_registrar: id(12),
-          company_document_content_reader: id(13),
-          company_mission_deliverable_access: id(14),
-        },
-      ),
       documentPermissionAssignmentId: id(12),
       documentPermissionSetVersion: 'v3',
       documentContentReaderAssignmentId: id(13),
       documentContentReaderPermissionSetVersion: 'v1',
       missionDeliverableAccessAssignmentId: id(14),
       missionDeliverableAccessPermissionSetVersion: 'v1',
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: id(15),
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+        { bundle: 'company_task_manager', version: 'v1', assignmentId: id(15) },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v3',
+          assignmentId: id(12),
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: id(11),
+        },
+        {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: id(13),
+        },
+        {
+          bundle: 'company_mission_deliverable_access',
+          version: 'v1',
+          assignmentId: id(14),
+        },
+      ),
     },
   };
 }
@@ -184,18 +198,16 @@ function install() {
         new Headers(init?.headers).get('x-company-context-id') ?? company.id;
       if (path.endsWith('/access/current-actor')) {
         const actor = actorFor(companyId);
-        if (actor.activeCompany) {
-          actor.activeCompany.documentContentReaderAssignmentId =
-            state.readerId;
-          actor.activeCompany.grants = withCompanyGrants(
-            actor.activeCompany.grants,
-            {
+        if (actor.activeCompany)
+          actor.activeCompany = {
+            ...actor.activeCompany,
+            documentContentReaderAssignmentId: state.readerId,
+            grants: withCompanyGrants(actor.activeCompany.grants, {
               bundle: 'company_document_content_reader',
               version: 'v1',
               assignmentId: state.readerId,
-            },
-          );
-        }
+            }),
+          };
         return response(actor);
       }
       if (path.endsWith('/company-context-assignments/administration'))

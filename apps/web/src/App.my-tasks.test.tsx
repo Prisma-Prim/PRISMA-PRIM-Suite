@@ -3,16 +3,35 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { readCurrentActor } from './access/current-actor';
 import { taskCopy } from './project/task.copy';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
   projectPermissions: ['project.read'],
-  taskPermissions: ['task.read'],
-  taskPermissionAssignmentId: 'task-grant',
-  taskPermissionSetVersion: 'v1',
   clientPermissions: ['client.read'],
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-grant',
+    },
+    {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -133,26 +152,34 @@ it.each([
       workspacePermissions: ['company.manage', 'client.manage'],
       activeCompany: {
         ...company,
-        taskPermissions: undefined,
-        taskPermissionAssignmentId: undefined,
-        taskPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(company.grants, 'company_task_manager'),
       },
     },
   ],
   [
-    'an unsupported Task permission version',
+    'no project.read',
     {
       ...actor,
-      activeCompany: { ...company, taskPermissionSetVersion: undefined },
+      activeCompany: {
+        ...company,
+        projectPermissions: [],
+        grants: withoutCompanyGrants(company.grants, 'company_project_access'),
+      },
     },
   ],
   [
-    'no project.read',
-    { ...actor, activeCompany: { ...company, projectPermissions: [] } },
-  ],
-  [
     'no Client read',
-    { ...actor, activeCompany: { ...company, clientPermissions: [] } },
+    {
+      ...actor,
+      activeCompany: {
+        ...company,
+        clientPermissions: [],
+        grants: withoutCompanyGrants(
+          company.grants,
+          'company_director_client_access',
+        ),
+      },
+    },
   ],
   ['no active Company', { ...actor, activeCompany: undefined }],
 ] satisfies Array<[string, ActorContext]>)(
@@ -169,5 +196,36 @@ it.each([
     ).toHaveLength(0);
     await new Promise((settle) => setTimeout(settle, 0));
     expect(paths).not.toContain('/api/assigned-tasks');
+  },
+);
+
+// A Task Manager grant with an unsupported version or a blank assignment
+// fails closed for the whole current Actor (#1332), so nothing offers My Tasks.
+it.each([
+  { field: 'permissionSetVersion', value: undefined },
+  { field: 'permissionSetVersion', value: 'v2' },
+  { field: 'assignmentId', value: undefined },
+  { field: 'assignmentId', value: ' ' },
+])(
+  'refuses the whole current Actor when the Task Manager grant has $field $value',
+  async ({ field, value }) => {
+    const read = (current: unknown) =>
+      readCurrentActor({
+        api: { request: async () => ({ status: 'ok', value: current }) },
+      });
+    expect((await read(actor)).status).toBe('ok');
+    expect(
+      await read({
+        ...actor,
+        activeCompany: {
+          ...company,
+          grants: company.grants.map((grant) =>
+            grant.bundle === 'company_task_manager'
+              ? { ...grant, [field]: value }
+              : grant,
+          ),
+        },
+      }),
+    ).toEqual({ status: 'error' });
   },
 );

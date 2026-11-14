@@ -11,6 +11,7 @@ import type { ActorContext } from '../access-types';
 import { deferred } from '../production-shell/production-shell-context.test-fixtures';
 import { MyTasks } from './MyTasks';
 import { taskCopy } from './task.copy';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const copy = taskCopy.myTasks;
 const actor: ActorContext = {
@@ -26,9 +27,18 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      },
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 const atelier = {

@@ -9,6 +9,7 @@ import { changeValue } from '../test/select-option';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -23,6 +24,11 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read', 'project.create'],
+    grants: companyGrants({
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    }),
   },
 };
 const mine = {
