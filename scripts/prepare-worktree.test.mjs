@@ -76,19 +76,20 @@ function fixture() {
   file('.gitattributes', '* text=auto eol=lf\n*.sh text eol=lf\n');
   file(
     'scripts/postinstall.mjs',
-    `import { appendFileSync, existsSync, watch, writeFileSync } from 'node:fs';
+    `import { appendFileSync, existsSync, renameSync, watch, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+function mark(path, value) { const pending = path + '.' + process.pid + '.pending'; writeFileSync(pending, value); renameSync(pending, path); }
 if (process.env.PREP_TEST_COUNTER) appendFileSync(process.env.PREP_TEST_COUNTER, 'installed\\n');
 if (process.env.PREP_TEST_PAYLOAD) console.error(process.env.PREP_TEST_PAYLOAD);
 const gate = process.env.PREP_TEST_GATE;
 if (gate) {
-  writeFileSync(join(gate, basename(process.cwd()) + '.entered'), String(process.pid));
-  writeFileSync(join(gate, process.pid + '.entered'), 'entered');
+  mark(join(gate, basename(process.cwd()) + '.entered'), String(process.pid));
+  mark(join(gate, process.pid + '.entered'), 'entered');
   await new Promise((resolve) => {
     const listener = watch(gate, () => { if (existsSync(join(gate, 'release'))) { listener.close(); resolve(); } });
     if (existsSync(join(gate, 'release'))) { listener.close(); resolve(); }
   });
-  writeFileSync(join(gate, process.pid + '.left'), 'left');
+  mark(join(gate, process.pid + '.left'), 'left');
 }
 if (process.env.PREP_TEST_FAIL === '1') process.exit(7);
 `,
@@ -180,7 +181,13 @@ function fileAppears(path, t) {
       reject(new Error('Synthetic process barrier was not reached.'));
     }, 20_000);
     const check = () => {
-      if (existsSync(path)) {
+      let ready = false;
+      try {
+        ready = existsSync(path) && readFileSync(path).length > 0;
+      } catch {
+        /* Wait for complete marker publication. */
+      }
+      if (ready) {
         clearTimeout(timer);
         listener.close();
         resolveFile();
@@ -193,6 +200,18 @@ function fileAppears(path, t) {
     });
     check();
   });
+}
+
+function pidFromMarker(path) {
+  const value = readFileSync(path, 'utf8');
+  assert.match(
+    value,
+    /^[1-9]\d*$/u,
+    'a process marker must publish a positive PID',
+  );
+  const pid = Number(value);
+  assert.ok(Number.isSafeInteger(pid));
+  return pid;
 }
 
 function worker(t, f, extra = []) {
@@ -523,9 +542,7 @@ test('killing the owner cannot let a second installer overlap a surviving child'
   const entered = fileAppears(join(gate, 'worktree.entered'), t);
   const first = worker(t, f);
   await entered;
-  const installerPid = Number(
-    readFileSync(join(gate, 'worktree.entered'), 'utf8'),
-  );
+  const installerPid = pidFromMarker(join(gate, 'worktree.entered'));
   const left = fileAppears(join(gate, `${installerPid}.left`), t);
   left.catch(() => {});
   const baseline = readFileSync(calls, 'utf8');
@@ -672,7 +689,14 @@ test('unknown lock fields cannot publish a sensitive payload or steal a live pre
 });
 
 test('recovery re-reads final owner state after death instead of reclaiming an earlier idle snapshot', async (t) => {
-  const parent = mkdtempSync(join(temporary, 'phase-race-'));
+  const f = fixture();
+  const parent = f.parent;
+  const installation = spawnSync(
+    'bash',
+    ['scripts/agent-pnpm.sh', 'install', '--frozen-lockfile', '--offline'],
+    { cwd: f.repo, encoding: 'utf8', timeout: 30_000 },
+  );
+  assert.equal(installation.status, 0, installation.stderr);
   const state = join(parent, 'state');
   mkdirSync(state, { mode: 0o700 });
   const lockModule = new URL('./worktree-preparation-lock.mjs', import.meta.url)
@@ -685,7 +709,7 @@ test('recovery re-reads final owner state after death instead of reclaiming an e
 const lock = await acquirePreparationLock({ directory: process.env.STATE, waitMilliseconds: 10000 });
 process.send('locked');
 process.once('message', async () => {
-  try { await lock.run(process.execPath, ['-e', "require('node:fs').writeFileSync(process.env.CHILD, String(process.pid)); setInterval(()=>{},1000)"], { cwd: process.cwd(), environment: process.env }); }
+  try { await lock.run('bash', ['scripts/agent-pnpm.sh', 'exec', 'node', '-e', "const fs=require('node:fs');fs.writeFileSync(process.env.CHILD+'.pending', String(process.pid));fs.renameSync(process.env.CHILD+'.pending', process.env.CHILD);setInterval(()=>{},1000)"], { cwd: process.env.REPOSITORY, environment: process.env }); }
   finally { lock.release(); }
 });`,
   );
@@ -719,6 +743,7 @@ catch { process.send('refused'); }`,
   const environment = {
     ...process.env,
     STATE: state,
+    REPOSITORY: f.repo,
     CHILD: join(parent, 'child'),
     SNAPSHOT: join(parent, 'snapshot'),
     RELEASE: join(parent, 'release'),
@@ -744,7 +769,7 @@ catch { process.send('refused'); }`,
     const entered = fileAppears(environment.CHILD, t);
     owner.send('launch');
     await entered;
-    childPid = Number(readFileSync(environment.CHILD, 'utf8'));
+    childPid = pidFromMarker(environment.CHILD);
     owner.kill('SIGKILL');
     await ownerClosed;
     assert.doesNotThrow(() => process.kill(childPid, 0));
