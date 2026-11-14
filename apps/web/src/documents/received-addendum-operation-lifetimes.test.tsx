@@ -8,6 +8,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { completeActor } from '../access/current-actor.test-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { DocumentWorkspace } from './DocumentWorkspace';
 
@@ -44,7 +45,56 @@ const company: Company = {
   receivedAddendumAccessPermissionSetVersion: 'v1',
   receivedAddendumClientReadCapture:
     'received-addendum-client-read.v1.' + 'a'.repeat(64),
+  grants: withCompanyGrants(
+    completeActor.activeCompany.grants,
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-reader',
+    },
+    {
+      bundle: 'company_document_registrar',
+      version: 'v3',
+      assignmentId: 'registrar',
+    },
+    {
+      bundle: 'company_document_approver',
+      version: 'v1',
+      assignmentId: 'approver',
+    },
+    {
+      bundle: 'company_document_content_reader',
+      version: 'v1',
+      assignmentId: 'reader',
+    },
+    {
+      bundle: 'company_document_content_uploader',
+      version: 'v1',
+      assignmentId: 'uploader',
+    },
+    {
+      bundle: 'company_received_addendum_access',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000005',
+    },
+  ),
 };
+/** The same Company after `bundle` is granted again to another assignment. */
+function replacing(
+  bundle:
+    | 'company_document_approver'
+    | 'company_document_content_reader'
+    | 'company_document_content_uploader',
+  assignmentId: string,
+): Partial<Company> {
+  return {
+    grants: withCompanyGrants(company.grants, {
+      bundle,
+      version: 'v1',
+      assignmentId,
+    }),
+  };
+}
 function actor(patch: Partial<Company> = {}): ActorContext {
   return {
     ...completeActor,
@@ -214,8 +264,14 @@ afterEach(() => {
 });
 
 it.each([
-  ['Uploader', { documentContentUploaderAssignmentId: 'replacement-uploader' }],
-  ['Reader', { documentContentReaderAssignmentId: 'replacement-reader' }],
+  [
+    'Uploader',
+    replacing('company_document_content_uploader', 'replacement-uploader'),
+  ],
+  [
+    'Reader',
+    replacing('company_document_content_reader', 'replacement-reader'),
+  ],
   [
     'Client',
     {
@@ -285,8 +341,8 @@ it.each([false, true])(
       <DocumentWorkspace
         actor={actor(
           relevant
-            ? { documentContentUploaderAssignmentId: 'replacement' }
-            : { documentApproverAssignmentId: 'replacement' },
+            ? replacing('company_document_content_uploader', 'replacement')
+            : replacing('company_document_approver', 'replacement'),
         )}
         identity={identity}
       />,
@@ -355,7 +411,7 @@ it('does not install a held full Actor recovery after an unrelated Approver upda
   await waitFor(() => expect(fixture.state.actorReads).toBe(1));
   view.rerender(
     <DocumentWorkspace
-      actor={actor({ documentApproverAssignmentId: 'replacement' })}
+      actor={actor(replacing('company_document_approver', 'replacement'))}
       identity={identity}
       onActorRevalidated={onActorRevalidated}
     />,
@@ -401,8 +457,8 @@ it.each([false, true])(
       <DocumentWorkspace
         actor={actor(
           relevant
-            ? { documentContentReaderAssignmentId: 'replacement' }
-            : { documentContentUploaderAssignmentId: 'replacement' },
+            ? replacing('company_document_content_reader', 'replacement')
+            : replacing('company_document_content_uploader', 'replacement'),
         )}
         identity={identity}
       />,
@@ -433,7 +489,9 @@ it('preserves protected PDF history across an unrelated Uploader replacement', a
   await screen.findByRole('list', { name: 'PDF history' });
   view.rerender(
     <DocumentWorkspace
-      actor={actor({ documentContentUploaderAssignmentId: 'replacement' })}
+      actor={actor(
+        replacing('company_document_content_uploader', 'replacement'),
+      )}
       identity={identity}
     />,
   );
@@ -452,7 +510,7 @@ it('keeps Version designation disabled while an unrelated Approver update preser
   ).toBeDisabled();
   view.rerender(
     <DocumentWorkspace
-      actor={actor({ documentApproverAssignmentId: 'replacement' })}
+      actor={actor(replacing('company_document_approver', 'replacement'))}
       identity={identity}
     />,
   );
@@ -486,7 +544,7 @@ it('discards an upload HTTP receipt after Uploader replacement and return withou
   fireEvent.click(screen.getByRole('button', { name: 'Preserve PDF' }));
   await waitFor(() => expect(fixture.writes).toHaveLength(1));
   for (const current of [
-    actor({ documentContentUploaderAssignmentId: 'replacement' }),
+    actor(replacing('company_document_content_uploader', 'replacement')),
     actor(),
   ]) {
     view.rerender(workspace(current));
@@ -527,7 +585,9 @@ it.each([false, true])(
     expect(protection).toHaveBeenLastCalledWith(true);
     view.rerender(
       workspace(
-        actor(changed ? { documentApproverAssignmentId: 'replacement' } : {}),
+        actor(
+          changed ? replacing('company_document_approver', 'replacement') : {},
+        ),
       ),
     );
     await act(async () => {
@@ -585,7 +645,7 @@ it.each(['download', 'history', 'versions'] satisfies Array<
     await waitFor(() => expect(reached).toBe(true));
     view.rerender(
       <DocumentWorkspace
-        actor={actor({ documentApproverAssignmentId: 'replacement' })}
+        actor={actor(replacing('company_document_approver', 'replacement'))}
         identity={identity}
       />,
     );

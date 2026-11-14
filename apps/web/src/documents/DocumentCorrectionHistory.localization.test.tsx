@@ -15,6 +15,11 @@ import {
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { selectOption } from '../test/select-option';
 import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
+import {
+  acceptsRegistrarWithout,
+  documentGrants,
+} from './document-grants.test-fixture';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'reader',
@@ -29,7 +34,7 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Literal Company',
     clientPermissions: ['client.read'],
-    documentPermissions: ['document.read', 'document.reference.read'],
+    grants: documentGrants(['document.read', 'document.reference.read']),
   },
 };
 const identity: BrowserIdentity = {
@@ -172,11 +177,19 @@ it('keeps expanded history and pending continuation while translating late pages
   }
 });
 
-it('retires prior URLs on genuine reference-permission loss and never reveals them while switching locales', async () => {
+it('retires prior URLs on Registrar revocation and never reveals withheld changes while switching locales', async () => {
   localStorage.setItem(interfaceLocaleStorageKey, 'en');
+  // Every Registrar version confers Reference read with Document read, so an
+  // isolated Reference read loss is refused with the whole current Actor.
+  expect(await acceptsRegistrarWithout(actor, 'document.reference.read')).toBe(
+    false,
+  );
+  let withheld = false;
   const fetcher = vi.fn(async () =>
     Response.json({
-      corrections: [{ ...first, changes: { url: first.changes.url } }],
+      corrections: [
+        { ...first, changes: withheld ? {} : { url: first.changes.url } },
+      ],
       nextBeforeRevision: null,
     }),
   );
@@ -197,16 +210,25 @@ it('retires prior URLs on genuine reference-permission loss and never reveals th
     screen.getByRole('button', { name: 'Show reference correction history' }),
   );
   expect(await screen.findByText(first.changes.url.before)).toBeVisible();
-  const metadataOnly: ActorContext = {
+  const revoked: ActorContext = {
     ...actor,
     activeCompany: {
       id: 'company',
       displayName: 'Literal Company',
       clientPermissions: ['client.read'],
-      documentPermissions: ['document.read'],
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_document_registrar',
+      ),
     },
   };
-  view.rerender(content(metadataOnly));
+  view.rerender(content(revoked));
+  expect(screen.queryByText(first.changes.url.before)).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Show reference correction history' }),
+  ).not.toBeInTheDocument();
+  withheld = true;
+  view.rerender(content(actor));
   expect(screen.queryByText(first.changes.url.before)).not.toBeInTheDocument();
   expect(
     screen.getByRole('button', { name: 'Show reference correction history' }),

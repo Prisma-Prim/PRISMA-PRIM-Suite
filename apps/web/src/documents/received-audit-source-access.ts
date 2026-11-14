@@ -1,35 +1,39 @@
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
+import { grantHolding, holdsClientRead } from './document-grants';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+function auditSourceGrant(company: ActorContext['activeCompany']) {
+  const access = grantHolding(
+    company,
+    'company_received_audit_source_access',
+    'document.received_audit_source.access',
+  );
+  return access && uuid.test(access.assignmentId) ? access : undefined;
+}
 export function hasReceivedAuditSourceAccess(
   company: ActorContext['activeCompany'],
 ) {
-  return (
-    company?.receivedAuditSourceAccessPermissionSetVersion === 'v1' &&
-    typeof company.receivedAuditSourceAccessAssignmentId === 'string' &&
-    uuid.test(company.receivedAuditSourceAccessAssignmentId) &&
-    company.documentPermissions?.includes(
-      'document.received_audit_source.access',
-    ) === true
-  );
+  return auditSourceGrant(company) !== undefined;
 }
 /** Only the native source's selected captures, independent of Case and sibling families. */
 export function receivedAuditSourceNativeAuthority(actor: ActorContext) {
   const company = actor.activeCompany;
-  const permissions = company?.documentPermissions ?? [];
+  const access = auditSourceGrant(company);
+  const registrar = grantHolding(
+    company,
+    'company_document_registrar',
+    'document.read',
+  );
   if (
     !actor.active ||
     !company ||
-    !hasReceivedAuditSourceAccess(company) ||
+    !access ||
     !(
       actor.workspacePermissions.includes('client.manage') ||
-      (company.clientPermissions?.includes('client.read') &&
-        company.clientPermissionAssignmentId &&
-        ['v1', 'v2'].includes(company.clientPermissionSetVersion ?? ''))
+      holdsClientRead(company)
     ) ||
-    !permissions.includes('document.read') ||
-    !company.documentPermissionAssignmentId ||
-    !['v1', 'v2', 'v3'].includes(company.documentPermissionSetVersion ?? '') ||
+    !registrar ||
     typeof company.workingEvidenceClientReadCapture !== 'string' ||
     !/^working-evidence-client-read\.v1\.[a-f0-9]{64}$/u.test(
       company.workingEvidenceClientReadCapture,
@@ -47,49 +51,61 @@ export function receivedAuditSourceNativeAuthority(actor: ActorContext) {
     company.id,
     company.workingEvidenceContextCapture,
     company.workingEvidenceClientReadCapture,
-    company.documentPermissionAssignmentId,
-    company.documentPermissionSetVersion,
-    company.receivedAuditSourceAccessAssignmentId,
-    company.receivedAuditSourceAccessPermissionSetVersion,
+    registrar.assignmentId,
+    registrar.permissionSetVersion,
+    access.assignmentId,
+    access.permissionSetVersion,
   ]);
-  const reference = permissions.includes('document.reference.read');
+  const reference = holds(
+    company,
+    'company_document_registrar',
+    'document.reference.read',
+  );
+  const reader = grantHolding(
+    company,
+    'company_document_content_reader',
+    'document.content.read',
+  );
   const content =
-    reference &&
-    permissions.includes('document.content.read') &&
-    company.documentContentReaderAssignmentId &&
-    company.documentContentReaderPermissionSetVersion === 'v1'
+    reference && reader
       ? JSON.stringify([
           metadata,
-          company.documentContentReaderAssignmentId,
-          'v1',
+          reader.assignmentId,
+          reader.permissionSetVersion,
         ])
       : null;
   const manage =
     reference &&
-    company.documentPermissionSetVersion === 'v3' &&
-    permissions.includes('document.version.manage');
+    holds(company, 'company_document_registrar', 'document.version.manage');
+  const uploader = grantHolding(
+    company,
+    'company_document_content_uploader',
+    'document.content.upload',
+  );
+  const approver = grantHolding(
+    company,
+    'company_document_approver',
+    'document.version.designate_official',
+  );
   return {
     metadata,
     versions: JSON.stringify([metadata, content]),
     content,
     upload:
-      content &&
-      manage &&
-      permissions.includes('document.content.upload') &&
-      company.documentContentUploaderAssignmentId &&
-      company.documentContentUploaderPermissionSetVersion === 'v1'
+      content && manage && uploader
         ? JSON.stringify([
             content,
-            company.documentContentUploaderAssignmentId,
-            'v1',
+            uploader.assignmentId,
+            uploader.permissionSetVersion,
           ])
         : null,
     designation:
-      reference &&
-      permissions.includes('document.version.designate_official') &&
-      company.documentApproverAssignmentId &&
-      company.documentApproverPermissionSetVersion === 'v1'
-        ? JSON.stringify([metadata, company.documentApproverAssignmentId, 'v1'])
+      reference && approver
+        ? JSON.stringify([
+            metadata,
+            approver.assignmentId,
+            approver.permissionSetVersion,
+          ])
         : null,
     successor: manage ? JSON.stringify([metadata, 'successor']) : null,
     recovery: JSON.stringify(actor),

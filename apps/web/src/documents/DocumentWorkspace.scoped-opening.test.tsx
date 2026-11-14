@@ -9,6 +9,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { DocumentWorkspace, type RequestedDocument } from './DocumentWorkspace';
+import { documentGrants } from './document-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -23,18 +24,20 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
-    documentPermissions: [
-      'document.read',
-      'document.reference.read',
-      'document.correct',
-      'document.version.manage',
-      'document.content.read',
-      'document.content.upload',
-    ],
-    documentContentReaderAssignmentId: 'reader',
-    documentContentReaderPermissionSetVersion: 'v1',
-    documentContentUploaderAssignmentId: 'uploader',
-    documentContentUploaderPermissionSetVersion: 'v1',
+    grants: documentGrants(
+      [
+        'document.read',
+        'document.reference.read',
+        'document.correct',
+        'document.version.manage',
+        'document.content.read',
+        'document.content.upload',
+      ],
+      {
+        company_document_content_reader: 'reader',
+        company_document_content_uploader: 'uploader',
+      },
+    ),
   },
 };
 const identity = deterministicBrowserIdentity();

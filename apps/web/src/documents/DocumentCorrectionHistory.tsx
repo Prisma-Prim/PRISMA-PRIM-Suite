@@ -5,6 +5,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import {
@@ -57,13 +58,16 @@ export function DocumentCorrectionHistory({
       ? paymentEvidenceAuthority(actor)?.readKey
       : undefined;
   if (
-    !company?.documentPermissions?.includes('document.read') ||
+    !company ||
+    !holds(company, 'company_document_registrar', 'document.read') ||
     (documentType === 'payment-evidence'
       ? !operationKeys || operationKeys.readKey !== paymentRead
       : !hasDocumentFamilyAccess(company, documentType))
   )
     return null;
-  const canReadReference = company.documentPermissions.includes(
+  const canReadReference = holds(
+    company,
+    'company_document_registrar',
     'document.reference.read',
   );
   return (

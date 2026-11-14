@@ -9,6 +9,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import { documentGrants } from './document-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -23,15 +24,16 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company',
     clientPermissions: ['client.read'],
-    documentPermissions: [
-      'document.read',
-      'document.register',
-      'document.correct',
-      'document.reference.read',
-      'document.mission_deliverable.access',
-    ],
-    missionDeliverableAccessAssignmentId: 'family-grant',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
+    grants: documentGrants(
+      [
+        'document.read',
+        'document.register',
+        'document.correct',
+        'document.reference.read',
+        'document.mission_deliverable.access',
+      ],
+      { company_mission_deliverable_access: 'family-grant' },
+    ),
   },
 };
 const identity: BrowserIdentity = {

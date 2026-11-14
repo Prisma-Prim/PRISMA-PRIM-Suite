@@ -10,6 +10,12 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { completeActor } from '../access/current-actor.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { holds } from '../access/company-grants';
+import { readCurrentActor } from '../access/current-actor';
 import { DocumentWorkspace } from './DocumentWorkspace';
 
 type Company = NonNullable<ActorContext['activeCompany']>;
@@ -51,6 +57,39 @@ const company = {
   receivedAddendumAccessPermissionSetVersion: 'v1',
   receivedAddendumClientReadCapture:
     'received-addendum-client-read.v1.' + 'a'.repeat(64),
+  grants: withCompanyGrants(
+    completeActor.activeCompany.grants,
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000002',
+    },
+    {
+      bundle: 'company_document_registrar',
+      version: 'v3',
+      assignmentId: '10000000-0000-4000-8000-000000000003',
+    },
+    {
+      bundle: 'company_document_approver',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000004',
+    },
+    {
+      bundle: 'company_document_content_reader',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000005',
+    },
+    {
+      bundle: 'company_document_content_uploader',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000006',
+    },
+    {
+      bundle: 'company_received_addendum_access',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000007',
+    },
+  ),
 } satisfies Company;
 
 function actorWith(activeCompany: Company): ActorContext {
@@ -70,11 +109,10 @@ function actorWith(activeCompany: Company): ActorContext {
 function withoutContentReader(current: Company): Company {
   return {
     ...current,
-    documentPermissions: current.documentPermissions?.filter(
-      (permission) => permission !== 'document.content.read',
+    grants: withoutCompanyGrants(
+      current.grants,
+      'company_document_content_reader',
     ),
-    documentContentReaderAssignmentId: undefined,
-    documentContentReaderPermissionSetVersion: undefined,
   };
 }
 
@@ -302,20 +340,30 @@ it.each(['designation', 'successor'] satisfies Operation[])(
 
     const uploaderChanged: Company = {
       ...company,
-      documentContentUploaderAssignmentId:
-        '10000000-0000-4000-8000-000000000012',
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_document_content_uploader',
+        version: 'v1',
+        assignmentId: '10000000-0000-4000-8000-000000000012',
+      }),
     };
     const readerChanged: Company = {
       ...uploaderChanged,
-      documentContentReaderAssignmentId: '10000000-0000-4000-8000-000000000013',
+      grants: withCompanyGrants(uploaderChanged.grants, {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: '10000000-0000-4000-8000-000000000013',
+      }),
     };
     const unrelated =
       operation === 'successor'
         ? [
             {
               ...company,
-              documentApproverAssignmentId:
-                '10000000-0000-4000-8000-000000000014',
+              grants: withCompanyGrants(company.grants, {
+                bundle: 'company_document_approver',
+                version: 'v1',
+                assignmentId: '10000000-0000-4000-8000-000000000014',
+              }),
             } satisfies Company,
           ]
         : [];
@@ -325,8 +373,11 @@ it.each(['designation', 'successor'] satisfies Operation[])(
       readerChanged,
       withoutContentReader(readerChanged),
     ]) {
-      fixture.state.contentReadable =
-        next.documentPermissions?.includes('document.content.read') === true;
+      fixture.state.contentReadable = holds(
+        next,
+        'company_document_content_reader',
+        'document.content.read',
+      );
       view.rerender(
         <DocumentWorkspace actor={actorWith(next)} identity={identity} />,
       );
@@ -358,44 +409,54 @@ it.each(['designation', 'successor'] satisfies Operation[])(
   },
 );
 
-type ConsumedCapture = 'approver' | 'registrar' | 'reference-reader';
+type ConsumedCapture = 'approver' | 'registrar';
 function replaceCapture(current: Company, capture: ConsumedCapture): Company {
-  return capture === 'approver'
-    ? {
-        ...current,
-        documentApproverAssignmentId: '10000000-0000-4000-8000-000000000015',
-      }
-    : {
-        ...current,
-        documentPermissionAssignmentId: '10000000-0000-4000-8000-000000000016',
-      };
-}
-function loseCapture(current: Company, capture: ConsumedCapture): Company {
-  const permission =
-    capture === 'approver'
-      ? 'document.version.designate_official'
-      : capture === 'registrar'
-        ? 'document.version.manage'
-        : 'document.reference.read';
   return {
     ...current,
-    documentPermissions: current.documentPermissions?.filter(
-      (value) => value !== permission,
+    grants: withCompanyGrants(
+      current.grants,
+      capture === 'approver'
+        ? {
+            bundle: 'company_document_approver',
+            version: 'v1',
+            assignmentId: '10000000-0000-4000-8000-000000000015',
+          }
+        : {
+            bundle: 'company_document_registrar',
+            version: 'v3',
+            assignmentId: '10000000-0000-4000-8000-000000000016',
+          },
     ),
-    ...(capture === 'approver'
-      ? {
-          documentApproverAssignmentId: undefined,
-          documentApproverPermissionSetVersion: undefined,
-        }
-      : {}),
+  };
+}
+/**
+ * The Approver loses its grant; the Registrar is captured again at v2, which
+ * keeps Document and Reference read but no longer confers Version management.
+ * A Registrar without Reference read matches no registry version, so the
+ * current Actor parser refuses it (see the refusal test below).
+ */
+function loseCapture(current: Company, capture: ConsumedCapture): Company {
+  const registrar = current.grants?.find(
+    (grant) => grant.bundle === 'company_document_registrar',
+  );
+  if (!registrar) throw new Error('Expected the fixture Registrar grant.');
+  return {
+    ...current,
+    grants:
+      capture === 'approver'
+        ? withoutCompanyGrants(current.grants, 'company_document_approver')
+        : withCompanyGrants(current.grants, {
+            bundle: 'company_document_registrar',
+            version: 'v2',
+            assignmentId: registrar.assignmentId,
+          }),
   };
 }
 
 it.each([
   { operation: 'designation', capture: 'approver' },
-  { operation: 'designation', capture: 'reference-reader' },
+  { operation: 'designation', capture: 'registrar' },
   { operation: 'successor', capture: 'registrar' },
-  { operation: 'successor', capture: 'reference-reader' },
 ] satisfies Array<{ operation: Operation; capture: ConsumedCapture }>)(
   'retires Addendum $operation on $capture replacement/loss/return and ignores its held HTTP receipt',
   async ({ operation, capture }) => {
@@ -470,8 +531,35 @@ it.each([
   },
 );
 
+it('refuses the whole current Actor for an isolated Reference permission loss with the same Registrar', async () => {
+  const actor = actorWith(company);
+  const read = (value: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value }) },
+    });
+  expect((await read(actor)).status).toBe('ok');
+  expect(
+    await read({
+      ...actor,
+      activeCompany: {
+        ...company,
+        grants: company.grants.map((grant) =>
+          grant.bundle === 'company_document_registrar'
+            ? {
+                ...grant,
+                permissions: grant.permissions.filter(
+                  (permission) => permission !== 'document.reference.read',
+                ),
+              }
+            : grant,
+        ),
+      },
+    }),
+  ).toEqual({ status: 'error' });
+});
+
 it.each(['designation', 'successor'] satisfies Operation[])(
-  'retires uncertain Addendum %s on isolated Reference permission loss and return with the same Registrar',
+  'retires uncertain Addendum %s on a Registrar capture change and return with the same Registrar assignment',
   async (operation) => {
     const held = deferred<Response>();
     const fixture = serve(operation, held.promise),
@@ -497,7 +585,7 @@ it.each(['designation', 'successor'] satisfies Operation[])(
     );
     await waitFor(() => expect(fixture.writes).toHaveLength(2));
     expectSameEnvelope(fixture.writes, operation, fixture.beforeRevision);
-    view.rerender(workspace(loseCapture(original, 'reference-reader')));
+    view.rerender(workspace(loseCapture(original, 'registrar')));
     expect(
       screen.queryByRole('button', { name: 'Retry the same Version change' }),
     ).not.toBeInTheDocument();
@@ -552,12 +640,18 @@ it.each(['designation', 'successor'] satisfies Operation[])(
         ...company,
         ...(operation === 'designation'
           ? {
-              documentContentUploaderAssignmentId:
-                '10000000-0000-4000-8000-000000000012',
+              grants: withCompanyGrants(company.grants, {
+                bundle: 'company_document_content_uploader',
+                version: 'v1',
+                assignmentId: '10000000-0000-4000-8000-000000000012',
+              }),
             }
           : {
-              documentApproverAssignmentId:
-                '10000000-0000-4000-8000-000000000014',
+              grants: withCompanyGrants(company.grants, {
+                bundle: 'company_document_approver',
+                version: 'v1',
+                assignmentId: '10000000-0000-4000-8000-000000000014',
+              }),
             }),
       }),
     );

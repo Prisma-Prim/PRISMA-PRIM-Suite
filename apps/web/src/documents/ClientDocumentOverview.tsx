@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import {
   handleAuthenticatedAccessRejection,
@@ -21,6 +22,7 @@ import {
   hasDocumentFamilyAccess,
 } from './document-family-access';
 import type { DocumentFamily } from './document-response';
+import { holdsClientRead } from './document-grants';
 import type { DocumentOpenTarget } from './DocumentWorkspace';
 import { useDocumentsCopy } from './documents.copy';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
@@ -83,21 +85,18 @@ export function ClientDocumentOverview(props: Props) {
     !props.identity.loaded ||
     !props.identity.signedIn ||
     !company ||
-    (!workspaceClientRead &&
-      (!company.clientPermissions?.includes('client.read') ||
-        !company.clientPermissionAssignmentId ||
-        !['v1', 'v2'].includes(company.clientPermissionSetVersion ?? ''))) ||
-    !company.documentPermissions?.includes('document.read') ||
-    !company.documentPermissionAssignmentId ||
-    !['v1', 'v2', 'v3'].includes(company.documentPermissionSetVersion ?? '')
+    (!workspaceClientRead && !holdsClientRead(company)) ||
+    !holds(company, 'company_document_registrar', 'document.read')
   )
     return null;
+  const client = grantOf(company, 'company_director_client_access');
+  const registrar = grantOf(company, 'company_document_registrar');
   const clientAuthority = workspaceClientRead
     ? ['workspace-client-manage']
     : [
-        company.clientPermissionAssignmentId,
-        company.clientPermissionSetVersion,
-        company.clientPermissions?.includes('client.read') === true,
+        client?.assignmentId,
+        client?.permissionSetVersion,
+        holdsClientRead(company),
       ];
   const context = [
     session.current.generation,
@@ -106,8 +105,8 @@ export function ClientDocumentOverview(props: Props) {
     props.actor.workspaceId,
     company.id,
     clientAuthority,
-    company.documentPermissionAssignmentId,
-    company.documentPermissionSetVersion,
+    registrar?.assignmentId,
+    registrar?.permissionSetVersion,
     props.clientDossierId,
     props.clientIdentityRevision,
   ];
