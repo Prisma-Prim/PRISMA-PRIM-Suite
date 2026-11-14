@@ -1162,7 +1162,10 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       key: 'cp1-restore-' + route + '-' + suffix,
       administrator: true,
     });
+  // A fresh load reads the restored grants; a fragment change alone keeps the
+  // page and its earlier authority.
   await page.goto('/#requests');
+  await page.reload();
   await page
     .getByRole('button')
     .filter({
