@@ -39,7 +39,6 @@ import {
   readCreateModelOfferVersionCommand,
   readCreateEstimateOfferCommand,
   readCreateEstimateOfferVersionCommand,
-  requireModelApprovalDecisionId,
 } from './offer.validation.js';
 import type {
   InternalOfferRecord,
@@ -209,9 +208,6 @@ export class EstimateOfferPreparationService {
               return exhaustive;
             }
           }
-          // Only a replay may omit the approval: older receipts did not name it.
-          if (!receipt && 'modelVersionId' in command)
-            requireModelApprovalDecisionId(command);
           // Acquire the write fence before a source read can borrow Client shares.
           const recipient = await this.clients.lockOfferRecipient(
             actor,
@@ -307,9 +303,8 @@ export class EstimateOfferPreparationService {
                 content.modelSource.versionId !== command.modelVersionId ||
                 content.modelSource.versionNumber !==
                   command.modelVersionNumber ||
-                (command.modelApprovalDecisionId !== null &&
-                  content.modelSource.approvalDecisionId !==
-                    command.modelApprovalDecisionId) ||
+                content.modelSource.approvalDecisionId !==
+                  command.modelApprovalDecisionId ||
                 content.financialDeclaration.taxAmount !==
                   command.financialDeclaration.taxAmount ||
                 content.financialDeclaration.taxLabel !==
@@ -329,7 +324,7 @@ export class EstimateOfferPreparationService {
                   actor,
                   versionId: command.modelVersionId,
                   versionNumber: command.modelVersionNumber,
-                  approvalDecisionId: requireModelApprovalDecisionId(command),
+                  approvalDecisionId: command.modelApprovalDecisionId,
                 })
               : null;
           if (

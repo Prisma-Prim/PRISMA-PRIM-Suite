@@ -221,9 +221,6 @@ export class CompanyModelService<
       versionId: input.kind === 'SUBMIT' ? null : input.versionId,
       payload: input.payload,
     });
-    const parsedIntent = this.kind.parsedIntentReceipts
-      ? this.parsedIntentFingerprint(input)
-      : null;
     const { commands } = this.kind.tables;
     return runIdempotentCommand(this.database, {
       fingerprint,
@@ -246,13 +243,7 @@ export class CompanyModelService<
               eq(commands.key, key),
             ),
           );
-        // A receipt recorded under the kind's earlier parsed-intent rule
-        // still answers the retry that rule recognized.
-        return receipt &&
-          parsedIntent !== null &&
-          receipt.fingerprint === parsedIntent
-          ? { ...receipt, fingerprint }
-          : receipt;
+        return receipt;
       },
       conflict: () =>
         this.conflict(
@@ -272,22 +263,6 @@ export class CompanyModelService<
       execute: (companyId) =>
         this.execute({ input, companyId, key, fingerprint }),
     }).catch((error: unknown) => this.safeFailure(error));
-  }
-
-  /**
-   * The fingerprint a kind recorded before #1191: the validated intent with
-   * the model code. An intent that does not validate never had a receipt.
-   */
-  private parsedIntentFingerprint(input: MutationInput): string | null {
-    try {
-      return commandFingerprint({
-        modelCode: this.kind.identity.code,
-        ...this.readMutation(input),
-      });
-    } catch (error) {
-      if (error instanceof HttpException) return null;
-      throw error;
-    }
   }
 
   private async execute({
