@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -98,8 +99,11 @@ function RegistrationSession({
     identity.signedIn &&
     actor.activeCompany?.id === companyId &&
     canReadReceivedAddendumRelation(actor) &&
-    actor.activeCompany?.documentPermissions?.includes('document.register') ===
-      true;
+    holds(
+      actor.activeCompany,
+      'company_document_registrar',
+      'document.register',
+    );
   const [sources, setSources] = useState<Sources>({ status: 'loading' });
   const [page, setPage] = useState<{ cursor?: string; revision: number }>({
     revision: 0,

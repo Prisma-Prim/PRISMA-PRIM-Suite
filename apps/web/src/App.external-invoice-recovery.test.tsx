@@ -17,9 +17,11 @@ import {
 } from './test/internal-task-app';
 import {
   invoiceUiActor,
+  invoiceUiGrantRequests,
   invoiceUiIds,
   invoiceUiSource,
 } from './documents/external-invoice.ui.test-fixture';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { clientId, companyId } from './test/mission-applicability-app-fixture';
 
 const financialActor = {
@@ -28,6 +30,10 @@ const financialActor = {
   activeCompany: {
     ...internalTaskActor.activeCompany,
     ...invoiceUiActor.activeCompany,
+    grants: withCompanyGrants(
+      internalTaskActor.activeCompany.grants,
+      ...invoiceUiGrantRequests,
+    ),
     id: companyId,
     displayName: 'Company DEMO',
   },

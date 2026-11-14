@@ -19,6 +19,7 @@ import {
   companyGrants,
   withoutCompanyGrants,
 } from './access/company-grants.test-fixture';
+import { documentGrantRequests } from './documents/document-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -93,6 +94,7 @@ function actorFor(
   projectPermissions: ProjectPermissions,
 ): ActorContext {
   const grants = companyGrants(
+    ...documentGrantRequests(['document.read']),
     {
       bundle: 'company_director_client_access',
       version: 'v2',

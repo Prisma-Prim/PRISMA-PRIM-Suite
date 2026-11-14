@@ -12,6 +12,12 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import {
+  acceptsRegistrarWithout,
+  documentGrants,
+  type DocumentPermission,
+} from './document-grants.test-fixture';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 /**
  * Every opened detail mounts its Versions section. These tests prove other
  * behaviour, so that read is answered as safely unavailable before the test's
@@ -42,17 +48,14 @@ const correctingActor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
-    documentPermissions: [
+    grants: documentGrants([
       'document.read',
       'document.register',
       'document.reference.read',
       'document.correct',
-    ],
+    ]),
   },
 };
-type DocumentPermission = NonNullable<
-  NonNullable<ActorContext['activeCompany']>['documentPermissions']
->[number];
 function readerWith(documentPermissions: DocumentPermission[]): ActorContext {
   return {
     ...correctingActor,
@@ -60,7 +63,7 @@ function readerWith(documentPermissions: DocumentPermission[]): ActorContext {
       id: 'company',
       displayName: 'PRISMA-PRIM',
       clientPermissions: ['client.read'],
-      documentPermissions,
+      grants: documentGrants(documentPermissions),
     },
   };
 }
@@ -676,7 +679,7 @@ it('discards the history of another Company', async () => {
   ).not.toBeInTheDocument();
 });
 
-it('removes prior URLs immediately when Representation read is lost and shows a URL-only correction as a generic entry', async () => {
+it('removes prior URLs immediately when the Registrar grant carrying Representation read is revoked, and refuses an isolated Representation read loss', async () => {
   let answerLateRead: (response: Response) => void = () => undefined;
   let reads = 0;
   const { historyRequests } = serve({
@@ -698,6 +701,11 @@ it('removes prior URLs immediately when Representation read is lost and shows a 
     },
   });
   const reader = readerWith(['document.read', 'document.reference.read']);
+  // Every Registrar version confers Reference read with Document read, so an
+  // isolated Reference read loss is refused with the whole current Actor.
+  expect(await acceptsRegistrarWithout(reader, 'document.reference.read')).toBe(
+    false,
+  );
   const view = render(<DocumentWorkspace actor={reader} identity={identity} />);
   await openDocument();
   fireEvent.click(historyToggle());
@@ -710,23 +718,39 @@ it('removes prior URLs immediately when Representation read is lost and shows a 
   fireEvent.click(historyToggle());
   await waitFor(() => expect(historyRequests).toHaveLength(2));
 
+  const company = reader.activeCompany;
+  if (!company) throw new Error('Expected the reader Company.');
   view.rerender(
     <DocumentWorkspace
-      actor={readerWith(['document.read'])}
+      actor={{
+        ...reader,
+        activeCompany: {
+          ...company,
+          grants: withoutCompanyGrants(
+            company.grants,
+            'company_document_registrar',
+          ),
+        },
+      }}
       identity={identity}
     />,
   );
   expect(
-    within(historySection()).queryByText(/https:\/\/example\.test/u),
+    screen.queryByText(/https:\/\/example\.test/u),
   ).not.toBeInTheDocument();
-  expect(historyToggle()).toHaveAttribute('aria-expanded', 'false');
+  expect(
+    screen.queryByRole('region', { name: 'Correction history' }),
+  ).not.toBeInTheDocument();
   expect(historyRequests[1]?.signal?.aborted).toBe(true);
   answerLateRead(historyPage([titleAndUrlCorrection, urlOnlyCorrection]));
   await settle();
   expect(
-    within(historySection()).queryByText(/https:\/\/example\.test/u),
+    screen.queryByText(/https:\/\/example\.test/u),
   ).not.toBeInTheDocument();
 
+  // Granted again, the next read shows what the server now withholds.
+  view.rerender(<DocumentWorkspace actor={reader} identity={identity} />);
+  await openDocument();
   fireEvent.click(historyToggle());
   const [titled, generic] = await historyEntries();
   if (!titled || !generic) throw new Error('Expected two corrections.');
@@ -751,13 +775,20 @@ it('removes prior URLs immediately when Representation read is lost and shows a 
   ).not.toBeInTheDocument();
 });
 
-it('hides URL values a response carries for a reader without Representation read', async () => {
+it('shows a URL-only correction the server withholds as a generic attributed entry', async () => {
   serve({
-    history: () => historyPage([titleAndUrlCorrection, urlOnlyCorrection]),
+    history: () =>
+      historyPage([
+        {
+          ...titleAndUrlCorrection,
+          changes: { title: titleAndUrlCorrection.changes.title },
+        },
+        { ...urlOnlyCorrection, changes: {} },
+      ]),
   });
   render(
     <DocumentWorkspace
-      actor={readerWith(['document.read'])}
+      actor={readerWith(['document.read', 'document.reference.read'])}
       identity={identity}
     />,
   );

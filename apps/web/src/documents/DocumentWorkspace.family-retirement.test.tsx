@@ -9,40 +9,55 @@ import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { DocumentWorkspace } from './DocumentWorkspace';
 import type { DocumentFamily } from './document-response';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const at = '2026-10-25T10:00:00.000Z';
 const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company',
   displayName: 'Company',
-  clientPermissions: ['client.read'],
-  clientPermissionAssignmentId: '10000000-0000-4000-8000-000000000007',
-  clientPermissionSetVersion: 'v1',
-  documentPermissions: [
-    'document.read',
-    'document.register',
-    'document.reference.read',
-    'document.correct',
-    'document.version.manage',
-    'document.content.read',
-    'document.content.upload',
-    'document.mission_deliverable.access',
-    'document.received_contract.access',
-    'document.received_addendum.access',
-  ],
-  documentPermissionAssignmentId: 'registrar',
-  documentPermissionSetVersion: 'v3',
-  documentContentReaderAssignmentId: 'reader',
-  documentContentReaderPermissionSetVersion: 'v1',
-  documentContentUploaderAssignmentId: 'uploader',
-  documentContentUploaderPermissionSetVersion: 'v1',
-  missionDeliverableAccessAssignmentId: 'mission-grant',
-  missionDeliverableAccessPermissionSetVersion: 'v1',
-  receivedAddendumAccessAssignmentId: '10000000-0000-4000-8000-000000000005',
-  receivedAddendumAccessPermissionSetVersion: 'v1',
   receivedAddendumClientReadCapture:
     'received-addendum-client-read.v1.' + 'a'.repeat(64),
-  receivedContractAccessAssignmentId: 'received-grant',
-  receivedContractAccessPermissionSetVersion: 'v1',
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000007',
+    },
+    {
+      bundle: 'company_document_registrar',
+      version: 'v3',
+      assignmentId: 'registrar',
+    },
+    {
+      bundle: 'company_document_content_reader',
+      version: 'v1',
+      assignmentId: 'reader',
+    },
+    {
+      bundle: 'company_document_content_uploader',
+      version: 'v1',
+      assignmentId: 'uploader',
+    },
+    {
+      bundle: 'company_mission_deliverable_access',
+      version: 'v1',
+      assignmentId: 'mission-grant',
+    },
+    {
+      bundle: 'company_received_addendum_access',
+      version: 'v1',
+      assignmentId: '10000000-0000-4000-8000-000000000005',
+    },
+    {
+      bundle: 'company_received_contract_access',
+      version: 'v1',
+      assignmentId: 'received-grant',
+    },
+  ),
 };
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -61,33 +76,28 @@ function changeFamily(
   active: boolean,
   captureId = 'replacement',
 ): ActorContext {
-  const permission =
+  const bundle =
     family === 'received-addendum'
-      ? 'document.received_addendum.access'
+      ? 'company_received_addendum_access'
       : family === 'received-contract'
-        ? 'document.received_contract.access'
-        : 'document.mission_deliverable.access';
-  const next: NonNullable<ActorContext['activeCompany']> = {
-    ...company,
-    documentPermissions: active
-      ? [...(company.documentPermissions ?? [])]
-      : company.documentPermissions?.filter((value) => value !== permission),
+        ? 'company_received_contract_access'
+        : 'company_mission_deliverable_access';
+  return {
+    ...actor,
+    activeCompany: {
+      ...company,
+      grants: active
+        ? withCompanyGrants(company.grants, {
+            bundle,
+            version: 'v1',
+            assignmentId:
+              family === 'received-addendum'
+                ? '10000000-0000-4000-8000-000000000006'
+                : captureId,
+          })
+        : withoutCompanyGrants(company.grants, bundle),
+    },
   };
-  if (family === 'received-addendum') {
-    next.receivedAddendumAccessAssignmentId = active
-      ? '10000000-0000-4000-8000-000000000006'
-      : undefined;
-    next.receivedAddendumAccessPermissionSetVersion = active ? 'v1' : undefined;
-  } else if (family === 'received-contract') {
-    next.receivedContractAccessAssignmentId = active ? captureId : undefined;
-    next.receivedContractAccessPermissionSetVersion = active ? 'v1' : undefined;
-  } else {
-    next.missionDeliverableAccessAssignmentId = active ? captureId : undefined;
-    next.missionDeliverableAccessPermissionSetVersion = active
-      ? 'v1'
-      : undefined;
-  }
-  return { ...actor, activeCompany: next };
 }
 function http(family: DocumentFamily) {
   const writes: Array<{
@@ -333,10 +343,19 @@ it('keeps independent Addendum PDF bytes and key while Contract/Intake captures 
         ...actor,
         activeCompany: {
           ...company,
-          contractPermissionAssignmentId: 'replacement-parent',
-          contractPermissionSetVersion: 'v2',
-          commercialIntakePermissionAssignmentId: 'replacement-intake',
-          commercialIntakePermissionSetVersion: 'v4',
+          grants: withCompanyGrants(
+            company.grants,
+            {
+              bundle: 'company_contract_preparer',
+              version: 'v2',
+              assignmentId: 'replacement-parent',
+            },
+            {
+              bundle: 'company_commercial_intake',
+              version: 'v4',
+              assignmentId: 'replacement-intake',
+            },
+          ),
         },
       }}
       identity={identity}
@@ -359,12 +378,11 @@ it('keeps an uncertain Addendum upload when only its unconsumed Approver assignm
     ...actor,
     activeCompany: {
       ...company,
-      documentPermissions: [
-        ...(company.documentPermissions ?? []),
-        'document.version.designate_official',
-      ],
-      documentApproverAssignmentId: approverAssignmentId,
-      documentApproverPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_document_approver',
+        version: 'v1',
+        assignmentId: approverAssignmentId,
+      }),
     },
   });
   const view = render(

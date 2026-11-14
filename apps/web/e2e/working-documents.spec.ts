@@ -9,6 +9,7 @@ import {
   DOCUMENT_VERSIONS_PATH,
   draftVersionsOf,
 } from './document-versions.fixture';
+import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
 test('registers and reopens a Company-confidential working reference', async ({
   page,
@@ -96,6 +97,12 @@ test('registers and reopens a Company-confidential working reference', async ({
                     'document.reference.read',
                     'document.correct',
                   ],
+                  grants: documentGrants([
+                    'document.read',
+                    'document.register',
+                    'document.reference.read',
+                    'document.correct',
+                  ]),
                 },
               }
             : {}),
@@ -564,6 +571,17 @@ test('designates official Versions, starts and corrects a new draft and keeps th
                     'document.version.manage',
                     'document.version.designate_official',
                   ],
+                  grants: documentGrants(
+                    [
+                      'document.read',
+                      'document.register',
+                      'document.reference.read',
+                      'document.correct',
+                      'document.version.manage',
+                      'document.version.designate_official',
+                    ],
+                    { company_document_approver: 'approver-assignment' },
+                  ),
                   documentPermissionSetVersion: 'v3',
                   documentApproverAssignmentId: 'approver-assignment',
                   documentApproverPermissionSetVersion: 'v1',

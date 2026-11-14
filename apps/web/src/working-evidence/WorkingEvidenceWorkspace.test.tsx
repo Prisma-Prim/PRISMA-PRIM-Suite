@@ -7,6 +7,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { WorkingEvidenceWorkspace } from './WorkingEvidenceWorkspace';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   readEvidenceReceipt,
   readEvidenceSources,
@@ -245,6 +246,10 @@ it('withholds source tuples and counts while preserving independently authorized
       displayName: 'Fictional Company',
       receivedAuditSourceAccessAssignmentId: undefined,
       receivedAuditSourceAccessPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_received_audit_source_access',
+      ),
     },
   };
   view.rerender(

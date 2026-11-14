@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { documentGrants } from './documents/document-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -109,6 +110,9 @@ function actorFor(
       clientPermissionAssignmentId: 'assignment-1',
       clientPermissionSetVersion: 'v2',
       documentPermissions: ['document.read'],
+      grants: documentGrants(['document.read'], {
+        company_document_registrar: 'document-capture',
+      }),
       documentPermissionAssignmentId: overview ? 'document-capture' : undefined,
       documentPermissionSetVersion: overview ? 'v1' : undefined,
     },
@@ -505,12 +509,20 @@ describe('Client dossier and working Document navigation through App', () => {
         name: 'Open canonical Client dossier',
       }),
     );
-    await screen.findByRole('region', { name: secondClient.displayName });
+    const canonical = await screen.findByRole('region', {
+      name: secondClient.displayName,
+    });
+    // The canonical dossier's own Client Documents overview reads once.
+    const overview = await within(canonical).findByRole('region', {
+      name: 'Client Documents',
+    });
+    await within(overview).findAllByRole('listitem');
+    expect(transport.documentReads).toBe(documentReadsBefore + 1);
 
     navigateTo('Working Documents');
     expect(documentFilter()).toHaveValue(secondClient.displayName);
     expect(documentTitles()).toHaveLength(2);
-    expect(transport.documentReads).toBe(documentReadsBefore);
+    expect(transport.documentReads).toBe(documentReadsBefore + 1);
   });
 
   it('does not restore a previous Company restriction when the member returns to that Company', async () => {

@@ -15,7 +15,10 @@ import { browserIdentity } from '../production-shell/production-shell-context.te
 import { readCurrentActor } from './current-actor';
 import { invoiceRecordAuthority } from './invoice-record-authority';
 import { completeActor } from './current-actor.test-fixture';
-import { companyGrants } from './company-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './company-grants.test-fixture';
 import {
   clearWorkspaceSelection,
   selectWorkspace,
@@ -67,6 +70,11 @@ describe('current Actor representation', () => {
               ...native.activeCompany.documentPermissions,
               'document.received_addendum.access',
             ],
+            grants: withCompanyGrants(native.activeCompany.grants, {
+              bundle: 'company_received_addendum_access',
+              version: 'v1',
+              assignmentId: '10000000-0000-4000-8000-000000000005',
+            }),
           },
         };
       const result = await read(actor);

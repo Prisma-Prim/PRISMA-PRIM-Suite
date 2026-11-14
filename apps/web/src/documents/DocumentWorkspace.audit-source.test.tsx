@@ -10,6 +10,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const sourceId = '10000000-0000-4000-8000-000000000001';
 const actor: ActorContext = {
@@ -24,16 +28,18 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Fictional company',
-    documentPermissions: [
-      'document.read',
-      'document.register',
-      'document.reference.read',
-      'document.received_audit_source.access',
-    ],
-    documentPermissionAssignmentId: sourceId,
-    documentPermissionSetVersion: 'v3',
-    receivedAuditSourceAccessAssignmentId: sourceId,
-    receivedAuditSourceAccessPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_document_registrar',
+        version: 'v1',
+        assignmentId: 'registrar-assignment',
+      },
+      {
+        bundle: 'company_received_audit_source_access',
+        version: 'v1',
+        assignmentId: sourceId,
+      },
+    ),
     workingEvidenceContextCapture: `working-evidence-context.v1.${'a'.repeat(64)}`,
     workingEvidenceClientReadCapture: `working-evidence-client-read.v1.${'a'.repeat(64)}`,
   },
@@ -117,10 +123,11 @@ it.each(['registration', 'correction'] as const)(
         ...actor.activeCompany,
         id: 'company',
         displayName: 'Fictional company',
-        documentPermissions: [
-          ...(actor.activeCompany?.documentPermissions ?? []),
-          'document.correct',
-        ],
+        grants: withCompanyGrants(actor.activeCompany?.grants, {
+          bundle: 'company_document_registrar',
+          version: 'v2',
+          assignmentId: 'registrar-assignment',
+        }),
       },
     };
     const saved = {

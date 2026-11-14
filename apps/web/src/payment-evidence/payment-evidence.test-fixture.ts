@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 export const paymentEvidenceIds = {
   company: '10000000-0000-4000-8000-000000000001',
   client: '10000000-0000-4000-8000-000000000002',
@@ -46,6 +47,35 @@ export function paymentEvidenceActor() {
       documentContentUploaderAssignmentId:
         '10000000-0000-4000-8000-000000000013',
       documentContentUploaderPermissionSetVersion: 'v1' as const,
+      // The Document area reads these grants; the per-bundle fields above stay
+      // for Payment Evidence until it reads its grants too.
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: '10000000-0000-4000-8000-000000000009',
+        },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v3',
+          assignmentId: '10000000-0000-4000-8000-000000000010',
+        },
+        {
+          bundle: 'company_document_approver',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000011',
+        },
+        {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000012',
+        },
+        {
+          bundle: 'company_document_content_uploader',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000013',
+        },
+      ),
       paymentGrants: [
         {
           bundle: 'company_payment_reader',

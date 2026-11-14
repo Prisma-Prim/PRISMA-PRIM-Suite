@@ -9,6 +9,11 @@ import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { DocumentVersions } from './DocumentVersions';
 import { readDocument, readDocumentVersions } from './document-response';
+import { documentGrants } from './document-grants.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 const identity = deterministicBrowserIdentity();
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -23,15 +28,16 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company',
     clientPermissions: ['client.read'],
-    documentPermissions: [
-      'document.read',
-      'document.reference.read',
-      'document.version.manage',
-      'document.version.designate_official',
-      'document.mission_deliverable.access',
-    ],
-    missionDeliverableAccessAssignmentId: 'grant-1',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
+    grants: documentGrants(
+      [
+        'document.read',
+        'document.reference.read',
+        'document.version.manage',
+        'document.version.designate_official',
+        'document.mission_deliverable.access',
+      ],
+      { company_mission_deliverable_access: 'grant-1' },
+    ),
   },
 };
 const draft = {
@@ -110,7 +116,11 @@ it('retires old family reads at revoke/regrant and rejects unknown captured auth
           ...actor.activeCompany,
           id: 'company',
           displayName: 'Company',
-          missionDeliverableAccessAssignmentId: 'grant-2',
+          grants: withCompanyGrants(actor.activeCompany?.grants, {
+            bundle: 'company_mission_deliverable_access',
+            version: 'v1',
+            assignmentId: 'grant-2',
+          }),
         },
       }}
     />,
@@ -143,7 +153,10 @@ it('retires old family reads at revoke/regrant and rejects unknown captured auth
           ...actor.activeCompany,
           id: 'company',
           displayName: 'Company',
-          missionDeliverableAccessPermissionSetVersion: undefined,
+          grants: withoutCompanyGrants(
+            actor.activeCompany?.grants,
+            'company_mission_deliverable_access',
+          ),
         },
       }}
     />,

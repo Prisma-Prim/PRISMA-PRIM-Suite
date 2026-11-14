@@ -13,24 +13,38 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { selectOptionByLabel } from '../test/select-option';
 import { ClientDocumentOverview } from './ClientDocumentOverview';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { readCurrentActor } from '../access/current-actor';
 
 const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
-  clientPermissions: ['client.read'],
-  clientPermissionAssignmentId: 'client-capture',
-  clientPermissionSetVersion: 'v2',
-  documentPermissions: [
-    'document.read',
-    'document.mission_deliverable.access',
-    'document.received_contract.access',
-  ],
-  documentPermissionAssignmentId: 'documents-capture',
-  documentPermissionSetVersion: 'v3',
-  missionDeliverableAccessAssignmentId: 'mission-capture',
-  missionDeliverableAccessPermissionSetVersion: 'v1',
-  receivedContractAccessAssignmentId: 'received-capture',
-  receivedContractAccessPermissionSetVersion: 'v1',
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'client-capture',
+    },
+    {
+      bundle: 'company_document_registrar',
+      version: 'v3',
+      assignmentId: 'documents-capture',
+    },
+    {
+      bundle: 'company_mission_deliverable_access',
+      version: 'v1',
+      assignmentId: 'mission-capture',
+    },
+    {
+      bundle: 'company_received_contract_access',
+      version: 'v1',
+      assignmentId: 'received-capture',
+    },
+  ),
 };
 const actor: ActorContext = {
   internalUserId: 'reader',
@@ -241,18 +255,47 @@ it('distinguishes empty matching data and refreshes it without writes', async ()
   expect(api.calls.every((c) => c.method === 'GET')).toBe(true);
 });
 
-it.each(['no-read', 'missing-capture', 'no-client', 'signed-out'])(
+it('refuses the whole current Actor for a Registrar grant without its captured version', async () => {
+  const read = (value: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value }) },
+    });
+  expect((await read(actor)).status).toBe('ok');
+  expect(
+    await read({
+      ...actor,
+      activeCompany: {
+        ...company,
+        grants: (company.grants ?? []).map((grant) =>
+          grant.bundle === 'company_document_registrar'
+            ? { ...grant, permissionSetVersion: null }
+            : grant,
+        ),
+      },
+    }),
+  ).toEqual({ status: 'error' });
+});
+
+it.each(['no-read', 'no-client', 'signed-out'])(
   'issues no discovery under %s authority',
   async (condition) => {
     const api = server();
     const companyOverride: Partial<NonNullable<ActorContext['activeCompany']>> =
       condition === 'no-read'
-        ? { documentPermissions: [] }
-        : condition === 'missing-capture'
-          ? { documentPermissionSetVersion: undefined }
-          : condition === 'no-client'
-            ? { clientPermissions: [] }
-            : {};
+        ? {
+            grants: withoutCompanyGrants(
+              company.grants,
+              'company_document_registrar',
+            ),
+          }
+        : condition === 'no-client'
+          ? {
+              grants: withoutCompanyGrants(
+                company.grants,
+                'company_director_client_access',
+              ),
+            }
+          : {};
     show({
       actor: { ...actor, activeCompany: { ...company, ...companyOverride } },
       identity:
@@ -272,8 +315,10 @@ it('honors the existing Workspace Client-read alternative and keeps content gran
   const api = server();
   const workspaceCompany = {
     ...company,
-    clientPermissions: [],
-    clientPermissionAssignmentId: undefined,
+    grants: withoutCompanyGrants(
+      company.grants,
+      'company_director_client_access',
+    ),
   };
   const view = show({
     actor: {
@@ -288,10 +333,11 @@ it('honors the existing Workspace Client-read alternative and keeps content gran
       ...view.props.actor,
       activeCompany: {
         ...workspaceCompany,
-        documentPermissions: [
-          ...(company.documentPermissions ?? []),
-          'document.content.read',
-        ],
+        grants: withCompanyGrants(workspaceCompany.grants, {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: 'content-capture',
+        }),
       },
     },
   });
@@ -304,7 +350,7 @@ it('honors the existing Workspace Client-read alternative and keeps content gran
       ...view.props.actor,
       activeCompany: {
         ...workspaceCompany,
-        documentPermissions: company.documentPermissions,
+        grants: workspaceCompany.grants,
       },
     },
   });
@@ -315,8 +361,11 @@ it('honors the existing Workspace Client-read alternative and keeps content gran
       ...view.props.actor,
       activeCompany: {
         ...workspaceCompany,
-        clientPermissions: ['client.read'],
-        clientPermissionAssignmentId: 'unconsumed-client-grant',
+        grants: withCompanyGrants(workspaceCompany.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'unconsumed-client-grant',
+        }),
       },
     },
   });
@@ -345,7 +394,10 @@ it('retires only a lost family and its opening while keeping sibling facts reach
       ...actor,
       activeCompany: {
         ...company,
-        missionDeliverableAccessPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          company.grants,
+          'company_mission_deliverable_access',
+        ),
       },
     },
   });
@@ -361,7 +413,11 @@ it('retires only a lost family and its opening while keeping sibling facts reach
       ...actor,
       activeCompany: {
         ...company,
-        missionDeliverableAccessAssignmentId: 'fresh-mission',
+        grants: withCompanyGrants(company.grants, {
+          bundle: 'company_mission_deliverable_access',
+          version: 'v1',
+          assignmentId: 'fresh-mission',
+        }),
       },
     },
   });
@@ -432,8 +488,28 @@ it.each(
               ...company,
               id: 'company-b',
               displayName: 'Company B',
-              documentPermissionAssignmentId: 'b-documents',
-              clientPermissionAssignmentId: 'b-client',
+              grants: companyGrants(
+                {
+                  bundle: 'company_director_client_access',
+                  version: 'v2',
+                  assignmentId: 'b-client',
+                },
+                {
+                  bundle: 'company_document_registrar',
+                  version: 'v3',
+                  assignmentId: 'b-documents',
+                },
+                {
+                  bundle: 'company_mission_deliverable_access',
+                  version: 'v1',
+                  assignmentId: 'mission-capture',
+                },
+                {
+                  bundle: 'company_received_contract_access',
+                  version: 'v1',
+                  assignmentId: 'received-capture',
+                },
+              ),
             },
           },
         });
@@ -456,7 +532,11 @@ it.each(
             ...actor,
             activeCompany: {
               ...company,
-              documentPermissionAssignmentId: 'replacement',
+              grants: withCompanyGrants(company.grants, {
+                bundle: 'company_document_registrar',
+                version: 'v3',
+                assignmentId: 'replacement',
+              }),
             },
           },
         });
@@ -527,7 +607,10 @@ it('keeps authorized siblings reachable from an empty local window after family 
       ...actor,
       activeCompany: {
         ...company,
-        missionDeliverableAccessPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          company.grants,
+          'company_mission_deliverable_access',
+        ),
       },
     },
   });

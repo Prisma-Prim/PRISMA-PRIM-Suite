@@ -16,6 +16,7 @@ import {
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { selectOption } from '../test/select-option';
 import { DocumentWorkspace, type RequestedDocument } from './DocumentWorkspace';
+import { documentGrants } from './document-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'registrar',
@@ -30,12 +31,12 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Companie {company}',
     clientPermissions: ['client.read'],
-    documentPermissions: [
+    grants: documentGrants([
       'document.read',
       'document.register',
       'document.reference.read',
       'document.correct',
-    ],
+    ]),
   },
 };
 const identity: BrowserIdentity = {

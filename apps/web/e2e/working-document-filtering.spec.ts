@@ -10,6 +10,7 @@ import {
   DOCUMENT_VERSIONS_PATH,
   draftVersionsOf,
 } from './document-versions.fixture';
+import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
 const firstCompany = {
   id: 'document-filter-company',
@@ -201,7 +202,10 @@ test('filters loaded Working Documents locally and resets at the Company boundar
     page.getByRole('button', { name: secondCompanyDocument.title }),
   ).toBeVisible();
   await expectValue(page.getByLabel('Filter working Documents'), '');
-  await expect(page.getByLabel('Title', { exact: true })).toHaveCount(0);
+  // The correction draft is gone with its detail. Every Registrar grant also
+  // registers, so only the registration form's empty Title remains.
+  await expect(page.getByRole('article')).toHaveCount(0);
+  await expectValue(page.getByLabel('Title', { exact: true }), '');
   await expect(page.getByText('Unsaved title')).toHaveCount(0);
   expect(listReads).toEqual([firstCompany.id, secondCompany.id]);
   expect(mutationRequests).toEqual([]);
@@ -352,6 +356,11 @@ async function interceptApplication(
                     'document.reference.read',
                     'document.correct',
                   ],
+                  grants: documentGrants([
+                    'document.read',
+                    'document.reference.read',
+                    'document.correct',
+                  ]),
                 },
               }
             : {}),
