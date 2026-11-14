@@ -13,7 +13,6 @@ import {
   interfaceLocaleStorageKey,
   useInterfaceLocale,
 } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientWorkspace } from './ClientWorkspace';
 
 const reviewReference = '70900000-0000-4000-8000-000000000001';
@@ -117,16 +116,14 @@ it('translates an open exact-ID review from English to Romanian while retaining 
   render(
     <InterfaceLocaleProvider>
       <LocaleSwitch />
-      <ApplicationPresentation value="prisme">
-        <ClientWorkspace
-          actor={actor}
-          identity={identity}
-          onCompanyContextRejected={onCompanyContextRejected}
-          onActorRevalidated={onActorRevalidated}
-          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-          onActivityRecorded={onActivityRecorded}
-        />
-      </ApplicationPresentation>
+      <ClientWorkspace
+        actor={actor}
+        identity={identity}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+        onActivityRecorded={onActivityRecorded}
+      />
     </InterfaceLocaleProvider>,
   );
 

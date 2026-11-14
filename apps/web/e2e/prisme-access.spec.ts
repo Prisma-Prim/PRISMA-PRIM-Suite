@@ -45,9 +45,7 @@ test('keeps checking, denied, error and signed-out states outside the opt-in fra
   await expect(page.getByRole('alert')).toHaveText(
     'We could not verify your access. Please try again.',
   );
-  await expect(
-    page.getByRole('button', { name: 'Use classic frame' }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('banner')).toHaveCount(0);
   await page.evaluate(() =>
     sessionStorage.setItem('deterministic-auth-state', 'signed-out'),
   );

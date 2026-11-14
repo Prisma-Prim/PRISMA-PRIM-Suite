@@ -1,4 +1,4 @@
-/* Classic: plain cards inside the home surface. */
+/* Base cards; the `.prisme-shell` rules below refine them. */
 .operational-home {
   display: grid;
   gap: 1rem;

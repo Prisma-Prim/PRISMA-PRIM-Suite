@@ -2,7 +2,6 @@ import {
   type Dispatch,
   type SetStateAction,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -15,7 +14,6 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import type { ClientContact } from './ClientContactEditor';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import './client-duplicate-review.css';
 import { useClientDuplicateReviewCopy } from './client-duplicate-review.copy';
@@ -98,7 +96,6 @@ export function ClientDuplicateReviewPanel({
   onClientsChanged: () => Promise<void>;
 }) {
   const copy = useClientDuplicateReviewCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const openingTrigger = useRef<Element | null>(null);
   const receiveComparisonHeading = useCallback(
     (heading: HTMLHeadingElement | null) => {
@@ -106,14 +103,13 @@ export function ClientDuplicateReviewPanel({
       const trigger = openingTrigger.current;
       openingTrigger.current = null;
       if (
-        isPrisme &&
         trigger &&
         document.activeElement === trigger &&
         !heading.closest('[hidden]')
       )
         heading.focus();
     },
-    [isPrisme],
+    [],
   );
   const [listState, setListState] = useState<ListState>({ status: 'loading' });
   const [detailState, setDetailState] = useState<DetailState>({
@@ -240,7 +236,7 @@ export function ClientDuplicateReviewPanel({
 
   async function openReview(reference: string) {
     if (pendingAttach.current && !pendingAttach.current.signal.aborted) return;
-    openingTrigger.current = isPrisme ? document.activeElement : null;
+    openingTrigger.current = document.activeElement;
     setDetailState({ status: 'loading' });
     await runLatestAuthenticatedRequest({
       pending: pendingDetail,

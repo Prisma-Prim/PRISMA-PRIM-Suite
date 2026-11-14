@@ -9,7 +9,6 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { changeValue, selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
@@ -184,12 +183,10 @@ describe('CompanyContextAccess', () => {
     );
 
     render(
-      <ApplicationPresentation value="prisme">
-        <CompanyContextAccess
-          actor={ownerActor}
-          identity={deterministicBrowserIdentity()}
-        />
-      </ApplicationPresentation>,
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
     );
     const access = await screen.findByRole('region', {
       name: 'Company access',
@@ -273,12 +270,10 @@ describe('CompanyContextAccess', () => {
     );
 
     render(
-      <ApplicationPresentation value="prisme">
-        <CompanyContextAccess
-          actor={ownerActor}
-          identity={deterministicBrowserIdentity()}
-        />
-      </ApplicationPresentation>,
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
@@ -369,12 +364,10 @@ describe('CompanyContextAccess', () => {
       }),
     );
     render(
-      <ApplicationPresentation value="prisme">
-        <CompanyContextAccess
-          actor={ownerActor}
-          identity={deterministicBrowserIdentity()}
-        />
-      </ApplicationPresentation>,
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();

@@ -265,8 +265,7 @@ Four locales translate interface/validation/dates while complaint text remains
 unchanged. Explicit unknown values are visible. The displayed Company, chosen
 Client and optional Project are never ambiguous. Desktop 1440 px/narrow 390 px, keyboard,
 visible focus, error association, long complaint text and open controls receive
-real screenshot review; Classic is compatibility coverage, not primary evidence.
-No configurable severity scale or legal countdown is introduced.
+real screenshot review. No configurable severity scale or legal countdown is introduced.
 
 ## 14. Source of truth, integrations and failure
 

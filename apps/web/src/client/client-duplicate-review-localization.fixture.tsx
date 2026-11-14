@@ -8,7 +8,6 @@ import {
   useInterfaceLocale,
   type InterfaceLocale,
 } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
 import { ClientWorkspace } from './ClientWorkspace';
 
@@ -194,34 +193,32 @@ export function renderReview({
     return (
       <InterfaceLocaleProvider>
         <LocaleControls />
-        <ApplicationPresentation value="prisme">
-          {subject === 'workspace' ? (
-            <ClientWorkspace
-              actor={state.actor}
-              identity={identity}
-              onCompanyContextRejected={onCompanyContextRejected}
-              onActorRevalidated={onActorRevalidated}
-              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-              onActivityRecorded={onActivityRecorded}
-            />
-          ) : (
-            <ClientDuplicateReviewPanel
-              companyContextId={state.actor.activeCompany?.id ?? 'company-709'}
-              authorityGeneration={
-                state.actor.activeCompany?.clientPermissionAssignmentId ??
-                'no-assignment'
-              }
-              identity={identity}
-              canAttach={state.canAttach}
-              refreshKey={state.refreshKey}
-              onCompanyContextRejected={onCompanyContextRejected}
-              onActorRevalidated={onActorRevalidated}
-              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-              onActivityRecorded={onActivityRecorded}
-              onClientsChanged={onClientsChanged}
-            />
-          )}
-        </ApplicationPresentation>
+        {subject === 'workspace' ? (
+          <ClientWorkspace
+            actor={state.actor}
+            identity={identity}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            onActivityRecorded={onActivityRecorded}
+          />
+        ) : (
+          <ClientDuplicateReviewPanel
+            companyContextId={state.actor.activeCompany?.id ?? 'company-709'}
+            authorityGeneration={
+              state.actor.activeCompany?.clientPermissionAssignmentId ??
+              'no-assignment'
+            }
+            identity={identity}
+            canAttach={state.canAttach}
+            refreshKey={state.refreshKey}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            onActivityRecorded={onActivityRecorded}
+            onClientsChanged={onClientsChanged}
+          />
+        )}
       </InterfaceLocaleProvider>
     );
   }

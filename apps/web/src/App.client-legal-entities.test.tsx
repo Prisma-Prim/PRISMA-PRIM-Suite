@@ -11,7 +11,6 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
-import { ApplicationPresentation } from './production-shell/application-presentation';
 import {
   InterfaceLocaleProvider,
   interfaceLocaleStorageKey,
@@ -437,17 +436,15 @@ function renderDossier({
     application ? (
       <App identity={deterministicBrowserIdentity()} />
     ) : (
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={clientAccountId}
-          companyContextId={companyA.id}
-          canUpdate={canUpdate}
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={activity}
-          onClientsChanged={async () => undefined}
-        />
-      </ApplicationPresentation>
+      <ClientDossierPanel
+        clientAccountId={clientAccountId}
+        companyContextId={companyA.id}
+        canUpdate={canUpdate}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={activity}
+        onClientsChanged={async () => undefined}
+      />
     ),
     {
       wrapper: ({ children }) => (
@@ -1141,17 +1138,15 @@ describe('Client legal entities and branches', () => {
     });
     await section();
     view.rerender(
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId="client-two"
-          companyContextId={companyA.id}
-          canUpdate
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => undefined}
-          onClientsChanged={async () => undefined}
-        />
-      </ApplicationPresentation>,
+      <ClientDossierPanel
+        clientAccountId="client-two"
+        companyContextId={companyA.id}
+        canUpdate
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={async () => undefined}
+        onClientsChanged={async () => undefined}
+      />,
     );
     expect(await screen.findByText('Other Demo — Filiala')).toBeVisible();
     late.resolve(respond({ clientVersion: 3, legalEntities: [branch] }));

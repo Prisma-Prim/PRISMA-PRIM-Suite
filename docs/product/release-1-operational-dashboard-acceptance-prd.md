@@ -300,7 +300,7 @@ time zones, calendars, reminders, exports and new permissions remain excluded.
 
 Public PostgreSQL REST and real App HTTP-boundary tests own set, date, authority,
 pagination, response refusal and stale-reply proof. Desktop 1440px/narrow 390px
-browser journeys cover the four locales and both frames; the registered disposable
+browser journeys cover the four locales; the registered disposable
 PostgreSQL acceptance journey proves exact Task opening and completion/reload.
 
 ## 20. Approved complete My attention drill-down — 2026-10-21

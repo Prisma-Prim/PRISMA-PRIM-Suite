@@ -14,7 +14,6 @@ import {
   interfaceLocaleStorageKey,
 } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { changeValue } from '../test/select-option';
 import { ProjectWorkspace } from './ProjectWorkspace';
 import {
@@ -93,9 +92,7 @@ function workspaceElement(
   return (
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ApplicationPresentation.Provider value="prisme">
-        <ProjectWorkspace actor={givenActor} identity={identity} />
-      </ApplicationPresentation.Provider>
+      <ProjectWorkspace actor={givenActor} identity={identity} />
     </InterfaceLocaleProvider>
   );
 }

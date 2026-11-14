@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -23,7 +23,6 @@ import {
 import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
 import { useClientUnionHistoryCopy } from './client-union-history.copy';
 import { useClientDossierCopy } from './client-dossier.copy';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientContactDescription } from './ClientContactEditor';
 import { ClientUnionComparison } from './ClientUnionComparison';
 import './client-union-comparison.css';
@@ -69,7 +68,6 @@ export function ClientUnionPanel({
 }) {
   const copy = useClientUnionHistoryCopy();
   const confirmationCopy = useClientUnionConfirmationCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const openingTrigger = useRef<Element | null>(null);
   const receiveComparisonHeading = useCallback(
     (heading: HTMLHeadingElement | null) => {
@@ -77,14 +75,13 @@ export function ClientUnionPanel({
       const trigger = openingTrigger.current;
       openingTrigger.current = null;
       if (
-        isPrisme &&
         trigger &&
         document.activeElement === trigger &&
         !heading.closest('[hidden]')
       )
         heading.focus();
     },
-    [isPrisme],
+    [],
   );
   const [view, setView] = useState<UnionView>({ kind: 'idle' });
   const [feedback, setFeedback] = useState<
@@ -231,7 +228,7 @@ export function ClientUnionPanel({
             aria-expanded={view.kind === 'comparison'}
             onClick={() => {
               if (busy) return;
-              openingTrigger.current = isPrisme ? document.activeElement : null;
+              openingTrigger.current = document.activeElement;
               void run({
                 path: `/clients/${encodeURIComponent(clientId)}/union-reviews`,
                 input: {},

@@ -9,7 +9,6 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
 import { documentGrants } from './document-grants.test-fixture';
 import { withCompanyGrants } from '../access/company-grants.test-fixture';
@@ -144,14 +143,12 @@ it('offers Open Project beside a linked Project row and hands over only its id',
   const fetcher = serve(linked);
   const onOpenProject = vi.fn();
   render(
-    <ApplicationPresentation value="prisme">
-      <DocumentWorkspace
-        actor={projectReader}
-        identity={identity}
-        onOpenClientDossier={vi.fn()}
-        onOpenProject={onOpenProject}
-      />
-    </ApplicationPresentation>,
+    <DocumentWorkspace
+      actor={projectReader}
+      identity={identity}
+      onOpenClientDossier={vi.fn()}
+      onOpenProject={onOpenProject}
+    />,
   );
   const detail = await openDocument();
   const action = within(detail).getByRole('button', { name: 'Open Project' });

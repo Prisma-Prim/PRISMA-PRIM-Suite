@@ -377,7 +377,7 @@ describe('ApplicationRoot', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByText('Ada Ionescu')).toBeInTheDocument();
     expect(screen.getByText('ada@example.test')).toBeInTheDocument();
-    expect(screen.getAllByText('PRISMA Workspace')).toHaveLength(4);
+    expect(screen.getAllByText('PRISMA Workspace')).toHaveLength(3);
   });
 });
 

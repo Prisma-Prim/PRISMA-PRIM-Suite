@@ -6,9 +6,7 @@ import {
 } from './actor-context.fixture';
 import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
-test('accepts legacy Prisme links and offers no Classic switch', async ({
-  page,
-}) => {
+test('opens retired frame links in Prisme', async ({ page }) => {
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/access/current-actor'))
@@ -18,22 +16,24 @@ test('accepts legacy Prisme links and offers no Classic switch', async ({
     return route.fulfill({ json: [] });
   });
 
-  await page.goto('/?source=preserved&frame=prisme#companies');
-  await expect(
-    page.getByRole('heading', { name: 'Companies', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Use classic frame' }),
-  ).toHaveCount(0);
-  const menu = page.getByRole('button', { name: 'Open navigation' });
-  if (await menu.isVisible()) await menu.click();
-  await expect(
-    page.getByRole('button', { name: 'Use classic frame' }),
-  ).toHaveCount(0);
-  await page.screenshot({
-    path: test.info().outputPath('prisme-without-classic-switch.png'),
-    fullPage: true,
-  });
+  for (const frame of ['classic', 'prisme']) {
+    await page.goto(`/?source=preserved&frame=${frame}#companies`);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Companies', exact: true }),
+    ).toBeVisible();
+    expect(new URL(page.url()).searchParams.get('source')).toBe('preserved');
+    const menu = page.getByRole('button', { name: 'Open navigation' });
+    if (await menu.isVisible()) await menu.click();
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Primary navigation' })
+        .getByRole('link', { name: 'Companies', exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    await page.screenshot({
+      path: test.info().outputPath(`prisme-retired-${frame}-frame-link.png`),
+      fullPage: true,
+    });
+  }
 });
 
 test('keeps every authorized MVP section reachable from the default frame', async ({

@@ -19,7 +19,6 @@ import {
   paymentEvidenceActor,
   paymentEvidenceIds,
 } from '../../payment-evidence/payment-evidence.test-fixture';
-import { ApplicationPresentation } from '../../production-shell/application-presentation';
 import { SectionVisibility } from '../../production-shell/section-visibility';
 import { useInterfaceLocale } from '../../localization/interface-locale';
 import { PaymentWorkspace } from '../PaymentWorkspace';
@@ -351,19 +350,17 @@ function view(options: {
 }) {
   return (
     <>
-      <ApplicationPresentation value="prisme">
-        <SectionVisibility value={true}>
-          <div className="prisme-shell">
-            <PaymentWorkspace
-              actor={options.actor ?? actor}
-              identity={options.identity ?? browserIdentity}
-              projectionAuthority={options.projection ?? 'native-captures-1'}
-              {...options.callbacks}
-              {...options.navigation}
-            />
-          </div>
-        </SectionVisibility>
-      </ApplicationPresentation>
+      <SectionVisibility value={true}>
+        <div className="prisme-shell">
+          <PaymentWorkspace
+            actor={options.actor ?? actor}
+            identity={options.identity ?? browserIdentity}
+            projectionAuthority={options.projection ?? 'native-captures-1'}
+            {...options.callbacks}
+            {...options.navigation}
+          />
+        </div>
+      </SectionVisibility>
       <LocaleControl />
     </>
   );

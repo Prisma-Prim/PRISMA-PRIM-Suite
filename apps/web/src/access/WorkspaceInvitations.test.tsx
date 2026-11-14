@@ -7,7 +7,6 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   useInterfaceLocale,
   type InterfaceLocale,
@@ -54,14 +53,12 @@ describe('Workspace invitation controls', () => {
     );
 
     render(
-      <ApplicationPresentation value="prisme">
-        <WorkspaceInvitations
-          actor={actor}
-          identity={identity}
-          onActivityRecorded={() => {}}
-          onWorkspaceAccessRejected={() => {}}
-        />
-      </ApplicationPresentation>,
+      <WorkspaceInvitations
+        actor={actor}
+        identity={identity}
+        onActivityRecorded={() => {}}
+        onWorkspaceAccessRejected={() => {}}
+      />,
     );
     const prismeInvitations = await screen.findByRole('region', {
       name: 'Workspace invitations',

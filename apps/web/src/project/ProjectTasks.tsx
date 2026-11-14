@@ -1,5 +1,4 @@
 import {
-  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -41,7 +40,6 @@ import {
 } from './task-response';
 import { useProjectTaskCopy } from './task.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { Select } from '../presentation/Select';
 import './task.css';
 import { TaskPlanning } from './TaskPlanning';
@@ -359,7 +357,6 @@ function TaskProject({
 }: Props & { projectId: string; active: boolean }) {
   const copy = useProjectTaskCopy();
   const { locale } = useInterfaceLocale();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -963,7 +960,7 @@ function TaskProject({
   return (
     <section
       aria-label={copy.title}
-      className={`project-tasks${isPrisme ? ' project-tasks--prisme' : ''}`}
+      className="project-tasks project-tasks--prisme"
     >
       <header className="task-header">
         <div>

@@ -13,7 +13,6 @@ import {
   type BrowserIdentity,
 } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectWorkspace } from './ProjectWorkspace';
 import type { ProjectNavigationRequest } from './use-project-navigation';
 import {
@@ -179,7 +178,6 @@ function renderWorkspace(
   options: {
     identity?: BrowserIdentity;
     initialRequest?: ProjectNavigationRequest;
-    prisme?: boolean;
   } = {},
 ) {
   const identity = options.identity ?? deterministicBrowserIdentity();
@@ -187,22 +185,15 @@ function renderWorkspace(
   const workspace = (
     revision: number,
     navigation?: ProjectNavigationRequest,
-  ) => {
-    const owner = (
-      <ProjectWorkspace
-        actor={actor}
-        identity={identity}
-        clientIdentityRevision={revision}
-        onOpenClientDossier={openDossier}
-        navigation={navigation}
-      />
-    );
-    return options.prisme ? (
-      <ApplicationPresentation value="prisme">{owner}</ApplicationPresentation>
-    ) : (
-      owner
-    );
-  };
+  ) => (
+    <ProjectWorkspace
+      actor={actor}
+      identity={identity}
+      clientIdentityRevision={revision}
+      onOpenClientDossier={openDossier}
+      navigation={navigation}
+    />
+  );
   let revision = 0;
   let current = options.initialRequest;
   const view = render(workspace(revision, current));
@@ -357,7 +348,7 @@ describe('Requested Project opens', () => {
 
   it('opens the requested one of two same-titled Projects on its Tasks panel, updating its row and keeping the search', async () => {
     const server = projectServer();
-    const workspace = renderWorkspace({ prisme: true });
+    const workspace = renderWorkspace();
     fireEvent.click(await screen.findByRole('button', { name: betaRow }));
     await waitFor(() =>
       expect(detailClient()).toBe(`Client: ${beta.displayName}`),

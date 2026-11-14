@@ -8,7 +8,6 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { deferred } from '../production-shell/production-shell-context.test-fixtures';
 import { MyTasks } from './MyTasks';
 import { taskCopy } from './task.copy';
@@ -88,13 +87,11 @@ function renderTasks(
   onOpenTask?: (task: { projectId: string; taskId: string }) => void,
 ) {
   return render(
-    <ApplicationPresentation value="prisme">
-      <MyTasks
-        actor={actor}
-        identity={deterministicBrowserIdentity()}
-        onOpenTask={onOpenTask}
-      />
-    </ApplicationPresentation>,
+    <MyTasks
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      onOpenTask={onOpenTask}
+    />,
   );
 }
 afterEach(() => {

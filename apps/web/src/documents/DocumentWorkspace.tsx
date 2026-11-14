@@ -42,7 +42,6 @@ import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
 import { DocumentVersions } from './DocumentVersions';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
 type WorkingDocument = WorkspaceDocument;
 type WorkingDocumentDetail = WorkspaceDocumentDetail;
@@ -156,7 +155,6 @@ function DocumentSession({
   const [focusRequest, setFocusRequest] = useState<number | undefined>(
     undefined,
   );
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
   const [filter, setFilter] = useState<DocumentFilter>({
     kind: 'text',
@@ -1263,21 +1261,14 @@ function DocumentSession({
     <section
       id="documents"
       tabIndex={-1}
-      className={`working-documents${isPrisme ? ' working-documents--prisme' : ''}`}
+      className="working-documents working-documents--prisme"
       aria-label={copy.title}
     >
-      {isPrisme ? (
-        <header className="working-documents-heading">
-          <p className="prisme-eyebrow">{copy.eyebrow}</p>
-          <h2>{copy.title}</h2>
-          <p>{actor.activeCompany?.displayName}</p>
-        </header>
-      ) : (
-        <>
-          <h2>{copy.title}</h2>
-          <p>{actor.activeCompany?.displayName}</p>
-        </>
-      )}
+      <header className="working-documents-heading">
+        <p className="prisme-eyebrow">{copy.eyebrow}</p>
+        <h2>{copy.title}</h2>
+        <p>{actor.activeCompany?.displayName}</p>
+      </header>
       {onSelectPaymentEvidence && (
         <button
           type="button"
@@ -1287,7 +1278,7 @@ function DocumentSession({
           {paymentCopy('title')}
         </button>
       )}
-      <p className={isPrisme ? 'working-documents-warning' : undefined}>
+      <p className="working-documents-warning">
         {familyScreen(detail?.type ?? family).warning(familyCopies) ??
           (detail?.version.status === 'official'
             ? copy.officialWarning
@@ -1304,7 +1295,7 @@ function DocumentSession({
       {state.status === 'ready' && (
         <>
           {visibleDocuments.length > 0 && (
-            <label className={isPrisme ? 'working-document-filter' : undefined}>
+            <label className="working-document-filter">
               {copy.filterLabel}
               <input
                 type="search"
@@ -1320,14 +1311,10 @@ function DocumentSession({
             </label>
           )}
           {detail ? (
-            <article
-              className={isPrisme ? 'working-document-detail' : undefined}
-            >
+            <article className="working-document-detail">
               {editing ? (
                 <form
-                  className={
-                    isPrisme ? 'working-document-correction' : undefined
-                  }
+                  className="working-document-correction"
                   onSubmit={(event) => void submitCorrection(event)}
                 >
                   <label>
@@ -1369,7 +1356,7 @@ function DocumentSession({
                     </label>
                   )}
                   <button
-                    className={isPrisme ? 'prisme-primary-action' : undefined}
+                    className="prisme-primary-action"
                     disabled={
                       correction === 'pending' || correction === 'uncertain'
                     }
@@ -1453,7 +1440,7 @@ function DocumentSession({
                 (!documentHas(detail, 'referenceUrl') ||
                   detail.version.representation.access === 'granted') && (
                   <button
-                    className={isPrisme ? 'prisme-primary-action' : undefined}
+                    className="prisme-primary-action"
                     onClick={beginCorrection}
                   >
                     {copy.edit}
@@ -1547,7 +1534,7 @@ function DocumentSession({
                   <p role="status">{copy.noMatches}</p>
                 )
               )}
-              <ul className={isPrisme ? 'working-document-list' : undefined}>
+              <ul className="working-document-list">
                 {filteredDocuments.map((document) => (
                   <li key={document.id}>
                     <button
@@ -1644,9 +1631,7 @@ function DocumentSession({
                     )
                   ) : (
                     <form
-                      className={
-                        isPrisme ? 'working-document-registration' : undefined
-                      }
+                      className="working-document-registration"
                       onSubmit={(event) => void submit(event)}
                     >
                       <label htmlFor="document-client">{copy.client}</label>
@@ -1691,9 +1676,7 @@ function DocumentSession({
                         </label>
                       )}
                       <button
-                        className={
-                          isPrisme ? 'prisme-primary-action' : undefined
-                        }
+                        className="prisme-primary-action"
                         disabled={mutation === 'pending' || receivedBusy}
                       >
                         {copy.register}

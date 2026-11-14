@@ -13,7 +13,6 @@ import {
   interfaceLocaleStorageKey,
 } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import {
@@ -70,9 +69,7 @@ function accessTree({ props }: { props: AccessProps }) {
   return (
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ApplicationPresentation value="prisme">
-        <CompanyContextAccess {...props} />
-      </ApplicationPresentation>
+      <CompanyContextAccess {...props} />
     </InterfaceLocaleProvider>
   );
 }

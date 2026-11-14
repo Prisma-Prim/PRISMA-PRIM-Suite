@@ -13,7 +13,6 @@ import {
   type InterfaceLocale,
 } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { selectOption } from '../test/select-option';
 import { ClientDossierPanel } from './ClientDossierPanel';
 
@@ -162,19 +161,17 @@ function renderDossier(
   render(
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={savedDossier.id}
-          companyContextId="company-contact-localization"
-          canUpdate
-          identity={deterministicBrowserIdentity()}
-          onActivityRecorded={onActivityRecorded}
-          onClientsChanged={onClientsChanged}
-          onCompanyContextRejected={onCompanyContextRejected}
-          onActorRevalidated={onActorRevalidated}
-          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-        />
-      </ApplicationPresentation>
+      <ClientDossierPanel
+        clientAccountId={savedDossier.id}
+        companyContextId="company-contact-localization"
+        canUpdate
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={onActivityRecorded}
+        onClientsChanged={onClientsChanged}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
     </InterfaceLocaleProvider>,
   );
   return {

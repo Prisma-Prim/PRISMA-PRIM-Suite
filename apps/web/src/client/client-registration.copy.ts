@@ -139,7 +139,6 @@ const keys = [
   'creating',
   'permissionDenied',
   'displayNameRequired',
-  'retryableError',
   'possibleDuplicate',
   ...serverValidationKeys,
 ] as const;
@@ -213,7 +212,6 @@ export const clientRegistrationMessages = defineMessages(keys, {
     creating: 'Se creează…',
     permissionDenied: 'Nu aveți permisiunea de a gestiona Clienți.',
     displayNameRequired: 'Numele afișat al Clientului este obligatoriu.',
-    retryableError: 'Clienții nu au putut fi încărcați. Încercați din nou.',
     possibleDuplicate:
       'Acest Client poate exista deja. Niciun Client nu a fost creat sau modificat. Un responsabil autorizat poate compara în siguranță înregistrările.',
   },
@@ -280,7 +278,6 @@ export const clientRegistrationMessages = defineMessages(keys, {
     creating: 'Создание…',
     permissionDenied: 'У вас нет разрешения на управление Клиентами.',
     displayNameRequired: 'Укажите отображаемое название Клиента.',
-    retryableError: 'Не удалось загрузить Клиентов. Повторите попытку.',
     possibleDuplicate:
       'Этот Клиент, возможно, уже существует. Ни один Клиент не был создан или изменён. Уполномоченный проверяющий может безопасно сравнить записи.',
   },
@@ -350,7 +347,6 @@ export const clientRegistrationMessages = defineMessages(keys, {
     creating: 'Création…',
     permissionDenied: 'Vous n’avez pas l’autorisation de gérer les Clients.',
     displayNameRequired: 'Le nom affiché du Client est obligatoire.',
-    retryableError: 'Impossible de charger les Clients. Réessayez.',
     possibleDuplicate:
       'Ce Client existe peut-être déjà. Aucun Client n’a été créé ou modifié. Une personne autorisée peut comparer les dossiers en toute sécurité.',
   },
@@ -410,7 +406,6 @@ export const clientRegistrationMessages = defineMessages(keys, {
     creating: 'Creating…',
     permissionDenied: 'You do not have permission to manage Clients.',
     displayNameRequired: 'Client display name is required.',
-    retryableError: 'We could not load Clients. Please try again.',
     possibleDuplicate:
       'This Client may already exist. No Client was created or changed. An authorized reviewer can compare the records safely.',
   },
@@ -445,7 +440,6 @@ export function useClientRegistrationCopy() {
       issue === 'contactCommunicationPreferencesTooLong'
         ? contacts.validation(issue)
         : message(issue),
-    retryableError: message('retryableError'),
     possibleDuplicate: message('possibleDuplicate'),
   };
 }

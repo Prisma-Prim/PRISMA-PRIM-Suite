@@ -24,7 +24,6 @@ import { useContractDecisionCopy } from '../contract/contract-decision.copy';
 import {
   type FormEvent,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -37,7 +36,6 @@ import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-
 import { useProfitabilityCopy } from '../profitability-estimate/profitability.copy';
 import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { Select } from '../presentation/Select';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   type AssignmentBundleLabel,
   type CompanyAccessAdministration,
@@ -247,7 +245,6 @@ export function CompanyContextAccess({
   const templateCopy = useProjectTemplateCopy();
   const templateVersionCopy = useProjectTemplateVersionCopy();
   const projectStageCopy = useProjectStageCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [bundle, setBundle] = useState<AssignmentBundle>('company-context');
@@ -535,7 +532,7 @@ export function CompanyContextAccess({
     return (
       <section
         aria-labelledby="company-context-access-title"
-        className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
+        className="company-access company-access--prisme"
       >
         <p className="eyebrow">{copy('eyebrow')}</p>
         <h2 id="company-context-access-title">{copy('title')}</h2>
@@ -548,14 +545,14 @@ export function CompanyContextAccess({
     return (
       <section
         aria-labelledby="company-context-access-title"
-        className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
+        className="company-access company-access--prisme"
       >
         <p className="eyebrow">{copy('eyebrow')}</p>
         <h2 id="company-context-access-title">{copy('title')}</h2>
         <p role="alert">{copy('error')}</p>
         <button
           type="button"
-          className={isPrisme ? 'company-access-primary-action' : undefined}
+          className="company-access-primary-action"
           onClick={() => void retryAdministration()}
         >
           {copy('retry')}
@@ -596,7 +593,7 @@ export function CompanyContextAccess({
   return (
     <section
       aria-labelledby="company-context-access-title"
-      className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
+      className="company-access company-access--prisme"
     >
       <p className="eyebrow">{copy('eyebrow')}</p>
       <h2 id="company-context-access-title">{copy('title')}</h2>
@@ -604,7 +601,7 @@ export function CompanyContextAccess({
       {!hasSelectableTargets && <p>{copy('empty')}</p>}
       {hasSelectableTargets && (
         <form
-          className={isPrisme ? 'company-access-form' : undefined}
+          className="company-access-form"
           noValidate
           onSubmit={(event) => void submit(event, 'grant')}
         >
@@ -1118,7 +1115,7 @@ export function CompanyContextAccess({
 
           <button
             type="submit"
-            className={isPrisme ? 'company-access-primary-action' : undefined}
+            className="company-access-primary-action"
             disabled={
               busy ||
               !workspaceMembershipId ||
@@ -1130,7 +1127,7 @@ export function CompanyContextAccess({
           </button>
           <button
             type="button"
-            className={isPrisme ? 'company-access-secondary-action' : undefined}
+            className="company-access-secondary-action"
             disabled={
               busy ||
               !workspaceMembershipId ||

@@ -9,7 +9,6 @@ import {
 import { changeValue } from '../test/select-option';
 import type { BrowserIdentity } from '../access-composition';
 import { SectionVisibility } from '../production-shell/section-visibility';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { InvoiceRecordsWorkspace } from './InvoiceRecordsWorkspace';
 import {
@@ -45,18 +44,16 @@ function LocaleControl() {
 function view(browserIdentity: BrowserIdentity, projection: string) {
   return (
     <>
-      <ApplicationPresentation value="prisme">
-        <SectionVisibility value={true}>
-          <InvoiceRecordsWorkspace
-            actor={actor}
-            identity={browserIdentity}
-            projectionAuthority={projection}
-            onCompanyContextRejected={() => undefined}
-            onActorRevalidated={() => undefined}
-            onWorkspaceAccessRejected={() => undefined}
-          />
-        </SectionVisibility>
-      </ApplicationPresentation>
+      <SectionVisibility value={true}>
+        <InvoiceRecordsWorkspace
+          actor={actor}
+          identity={browserIdentity}
+          projectionAuthority={projection}
+          onCompanyContextRejected={() => undefined}
+          onActorRevalidated={() => undefined}
+          onWorkspaceAccessRejected={() => undefined}
+        />
+      </SectionVisibility>
       <LocaleControl />
     </>
   );

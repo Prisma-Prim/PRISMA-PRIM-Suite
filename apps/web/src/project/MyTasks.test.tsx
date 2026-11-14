@@ -8,7 +8,6 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   browserIdentity,
   deferred,
@@ -121,11 +120,7 @@ afterEach(() => {
 it('shows loading, then the server-ordered open Tasks with their date, Project and Client', async () => {
   const reply = deferred<Response>();
   const calls = stub(() => reply.promise);
-  render(
-    <ApplicationPresentation value="prisme">
-      <MyTasks actor={actor} identity={deterministicBrowserIdentity()} />
-    </ApplicationPresentation>,
-  );
+  render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
   expect(await screen.findByRole('status')).toHaveTextContent(copy.loading);
   expect(region()).toHaveClass('my-tasks my-tasks--prisme', {
     exact: true,

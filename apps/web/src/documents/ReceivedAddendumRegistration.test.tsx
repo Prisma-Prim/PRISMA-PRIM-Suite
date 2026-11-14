@@ -15,7 +15,6 @@ import {
 } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
 
 const companyId = '10000000-0000-4000-8000-000000000004';
@@ -294,10 +293,10 @@ it('preserves literal fields through all locales without duplicate source reads'
     onAccessRejected: vi.fn(),
   };
   render(
-    <ApplicationPresentation value="prisme">
+    <>
       <InterfaceLocaleSelect />
       <ReceivedAddendumRegistration {...props} />
-    </ApplicationPresentation>,
+    </>,
   );
   await fill();
   fireEvent.change(screen.getByLabelText('Received on (optional)'), {

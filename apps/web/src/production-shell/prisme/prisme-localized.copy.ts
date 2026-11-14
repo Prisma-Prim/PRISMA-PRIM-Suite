@@ -5,11 +5,8 @@ import {
 } from '../../localization/messages';
 
 const keys = [
-  'optIn',
   'presentation',
-  'home',
   'overview',
-  'current',
   'navigation',
   'openNavigation',
   'closeNavigation',
@@ -60,11 +57,8 @@ export const prismeMessages = defineMessages(keys, {
     risksLabel: 'Riscuri operaționale',
     risksDescription:
       'Consultați riscurile și păstrați un istoric manual confidențial.',
-    optIn: 'Încercați Prisme',
     presentation: 'Prisme & lumière',
-    home: 'Acasă',
     overview: 'Prezentare generală',
-    current: 'Curent',
     navigation: 'Navigare principală',
     openNavigation: 'Deschideți navigarea',
     closeNavigation: 'Închideți navigarea',
@@ -118,11 +112,8 @@ export const prismeMessages = defineMessages(keys, {
     risksLabel: 'Операционные риски',
     risksDescription:
       'Просмотр рисков и конфиденциальная история ручных записей.',
-    optIn: 'Попробовать Prisme',
     presentation: 'Prisme & lumière',
-    home: 'Главная',
     overview: 'Обзор',
-    current: 'Текущая',
     navigation: 'Основная навигация',
     openNavigation: 'Открыть навигацию',
     closeNavigation: 'Закрыть навигацию',
@@ -177,11 +168,8 @@ export const prismeMessages = defineMessages(keys, {
     risksLabel: 'Risques opérationnels',
     risksDescription:
       'Consultez les risques et conservez leur suivi manuel confidentiel.',
-    optIn: 'Essayer Prisme',
     presentation: 'Prisme & lumière',
-    home: 'Accueil',
     overview: 'Vue d’ensemble',
-    current: 'Actuel',
     navigation: 'Navigation principale',
     openNavigation: 'Ouvrir la navigation',
     closeNavigation: 'Fermer la navigation',
@@ -238,11 +226,8 @@ export const prismeMessages = defineMessages(keys, {
     risksLabel: 'Operational risks',
     risksDescription:
       'Read risks and preserve their confidential manual follow-up.',
-    optIn: 'Try Prisme',
     presentation: 'Prisme & lumière',
-    home: 'Home',
     overview: 'Overview',
-    current: 'Current',
     navigation: 'Primary navigation',
     openNavigation: 'Open navigation',
     closeNavigation: 'Close navigation',
@@ -306,11 +291,8 @@ export function usePrismeCopy() {
     description: message(description),
   });
   return {
-    optIn: message('optIn'),
     presentation: message('presentation'),
-    home: message('home'),
     overview: message('overview'),
-    current: message('current'),
     navigation: message('navigation'),
     openNavigation: message('openNavigation'),
     closeNavigation: message('closeNavigation'),

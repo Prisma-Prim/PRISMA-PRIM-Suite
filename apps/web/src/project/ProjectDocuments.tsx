@@ -1,6 +1,6 @@
 import { hasReceivedContractAccess } from '../documents/received-contract-access';
 import { hasMissionDeliverableAccess } from '../documents/mission-deliverable-access';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
 import type { BrowserIdentity } from '../access-composition';
@@ -17,7 +17,6 @@ import {
   isClosedProjectStatus,
   type ProjectStatus,
 } from './project-lifecycle-response';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './project-documents.css';
 
 type Props = {
@@ -69,7 +68,6 @@ function ProjectDocumentSession({
   onOpenDocument,
 }: Props) {
   const copy = useProjectDocumentsCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [selector, setSelector] = useState<Selector | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
@@ -300,7 +298,7 @@ function ProjectDocumentSession({
         {state.listing.documents.length > 0 && rows.length === 0 && (
           <p>{copy.noMatch}</p>
         )}
-        <ul className={isPrisme ? 'project-document-list' : undefined}>
+        <ul className="project-document-list">
           {rows.map((row) => (
             <li key={row.document.id}>
               <h5>{row.document.title}</h5>
@@ -345,7 +343,7 @@ function ProjectDocumentSession({
   return (
     <section
       aria-label={copy.title}
-      className={`project-documents${isPrisme ? ' project-documents--prisme' : ''}`}
+      className="project-documents project-documents--prisme"
     >
       <h4>{copy.title}</h4>
       <p>{copy.warning}</p>
@@ -374,15 +372,10 @@ function ProjectDocumentSession({
           </button>
         )}
       {selector && (
-        <div
-          aria-label={copy.choose}
-          className={isPrisme ? 'project-document-selector' : undefined}
-        >
+        <div aria-label={copy.choose} className="project-document-selector">
           {selector.load.kind === 'ready' &&
             selector.load.listing.documents.length > 0 && (
-              <label
-                className={isPrisme ? 'project-document-search' : undefined}
-              >
+              <label className="project-document-search">
                 {copy.searchLabel}
                 <input
                   type="search"

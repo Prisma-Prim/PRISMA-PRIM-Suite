@@ -372,4 +372,36 @@ describe('Client ownership through App', () => {
     await openRegistration();
     expect(screen.getByLabelText('Client display name')).toHaveValue('');
   });
+
+  it('opens the Prisme Clients section from a retired Classic frame link', async () => {
+    window.history.replaceState(null, '', '/?frame=classic#clients');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = input.toString();
+        if (path.endsWith('/access/current-actor'))
+          return respond(directorActor());
+        if (path.endsWith('/companies')) return respond([companyA]);
+        if (path.endsWith('/activity-log')) return respond({ events: [] });
+        if (path.endsWith('/clients')) return respond([]);
+        throw new Error('Unexpected API request: ' + path);
+      }),
+    );
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Clients' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Clients' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('button', { name: 'New Client' })).toBeVisible();
+    expect(
+      await screen.findByText('No Clients for Company A yet.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: 'Home' }),
+    ).not.toBeInTheDocument();
+  });
 });

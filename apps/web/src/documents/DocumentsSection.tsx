@@ -1,6 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { SectionVisibility } from '../production-shell/section-visibility';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace, type RequestedDocument } from './DocumentWorkspace';
 import { paymentEvidenceAuthority } from '../payment-evidence/payment-evidence-authority';
 import {
@@ -62,7 +61,6 @@ export function DocumentsSection({
   ...props
 }: Props) {
   const copy = usePaymentEvidenceCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const sectionVisible = useContext(SectionVisibility);
   const [pane, setPane] = useState<Pane>({ kind: 'native' });
   const generation = useRef(0);
@@ -204,7 +202,7 @@ export function DocumentsSection({
   return (
     <section
       id="documents"
-      className={isPrisme ? 'working-documents--prisme' : undefined}
+      className="working-documents--prisme"
       tabIndex={-1}
       aria-label={copy('title')}
     >

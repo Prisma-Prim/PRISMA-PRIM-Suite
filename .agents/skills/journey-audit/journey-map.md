@@ -6,7 +6,7 @@ This map says what the application shows and how a user reaches it. [Sections](#
 
 **Find a screen.** Given a screen or a screenshot, find its section below by navigation label or by what it shows, pick a journey that walks it, and follow that journey's Access cell; then replay the journey with the [verify skill](../verify/SKILL.md) to reproduce what the screen shows.
 
-**Reaching a section.** A section shown to the member opens at `/#<section>` or from the primary navigation, behind `Open navigation` at the narrow width. The overview is the home screen at `/`. Every section exists in both frames: Prisme, the default, and Classic, at `/?frame=classic`. An Access cell names the sections a journey enters, in walking order, each followed by the controls it uses there by their English accessible names.
+**Reaching a section.** A section shown to the member opens at `/#<section>` or from the primary navigation, behind `Open navigation` at the narrow width. The overview is the home screen at `/`. Prisme is the only frame. An Access cell names the sections a journey enters, in walking order, each followed by the controls it uses there by their English accessible names.
 
 **Widths.** Every journey is walked at both acceptance widths: desktop, 1440 × 900 (`operational-acceptance-desktop`), and narrow, 390 × 844 (`operational-acceptance-narrow`).
 

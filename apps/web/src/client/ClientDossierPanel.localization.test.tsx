@@ -12,7 +12,6 @@ import {
   interfaceLocaleStorageKey,
   useInterfaceLocale,
 } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDossierPanel } from './ClientDossierPanel';
 
 const savedDossier = {
@@ -65,17 +64,15 @@ function renderDossier() {
   render(
     <InterfaceLocaleProvider>
       <LocaleSwitch />
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={savedDossier.id}
-          companyContextId="company-localized-dossier"
-          canUpdate
-          identity={deterministicBrowserIdentity()}
-          onActivityRecorded={onActivityRecorded}
-          onClientsChanged={onClientsChanged}
-          onCompanyContextRejected={onCompanyContextRejected}
-        />
-      </ApplicationPresentation>
+      <ClientDossierPanel
+        clientAccountId={savedDossier.id}
+        companyContextId="company-localized-dossier"
+        canUpdate
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={onActivityRecorded}
+        onClientsChanged={onClientsChanged}
+        onCompanyContextRejected={onCompanyContextRejected}
+      />
     </InterfaceLocaleProvider>,
   );
   return {

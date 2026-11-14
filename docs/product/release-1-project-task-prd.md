@@ -1025,7 +1025,7 @@ No separate verification/approval decision or broad Activity read is inferred.
 
 ### User journey and proof
 
-Extend existing Task detail in Prisme/Classic, retaining ordinary Task controls.
+Extend existing Task detail in Prisme, retaining ordinary Task controls.
 Show an authorized empty stream, eligible named frozen Versions with status/number,
 current declared result and exact PDF access, explicit correction and ordered
 history. No eligible Version leaves ordinary Task work available and explains
@@ -1706,8 +1706,8 @@ known version must agree; null/unknown captures fail closed. The native Access,
 Project and Client owners evaluate these conditions, including the existing
 Company-context alternatives; a copied permission string is insufficient.
 
-The UI uses the existing Task-read entry predicate in both Prisme and supported
-Classic frames. Entry is only an affordance; it confers no server authority.
+The UI uses the existing Task-read entry predicate in Prisme. Entry is only an
+affordance; it confers no server authority.
 Responsibility, creator, job title, Workspace ownership, Company selection and
 Template/result/Document rights confer no substitute permission. The workboard
 requests no eligible-member query, directory, email or unrelated member fact.
@@ -1837,8 +1837,8 @@ same-attempt Retry and no navigation, never empty success.
 
 ### Interaction, native continuation and protected intent
 
-Offer **Team Tasks** through the existing authorized Company Task-read entry in
-both frames, retaining visible Company context and accepted Prisme controls.
+Offer **Team Tasks** through the existing authorized Company Task-read entry,
+retaining visible Company context and accepted Prisme controls.
 Initial deliberate entry reads offset0 with open/all/no-date defaults. Keep a
 local draft separate from applied criteria and the last requested page. Typing,
 changing controls, clearing a draft or changing locale performs no I/O. Validate
@@ -2287,7 +2287,7 @@ source of truth; bounded 2000-code-point storage is not a production latency SLA
 
 ### Native interface, lifetime and recovery
 
-Both Prisme and Classic extend the existing native create form and Task detail/
+Prisme extends the existing native create form and Task detail/
 editor with one labelled optional multiline input, bound/help and associated
 validation. Show complete literal current text with preserved visible line breaks
 and wrapping, or a localized “No description”; native history distinguishes a
@@ -2729,10 +2729,9 @@ no production latency SLA. Platform recovery and privacy owners remain unchanged
 
 ### 35.7 Native journey, lifetime, localization and recovery
 
-Both Prisme and legacy Classic extend the existing selected Project detail,
-reachable from the Client-Project journey, with its next-action current/history
-and explicit coordinator editor. Keep the accepted Prisme presentation and
-Classic compatibility route; add no public Classic switch or new screen. Use a
+Prisme extends the existing selected Project detail, reachable from the
+Client-Project journey, with its next-action current/history and explicit
+coordinator editor. Keep the accepted Prisme presentation; add no new screen. Use a
 labelled short plain textarea, bound/help, Save/Replace and deliberate Clear with
 associated validation. Show full wrapped literal text/line breaks, attribution
 and revision; revision 0 says no action recorded, later null says cleared with
@@ -2841,7 +2840,7 @@ horizontal overflow. Synthetic actual App acceptance needs no manual owner test.
    changes. Assert no stale render/focus/navigation or shared Actor/session/
    Company/Activity effect; unrelated-grant controls retain valid independent work.
 8. Register an **actual App/API/disposable-PostgreSQL** keyboard acceptance in
-   Prisme and Classic, at **1440×900 and 390×844**: open from Client, set/reload,
+   Prisme, at **1440×900 and 390×844**: open from Client, set/reload,
    replace/reload exact attributable history, clear/reload/reopen history and read
    a closed/historical Project. Include four locales, literal markup, multiline/
    long-unbroken text, uncertainty/retry and independent native continuation.
@@ -3168,7 +3167,7 @@ object remount or one-feature mutual exclusion may discard their valid work. All
 transitively consumed recovery fields enter the lifetime snapshot. Local cancellation
 does not undo a possibly committed command; later fresh reads remain authoritative.
 
-Use the accepted Prisme direction and existing Classic frame, centralized **ro/en/
+Use the accepted Prisme direction, centralized **ro/en/
 fr/ru** copy, keyboard-complete operation and visible focus at **1440×900 and
 390×844**. Literal multiline/long-unbroken text wraps without overflow or truncating
 accessible history; narrow status/picker/error controls remain operable. Localization
@@ -3218,7 +3217,7 @@ either excluded record. Test these acceptance groups through the highest stable 
    A→B→A and regrant, including recovery-only Actor changes. Check stale focus,
    navigation, Actor/session/Company/Activity effects and unrelated-grant controls.
 8. Register the complete actual **App/API/disposable-PostgreSQL** keyboard journey
-   in both frames, all four locales and both widths. Create/reload, assign/edit,
+   in all four locales and both widths. Create/reload, assign/edit,
    block/resume, complete/reopen/cancel, reload exact history, paginate and exercise
    uncertainty/confirmed-refresh separately. Inspect original screenshots for full
    literal content/focus/no overflow; mocked fixtures or manual UI seeding alone do

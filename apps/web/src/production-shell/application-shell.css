@@ -30,59 +30,6 @@
   box-shadow: 0 0.2rem 1.2rem rgb(7 31 52 / 18%);
 }
 
-.production-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.production-brand-mark {
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  border: 1px solid rgb(255 255 255 / 45%);
-  border-radius: 0.35rem;
-  background: var(--shell-blue);
-  font-family: Georgia, serif;
-  font-size: 1.45rem;
-}
-
-.production-brand strong,
-.production-brand small {
-  display: block;
-}
-
-.production-brand strong {
-  font-size: 0.95rem;
-  letter-spacing: 0.055em;
-}
-
-.production-brand small {
-  margin-top: 0.1rem;
-  color: #bed1df;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.production-user-area {
-  margin-left: auto;
-  color: #d7e4ed;
-  font-size: 0.85rem;
-}
-
-.production-user-area span {
-  display: grid;
-  text-align: right;
-}
-
-.production-user-area small {
-  color: inherit;
-}
-
 .production-access-state {
   align-items: center;
   display: flex;
@@ -209,13 +156,6 @@
   font-weight: 650;
 }
 
-.production-active-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .production-content {
   display: grid;
   width: 100%;
@@ -252,24 +192,6 @@
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 500;
-}
-
-.company-context-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 2.5rem;
-  margin: 1.25rem 0;
-}
-
-.company-context-summary dt {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.company-context-summary dd {
-  margin: 0.2rem 0 0;
-  font-weight: 650;
 }
 
 .company-context-control {
@@ -375,14 +297,12 @@
 .client-workspace > div:first-child > p:last-child,
 .client-workspace form,
 .client-workspace > p,
-.client-list,
-.client-search-results {
+.client-list {
   margin-top: 0;
   margin-bottom: 0;
 }
 
-.client-list,
-.client-search-results {
+.client-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 0.75rem;
@@ -390,8 +310,7 @@
   list-style: none;
 }
 
-.client-list li,
-.client-search-results li {
+.client-list li {
   min-width: 0;
   padding: 1rem;
   border: 1px solid var(--shell-line);
@@ -400,25 +319,18 @@
   background: var(--shell-canvas);
 }
 
-.client-list h3,
-.client-search-results h4 {
+.client-list h3 {
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--shell-navy-deep);
   font-size: 1rem;
 }
 
-.client-list p,
-.client-search-results p {
+.client-list p {
   margin: 0.5rem 0 0;
   overflow-wrap: anywhere;
   color: var(--shell-muted);
   font-size: 0.82rem;
-}
-
-.client-search-results button {
-  width: 100%;
-  margin-top: 0.75rem;
 }
 
 .client-dossier-fields {
@@ -922,8 +834,7 @@
   line-height: 1.08;
 }
 
-.production-content-surface > p:last-child,
-.production-content-surface > .production-home-introduction {
+.production-content-surface > p:last-child {
   max-width: 42rem;
   margin: 1.25rem 0 0;
   color: var(--shell-muted);
@@ -939,13 +850,6 @@
 @media (max-width: 820px) {
   .production-header {
     min-height: 4.25rem;
-  }
-
-  .production-user-area {
-    overflow: hidden;
-    max-width: 7rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .production-menu-button {

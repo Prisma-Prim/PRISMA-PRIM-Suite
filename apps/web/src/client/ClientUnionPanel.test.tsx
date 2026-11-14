@@ -11,7 +11,6 @@ import {
 } from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientUnionPanel } from './ClientUnionPanel';
 
 const first = {
@@ -261,11 +260,7 @@ describe('Client union UI public journey', () => {
       );
     vi.stubGlobal('fetch', fetcher);
     const callbacks = props();
-    render(
-      <ApplicationPresentation value="prisme">
-        <ClientUnionPanel {...callbacks} clientId={undefined} />
-      </ApplicationPresentation>,
-    );
+    render(<ClientUnionPanel {...callbacks} clientId={undefined} />);
     fireEvent.click(
       screen.getByRole('button', { name: 'Superseded Client history' }),
     );
