@@ -11,6 +11,11 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { changeValue } from './test/select-option';
+import {
+  offerDecisionQueuePath,
+  refuseOverviewQueueRefresh,
+  withOfferDecisionQueue,
+} from './test/overview-actor-revalidation';
 
 const company = { id: 'company-upcoming', displayName: 'PRISMA-PRIM' };
 const otherCompany = { id: 'company-other', displayName: 'BIC' };
@@ -82,7 +87,7 @@ function server() {
     today: '2026-09-27',
     throughDate: '2026-10-04',
     status: 200,
-    searchStatus: 200,
+    queueRefusals: 0,
     actor: (companyId: string) => actor(companyId),
     transform: (value: unknown): unknown => value,
   };
@@ -163,10 +168,11 @@ function server() {
         return Response.json({ members: [] });
       if (url.pathname === '/api/assigned-tasks')
         return Response.json({ tasks: [] });
-      if (url.pathname === '/api/clients/search')
-        return state.searchStatus === 403
-          ? new Response(null, { status: 403 })
-          : Response.json([]);
+      if (url.pathname === offerDecisionQueuePath) {
+        if (state.queueRefusals === 0) return Response.json({ items: [] });
+        state.queueRefusals -= 1;
+        return new Response(null, { status: 403 });
+      }
       if (url.pathname === '/api/clients') return Response.json([]);
       return new Response(null, { status: 404 });
     }),
@@ -201,32 +207,13 @@ async function open() {
   );
   await within(panel()).findByText('Task 00 — Literal');
 }
-function navigateTo(name: string) {
-  fireEvent.click(
-    within(
-      screen.getByRole('navigation', { name: 'Primary navigation' }),
-    ).getByRole('link', { name }),
-  );
-}
-/**
- * Prisme keeps the Client search in Clients: its denial revalidates the Actor
- * before the test returns to the overview.
- */
-async function searchClientsAndReturn() {
-  const actorReads = () =>
-    vi
-      .mocked(fetch)
-      .mock.calls.filter(([input]) =>
-        input.toString().endsWith('/access/current-actor'),
-      ).length;
-  navigateTo('Clients');
-  changeValue(screen.getByLabelText('Find a shared Client'), 'Synthetic');
-  const search = screen.getByRole('button', { name: 'Search Clients' });
-  await waitFor(() => expect(search).toBeEnabled());
-  const before = actorReads();
-  fireEvent.click(search);
-  await waitFor(() => expect(actorReads()).toBeGreaterThan(before));
-  navigateTo('Overview');
+/** Actor reads the stubbed transport answered. */
+function actorReads() {
+  return vi
+    .mocked(fetch)
+    .mock.calls.filter(([input]) =>
+      input.toString().endsWith('/access/current-actor'),
+    ).length;
 }
 describe('Personal upcoming deadlines through App', () => {
   beforeEach(() => {
@@ -429,6 +416,8 @@ describe('Personal upcoming deadlines through App', () => {
   it('retires replies after captured authority or membership changes and after a new session owner', async () => {
     window.history.replaceState(null, '', '/');
     const api = server();
+    api.state.actor = (companyId: string) =>
+      withOfferDecisionQueue(actor(companyId));
     api.hold();
     const view = render(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
@@ -438,13 +427,17 @@ describe('Personal upcoming deadlines through App', () => {
     api.state.actor = (companyId: string) => {
       const current = actor(companyId);
       if (!current.activeCompany) throw new Error('Expected Company');
-      return {
+      return withOfferDecisionQueue({
         ...current,
         activeCompany: { ...current.activeCompany, taskPermissions: [] },
-      };
+      });
     };
-    api.state.searchStatus = 403;
-    await searchClientsAndReturn();
+    await refuseOverviewQueueRefresh({
+      refuse: () => {
+        api.state.queueRefusals = 1;
+      },
+      actorReads,
+    });
     await waitFor(() =>
       expect(
         screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
@@ -453,16 +446,18 @@ describe('Personal upcoming deadlines through App', () => {
     expect(api.held[0]?.signal?.aborted).toBe(true);
     await api.release();
     expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
-    api.state.actor = (companyId: string) => actor(companyId);
+    api.state.actor = (companyId: string) =>
+      withOfferDecisionQueue(actor(companyId));
     view.rerender(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
       await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
     );
     await waitFor(() => expect(api.held).toHaveLength(1));
-    api.state.actor = (companyId: string) => ({
-      ...actor(companyId),
-      workspaceMembershipId: 'replacement-membership',
-    });
+    api.state.actor = (companyId: string) =>
+      withOfferDecisionQueue({
+        ...actor(companyId),
+        workspaceMembershipId: 'replacement-membership',
+      });
     view.rerender(<App identity={deterministicBrowserIdentity()} />);
     expect(api.held[0]?.signal?.aborted).toBe(true);
     await api.release();

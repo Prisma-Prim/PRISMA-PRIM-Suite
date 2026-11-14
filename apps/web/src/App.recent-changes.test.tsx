@@ -20,6 +20,11 @@ import {
 } from './test/activity-localization-fixture';
 import type { ActorContext } from './access-types';
 import { changeValue } from './test/select-option';
+import {
+  offerDecisionQueuePath,
+  refuseOverviewQueueRefresh,
+  withOfferDecisionQueue,
+} from './test/overview-actor-revalidation';
 import { deterministicBrowserIdentity } from './access-composition';
 import {
   InterfaceLocaleProvider,
@@ -187,7 +192,7 @@ function installServer(initialCompany = company) {
   const state = {
     summaryRead: true,
     actorStatus: 200,
-    searchStatus: 200,
+    queueRefusals: 0,
     membershipId: 'membership-ana',
     extendActor: (actor: ActorContext): ActorContext => actor,
     extra: noExtraResponse,
@@ -235,10 +240,11 @@ function installServer(initialCompany = company) {
           summaries: [{ kind: 'active_clients', count: 0 }],
         });
       if (path === '/api/clients') return Response.json([]);
-      if (path === '/api/clients/search')
-        return state.searchStatus === 200
-          ? Response.json([])
-          : new Response(null, { status: state.searchStatus });
+      if (path === offerDecisionQueuePath) {
+        if (state.queueRefusals === 0) return Response.json({ items: [] });
+        state.queueRefusals -= 1;
+        return new Response(null, { status: 403 });
+      }
       if (path === '/api/client-duplicate-reviews')
         return Response.json({ items: [], next_cursor: null });
       const extra = state.extra(path, companyId);
@@ -441,6 +447,7 @@ it('discards a held old-Company Activity response after a real Company switch', 
 it('retires the Home preview on real authority loss and cannot revive a held response', async () => {
   window.history.replaceState(null, '', '/');
   const server = installServer();
+  server.state.extendActor = withOfferDecisionQueue;
   renderApp();
   await screen.findByText('Target: Company sixth');
   const pending = deferredResponse();
@@ -457,20 +464,14 @@ it('retires the Home preview on real authority loss and cannot revive a held res
   );
   server.state.summaryRead = false;
   server.state.activity = () => Response.json({ events: [] });
-  server.state.searchStatus = 403;
-  // Prisme keeps the Client search in Clients; its refusal revalidates the Actor.
-  const navigation = screen.getByRole('navigation', {
-    name: 'Primary navigation',
+  await refuseOverviewQueueRefresh({
+    refuse: () => {
+      server.state.queueRefusals = 1;
+    },
+    actorReads: () =>
+      server.requests.filter(({ path }) => path === '/api/access/current-actor')
+        .length,
   });
-  fireEvent.click(within(navigation).getByRole('link', { name: 'Clients' }));
-  const actorReads = () =>
-    server.requests.filter(({ path }) => path === '/api/access/current-actor')
-      .length;
-  const before = actorReads();
-  changeValue(screen.getByLabelText('Find a shared Client'), 'synthetic');
-  fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-  await waitFor(() => expect(actorReads()).toBeGreaterThan(before));
-  fireEvent.click(within(navigation).getByRole('link', { name: 'Overview' }));
   await waitFor(() =>
     expect(screen.queryByRole('region', { name: 'Recent changes' })).toBeNull(),
   );

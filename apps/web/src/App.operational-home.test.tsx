@@ -13,6 +13,11 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { operationalHomeCopy as copy } from './operational-home/operational-home.copy';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
+import {
+  offerDecisionQueuePath,
+  refuseOverviewQueueRefresh,
+  withOfferDecisionQueue,
+} from './test/overview-actor-revalidation';
 
 const companyA = { id: 'company-a', displayName: 'PRISMA-PRIM' };
 const companyB = { id: 'company-b', displayName: 'BIC' };
@@ -99,7 +104,7 @@ function installServer(
 ) {
   const state = {
     actor: initial.actor ?? ((companyId: string) => actorFor(companyId)),
-    refuseSearch: false,
+    queueRefusals: 0,
     clientsInA: counts[companyA.id]?.active_clients ?? 0,
     showProjectSummaries: true,
     showAttention: false,
@@ -203,10 +208,11 @@ function installServer(
     if (route === 'GET /api/assigned-tasks')
       return Response.json({ tasks: [] });
     if (route === 'GET /api/clients') return Response.json([]);
-    if (route === 'GET /api/clients/search')
-      return state.refuseSearch
-        ? new Response(null, { status: 403 })
-        : Response.json([]);
+    if (route === `GET ${offerDecisionQueuePath}`) {
+      if (state.queueRefusals === 0) return Response.json({ items: [] });
+      state.queueRefusals -= 1;
+      return new Response(null, { status: 403 });
+    }
     if (route === 'GET /api/client-duplicate-reviews')
       return Response.json({ items: [], next_cursor: null });
     if (route === 'GET /api/projects')
@@ -319,24 +325,6 @@ function navigateTo(name: string) {
       screen.getByRole('navigation', { name: 'Primary navigation' }),
     ).getByRole('link', { name }),
   );
-}
-/**
- * Prisme keeps the Client search in Clients: its refusal revalidates the Actor
- * before the test returns to the overview.
- */
-async function refuseClientSearchAndReturn(server: {
-  count: (route: string) => number;
-}) {
-  navigateTo('Clients');
-  const actorReads = server.count('GET /api/access/current-actor');
-  changeValue(screen.getByLabelText('Find a shared Client'), 'Demo');
-  fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-  await waitFor(() =>
-    expect(server.count('GET /api/access/current-actor')).toBeGreaterThan(
-      actorReads,
-    ),
-  );
-  navigateTo('Overview');
 }
 /** The counts the region currently shows, by their cards' accessible names. */
 function shownCards(): string[] {
@@ -744,7 +732,10 @@ describe('Operational home through App', () => {
 
   it('retires a held overdue page when live actor revalidation removes Task read', async () => {
     window.history.replaceState(null, '', '/');
-    const server = installServer({ overdueTasks: nextPageTasks });
+    const server = installServer({
+      overdueTasks: nextPageTasks,
+      actor: (companyId) => withOfferDecisionQueue(actorFor(companyId)),
+    });
     render(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
       await screen.findByRole('button', {
@@ -760,21 +751,26 @@ describe('Operational home through App', () => {
     await waitFor(() =>
       expect(server.count(overdueRoute, companyA.id)).toBe(2),
     );
-    server.state.actor = (companyId) => ({
-      ...actorFor(companyId),
-      activeCompany: {
-        ...(companyId === companyB.id ? companyB : companyA),
-        clientPermissions: ['client.read'],
-        clientPermissionAssignmentId: 'client-grant',
-        clientPermissionSetVersion: 'v1',
-        projectPermissions: ['project.read'],
-        taskPermissions: [],
-      },
-    });
+    server.state.actor = (companyId) =>
+      withOfferDecisionQueue({
+        ...actorFor(companyId),
+        activeCompany: {
+          ...(companyId === companyB.id ? companyB : companyA),
+          clientPermissions: ['client.read'],
+          clientPermissionAssignmentId: 'client-grant',
+          clientPermissionSetVersion: 'v1',
+          projectPermissions: ['project.read'],
+          taskPermissions: [],
+        },
+      });
     server.state.showTaskSummary = false;
-    server.state.refuseSearch = true;
     try {
-      await refuseClientSearchAndReturn(server);
+      await refuseOverviewQueueRefresh({
+        refuse: () => {
+          server.state.queueRefusals = 1;
+        },
+        actorReads: () => server.count('GET /api/access/current-actor'),
+      });
       await waitFor(() => expect(server.count(homeRoute)).toBe(2));
       await waitFor(() => expect(overduePanel(companyA)).toBeNull());
     } finally {
@@ -885,16 +881,23 @@ describe('Operational home through App', () => {
 
   it('remounts the region when the captured Client permission version changes', async () => {
     window.history.replaceState(null, '', '/');
-    const server = installServer();
+    const server = installServer({
+      actor: (companyId) => withOfferDecisionQueue(actorFor(companyId)),
+    });
     render(<App identity={deterministicBrowserIdentity()} />);
     await screen.findByRole('button', { name: cardName('active_clients', 3) });
     expect(server.count(homeRoute)).toBe(1);
 
     // A refused read revalidates the actor, who now holds captured v2.
-    server.state.actor = (companyId) => actorFor(companyId, 'v2');
-    server.state.refuseSearch = true;
+    server.state.actor = (companyId) =>
+      withOfferDecisionQueue(actorFor(companyId, 'v2'));
     server.state.clientsInA = 4;
-    await refuseClientSearchAndReturn(server);
+    await refuseOverviewQueueRefresh({
+      refuse: () => {
+        server.state.queueRefusals = 1;
+      },
+      actorReads: () => server.count('GET /api/access/current-actor'),
+    });
     await screen.findByRole('button', { name: cardName('active_clients', 4) });
     expect(server.count(homeRoute)).toBe(2);
   });
