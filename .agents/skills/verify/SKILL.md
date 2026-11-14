@@ -7,7 +7,7 @@ description: Run one acceptance journey on a fresh database and get its screensh
 
 A **journey** is one `apps/web/e2e/<journey>.acceptance.spec.ts`; `pnpm verify:journey --list` names them all.
 
-1. Pick the journey that exercises the behaviour.
+1. Pick the journey that exercises the behaviour. Given a screen or a screenshot, find its section in the [journey map](../journey-audit/journey-map.md#sections), then a journey whose Access cell walks it.
 2. Run it against PostgreSQL:
    - Codex Cloud or Linux: `node scripts/managed-postgres.mjs -- pnpm verify:journey <journey>`.
    - Windows, or a server you already run: export `TEST_DATABASE_URL` for a loopback `*_test` database (a disposable `postgres:17` container works), then `pnpm verify:journey <journey>`.
