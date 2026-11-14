@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { OfferModelBody } from '../offer-model/OfferModelVersionContent';
+import { OfferModelBody } from '../offer-model/OfferModelBody';
 import type {
   ModelOfferView,
   SelectedOfferModel,
@@ -15,9 +15,9 @@ export function SelectedOfferModelContent({
   const copy = useModelOfferCopy();
   const { formatDateTime } = useOfferPresentation();
   return (
-    <section className="offer-model-version">
+    <section className="company-model-version">
       <h5>{copy('model')}</h5>
-      <p className="offer-model-literal">{model.content.serviceTitle}</p>
+      <p className="company-model-literal">{model.content.serviceTitle}</p>
       <p>
         {model.versionNumber} · {model.versionId}
       </p>
@@ -60,7 +60,7 @@ export function ModelOfferDetails({
           {formatDecimal(facts.grossAmount)} {facts.currency}
         </dd>
         <dt>{copy('basis')}</dt>
-        <dd className="offer-model-literal">{facts.basis}</dd>
+        <dd className="company-model-literal">{facts.basis}</dd>
         <dt>{copy('declaredBy')}</dt>
         <dd>
           {facts.declaredBy.workspaceMembershipId} ·{' '}

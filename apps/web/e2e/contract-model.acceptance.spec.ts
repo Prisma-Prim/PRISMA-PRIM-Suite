@@ -383,7 +383,7 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await workspace
     .getByRole('button', { name: 'Open version 1', exact: true })
     .click();
-  const history = workspace.locator('.contract-model-history');
+  const history = workspace.locator('.company-model-history');
   await expect(
     history.getByRole('heading', {
       name: 'Version 1: Serviciu sintetic de consultanță',
@@ -596,7 +596,7 @@ test('preserves every accepted multiline title and identity when reviewing and c
   await selectCompany(page, companyName, narrow);
   await navigate(page, 'Consulting Contract model', narrow);
   const workspace = page.locator('.contract-model-workspace');
-  const version = workspace.locator('.contract-model-version').first();
+  const version = workspace.locator('.company-model-version').first();
   await expect(version.locator('h3')).toBeVisible();
   expect(await version.locator('h3').innerText()).toBe(
     'Version 1: Titlu unu\nTitlu doi',
@@ -620,7 +620,7 @@ test('preserves every accepted multiline title and identity when reviewing and c
     .getByRole('button', { name: 'Version history', exact: true })
     .click();
   const historyRow = workspace
-    .locator('.contract-model-history > ol > li')
+    .locator('.company-model-history > ol > li')
     .first();
   await expect(historyRow).toBeVisible();
   expect(await historyRow.innerText()).toContain('Titlu unu\nTitlu doi');
@@ -648,7 +648,7 @@ test('preserves every accepted multiline title and identity when reviewing and c
     .click();
   await expect(workspace.getByText('Version 2 saved.')).toBeVisible();
   expect(
-    await workspace.locator('.contract-model-version h3').first().innerText(),
+    await workspace.locator('.company-model-version h3').first().innerText(),
   ).toBe('Version 2: Titlu editat\nAl doilea rând');
 });
 

@@ -4,57 +4,81 @@ import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { formatMessage } from '../localization/messages';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { offerModelAuthority } from './offer-model-authority';
 import {
-  readOfferModelResponse,
-  type OfferModel,
-} from './offer-model-response';
-import { useOfferModelCopy } from './offer-model.copy';
-import { OfferModelHistory } from './OfferModelHistory';
-import { OfferModelForm } from './OfferModelForm';
-import { OfferModelVersionContent } from './OfferModelVersionContent';
-import { useOfferModelCommand } from './use-offer-model-command';
-import { text } from './offer-model-content';
-import type { OfferModelContent } from './offer-model-content';
+  companyModelAuthority,
+  type CompanyModelAuthority,
+} from './company-model-authority';
+import type {
+  CompanyModelContentBase,
+  CompanyModelDraftBase,
+  CompanyModelKind,
+} from './company-model-kind';
+import {
+  modelText,
+  readCompanyModelResponse,
+  type CompanyModel,
+} from './company-model-response';
+import { CompanyModelForm } from './CompanyModelForm';
+import { CompanyModelHistory } from './CompanyModelHistory';
+import { CompanyModelVersion } from './CompanyModelVersion';
+import { useCompanyModelCommand } from './use-company-model-command';
 import {
   ModelAccessLifetime,
   useModelAccessRejection,
-} from '../company-model/ModelAccessLifetime';
-import './offer-model.css';
+} from './ModelAccessLifetime';
+import './company-model.css';
 
-export interface OfferModelWorkspaceProps {
+export interface CompanyModelWorkspaceProps {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActorRevalidated?: (actor: ActorContext) => void | Promise<void>;
   onCompanyContextRejected?: (companyId: string) => void;
   onWorkspaceAccessRejected?: () => void | Promise<void>;
 }
-type Authority = NonNullable<ReturnType<typeof offerModelAuthority>>;
-type Read =
-  { kind: 'loading' | 'error' } | { kind: 'ready'; model: OfferModel | null };
+type Kind<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+> = { kind: CompanyModelKind<Content, Draft> };
+type Read<Content extends CompanyModelContentBase> =
+  | { kind: 'loading' | 'error' }
+  | { kind: 'ready'; model: CompanyModel<Content> | null };
 
-export function OfferModelWorkspace(props: OfferModelWorkspaceProps) {
-  const authority = offerModelAuthority(props.actor);
+/** One Company model kind's workspace: current model, decisions and history. */
+export function CompanyModelWorkspace<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+>(props: CompanyModelWorkspaceProps & Kind<Content, Draft>) {
+  const authority = companyModelAuthority(props.actor, props.kind.grants);
   return authority ? (
-    <ScopedOfferModelWorkspace {...props} authority={authority} />
+    <ScopedCompanyModelWorkspace {...props} authority={authority} />
   ) : null;
 }
 
-function ScopedOfferModelWorkspace({
+function ScopedCompanyModelWorkspace<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+>({
+  kind,
   actor,
   identity,
   authority,
   ...handlers
-}: OfferModelWorkspaceProps & { authority: Authority }) {
-  const copy = useOfferModelCopy();
+}: CompanyModelWorkspaceProps &
+  Kind<Content, Draft> & { authority: CompanyModelAuthority }) {
+  const copy = kind.useCopy();
   const heading = useId();
   return (
-    <section className="offer-model-workspace" aria-labelledby={heading}>
+    <section
+      className={`company-model-workspace ${kind.rootClass}`}
+      aria-labelledby={heading}
+    >
       <header>
         <h2 id={heading}>{copy('title')}</h2>
         <p>{copy('description')}</p>
       </header>
-      <p className="offer-model-company">{actor.activeCompany?.displayName}</p>
+      <p className="company-model-company">
+        {actor.activeCompany?.displayName}
+      </p>
       <ModelAccessLifetime
         identity={identity}
         actor={actor}
@@ -69,7 +93,8 @@ function ScopedOfferModelWorkspace({
           </>
         )}
       >
-        <OfferModelBody
+        <CompanyModelBody
+          kind={kind}
           identity={identity}
           authority={authority}
           heading={heading}
@@ -79,27 +104,29 @@ function ScopedOfferModelWorkspace({
   );
 }
 
-function OfferModelBody({
+function CompanyModelBody<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+>({
+  kind,
   identity,
   authority,
   heading,
-}: {
+}: Kind<Content, Draft> & {
   identity: BrowserIdentity;
-  authority: Authority;
+  authority: CompanyModelAuthority;
   heading: string;
 }) {
-  const copy = useOfferModelCopy();
+  const copy = kind.useCopy();
   const rejectAccess = useModelAccessRejection();
   const { formatNumber } = useInterfaceLocale();
   const epoch = useRef(0);
   const [historyGeneration, setHistoryGeneration] = useState(0);
-  const [read, setRead] = useState<Read>({ kind: 'loading' });
+  const [read, setRead] = useState<Read<Content>>({ kind: 'loading' });
   const [reason, setReason] = useState('');
   const [basis, setBasis] = useState('');
   const [invalidDecision, setInvalidDecision] = useState(false);
-  const [draft, setDraft] = useState<{
-    initial: OfferModelContent | null;
-  } | null>(null);
+  const [draft, setDraft] = useState<{ initial: Content | null } | null>(null);
   const pending = useRef<AbortController | undefined>(undefined);
   const load = useCallback(() => {
     epoch.current += 1;
@@ -107,14 +134,14 @@ function OfferModelBody({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request('/offer-models/consulting-ro', {
+        api.request(kind.path, {
           companyContextId: authority.companyId,
           signal,
         }),
       onResult: (result) => {
         if (result.status === 'ok') {
           try {
-            const { model } = readOfferModelResponse(result.value);
+            const { model } = readCompanyModelResponse(kind, result.value);
             if (
               model &&
               (model.companyId !== authority.companyId ||
@@ -134,7 +161,13 @@ function OfferModelBody({
       },
       onError: () => setRead({ kind: 'error' }),
     });
-  }, [identity, authority.companyId, authority.workspaceId, rejectAccess]);
+  }, [
+    kind,
+    identity,
+    authority.companyId,
+    authority.workspaceId,
+    rejectAccess,
+  ]);
 
   useEffect(() => {
     setRead({ kind: 'loading' });
@@ -144,7 +177,8 @@ function OfferModelBody({
     };
   }, [load]);
 
-  const command = useOfferModelCommand({
+  const command = useCompanyModelCommand({
+    kind,
     identity,
     authority,
     onStart: () => {
@@ -199,7 +233,7 @@ function OfferModelBody({
               : copy('noActive')}
           </p>
           {read.model.activeVersion && (
-            <p className="offer-model-literal">
+            <p className="company-model-literal">
               {read.model.activeVersion.serviceTitle} —{' '}
               {copy(read.model.activeVersion.sourceKind)}
             </p>
@@ -207,7 +241,7 @@ function OfferModelBody({
           {authority.canDecide && read.model.activeVersion && (
             <fieldset disabled={command.blocked || draft !== null}>
               <legend>{copy('withdraw')}</legend>
-              <div className="offer-model-field">
+              <div className="company-model-field">
                 <label htmlFor={`${heading}-withdrawal`}>
                   {copy('withdrawReason')}
                 </label>
@@ -216,10 +250,18 @@ function OfferModelBody({
                   value={reason}
                   maxLength={2000}
                   required
+                  aria-invalid={invalidDecision || undefined}
+                  aria-describedby={
+                    invalidDecision ? `${heading}-withdraw-error` : undefined
+                  }
                   onChange={(event) => setReason(event.target.value)}
                 />
               </div>
-              {invalidDecision && <p role="alert">{copy('invalid')}</p>}
+              {invalidDecision && (
+                <p role="alert" id={`${heading}-withdraw-error`}>
+                  {copy('invalid')}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -231,7 +273,7 @@ function OfferModelBody({
                   )
                     return;
                   try {
-                    text(reason, 2000);
+                    modelText(reason, 2000);
                     setInvalidDecision(false);
                     command.start({
                       kind: 'WITHDRAW',
@@ -249,22 +291,30 @@ function OfferModelBody({
             </fieldset>
           )}
           <h3>{copy('head')}</h3>
-          <OfferModelVersionContent version={read.model.head} />
+          <CompanyModelVersion kind={kind} version={read.model.head} />
           {authority.canDecide && read.model.head.decision === null && (
             <fieldset disabled={command.blocked || draft !== null}>
               <legend>{copy('pending')}</legend>
-              <div className="offer-model-field">
+              <div className="company-model-field">
                 <label htmlFor={`${heading}-basis`}>{copy('basis')}</label>
                 <textarea
                   id={`${heading}-basis`}
                   value={basis}
                   maxLength={2000}
                   required
+                  aria-invalid={invalidDecision || undefined}
+                  aria-describedby={
+                    invalidDecision ? `${heading}-basis-error` : undefined
+                  }
                   onChange={(event) => setBasis(event.target.value)}
                 />
               </div>
-              {invalidDecision && <p role="alert">{copy('invalid')}</p>}
-              <div className="offer-model-actions">
+              {invalidDecision && (
+                <p role="alert" id={`${heading}-basis-error`}>
+                  {copy('invalid')}
+                </p>
+              )}
+              <div className="company-model-actions">
                 {(['APPROVE', 'REJECT'] as const).map((outcome) => (
                   <button
                     key={outcome}
@@ -278,7 +328,7 @@ function OfferModelBody({
                       )
                         return;
                       try {
-                        text(basis, 2000);
+                        modelText(basis, 2000);
                         setInvalidDecision(false);
                         command.start({
                           kind: 'DECIDE',
@@ -300,17 +350,26 @@ function OfferModelBody({
         </>
       )}
       {read.kind === 'ready' && read.model && (
-        <OfferModelHistory
+        <CompanyModelHistory
           key={historyGeneration}
+          kind={kind}
           identity={identity}
           model={read.model}
           blocked={command.blocked || draft !== null}
           epoch={epoch}
           onDenied={rejectAccess}
+          onCopy={
+            authority.canEdit
+              ? (content) => {
+                  if (!command.blocked && !draft)
+                    setDraft({ initial: content });
+                }
+              : undefined
+          }
         />
       )}
       {authority.canEdit && read.kind === 'ready' && !draft && (
-        <div className="offer-model-actions">
+        <div className="company-model-actions">
           <button
             type="button"
             disabled={command.blocked}
@@ -332,7 +391,8 @@ function OfferModelBody({
         </div>
       )}
       {draft && (
-        <OfferModelForm
+        <CompanyModelForm
+          kind={kind}
           initial={draft.initial}
           disabled={command.blocked || read.kind !== 'ready'}
           onCancel={() => setDraft(null)}

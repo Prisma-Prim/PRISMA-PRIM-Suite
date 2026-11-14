@@ -23,7 +23,6 @@ const keys = [
   'annexTitle',
   'annexReference',
   'fixedKind',
-  'copyVersion',
 ] as const;
 
 export const contractModelMessages = defineMessages(keys, {
@@ -63,7 +62,6 @@ export const contractModelMessages = defineMessages(keys, {
     annexTitle: 'Annex title',
     annexReference: 'Annex reference wording',
     fixedKind: 'Ordinary consulting Contract · Romanian',
-    copyVersion: 'Copy this version into a new draft',
   },
   fr: {
     ...offerModelMessages.translations.fr,
@@ -102,7 +100,6 @@ export const contractModelMessages = defineMessages(keys, {
     annexTitle: 'Titre de l’annexe',
     annexReference: 'Texte de référence de l’annexe',
     fixedKind: 'Contrat ordinaire de conseil · roumain',
-    copyVersion: 'Copier cette version dans un brouillon',
   },
   ro: {
     ...offerModelMessages.translations.ro,
@@ -140,12 +137,10 @@ export const contractModelMessages = defineMessages(keys, {
     annexTitle: 'Titlul anexei',
     annexReference: 'Textul referinței anexei',
     fixedKind: 'Contract ordinar de consultanță · română',
-    copyVersion: 'Copiați această versiune într-o ciornă',
   },
   ru: {
     ...offerModelMessages.translations.ru,
     title: 'Шаблон консультационного договора',
-    copyVersion: 'Скопировать эту версию в черновик',
     description:
       'Настройте полный обычный консультационный договор и приложение на румынском, затем проверьте точные версии и утверждения.',
     empty: 'Шаблон консультационного договора ещё не настроен.',

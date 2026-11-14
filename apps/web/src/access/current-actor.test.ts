@@ -4,9 +4,9 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { hasReceivedAddendumAccess } from '../documents/received-addendum-access';
-import { contractModelAuthority } from '../contract-model/contract-model-authority';
+import { contractModelAuthority } from '../contract-model/contract-model.kind';
 import { missionPlanAuthority } from '../mission-plan/mission-plan-authority';
-import { offerModelAuthority } from '../offer-model/offer-model-authority';
+import { offerModelAuthority } from '../offer-model/offer-model.kind';
 import { offerMessageReadCapture } from '../offer-message/offer-message-contract';
 import { paymentAuthority } from '../payment-observation/payment-authority';
 import { paymentEvidenceAuthority } from '../payment-evidence/payment-evidence-authority';

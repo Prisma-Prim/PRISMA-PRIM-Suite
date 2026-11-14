@@ -1,21 +1,24 @@
-import {
-  modelInteger,
-  readContractModelContent,
-  sourceKind,
-  text,
-} from './contract-model-content';
+import type {
+  CompanyModelContentBase,
+  ModelSourceKind,
+} from './company-model-kind';
 
-export function readContractModelResponse(value: unknown) {
+/** The part of a kind that the response readers need. */
+export type ModelResponseKind<Content extends CompanyModelContentBase> =
+  Readonly<{
+    identity: Readonly<Record<string, string>>;
+    readContent: (value: unknown) => Content;
+  }>;
+
+export function readCompanyModelResponse<
+  Content extends CompanyModelContentBase,
+>(kind: ModelResponseKind<Content>, value: unknown) {
   const payload = record(value);
   if (payload.model === null) return { model: null };
   const row = record(payload.model);
-  if (
-    row.code !== 'INTEGRATED_MANAGEMENT_CONSULTING_CONTRACT_RO' ||
-    row.kind !== 'CONTRACT' ||
-    row.language !== 'ro'
-  )
-    throw invalid();
-  const head = readModelVersion(row.head);
+  for (const [field, expected] of Object.entries(kind.identity))
+    if (row[field] !== expected) throw invalid();
+  const head = readModelVersion(kind, row.head);
   const activeVersion =
     row.activeVersion === null ? null : readSummary(row.activeVersion);
   const revision = modelInteger(row.revision, 1);
@@ -45,19 +48,20 @@ export function readContractModelResponse(value: unknown) {
       id: uuid(row.id),
       workspaceId: uuid(row.workspaceId),
       companyId: uuid(row.companyId),
-      code: 'INTEGRATED_MANAGEMENT_CONSULTING_CONTRACT_RO',
-      kind: 'CONTRACT',
-      language: 'ro',
       revision,
       head,
       activeVersion,
     },
   };
 }
-export type ContractModelRead = ReturnType<typeof readContractModelResponse>;
-export type ContractModel = NonNullable<ContractModelRead['model']>;
+export type CompanyModel<Content extends CompanyModelContentBase> = NonNullable<
+  ReturnType<typeof readCompanyModelResponse<Content>>['model']
+>;
 
-export function readModelVersion(value: unknown) {
+export function readModelVersion<Content extends CompanyModelContentBase>(
+  kind: ModelResponseKind<Content>,
+  value: unknown,
+) {
   const row = record(value);
   const versionNumber = modelInteger(row.versionNumber, 1);
   const predecessorVersionId =
@@ -72,19 +76,23 @@ export function readModelVersion(value: unknown) {
     id: uuid(row.id),
     versionNumber,
     predecessorVersionId,
-    content: readContractModelContent(row.content),
+    content: kind.readContent(row.content),
     ...attributed(row),
     decision,
     withdrawal,
   };
 }
-export type ContractModelVersion = ReturnType<typeof readModelVersion>;
+export type CompanyModelVersion<Content extends CompanyModelContentBase> =
+  ReturnType<typeof readModelVersion<Content>>;
 
-export function readExactModelVersion(value: unknown) {
+export function readExactModelVersion<Content extends CompanyModelContentBase>(
+  kind: ModelResponseKind<Content>,
+  value: unknown,
+) {
   const payload = record(value);
   const selection = record(payload.currentSelection);
   return {
-    version: readModelVersion(payload.version),
+    version: readModelVersion(kind, payload.version),
     currentSelection: {
       activeVersionId:
         selection.activeVersionId === null
@@ -136,7 +144,7 @@ export function readModelHistory(value: unknown) {
     throw invalid();
   return { versions, nextCursor };
 }
-export type ContractModelHistory = ReturnType<typeof readModelHistory>;
+export type CompanyModelHistory = ReturnType<typeof readModelHistory>;
 
 function readSummary(value: unknown) {
   const row = record(value);
@@ -144,7 +152,7 @@ function readSummary(value: unknown) {
     id: uuid(row.id),
     versionNumber: modelInteger(row.versionNumber, 1),
     sourceKind: sourceKind(row.sourceKind),
-    serviceTitle: text(row.serviceTitle, 300),
+    serviceTitle: modelText(row.serviceTitle, 300),
   };
 }
 function readDecision(value: unknown) {
@@ -152,7 +160,7 @@ function readDecision(value: unknown) {
   return {
     id: uuid(row.id),
     outcome: outcome(row.outcome),
-    basis: text(row.basis, 2_000),
+    basis: modelText(row.basis, 2_000),
     ...attributed(row),
   };
 }
@@ -160,7 +168,7 @@ function readWithdrawal(value: unknown) {
   const row = record(value);
   return {
     id: uuid(row.id),
-    reason: text(row.reason, 2_000),
+    reason: modelText(row.reason, 2_000),
     ...attributed(row),
   };
 }
@@ -179,6 +187,32 @@ function attributed(row: Record<string, unknown>) {
 function outcome(value: unknown): 'APPROVE' | 'REJECT' {
   if (value === 'APPROVE' || value === 'REJECT') return value;
   throw invalid();
+}
+function sourceKind(value: unknown): ModelSourceKind {
+  if (value === 'ILLUSTRATIVE' || value === 'COMPANY_SUPPLIED') return value;
+  throw invalid();
+}
+/** A non-blank literal without NUL or lone surrogates, at most `limit` long. */
+export function modelText(value: unknown, limit: number): string {
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.includes('\u0000') ||
+    /[\uD800-\uDFFF]/u.test(value) ||
+    value.length > limit
+  )
+    throw invalid();
+  return value;
+}
+function modelInteger(value: unknown, minimum: number): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < minimum ||
+    value > 2_147_483_647
+  )
+    throw invalid();
+  return value;
 }
 function instant(value: unknown) {
   if (
@@ -205,5 +239,5 @@ function record(value: unknown): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value));
 }
 function invalid() {
-  return new Error('Invalid consulting Contract model response.');
+  return new Error('Invalid consulting Company model response.');
 }
