@@ -6,6 +6,7 @@ import {
 import { vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import type { CompanyGrant } from '../access/company-grants';
 import {
   CONFIRMED_DURATION_FIELDS,
   DURATION_RULE_VERSION,
@@ -63,39 +64,92 @@ export function certificationActor({
     activeCompany: {
       id: certificationIds.company,
       displayName: 'Synthetic Certification Body',
+      // Certification screens read only these grants; the legacy Client and
+      // Project fields below serve the other screens until #1148 step b.
+      grants: [
+        {
+          bundle: 'company_director_client_access',
+          assignmentId: 'client-grant',
+          permissionSetVersion: 'v1',
+          permissions: ['client.read', 'client.create', 'client.update'],
+        },
+        {
+          bundle: 'company_project_access',
+          assignmentId: 'project-grant',
+          permissionSetVersion: 'v1',
+          permissions: ['project.read', 'project.create'],
+        },
+        ...(documents
+          ? ([
+              {
+                bundle: 'company_document_registrar',
+                assignmentId: 'document-grant',
+                permissionSetVersion: 'v3',
+                permissions: [
+                  'document.read',
+                  'document.register',
+                  'document.reference.read',
+                  'document.correct',
+                  'document.version.manage',
+                ],
+              },
+              {
+                bundle: 'company_document_content_reader',
+                assignmentId: 'document-content-grant',
+                permissionSetVersion: 'v1',
+                permissions: ['document.content.read'],
+              },
+              {
+                bundle: 'company_received_audit_source_access',
+                assignmentId: '11310000-0000-4000-8000-000000000009',
+                permissionSetVersion: 'v1',
+                permissions: ['document.received_audit_source.access'],
+              },
+            ] satisfies CompanyGrant[])
+          : []),
+        {
+          bundle: 'company_certification_reader',
+          assignmentId: 'certification-reader-grant',
+          permissionSetVersion: 'v1',
+          permissions: ['certification.read'],
+        },
+        ...(manager
+          ? ([
+              {
+                bundle: 'company_certification_programme_manager',
+                assignmentId: 'certification-manager-grant',
+                permissionSetVersion: 'v1',
+                permissions: ['certification.programme.manage'],
+              },
+            ] satisfies CompanyGrant[])
+          : []),
+        ...(approver
+          ? ([
+              {
+                bundle: 'company_certification_approver',
+                assignmentId: 'certification-approver-grant',
+                permissionSetVersion: 'v1',
+                permissions: ['certification.approve'],
+              },
+            ] satisfies CompanyGrant[])
+          : []),
+        ...(auditor
+          ? ([
+              {
+                bundle: 'company_certification_auditor',
+                assignmentId: 'certification-auditor-grant',
+                permissionSetVersion: 'v1',
+                permissions: ['certification.audit.record'],
+              },
+            ] satisfies CompanyGrant[])
+          : []),
+      ],
       clientPermissions: ['client.read'],
       clientPermissionAssignmentId: 'client-grant',
       clientPermissionSetVersion: 'v1',
       projectPermissions: ['project.read'],
       projectPermissionAssignmentId: 'project-grant',
       projectPermissionSetVersion: 'v1',
-      certificationReaderPermissions: ['certification.read'],
-      certificationReaderAssignmentId: 'certification-reader-grant',
-      certificationReaderPermissionSetVersion: 'v1',
-      ...(manager
-        ? {
-            certificationProgrammeManagerPermissions: [
-              'certification.programme.manage',
-            ],
-            certificationProgrammeManagerAssignmentId:
-              'certification-manager-grant',
-            certificationProgrammeManagerPermissionSetVersion: 'v1',
-          }
-        : {}),
-      ...(approver
-        ? {
-            certificationApproverPermissions: ['certification.approve'],
-            certificationApproverAssignmentId: 'certification-approver-grant',
-            certificationApproverPermissionSetVersion: 'v1',
-          }
-        : {}),
-      ...(auditor
-        ? {
-            certificationAuditorPermissions: ['certification.audit.record'],
-            certificationAuditorAssignmentId: 'certification-auditor-grant',
-            certificationAuditorPermissionSetVersion: 'v1',
-          }
-        : {}),
       ...(documents
         ? {
             documentPermissions: [
@@ -3756,32 +3810,46 @@ function teamComposition(value: unknown): string | null {
   return null;
 }
 
+/** Whether the current actor's grants list holds `permission` through `bundle`. */
+function holdsGrant(actor: unknown, bundle: string, permission: string) {
+  const grants = record(record(actor).activeCompany).grants;
+  return (
+    Array.isArray(grants) &&
+    grants.some((grant) => {
+      const entry = record(grant);
+      return (
+        entry.bundle === bundle &&
+        Array.isArray(entry.permissions) &&
+        entry.permissions.includes(permission)
+      );
+    })
+  );
+}
+
 /** Whether the current actor captures the Certification Approver grant. */
 function holdsApprover(actor: unknown): boolean {
-  const company = record(record(actor).activeCompany);
-  const permissions = company.certificationApproverPermissions;
-  return (
-    Array.isArray(permissions) && permissions.includes('certification.approve')
+  return holdsGrant(
+    actor,
+    'company_certification_approver',
+    'certification.approve',
   );
 }
 
 /** Whether the current actor captures the Certification Auditor grant. */
 function holdsAuditor(actor: unknown): boolean {
-  const company = record(record(actor).activeCompany);
-  const permissions = company.certificationAuditorPermissions;
-  return (
-    Array.isArray(permissions) &&
-    permissions.includes('certification.audit.record')
+  return holdsGrant(
+    actor,
+    'company_certification_auditor',
+    'certification.audit.record',
   );
 }
 
 /** Whether the current actor captures the Certification Programme Manager grant. */
 function holdsManager(actor: unknown): boolean {
-  const company = record(record(actor).activeCompany);
-  const permissions = company.certificationProgrammeManagerPermissions;
-  return (
-    Array.isArray(permissions) &&
-    permissions.includes('certification.programme.manage')
+  return holdsGrant(
+    actor,
+    'company_certification_programme_manager',
+    'certification.programme.manage',
   );
 }
 

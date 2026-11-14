@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
@@ -18,7 +19,8 @@ import {
 } from '../documents/mission-document.test-support.js';
 import { objects } from '../project-template/project-pilot-plan.test-support.js';
 
-function permissionSets(value: Record<string, unknown>) {
+function permissionSets(input: Record<string, unknown>) {
+  const value = record(withoutGrantsList('/access/current-actor', input));
   const company = record(value.activeCompany);
   const normalized: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(company))

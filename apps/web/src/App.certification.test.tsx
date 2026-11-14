@@ -17,15 +17,24 @@ import {
 } from './test/mission-applicability-app-fixture';
 import { FakeCertificationServer } from './certification/certification.test-fixture';
 
+// The Certification screens read only the grants list.
+const projectGrant = {
+  bundle: 'company_project_access',
+  assignmentId: actor.activeCompany.projectPermissionAssignmentId,
+  permissionSetVersion: 'v2',
+  permissions: ['project.read', 'project.create', 'project.update'],
+};
 const reader = {
-  certificationReaderPermissions: ['certification.read'],
-  certificationReaderAssignmentId: 'certification-reader-grant',
-  certificationReaderPermissionSetVersion: 'v1',
+  bundle: 'company_certification_reader',
+  assignmentId: 'certification-reader-grant',
+  permissionSetVersion: 'v1',
+  permissions: ['certification.read'],
 };
 const manager = {
-  certificationProgrammeManagerPermissions: ['certification.programme.manage'],
-  certificationProgrammeManagerAssignmentId: 'certification-manager-grant',
-  certificationProgrammeManagerPermissionSetVersion: 'v1',
+  bundle: 'company_certification_programme_manager',
+  assignmentId: 'certification-manager-grant',
+  permissionSetVersion: 'v1',
+  permissions: ['certification.programme.manage'],
 };
 
 function certificationActor(grants: 'none' | 'reader' | 'manager') {
@@ -33,8 +42,11 @@ function certificationActor(grants: 'none' | 'reader' | 'manager') {
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      ...(grants === 'none' ? {} : reader),
-      ...(grants === 'manager' ? manager : {}),
+      grants: [
+        projectGrant,
+        ...(grants === 'none' ? [] : [reader]),
+        ...(grants === 'manager' ? [manager] : []),
+      ],
     },
   };
 }

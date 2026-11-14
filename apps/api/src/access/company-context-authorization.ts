@@ -51,6 +51,7 @@ import {
   workspaceMemberships,
 } from '../database/schema/index.js';
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
+import { describeCompanyGrants } from './company-grants.js';
 import {
   COMPANY_CONTEXT_CONFERRING_BUNDLES,
   companyRolePermissionsFor,
@@ -1500,7 +1501,9 @@ export class CompanyContextAuthorization {
         ),
       )
       .limit(1);
-    return company ? { ...company, clientPermissions: [] } : undefined;
+    return company
+      ? { ...company, grants: [], clientPermissions: [] }
+      : undefined;
   }
 
   private async findAssignedActiveCompanies(
@@ -1544,6 +1547,7 @@ export class CompanyContextAuthorization {
       const company: ActiveCompanyContext = existing ?? {
         id: row.id,
         displayName: row.displayName,
+        grants: [],
         clientPermissions: [],
       };
       const before = { ...company };
@@ -2203,6 +2207,10 @@ export class CompanyContextAuthorization {
             });
       }
     }
+    for (const company of authorizedCompanies)
+      company.grants = describeCompanyGrants(
+        rows.filter((row) => row.id === company.id),
+      );
     for (const company of authorizedCompanies)
       captureCompanyPermissions({
         actor,

@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { committedMigrationTables } from '../database/committed-migration-test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -607,7 +608,9 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await unassigned();
         for (const [path, expected] of Object.entries(oldReads))
           if (path !== searchPath)
-            expect(await read(path), path).toEqual(expected);
+            expect(withoutGrantsList(path, await read(path)), path).toEqual(
+              expected,
+            );
         await replayOldCommands();
         expect(await replayCapturedCommands(capturedCommands)).toEqual({
           exact: 90,

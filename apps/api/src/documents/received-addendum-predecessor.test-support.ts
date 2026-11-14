@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { expect } from 'vitest';
 import type { PostgresRestTestHarness } from '../database/postgres-rest-test-harness.js';
 import {
@@ -63,7 +64,9 @@ export async function replayReceivedAddendumPredecessorSources(
     const path = fixtureString(captured.path),
       response = await call(path, captured);
     expect(response.status, path).toBe(200);
-    expect(await response.json(), path).toEqual(captured.response);
+    expect(withoutGrantsList(path, await response.json()), path).toEqual(
+      captured.response,
+    );
   }
   for (const captured of fixtureObjects(context.sourceBinaries)) {
     const response = await call(fixtureString(captured.path), captured);

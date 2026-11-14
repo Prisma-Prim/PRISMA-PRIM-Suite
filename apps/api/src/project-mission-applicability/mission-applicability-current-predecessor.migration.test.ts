@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -165,7 +166,9 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         for (const [path, expected] of Object.entries(record(context.reads))) {
           const response = await call(path);
           expect(response.status, path).toBe(200);
-          expect(await json(response), path).toEqual(expected);
+          expect(withoutGrantsList(path, await json(response)), path).toEqual(
+            expected,
+          );
         }
         for (const command of objects(context.commands)) {
           const response = await call(text(command.path), {

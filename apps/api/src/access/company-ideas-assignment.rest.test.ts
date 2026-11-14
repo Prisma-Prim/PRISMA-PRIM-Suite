@@ -130,17 +130,30 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         (await request(bundle.path, 'POST', body, undefined, 'member')).status,
       ).toBe(403);
       expect((await selected('member', companyId)).status).toBe(403);
-      await grant(
+      const context = await grant(
         'company-context-assignments',
         member.workspaceMembershipId,
         companyId,
       );
+      const contextGrant = {
+        bundle: 'company_context_access',
+        assignmentId: context.id,
+        permissionSetVersion: null,
+        permissions: [],
+      };
+      const ideasGrant = (assignmentId: unknown) => ({
+        bundle: bundle.storage,
+        assignmentId,
+        permissionSetVersion: 'v1',
+        permissions: bundle.permissions,
+      });
       const projection = record(
         await (await selected('member', companyId)).json(),
       );
       expect(record(projection.activeCompany)).toEqual({
         id: companyId,
         displayName: 'Synthetic Company',
+        grants: [contextGrant, ideasGrant(assignment.id)],
         clientPermissions: [],
         [`${bundle.prefix}Permissions`]: bundle.permissions,
         [`${bundle.prefix}PermissionAssignmentId`]: assignment.id,
@@ -196,6 +209,7 @@ withPostgres('Ideas assignment administration and live authorization', () => {
       expect(after).toEqual({
         id: companyId,
         displayName: 'Synthetic Company',
+        grants: [contextGrant],
         clientPermissions: [],
       });
       const events = (await activity('owner')).filter(
@@ -219,6 +233,7 @@ withPostgres('Ideas assignment administration and live authorization', () => {
       ).toEqual({
         id: companyId,
         displayName: 'Synthetic Company',
+        grants: [contextGrant, ideasGrant(freshAssignment.id)],
         clientPermissions: [],
         [`${bundle.prefix}Permissions`]: bundle.permissions,
         [`${bundle.prefix}PermissionAssignmentId`]: freshAssignment.id,
@@ -433,10 +448,12 @@ withPostgres('Ideas assignment administration and live authorization', () => {
     workspaceMembershipId: string,
     companyId: string,
   ) {
-    expect(
-      (await request(path, 'POST', { workspaceMembershipId, companyId }))
-        .status,
-    ).toBe(201);
+    const response = await request(path, 'POST', {
+      workspaceMembershipId,
+      companyId,
+    });
+    expect(response.status).toBe(201);
+    return record(await response.json());
   }
   function selected(subject: string, companyId: string) {
     return fetch(`${origin}/api/access/current-actor`, {

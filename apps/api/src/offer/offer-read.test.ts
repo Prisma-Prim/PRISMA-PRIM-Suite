@@ -30,6 +30,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: '00000000-0000-4000-8000-000000000004',
     displayName: 'Synthetic Company',
+    grants: [],
     clientPermissions: [],
     offerPermissions: ['commercial.offer.read'],
     commercialIntakePermissions: [

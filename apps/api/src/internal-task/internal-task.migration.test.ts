@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -20,7 +21,7 @@ function hash(value: Buffer) {
   return createHash('sha256').update(value).digest('hex');
 }
 function actorPermissions(value: unknown) {
-  const actor = object(value),
+  const actor = object(withoutGrantsList('/access/current-actor', value)),
     company = object(actor.activeCompany);
   return {
     ...actor,

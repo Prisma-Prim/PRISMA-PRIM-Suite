@@ -28,6 +28,7 @@ function company(
   return {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
+    grants: [],
     clientPermissions: [],
     ...overrides,
   };

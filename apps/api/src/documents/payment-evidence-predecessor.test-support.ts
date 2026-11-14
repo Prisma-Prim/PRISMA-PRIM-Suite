@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import type { Pool } from 'pg';
@@ -282,10 +283,13 @@ export async function replayPaymentPredecessorDelivered1044(
   }
   for (const captured of fixtureObjects(context.native1044Reads))
     expect(
-      await read(fixtureString(captured.path), {
-        companyId: fixtureString(captured.companyId),
-        identity: fixtureHeaders(captured.identity),
-      }),
+      withoutGrantsList(
+        fixtureString(captured.path),
+        await read(fixtureString(captured.path), {
+          companyId: fixtureString(captured.companyId),
+          identity: fixtureHeaders(captured.identity),
+        }),
+      ),
       fixtureString(captured.path),
     ).toEqual(captured.value);
   for (const captured of fixtureObjects(context.native1044Binaries)) {
@@ -323,7 +327,7 @@ export async function replayPaymentPredecessorOriginalReadsAndBytes(
   const { call, read } = runtime;
   for (const [path, expected] of Object.entries(fixtureObject(context.reads)))
     if (path !== paymentPredecessorSearchPath)
-      expect(await read(path), path).toEqual(expected);
+      expect(withoutGrantsList(path, await read(path)), path).toEqual(expected);
   for (const command of fixtureObjects(context.commands)) {
     const path = fixtureString(command.path);
     const response = await call(path, {

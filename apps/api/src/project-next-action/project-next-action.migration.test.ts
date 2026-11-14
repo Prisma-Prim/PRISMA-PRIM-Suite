@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
@@ -18,7 +19,7 @@ function objects(value: unknown) {
   return value.map(object);
 }
 function permissions(value: unknown) {
-  const actor = object(value),
+  const actor = object(withoutGrantsList('/access/current-actor', value)),
     company = object(actor.activeCompany);
   return {
     ...actor,

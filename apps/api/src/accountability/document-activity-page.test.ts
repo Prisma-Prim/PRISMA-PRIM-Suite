@@ -85,6 +85,7 @@ it('merges Document and ordinary events into one newest-first dated page', async
     activeCompany: {
       id: 'company',
       displayName: 'PRISMA-PRIM',
+      grants: [],
       clientPermissions: [],
       documentPermissions: ['document.read'],
     },

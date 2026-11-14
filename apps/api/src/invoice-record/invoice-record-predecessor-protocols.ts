@@ -1,5 +1,6 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { expect } from 'vitest';
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import {
   fixtureHash,
   fixtureHeaders,
@@ -284,12 +285,20 @@ export function invoicePredecessorProtocols(input: {
     const companyId = fixtureString(date.companyId),
       identity = fixtureHeaders(date.preparerHeaders),
       options = { companyId, identity };
-    expect(await read('/access/current-actor', options)).toEqual(date.actor);
     expect(
-      await read('/access/current-actor', {
-        companyId,
-        identity: fixtureHeaders(date.probeHeaders),
-      }),
+      withoutGrantsList(
+        '/access/current-actor',
+        await read('/access/current-actor', options),
+      ),
+    ).toEqual(date.actor);
+    expect(
+      withoutGrantsList(
+        '/access/current-actor',
+        await read('/access/current-actor', {
+          companyId,
+          identity: fixtureHeaders(date.probeHeaders),
+        }),
+      ),
     ).toEqual(date.probeActor);
     const cases = fixtureObjects(date.cases);
     expect(cases).toHaveLength(12);
