@@ -350,17 +350,9 @@ export function privateModules(root) {
           );
         metadata.push([relative(root, path), `link:${relative(root, target)}`]);
       } else if (entry.isDirectory()) visit(path);
-      else if (
-        entry.isFile() &&
-        ([
-          '.modules.yaml',
-          '.pnpm-workspace-state-v1.json',
-          'lock.yaml',
-        ].includes(entry.name) ||
-          dirname(path).endsWith(`${sep}.bin`))
-      )
+      else if (entry.isFile())
         metadata.push([relative(root, path), hash(readFileSync(path))]);
-      else if (!entry.isFile())
+      else
         throw new PreparationError(
           'Unsupported file type in dependency installation.',
         );

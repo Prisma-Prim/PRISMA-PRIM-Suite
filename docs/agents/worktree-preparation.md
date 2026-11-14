@@ -22,7 +22,7 @@ Private home/cache/state directories and technical qualification hashes live und
 
 ## Reruns and changed inputs
 
-Qualification covers the actual manifests, lockfile, workspace/configuration, patches, local dependency contents, runtime/tool identity, environment/configuration fingerprints and mutable installation metadata. A matching commit alone is insufficient. Local dependency paths must stay inside the target; source links and external local dependencies are conservatively refused. Dynamic pnpm hooks cannot qualify for automatic reuse.
+Qualification covers the actual manifests, lockfile, workspace/configuration, patches, local dependency contents, runtime/tool identity, environment/configuration fingerprints and installed-file names and bytes, including mutable metadata. A missing or altered package file prevents ready reuse even when tracked source is unchanged. Added internal aliases also change the installation inventory and need explicit refresh before reuse. A matching commit alone is insufficient. Local dependency paths must stay inside the target; source links and external local dependencies are conservatively refused. Dynamic pnpm hooks cannot qualify for automatic reuse.
 
 If inputs or installation are changed or unknown, stop consumers and explicitly authorize a private frozen preparation:
 
@@ -37,6 +37,8 @@ The lock coordinates preparations, not arbitrary commands run manually in the sa
 ## Contention and interruption
 
 Two callers for one canonical target serialize before worktree creation; the second can reuse the first's successful result. Different target locks permit concurrent installations through the official store. `--wait-ms N` bounds lock waiting (default 120000, maximum 600000); zero refuses contention immediately. Lock age is never proof of abandonment.
+
+An owner may release its lock between a contender's failed acquisition and directory inspection. That disappearance retries acquisition within the original wait budget; it does not replace ownership checks or grant an installation permission by itself.
 
 An atomic owner record stores a generated token, opaque host identity, PID and idle/launching/running phase. Launch intent is durable before spawn; the running phase records the owned child group. Only that owner's filenames are removed, followed by removal of an empty directory. Recovery never recursively deletes a lock, steals live ownership or removes another process's resources.
 

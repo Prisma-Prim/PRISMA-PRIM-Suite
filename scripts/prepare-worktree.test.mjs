@@ -12,8 +12,10 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   watch,
   writeFileSync,
 } from 'node:fs';
@@ -34,7 +36,7 @@ function git(cwd, ...args) {
   }).trim();
 }
 
-function fixture() {
+function fixture({ workspaceDependency = true } = {}) {
   const parent = mkdtempSync(join(temporary, 'case-'));
   const repo = join(parent, 'repo');
   mkdirSync(repo);
@@ -71,7 +73,10 @@ function fixture() {
     '#!/usr/bin/env node\nconsole.log("synthetic");\n',
   );
   chmodSync(join(repo, 'packages/dependency/bin.cjs'), 0o755);
-  file('pnpm-workspace.yaml', 'packages:\n  - packages/*\n');
+  file(
+    'pnpm-workspace.yaml',
+    workspaceDependency ? 'packages:\n  - packages/*\n' : 'packages: []\n',
+  );
   file('.node-version', '24\n');
   file('.gitignore', 'node_modules/\n.pnpm-home/\n');
   file('.gitattributes', '* text=auto eol=lf\n*.sh text eol=lf\n');
@@ -907,8 +912,122 @@ test('fully internal hardlinks remain private and can reuse qualification', () =
     join(f.target, 'node_modules/synthetic-dependency/index.cjs'),
     join(f.target, 'node_modules/internal.cjs'),
   );
+  const refreshed = prepare(f, ['--refresh']);
+  assert.equal(refreshed.status, 0, refreshed.stderr);
+  assert.equal(JSON.parse(refreshed.stdout).status, 'prepared');
   const result = prepare(f);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).status, 'ready');
-  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\ninstalled\n');
 });
+
+for (const damage of ['deletion', 'corruption']) {
+  test(`ordinary package ${damage} cannot reuse a ready qualification`, () => {
+    const f = fixture({ workspaceDependency: false });
+    assert.equal(prepare(f).status, 0);
+    const installed = realpathSync(
+      join(f.target, 'node_modules/synthetic-dependency/index.cjs'),
+    );
+    assert.match(installed.replaceAll('\\', '/'), /\/node_modules\/\.pnpm\//u);
+    unlinkSync(installed);
+    if (damage === 'corruption')
+      writeFileSync(installed, 'throw new Error("synthetic corruption");\n');
+    const importing = spawnSync(
+      process.execPath,
+      ['--eval', 'require("synthetic-dependency")'],
+      { cwd: f.target, encoding: 'utf8' },
+    );
+    assert.notEqual(importing.status, 0);
+    assert.equal(git(f.target, 'status', '--porcelain'), '');
+    const again = prepare(f);
+    assert.equal(again.status, 2, again.stderr);
+    assert.match(again.stderr, /--refresh/u);
+    assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+  });
+}
+
+for (const releaseAt of ['rename failure', 'lock stat']) {
+  test(`a contended lock disappears after ${releaseAt} and the public CLI retries`, async (t) => {
+    const f = fixture();
+    const gate = join(f.parent, 'gate');
+    const paused = join(f.parent, 'paused');
+    const resumed = join(f.parent, 'resumed');
+    mkdirSync(gate);
+    f.environment = {
+      PREP_TEST_GATE: gate,
+      PAUSED: paused,
+      RESUMED: resumed,
+      RELEASE_AT: releaseAt,
+    };
+    const entered = fileAppears(join(gate, 'worktree.entered'), t);
+    const owner = worker(t, f);
+    await entered;
+    const contenderFile = join(f.parent, 'contender.mjs');
+    // Only pause scheduling after actual filesystem contention. Both workers
+    // run the public CLI; no filesystem result or owner state is fabricated.
+    writeFileSync(
+      contenderFile,
+      `import fs from 'node:fs';
+import { basename } from 'node:path';
+import { syncBuiltinESMExports } from 'node:module';
+const rename = fs.renameSync; const stat = fs.lstatSync;
+let contended = false; let paused = false;
+function pause() {
+  if (paused) return;
+  paused = true;
+  fs.writeFileSync(process.env.PAUSED + '.pending', 'paused');
+  rename(process.env.PAUSED + '.pending', process.env.PAUSED);
+  const memory = new Int32Array(new SharedArrayBuffer(4));
+  while (!fs.existsSync(process.env.RESUMED)) Atomics.wait(memory, 0, 0, 10);
+}
+fs.renameSync = function(...args) {
+  try { return rename.apply(this, args); }
+  catch (error) {
+    if (basename(String(args[1])) === 'lock' && ['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(error.code)) {
+      contended = true;
+      if (process.env.RELEASE_AT === 'rename failure') pause();
+    }
+    throw error;
+  }
+};
+fs.lstatSync = function(...args) {
+  if (contended && !paused && basename(String(args[0])) === 'lock' && process.env.RELEASE_AT === 'lock stat') pause();
+  return stat.apply(this, args);
+};
+syncBuiltinESMExports();
+process.argv[1] = ${JSON.stringify(command)};
+await import(${JSON.stringify(new URL('./prepare-worktree.mjs', import.meta.url).href)});`,
+    );
+    const reached = fileAppears(paused, t);
+    const contender = fork(contenderFile, argumentsFor(f).slice(1), {
+      cwd: f.repo,
+      env: {
+        ...process.env,
+        ...f.environment,
+        PREP_TEST_COUNTER: f.counter,
+      },
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    });
+    const closed = once(contender, 'close');
+    let stdout = '';
+    let stderr = '';
+    contender.stdout.on('data', (value) => (stdout += value));
+    contender.stderr.on('data', (value) => (stderr += value));
+    t.after(() => {
+      writeFileSync(resumed, 'resume');
+      writeFileSync(join(gate, 'release'), 'release');
+      if (contender.exitCode === null && contender.signalCode === null)
+        contender.kill('SIGKILL');
+    });
+    await reached;
+    writeFileSync(join(gate, 'release'), 'release');
+    assert.equal((await owner.done).status, 0);
+    const states = join(f.repo, '.git/agent-preparation');
+    const lock = join(states, readdirSync(states)[0], 'lock');
+    assert.equal(existsSync(lock), false);
+    writeFileSync(resumed, 'resume');
+    assert.equal((await closed)[0], 0, stderr);
+    assert.equal(JSON.parse(stdout).status, 'ready');
+    assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+  });
+}

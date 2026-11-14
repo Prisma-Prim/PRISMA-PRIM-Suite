@@ -270,17 +270,22 @@ export async function acquirePreparationLock({ directory, waitMilliseconds }) {
           },
         };
       } catch (error) {
-        if (
-          !['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(error.code) ||
-          !existsSync(lock)
-        )
+        if (!['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(error.code))
           throw error;
       }
       let files;
-      if (
-        existsSync(lock) &&
-        (!lstatSync(lock).isDirectory() || lstatSync(lock).isSymbolicLink())
-      )
+      let directoryStat;
+      try {
+        directoryStat = lstatSync(lock);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        if (Date.now() >= deadline)
+          throw new PreparationError(
+            'Worktree preparation is already active or ownership is unresolved. Retry after its owner finishes; no live lock was stolen.',
+          );
+        continue;
+      }
+      if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink())
         throw new PreparationError(
           'Lock directories cannot be links or foreign files.',
         );
