@@ -989,7 +989,7 @@ describe.skipIf(!databaseUrl)(
         `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'`,
       );
       const definition = string(result.rows[0]?.definition);
-      // Represent unknown legacy input at its persisted boundary; restore the exact constraint afterward.
+      // Represent unknown stored versions at their persisted boundary; restore the exact constraint afterward.
       await harness.pool.query(
         'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
       );

@@ -928,9 +928,9 @@ describe.skipIf(!databaseUrl)(
           })
         ).id,
       );
-      // Controlled legacy duplicate fixture; the governed union itself uses REST.
+      // Controlled historical duplicate fixture; the governed union itself uses REST.
       await harness.pool.query(
-        "UPDATE client_accounts SET tax_id='STAGE-687-LEGACY' WHERE id=ANY($1::uuid[])",
+        "UPDATE client_accounts SET tax_id='STAGE-687-DUPLICATE' WHERE id=ANY($1::uuid[])",
         [[clientId, second]],
       );
       const review = await command(`/clients/${clientId}/union-reviews`, {});
@@ -949,7 +949,7 @@ describe.skipIf(!databaseUrl)(
           },
           companyIds: [companyId],
           reviewedDifferences: true,
-          reason: 'Legacy duplicate identity.',
+          reason: 'Historical duplicate identity.',
         },
       );
       const before = await stageCounts();

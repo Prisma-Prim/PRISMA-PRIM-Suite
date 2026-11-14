@@ -23,7 +23,7 @@ describe.skipIf(!databaseUrl)(
     beforeEach(async () => {
       await fixture.reset();
     });
-    it('qualifies the chosen model and exact Version without changing the legacy catalogue', async () => {
+    it('qualifies the chosen model and exact Version without changing the four-Task illustrative catalogue', async () => {
       const catalogue = await fixture.read(
         `/project-templates?templateKey=${pilotKey}`,
       );
@@ -218,7 +218,7 @@ describe.skipIf(!databaseUrl)(
         ).rows,
       ).toEqual([{ plans: 1, copies: 13, tasks: 13 }]);
     });
-    it('keeps captured v1 legacy-only until explicit revoke and regrant captures v2', async () => {
+    it('keeps captured v1 limited to the four-Task template until explicit revoke and regrant captures v2', async () => {
       // Historical captured grant is setup data; all qualification and upgrade are public commands.
       await fixture.harness.pool.query(
         "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle='company_project_template_user'",
@@ -741,7 +741,7 @@ describe.skipIf(!databaseUrl)(
       },
     );
 
-    it('keeps the primary source and copy independent of later legacy title publication', async () => {
+    it('keeps the primary source and copy independent of later four-Task title publication', async () => {
       const project = await fixture.command(
           '/projects/from-template',
           fixture.intent(),
@@ -790,7 +790,7 @@ describe.skipIf(!databaseUrl)(
       );
       // A historical duplicate is fixture input; governed reconciliation uses REST.
       await fixture.harness.pool.query(
-        "UPDATE client_accounts SET tax_id='PILOT-LEGACY-DEMO' WHERE id=ANY($1::uuid[])",
+        "UPDATE client_accounts SET tax_id='PILOT-DUPLICATE-DEMO' WHERE id=ANY($1::uuid[])",
         [[fixture.clientId, second]],
       );
       const review = await fixture.command(

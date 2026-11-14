@@ -448,7 +448,7 @@ withPostgres('Company mission plans through public REST', () => {
       ).status,
     ).toBe(409);
   });
-  it('refuses Project intent collisions in both directions while preserving manual and legacy receipts', async () => {
+  it('refuses Project intent collisions in both directions while preserving manual and four-Task illustrative receipts', async () => {
     const v = await setup();
     const manual = { title: 'Shared Project', clientAccountId: f.clientId };
     const project = await f.command('/projects', manual, { key: 'manual' });
@@ -476,22 +476,24 @@ withPostgres('Company mission plans through public REST', () => {
         })
       ).status,
     ).toBe(409);
-    const legacy = f.intent({
+    const illustrative = f.intent({
       title: manual.title,
       templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
     });
-    const old = await f.command('/projects/from-template', legacy, {
-      key: 'legacy',
+    const old = await f.command('/projects/from-template', illustrative, {
+      key: 'illustrative',
     });
     expect(
-      await f.command('/projects/from-template', legacy, { key: 'legacy' }),
+      await f.command('/projects/from-template', illustrative, {
+        key: 'illustrative',
+      }),
     ).toEqual(old);
     expect(
       (
         await f.request('/projects/from-mission-plan', {
           method: 'POST',
           body: creation(v, manual),
-          key: 'legacy',
+          key: 'illustrative',
         })
       ).status,
     ).toBe(409);
@@ -499,7 +501,7 @@ withPostgres('Company mission plans through public REST', () => {
       (
         await f.request('/projects/from-template', {
           method: 'POST',
-          body: legacy,
+          body: illustrative,
           key: 'new-copy',
         })
       ).status,

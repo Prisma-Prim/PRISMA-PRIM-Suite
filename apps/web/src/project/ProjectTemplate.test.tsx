@@ -365,7 +365,7 @@ it('lets a source-only v2 reader inspect the pilot before creation and preserves
     'CONSULTING_MISSION_PILOT_ILLUSTRATIVE:1',
   );
   expect(await screen.findByText('Certificare obținută')).toBeVisible();
-  const legacyReader: ActorContext = {
+  const v1Reader: ActorContext = {
     ...reader,
     activeCompany: reader.activeCompany
       ? {
@@ -382,7 +382,7 @@ it('lets a source-only v2 reader inspect the pilot before creation and preserves
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
       <ProjectTemplateConfiguration
-        actor={legacyReader}
+        actor={v1Reader}
         identity={replacementIdentity}
       />
     </InterfaceLocaleProvider>,

@@ -6,9 +6,9 @@ import {
   CONSULTING_MISSION_PILOT_V1,
 } from './project-pilot-plan.definition.js';
 
-export const LEGACY_TEMPLATE_KEY = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
+export const ILLUSTRATIVE_TEMPLATE_KEY = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
 export type ProjectTemplateKey =
-  typeof LEGACY_TEMPLATE_KEY | typeof PILOT_TEMPLATE_KEY;
+  typeof ILLUSTRATIVE_TEMPLATE_KEY | typeof PILOT_TEMPLATE_KEY;
 
 export interface ProjectTemplateTaskDefinition {
   readonly key: string;
@@ -20,8 +20,8 @@ export interface ProjectTemplateStageDefinition {
   readonly title: string;
   readonly tasks: readonly ProjectTemplateTaskDefinition[];
 }
-export interface LegacyProjectTemplateVersion {
-  readonly templateKey: typeof LEGACY_TEMPLATE_KEY;
+export interface IllustrativeProjectTemplateVersion {
+  readonly templateKey: typeof ILLUSTRATIVE_TEMPLATE_KEY;
   readonly version: number;
   readonly title: string;
   readonly illustrative: true;
@@ -41,11 +41,11 @@ export interface ProjectPilotPlanVersion {
   readonly activities: readonly ProjectPilotActivity[];
 }
 export type ProjectTemplateVersion =
-  LegacyProjectTemplateVersion | ProjectPilotPlanVersion;
+  IllustrativeProjectTemplateVersion | ProjectPilotPlanVersion;
 export function isProjectTemplateKey(
   value: unknown,
 ): value is ProjectTemplateKey {
-  return value === LEGACY_TEMPLATE_KEY || value === PILOT_TEMPLATE_KEY;
+  return value === ILLUSTRATIVE_TEMPLATE_KEY || value === PILOT_TEMPLATE_KEY;
 }
 export function templateTasks(source: ProjectTemplateVersion) {
   return source.templateKey === PILOT_TEMPLATE_KEY
@@ -55,7 +55,7 @@ export function templateTasks(source: ProjectTemplateVersion) {
 
 /** Approved illustrative business content; interface locale never rewrites it. */
 export const CONSULTING_PREPARATION_V1 = {
-  templateKey: LEGACY_TEMPLATE_KEY,
+  templateKey: ILLUSTRATIVE_TEMPLATE_KEY,
   version: 1,
   title: 'Préparation d’une mission de conseil',
   illustrative: true,
@@ -94,8 +94,8 @@ export const CONSULTING_PREPARATION_V1 = {
 /** Compatibility concerns the preserved model structure, independently of editable Task titles. */
 export function isCompatibleIllustrativeTemplate(
   source: ProjectTemplateVersion,
-): source is LegacyProjectTemplateVersion {
-  if (source.templateKey !== LEGACY_TEMPLATE_KEY) return false;
+): source is IllustrativeProjectTemplateVersion {
+  if (source.templateKey !== ILLUSTRATIVE_TEMPLATE_KEY) return false;
   const baseline = CONSULTING_PREPARATION_V1;
   return (
     source.templateKey === baseline.templateKey &&
@@ -161,7 +161,7 @@ export function readTemplateSnapshot(value: unknown): ProjectTemplateVersion {
       'illustrative',
       'stages',
     ]) ||
-    value.templateKey !== LEGACY_TEMPLATE_KEY ||
+    value.templateKey !== ILLUSTRATIVE_TEMPLATE_KEY ||
     !Number.isInteger(value.version) ||
     typeof value.version !== 'number' ||
     value.version < 1 ||

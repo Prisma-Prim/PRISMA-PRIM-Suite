@@ -147,7 +147,7 @@ withPostgres('Configured mission current work through public REST', () => {
     });
   });
 
-  it('distinguishes legitimate manual, legacy and pilot absence from base refusal, malformed requests and missing scoped targets', async () => {
+  it('distinguishes legitimate manual, four-Task illustrative and pilot absence from base refusal, malformed requests and missing scoped targets', async () => {
     expect(
       (
         await f.request(
@@ -171,12 +171,12 @@ withPostgres('Configured mission current work through public REST', () => {
       title: 'Manual',
       clientAccountId: f.clientId,
     });
-    const legacy = await f.command(
+    const illustrative = await f.command(
       '/projects/from-template',
       f.intent({ templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE' }),
     );
     const pilot = await f.command('/projects/from-template', f.intent());
-    for (const project of [manual, legacy, pilot])
+    for (const project of [manual, illustrative, pilot])
       expect(
         await f.read(`/projects/${text(project.id)}/mission-plan/current-work`),
       ).toEqual({ overview: null });

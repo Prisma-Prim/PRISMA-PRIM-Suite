@@ -17,9 +17,9 @@ import {
 import {
   readTemplateCataloguePage,
   readTemplatePublication,
-  type LegacyTemplateVersion,
+  type IllustrativeTemplateVersion,
   type TemplateSelection,
-  legacyTemplateKey,
+  illustrativeTemplateKey,
 } from './project-template-response';
 import { useProjectTemplateVersionCopy } from './project-template-version.copy';
 import './project-template-configuration.css';
@@ -35,7 +35,7 @@ type Props = {
 };
 type Read =
   | { kind: 'loading' | 'error' | 'denied' }
-  | { kind: 'ready'; source: LegacyTemplateVersion; drafts: string[] };
+  | { kind: 'ready'; source: IllustrativeTemplateVersion; drafts: string[] };
 type Command = { body: string; key: string; sourceVersion: number };
 type Mutation =
   | { kind: 'idle' | 'invalid' | 'stale' | 'keyConflict' }
@@ -192,7 +192,7 @@ function ConfigurationSection({
       const source = catalogue?.templates.find(
         (template) => template.version === catalogue.headVersion,
       );
-      if (!source || source.templateKey !== legacyTemplateKey) {
+      if (!source || source.templateKey !== illustrativeTemplateKey) {
         setRead({ kind: 'error' });
         return;
       }

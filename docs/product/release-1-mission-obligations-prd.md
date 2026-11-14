@@ -414,7 +414,7 @@ nothing and is useful before any later mission-governance mutation exists.
 Use only `CONSULTING_MISSION_PILOT_ILLUSTRATIVE` Version 1 and its complete frozen
 copy/mapping from §28. The view neither creates another Project/Task nor edits
 the copy, source, Contract, result, stage, lifecycle, receipt or Activity Log.
-Existing manual and legacy two-stage/four-Task Projects return no assessment and
+Manual and illustrative two-stage/four-Task Projects return no assessment and
 retain their current behavior. Unknown/corrupt source or incomplete mapping is
 an error, not a valid empty assessment or an inferred current source.
 
@@ -496,7 +496,7 @@ Project workspace's orchestration logic.
 The public PostgreSQL REST seam proves exact thirteen-source/Task mapping,
 open/done/cancelled and readable-empty/readable-result/unavailable distinctions,
 the mandatory pending-certification marker, reload after Task/result changes,
-source immutability, legitimate legacy/no-plan null, malformed identifiers,
+source immutability, legitimate illustrative/no-plan null, malformed identifiers,
 Company/Workspace and captured-authority refusal, no side effects and history
 after closure/original Client supersession under current read rules. A later
 official designation preserves the exact recorded Version/PDF; no evidence is
@@ -555,7 +555,7 @@ without requiring Reviewer. The new role adds no ability to read a source.
 
 Only the exact preserved Version 1 pilot and all thirteen unambiguous mapped Tasks are
 eligible. No title join, latest-template lookup, subset model or manually created
-Task becomes a source activity. No-plan/compatible legacy returns `review: null`;
+Task becomes a source activity. No-plan/compatible illustrative four-Task Projects return `review: null`;
 unknown/corrupt mappings are errors. New review requires an open Project, active
 original Client relationship and selected Tasks done. Closed/superseded-original
 contexts retain current-authorized history and committed confirmation only.
@@ -828,7 +828,7 @@ mapped Task. Derive these on the server; do not join titles, use today's catalog
 retarget a canonical Client or enroll a Company-configured plan. All thirteen
 rows must be valid and one-to-one even though each command selects exactly one.
 Extra Tasks do not become activities. Unknown/corrupt/incomplete mappings fail
-as errors; legitimate no-plan/manual/legacy copies return unsupported reads.
+as errors; legitimate no-plan/manual/illustrative copies return unsupported reads.
 
 One Project-local applicability stream starts at revision 0. Each material fact
 advances it once, with a positive signed-32-bit revision, immutable ID, previous
@@ -1087,7 +1087,7 @@ transition. There is no generic Activity-read expansion.
 
 The runtime must build a genuine immediate-predecessor database using all
 migrations before its new additive migration, populate representative open/closed,
-manual/legacy/pilot/configured Projects with old source mappings, Task/result/review/
+manual/illustrative/pilot/configured Projects with old source mappings, Task/result/review/
 PDF history, receipts/events and active/revoked captures, then upgrade and repeat
 upgrade. Compare exact old IDs, values, versions/timestamps, fingerprint/receipt
 JSON, events and PDF hashes. No old row, bundle/capture, permission, receipt,
@@ -1162,7 +1162,7 @@ App/admin parent lifetimes, not just a child remount or permission-string compar
    actor/capture/time, no Task/result/review/source/lifecycle mutation and the
    unconditional certification-pending marker, including CT_AN13 exclusion.
 2. Prove closed grammar/text bounds/Unicode, malformed route/key/query, unsupported
-   legacy/manual/configured versus corrupt copies, wrong predecessor/target,
+   illustrative/manual/configured versus corrupt copies, wrong predecessor/target,
    revision exhaustion, current versus stale Task/result/lifecycle/applicability,
    exact/changed-key/action/target/Company replay, new-key unchanged and correction-
    reason-only no-op. Replay after later writes/closure/Client supersession must

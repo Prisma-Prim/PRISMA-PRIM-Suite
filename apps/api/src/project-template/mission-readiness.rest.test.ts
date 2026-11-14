@@ -105,20 +105,20 @@ describe.skipIf(!databaseUrl)(
       const response = await fixture.call(`/projects/${id}/mission-readiness`);
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ assessment: null });
-      const legacy = await fixture.call('/projects/from-template', {
+      const illustrative = await fixture.call('/projects/from-template', {
         method: 'POST',
         body: {
           clientAccountId: clientId,
-          title: 'Legacy DEMO',
+          title: 'Illustrative DEMO',
           templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
           templateVersion: 1,
         },
       });
-      expect(legacy.status).toBe(201);
+      expect(illustrative.status).toBe(201);
       expect(
         await json(
           await fixture.call(
-            `/projects/${text((await json(legacy)).id)}/mission-readiness`,
+            `/projects/${text((await json(illustrative)).id)}/mission-readiness`,
           ),
         ),
       ).toEqual({ assessment: null });
@@ -308,7 +308,7 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
-    it('refuses captured legacy access and corrupt mappings instead of empty success', async () => {
+    it('refuses captured v1 access and corrupt mappings instead of empty success', async () => {
       const { projectId } = await prepare();
       const path = `/projects/${projectId}/mission-readiness`;
       await fixture.pool.query(
