@@ -2,7 +2,6 @@ import { expect, it } from 'vitest';
 import {
   readContractQualityRun,
   readContractQualityHistory,
-  readRecordedContractQualityRun,
   type ContractQualityRunBinding,
 } from './contract-quality-response';
 const run = {
@@ -44,13 +43,19 @@ it('validates complete exact-version attribution and runtime applicability', () 
 it('accepts rule set v2 with the v1 codes and severities only where the version binds it', () => {
   const adjusted = { ...run, ruleSetVersion: 2 };
   expect(readContractQualityRun(adjusted, v2)).toEqual(adjusted);
-  expect(readRecordedContractQualityRun(adjusted, v2)).toEqual(adjusted);
-  // A new, approval or signature run names exactly the bound rule set.
   expect(() => readContractQualityRun(adjusted, v1)).toThrow();
+});
+it('refuses a v1 run on a version bound to rule set v2, an earlier shape, alone or in history', () => {
   expect(() => readContractQualityRun(run, v2)).toThrow();
-  // An older v1 run may predate v2 on an adjusted version; never the reverse.
-  expect(readRecordedContractQualityRun(run, v2)).toEqual(run);
-  expect(() => readRecordedContractQualityRun(adjusted, v1)).toThrow();
+  expect(() =>
+    readContractQualityHistory(
+      {
+        items: [{ ...run, id: 'run-two', ruleSetVersion: 2 }, run],
+        nextCursor: null,
+      },
+      v2,
+    ),
+  ).toThrow();
 });
 it.each([
   { ...run, ruleSet: 'UNKNOWN' },
@@ -80,7 +85,6 @@ it.each([
   },
 ])('rejects malformed or unknown run evidence', (value) => {
   expect(() => readContractQualityRun(value, v1)).toThrow();
-  expect(() => readRecordedContractQualityRun(value, v2)).toThrow();
 });
 it('rejects unbounded, duplicate, cursor-mismatched or unbound history pages', () => {
   expect(
@@ -89,12 +93,15 @@ it('rejects unbounded, duplicate, cursor-mismatched or unbound history pages', (
   expect(
     readContractQualityHistory(
       {
-        items: [{ ...run, id: 'run-two', ruleSetVersion: 2 }, run],
+        items: [
+          { ...run, id: 'run-two', ruleSetVersion: 2 },
+          { ...run, ruleSetVersion: 2 },
+        ],
         nextCursor: null,
       },
       v2,
     ).items.map((item) => item.ruleSetVersion),
-  ).toEqual([2, 1]);
+  ).toEqual([2, 2]);
   for (const page of [
     { items: [run, run], nextCursor: null },
     { items: Array.from({ length: 26 }, () => run), nextCursor: null },

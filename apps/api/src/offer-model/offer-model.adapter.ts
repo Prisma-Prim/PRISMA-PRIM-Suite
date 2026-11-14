@@ -48,7 +48,6 @@ export const OFFER_MODEL = companyModelKind({
     commands: offerModelCommands,
   },
   fields: offerModelFields,
-  parsedIntentReceipts: false,
   authority: 'offerModel',
   selection: {
     kind: 'APPROVED_COMPANY_OFFER_MODEL',

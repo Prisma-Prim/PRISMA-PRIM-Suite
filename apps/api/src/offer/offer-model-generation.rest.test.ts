@@ -1181,6 +1181,70 @@ withPostgres('Approved-model Offer generation public REST', () => {
     });
   });
 
+  // A generation recorded before #1191 named no approval, so its receipt
+  // fingerprints a body without `modelApprovalDecisionId`. That receipt is an
+  // earlier shape: its retry is refused like any body without the approval.
+  it('refuses the retry of a generation recorded without its model approval instead of replaying the receipt', async () => {
+    const source = await prepareGeneratedOfferSource(fixture);
+    const command = {
+      path: `/offers/opportunities/${source.opportunityId}/from-approved-model`,
+      companyId: source.companyId,
+      headers: ESTIMATE_OFFER_PREPARER,
+    };
+    const intent = generatedOfferIntent(source);
+    const created = await fixture.command({
+      ...command,
+      key: 'generation-with-approval',
+      body: intent,
+    });
+    const unnamed = Object.fromEntries(
+      Object.entries(intent).filter(
+        ([field]) => field !== 'modelApprovalDecisionId',
+      ),
+    );
+    await fixture.pool.query(
+      `INSERT INTO offer_commands (workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_offer_id,kind,result_version_id,result_offer_revision,created_at)
+      SELECT workspace_id,company_id,actor_workspace_membership_id,$2,$3,opportunity_id,result_offer_id,kind,result_version_id,result_offer_revision,created_at FROM offer_commands WHERE company_id=$1 AND idempotency_key='generation-with-approval'`,
+      [
+        source.companyId,
+        'generation-without-approval',
+        commandFingerprint({
+          kind: 'CREATE_MODEL_OFFER',
+          opportunityId: source.opportunityId,
+          payload: unnamed,
+        }),
+      ],
+    );
+    const effects = () =>
+      fixture.pool.query(
+        'SELECT (SELECT count(*) FROM offers)::int AS offers,(SELECT count(*) FROM offer_versions)::int AS versions,(SELECT count(*) FROM offer_commands)::int AS receipts,(SELECT count(*) FROM offer_events)::int AS events',
+      );
+    const before = (await effects()).rows;
+    const refused = await fixture.post({
+      ...command,
+      key: 'generation-without-approval',
+      body: unnamed,
+    });
+    expect({
+      status: refused.status,
+      body: await refused.json(),
+    }).toMatchObject({
+      status: 400,
+      body: {
+        code: 'OFFER_VALIDATION_ERROR',
+        field: 'modelApprovalDecisionId',
+      },
+    });
+    expect((await effects()).rows).toEqual(before);
+    expect(
+      await fixture.command({
+        ...command,
+        key: 'generation-with-approval',
+        body: intent,
+      }),
+    ).toEqual(created);
+  });
+
   it('rejects forged frozen-source/declaration/representation combinations and all in-place content changes in PostgreSQL', async () => {
     const source = await prepareGeneratedOfferSource(fixture);
     const created = responseRecord(

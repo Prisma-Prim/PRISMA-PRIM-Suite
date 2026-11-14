@@ -13,7 +13,6 @@ import {
 import {
   readContractQualityRun,
   readContractQualityHistory,
-  readRecordedContractQualityRun,
   type ContractQualityRunBinding,
   type ContractQualityRunView,
 } from './contract-quality-response';
@@ -142,11 +141,7 @@ export function ContractQualityPanel({
         if (action.kind === 'history')
           setHistory(readContractQualityHistory(result.value, binding));
         else {
-          // A new run names the bound rule set; a reopened run may predate v2.
-          const recorded =
-            action.kind === 'run'
-              ? readContractQualityRun(result.value, binding)
-              : readRecordedContractQualityRun(result.value, binding);
+          const recorded = readContractQualityRun(result.value, binding);
           if (action.kind === 'reopen' && recorded.id !== action.id)
             throw new Error('Mismatched Contract run.');
           setRun(recorded);

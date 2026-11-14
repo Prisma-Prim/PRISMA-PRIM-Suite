@@ -50,38 +50,22 @@ export interface ContractQualityRunBinding {
   addendum?: ContractQualityContext;
   ruleSetVersion: ContractQualityRuleSetVersion;
 }
-/** A new run, an approval run or a signature run names the bound rule set. */
+/** A new, recorded, approval or signature run names the bound rule set. */
 export function readContractQualityRun(
   value: unknown,
-  binding: ContractQualityRunBinding,
-): ContractQualityRunView {
-  return readRun(value, binding, [binding.ruleSetVersion]);
-}
-/**
- * A recorded run may also predate rule set v2: a pending version bound to v2
- * keeps its earlier v1 runs unchanged. A v1-bound version never names v2.
- */
-export function readRecordedContractQualityRun(
-  value: unknown,
-  binding: ContractQualityRunBinding,
-): ContractQualityRunView {
-  return readRun(
-    value,
-    binding,
-    binding.ruleSetVersion === 2 ? [1, 2] : [binding.ruleSetVersion],
-  );
-}
-function readRun(
-  value: unknown,
-  { versionId, termEndsOn, addendum }: ContractQualityRunBinding,
-  accepted: readonly ContractQualityRuleSetVersion[],
+  {
+    versionId,
+    termEndsOn,
+    addendum,
+    ruleSetVersion: bound,
+  }: ContractQualityRunBinding,
 ): ContractQualityRunView {
   const input = object(value);
   const ruleSetVersion = input.ruleSetVersion;
   if (
     input.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
     !isContractQualityRuleSetVersion(ruleSetVersion) ||
-    !accepted.includes(ruleSetVersion) ||
+    ruleSetVersion !== bound ||
     input.contractVersionId !== versionId ||
     !Array.isArray(input.results)
   )
@@ -165,7 +149,7 @@ export function readContractQualityHistory(
   )
     throw new Error('Invalid Contract Quality Check history.');
   const items = input.items.map((item: unknown) =>
-    readRecordedContractQualityRun(item, binding),
+    readContractQualityRun(item, binding),
   );
   if (
     new Set(items.map((item) => item.id)).size !== items.length ||

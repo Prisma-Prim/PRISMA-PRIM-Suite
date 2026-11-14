@@ -464,9 +464,8 @@ export class ContractVersionReader {
             opportunityId: contract.opportunityId,
             contractVersionId: version.id,
           });
-    // Approval and signature runs use the rule set bound to the immutable
-    // Snapshot. Only an older run recorded before rule set v2 existed may name
-    // version 1 on a version bound to version 2; nothing else is readable.
+    // Every run, approval and signature runs included, uses the rule set bound
+    // to the immutable Snapshot; a run under another rule set is unreadable.
     const qualityRuleSetVersion = contractQualityRuleSetVersion(
       pricingSnapshot,
       contract.origin,
@@ -478,11 +477,10 @@ export class ContractVersionReader {
       [
         decision?.kind === 'APPROVE' ? decision.qualityRun : null,
         signature?.qualityRun ?? null,
+        latestQualityRun,
       ].some(
         (run) => run !== null && run.ruleSetVersion !== qualityRuleSetVersion,
-      ) ||
-      (latestQualityRun !== null &&
-        latestQualityRun.ruleSetVersion > qualityRuleSetVersion)
+      )
     )
       throw new Error(
         'A stored Contract run does not match its bound rule set.',

@@ -5474,20 +5474,6 @@ describe('ContractPanel', () => {
         screen.queryByText(/references an adjusted Pricing Snapshot/u),
       ).not.toBeInTheDocument();
     });
-    it('keeps an older v1 run readable on a pending version bound to v2', async () => {
-      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
-      const stored = adjustedFixture();
-      renderStored({
-        ...stored,
-        version: { ...stored.version, latestQualityRun: qualityRun() },
-      });
-      const checks = await screen.findByRole('region', {
-        name: 'Contract Quality Checks',
-      });
-      expect(
-        within(checks).getByText('CONTRACT_QUALITY_ILLUSTRATIVE v1'),
-      ).toBeVisible();
-    });
     it.each([
       [
         'an unadjusted version that claims v2',
@@ -5528,6 +5514,16 @@ describe('ContractPanel', () => {
           version: {
             ...fixture().version,
             latestQualityRun: { ...qualityRun(), ruleSetVersion: 2 },
+          },
+        },
+      ],
+      [
+        'a v1 run on a pending version bound to v2, an earlier shape',
+        {
+          ...adjustedFixture(),
+          version: {
+            ...adjustedFixture().version,
+            latestQualityRun: qualityRun(),
           },
         },
       ],
