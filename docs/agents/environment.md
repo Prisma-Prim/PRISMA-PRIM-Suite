@@ -150,7 +150,7 @@ node scripts/managed-postgres.mjs -- corepack pnpm --filter @prisma-prim/api exe
 
 On 2026-11-07 an environment-check task in that environment ran these three commands with exit code 0: every doctor check passed, the migrations applied, and the 16 Company REST tests passed. The `ERROR … forced Company Activity Log failure` that the last command prints comes from a test that forces that failure on purpose.
 
-To run one acceptance journey with its screenshots and traces, follow the [verify skill](../../.agents/skills/verify/SKILL.md): `node scripts/managed-postgres.mjs -- pnpm verify:journey <journey>`. No Cloud task has run it yet.
+To run one acceptance journey with its screenshots and traces, follow the [verify skill](../../.agents/skills/verify/SKILL.md): `node scripts/managed-postgres.mjs -- pnpm verify:journey <journey>`. Local output uses [private persistent storage](private-verification-evidence.md).
 
 Prove any change to the Install script in an unpublished draft before publishing it. Do not replace it with the legacy setup script below: that script installs PostgreSQL with `apt-get`, which needs root.
 

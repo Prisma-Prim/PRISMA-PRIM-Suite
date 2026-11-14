@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
+import { privateEvidencePaths } from './private-evidence.mjs';
+
 import {
   closedIssueNumbers,
   preflightAcceptanceProof,
@@ -286,6 +288,10 @@ async function main(argv) {
   const { body, context } = await (offline
     ? offlineInputs(options)
     : liveInputs(options));
+  if (privateEvidencePaths(context.changedFiles).length)
+    throw new InputError(
+      'Private evidence cannot be published; keep it outside source and remove it from the index.',
+    );
   const issues = closedIssueNumbers(body, context.repository).map(
     (number) =>
       context.issues.find((issue) => issue.number === number) ?? {

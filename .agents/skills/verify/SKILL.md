@@ -14,7 +14,7 @@ A **journey** is one `apps/web/e2e/<journey>.acceptance.spec.ts`; `pnpm verify:j
 
    The command rebuilds `apps/api/dist` and `apps/web/dist`, then runs the journey at the desktop and narrow projects, each run on a new isolated database. Run one at a time: the preview and API ports are fixed.
 
-3. Read the last stdout line, a JSON summary also saved as `summary.json` in the evidence directory (default `apps/web/test-results/journeys/<journey>-<UTC time>/`). It holds each run's status, failing tests, screenshots, traces and logs. Open the relevant screenshots before you cite them as evidence.
+3. Read the last stdout line, a JSON summary also saved as `summary.json` in the [private persistent evidence directory](../../../docs/agents/private-verification-evidence.md#local-synthetic-journeys-and-public-evidence). It holds each run's status, failing tests, screenshots, traces and logs. Open the relevant synthetic screenshots before citing them; keep raw diagnostics private.
 
 | Exit | Meaning                                                    | Next                                                                                                                         |
 | ---- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -23,4 +23,4 @@ A **journey** is one `apps/web/e2e/<journey>.acceptance.spec.ts`; `pnpm verify:j
 | 2    | Usage error                                                | The message lists the journeys and flags.                                                                                    |
 | 3    | Could not run: database, build, server start or interrupt | Read `message` and the log it names; fix the environment, not the test.                                                      |
 
-To reproduce an intermittent race, add `--repeat N` (stops at the first failing run) and `--cpu-load` (one busy thread per CPU, or `--cpu-load=THREADS`). `--output DIR` chooses a new evidence directory.
+To reproduce an intermittent race, add `--repeat N` (stops at the first failing run) and `--cpu-load` (one busy thread per CPU, or `--cpu-load=THREADS`). `--output DIR` chooses a new private evidence directory outside Git. Run directories have unique IDs; journey execution still needs exclusive use of its fixed ports.
