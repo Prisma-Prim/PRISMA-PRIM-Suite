@@ -1,9 +1,8 @@
-import { useContext, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { readAssignedTasks, type AssignedTask } from './task-response';
 import { useMyTasksCopy } from './my-tasks-localized.copy';
 import './my-tasks.css';
@@ -49,7 +48,6 @@ export function MyTasks(props: Props) {
 function AssignedTasks({ actor, identity, onOpenTask }: Props) {
   const copy = useMyTasksCopy();
   const { formatDate } = useInterfaceLocale();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const pending = useRef<AbortController | undefined>(undefined);
@@ -99,7 +97,7 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
     <section
       id="my-tasks"
       tabIndex={-1}
-      className={`my-tasks${isPrisme ? ' my-tasks--prisme' : ''}`}
+      className="my-tasks my-tasks--prisme"
       aria-labelledby={titleId}
     >
       <header className="my-tasks-heading">

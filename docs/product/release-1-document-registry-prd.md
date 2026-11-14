@@ -903,7 +903,7 @@ command receipt, association revision or Client fence changes on any outcome.
 
 ### Production interaction and lifetime
 
-In the existing Project Documents region in both frames, provide an explicit
+In the existing Project Documents region, provide an explicit
 selection panel. Existing authorized associated-Document and Version reads own
 discovery; use bounded local display windows for the existing complete Document
 response and deliberate per-Document Version loading, not a new all-Company read

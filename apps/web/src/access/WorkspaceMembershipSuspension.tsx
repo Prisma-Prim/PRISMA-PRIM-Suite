@@ -1,9 +1,8 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useWorkspaceMembershipSuspensionCopy } from './workspace-membership-suspension.copy';
 import { confirmsWorkspaceMembershipSuspension } from './workspace-membership-suspension-response';
 
@@ -39,7 +38,6 @@ export function WorkspaceMembershipSuspension({
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
   const copy = useWorkspaceMembershipSuspensionCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [state, setState] = useState<SuspensionState>({ status: 'idle' });
   const retryCommand = useRef<
@@ -187,11 +185,7 @@ export function WorkspaceMembershipSuspension({
   return (
     <section
       aria-labelledby="workspace-access-suspension-title"
-      className={
-        isPrisme
-          ? 'membership-suspension membership-suspension--prisme'
-          : undefined
-      }
+      className="membership-suspension membership-suspension--prisme"
     >
       <h3 id="workspace-access-suspension-title">{copy.title}</h3>
       <p>{copy.description}</p>
@@ -218,7 +212,7 @@ export function WorkspaceMembershipSuspension({
           />
           <button
             type="button"
-            className={isPrisme ? 'company-access-secondary-action' : undefined}
+            className="company-access-secondary-action"
             disabled={disabled || pending || !workspaceMembershipId}
             onClick={() =>
               setState({
@@ -235,9 +229,7 @@ export function WorkspaceMembershipSuspension({
         <div
           role="region"
           aria-label={copy.confirmationRegionLabel}
-          className={
-            isPrisme ? 'membership-suspension-confirmation' : undefined
-          }
+          className="membership-suspension-confirmation"
         >
           <p>
             {copy.selectedMemberLabel}: <strong>{selectedMember.label}</strong>
@@ -245,14 +237,14 @@ export function WorkspaceMembershipSuspension({
           <p>{copy.confirmation}</p>
           <button
             type="button"
-            className={isPrisme ? 'company-access-secondary-action' : undefined}
+            className="company-access-secondary-action"
             onClick={reset}
           >
             {copy.cancel}
           </button>
           <button
             type="button"
-            className={isPrisme ? 'membership-suspension-confirm' : undefined}
+            className="membership-suspension-confirm"
             onClick={() => void submit()}
           >
             {copy.confirm}

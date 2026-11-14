@@ -13,7 +13,6 @@ import {
   interfaceLocaleStorageKey,
 } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientWorkspace } from './ClientWorkspace';
 import { selectOption } from '../test/select-option';
 
@@ -139,14 +138,12 @@ function renderWorkspace(workspaceActor: ActorContext = actor) {
   return render(
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ApplicationPresentation value="prisme">
-        <ClientWorkspace
-          actor={workspaceActor}
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={vi.fn()}
-          onActivityRecorded={vi.fn(async () => undefined)}
-        />
-      </ApplicationPresentation>
+      <ClientWorkspace
+        actor={workspaceActor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />
     </InterfaceLocaleProvider>,
   );
 }

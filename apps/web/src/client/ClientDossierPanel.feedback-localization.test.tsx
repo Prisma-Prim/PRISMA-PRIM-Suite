@@ -16,7 +16,6 @@ import {
   useInterfaceLocale,
   type InterfaceLocale,
 } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDossierPanel } from './ClientDossierPanel';
 
 const locales = [
@@ -242,23 +241,21 @@ function mount({
   render(
     <InterfaceLocaleProvider>
       <LocaleButtons />
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={dossier.id}
-          companyContextId="company-feedback"
-          canUpdate={canUpdate}
-          identity={deterministicBrowserIdentity()}
-          onActivityRecorded={activity}
-          onClientsChanged={clients}
-          onCompanyContextRejected={companyRejected}
-          onActorRevalidated={actorRevalidated}
-          onWorkspaceAccessRejected={workspaceRejected}
-          onDuplicateReviewRequired={duplicate}
-          onOpenProjects={projects}
-          onOpenDocuments={documents}
-          onOpenRequests={requests}
-        />
-      </ApplicationPresentation>
+      <ClientDossierPanel
+        clientAccountId={dossier.id}
+        companyContextId="company-feedback"
+        canUpdate={canUpdate}
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={activity}
+        onClientsChanged={clients}
+        onCompanyContextRejected={companyRejected}
+        onActorRevalidated={actorRevalidated}
+        onWorkspaceAccessRejected={workspaceRejected}
+        onDuplicateReviewRequired={duplicate}
+        onOpenProjects={projects}
+        onOpenDocuments={documents}
+        onOpenRequests={requests}
+      />
     </InterfaceLocaleProvider>,
   );
   return {

@@ -11,7 +11,6 @@ import { useLayoutEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
 /**
  * Every opened detail mounts its Versions section. These tests prove other
@@ -99,11 +98,7 @@ it('presents real Working Documents in Prisme', async () => {
       ),
     ),
   );
-  render(
-    <ApplicationPresentation value="prisme">
-      <DocumentWorkspace actor={actor} identity={identity} />
-    </ApplicationPresentation>,
-  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
   const workspace = await screen.findByRole('region', {
     name: 'Working Documents',
   });
@@ -294,11 +289,7 @@ it('matches only Romanian spelling variants in loaded Document titles and Client
     Response.json(url.endsWith('/clients') ? [] : rows),
   );
   stubFetch(fetcher);
-  render(
-    <ApplicationPresentation value="prisme">
-      <DocumentWorkspace actor={actor} identity={identity} />
-    </ApplicationPresentation>,
-  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
   const workspace = await screen.findByRole('region', {
     name: 'Working Documents',
   });

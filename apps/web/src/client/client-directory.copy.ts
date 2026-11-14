@@ -10,7 +10,6 @@ const keys = [
   'title',
   'newClient',
   'directoryCompany',
-  'description',
   'directoryClient',
   'directoryRelationship',
   'directoryActions',
@@ -46,8 +45,6 @@ export const clientDirectoryMessages = defineMessages(keys, {
     title: 'Clienți',
     newClient: 'Client nou',
     directoryCompany: 'Clienți în {company}',
-    description:
-      'Creați, consultați și corectați dosarul comun aprobat al Clientului pentru Compania activă.',
     directoryClient: 'Client',
     directoryRelationship: 'Relația cu Compania activă',
     directoryActions: 'Acțiuni',
@@ -84,8 +81,6 @@ export const clientDirectoryMessages = defineMessages(keys, {
     title: 'Клиенты',
     newClient: 'Новый Клиент',
     directoryCompany: 'Клиенты в {company}',
-    description:
-      'Создавайте, просматривайте и исправляйте утверждённое общее досье Клиента для активной Компании.',
     directoryClient: 'Клиент',
     directoryRelationship: 'Связь с активной Компанией',
     directoryActions: 'Действия',
@@ -120,8 +115,6 @@ export const clientDirectoryMessages = defineMessages(keys, {
     title: 'Clients',
     newClient: 'Nouveau Client',
     directoryCompany: 'Clients de {company}',
-    description:
-      'Créez, consultez et corrigez le dossier partagé approuvé du Client pour l’Entreprise active.',
     directoryClient: 'Client',
     directoryRelationship: 'Relation avec l’Entreprise active',
     directoryActions: 'Actions',
@@ -160,8 +153,6 @@ export const clientDirectoryMessages = defineMessages(keys, {
     title: 'Clients',
     newClient: 'New Client',
     directoryCompany: 'Clients in {company}',
-    description:
-      'Create, view and correct the approved shared Client dossier for the active Company.',
     directoryClient: 'Client',
     directoryRelationship: 'Active Company relationship',
     directoryActions: 'Actions',
@@ -203,7 +194,6 @@ export function useClientDirectoryCopy() {
     newClient: message('newClient'),
     directoryCompany: (company: string) =>
       formatMessage(message('directoryCompany'), { company }),
-    description: message('description'),
     directoryClient: message('directoryClient'),
     directoryRelationship: message('directoryRelationship'),
     directoryActions: message('directoryActions'),

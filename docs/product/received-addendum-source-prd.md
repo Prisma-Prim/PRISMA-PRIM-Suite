@@ -315,8 +315,8 @@ Use the existing safe correlation/error mechanisms without private payload.
 
 ## 9. Complete UI, failures and operation lifetimes
 
-Use the existing Documents entry and shared Prisme controls with compatible
-Classic presentation. The explicit family picker opens a labeled exact-parent
+Use the existing Documents entry and shared Prisme controls. The explicit family
+picker opens a labeled exact-parent
 selector showing only independently readable eligible internal reference, Version,
 original Client and recorded party. Filter before a 20-row page/lookahead and
 opaque visible-only cursor; no hidden total or pasted-UUID workflow. Selection
@@ -353,7 +353,7 @@ Locale/frame-only changes while the operation owner remains present preserve
 literal text, correctable fields and exact pending attempts without duplicate I/O.
 Interface/accessibility/errors/date copy cover `ro`, `ru`, `fr`, `en`; business
 content is not translated. Keyboard/focus/error association, shared Select behavior
-and actual 1440/390 fit must be demonstrated in both Prisme and Classic. Preserve
+and actual 1440/390 fit must be demonstrated in Prisme. Preserve
 `/ui-baseline` unchanged.
 
 ## 10. Acceptance journey and public proof
@@ -410,8 +410,8 @@ Acceptance also proves:
   complete final event/response-failure rollback;
 - actual App journey, uncertainty/malformed success/confirmed-read recovery,
   sibling locking, held token/parser/hash/focus/Blob/full-Actor callbacks,
-  operation-specific capture changes and locale/frame continuity;
-- four locales, desktop/narrow and both frames, visible keyboard focus, original
+  operation-specific capture changes and locale continuity;
+- four locales, desktop/narrow, visible keyboard focus, original
   inspected synthetic screenshots and the retained deliberate failure-evidence
   probe under the existing verification owner;
 - unchanged old questionnaires/mission/received-contract, signing and legacy

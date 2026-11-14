@@ -11,7 +11,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
 /**
  * Every opened detail mounts its Versions section. These tests prove other
@@ -778,11 +777,7 @@ it('hides URL values a response carries for a reader without Representation read
 
 it('presents the history inside the Prisme detail', async () => {
   serve({ history: () => historyPage([purposeCorrection]) });
-  render(
-    <ApplicationPresentation value="prisme">
-      <DocumentWorkspace actor={correctingActor} identity={identity} />
-    </ApplicationPresentation>,
-  );
+  render(<DocumentWorkspace actor={correctingActor} identity={identity} />);
   await openDocument();
   expect(historySection()).toHaveClass('working-document-correction-history');
   expect(historySection().closest('.working-document-detail')).not.toBeNull();

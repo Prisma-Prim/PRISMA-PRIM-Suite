@@ -2080,7 +2080,7 @@ export function CommercialIntakeWorkspace({
     }
   }
 
-  // The section is its own navigation destination in both frames, because the
+  // The section is its own navigation destination, because the
   // shell's layout wrapper generates no box that could receive focus.
   if (load.kind === 'denied') {
     return (

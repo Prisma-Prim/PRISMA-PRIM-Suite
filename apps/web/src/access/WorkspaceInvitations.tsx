@@ -1,9 +1,8 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   invitationPageResponse,
   invitationResponse,
@@ -40,7 +39,6 @@ export function WorkspaceInvitations({
 }) {
   const copy = useWorkspaceInvitationsCopy();
   const { formatDateTime, formatNumber } = useInterfaceLocale();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [email, setEmail] = useState('');
   const [days, setDays] = useState('7');
@@ -177,11 +175,7 @@ export function WorkspaceInvitations({
   if (!actor.workspacePermissions.includes('member.invite')) return null;
   return (
     <section
-      className={
-        isPrisme
-          ? 'production-content-surface workspace-invitations workspace-invitations--prisme'
-          : 'production-content-surface'
-      }
+      className="production-content-surface workspace-invitations workspace-invitations--prisme"
       aria-labelledby="workspace-invitations-title"
     >
       <h2 id="workspace-invitations-title">{copy.title}</h2>
@@ -192,9 +186,7 @@ export function WorkspaceInvitations({
         <>
           <p role="alert">{copy.error}</p>
           <button
-            className={
-              isPrisme ? 'workspace-invitation-primary-action' : undefined
-            }
+            className="workspace-invitation-primary-action"
             onClick={() => void load()}
           >
             {copy.reload}
@@ -204,7 +196,7 @@ export function WorkspaceInvitations({
       {state.status === 'ready' && (
         <>
           <form
-            className={isPrisme ? 'workspace-invitations-form' : undefined}
+            className="workspace-invitations-form"
             noValidate
             onSubmit={(event) => {
               event.preventDefault();
@@ -312,9 +304,7 @@ export function WorkspaceInvitations({
             )}
             <button
               type="submit"
-              className={
-                isPrisme ? 'workspace-invitation-primary-action' : undefined
-              }
+              className="workspace-invitation-primary-action"
               disabled={busy}
             >
               {copy.send}
@@ -322,12 +312,9 @@ export function WorkspaceInvitations({
           </form>
           {failed && <p role="alert">{copy.error}</p>}
           {state.page.invitations.length === 0 && <p>{copy.empty}</p>}
-          <ul className={isPrisme ? 'workspace-invitation-list' : undefined}>
+          <ul className="workspace-invitation-list">
             {state.page.invitations.map((invitation) => (
-              <li
-                key={invitation.id}
-                data-status={isPrisme ? invitation.status : undefined}
-              >
+              <li key={invitation.id} data-status={invitation.status}>
                 <strong>{invitation.email}</strong>
                 <p>
                   {invitation.consumedAt
@@ -353,11 +340,7 @@ export function WorkspaceInvitations({
                   {copy.checkAfter}: {formatDateTime(invitation.nextCheckAt)}
                 </p>
                 <button
-                  className={
-                    isPrisme
-                      ? 'workspace-invitation-secondary-action'
-                      : undefined
-                  }
+                  className="workspace-invitation-secondary-action"
                   disabled={busy}
                   onClick={() => void submit(`/${invitation.id}/refresh`, {})}
                 >
@@ -368,11 +351,7 @@ export function WorkspaceInvitations({
                   invitation.deliveryStatus !== 'rejected' &&
                   invitation.deliveryStatus !== 'revoked' && (
                     <button
-                      className={
-                        isPrisme
-                          ? 'workspace-invitation-danger-action'
-                          : undefined
-                      }
+                      className="workspace-invitation-danger-action"
                       disabled={busy}
                       onClick={() => setReviewing(invitation.id)}
                     >
@@ -383,22 +362,14 @@ export function WorkspaceInvitations({
                   <div role="region" aria-label={copy.confirm}>
                     <p>{copy.confirmation}</p>
                     <button
-                      className={
-                        isPrisme
-                          ? 'workspace-invitation-secondary-action'
-                          : undefined
-                      }
+                      className="workspace-invitation-secondary-action"
                       disabled={busy}
                       onClick={() => setReviewing(null)}
                     >
                       {copy.cancel}
                     </button>
                     <button
-                      className={
-                        isPrisme
-                          ? 'workspace-invitation-danger-action'
-                          : undefined
-                      }
+                      className="workspace-invitation-danger-action"
                       disabled={busy}
                       onClick={() =>
                         void submit(`/${invitation.id}/revoke`, {})
@@ -412,9 +383,7 @@ export function WorkspaceInvitations({
             ))}
           </ul>
           <button
-            className={
-              isPrisme ? 'workspace-invitation-secondary-action' : undefined
-            }
+            className="workspace-invitation-secondary-action"
             disabled={busy}
             onClick={() => void load()}
           >
@@ -422,9 +391,7 @@ export function WorkspaceInvitations({
           </button>
           {state.page.nextCursor && (
             <button
-              className={
-                isPrisme ? 'workspace-invitation-secondary-action' : undefined
-              }
+              className="workspace-invitation-secondary-action"
               disabled={busy}
               onClick={() => void load(state.page.nextCursor ?? undefined)}
             >

@@ -6,8 +6,6 @@ const keys = [
   'accessError',
   'signInRequired',
   'signOut',
-  'homeTitle',
-  'homeIntroduction',
 ] as const;
 
 export const appMessages = defineMessages(keys, {
@@ -18,9 +16,6 @@ export const appMessages = defineMessages(keys, {
     signInRequired:
       'Autentificarea este necesară pentru a accesa acest spațiu de lucru.',
     signOut: 'Deconectare',
-    homeTitle: 'Bine ați venit în PRISMA-PRIM Suite',
-    homeIntroduction:
-      'Acest spațiu de lucru este pregătit să găzduiască fluxurile organizației pe măsură ce devin disponibile.',
   },
   ru: {
     checkingAccess: 'Проверяем ваш доступ…',
@@ -29,9 +24,6 @@ export const appMessages = defineMessages(keys, {
     signInRequired:
       'Для доступа к этому рабочему пространству необходимо войти.',
     signOut: 'Выйти',
-    homeTitle: 'Добро пожаловать в PRISMA-PRIM Suite',
-    homeIntroduction:
-      'Это рабочее пространство готово для процессов вашей организации по мере их появления.',
   },
   fr: {
     checkingAccess: 'Vérification de votre accès…',
@@ -40,9 +32,6 @@ export const appMessages = defineMessages(keys, {
     signInRequired:
       'Vous devez vous connecter pour accéder à cet espace de travail.',
     signOut: 'Se déconnecter',
-    homeTitle: 'Bienvenue dans PRISMA-PRIM Suite',
-    homeIntroduction:
-      'Cet espace de travail est prêt à accueillir les processus de votre organisation à mesure qu’ils deviennent disponibles.',
   },
   en: {
     checkingAccess: 'Verifying your access…',
@@ -50,9 +39,6 @@ export const appMessages = defineMessages(keys, {
     accessError: 'We could not verify your access. Please try again.',
     signInRequired: 'Sign in is required to access this workspace.',
     signOut: 'Sign out',
-    homeTitle: 'Welcome to PRISMA-PRIM Suite',
-    homeIntroduction:
-      "This workspace is ready to host your organization's workflows as they become available.",
   },
 });
 
@@ -64,7 +50,5 @@ export function useAppCopy() {
     accessError: message('accessError'),
     signInRequired: message('signInRequired'),
     signOut: message('signOut'),
-    homeTitle: message('homeTitle'),
-    homeIntroduction: message('homeIntroduction'),
   };
 }

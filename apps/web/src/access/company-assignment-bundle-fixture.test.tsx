@@ -4,7 +4,6 @@ import {
   InterfaceLocaleProvider,
   interfaceLocaleStorageKey,
 } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { companyAccessAdministrationResponse } from './company-access-administration-response';
 import {
@@ -175,24 +174,22 @@ async function bundlesOfferedByTheScreen(): Promise<OfferedBundle[]> {
   );
   render(
     <InterfaceLocaleProvider>
-      <ApplicationPresentation value="prisme">
-        <CompanyContextAccess
-          actor={assignmentAdministrator}
-          identity={{
-            loaded: true,
-            signedIn: true,
-            getToken: vi.fn(async () => null),
-            rejectSession: vi.fn(async () => undefined),
-            signOut: vi.fn(async () => undefined),
-            signedOutView: null,
-          }}
-          onActorRevalidated={vi.fn(async () => undefined)}
-          onCompanyContextRejected={vi.fn(async () => undefined)}
-          onActivityRecorded={vi.fn(async () => undefined)}
-          onClientAuthorityChanged={vi.fn(async () => undefined)}
-          onWorkspaceAccessRejected={vi.fn(async () => undefined)}
-        />
-      </ApplicationPresentation>
+      <CompanyContextAccess
+        actor={assignmentAdministrator}
+        identity={{
+          loaded: true,
+          signedIn: true,
+          getToken: vi.fn(async () => null),
+          rejectSession: vi.fn(async () => undefined),
+          signOut: vi.fn(async () => undefined),
+          signedOutView: null,
+        }}
+        onActorRevalidated={vi.fn(async () => undefined)}
+        onCompanyContextRejected={vi.fn(async () => undefined)}
+        onActivityRecorded={vi.fn(async () => undefined)}
+        onClientAuthorityChanged={vi.fn(async () => undefined)}
+        onWorkspaceAccessRejected={vi.fn(async () => undefined)}
+      />
     </InterfaceLocaleProvider>,
   );
   const control = await screen.findByRole('combobox', {

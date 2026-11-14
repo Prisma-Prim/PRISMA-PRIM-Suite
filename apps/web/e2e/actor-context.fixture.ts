@@ -22,8 +22,8 @@ export const preparatoryLifecycle = {
 type CompanySummaryKind = 'active_clients' | 'open_projects' | 'overdue_tasks';
 
 /**
- * The Company summary the Prisme overview and the Classic home read for an
- * actor holding a Client, Project or Task read. Only the given kinds appear.
+ * The Company summary the Prisme overview reads for an actor holding a
+ * Client, Project or Task read. Only the given kinds appear.
  */
 export function operationalHomeFixture(
   companyId: string,

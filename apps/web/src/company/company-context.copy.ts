@@ -3,9 +3,7 @@ import { defineMessages, useMessages } from '../localization/messages';
 const keys = [
   'eyebrow',
   'title',
-  'workspace',
   'activeCompany',
-  'selectCompany',
   'chooseCompany',
   'loading',
   'noCompanies',
@@ -20,9 +18,7 @@ export const companyContextMessages = defineMessages(keys, {
   ro: {
     eyebrow: 'Domeniul curent',
     title: 'Contextul Companiei',
-    workspace: 'Spațiu de lucru',
     activeCompany: 'Companie activă',
-    selectCompany: 'Selectați o Companie',
     chooseCompany: 'Selectați o Companie',
     loading: 'Se încarcă contextul Companiei…',
     noCompanies:
@@ -40,9 +36,7 @@ export const companyContextMessages = defineMessages(keys, {
   ru: {
     eyebrow: 'Текущая область',
     title: 'Контекст Компании',
-    workspace: 'Рабочее пространство',
     activeCompany: 'Активная Компания',
-    selectCompany: 'Выберите Компанию',
     chooseCompany: 'Выберите Компанию',
     loading: 'Загрузка контекста Компании…',
     noCompanies:
@@ -60,9 +54,7 @@ export const companyContextMessages = defineMessages(keys, {
   fr: {
     eyebrow: 'Périmètre actuel',
     title: 'Contexte de l’Entreprise',
-    workspace: 'Espace de travail',
     activeCompany: 'Entreprise active',
-    selectCompany: 'Sélectionnez une Entreprise',
     chooseCompany: 'Sélectionnez une Entreprise',
     loading: 'Chargement du contexte de l’Entreprise…',
     noCompanies:
@@ -81,9 +73,7 @@ export const companyContextMessages = defineMessages(keys, {
   en: {
     eyebrow: 'Current scope',
     title: 'Company context',
-    workspace: 'Workspace',
     activeCompany: 'Active Company',
-    selectCompany: 'Select a Company',
     chooseCompany: 'Select a Company',
     loading: 'Loading Company context…',
     noCompanies:
@@ -105,9 +95,7 @@ export function useCompanyContextCopy() {
   return {
     eyebrow: message('eyebrow'),
     title: message('title'),
-    workspace: message('workspace'),
     activeCompany: message('activeCompany'),
-    selectCompany: message('selectCompany'),
     chooseCompany: message('chooseCompany'),
     loading: message('loading'),
     noCompanies: message('noCompanies'),
