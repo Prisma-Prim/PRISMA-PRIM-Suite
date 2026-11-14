@@ -4,14 +4,16 @@ import type {
 } from '../database/schema/index.js';
 import type {
   OperationalRiskEntry,
+  OperationalRiskFacts,
   OperationalRiskIntake,
   OperationalRiskRecord,
   OperationalRiskResult,
 } from './operational-risk.types.js';
 import {
+  FACT_FIELDS,
   object,
   optionalDate,
-  readOperationalRiskIntake,
+  readOperationalRiskFacts,
   revision,
   text,
   uuid,
@@ -236,7 +238,7 @@ function entry(value: unknown): OperationalRiskEntry {
     return {
       ...common,
       kind: body.kind,
-      facts: readOperationalRiskIntake(body.facts),
+      facts: storedFacts(body.facts),
       predecessorId: null,
       reason: null,
     };
@@ -247,7 +249,7 @@ function entry(value: unknown): OperationalRiskEntry {
     return {
       ...common,
       kind: body.kind,
-      facts: readOperationalRiskIntake(body.facts),
+      facts: storedFacts(body.facts),
       predecessorId: uuid(body.predecessorId),
       reason: text(body.reason, 2000),
     };
@@ -292,6 +294,13 @@ function entry(value: unknown): OperationalRiskEntry {
     narrative: text(body.narrative, 5000),
     occurredOn: optionalDate(body.occurredOn),
   };
+}
+
+/** Stored facts hold every key; only a command may omit an optional fact. */
+function storedFacts(value: unknown): OperationalRiskFacts {
+  const body = object(value);
+  exact(body, FACT_FIELDS);
+  return readOperationalRiskFacts(body);
 }
 
 function intake(value: OperationalRiskEntry): value is OperationalRiskIntake {
