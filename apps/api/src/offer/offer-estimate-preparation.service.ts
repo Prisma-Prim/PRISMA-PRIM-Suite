@@ -30,7 +30,7 @@ import { ProfitabilityEstimateService } from '../profitability-estimate/profitab
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { OfferCommandStore } from './offer-command-store.js';
 import { ModelOfferView } from './model-offer-view.js';
-import { OfferModelService } from '../offer-model/offer-model.service.js';
+import { OfferModelService } from '../offer-model/offer-model.adapter.js';
 import { modelOfferFinancials } from './model-offer-financials.js';
 import { renderModelOfferRepresentation } from './model-offer-representation.js';
 import { EstimateOfferView } from './offer-estimate-view.js';
@@ -39,6 +39,7 @@ import {
   readCreateModelOfferVersionCommand,
   readCreateEstimateOfferCommand,
   readCreateEstimateOfferVersionCommand,
+  requireModelApprovalDecisionId,
 } from './offer.validation.js';
 import type {
   InternalOfferRecord,
@@ -208,6 +209,9 @@ export class EstimateOfferPreparationService {
               return exhaustive;
             }
           }
+          // Only a replay may omit the approval: older receipts did not name it.
+          if (!receipt && 'modelVersionId' in command)
+            requireModelApprovalDecisionId(command);
           // Acquire the write fence before a source read can borrow Client shares.
           const recipient = await this.clients.lockOfferRecipient(
             actor,
@@ -303,6 +307,9 @@ export class EstimateOfferPreparationService {
                 content.modelSource.versionId !== command.modelVersionId ||
                 content.modelSource.versionNumber !==
                   command.modelVersionNumber ||
+                (command.modelApprovalDecisionId !== null &&
+                  content.modelSource.approvalDecisionId !==
+                    command.modelApprovalDecisionId) ||
                 content.financialDeclaration.taxAmount !==
                   command.financialDeclaration.taxAmount ||
                 content.financialDeclaration.taxLabel !==
@@ -318,10 +325,11 @@ export class EstimateOfferPreparationService {
           }
           const modelSource =
             'modelVersionId' in command
-              ? await this.models.requireSelectedForOfferWithinTransaction({
+              ? await this.models.requireSelectedWithinTransaction({
                   actor,
                   versionId: command.modelVersionId,
                   versionNumber: command.modelVersionNumber,
+                  approvalDecisionId: requireModelApprovalDecisionId(command),
                 })
               : null;
           if (

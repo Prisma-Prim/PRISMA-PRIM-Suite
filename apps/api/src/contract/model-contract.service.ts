@@ -15,7 +15,7 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
-import { ContractModelService } from '../contract-model/contract-model.service.js';
+import { ContractModelService } from '../contract-model/contract-model.adapter.js';
 import { commandFingerprint } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -293,13 +293,12 @@ export class ModelContractService {
                 legalEntityId: offerSource.recipient.additionalLegalEntityId,
               },
         );
-        const modelSource =
-          await this.models.requireSelectedForContractWithinTransaction({
-            actor,
-            versionId: command.modelVersionId,
-            versionNumber: command.modelVersionNumber,
-            approvalDecisionId: command.modelApprovalDecisionId,
-          });
+        const modelSource = await this.models.requireSelectedWithinTransaction({
+          actor,
+          versionId: command.modelVersionId,
+          versionNumber: command.modelVersionNumber,
+          approvalDecisionId: command.modelApprovalDecisionId,
+        });
         if (previous) {
           await this.lockContractWithinTransaction(previous.contract);
           previous = await this.versions.find({

@@ -2,7 +2,7 @@ import type { ServerResponse } from 'node:http';
 import { readCommercialPdfAttachment } from '../commercial-pdf/commercial-pdf-read.js';
 import { ContractPdfService } from './contract-pdf.service.js';
 import { ModelContractService } from './model-contract.service.js';
-import { ContractModelService } from '../contract-model/contract-model.service.js';
+import { ContractModelService } from '../contract-model/contract-model.adapter.js';
 import { ReportedContractSigningService } from './reported-contract-signing.service.js';
 import {
   Body,
@@ -118,7 +118,7 @@ export class ContractController {
     });
   }
   @Get('model-selection') modelSelection(@Req() request: ActorContextRequest) {
-    return this.models.selectableForContract({
+    return this.models.readSelection({
       actor: requireActorContext(request),
     });
   }

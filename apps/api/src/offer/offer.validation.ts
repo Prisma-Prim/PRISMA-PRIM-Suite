@@ -259,6 +259,7 @@ function readModelOfferCommand(value: unknown, successor: boolean) {
     ...ESTIMATE_CONTENT_FIELDS,
     'modelVersionId',
     'modelVersionNumber',
+    'modelApprovalDecisionId',
     'financialDeclaration',
     ...(successor ? ['expectedOfferRevision'] : []),
   ];
@@ -282,6 +283,14 @@ function readModelOfferCommand(value: unknown, successor: boolean) {
     ...content,
     modelVersionId: uuid(input.modelVersionId, 'modelVersionId').toLowerCase(),
     modelVersionNumber,
+    // Receipts recorded before #1191 replay without it; a first use needs it.
+    modelApprovalDecisionId:
+      input.modelApprovalDecisionId === undefined
+        ? null
+        : uuid(
+            input.modelApprovalDecisionId,
+            'modelApprovalDecisionId',
+          ).toLowerCase(),
     financialDeclaration: readModelOfferFinancialDeclaration(
       input.financialDeclaration,
     ),
@@ -391,6 +400,15 @@ function record(value: unknown, field: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw invalid(field);
   return Object.fromEntries(Object.entries(value));
+}
+
+/** The approval a first-use model Offer command must name for the fence. */
+export function requireModelApprovalDecisionId(command: {
+  modelApprovalDecisionId: string | null;
+}): string {
+  if (command.modelApprovalDecisionId === null)
+    throw invalid('modelApprovalDecisionId');
+  return command.modelApprovalDecisionId;
 }
 
 function invalid(field: string): BadRequestException {

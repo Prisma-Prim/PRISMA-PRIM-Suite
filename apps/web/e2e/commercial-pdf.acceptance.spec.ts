@@ -162,6 +162,7 @@ test('downloads real current and historical exact Offer and Contract PDFs throug
       estimateVersionNumber: price.estimateVersionNumber,
       modelVersionId: model.versionId,
       modelVersionNumber: model.versionNumber,
+      modelApprovalDecisionId: model.approvalDecisionId,
       recipient: { kind: 'PRIMARY' },
       validityDays: 30,
       scopeNote: 'Explicit successor source',

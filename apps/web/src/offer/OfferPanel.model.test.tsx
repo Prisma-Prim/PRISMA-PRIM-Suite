@@ -242,6 +242,11 @@ describe('Full approved-model Offer journey', () => {
     fireEvent.click(retry);
     await waitFor(() => expect(attempts).toHaveLength(2));
     expect(attempts[0]).toEqual(attempts[1]);
+    expect(JSON.parse(String(attempts[0]?.body))).toMatchObject({
+      modelVersionId: selectedModelFixture.versionId,
+      modelVersionNumber: selectedModelFixture.versionNumber,
+      modelApprovalDecisionId: selectedModelFixture.approvalDecisionId,
+    });
     expect(
       screen.getByRole('button', { name: 'Download exact Romanian HTML' }),
     ).toBeVisible();

@@ -321,6 +321,8 @@ function EstimateOfferPreparationOwner({
                 ? {
                     modelVersionId: modelIntent.model.versionId,
                     modelVersionNumber: modelIntent.model.versionNumber,
+                    modelApprovalDecisionId:
+                      modelIntent.model.approvalDecisionId,
                     financialDeclaration: modelIntent.financialDeclaration,
                   }
                 : {}),

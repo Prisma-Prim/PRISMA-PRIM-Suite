@@ -1,6 +1,6 @@
 import { CommercialPdfRenderer } from '../commercial-pdf/commercial-pdf-renderer.js';
 import { OfferPdfService } from './offer-pdf.service.js';
-import { OfferModelModule } from '../offer-model/offer-model.module.js';
+import { CompanyModelModule } from '../company-model/company-model.module.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
@@ -17,7 +17,7 @@ import { EstimateOfferPreparationService } from './offer-estimate-preparation.se
 @Module({
   imports: [
     AccessModule,
-    OfferModelModule,
+    CompanyModelModule,
     AccountabilityModule,
     ClientModule,
     CommercialIntakeModule,

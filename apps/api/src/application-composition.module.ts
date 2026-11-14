@@ -50,10 +50,9 @@ import {
   ContractController,
   ProjectContractsController,
 } from './contract/contract.controller.js';
-import { OfferModelController } from './offer-model/offer-model.controller.js';
-import { OfferModelModule } from './offer-model/offer-model.module.js';
-import { ContractModelController } from './contract-model/contract-model.controller.js';
-import { ContractModelModule } from './contract-model/contract-model.module.js';
+import { OfferModelController } from './offer-model/offer-model.adapter.js';
+import { ContractModelController } from './contract-model/contract-model.adapter.js';
+import { CompanyModelModule } from './company-model/company-model.module.js';
 import { TaskModule } from './task/task.module.js';
 import { TaskController } from './task/task.controller.js';
 import { DocumentProjectsController } from './documents/document-projects.controller.js';
@@ -126,8 +125,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     InvoiceRecordModule,
     KnowledgeModule,
     MissionPlanModule,
-    ContractModelModule,
-    OfferModelModule,
+    CompanyModelModule,
     IdeasModule,
     CertificationModule,
     OperationalRiskModule,

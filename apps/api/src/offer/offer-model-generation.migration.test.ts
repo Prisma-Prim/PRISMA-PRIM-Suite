@@ -368,18 +368,33 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           membershipId: source.preparerMembershipId,
         }),
       ).toMatchObject({ permissionSetVersion: 'v3' });
-      await fixture.command({
-        path: `/offer-models/consulting-ro/versions/${pendingModelVersionId}/decision`,
-        companyId: source.companyId,
-        headers: ESTIMATE_OFFER_DIRECTOR,
-        body: {
-          expectedModelRevision: 6,
-          versionNumber: 3,
-          outcome: 'APPROVE',
-          basis: 'Synthetic explicit post-upgrade approval',
-        },
-      });
-      const generated = responseRecord(await fixture.command(command));
+      const pendingApproval = responseRecord(
+        responseRecord(
+          await fixture.command({
+            path: `/offer-models/consulting-ro/versions/${pendingModelVersionId}/decision`,
+            companyId: source.companyId,
+            headers: ESTIMATE_OFFER_DIRECTOR,
+            body: {
+              expectedModelRevision: 6,
+              versionNumber: 3,
+              outcome: 'APPROVE',
+              basis: 'Synthetic explicit post-upgrade approval',
+            },
+          }),
+        ).model,
+      );
+      const generated = responseRecord(
+        await fixture.command({
+          ...command,
+          body: {
+            ...command.body,
+            modelApprovalDecisionId: responseString(
+              responseRecord(responseRecord(pendingApproval.head).decision),
+              'id',
+            ),
+          },
+        }),
+      );
       expect(generated).toMatchObject({
         id: internal.offerId,
         revision: 2,

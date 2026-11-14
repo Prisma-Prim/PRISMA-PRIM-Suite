@@ -101,12 +101,14 @@ export function generatedOfferIntent(source: {
   estimateVersionNumber: number;
   modelVersionId: string;
   modelVersionNumber: number;
+  modelApprovalDecisionId: string;
 }) {
   return {
     estimateVersionId: source.estimateVersionId,
     estimateVersionNumber: source.estimateVersionNumber,
     modelVersionId: source.modelVersionId,
     modelVersionNumber: source.modelVersionNumber,
+    modelApprovalDecisionId: source.modelApprovalDecisionId,
     recipient: { kind: 'PRIMARY' },
     validityDays: 30,
     scopeNote: ' Domeniu păstrat\nLiteral ',
