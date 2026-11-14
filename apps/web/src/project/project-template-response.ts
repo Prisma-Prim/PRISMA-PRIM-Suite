@@ -9,9 +9,9 @@ export interface TemplateStage {
   tasks: TemplateTask[];
 }
 export const pilotTemplateKey = 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE';
-export const legacyTemplateKey = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
-export interface LegacyTemplateVersion {
-  templateKey: typeof legacyTemplateKey;
+export const illustrativeTemplateKey = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
+export interface IllustrativeTemplateVersion {
+  templateKey: typeof illustrativeTemplateKey;
   version: number;
   title: string;
   illustrative: true;
@@ -30,13 +30,14 @@ export interface PilotTemplateVersion {
   illustrative: true;
   activities: PilotActivity[];
 }
-export type TemplateVersion = LegacyTemplateVersion | PilotTemplateVersion;
+export type TemplateVersion =
+  IllustrativeTemplateVersion | PilotTemplateVersion;
 export type TemplateSelection =
-  | { templateKey: typeof legacyTemplateKey; version: number }
+  | { templateKey: typeof illustrativeTemplateKey; version: number }
   | { templateKey: typeof pilotTemplateKey; version: 1 };
 export type SelectableTemplateVersion = TemplateVersion;
-export interface CopiedLegacyTemplatePlan extends Omit<
-  LegacyTemplateVersion,
+export interface CopiedIllustrativeTemplatePlan extends Omit<
+  IllustrativeTemplateVersion,
   'stages'
 > {
   stages: Array<
@@ -52,7 +53,7 @@ export interface CopiedPilotTemplatePlan extends Omit<
   activities: Array<PilotActivity & { taskId: string }>;
 }
 export type CopiedTemplatePlan =
-  CopiedLegacyTemplatePlan | CopiedPilotTemplatePlan;
+  CopiedIllustrativeTemplatePlan | CopiedPilotTemplatePlan;
 
 export function readTemplateCatalogue(
   value: unknown,
@@ -70,7 +71,7 @@ export function readTemplateCatalogue(
     const template = readTemplate(entry);
     if (
       !template ||
-      (template.templateKey === legacyTemplateKey &&
+      (template.templateKey === illustrativeTemplateKey &&
         !compatibleSource(template)) ||
       versions.has(`${template.templateKey}:${template.version}`)
     )
@@ -141,7 +142,7 @@ function positiveVersion(value: unknown): value is number {
     value <= 2147483647
   );
 }
-function compatibleSource(template: LegacyTemplateVersion) {
+function compatibleSource(template: IllustrativeTemplateVersion) {
   return (
     positiveVersion(template.version) &&
     template.title === 'Préparation d’une mission de conseil' &&
@@ -176,7 +177,7 @@ export function readCopiedTemplatePlan(
   }
   if (!Array.isArray(source.stages)) return;
   const stageValues: unknown[] = source.stages;
-  const stages: CopiedLegacyTemplatePlan['stages'] = [];
+  const stages: CopiedIllustrativeTemplatePlan['stages'] = [];
   const taskIds = new Set<string>();
   for (const [stageIndex, stage] of template.stages.entries()) {
     const raw = stageValues[stageIndex];
@@ -199,7 +200,7 @@ function readTemplate(value: unknown): TemplateVersion | undefined {
     return readPilot(value);
   if (
     !record(value) ||
-    value.templateKey !== legacyTemplateKey ||
+    value.templateKey !== illustrativeTemplateKey ||
     typeof value.version !== 'number' ||
     !Number.isSafeInteger(value.version) ||
     value.version < 1 ||

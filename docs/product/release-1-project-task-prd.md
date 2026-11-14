@@ -1073,7 +1073,9 @@ The existing §24 model copies four preparation Tasks. A user otherwise has to
 re-enter the thirteen activities and intended results of the selected pilot.
 D2 adds one explicitly selected, immutable source Version, one preparatory Project
 and thirteen ordinary Task copies, then reopens their preserved planning context.
-Existing manual registration and the two-stage/four-Task model remain usable.
+Manual registration and the illustrative two-stage/four-Task Template remain
+usable; that Template carries the only Project workflow stages (§24) until real
+Project categories exist (SUB-PJ-01).
 
 The controlled [E06 annex](commercial-source-reconciliation-2026-10.md) and
 [CT-AN01–CT-AN13 mapping](commercial-candidate-models-2026-10.md) supply the activity,
@@ -1088,7 +1090,8 @@ software workflow stages or mandatory completion rules.
 The sole initial pilot source is `CONSULTING_MISSION_PILOT_ILLUSTRATIVE`, Version 1,
 business title “Plan pilot pentru o misiune de consultanță SMI”, explicitly
 illustrative. It is a code-defined, ordered **flat activity plan**, separate from
-the legacy `CONSULTING_PREPARATION_ILLUSTRATIVE` source and its Company successors.
+the illustrative `CONSULTING_PREPARATION_ILLUSTRATIVE` Template (§24) and its Company
+successors.
 The user selects the identified model and exact Version; “current” or a bare
 Version number cannot substitute another model. An unavailable source is not an
 empty plan. Unknown keys, incompatible source shapes and unsupported Versions
@@ -1125,7 +1128,7 @@ The thirteen source rows are not mapped to the Offer's eighteen stages or to
 §24's two software stages. This source has no `required`/optional classification,
 current workflow stage or stage-advance command. A stage-progress read reports
 that no supported progression is configured; an attempted advance is refused
-without a receipt, transition, event or fence. The existing legacy progression
+without a receipt, transition, event or fence. The illustrative Template stage progression
 and its required Task semantics remain unchanged. D5/D13 retain obligation,
 exception, stage and consulting-completion decisions.
 
@@ -1136,8 +1139,8 @@ Its exact permission set is v1's `project.template.read` and
 `project.template.instantiate`, plus `project.template.pilot.read` and
 `project.template.pilot.instantiate`. The two pilot permissions cover only the
 identified pilot model and its copies. Existing captured v1 remains exactly its
-two legacy permissions; null/unknown versions fail closed. Existing v1 holders
-retain legacy catalogue, copy and instantiation behavior and receive no pilot
+two four-Task Template permissions; null/unknown versions fail closed. Existing v1
+holders retain four-Task catalogue, copy and instantiation behavior and receive no pilot
 access automatically. An administrator with `company.assignment.manage`
 deliberately revokes/regrants through the existing Company assignment commands
 to capture v2. There is no separate assignment type or implicit migration,
@@ -1158,7 +1161,7 @@ contains no Client or Company-specific policy. Copied-plan denial leaves ordinar
 authorized Project/Task and Document work available.
 
 Company Project Template Configuration v1 continues to publish only the four-title
-legacy successors under §24. User v2 grants no publication, stage advancement,
+illustrative successors under §24. User v2 grants no publication, stage advancement,
 lifecycle, assignment administration, Client, Project or Task authority. The pilot
 Version has no editor, successor-publication API, withdrawal or approval lifecycle
 in this slice. An approved future content change must introduce another immutable
@@ -1186,8 +1189,10 @@ it cannot edit this Version in place.
 9. As a user changing locale, I keep literal source text, entered work and the
    exact selected Version; changing identity/Company/required authority retires
    old source drafts and late replies.
-10. As a legacy user, I keep manual Projects, four-Task copies, title successors,
-    stage history and ordinary Tasks without being forced to adopt the pilot.
+10. As a user of manual Projects or of the illustrative four-Task Template, which
+    carries the only Project workflow stages until real Project categories exist
+    (SUB-PJ-01), I keep manual Projects, four-Task copies, title successors, stage
+    history and ordinary Tasks without being forced to adopt the pilot.
 
 Each new Task starts `todo`, priority `normal`, unassigned and undated, just as
 §24. The Project remains `preparatory`. An existing authorized user subsequently
@@ -1253,17 +1258,17 @@ needs no unbounded list or new search/export feature.
 Additive migration preserves all old assignments, Projects, four-row copies,
 source Versions, IDs, receipts, stage transitions and D4 declarations/bytes.
 Existingv1 captures retain their exact permissions. New source positions and
-immutable guards must not weaken legacy four-row bounds or allow pilot stage
+immutable guards must not weaken the illustrative four-row bounds or allow pilot stage
 progress, foreign links, duplicate mappings, source mutation or deletion.
 There is no backfill model, Task, grant, declaration or source approval.
 
 Prove the owning PostgreSQL REST seam first: exact thirteen rows/Task defaults,
-model/Version qualification, malformed overrides, legacyv1 refusal and deliberate
+model/Version qualification, malformed overrides, four-Task-only v1 refusal and deliberate
 v2 grant, all independent denials/unknown versions, foreign Company/Workspace,
 revocation/suspension ordering, concurrent exact/changed-key retry, atomic fault
 rollback, immutable mapping/source, genuine previous-schema upgrade and preserved
-closed/superseded-Client history. Edit an ordinary copied Task and publish a
-legacy successor without changing the preserved pilot copy. A pilot advance
+closed/superseded-Client history. Edit an ordinary copied Task and publish an
+illustrative successor without changing the preserved pilot copy. A pilot advance
 must be refused while the old compatible stage journey remains usable.
 
 Register the actual App/PostgreSQL journey at both viewports: explicitly grant
@@ -1307,8 +1312,10 @@ email to Iurie. No certificate, waiver, actual grant or external message follows
 The [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
 under #917 / #918 owns reusable Company flat plans, immutable Versions and exact
 Project/Task copies. Its status controls product readiness; runtime follows a
-separate issue after contract merge. Existing manual, four-Task illustrative and
-thirteen-activity pilot journeys retain their source, grants, histories and rules.
+separate issue after contract merge. Manual Projects, the illustrative four-Task
+Template, which carries the only Project workflow stages until real Project
+categories exist (SUB-PJ-01), and the thirteen-activity pilot keep their source,
+grants, histories and rules.
 Custom planning content does not expand the pilot-only readiness/review policy,
 introduce stages or decide obligations, certification or closure. Native Project,
 Task, Client and Document owners remain independent.

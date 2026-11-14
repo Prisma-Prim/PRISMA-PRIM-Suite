@@ -20,7 +20,7 @@ import {
 import {
   objects,
   pilotKey,
-  legacyKey,
+  illustrativeTemplateKey,
 } from '../project-template/project-pilot-plan.test-support.js';
 import {
   currentApplicability,
@@ -353,16 +353,16 @@ describe.skipIf(!url)(
         expect(JSON.stringify(await json(foreign))).not.toContain(c.projectId);
       }
     });
-    it('keeps published configured legacy versions unsupported without substituting them for the preserved pilot', async () => {
+    it('keeps published four-Task illustrative successor versions unsupported without substituting them for the preserved pilot', async () => {
       const c = preparedContext;
       await fixture.grant(
         '/company-project-template-configuration-assignments',
       );
-      await command(`/project-templates/${legacyKey}/versions`, {
+      await command(`/project-templates/${illustrativeTemplateKey}/versions`, {
         sourceVersion: 1,
         expectedHeadVersion: 1,
         taskTitles: {
-          clarify_request: 'Configured legacy clarification DEMO',
+          clarify_request: 'Configured illustrative clarification DEMO',
           confirm_scope: 'Confirmer le périmètre',
           collect_questionnaire: 'Recueillir le questionnaire',
           prepare_plan: 'Préparer le plan',
@@ -370,8 +370,8 @@ describe.skipIf(!url)(
       });
       const project = await command('/projects/from-template', {
           clientAccountId: c.clientId,
-          title: 'Configured legacy Project DEMO',
-          templateKey: legacyKey,
+          title: 'Configured illustrative Project DEMO',
+          templateKey: illustrativeTemplateKey,
           templateVersion: 2,
         }),
         projectId = text(project.id),

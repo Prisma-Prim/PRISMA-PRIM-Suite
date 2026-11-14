@@ -10,7 +10,7 @@ import { useProjectTemplateCopy } from './project-template.copy';
 import { useProjectTemplateVersionCopy } from './project-template-version.copy';
 import {
   pilotTemplateKey,
-  legacyTemplateKey,
+  illustrativeTemplateKey,
   readCopiedTemplatePlan,
   readTemplateCatalogue,
   readTemplateCataloguePage,
@@ -140,7 +140,9 @@ export function ProjectTemplateSelector({
           : readTemplateCatalogue(value);
         if (
           !templates ||
-          templates.some((source) => source.templateKey !== legacyTemplateKey)
+          templates.some(
+            (source) => source.templateKey !== illustrativeTemplateKey,
+          )
         ) {
           setLoad({ kind: 'error' });
           return;
@@ -261,7 +263,10 @@ export function ProjectTemplateSelector({
             template
               ? template.templateKey === pilotTemplateKey
                 ? { templateKey: pilotTemplateKey, version: 1 }
-                : { templateKey: legacyTemplateKey, version: template.version }
+                : {
+                    templateKey: illustrativeTemplateKey,
+                    version: template.version,
+                  }
               : null,
           );
         }}

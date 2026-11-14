@@ -33,10 +33,12 @@ Version** is its immutable ordered title/activity/intended-result content. A
 one-to-one activity-to-Task mapping. These are Project planning concepts, not a
 governed Document, Contract annex, approval, certification policy or workflow stage.
 
-The fixed pilot and legacy illustrative Template remain separate, unchanged
-sources. Custom plans have their own identities and explicit authority; publishing
-one never edits those sources or expands their captured grants. Intended results,
-including certification wording entered as text, prove no achieved result.
+The fixed pilot and the illustrative two-stage/four-Task Template remain separate,
+unchanged sources; that Template carries the only Project workflow stages until
+real Project categories exist (SUB-PJ-01). Custom plans have their own identities
+and explicit authority; publishing one never edits those sources or expands their
+captured grants. Intended results, including certification wording entered as
+text, prove no achieved result.
 
 ### 1.1 User stories
 
@@ -204,7 +206,7 @@ plan/Version identity. Identical/concurrent retries recover the one original Pro
 without another Task/event/fence. Changed intent with the same key conflicts. A key
 already used by manual or illustrative-Template Project creation conflicts here, and
 a new copied-Project key cannot later masquerade as a manual creation retry. Retain
-all previously valid manual/legacy receipts. A deliberately new key may create
+all previously valid manual/illustrative-Template receipts. A deliberately new key may create
 another Project; equal titles are not deduplication.
 
 Current User v1 read/instantiate and native Project/Task read authority precede a
@@ -279,7 +281,7 @@ enter Git. Existing Platform backup/recovery/deployment authorities remain uncha
 Add Company-owned source/version/ordered-row, receipt and Project-copy structures;
 retain immutable selected source identity rather than a mutable current-head lookup.
 Native Project/Task owners retain all ordinary mutations. A separate narrow mission
-plan owner avoids relaxing the existing fixed pilot/legacy snapshot grammar, guards,
+plan owner avoids relaxing the existing fixed pilot/illustrative snapshot grammar, guards,
 lineage, stage checks or permission captures. Pure actual reuse is permitted when
 ownership stays explicit; do not build a generic workflow/approval/template engine.
 
@@ -309,7 +311,7 @@ proof starts from the genuine preceding schema with representative existing data
 4. Exact selected Version creates complete native Project/Tasks/mapping/defaults;
    later source publication, Task edits and extra Tasks leave the source unchanged.
    Reject mixed/partial/foreign mappings and cross-owner Project intent collisions.
-5. Genuine previous-schema upgrade preserves manual/legacy/pilot data, receipts,
+5. Genuine previous-schema upgrade preserves manual/illustrative/pilot data, receipts,
    assignments, stages, result/review and Document links; grants/immutable source
    rows are not widened or backfilled. Ordinary existing journeys still pass.
 6. Public HTTP/native-owner App tests cover malformed/foreign/stale responses,
@@ -546,7 +548,7 @@ qualification, review, acceptance, stage or closure meaning is derived here.
    restore old protected data or effects through a round trip or a late response.
 10. As a keyboard or narrow-screen user in ro/ru/fr/en, I retain the current
     window, literal content and focus across a locale-only change with no I/O.
-11. As a manual, legacy or fixed-pilot user, I keep the existing source, native
+11. As a manual, illustrative-Template or fixed-pilot user, I keep the existing source, native
     work, readiness, review and lifecycle paths without adopting this overview.
 
 ### 11.2 Actors and independent authority
@@ -674,7 +676,7 @@ server/transport failures are errors, never null, empty or gate-unavailable succ
 In particular, a404 while resolving an already-authorized latest exact result
 reference fails the read; do not catch it as the independent gate refusal.
 
-Manual, legacy four-Task and fixed-pilot Projects with no configured instance
+Manual, illustrative four-Task and fixed-pilot Projects with no configured instance
 legitimately return null only after base authority and Project visibility. A
 configured plan cannot have zero rows. For a valid row, only
 `available/current: null` says “no result recorded in the application”; unavailable
@@ -769,7 +771,7 @@ No result details leak through summaries, errors, logs or stale callbacks.
    access, with no nested transaction, command row lock, event/history/receipt,
    fence advance or PDF-byte read. Controlled concurrent Task/result/source edits
    produce coherent snapshots; re-read observes the later commits. Existing copy,
-   manual/legacy/pilot, readiness/review and native work regressions remain valid.
+   manual/illustrative/pilot, readiness/review and native work regressions remain valid.
 5. Actual App HTTP/native-parent tests prove whole-response validation, all local
    windows, exact Task continuation and fresh return, deliberate refresh,
    source/Task/result independence and protected pending/uncertain/confirmed native

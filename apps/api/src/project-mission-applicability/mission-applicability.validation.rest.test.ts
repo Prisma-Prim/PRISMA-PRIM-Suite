@@ -9,7 +9,7 @@ import {
 } from '../documents/mission-document.test-support.js';
 import {
   objects,
-  legacyKey,
+  illustrativeTemplateKey,
 } from '../project-template/project-pilot-plan.test-support.js';
 import {
   currentApplicability,
@@ -538,7 +538,7 @@ describe.skipIf(!url)(
       expect((await fixture.call(c.path + '/history')).status).toBe(200);
     }, 60000);
 
-    it('returns unsupported for legitimate manual and legacy plans and preserves foreign-resource nondisclosure', async () => {
+    it('returns unsupported for legitimate manual and four-Task illustrative plans and preserves foreign-resource nondisclosure', async () => {
       const c = await prepareApplicability(fixture);
       const manual = await fixture.call('/projects', {
         method: 'POST',
@@ -546,18 +546,18 @@ describe.skipIf(!url)(
       });
       expect(manual.status).toBe(201);
       const manualId = text((await json(manual)).id);
-      const legacy = await fixture.call('/projects/from-template', {
+      const illustrative = await fixture.call('/projects/from-template', {
         method: 'POST',
         body: {
           clientAccountId: c.clientId,
-          title: 'Legacy unsupported DEMO',
-          templateKey: legacyKey,
+          title: 'Illustrative unsupported DEMO',
+          templateKey: illustrativeTemplateKey,
           templateVersion: 1,
         },
       });
-      expect(legacy.status).toBe(201);
-      const legacyId = text((await json(legacy)).id);
-      for (const projectId of [manualId, legacyId]) {
+      expect(illustrative.status).toBe(201);
+      const illustrativeId = text((await json(illustrative)).id);
+      for (const projectId of [manualId, illustrativeId]) {
         expect(
           await json(
             await fixture.call(`/projects/${projectId}/mission-applicability`),

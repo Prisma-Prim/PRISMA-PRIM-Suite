@@ -6037,7 +6037,7 @@ paths:
         is preserved independently of interface locale. Company successors form one linear
         immutable succession from the unchanged code-defined v1 baseline. Returns at most
         20 Versions newest first, with an explicit exclusive continuation cursor.
-        The optional templateKey selects one model and defaults to the legacy model.
+        The optional templateKey selects one model and defaults to the two-stage illustrative model.
         The fixed thirteen-activity pilot requires captured v2 pilot.read in addition
         to generic read; its only available Version is 1, with no publisher or stages.
       tags:
@@ -6193,12 +6193,12 @@ paths:
       operationId: createProjectFromIllustrativeTemplate
       summary: Atomically create a preparatory Project with the chosen model Task copies
       description: >-
-        Requires the dedicated captured Template User v1 or v2 for legacy copies; the primary pilot requires v2 pilot.read and pilot.instantiate in addition to generic read/instantiate and current independent
+        Requires the dedicated captured Template User v1 or v2 for four-Task illustrative copies; the primary pilot requires v2 pilot.read and pilot.instantiate in addition to generic read/instantiate and current independent
         Project creation, Task Manager and active original Client relationship
         authority. Exact actor/Workspace replay revalidates authority and confirms
         the original Project identity using current Project display facts; changed
         key reuse conflicts. A new creation records one ordinary Project creation
-        and four legacy or thirteen pilot ordinary Task creation events in the same transaction. No existing
+        and four illustrative or thirteen pilot ordinary Task creation events in the same transaction. No existing
         Project is retrofitted. No stage advancement, publishing or operational
         activation occurs.
       tags:
@@ -11488,9 +11488,9 @@ components:
             $ref: '#/components/schemas/CopiedProjectTemplateTask'
     ProjectTemplateDefinition:
       oneOf:
-        - $ref: '#/components/schemas/LegacyProjectTemplateDefinition'
+        - $ref: '#/components/schemas/IllustrativeProjectTemplateDefinition'
         - $ref: '#/components/schemas/PilotProjectTemplateDefinition'
-    LegacyProjectTemplateDefinition:
+    IllustrativeProjectTemplateDefinition:
       type: object
       additionalProperties: false
       required:
@@ -11521,9 +11521,9 @@ components:
             $ref: '#/components/schemas/ProjectTemplateStageDefinition'
     CopiedProjectTemplate:
       oneOf:
-        - $ref: '#/components/schemas/CopiedLegacyProjectTemplate'
+        - $ref: '#/components/schemas/CopiedIllustrativeProjectTemplate'
         - $ref: '#/components/schemas/CopiedPilotProjectTemplate'
-    CopiedLegacyProjectTemplate:
+    CopiedIllustrativeProjectTemplate:
       type: object
       additionalProperties: false
       required:

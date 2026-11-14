@@ -5,7 +5,7 @@ import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgre
 import { createPostgresRestTestHarness } from '../database/postgres-rest-test-harness.js';
 
 export const pilotKey = 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE';
-export const legacyKey = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
+export const illustrativeTemplateKey = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
 export function object(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Expected an object.');
