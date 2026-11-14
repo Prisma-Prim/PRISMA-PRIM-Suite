@@ -1,8 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import {
-  requireUuid,
-  requireIdempotencyKey,
-} from '../access/access-command-validation.js';
+import { requireUuid } from '../access/access-command-validation.js';
 
 export function closedObject(
   value: unknown,
@@ -171,14 +168,5 @@ export function applicabilityHistoryQuery(value: unknown) {
   return applicabilityRevision(Number(query.beforeRevision), true);
 }
 
-/** Same literal key representation, bounded to the existing immutable receipt's resource limit. */
-export function applicabilityIdempotencyKey(value: string | undefined) {
-  const key = requireIdempotencyKey(value);
-  if (
-    Array.from(key).length > 200 ||
-    /[\uD800-\uDFFF]/u.test(key) ||
-    key.includes('\0')
-  )
-    throw new BadRequestException('Invalid Idempotency-Key.');
-  return key;
-}
+/** mission_applicability_commands stores keys of 1 to 200 characters. */
+export const APPLICABILITY_KEY_MAX_LENGTH = 200;

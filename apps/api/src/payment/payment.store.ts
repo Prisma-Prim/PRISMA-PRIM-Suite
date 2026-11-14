@@ -9,13 +9,32 @@ import {
   paymentHistory as history,
   paymentCursorKeys as cursorKeys,
 } from '../database/schema/payment.js';
+import {
+  REVISION_PAGE_SIZE,
+  verifyCommittedRevision,
+  verifyRevisionPage,
+  type RevisionPage,
+} from '../revision-history/revision-history.js';
 import type { PaymentInput } from './payment.input.js';
 import {
   paymentHistoryRevision,
   paymentReceipt,
   paymentSnapshot,
 } from './payment.representation.js';
-import type { PaymentScope, PaymentSummary } from './payment.types.js';
+import type {
+  PaymentRevision,
+  PaymentScope,
+  PaymentSourceSnapshot,
+  PaymentSummary,
+} from './payment.types.js';
+/** A stored Payment coupled with its source snapshot and verified history head. */
+export interface StoredPayment {
+  readonly row: typeof records.$inferSelect;
+  readonly snapshot: PaymentSourceSnapshot;
+  readonly head: PaymentRevision;
+  /** The first history page, read once with the root. */
+  readonly history: RevisionPage<PaymentRevision>;
+}
 @Injectable()
 export class PaymentStore {
   constructor(private readonly database: DatabaseContext) {}
@@ -48,6 +67,15 @@ export class PaymentStore {
       );
     const [row] = lock ? await query.for('update') : await query;
     if (!row) throw new NotFoundException();
+    return this.coupled(row);
+  }
+  /**
+   * Couple a stored root with its source snapshot and its first verified
+   * history page. The page is read here once; callers reuse it.
+   */
+  private async coupled(
+    row: typeof records.$inferSelect,
+  ): Promise<StoredPayment> {
     const snapshot = stored(() => paymentSnapshot(row.sourceSnapshot));
     if (
       snapshot.source.documentId !== row.documentId ||
@@ -55,7 +83,10 @@ export class PaymentStore {
       snapshot.source.representationId !== row.representationId
     )
       throw new Error('Invalid payment source coupling.');
-    const revisions = await this.history(scope, id);
+    const revisions = await this.history(
+      { workspaceId: row.workspaceId, companyId: row.companyId },
+      row.id,
+    );
     const head = revisions.items[0];
     if (
       !head ||
@@ -67,24 +98,11 @@ export class PaymentStore {
       throw new Error('Invalid payment head coupling.');
     return { row, snapshot, head, history: revisions };
   }
-  async summary(row: typeof records.$inferSelect): Promise<PaymentSummary> {
-    const snapshot = stored(() => paymentSnapshot(row.sourceSnapshot)),
-      h = await this.history(
-        { workspaceId: row.workspaceId, companyId: row.companyId },
-        row.id,
-      );
-    const head = h.items[0];
-    if (
-      snapshot.source.documentId !== row.documentId ||
-      snapshot.source.documentVersionId !== row.documentVersionId ||
-      snapshot.source.representationId !== row.representationId ||
-      !head ||
-      head.revision !== row.revision ||
-      head.after.state !== row.state ||
-      !isDeepStrictEqual(head.after.values, row.values) ||
-      !isDeepStrictEqual(head.after.confirmation, row.confirmation)
-    )
-      throw new Error('Invalid payment inventory head.');
+  async summary({
+    row,
+    snapshot,
+    head,
+  }: StoredPayment): Promise<PaymentSummary> {
     const [replacement] = await this.database.connection
       .select({ id: records.id })
       .from(records)
@@ -127,12 +145,21 @@ export class PaymentStore {
     // Inside the read transaction the connection is one pg client, which
     // runs one query at a time: build the summaries one after the other.
     const items = [];
-    for (const row of rows.slice(0, 25)) items.push(await this.summary(row));
+    for (const row of rows.slice(0, 25))
+      items.push(await this.summary(await this.coupled(row)));
     return { items, hasMore: rows.length > 25 };
   }
-  async history(scope: PaymentScope, id: string, before?: number) {
+  async history(
+    scope: PaymentScope,
+    id: string,
+    before?: number,
+  ): Promise<RevisionPage<PaymentRevision>> {
     const rows = await this.database.connection
-      .select()
+      .select({
+        revision: history.revision,
+        commandId: history.commandId,
+        fact: history.fact,
+      })
       .from(history)
       .where(
         and(
@@ -143,38 +170,15 @@ export class PaymentStore {
         ),
       )
       .orderBy(desc(history.revision))
-      .limit(26);
-    const items = rows.map((row) => {
-      const fact = stored(() => paymentHistoryRevision(row.fact));
-      if (
-        fact.paymentId !== id ||
-        fact.revision !== row.revision ||
-        fact.commandId !== row.commandId
-      )
-        throw new Error('Invalid payment revision coupling.');
-      return fact;
+      .limit(REVISION_PAGE_SIZE + 1);
+    return verifyRevisionPage({
+      subject: 'Payment',
+      targetId: id,
+      rows,
+      before,
+      decode: (fact) => stored(() => paymentHistoryRevision(fact)),
+      targetOf: (fact) => fact.paymentId,
     });
-    for (let i = 0; i < items.length - 1; i++) {
-      const a = items[i],
-        b = items[i + 1];
-      if (
-        !a ||
-        !b ||
-        a.revision !== b.revision + 1 ||
-        !isDeepStrictEqual(a.before, b.after)
-      )
-        throw new Error('Invalid payment history chain.');
-    }
-    if (before !== undefined && items[0]?.revision !== before - 1)
-      throw new Error('Incomplete Payment continuation.');
-    const last = items.at(-1);
-    if (
-      last &&
-      rows.length < 26 &&
-      (last.revision !== 1 || last.before !== null)
-    )
-      throw new Error('Incomplete Payment history.');
-    return { items: items.slice(0, 25), hasMore: rows.length > 25 };
   }
   intent(
     actor: ActorContext,
@@ -220,20 +224,12 @@ export class PaymentStore {
       );
     if (!h) throw new Error('Missing payment committed revision.');
     const fact = stored(() => paymentHistoryRevision(h.fact));
-    if (
-      receipt.commandId !== row.id ||
-      receipt.paymentId !== row.paymentId ||
-      receipt.revision !== row.revision ||
-      fact.paymentId !== row.paymentId ||
-      fact.revision !== row.revision ||
-      fact.actor.membershipId !== row.actorMembershipId ||
-      fact.actor.displayName !== row.actorDisplayName ||
-      fact.commandId !== row.id ||
-      fact.action !== receipt.action ||
-      fact.recordedAt !== receipt.recordedAt ||
-      new Date(receipt.recordedAt).getTime() !== row.createdAt.getTime()
-    )
-      throw new Error('Invalid committed payment receipt.');
+    verifyCommittedRevision({
+      subject: 'Payment',
+      command: { ...row, targetId: row.paymentId },
+      receipt: { ...receipt, targetId: receipt.paymentId },
+      fact: { ...fact, targetId: fact.paymentId },
+    });
     return receipt;
   }
   async write(input: {

@@ -581,7 +581,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
       20_000,
     );
 
-    it('refuses a captured Project-read grant replaced while the command waits for its key', async () => {
+    it('rechecks its captured Project-read grant before waiting for its key, so a replacement commits after the command', async () => {
       const context = await fixture.setup();
       await fixture.created(
         '/company-project-next-action-coordinator-assignments',
@@ -590,8 +590,19 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
           workspaceMembershipId: context.membershipId,
         },
       );
+      const options = {
+        method: 'POST',
+        companyId: context.companyId,
+        key: 'captured-read',
+        body: {
+          expectedRevision: 0,
+          expectedLifecycleRevision: 0,
+          text: 'The read capture held while waiting for the key.',
+        },
+      };
       const blocker = await fixture.pool.connect();
-      let pending: Promise<Response> | undefined;
+      let pending: Promise<Response> | undefined,
+        revocation: Promise<Response> | undefined;
       try {
         await blocker.query('BEGIN');
         const pidResult = await blocker.query<{ pid: number }>(
@@ -610,44 +621,22 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
             ]),
           ],
         );
-        pending = fixture.request(context.path, {
-          method: 'POST',
-          companyId: context.companyId,
-          key: 'captured-read',
-          body: {
-            expectedRevision: 0,
-            expectedLifecycleRevision: 0,
-            text: 'The old read capture cannot be revived.',
-          },
-        });
-        const deadline = Date.now() + 5000;
-        let waiting = false;
-        while (Date.now() < deadline) {
-          const result = await fixture.pool.query<{ waiting: boolean }>(
-            'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid))) AS waiting',
-            [pid],
-          );
-          if (result.rows[0]?.waiting) {
-            waiting = true;
-            break;
-          }
-          await setTimeout(10);
-        }
-        expect(waiting).toBe(true);
-        expect(
-          (
-            await fixture.request(
-              `/company-project-assignments/${context.membershipId}/${context.companyId}`,
-              { method: 'DELETE' },
-            )
-          ).status,
-        ).toBe(200);
+        pending = fixture.request(context.path, options);
+        const command = await blockedBy(pid);
+        // The command already holds its authority: the revocation waits for it.
+        revocation = fixture.request(
+          `/company-project-assignments/${context.membershipId}/${context.companyId}`,
+          { method: 'DELETE' },
+        );
+        await blockedBy(command);
+        await blocker.query('COMMIT');
+        expect((await pending).status).toBe(200);
+        expect((await revocation).status).toBe(200);
+        expect((await fixture.request(context.path, options)).status).toBe(403);
         await fixture.created('/company-project-assignments', {
           companyId: context.companyId,
           workspaceMembershipId: context.membershipId,
         });
-        await blocker.query('COMMIT');
-        expect((await pending).status).toBe(403);
         expect(
           await json(
             await fixture.request(context.path, {
@@ -655,13 +644,16 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
             }),
           ),
         ).toMatchObject({
-          current: { revision: 0, text: null },
-          history: { entries: [] },
+          current: {
+            revision: 1,
+            text: 'The read capture held while waiting for the key.',
+          },
         });
       } finally {
         await blocker.query('ROLLBACK');
         blocker.release();
-        await pending;
+        await pending?.catch(() => undefined);
+        await revocation?.catch(() => undefined);
       }
     });
   },

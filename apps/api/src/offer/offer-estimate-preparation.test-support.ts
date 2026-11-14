@@ -476,6 +476,9 @@ export async function openEstimateOfferFixture(
     get origin() {
       return harness.origin;
     },
+    measureApplicationQueries<T>(work: () => Promise<T>) {
+      return harness.measureApplicationQueries(work);
+    },
     request,
     post,
     command,

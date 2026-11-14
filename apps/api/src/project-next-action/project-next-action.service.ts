@@ -5,22 +5,28 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
+import {
+  runKeyedCommand,
+  staleVersionConflict,
+} from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { ProjectService } from '../project/project.service.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
 import {
   MAX_NEXT_ACTION_REVISION,
+  NEXT_ACTION_KEY_MAX_LENGTH,
   nextActionInput,
-  nextActionKey,
   nextActionQuery,
 } from './project-next-action.input.js';
 import { ProjectNextActionStore } from './project-next-action.store.js';
-import type { NextActionReceipt } from './project-next-action.types.js';
+import type {
+  NextActionReceipt,
+  NextActionScope,
+} from './project-next-action.types.js';
 
 @Injectable()
 export class ProjectNextActionService {
@@ -76,13 +82,19 @@ export class ProjectNextActionService {
     body: unknown,
     key: string | undefined,
   ) {
-    const input = nextActionInput(body),
-      normalizedKey = nextActionKey(key);
-    return this.database
-      .transaction(async () => {
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['project.next-action.command', actor.workspaceId, actor.workspaceMembershipId, normalizedKey])},0))`,
-        );
+    const input = nextActionInput(body);
+    const intent = (scope: NextActionScope) => ({
+      format: 'project-next-action-command-v1',
+      companyId: scope.companyId,
+      projectId: scope.projectId,
+      ...input,
+    });
+    return runKeyedCommand(this.database, {
+      name: 'project.next-action.command',
+      actor,
+      key,
+      maxKeyLength: NEXT_ACTION_KEY_MAX_LENGTH,
+      authorize: async () => {
         await this.authorization.requirePermissions(actor, {
           permissions: ['project.read'],
           lock: true,
@@ -97,20 +109,18 @@ export class ProjectNextActionService {
           })
         ).grant('project.next_action.update');
         const { project, scope } = await this.context(actor, projectId);
-        const fingerprint = JSON.stringify({
-          format: 'project-next-action-command-v1',
-          companyId: scope.companyId,
-          projectId: scope.projectId,
-          ...input,
-        });
-        const receipt = await this.store.receipt(actor, normalizedKey);
-        if (receipt) {
-          if (receipt.fingerprint !== fingerprint)
-            throw new ConflictException(
-              'Idempotency-Key belongs to another next-action intent.',
-            );
-          return this.store.replay(scope, receipt);
-        }
+        return { project, scope, assignmentId: capture.assignmentId };
+      },
+      findReceipt: ({ key: used }) => this.store.receipt(actor, used),
+      // Receipts record their intent as its JSON spelling.
+      recordedIntent: (receipt): unknown => JSON.parse(receipt.fingerprint),
+      intent: ({ scope: { scope } }) => intent(scope),
+      replay: ({ scope: { scope }, receipt }) =>
+        this.store.replay(scope, receipt),
+      execute: async ({
+        scope: { project, scope, assignmentId },
+        key: used,
+      }) => {
         const client = await this.clients
           .lockActiveReferenceClient(actor, project.clientAccountId)
           .catch((error: unknown) => {
@@ -130,7 +140,7 @@ export class ProjectNextActionService {
           throw new ConflictException('Reload the open Project lifecycle.');
         const current = await this.store.current(scope);
         if (current.revision !== input.expectedRevision)
-          throw new ConflictException('Reload the current next action.');
+          throw staleVersionConflict('Reload the current next action.');
         const occurredAt = new Date();
         let response: NextActionReceipt;
         if (current.text === input.text)
@@ -141,7 +151,7 @@ export class ProjectNextActionService {
           const record = await this.store.append({
             scope,
             actor,
-            assignmentId: capture.assignmentId,
+            assignmentId,
             previous: current,
             text: input.text,
             lifecycleRevision: input.expectedLifecycleRevision,
@@ -164,17 +174,17 @@ export class ProjectNextActionService {
         await this.store.remember({
           actor,
           scope,
-          assignmentId: capture.assignmentId,
-          key: normalizedKey,
-          fingerprint,
+          assignmentId,
+          key: used,
+          fingerprint: JSON.stringify(intent(scope)),
           response,
           clientUseVersion:
             client.version + (response.outcome === 'changed' ? 1 : 0),
           occurredAt,
         });
         return response;
-      })
-      .catch(unavailable);
+      },
+    }).catch(unavailable);
   }
 }
 function unavailable(error: unknown): never {
