@@ -4,6 +4,16 @@
       "count": 5
     }
   },
+  "apps/api/src/access/captured-company-permissions.ts": {
+    "no-warning-comments": {
+      "count": 1
+    }
+  },
+  "apps/api/src/access/company-context-assignment-record.ts": {
+    "no-warning-comments": {
+      "count": 1
+    }
+  },
   "apps/api/src/access/company-context-assignment.rest.test.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 9
@@ -12,6 +22,24 @@
   "apps/api/src/access/company-context-assignment.service.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 4
+    }
+  },
+  "apps/api/src/access/company-context-authorization.ts": {
+    "no-warning-comments": {
+      "count": 1
+    }
+  },
+  "apps/api/src/access/company-grants.ts": {
+    "no-warning-comments": {
+      "count": 1
+    }
+  },
+  "apps/api/src/access/company-permissions.ts": {
+    "no-restricted-syntax": {
+      "count": 6
+    },
+    "no-warning-comments": {
+      "count": 1
     }
   },
   "apps/api/src/access/workspace-membership-suspension.rest.test.ts": {
@@ -118,6 +146,19 @@
       "count": 1
     }
   },
+  "apps/web/src/access/current-actor.ts": {
+    "no-warning-comments": {
+      "count": 1
+    }
+  },
+  "apps/web/src/access/legacy-company-grant-reads.allowlist.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    },
+    "no-warning-comments": {
+      "count": 1
+    }
+  },
   "apps/web/src/api/latest-authenticated-request.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
@@ -125,6 +166,9 @@
   },
   "apps/web/src/api/latest-authenticated-request.ts": {
     "no-restricted-syntax": {
+      "count": 1
+    },
+    "no-warning-comments": {
       "count": 1
     }
   },
@@ -178,6 +222,11 @@
   },
   "apps/web/src/commercial-pdf/CommercialPdfDownload.tsx": {
     "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/web/src/company-model/company-model-authority.ts": {
+    "no-warning-comments": {
       "count": 1
     }
   },

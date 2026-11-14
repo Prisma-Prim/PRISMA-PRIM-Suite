@@ -14,6 +14,7 @@ Fix a recurring mistake as high as possible: in the code first, then with a dete
 | Access tables queried outside the Access module                               | ESLint `no-restricted-imports`                                                           | #1102, #1108  |
 | Non-null `!` and type assertions in TypeScript                                | ESLint with the shrinking `eslint-suppressions.json` baseline                            | #1077, #1079  |
 | Hand-rolled `AbortController` in web code, not `useScopedOperation`           | ESLint `no-restricted-syntax` with the shrinking `eslint-suppressions.json` baseline     | #1119, #1135  |
+| New `legacy` identifier or comment in application code (tests excluded)       | ESLint `no-restricted-syntax` and `no-warning-comments` with the shrinking baseline      | #1343, #1349  |
 | Handler without an established actor context                                  | `requireActorContext` returns 403                                                        | #1092         |
 | Concurrent queries on one transaction client, e.g. under `Promise.all`        | API Vitest setup `pg-queued-query-guard.ts` fails the test on `pg`'s warning             | #1231         |
 | Company leak, lasting access or false history in Internal Company Tasks       | Nightly `nightly-fuzz.yml`; a failure opens one `fuzz-found` issue to triage             | #1155, #1156  |

@@ -140,10 +140,13 @@ test('a baseline entry for a fixed violation fails lint until it is pruned', asy
   assert.match(result.output, /--prune-suppressions/);
 });
 
-// In web source files, `no-restricted-syntax` forbids only a hand-rolled
-// AbortController (#1135); the API's append-only Activity Log rule is never
-// baselined.
+// `no-restricted-syntax` is baselined for a web AbortController (#1135) and
+// for a `legacy` identifier (#1349) in API and web source; the API's
+// append-only Activity Log rule is never baselined. `no-warning-comments`
+// is baselined only for `legacy` comments (#1349).
 const webSyntaxRule = 'no-restricted-syntax';
+const legacyCommentRule = 'no-warning-comments';
+const applicationSource = /^apps\/(web|api)\/src\//;
 
 test('the committed baseline records only the discipline rules and web AbortControllers for existing files', async () => {
   const baseline = JSON.parse(
@@ -159,8 +162,9 @@ test('the committed baseline records only the discipline rules and web AbortCont
     for (const [rule, { count }] of Object.entries(rules)) {
       assert.ok(
         [nonNullRule, assertionRule].includes(rule) ||
-          (rule === webSyntaxRule && file.startsWith('apps/web/src/')),
-        `${file} suppresses ${rule}; the baseline is reserved for the TypeScript discipline rules and web AbortControllers`,
+          ([webSyntaxRule, legacyCommentRule].includes(rule) &&
+            applicationSource.test(file)),
+        `${file} suppresses ${rule}; the baseline is reserved for the TypeScript discipline rules, web AbortControllers and legacy names`,
       );
       assert.ok(Number.isInteger(count) && count > 0, `${file} ${rule}`);
     }

@@ -16,6 +16,21 @@ const accessOwnedTables = [
   'workspacePermissionGrants',
 ];
 
+// No new identifier or comment says "legacy" in application code (#1343,
+// #1349): before launch nothing is deployed, so data, fixtures and readers
+// move to the new shape and a product variant gets its real name. Import paths
+// are string literals, so `pdfjs-dist/legacy/build` is not an Identifier.
+// Occurrences that predate the rule sit in eslint-suppressions.json (recorded
+// with `--suppress-rule no-restricted-syntax --suppress-rule no-warning-comments`
+// only for these hits); prune it as owners rename them. The restriction is
+// spread into the API and web `no-restricted-syntax` blocks below, because a
+// later block replaces an earlier one's options for the same files.
+const legacyNameRestriction = {
+  selector: 'Identifier[name=/legacy/i]',
+  message:
+    'Do not name something legacy: nothing is deployed before launch, so move the data, fixtures and readers to the new shape (#1343, docs/agents/typescript-discipline.md); a product variant gets its real name.',
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -92,6 +107,7 @@ export default tseslint.config(
           message:
             'Activity Log events are append-only: never update or delete one; append a correcting event in the same transaction instead.',
         },
+        legacyNameRestriction,
       ],
     },
   },
@@ -116,6 +132,7 @@ export default tseslint.config(
           message:
             'Do not hand-roll an AbortController: take the signal from useScopedOperation(scope).begin() (apps/web/src/api/use-scoped-operation.ts), and pass it as `signal` to runLatestAuthenticatedRequest.',
         },
+        legacyNameRestriction,
       ],
     },
   },
@@ -131,6 +148,26 @@ export default tseslint.config(
           selector: 'CallExpression[callee.property.name=/^unroute(All)?$/]',
           message:
             'Use removeRoute(page, pattern, handler?) from ./route-removal to keep in-flight Chromium reads alive.',
+        },
+      ],
+    },
+  },
+  {
+    // The comment half of the legacy-name restriction above; same scope as the
+    // identifier half (the API and web blocks above carry their own ignores).
+    files: ['apps/api/src/**/*.ts', 'apps/web/src/**/*.{ts,tsx}'],
+    ignores: [
+      '**/*.{test,spec}.{ts,tsx}',
+      '**/*.test-*.{ts,tsx}',
+      'apps/api/test-support/**',
+      'apps/web/src/test/**',
+    ],
+    rules: {
+      'no-warning-comments': [
+        'error',
+        {
+          terms: ['legacy'],
+          location: 'anywhere',
         },
       ],
     },
