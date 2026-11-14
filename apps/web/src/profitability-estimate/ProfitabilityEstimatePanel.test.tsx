@@ -20,6 +20,10 @@ import {
   syntheticInputs,
   syntheticVersion,
 } from './profitability.fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const both: ActorContext = {
   ...actor,
@@ -27,12 +31,11 @@ const both: ActorContext = {
     ...actor.activeCompany,
     id: 'company-1',
     displayName: 'Synthetic Company',
-    profitabilityDirectorPermissions: [
-      'commercial.profitability_estimate.read',
-      'commercial.profitability_estimate.decide',
-    ],
-    profitabilityDirectorPermissionAssignmentId: 'director-assignment',
-    profitabilityDirectorPermissionSetVersion: 'v1',
+    grants: withCompanyGrants(actor.activeCompany?.grants, {
+      bundle: 'company_profitability_director',
+      version: 'v1',
+      assignmentId: 'director-assignment',
+    }),
   },
 };
 afterEach(() => {
@@ -409,8 +412,10 @@ describe('Profitability Estimate production public seam', () => {
         ...both.activeCompany,
         id: 'company-1',
         displayName: 'Synthetic Company',
-        profitabilityContributorPermissions: [],
-        profitabilityContributorPermissionAssignmentId: undefined,
+        grants: withoutCompanyGrants(
+          both.activeCompany?.grants,
+          'company_profitability_contributor',
+        ),
       },
     };
     const older = syntheticVersion();
@@ -477,6 +482,10 @@ describe('Profitability Estimate production public seam', () => {
         id: 'company-1',
         displayName: 'Synthetic Company',
         commercialIntakePermissions: [],
+        grants: withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_commercial_intake',
+        ),
       },
     });
     expect(
@@ -545,8 +554,11 @@ describe('Profitability Estimate production public seam', () => {
         ...replacement.activeCompany,
         id: 'company-1',
         displayName: 'Synthetic Company',
-        profitabilityContributorPermissionAssignmentId:
-          'replacement-assignment',
+        grants: withCompanyGrants(replacement.activeCompany?.grants, {
+          bundle: 'company_profitability_contributor',
+          version: 'v1',
+          assignmentId: 'replacement-assignment',
+        }),
       },
     };
     rendered.rerender(
@@ -667,11 +679,15 @@ describe('Profitability Estimate production public seam', () => {
           ...actor.activeCompany,
           id: replacement === 'Company' ? 'replacement-company' : 'company-1',
           displayName: 'Synthetic Company',
-          profitabilityContributorPermissionAssignmentId:
-            replacement === 'grant'
-              ? 'replacement-grant'
-              : actor.activeCompany
-                  ?.profitabilityContributorPermissionAssignmentId,
+          ...(replacement === 'grant'
+            ? {
+                grants: withCompanyGrants(actor.activeCompany?.grants, {
+                  bundle: 'company_profitability_contributor',
+                  version: 'v1',
+                  assignmentId: 'replacement-grant',
+                }),
+              }
+            : {}),
         },
       };
       rendered.rerender(

@@ -21,6 +21,7 @@ import {
   withRecordedDecision,
 } from '../test/offer-quality-decision-fixture';
 import { OfferPanel } from './OfferPanel';
+import { offerGrants } from './offer-grants.test-fixture';
 import type { OfferClientResponseView, OfferView } from './offer-response';
 import {
   approvedTransmissionOffer,
@@ -33,6 +34,10 @@ import {
   withClientResponse,
   withTransmission,
 } from '../test/offer-transmission-response-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'localized-offer-transmitter',
@@ -55,6 +60,18 @@ const actor: ActorContext = {
       'commercial.offer.transmission.record',
     ],
     offerPermissionAssignmentId: 'preparer-assignment-one',
+    grants: companyGrants(
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'commercial-intake-grant',
+      },
+      {
+        bundle: 'company_offer_preparer',
+        version: 'v1',
+        assignmentId: 'preparer-assignment-one',
+      },
+    ),
   },
 };
 
@@ -245,7 +262,18 @@ function permissions(
   if (!actor.activeCompany) throw new Error('Expected synthetic Company.');
   return {
     ...actor,
-    activeCompany: { ...actor.activeCompany, offerPermissions: values },
+    activeCompany: {
+      ...actor.activeCompany,
+      offerPermissions: values,
+      grants: [
+        ...withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_offer_preparer',
+          'company_offer_approver',
+        ),
+        ...offerGrants(values, { preparer: 'preparer-assignment-one' }),
+      ],
+    },
   };
 }
 function installBoundary({

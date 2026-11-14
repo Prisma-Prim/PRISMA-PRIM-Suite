@@ -13,6 +13,7 @@ import {
   interfaceLocaleStorageKey,
 } from '../localization/interface-locale';
 import { OfferPanel } from './OfferPanel';
+import { offerGrants } from './offer-grants.test-fixture';
 import {
   MODEL_OFFER_COMPANY,
   MODEL_OFFER_OPPORTUNITY,
@@ -22,6 +23,7 @@ import {
   selectedModelFixture,
 } from './model-offer.fixture';
 import { readOffer } from './offer-response';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'synthetic-model-preparer',
@@ -129,6 +131,10 @@ describe('Full approved-model Offer journey', () => {
                         offerPermissions: ['commercial.offer.read'],
                         offerPermissionSetVersion: undefined,
                         offerPermissionAssignmentId: undefined,
+                        grants: withoutCompanyGrants(
+                          modelOfferActor.activeCompany?.grants,
+                          'company_offer_preparer',
+                        ),
                       }
                     : {}),
                 },
@@ -283,8 +289,18 @@ describe('Full approved-model Offer journey', () => {
         offerPermissions: ['commercial.offer.read'] satisfies NonNullable<
           typeof modelOfferActor.activeCompany
         >['offerPermissions'],
-        profitabilityContributorPermissions: [],
-        profitabilityDirectorPermissions: [],
+        grants: [
+          ...withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_offer_preparer',
+            'company_offer_approver',
+            'company_profitability_contributor',
+            'company_profitability_director',
+          ),
+          ...offerGrants(['commercial.offer.read'], {
+            preparer: 'preparer-852',
+          }),
+        ],
       },
     };
     const mounted = render(panel(reader));
@@ -298,7 +314,15 @@ describe('Full approved-model Offer journey', () => {
       mounted.rerender(
         panel({
           ...reader,
-          activeCompany: { ...reader.activeCompany, offerPermissions: [] },
+          activeCompany: {
+            ...reader.activeCompany,
+            offerPermissions: [],
+            grants: withoutCompanyGrants(
+              reader.activeCompany.grants,
+              'company_offer_preparer',
+              'company_offer_approver',
+            ),
+          },
         }),
       ),
     );

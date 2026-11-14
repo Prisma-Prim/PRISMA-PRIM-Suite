@@ -1,5 +1,6 @@
 import './offer-message.css';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { holds } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -53,13 +54,14 @@ export function OfferMessagePreparation(props: Props) {
     props.actor.active &&
     props.identity.loaded &&
     props.identity.signedIn &&
-    company?.commercialIntakePermissions?.includes(
-      'commercial.request.read',
-    ) === true &&
-    company?.commercialIntakePermissions?.includes(
+    holds(company, 'company_commercial_intake', 'commercial.request.read') &&
+    holds(
+      company,
+      'company_commercial_intake',
       'commercial.opportunity.read',
-    ) === true &&
-    company.offerPermissions?.includes('commercial.offer.read') === true;
+    ) &&
+    (holds(company, 'company_offer_preparer', 'commercial.offer.read') ||
+      holds(company, 'company_offer_approver', 'commercial.offer.read'));
   const authority = JSON.stringify([
     props.actor.internalUserId,
     props.actor.workspaceMembershipId,

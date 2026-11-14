@@ -10,6 +10,7 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { selectOption } from './select-option';
 import {
   buildClientRequest,
@@ -174,6 +175,33 @@ async function installRoutes(
                 readOnly || retired
                   ? ['commercial.offer.read']
                   : ['commercial.offer.read', 'commercial.offer.approve'],
+              grants: companyGrants(
+                {
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'client-reader-699',
+                },
+                {
+                  bundle: 'company_commercial_intake',
+                  version: 'v1',
+                  assignmentId: 'intake-reader-699',
+                },
+                // No registry bundle reads Offers without also running their
+                // Quality Checks. The read-only reader keeps its Approver
+                // grant over recorded decisions; after the approval authority
+                // is retired the reader keeps Offer read through the Preparer.
+                retired
+                  ? {
+                      bundle: 'company_offer_preparer',
+                      version: 'v1',
+                      assignmentId: 'offer-reader-699',
+                    }
+                  : {
+                      bundle: 'company_offer_approver',
+                      version: 'v1',
+                      assignmentId: 'offer-approver-699',
+                    },
+              ),
             },
           }
         : {}),
@@ -783,9 +811,11 @@ test('keeps recorded decisions read-only through all four languages without acqu
     await expect(description(page, locale.checksum)).toHaveText(
       pendingOffer().version.representation.sha256,
     );
+    // An Approver may still run Quality Checks; the recorded decision
+    // offers no decision control, and nothing is run.
     await expect(
       page.getByRole('button', { name: locale.run, exact: true }),
-    ).toHaveCount(0);
+    ).toHaveCount(1);
     await expect(
       page.getByRole('button', { name: locale.approve, exact: true }),
     ).toHaveCount(0);
@@ -857,9 +887,10 @@ test('retires a real Company approval authority and suppresses its late result a
   await expect(
     page.getByRole('button', { name: locale.approve, exact: true }),
   ).toHaveCount(0);
+  // The remaining Preparer grant still runs Quality Checks.
   await expect(
     page.getByRole('button', { name: locale.run, exact: true }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   observed.releaseApproval();
   await expect.poll(() => observed.lateDecisionReplies.length).toBe(1);
   await expect(page.getByText(locale.approved, { exact: true })).toHaveCount(0);
@@ -886,7 +917,7 @@ test('retires a real Company approval authority and suppresses its late result a
       name: offerDecisionLocales[0].run,
       exact: true,
     }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   expect(observed.requests).toHaveLength(retiredRequestCount);
   await chooseLanguage(page, offerDecisionLocales[0], locale);
   expect(observed.requests).toHaveLength(retiredRequestCount);

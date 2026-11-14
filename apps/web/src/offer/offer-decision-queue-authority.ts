@@ -1,30 +1,21 @@
+import { grantOf, holds } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 
 export function offerDecisionQueueAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
-  const knownApprover =
-    c?.offerApproverPermissionSetVersion === 'v1' ||
-    c?.offerApproverPermissionSetVersion === 'v2';
-  const knownIntake = ['v1', 'v2', 'v3', 'v4'].some(
-    (v) => v === c?.commercialIntakePermissionSetVersion,
-  );
+  const approver = grantOf(c, 'company_offer_approver');
+  const intake = grantOf(c, 'company_commercial_intake');
   const read = Boolean(
     actor.active &&
     c &&
-    knownApprover &&
-    knownIntake &&
-    c.offerApproverAssignmentId &&
-    c.commercialIntakePermissionAssignmentId &&
-    c.offerPermissions?.includes('commercial.offer.read') &&
-    c.offerPermissions.includes('commercial.offer.approve') &&
-    c.commercialIntakePermissions?.includes('commercial.request.read') &&
-    c.commercialIntakePermissions.includes('commercial.opportunity.read'),
+    holds(c, 'company_offer_approver', 'commercial.offer.read') &&
+    holds(c, 'company_offer_approver', 'commercial.offer.approve') &&
+    holds(c, 'company_commercial_intake', 'commercial.request.read') &&
+    holds(c, 'company_commercial_intake', 'commercial.opportunity.read'),
   );
-  const modelDecision = Boolean(
+  const modelDecision =
     read &&
-    c?.offerApproverPermissionSetVersion === 'v2' &&
-    c.offerPermissions?.includes('commercial.offer.model_based.approve'),
-  );
+    holds(c, 'company_offer_approver', 'commercial.offer.model_based.approve');
   return {
     read,
     modelDecision,
@@ -34,10 +25,10 @@ export function offerDecisionQueueAuthority(actor: ActorContext) {
       actor.internalUserId,
       actor.workspaceMembershipId,
       c?.id,
-      c?.offerApproverAssignmentId,
-      c?.offerApproverPermissionSetVersion,
-      c?.commercialIntakePermissionAssignmentId,
-      c?.commercialIntakePermissionSetVersion,
+      approver?.assignmentId,
+      approver?.permissionSetVersion,
+      intake?.assignmentId,
+      intake?.permissionSetVersion,
       read,
       modelDecision,
     ]),

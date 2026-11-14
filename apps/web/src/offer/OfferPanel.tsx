@@ -19,6 +19,11 @@ import {
   type FormEvent,
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
+import {
+  grantOf,
+  holds,
+  type CompanyGrantPermission,
+} from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import {
   conflictCode,
@@ -108,21 +113,16 @@ function offerAuthorityStamp(actor: ActorContext) {
     actor.workspaceId,
     actor.workspaceMembershipId,
     actor.internalUserId,
-    actor.activeCompany?.offerPermissionAssignmentId,
-    actor.activeCompany?.offerApproverAssignmentId,
-    actor.activeCompany?.commercialIntakePermissionAssignmentId,
-    actor.activeCompany?.clientPermissionAssignmentId,
-    actor.activeCompany?.offerPermissions,
-    actor.activeCompany?.commercialIntakePermissions,
-    actor.activeCompany?.clientPermissions,
-    actor.activeCompany?.offerPermissionSetVersion,
-    actor.activeCompany?.offerApproverPermissionSetVersion,
-    actor.activeCompany?.profitabilityContributorPermissionAssignmentId,
-    actor.activeCompany?.profitabilityContributorPermissionSetVersion,
-    actor.activeCompany?.profitabilityContributorPermissions,
-    actor.activeCompany?.profitabilityDirectorPermissionAssignmentId,
-    actor.activeCompany?.profitabilityDirectorPermissionSetVersion,
-    actor.activeCompany?.profitabilityDirectorPermissions,
+    ...(
+      [
+        'company_offer_preparer',
+        'company_offer_approver',
+        'company_commercial_intake',
+        'company_director_client_access',
+        'company_profitability_contributor',
+        'company_profitability_director',
+      ] as const
+    ).map((bundle) => grantOf(actor.activeCompany, bundle)),
   ]);
 }
 
@@ -168,24 +168,29 @@ function OfferPanelOwner({
   const modelCopy = useModelOfferCopy();
   const offerVersionCopy = useOfferVersionCopy();
   const { formatDateTime, formatDecimal } = useOfferPresentation();
-  const companyId = actor.activeCompany?.id;
-  const permissions = actor.activeCompany?.offerPermissions ?? [];
-  const mayRead = permissions.includes('commercial.offer.read');
-  const mayPrepare =
-    permissions.includes('commercial.offer.prepare') &&
-    actor.activeCompany?.clientPermissions?.includes('client.read') &&
-    actor.activeCompany?.commercialIntakePermissions?.includes(
-      'commercial.opportunity.read',
-    );
-  const mayApprove = permissions.includes('commercial.offer.approve');
-  const mayTransmit = permissions.includes(
-    'commercial.offer.transmission.record',
+  const company = actor.activeCompany;
+  const companyId = company?.id;
+  const prepares = (
+    permission: CompanyGrantPermission<'company_offer_preparer'>,
+  ) => holds(company, 'company_offer_preparer', permission);
+  const approves = (
+    permission: CompanyGrantPermission<'company_offer_approver'>,
+  ) => holds(company, 'company_offer_approver', permission);
+  const readsOpportunity = holds(
+    company,
+    'company_commercial_intake',
+    'commercial.opportunity.read',
   );
+  const mayRead =
+    prepares('commercial.offer.read') || approves('commercial.offer.read');
+  const mayPrepare =
+    prepares('commercial.offer.prepare') &&
+    holds(company, 'company_director_client_access', 'client.read') &&
+    readsOpportunity;
+  const mayApprove = approves('commercial.offer.approve');
+  const mayTransmit = prepares('commercial.offer.transmission.record');
   const mayRespond =
-    permissions.includes('commercial.offer.response.record') &&
-    actor.activeCompany?.commercialIntakePermissions?.includes(
-      'commercial.opportunity.read',
-    );
+    approves('commercial.offer.response.record') && readsOpportunity;
   const authorityStamp = offerAuthorityStamp(actor);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [estimateOpen, setEstimateOpen] = useState(false);
@@ -857,14 +862,9 @@ function OfferPanelOwner({
                 mayRun={
                   !view.offer.version.supersededByVersionId &&
                   (isModelOffer(view.offer)
-                    ? permissions.includes(
-                        'commercial.offer.model_based.prepare',
-                      ) ||
-                      permissions.includes(
-                        'commercial.offer.model_based.approve',
-                      )
-                    : permissions.includes('commercial.offer.prepare') ||
-                      mayApprove)
+                    ? prepares('commercial.offer.model_based.prepare') ||
+                      approves('commercial.offer.model_based.approve')
+                    : prepares('commercial.offer.prepare') || mayApprove)
                 }
                 reject={reject}
                 onRun={(run) =>
@@ -883,7 +883,7 @@ function OfferPanelOwner({
           {companyId &&
             mayApprove &&
             (!isModelOffer(view.offer) ||
-              permissions.includes('commercial.offer.model_based.approve')) &&
+              approves('commercial.offer.model_based.approve')) &&
             !view.offer.version.supersededByVersionId && (
               <fieldset
                 className="offer-command-boundary"
@@ -916,9 +916,7 @@ function OfferPanelOwner({
             isExecutableOffer(view.offer) &&
             mayTransmit &&
             (!isModelOffer(view.offer) ||
-              permissions.includes(
-                'commercial.offer.model_based.transmission.record',
-              )) &&
+              prepares('commercial.offer.model_based.transmission.record')) &&
             !view.offer.version.supersededByVersionId &&
             view.offer.version.decisionState === 'APPROVED' &&
             view.offer.version.transmissionState === 'NOT_TRANSMITTED' && (
@@ -956,9 +954,7 @@ function OfferPanelOwner({
             isExecutableOffer(view.offer) &&
             mayRespond &&
             (!isModelOffer(view.offer) ||
-              permissions.includes(
-                'commercial.offer.model_based.response.record',
-              )) &&
+              approves('commercial.offer.model_based.response.record')) &&
             !view.offer.version.supersededByVersionId &&
             view.offer.version.clientResponseState === 'PENDING' && (
               <fieldset

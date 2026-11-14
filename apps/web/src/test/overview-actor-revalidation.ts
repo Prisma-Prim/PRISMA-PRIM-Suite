@@ -6,6 +6,10 @@ import {
   waitFor,
   within,
 } from './render-with-interface-locale';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 /** The overview Offer decision queue's read, refused on demand by a test server. */
 export const offerDecisionQueuePath = '/api/offer-decision-queue';
@@ -28,6 +32,19 @@ export function withOfferDecisionQueue(actor: ActorContext): ActorContext {
       offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
       offerApproverAssignmentId: 'overview-queue-approver',
       offerApproverPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(
+        withoutCompanyGrants(company?.grants, 'company_offer_preparer'),
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'overview-queue-intake',
+        },
+        {
+          bundle: 'company_offer_approver',
+          version: 'v1',
+          assignmentId: 'overview-queue-approver',
+        },
+      ),
     },
   };
 }

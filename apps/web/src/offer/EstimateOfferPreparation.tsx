@@ -8,6 +8,7 @@ import {
 import { SelectedOfferModelContent } from './ModelOfferDetails';
 import { exactRecord, text } from '../offer-model/offer-model-content';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { holds } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -75,17 +76,16 @@ type Attempt = {
 export function mayPrepareEstimateOffer(actor: ActorContext): boolean {
   const company = actor.activeCompany;
   return (
-    (company?.offerPermissionSetVersion === 'v2' ||
-      company?.offerPermissionSetVersion === 'v3') &&
-    !!company.offerPermissionAssignmentId &&
-    [
-      'commercial.offer.read',
-      'commercial.offer.prepare',
-      'commercial.offer.estimate.prepare',
-    ].every((permission) =>
-      company.offerPermissions?.some((own) => own === permission),
+    (
+      [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+        'commercial.offer.estimate.prepare',
+      ] as const
+    ).every((permission) =>
+      holds(company, 'company_offer_preparer', permission),
     ) &&
-    company.clientPermissions?.includes('client.read') === true &&
+    holds(company, 'company_director_client_access', 'client.read') &&
     profitabilityAuthority(actor).read
   );
 }
@@ -94,10 +94,12 @@ export function mayPrepareModelOffer(actor: ActorContext): boolean {
   const company = actor.activeCompany;
   return (
     mayPrepareEstimateOffer(actor) &&
-    company?.offerPermissionSetVersion === 'v3' &&
-    company.offerPermissions?.includes('commercial.offer.model.select') ===
-      true &&
-    company.offerPermissions.includes('commercial.offer.model_based.prepare')
+    holds(company, 'company_offer_preparer', 'commercial.offer.model.select') &&
+    holds(
+      company,
+      'company_offer_preparer',
+      'commercial.offer.model_based.prepare',
+    )
   );
 }
 

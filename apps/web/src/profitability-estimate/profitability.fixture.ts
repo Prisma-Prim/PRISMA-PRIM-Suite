@@ -1,5 +1,6 @@
 import type { ActorContext } from '../access-types';
 import type { EstimateInputs, EstimateVersion } from './profitability-contract';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 // Clearly synthetic fixtures; no controlled source or Client data.
 export const profitabilityActor: ActorContext = {
@@ -15,12 +16,18 @@ export const profitabilityActor: ActorContext = {
     id: 'company-1',
     displayName: 'Synthetic Company',
     commercialIntakePermissions: ['commercial.opportunity.read'],
-    profitabilityContributorPermissions: [
-      'commercial.profitability_estimate.read',
-      'commercial.profitability_estimate.create',
-    ],
-    profitabilityContributorPermissionAssignmentId: 'contributor-assignment',
-    profitabilityContributorPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'commercial-intake-grant',
+      },
+      {
+        bundle: 'company_profitability_contributor',
+        version: 'v1',
+        assignmentId: 'contributor-assignment',
+      },
+    ),
   },
 };
 export const syntheticInputs: EstimateInputs = {
