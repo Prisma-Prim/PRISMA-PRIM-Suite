@@ -613,6 +613,19 @@ const url = process.env.TEST_DATABASE_URL;
         { action: 'CREATE', revision: 1 },
       );
     });
+    it('reads the first history page once per detail and first history request', async () => {
+      for (const path of [`/payments/${id}`, `/payments/${id}/history`]) {
+        const measured = await fixture.measureApplicationQueries(() =>
+          fixture.call(path),
+        );
+        expect(measured.value.status).toBe(200);
+        expect(
+          measured.queries.filter((query) =>
+            query.includes('from "payment_history"'),
+          ),
+        ).toHaveLength(1);
+      }
+    });
     it('refuses an exhausted expected revision without effects and fails closed on corrupt or unknown stored formats', async () => {
       const before = await snapshot();
       expect(

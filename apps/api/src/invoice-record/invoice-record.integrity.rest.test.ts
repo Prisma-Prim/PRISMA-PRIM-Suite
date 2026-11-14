@@ -444,6 +444,112 @@ withPostgres('Invoice Record native atomicity and storage integrity', () => {
       );
     }
   });
+
+  describe('stored revision history verification', () => {
+    async function createRecord(
+      source: Awaited<ReturnType<typeof prepareInvoiceRecordSource>>,
+      key = randomUUID(),
+    ) {
+      const created = await source.create(source.createBody, key);
+      expect(created.status).toBe(201);
+      return responseString(responseRecord(await created.json()), 'recordId');
+    }
+
+    it('fails closed on a forged revision gap in the detail, history and inventory reads', async () => {
+      const source = await prepareInvoiceRecordSource(fixture);
+      const recordId = await createRecord(source);
+      const corrected = await source.command({
+        recordId,
+        body: {
+          action: 'CORRECT',
+          expectedRevision: 1,
+          values: { ...source.createBody.values, grossMinor: '125600' },
+          reason: 'Fictional transcription check',
+        },
+      });
+      expect(corrected.status).toBe(201);
+      const paths = [
+        `/invoice-records/${recordId}`,
+        `/invoice-records/${recordId}/history`,
+        '/invoice-records',
+      ];
+      for (const path of paths)
+        expect((await source.request(path)).status).toBe(200);
+      // Revision 2 still chains to a plausible predecessor; only the missing
+      // revision 1 betrays the forged gap.
+      await damageStoredHistory([
+        [
+          'DELETE FROM invoice_record_events WHERE record_id=$1 AND revision=1',
+          [recordId],
+        ],
+        [
+          'DELETE FROM invoice_record_history WHERE record_id=$1 AND revision=1',
+          [recordId],
+        ],
+      ]);
+      for (const path of paths)
+        expect((await source.request(path)).status).toBe(503);
+    });
+
+    it('refuses to replay a committed command whose stored revision fact names another actor', async () => {
+      const source = await prepareInvoiceRecordSource(fixture);
+      const key = randomUUID();
+      const recordId = await createRecord(source, key);
+      const replay = await source.create(source.createBody, key);
+      expect(replay.status).toBe(201);
+      await damageStoredHistory([
+        [
+          `UPDATE invoice_record_history SET fact=jsonb_set(fact,'{actor,displayName}',to_jsonb('Forged fictional label'::text)) WHERE record_id=$1`,
+          [recordId],
+        ],
+      ]);
+      expect((await source.create(source.createBody, key)).status).toBe(503);
+    });
+
+    it('reads the first history page once per detail and first history request', async () => {
+      const source = await prepareInvoiceRecordSource(fixture);
+      const recordId = await createRecord(source);
+      for (const path of [
+        `/invoice-records/${recordId}`,
+        `/invoice-records/${recordId}/history`,
+      ]) {
+        const measured = await fixture.measureApplicationQueries(() =>
+          source.request(path),
+        );
+        expect(measured.value.status).toBe(200);
+        expect(
+          measured.queries.filter((query) =>
+            query.includes('from "invoice_record_history"'),
+          ),
+        ).toHaveLength(1);
+      }
+    });
+
+    /**
+     * Disposable-database damage only: the append-only guards are disabled
+     * and re-enabled inside one transaction, so they never stay off.
+     */
+    async function damageStoredHistory(
+      statements: readonly (readonly [string, readonly string[]])[],
+    ) {
+      const writer = await fixture.pool.connect();
+      try {
+        await writer.query('BEGIN');
+        for (const table of ['invoice_record_events', 'invoice_record_history'])
+          await writer.query(`ALTER TABLE ${table} DISABLE TRIGGER USER`);
+        for (const [statement, values] of statements)
+          await writer.query(statement, [...values]);
+        for (const table of ['invoice_record_events', 'invoice_record_history'])
+          await writer.query(`ALTER TABLE ${table} ENABLE TRIGGER USER`);
+        await writer.query('COMMIT');
+      } catch (error) {
+        await writer.query('ROLLBACK');
+        throw error;
+      } finally {
+        writer.release();
+      }
+    }
+  });
 });
 
 async function forgedCreate(
