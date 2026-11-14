@@ -204,7 +204,7 @@ export const unionPanel = (page: Page) =>
 export const unionForm = (page: Page) =>
   unionPanel(page).getByRole('form', { name: 'Confirm union' });
 export async function openUnion(page: Page) {
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await page
     .getByRole('button', { name: 'Open dossier', exact: true })
     .first()

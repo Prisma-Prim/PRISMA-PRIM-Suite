@@ -126,7 +126,7 @@ for (const locale of cases) {
         });
       },
     );
-    await page.goto('/?frame=prisme#access');
+    await page.goto('/#access');
     await expect(
       page.getByRole('heading', {
         name: 'Identity-provider sessions',

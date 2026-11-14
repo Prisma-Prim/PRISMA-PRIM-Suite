@@ -33,7 +33,7 @@ test('reads a shared dossier before deliberately correcting it in Prisme', async
     state.dossier = { ...dossier, displayName: 'Corrected Client', version: 2 };
     return route.fulfill({ json: state.dossier });
   };
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await page.getByRole('button', { name: 'Open dossier', exact: true }).focus();
   await page.keyboard.press('Enter');
   const detail = page.getByRole('region', {
@@ -587,7 +587,7 @@ for (const outcome of [
     state.read = (route) => {
       release = () => route.fulfill({ status: outcome.status, json: {} });
     };
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     await page.getByRole('button', { name: 'Open dossier' }).click();
     await expect(page.getByText('Loading Client dossier…')).toBeVisible();
     await expect.poll(() => release !== undefined).toBe(true);
@@ -609,7 +609,7 @@ test('never grants the minimal Workspace Owner enriched dossier access', async (
     workspacePermissions: ['client.manage'],
     activeCompany: dossierCompany,
   };
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await expect(
     page.getByRole('heading', { name: state.dossier.displayName }),
   ).toBeVisible();
@@ -654,7 +654,7 @@ test('does not steal focus when a dossier arrives after navigation', async ({
   state.read = (route) => {
     release = () => route.fulfill({ json: state.dossier });
   };
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await page.getByRole('button', { name: 'Open dossier' }).click();
   await expect(page.getByText('Loading Client dossier…')).toBeVisible();
   await navigateTo(page, 'Overview');

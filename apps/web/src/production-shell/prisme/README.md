@@ -4,7 +4,7 @@
 
 ## Entry and composition
 
-Prisme is the only frame for an admitted user; the Classic frame was retired in [#1355](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1355). A `frame` URL parameter selects nothing: `?frame=classic` and `?frame=prisme` open Prisme like any other URL, with every URL parameter kept. In-frame links carry opaque history state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#my-tasks`, `#unassigned-tasks`, `#blocked-tasks`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
+Prisme is the only frame for an admitted user; the Classic frame was retired in [#1355](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1355). A `frame` URL parameter selects nothing: a retired Classic or Prisme `frame` link opens Prisme like any other URL, with every URL parameter kept. In-frame links carry opaque history state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#my-tasks`, `#unassigned-tasks`, `#blocked-tasks`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
 
 `App` still owns `useProductionShellContext(identity)` and the existing permission gates, callbacks and feature keys. `ApplicationShell` receives real identity/context, the existing Company selector and an authorized section composition. Section panels remain mounted when hidden, so drafts and idempotent retry commands survive navigation. Identity, session, Company and permission-version changes still use the existing feature keys and session owner. No API transport, authorization or business workflow is implemented by the frame.
 
@@ -165,7 +165,7 @@ live Clerk, backend or external-provider smoke tests.
 
 [Issue #275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/275) made Prisme the authenticated default, and [#1355](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1355) removed the Classic frame. Signed-out welcome, invitation entry, Clerk composition, authorization, `/ui-baseline`, APIs and business owners are unchanged.
 
-`App.clients.test.tsx` proves that `/?frame=classic#clients` opens the Prisme Clients section. `e2e/prisme-frame.spec.ts` proves that retired `?frame=classic` and `?frame=prisme` links open Prisme, then the authorized MVP destinations, keyboard focus, narrow fit and state/draft/retry continuity at 1440px and 390px. Invitation acceptance coverage proves that the server-authorized Workspace reaches the frame and keeps recovery state.
+`App.clients.test.tsx` proves that the retired Classic `frame` link to the Clients section opens the Prisme Clients section. `e2e/prisme-frame.spec.ts` proves that retired Classic and Prisme `frame` links open Prisme, then the authorized MVP destinations, keyboard focus, narrow fit and state/draft/retry continuity at 1440px and 390px. Invitation acceptance coverage proves that the server-authorized Workspace reaches the frame and keeps recovery state.
 
 ## My Tasks — issue #347
 

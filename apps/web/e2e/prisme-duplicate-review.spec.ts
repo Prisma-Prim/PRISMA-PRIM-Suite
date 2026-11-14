@@ -15,7 +15,7 @@ test('compares read-only sources and deliberately attaches the existing Client i
   page,
 }, testInfo) => {
   const state = await installReviewFixture(page);
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await expect(openReviewButton(page)).toBeVisible();
   await expect(reviewPanel(page).getByText(reviewReference)).toHaveCount(0);
   await expect(reviewPanel(page).getByText('TAX-236')).toHaveCount(0);
@@ -145,7 +145,7 @@ test('continues empty pages explicitly and retains rows and cursor after a conti
       },
     });
   };
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await expect(
     reviewPanel(page).getByText(
       'No review on this page. More reviews may be available.',
@@ -232,7 +232,7 @@ test('retries an initial list error and reopens unavailable, failed and remediat
 }, testInfo) => {
   const state = await installReviewFixture(page);
   state.list = (route) => route.fulfill({ status: 503 });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await expect(reviewPanel(page).getByRole('alert')).toHaveText(
     'The duplicate review could not be loaded safely.',
   );
@@ -286,7 +286,7 @@ test('keeps correction guidance read-only without inventing a dossier target', a
   state.comparison = comparisonFixture('correction');
   state.comparison.proposal.fields.contacts = [];
   state.comparison.candidate.contacts = [];
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await expect(
     reviewPanel(page).getByText('Correction proposal · not saved'),
@@ -313,7 +313,7 @@ test('allows Director v2 comparison without attachment and respects an existing 
   page,
 }, testInfo) => {
   const state = await installReviewFixture(page, 'director');
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await expect(
     reviewPanel(page).getByText(state.comparison.candidate.displayName),
@@ -343,7 +343,7 @@ for (const authority of ['owner', 'v1', 'partial'] satisfies (
     page,
   }) => {
     const state = await installReviewFixture(page, authority);
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     await expect(
       page.getByRole('region', { name: 'Clients', exact: true }),
     ).toBeVisible();
@@ -367,7 +367,7 @@ test('separates confirmed attachment from subsequent list and Activity Log failu
   page,
 }, testInfo) => {
   const state = await installReviewFixture(page);
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await expect(attachReviewButton(page)).toBeVisible();
   state.list = (route) => route.fulfill({ status: 503 });
@@ -407,7 +407,7 @@ test('keeps an uncertain PUT separate from success and retries only after a deli
 }, testInfo) => {
   const state = await installReviewFixture(page);
   state.attach = (route) => route.abort('failed');
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await attachReviewButton(page).click();
   await expect(
@@ -446,7 +446,7 @@ test('preserves the mounted owner across frame and section navigation without as
     await pendingDetail;
     await route.fulfill({ json: state.comparison });
   };
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).focus();
   await page.keyboard.press('Enter');
   await expect(
@@ -514,7 +514,7 @@ test('does not retain comparison data after the server denies a still-mounted re
   page,
 }) => {
   const state = await installReviewFixture(page);
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await expect(attachReviewButton(page)).toBeVisible();
   state.detail = (route) => route.fulfill({ status: 403 });
@@ -536,7 +536,7 @@ test('does not offer attachment for an already-related candidate even with clien
 }) => {
   const state = await installReviewFixture(page);
   state.comparison.candidate.relatedToActiveCompany = true;
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await expect(
     reviewPanel(page).getByText(
@@ -558,7 +558,7 @@ test('clears a displayed candidate when continuation is denied after authority r
         next_cursor: reviewCursor,
       },
     });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await openReviewButton(page).click();
   await expect(attachReviewButton(page)).toBeVisible();
   state.list = (route) => route.fulfill({ status: 403 });

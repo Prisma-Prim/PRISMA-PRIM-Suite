@@ -87,7 +87,7 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#requests');
+  await page.goto('/#requests');
 
   const intake = page.locator('.commercial-intake-workspace');
   const capture = intake.getByRole('button', { name: 'Capture Request' });

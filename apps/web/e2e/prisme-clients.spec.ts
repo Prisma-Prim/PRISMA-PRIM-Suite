@@ -94,7 +94,7 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -232,7 +232,7 @@ test('keeps a Client retry and pending command through disclosure and navigation
       return route.fulfill({ json: created ? [client] : [] });
     return route.fulfill({ status: 404 });
   });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   const trigger = page.getByRole('button', { name: 'New Client', exact: true });
   const name = page.getByLabel('Client display name');
   await trigger.focus();
@@ -363,7 +363,7 @@ test('keeps Director fields and ordered Contacts through validation and an opaqu
     if (path.endsWith('/clients')) return route.fulfill({ json: [] });
     return route.fulfill({ status: 404 });
   });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await expect(
     page.getByText('Search by name among the active Company’s Clients.', {
       exact: false,
@@ -639,7 +639,7 @@ test('keeps failures real and attachment pending independent from edited search'
       response.request().headers()['x-company-context-id'] === company.id &&
       response.status() === 503,
   );
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   const failedClientLoad = await initialClientLoad;
   expect(await failedClientLoad.finished()).toBeNull();
   await expect(

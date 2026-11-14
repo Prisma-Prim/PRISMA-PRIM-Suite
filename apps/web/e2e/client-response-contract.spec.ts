@@ -55,7 +55,7 @@ test('rejects the whole malformed Client list and recovers on a deliberate reloa
     return route.fulfill({ status: 404 });
   });
 
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   const clients = page.getByRole('region', { name: 'Clients', exact: true });
   const listError = clients.getByRole('alert').filter({
     hasText: 'We could not load Clients. Please try again.',

@@ -351,7 +351,7 @@ for (const locale of locales) {
         },
       });
     };
-    await page.goto('/?frame=prisme#projects');
+    await page.goto('/#projects');
     if (testInfo.project.name === 'narrow')
       await page
         .getByRole('button', { name: 'Open navigation', exact: true })

@@ -104,7 +104,7 @@ test('filters loaded Working Documents locally and resets at the Company boundar
   await interceptApplication(page, listReads, mutationRequests);
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#documents');
+  await page.goto('/#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -213,7 +213,7 @@ test('matches Romanian Document spelling through all interface languages without
   const listReads: string[] = [];
   const mutationRequests: string[] = [];
   await interceptApplication(page, listReads, mutationRequests);
-  await page.goto('/?frame=prisme#documents');
+  await page.goto('/#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(

@@ -260,7 +260,7 @@ test('Prisme Contract Project controls keep keyboard choices and explicit creati
     }
   });
 
-  await page.goto('/?frame=prisme#requests');
+  await page.goto('/#requests');
   await expect(page.locator('.prisme-shell')).toBeVisible();
   await page
     .getByRole('button')
@@ -293,7 +293,7 @@ test('Prisme Contract Project controls keep keyboard choices and explicit creati
     exact: true,
   });
   const capture = async (state: string) => {
-    await expect(page).toHaveURL(/frame=prisme#requests$/u);
+    await expect(page).toHaveURL(/#requests$/u);
     await page.screenshot({
       path: testInfo.outputPath(
         `prisme-contract-project-controls-ro-${testInfo.project.name}-${state}-viewport.png`,

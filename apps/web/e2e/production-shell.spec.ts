@@ -1875,7 +1875,7 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
       `company-access-fresh-version-${testInfo.project.name}.png`,
     ),
   });
-  await page.goto('/?frame=prisme#clients');
+  await page.goto('/#clients');
   await expect(
     page.getByRole('button', { name: 'Review possible duplicate 1' }),
   ).toHaveCount(0);

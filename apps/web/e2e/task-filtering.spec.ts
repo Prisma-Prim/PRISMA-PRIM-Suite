@@ -49,7 +49,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -58,7 +58,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await page
     .getByRole('button', {
       name: `${project.title} Client: ${project.clientDisplayName}`,
@@ -359,7 +359,7 @@ test('finds a literal Romanian Task with plain spelling and preserves its draft 
     if (path.startsWith('/api/')) requests.push(`${request.method()} ${path}`);
   });
   await interceptApplication(page, rows, () => {});
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -368,7 +368,7 @@ test('finds a literal Romanian Task with plain spelling and preserves its draft 
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await page
     .getByRole('button', {
       name: `${project.title} Client: ${client.displayName}`,

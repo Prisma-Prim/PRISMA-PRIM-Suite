@@ -206,7 +206,7 @@ test('registers and reopens a Company-confidential working reference', async ({
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#documents');
+  await page.goto('/#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -784,7 +784,7 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#documents');
+  await page.goto('/#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(

@@ -178,7 +178,7 @@ async function installDocumentSearchFixture(page: Page) {
 }
 
 async function selectCompany(page: Page, testInfo: TestInfo) {
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -192,7 +192,7 @@ async function selectCompany(page: Page, testInfo: TestInfo) {
 // The Document registry section stays mounted beside Projects, so the Project
 // panel is addressed through its own scoped markup.
 async function openProjectDocuments(page: Page) {
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await page
     .getByRole('button', {
       name: `${project.title} Client: ${project.clientDisplayName}`,

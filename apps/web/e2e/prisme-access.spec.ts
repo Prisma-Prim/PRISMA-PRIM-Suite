@@ -28,7 +28,7 @@ test('keeps checking, denied, error and signed-out states outside the opt-in fra
   await page.route('**/api/access/current-actor', (route) => {
     pendingActor = route;
   });
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   await expect(page.getByRole('status')).toHaveText('Verifying your access…');
   await expect(page.getByRole('banner')).toHaveCount(0);
   await expect.poll(() => Boolean(pendingActor)).toBe(true);
@@ -105,7 +105,7 @@ test('exposes invitations independently of administration and refuses unauthoriz
     listedInvitations = [invitation];
     return route.fulfill({ status: 201, json: invitation });
   });
-  await page.goto('/?frame=prisme#access');
+  await page.goto('/#access');
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
@@ -236,7 +236,7 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
       },
     });
   });
-  await page.goto('/?frame=prisme#companies');
+  await page.goto('/#companies');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   const context = page.getByRole('region', { name: 'Company context' });
@@ -331,7 +331,7 @@ test('discards a late previous-Company result and removes the frame on logout', 
     }
     return route.fulfill({ json: [companyA, companyB] });
   });
-  await page.goto('/?frame=prisme#companies');
+  await page.goto('/#companies');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   const selector = page.getByLabel('Active Company', { exact: true });
@@ -487,7 +487,7 @@ test('keeps modifier and middle clicks as native new-tab navigation', async ({
       return route.fulfill({ json: { events: [] } });
     return route.fulfill({ json: [] });
   });
-  await page.goto('/?frame=prisme');
+  await page.goto('/');
   const companies = page
     .locator('.prisme-capabilities')
     .getByRole('link', { name: /Companies/ });
@@ -499,7 +499,7 @@ test('keeps modifier and middle clicks as native new-tab navigation', async ({
       await companies.click({ modifiers: ['ControlOrMeta'] });
     else await companies.click({ button: 'middle' });
     const nextPage = await opened;
-    await expect(nextPage).toHaveURL(/frame=prisme#companies$/);
+    await expect(nextPage).toHaveURL(/#companies$/);
     await expect(nextPage.getByLabel('Company display name')).toBeVisible();
     await expect(page).toHaveURL(initialUrl);
     await nextPage.close();

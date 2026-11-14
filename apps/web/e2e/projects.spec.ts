@@ -97,7 +97,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -106,7 +106,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await expect(
     page.getByText('No Projects for this Company yet.'),
   ).toBeVisible();
@@ -196,7 +196,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
     path: testInfo.outputPath('projects-reopened.png'),
     fullPage: true,
   });
-  await page.goto('/?frame=prisme#activity');
+  await page.goto('/#activity');
   const activity = page.getByRole('region', {
     name: 'Activity Log',
     exact: true,
@@ -209,7 +209,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
   await expect(
     activity.getByText(`Target: Project: ${project.title}`),
   ).toBeVisible();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   await page
     .getByRole('button', {
       name: `${project.title} Client: ${project.clientDisplayName}`,

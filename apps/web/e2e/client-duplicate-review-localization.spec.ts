@@ -104,7 +104,7 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
         !url.searchParams.has('cursor')
       );
     });
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     const panel = page.locator('.client-duplicate-review');
     await expect(
       panel.getByText(locale.listLoading, { exact: true }),
@@ -387,7 +387,7 @@ for (const [localeIndex, locale] of reviewLocales.entries()) {
       (code) => localStorage.setItem('prisma-prim.interface-locale', code),
       locale.code,
     );
-    await page.goto('/?frame=prisme#clients');
+    await page.goto('/#clients');
     const panel = page.getByRole('region', { name: locale.title });
     await expect(
       panel.getByText(locale.emptyPage, { exact: true }),

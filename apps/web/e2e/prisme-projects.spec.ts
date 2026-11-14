@@ -357,7 +357,7 @@ test('creates and opens a Project, then switches local panels without reloading 
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
@@ -366,7 +366,7 @@ test('creates and opens a Project, then switches local panels without reloading 
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.goto('/?frame=prisme#projects');
+  await page.goto('/#projects');
 
   await expect(page.getByLabel('Project title')).toBeVisible();
   const projectList = page.getByRole('list', { name: 'Projects' });
