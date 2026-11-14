@@ -211,21 +211,6 @@ export async function fillPaymentValues(
     .getByRole('textbox', { name: copy.observationBasis, exact: true })
     .fill('  Human declaration <script>literalObservation()</script> Ș Ю 😀  ');
 }
-export async function changePaymentFrame(
-  page: Page,
-  frame: 'classic' | 'prisme',
-) {
-  await page.evaluate((frame) => {
-    const url = new URL(window.location.href);
-    if (frame === 'classic') url.searchParams.set('frame', 'classic');
-    else url.searchParams.delete('frame');
-    window.history.pushState(window.history.state, '', url);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }, frame);
-  await expect(page.locator('.production-shell')).toHaveClass(
-    frame === 'prisme' ? /prisme-shell/u : /production-shell/u,
-  );
-}
 const originalArtifacts = new WeakMap<
   TestInfo,
   ReturnType<typeof paymentEvidenceArtifacts>

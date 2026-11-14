@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { selectOption } from './select-option';
-import { enterClassicCompatibility } from './classic-compatibility';
 import {
   exactReceivedDownload,
   modelContractIdentities,
@@ -132,11 +131,9 @@ test('registers a received exact Contract original, preserves official/successor
       exact: true,
     }),
   ).toBeEnabled();
-  await enterClassicCompatibility(page);
   await expect(
     documents.getByLabel('Declared source', { exact: true }),
   ).toHaveValue(sourceText);
-  await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
   await documents
     .getByRole('button', { name: 'Retry identical registration', exact: true })
     .click();
@@ -416,14 +413,6 @@ test('keeps an identical uncertain PDF retry through actual Contract read retire
         exact: true,
       }),
     ).toBeEnabled();
-    await enterClassicCompatibility(page);
-    await expect(
-      documents.getByRole('button', {
-        name: 'Retry the same PDF',
-        exact: true,
-      }),
-    ).toBeEnabled();
-    await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
     await documents
       .getByRole('button', { name: 'Retry the same PDF', exact: true })
       .click();

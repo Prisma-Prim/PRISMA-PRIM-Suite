@@ -1,6 +1,5 @@
 import { removeRoute } from './route-removal';
 import { expectSelectAppearance } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
@@ -307,9 +306,6 @@ test('captures and reopens manual Client Requests through the real API and Postg
     await grantClientAccess(page);
   }
 
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
   await expectValue(
     intake.getByLabel('Original request text'),
     'Unavailable Client request',
@@ -327,7 +323,6 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await expect(listItems).toHaveCount(loadedBeforeFilter);
   await expect(filter).toBeFocused();
   await expectNoHorizontalOverflow(page);
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(intake.getByLabel('Existing Client')).toHaveText(clientName);
 
   await navigate(page, navigation, 'Activity Log', narrow);
@@ -585,9 +580,7 @@ test('navigates between same-named Client dossiers and their loaded Requests thr
   page.off('request', recordMutation);
   expect(mutations).toEqual([]);
 
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
+  // The shortcut also works from the returned dossier.
   await dossier.getByRole('button', { name: 'Open Client Requests' }).click();
   await expect(page.locator('#requests')).toBeFocused();
   await expect(scope).toBeVisible();
@@ -596,7 +589,7 @@ test('navigates between same-named Client dossiers and their loaded Requests thr
   await capture(
     page,
     testInfo,
-    `client-requests-${suffix.toLowerCase()}-classic.png`,
+    `client-requests-${suffix.toLowerCase()}-return.png`,
   );
 });
 

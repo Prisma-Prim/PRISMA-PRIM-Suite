@@ -6,7 +6,6 @@ import {
   text,
 } from './external-invoice-source.acceptance.fixture';
 import { selectOption } from './select-option';
-import { enterClassicCompatibility } from './classic-compatibility';
 import {
   exactReceivedDownload,
   openReceivedDocuments,
@@ -207,16 +206,9 @@ for (const partyKind of ['PRIMARY', 'ADDITIONAL'] as const) {
         fullPage: true,
       });
     }
-    await enterClassicCompatibility(page);
-    await expect(literalField).toHaveValue(literal);
-    await page.screenshot({
-      path: info.outputPath(`${suffix}-classic-draft.png`),
-      fullPage: true,
-    });
     await documents.screenshot({
-      path: info.outputPath(`${suffix}-classic-documents-draft.png`),
+      path: info.outputPath(`${suffix}-documents-draft.png`),
     });
-    await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
     expect(traffic).toHaveLength(beforePresentation);
     const registeredResponse = page.waitForResponse(
       (response) =>

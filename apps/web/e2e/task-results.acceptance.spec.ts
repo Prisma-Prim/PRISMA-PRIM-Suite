@@ -2,7 +2,6 @@ import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page, type Locator } from '@playwright/test';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
 
 const origin = 'http://127.0.0.1:4174/api';
@@ -591,17 +590,6 @@ test('inspects mission readiness without accepting work and preserves independen
         reviewRegion.locator('input:not([type="checkbox"])'),
       ).toHaveValue('Physical register {literal} DEMO887');
     }
-    if (narrow)
-      await page.getByRole('button', { name: 'Open navigation' }).click();
-    await enterClassicCompatibility(page);
-    await expect(reviewRegion.locator('textarea')).toHaveValue(
-      'Reviewed literal criteria and exact declared evidence DEMO887',
-    );
-    await page.getByRole('button', { name: 'Try Prisme' }).click();
-    if (narrow)
-      await expect(
-        page.getByRole('button', { name: 'Open navigation' }),
-      ).toBeVisible();
     expect(presentationRequests).toEqual([]);
     page.off('request', countPresentation);
     await reviewRegion

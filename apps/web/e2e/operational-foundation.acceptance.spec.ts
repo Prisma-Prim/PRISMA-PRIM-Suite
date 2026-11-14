@@ -1,5 +1,4 @@
 import { removeRoute } from './route-removal';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
@@ -244,10 +243,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   ).toBeVisible();
   await removeRoute(page, completionPath);
 
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expect(page).toHaveURL(/\?frame=classic#projects$/u);
+  await expect(page).toHaveURL(/\/#projects$/u);
   await expect(company).toHaveText('PRISMA-PRIM');
   await expectValue(tasks.getByLabel('Task title'), preservedDraft);
   await expect(
@@ -265,14 +261,8 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await capture(
     page,
     testInfo,
-    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-classic.png`,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-pending-change.png`,
   );
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(page).toHaveURL(/\/#projects$/u);
-  await expectValue(tasks.getByLabel('Task title'), preservedDraft);
-  await expect(
-    tasks.getByRole('button', { name: 'Retry pending Task change' }),
-  ).toBeVisible();
   await tasks
     .getByRole('button', { name: 'Retry pending Task change' })
     .click();

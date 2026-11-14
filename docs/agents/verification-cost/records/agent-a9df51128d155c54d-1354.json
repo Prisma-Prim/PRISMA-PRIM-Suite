@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "agent-a9df51128d155c54d-1354",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1354,
+  "pullRequest": 1363,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T09:20:54.638Z",
+    "end": "2026-11-14T10:47:56.149Z",
+    "durationSeconds": 5222
+  },
+  "tokens": {
+    "input": 688,
+    "output": 199356,
+    "cacheCreation": 522474,
+    "cacheRead": 121401944
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 688,
+        "output": 199356,
+        "cacheCreation": 522474,
+        "cacheRead": 121401944
+      },
+      "estimatedPriceUsd": 30.882631
+    }
+  ],
+  "price": {
+    "estimatedUsd": 30.882631,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Includes the scoping measurement of all three groups before the owner split #1354 into #1354, #1361 and #1362"
+  }
+}

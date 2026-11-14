@@ -1,6 +1,5 @@
 import { removeRoute } from './route-removal';
 import { expectSelectAppearance } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
@@ -441,9 +440,6 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
       path: testInfo.outputPath(`tariff-versions-current-${suffix}.png`),
     });
 
-    if (narrow)
-      await page.getByRole('button', { name: 'Open navigation' }).click();
-    await enterClassicCompatibility(page);
     await expect(
       configuration.getByText(marker, { exact: true }),
     ).toBeVisible();
@@ -451,7 +447,6 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
       tariffs.getByText(tariffMarker, { exact: true }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
-    await page.getByRole('button', { name: 'Try Prisme' }).click();
 
     // 7. A Catalogue-only member sees no configuration screen, and a member of
     // another Company sees nothing of this one.
@@ -642,21 +637,12 @@ test('shows Pricing Configuration read-only to a Company Pricing User', async ({
       fullPage: true,
     });
 
-    if (narrow)
-      await page.getByRole('button', { name: 'Open navigation' }).click();
-    await enterClassicCompatibility(page);
     await expect(
       configuration.getByText(marker, { exact: true }),
     ).toBeVisible();
     await expect(
       configuration.getByRole('button', { name: 'Publish version' }),
     ).toHaveCount(0);
-    await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: testInfo.outputPath(`pricing-user-read-only-classic-${suffix}.png`),
-      fullPage: true,
-    });
-    await page.getByRole('button', { name: 'Try Prisme' }).click();
 
     // 4. Pricing User is revoked: after a reload no section remains.
     await changeAssignment(page, {

@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import {
   expect,
@@ -139,9 +138,7 @@ test('navigates between one Client dossier and its working Documents through the
   await expect(inlineDocuments.getByRole('listitem')).toHaveCount(1);
   expect(documentListReads).toHaveLength(1);
 
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
+  // The shortcut also works from the returned dossier.
   await dossier
     .getByRole('button', { name: 'Open Client working Documents' })
     .click();
@@ -154,7 +151,7 @@ test('navigates between one Client dossier and its working Documents through the
   await capture(
     page,
     testInfo,
-    `client-document-navigation-${suffix.toLowerCase()}-classic.png`,
+    `client-document-navigation-${suffix.toLowerCase()}-return.png`,
   );
 });
 

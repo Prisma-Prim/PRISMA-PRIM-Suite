@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { selectOption } from './select-option';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { prismeMessages } from '../src/production-shell/prisme/prisme-localized.copy';
 import { companyContextMessages } from '../src/company/company-context.copy';
 import { resolveMessage } from '../src/localization/messages';
@@ -100,18 +99,6 @@ test('preserves exact received Addendum originals against genuine executed V2 wi
       path: info.outputPath(`addendum-${suffix}-${locale}-prisme.png`),
       fullPage: true,
     });
-    const presentationName = resolveMessage(prismeMessages, locale, 'optIn');
-    await enterClassicCompatibility(page, presentationName);
-    await expect(documents.locator('textarea[id$="-source"]')).toHaveValue(
-      sourceText,
-    );
-    await page.screenshot({
-      path: info.outputPath(`addendum-${suffix}-${locale}-classic.png`),
-      fullPage: true,
-    });
-    await page
-      .getByRole('button', { name: presentationName, exact: true })
-      .click();
   }
   expect(traffic).toHaveLength(beforeLocale);
   const attempts: Array<{ body: string | null; key: string | undefined }> = [];
@@ -260,19 +247,15 @@ test('preserves exact received Addendum originals against genuine executed V2 wi
   await expect(
     documents.getByRole('heading', { name: title + ' corrected', exact: true }),
   ).toBeVisible();
-  for (const frame of ['prisme', 'classic']) {
-    if (frame === 'classic') await enterClassicCompatibility(page);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    await page.screenshot({
-      path: info.outputPath(`addendum-preserved-${suffix}-${frame}.png`),
-      fullPage: true,
-    });
-  }
-  await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: info.outputPath(`addendum-preserved-${suffix}.png`),
+    fullPage: true,
+  });
   await ready.revoke('company-contract-preparer');
   await ready.revoke('company-contract-approver');
   documents = await openReceivedDocuments(page, ready.companyName, narrow);
