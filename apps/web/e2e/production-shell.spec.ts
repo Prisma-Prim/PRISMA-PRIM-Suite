@@ -1,10 +1,41 @@
 import { expectValue, openSelect, selectOption } from './select-option';
-import { expect, test, type Route } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Page,
+  type Route,
+  type TestInfo,
+} from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+
+/** Prisme keeps the Company selector in the navigation drawer when narrow. */
+async function openNavigation(page: Page, testInfo: TestInfo) {
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+}
+async function closeNavigation(page: Page, testInfo: TestInfo) {
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+}
+async function chooseCompany(page: Page, testInfo: TestInfo, id: string) {
+  await openNavigation(page, testInfo);
+  await selectOption(page.getByLabel('Active Company'), id);
+  await expectValue(page.getByLabel('Active Company'), id);
+  await closeNavigation(page, testInfo);
+}
+async function openSection(page: Page, testInfo: TestInfo, name: string) {
+  await openNavigation(page, testInfo);
+  await page
+    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('link', { name, exact: true })
+    .click();
+}
+/** The Prisme header names the Workspace and the active Company. */
+const breadcrumb = (page: Page) => page.locator('.prisme-breadcrumb');
 
 test('renders the production shell at the normal application entry point', async ({
   page,
@@ -195,7 +226,7 @@ test('shows a safe denial when the verified user has no active Workspace Members
       json: { message: 'Forbidden', statusCode: 403 },
     }),
   );
-  await page.goto('/?frame=classic');
+  await page.goto('/');
 
   await expect(page.getByRole('alert')).toHaveText(
     'Your access to this workspace is inactive.',
@@ -238,7 +269,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
     publicReadObserved = true;
     await route.fulfill({ json: company });
   });
-  await page.goto('/?frame=classic');
+  await page.goto('/#companies');
 
   await page.getByLabel('Company display name').fill('North Star Consulting');
   await page.getByRole('button', { name: 'Register Company' }).click();
@@ -248,6 +279,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
   ).toBeVisible();
   await expect(page.getByText('Active', { exact: true })).toBeVisible();
   await expect(page.getByText('Registered by Ada Ionescu')).toBeVisible();
+  await openNavigation(page, testInfo);
   await expect(page.getByLabel('Active Company')).toBeVisible();
   const companySelect = page.getByRole('combobox', { name: 'Active Company' });
   const companyChoices = await openSelect(companySelect);
@@ -276,7 +308,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
 
 test('shows an empty Company context without exposing administration controls', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({
       json: { ...actorContextFixture, workspacePermissions: [] },
@@ -286,7 +318,8 @@ test('shows an empty Company context without exposing administration controls', 
     route.fulfill({ json: { events: [] } }),
   );
   await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
-  await page.goto('/?frame=classic');
+  await page.goto('/');
+  await openNavigation(page, testInfo);
 
   await expect(
     page.getByText(
@@ -349,24 +382,12 @@ test('selects and restores one server-validated Company context', async ({
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/?frame=classic');
-  const companyContext = page.getByRole('region', {
-    name: 'Company context',
-  });
-  await expect(companyContext.getByText('PRISMA Workspace')).toBeVisible();
-  await expect(
-    companyContext
-      .getByRole('definition')
-      .filter({ hasText: 'Select a Company' }),
-  ).toBeVisible();
+  await page.goto('/');
+  await expect(breadcrumb(page)).toContainText('PRISMA Workspace');
+  await expect(breadcrumb(page)).toContainText('No active Company');
 
-  await selectOption(
-    companyContext.getByLabel('Active Company'),
-    companies[1]!.id,
-  );
-  await expect(
-    companyContext.locator('dd').filter({ hasText: 'North Star Consulting' }),
-  ).toBeVisible();
+  await chooseCompany(page, testInfo, companies[1]!.id);
+  await expect(breadcrumb(page)).toContainText('North Star Consulting');
   expect(validatedSelections).toContain(companies[1]!.id);
   await expect
     .poll(() =>
@@ -377,13 +398,8 @@ test('selects and restores one server-validated Company context', async ({
     )
     .toBe(companies[1]!.id);
 
-  await selectOption(
-    companyContext.getByLabel('Active Company'),
-    companies[0]!.id,
-  );
-  await expect(
-    companyContext.locator('dd').filter({ hasText: 'Atlas Assurance' }),
-  ).toBeVisible();
+  await chooseCompany(page, testInfo, companies[0]!.id);
+  await expect(breadcrumb(page)).toContainText('Atlas Assurance');
   expect(validatedSelections).toContain(companies[0]!.id);
   await expect
     .poll(() =>
@@ -395,9 +411,7 @@ test('selects and restores one server-validated Company context', async ({
     .toBe(companies[0]!.id);
 
   await page.reload();
-  await expect(
-    companyContext.locator('dd').filter({ hasText: 'Atlas Assurance' }),
-  ).toBeVisible();
+  await expect(breadcrumb(page)).toContainText('Atlas Assurance');
   expect(
     validatedSelections.filter((id) => id === companies[0]!.id),
   ).toHaveLength(2);
@@ -415,7 +429,7 @@ test('selects and restores one server-validated Company context', async ({
 
 test('does not clear a newer Company when an older registration is rejected', async ({
   page,
-}) => {
+}, testInfo) => {
   const companies = [
     {
       id: '00000000-0000-4000-8000-000000000030',
@@ -447,27 +461,20 @@ test('does not clear a newer Company when an older registration is rejected', as
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/?frame=classic');
-  await selectOption(page.getByLabel('Active Company'), companies[0]!.id);
-  await expectValue(page.getByLabel('Active Company'), companies[0]!.id);
+  await page.goto('/#companies');
+  await chooseCompany(page, testInfo, companies[0]!.id);
   await page.getByLabel('Company display name').fill('Delayed registration');
   await page.getByRole('button', { name: 'Register Company' }).click();
   await expect.poll(() => pendingRegistration !== undefined).toBe(true);
 
-  await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
-  await expectValue(page.getByLabel('Active Company'), companies[1]!.id);
+  await chooseCompany(page, testInfo, companies[1]!.id);
   await pendingRegistration!.fulfill({
     status: 403,
     json: { message: 'Forbidden', statusCode: 403 },
   });
 
   await expectValue(page.getByLabel('Active Company'), companies[1]!.id);
-  await expect(
-    page
-      .getByRole('region', { name: 'Company context' })
-      .locator('dd')
-      .filter({ hasText: 'Company B' }),
-  ).toBeVisible();
+  await expect(breadcrumb(page)).toContainText('Company B');
   await expectValue(page.getByLabel('Company display name'), '');
   await expect(
     page.getByRole('button', { name: 'Register Company' }),
@@ -479,7 +486,9 @@ test('does not clear a newer Company when an older registration is rejected', as
   ).toHaveCount(0);
 });
 
-test('shows clear zero and one active Company states', async ({ page }) => {
+test('shows clear zero and one active Company states', async ({
+  page,
+}, testInfo) => {
   const onlyCompany = {
     id: '00000000-0000-4000-8000-000000000012',
     workspaceId: actorContextFixture.workspaceId,
@@ -513,7 +522,8 @@ test('shows clear zero and one active Company states', async ({ page }) => {
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/?frame=classic');
+  await page.goto('/');
+  await openNavigation(page, testInfo);
   const companyContext = page.getByRole('region', {
     name: 'Company context',
   });
@@ -526,19 +536,18 @@ test('shows clear zero and one active Company states', async ({ page }) => {
 
   companies = [onlyCompany];
   await page.reload();
+  await openNavigation(page, testInfo);
   await expectValue(
     companyContext.getByLabel('Active Company'),
     onlyCompany.id,
   );
-  await expect(
-    companyContext.locator('dd').filter({ hasText: 'Only Provider' }),
-  ).toBeVisible();
+  await expect(breadcrumb(page)).toContainText('Only Provider');
   expect(soleCompanyValidated).toBe(true);
 });
 
 test('does not share a saved Company context between Workspace members', async ({
   page,
-}) => {
+}, testInfo) => {
   const company = {
     id: '00000000-0000-4000-8000-000000000014',
     displayName: 'Member-specific Provider',
@@ -571,9 +580,8 @@ test('does not share a saved Company context between Workspace members', async (
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/?frame=classic');
-  await selectOption(page.getByLabel('Active Company'), company.id);
-  await expectValue(page.getByLabel('Active Company'), company.id);
+  await page.goto('/');
+  await chooseCompany(page, testInfo, company.id);
 
   actor = {
     ...actorContextFixture,
@@ -590,7 +598,7 @@ test('does not share a saved Company context between Workspace members', async (
 
 test('clears a stale persisted Company and recovers through safe reselection', async ({
   page,
-}) => {
+}, testInfo) => {
   const staleCompanyId = '00000000-0000-4000-8000-000000000099';
   const availableCompany = {
     id: '00000000-0000-4000-8000-000000000013',
@@ -652,7 +660,8 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/?frame=classic');
+  await page.goto('/#companies');
+  await openNavigation(page, testInfo);
   const companyContext = page.getByRole('region', {
     name: 'Company context',
   });
@@ -673,9 +682,8 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     companyContext.getByLabel('Active Company'),
     availableCompany.id,
   );
-  await expect(
-    companyContext.locator('dd').filter({ hasText: 'Recovery Provider' }),
-  ).toBeVisible();
+  await closeNavigation(page, testInfo);
+  await expect(breadcrumb(page)).toContainText('Recovery Provider');
   await expect
     .poll(() => page.evaluate((key) => localStorage.getItem(key), storageKey))
     .toBe(availableCompany.id);
@@ -684,6 +692,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     .getByLabel('Company display name')
     .fill('Blocked by stale context');
   await page.getByRole('button', { name: 'Register Company' }).click();
+  await openNavigation(page, testInfo);
   await expect(companyContext.getByLabel('Active Company')).toHaveCount(0);
   await expect(companyContext.getByRole('alert')).toHaveText(
     'Your previous Company context is no longer available. Choose an active Company.',
@@ -700,7 +709,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
 
 test('grants, selects, and revokes narrow Company context access', async ({
   page,
-}) => {
+}, testInfo) => {
   const company = { id: 'company-assigned', displayName: 'Assigned Company' };
   const unassignedCompany = {
     id: 'company-unassigned',
@@ -800,7 +809,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
     return route.fallback();
   });
 
-  await page.goto('/?frame=classic');
+  await page.goto('/#access');
   await selectOption(page.getByLabel('Workspace member'), {
     label: `${member.displayName} — ${member.email}`,
   });
@@ -818,6 +827,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
     page.getByRole('heading', { name: 'Company access' }),
   ).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
+  await openNavigation(page, testInfo);
   const companySelect = page.getByRole('combobox', { name: 'Active Company' });
   const companyChoices = await openSelect(companySelect);
   await expect(
@@ -825,14 +835,11 @@ test('grants, selects, and revokes narrow Company context access', async ({
   ).toHaveCount(0);
   await companySelect.press('Escape');
   await selectOption(page.getByLabel('Active Company'), company.id);
-  await expect(
-    page
-      .getByRole('region', { name: 'Company context' })
-      .locator('dd')
-      .filter({ hasText: company.displayName }),
-  ).toBeVisible();
+  await closeNavigation(page, testInfo);
+  await expect(breadcrumb(page)).toContainText(company.displayName);
 
   identity = 'owner';
+  await page.goto('/#access');
   await page.reload();
   await selectOption(page.getByLabel('Workspace member'), {
     label: `${member.displayName} — ${member.email}`,
@@ -847,6 +854,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
 
   identity = 'member';
   await page.reload();
+  await openNavigation(page, testInfo);
   await expect(page.getByLabel('Active Company')).toHaveCount(0);
   await expect(
     page.getByText(
@@ -1087,35 +1095,46 @@ test('creates and reuses one shared Client identity across two Company contexts'
     name: 'Activity Log',
     exact: true,
   });
-  await page.goto('/?frame=classic');
-  await selectOption(page.getByLabel('Active Company'), companies[0]!.id);
+  await page.goto('/#clients');
+  await chooseCompany(page, testInfo, companies[0]!.id);
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'New Client', exact: true }).click();
   await page.getByLabel('Client display name').fill(client.displayName);
   await page.getByRole('button', { name: 'Create Client' }).click();
   await expect(
     page.getByRole('heading', { name: client.displayName }),
   ).toBeVisible();
   await expect(page.getByText(`Client ID: ${client.id}`)).toBeVisible();
+  await openSection(page, testInfo, 'Activity Log');
   await expect(
     activity.getByText(`${actorContextFixture.displayName} created a Client`),
   ).toBeVisible();
 
-  await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
+  await openSection(page, testInfo, 'Clients');
+  await chooseCompany(page, testInfo, companies[1]!.id);
   await expect(page.getByText('No Clients for BIC yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
   await page.getByLabel('Find a shared Client').fill('Exemplu');
   await page.getByRole('button', { name: 'Search Clients' }).click();
   await page.getByRole('button', { name: 'Add to BIC' }).click();
   await expect(page.getByText('Available in BIC')).toBeVisible();
-  await expect(page.getByText(`Client ID: ${client.id}`)).toHaveCount(2);
+  // Prisme lists the attached search result, then the Company's own list.
+  await expect(page.getByText(`Client ID: ${client.id}`)).toHaveCount(1);
+  await page.getByRole('button', { name: 'Back to Company Clients' }).click();
+  await expect(page.getByText(`Client ID: ${client.id}`)).toHaveCount(1);
+  await openSection(page, testInfo, 'Activity Log');
   await expect(
     activity.getByText(
       `Target: ${client.displayName} — ${companies[1]!.displayName}`,
     ),
   ).toBeVisible();
+  await openSection(page, testInfo, 'Clients');
   await page.getByRole('button', { name: 'Open dossier' }).click();
   await expect(page.getByText('BIC, PRISMA-PRIM')).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Correct Client dossier', exact: true })
+    .click();
   const correctionForm = page.getByRole('form', {
     name: 'Correct Client dossier',
   });
@@ -1124,6 +1143,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
     .fill('+373 69 111 222');
   await correctionForm.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByText('Version 2')).toBeVisible();
+  await openSection(page, testInfo, 'Activity Log');
   await expect(
     activity.getByText(
       `${actorContextFixture.displayName} corrected a Client dossier`,
@@ -1426,7 +1446,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
     });
   });
 
-  await page.goto('/?frame=classic');
+  await page.goto('/#access');
   await selectOption(page.getByLabel('Access bundle'), 'director-client');
   for (const director of [directors.a, directors.b]) {
     await selectOption(page.getByLabel('Workspace member'), {
@@ -1449,9 +1469,11 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   }
 
   identity = 'director-a';
+  await page.goto('/#clients');
   await page.reload();
   await expect(page.getByRole('region', { name: 'Clients' })).toBeVisible();
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'New Client', exact: true }).click();
   await page.getByLabel('Client display name').fill(client.displayName);
   await page.getByLabel('IDNO / tax code').first().fill('1003600123456');
   await page.getByLabel('Address').first().fill('Chișinău');
@@ -1468,6 +1490,9 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await page.getByRole('button', { name: 'Create Client' }).click();
   await expect(page.getByText(`Client ID: ${client.id}`)).toBeVisible();
   await page.getByRole('button', { name: 'Open dossier' }).click();
+  await page
+    .getByRole('button', { name: 'Correct Client dossier', exact: true })
+    .click();
   const correctionForm = page.getByRole('form', {
     name: 'Correct Client dossier',
   });
@@ -1479,7 +1504,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
 
   identity = 'owner';
   await page.reload();
-  await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
+  await chooseCompany(page, testInfo, companies[1]!.id);
   await page.getByLabel('Find a shared Client').fill('Director Client');
   await page.getByRole('button', { name: 'Search Clients' }).click();
   await page.getByRole('button', { name: 'Add to BIC' }).click();
@@ -1499,6 +1524,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await expect(page.getByText('Project')).toHaveCount(0);
 
   identity = 'owner';
+  await page.goto('/#access');
   await page.reload();
   await selectOption(page.getByLabel('Access bundle'), 'director-client');
   await selectOption(page.getByLabel('Workspace member'), {
@@ -1520,8 +1546,13 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   ).toBeVisible();
 
   identity = 'director-a';
+  await page.goto('/#clients');
   await page.reload();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(0);
+  await openNavigation(page, testInfo);
+  await expect(
+    page.getByRole('navigation', { name: 'Primary navigation' }),
+  ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Clients' })).toHaveCount(0);
 
   const geometry = await page.evaluate(() => ({
@@ -1770,8 +1801,9 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     return route.fulfill({ status: 404 });
   });
 
-  await page.goto('/?frame=classic');
+  await page.goto('/#clients');
   await expect(page.getByRole('region', { name: 'Clients' })).toBeVisible();
+  await page.getByRole('button', { name: 'New Client', exact: true }).click();
   await page
     .getByLabel('Client display name')
     .fill('Proposed Duplicate Client');
@@ -1783,6 +1815,7 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     page.getByRole('button', { name: 'Review possible duplicate 1' }),
   ).toHaveCount(0);
 
+  await page.goto('/#access');
   await selectOption(page.getByLabel('Access bundle'), 'director-client');
   await selectOption(page.getByLabel('Workspace member'), {
     label: `${resolverActor.displayName} — ${resolverActor.email}`,

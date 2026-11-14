@@ -18,7 +18,6 @@ import {
   confirmationSecond,
   type ConfirmationLocaleCase,
 } from '../src/test/client-union-confirmation-localization.fixture';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { installConfirmationLocalizationFixture } from './client-union-confirmation-localization.fixture';
 import { selectOption } from './select-option';
 
@@ -368,12 +367,8 @@ for (const copy of Object.values(confirmationLocaleCases)) {
     await navigate({ page, copy, section: 'activity' });
     await expect(panel(page, copy)).toBeHidden();
     await navigate({ page, copy, section: 'clients' });
-    await enterClassicCompatibility(page, copy.optIn);
-    const frameRequests = [...pendingRequests, 'GET /api/operational-home'];
-    await expect.poll(() => state.apiRequests).toEqual(frameRequests);
-    await page.getByRole('button', { name: copy.optIn, exact: true }).click();
-    await expect(page.locator('.prisme-shell')).toBeVisible();
-    expect(state.apiRequests).toEqual(frameRequests);
+    await expect(panel(page, copy)).toBeVisible();
+    expect(state.apiRequests).toEqual(pendingRequests);
     expect(
       await currentForm.evaluate(
         (node, original) => node === original,

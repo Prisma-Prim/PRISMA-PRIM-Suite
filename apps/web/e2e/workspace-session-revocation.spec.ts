@@ -47,7 +47,7 @@ test('an administrator sees a provider failure and safely retries session revoca
       });
     },
   );
-  await page.goto('/?frame=classic');
+  await page.goto('/#access');
   await page.getByRole('button', { name: 'Check session revocations' }).click();
   await expect(
     page.getByText(

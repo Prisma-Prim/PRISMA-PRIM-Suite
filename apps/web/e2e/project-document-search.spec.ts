@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
@@ -190,8 +189,8 @@ async function selectCompany(page: Page, testInfo: TestInfo) {
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }
 
-// The Classic frame also shows the Document registry section, so the Project
-// panel is addressed through its own scoped markup in both frames.
+// The Document registry section stays mounted beside Projects, so the Project
+// panel is addressed through its own scoped markup.
 async function openProjectDocuments(page: Page) {
   await page.goto('/?frame=prisme#projects');
   await page
@@ -331,36 +330,4 @@ test('finds one eligible working Document among similar rows and attaches it', a
     documents.getByText('No working Documents attached.'),
   ).toBeVisible();
   expect(state.commands).toHaveLength(2);
-});
-
-test('keeps the eligible Document search usable in the Classic frame', async ({
-  page,
-}, testInfo) => {
-  const state = await installDocumentSearchFixture(page);
-  await selectCompany(page, testInfo);
-  await openProjectDocuments(page);
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  const documents = page.locator('.project-documents');
-  await expect(documents).toHaveClass('project-documents');
-  await documents
-    .getByRole('button', { name: 'Attach working Document', exact: true })
-    .click();
-
-  const search = documents.getByLabel(searchLabel);
-  await search.focus();
-  await expect(search).toBeFocused();
-  await page.keyboard.type('remote');
-  await expect(documents.getByRole('heading', { level: 5 })).toHaveText([
-    remoteReview.title,
-  ]);
-  await search.fill('');
-  await expect(documents.getByRole('heading', { level: 5 })).toHaveText([
-    siteVisit.title,
-    remoteReview.title,
-    archive.title,
-  ]);
-  expect(state.commands).toHaveLength(0);
-  await capture(page, testInfo, 'project-document-search-classic');
 });

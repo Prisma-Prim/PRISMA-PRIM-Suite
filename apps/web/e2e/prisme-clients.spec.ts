@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
@@ -185,7 +184,7 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
   });
 });
 
-test('keeps a Client retry and pending command through disclosure, navigation and frame changes', async ({
+test('keeps a Client retry and pending command through disclosure and navigation', async ({
   page,
 }, testInfo) => {
   const company = { id: 'company-retry', displayName: 'PRISMA-PRIM' };
@@ -280,11 +279,6 @@ test('keeps a Client retry and pending command through disclosure, navigation an
     .getByRole('navigation', { name: 'Primary navigation' })
     .getByRole('link', { name: 'Clients', exact: true })
     .click();
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expectValue(name, client.displayName);
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(name).toBeHidden();
   await trigger.click();
   await expectValue(name, client.displayName);

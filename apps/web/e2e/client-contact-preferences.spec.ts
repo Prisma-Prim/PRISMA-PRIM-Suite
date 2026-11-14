@@ -16,12 +16,8 @@ function contactsRegion(page: Page) {
   return page.getByRole('region', { name: 'Contacts', exact: true });
 }
 
-async function openVersion(
-  page: Page,
-  frame: 'prisme' | 'classic',
-  version: number,
-) {
-  await page.goto(`/?frame=${frame}#clients`);
+async function openVersion(page: Page, version: number) {
+  await page.goto('/#clients');
   await page.getByRole('button', { name: 'Open dossier', exact: true }).click();
   await expect(
     page.getByText(`Version ${version}`, { exact: true }),
@@ -66,7 +62,7 @@ test('records Contact communication preferences in Prisme and keeps them after r
     return route.fulfill({ json: state.dossier });
   };
 
-  await openVersion(page, 'prisme', 1);
+  await openVersion(page, 1);
   const anaPreferencesText = contactsRegion(page).getByText(
     /^Communication preferences: Română/u,
   );
@@ -106,7 +102,7 @@ test('records Contact communication preferences in Prisme and keeps them after r
   await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
 
   await page.reload();
-  await openVersion(page, 'prisme', 2);
+  await openVersion(page, 2);
   await expect(
     contactsRegion(page).getByText(
       `Communication preferences: ${ionPreferences}`,
@@ -129,7 +125,7 @@ test('records Contact communication preferences in Prisme and keeps them after r
   await captureDossier(page, testInfo, 'contact-preferences-after-edit.png');
 });
 
-test('shows the Classic preference field, help and too-long draft without overflow', async ({
+test('shows the preference field, help and too-long draft without overflow', async ({
   page,
 }, testInfo) => {
   const state = await installDossierFixture(page);
@@ -139,10 +135,11 @@ test('shows the Classic preference field, help and too-long draft without overfl
     ...state.dossier,
     contacts: [{ ...ana, communicationPreferences: anaPreferences }, ion],
   };
-  await openVersion(page, 'classic', 1);
+  await openVersion(page, 1);
   await expect(
     contactsRegion(page).getByText(/^Communication preferences: Română/u),
   ).toBeVisible();
+  await correctionTrigger(page).click();
   const form = correctionForm(page);
   const field = form
     .getByRole('group', { name: 'Contact 2', exact: true })
@@ -161,7 +158,7 @@ test('shows the Classic preference field, help and too-long draft without overfl
   expect(state.commands).toHaveLength(0);
   await field.scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: testInfo.outputPath('contact-preferences-classic-viewport.png'),
+    path: testInfo.outputPath('contact-preferences-too-long-viewport.png'),
   });
-  await captureDossier(page, testInfo, 'contact-preferences-classic.png');
+  await captureDossier(page, testInfo, 'contact-preferences-too-long.png');
 });

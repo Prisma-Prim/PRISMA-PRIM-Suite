@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -201,17 +200,10 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
   await captureUnion(page, testInfo, 'union-reversal-uncertain');
   await navigateUnion(page, 'Activity Log');
   await navigateUnion(page, 'Clients');
-  const menu = page.getByRole('button', { name: 'Open navigation' });
-  if (await menu.isVisible()) await menu.click();
-  await enterClassicCompatibility(page);
   await expect(reversal.getByLabel('Reason for reversal')).toHaveValue(
     'Restore the separate dossiers deliberately.',
   );
   await expect(reversal.getByRole('checkbox')).toBeChecked();
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(reversal.getByLabel('Reason for reversal')).toHaveValue(
-    'Restore the separate dossiers deliberately.',
-  );
   const clientsBefore = state.clientReads;
   const activityBefore = state.activityReads;
   await reversal.getByRole('button', { name: 'Retry reversal' }).click();

@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
@@ -336,10 +335,6 @@ test('manages manual Tasks through the production shell with retained retry and 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('link', { name: 'Projects', exact: true }).click();
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await tasks
     .getByRole('button', { name: 'Retry pending Task change' })
     .click();
@@ -805,9 +800,6 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     path: testInfo.outputPath('tasks-execution-history.png'),
     fullPage: true,
   });
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
   await expect(state).toHaveText('Done');
   await expect(
     tasks.getByRole('button', { name: 'Reopen Task', exact: true }),
@@ -823,7 +815,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   await expect(state).toHaveText('Blocked');
   await tasks.scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: testInfo.outputPath('tasks-classic-blocked.png'),
+    path: testInfo.outputPath('tasks-reopened-blocked.png'),
     fullPage: true,
   });
   expect(

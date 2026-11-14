@@ -155,125 +155,123 @@ function routeApi(page: Page, documentPermissions: string[]) {
   };
 }
 
-for (const frame of ['classic', 'prisme'] as const) {
-  test(`${frame} restricts working Documents to one dossier identity and returns to it`, async ({
-    page,
-  }, testInfo) => {
-    const api = routeApi(page, ['document.read', 'document.reference.read']);
-    await api.install();
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(`/?frame=${frame}#clients`);
-    await selectCompany(page, frame, testInfo.project.name, company.id);
-    await page.goto(`/?frame=${frame}#clients`);
+test(`restricts working Documents to one dossier identity and returns to it`, async ({
+  page,
+}, testInfo) => {
+  const api = routeApi(page, ['document.read', 'document.reference.read']);
+  await api.install();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#clients');
+  await selectCompany(page, testInfo.project.name, company.id);
+  await page.goto('/#clients');
 
-    const workingDocuments = page.locator('.working-documents');
-    const dossierRegion = page.locator('.client-dossier-detail');
-    const documentFilter = workingDocuments.getByRole('searchbox', {
-      name: 'Filter working Documents',
-    });
-    await openDossier(page, client.displayName, 0);
-    await expect(
-      dossierRegion.getByRole('heading', {
-        name: client.displayName,
-        exact: true,
-      }),
-    ).toBeVisible();
-    const readsBeforeNavigation = api.documentListReads();
-    await dossierRegion
-      .getByRole('button', { name: 'Open Client working Documents' })
-      .click();
-
-    const documentsTarget = page.locator('#documents');
-    await expect(documentsTarget).toBeFocused();
-    expect(
-      await documentsTarget.evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
-        return bounds.top < window.innerHeight && bounds.bottom > 0;
-      }),
-    ).toBe(true);
-    await expectValue(documentFilter, client.displayName);
-    // Identity equality, never the displayed name shared with the homonym Client.
-    await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
-    await expect(
-      workingDocuments.getByRole('button', {
-        name: workingDocument.title,
-        exact: true,
-      }),
-    ).toBeVisible();
-    expect(api.documentListReads()).toBe(readsBeforeNavigation);
-
-    await documentFilter.fill(client.displayName.toLowerCase());
-    await expect(workingDocuments.getByRole('listitem')).toHaveCount(3);
-
-    await workingDocuments
-      .getByRole('button', { name: workingDocument.title, exact: true })
-      .click();
-    await expect(
-      workingDocuments.getByRole('heading', {
-        name: workingDocument.title,
-        exact: true,
-      }),
-    ).toBeVisible();
-    await workingDocuments
-      .getByRole('button', { name: 'Open Client dossier' })
-      .click();
-    await expect(page.locator('#clients')).toBeFocused();
-    await expect(
-      dossierRegion.getByRole('heading', {
-        name: client.displayName,
-        exact: true,
-      }),
-    ).toBeVisible();
-
-    await dossierRegion
-      .getByRole('button', { name: 'Open Client working Documents' })
-      .click();
-    await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
-    await selectCompany(page, frame, testInfo.project.name, otherCompany.id);
-    await expect(
-      workingDocuments.getByRole('button', {
-        name: otherCompanyDocument.title,
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expectValue(documentFilter, '');
-
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true);
-    await page.screenshot({
-      path: testInfo.outputPath(`${frame}-client-document-navigation.png`),
-      fullPage: true,
-    });
+  const workingDocuments = page.locator('.working-documents');
+  const dossierRegion = page.locator('.client-dossier-detail');
+  const documentFilter = workingDocuments.getByRole('searchbox', {
+    name: 'Filter working Documents',
   });
+  await openDossier(page, client.displayName, 0);
+  await expect(
+    dossierRegion.getByRole('heading', {
+      name: client.displayName,
+      exact: true,
+    }),
+  ).toBeVisible();
+  const readsBeforeNavigation = api.documentListReads();
+  await dossierRegion
+    .getByRole('button', { name: 'Open Client working Documents' })
+    .click();
 
-  test(`${frame} hides the dossier action for working Documents without current read access`, async ({
-    page,
-  }, testInfo) => {
-    const api = routeApi(page, []);
-    await api.install();
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(`/?frame=${frame}#clients`);
-    await selectCompany(page, frame, testInfo.project.name, company.id);
-    await page.goto(`/?frame=${frame}#clients`);
+  const documentsTarget = page.locator('#documents');
+  await expect(documentsTarget).toBeFocused();
+  expect(
+    await documentsTarget.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.top < window.innerHeight && bounds.bottom > 0;
+    }),
+  ).toBe(true);
+  await expectValue(documentFilter, client.displayName);
+  // Identity equality, never the displayed name shared with the homonym Client.
+  await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
+  await expect(
+    workingDocuments.getByRole('button', {
+      name: workingDocument.title,
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(api.documentListReads()).toBe(readsBeforeNavigation);
 
-    await openDossier(page, client.displayName, 0);
-    const dossierRegion = page.locator('.client-dossier-detail');
-    await expect(
-      dossierRegion.getByRole('heading', {
-        name: client.displayName,
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expect(
-      dossierRegion.getByRole('button', {
-        name: 'Open Client working Documents',
-      }),
-    ).toHaveCount(0);
+  await documentFilter.fill(client.displayName.toLowerCase());
+  await expect(workingDocuments.getByRole('listitem')).toHaveCount(3);
+
+  await workingDocuments
+    .getByRole('button', { name: workingDocument.title, exact: true })
+    .click();
+  await expect(
+    workingDocuments.getByRole('heading', {
+      name: workingDocument.title,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await workingDocuments
+    .getByRole('button', { name: 'Open Client dossier' })
+    .click();
+  await expect(page.locator('#clients')).toBeFocused();
+  await expect(
+    dossierRegion.getByRole('heading', {
+      name: client.displayName,
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await dossierRegion
+    .getByRole('button', { name: 'Open Client working Documents' })
+    .click();
+  await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
+  await selectCompany(page, testInfo.project.name, otherCompany.id);
+  await expect(
+    workingDocuments.getByRole('button', {
+      name: otherCompanyDocument.title,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expectValue(documentFilter, '');
+
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('client-document-navigation.png'),
+    fullPage: true,
   });
-}
+});
+
+test(`hides the dossier action for working Documents without current read access`, async ({
+  page,
+}, testInfo) => {
+  const api = routeApi(page, []);
+  await api.install();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#clients');
+  await selectCompany(page, testInfo.project.name, company.id);
+  await page.goto('/#clients');
+
+  await openDossier(page, client.displayName, 0);
+  const dossierRegion = page.locator('.client-dossier-detail');
+  await expect(
+    dossierRegion.getByRole('heading', {
+      name: client.displayName,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    dossierRegion.getByRole('button', {
+      name: 'Open Client working Documents',
+    }),
+  ).toHaveCount(0);
+});
 
 async function openDossier(
   page: Page,
@@ -293,11 +291,10 @@ async function openDossier(
 
 async function selectCompany(
   page: Page,
-  frame: 'classic' | 'prisme',
   projectName: string,
   companyId: string,
 ): Promise<void> {
-  const narrow = frame === 'prisme' && projectName === 'narrow';
+  const narrow = projectName === 'narrow';
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(

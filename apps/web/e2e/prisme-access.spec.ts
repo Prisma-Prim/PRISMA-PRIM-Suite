@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
@@ -467,17 +466,7 @@ test('retains the accepted Workspace after Prisme navigation and refresh when st
   await navigation
     .getByRole('link', { name: 'Jurnal de activitate', exact: true })
     .click();
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Deschideți navigarea' }).click();
-  await enterClassicCompatibility(page, 'Încercați Prisme');
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Bine ați venit în PRISMA-PRIM Suite' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('region', { name: 'Contextul Companiei' }),
-  ).toContainText(actor.workspaceName);
-  await page.getByRole('button', { name: 'Încercați Prisme' }).click();
   await expect(page.locator('#prisme-page-title')).toHaveText(
     'Jurnal de activitate',
   );

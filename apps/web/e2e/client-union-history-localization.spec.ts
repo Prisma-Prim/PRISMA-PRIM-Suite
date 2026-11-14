@@ -17,7 +17,6 @@ import {
   unionHistoryLocaleCases,
   type UnionHistoryLocaleCase,
 } from '../src/test/client-union-history-localization.fixture';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { installHistoryLocalizationFixture } from './client-union-history-localization.fixture';
 import { selectOption } from './select-option';
 
@@ -30,7 +29,6 @@ const shell = {
     openMenu: 'Deschideți navigarea',
     activity: 'Jurnal de activitate',
     clients: 'Clienți',
-    optIn: 'Încercați Prisme',
     listError: 'Clienții nu au putut fi încărcați. Încercați din nou.',
     activityError:
       'Jurnalul de activitate nu a putut fi încărcat. Încercați din nou.',
@@ -40,7 +38,6 @@ const shell = {
     openMenu: 'Открыть навигацию',
     activity: 'Журнал активности',
     clients: 'Клиенты',
-    optIn: 'Попробовать Prisme',
     listError: 'Не удалось загрузить Клиентов. Повторите попытку.',
     activityError: 'Не удалось загрузить журнал действий. Повторите попытку.',
   },
@@ -49,7 +46,6 @@ const shell = {
     openMenu: 'Ouvrir la navigation',
     activity: 'Journal d’activité',
     clients: 'Clients',
-    optIn: 'Essayer Prisme',
     listError: 'Impossible de charger les Clients. Réessayez.',
     activityError:
       'Le journal d’activité n’a pas pu être chargé. Veuillez réessayer.',
@@ -59,7 +55,6 @@ const shell = {
     openMenu: 'Open navigation',
     activity: 'Activity Log',
     clients: 'Clients',
-    optIn: 'Try Prisme',
     listError: 'We could not load Clients. Please try again.',
     activityError: 'We could not load the Activity Log. Please try again.',
   },
@@ -193,7 +188,7 @@ async function capture({
 }
 
 for (const copy of unionHistoryLocaleCases) {
-  test(`keeps the real App history, local timestamps and exact reversal through locale/frame changes in ${copy.code}`, async ({
+  test(`keeps the real App history, local timestamps and exact reversal through locale changes in ${copy.code}`, async ({
     page,
   }, info) => {
     const state = await installHistoryLocalizationFixture({ page });
@@ -337,14 +332,8 @@ for (const copy of unionHistoryLocaleCases) {
     await navigate({ page, code: copy.code, section: 'activity' });
     await expect(panel).toBeHidden();
     await navigate({ page, code: copy.code, section: 'clients' });
-    await enterClassicCompatibility(page, shell[copy.code].optIn);
-    const framedRequests = [...uncertainRequests, 'GET /api/operational-home'];
-    await expect.poll(() => state.apiReads).toEqual(framedRequests);
-    await page
-      .getByRole('button', { name: shell[copy.code].optIn, exact: true })
-      .click();
-    await expect(page.locator('.prisme-shell')).toBeVisible();
-    expect(state.apiReads).toEqual(framedRequests);
+    await expect(panel).toBeVisible();
+    expect(state.apiReads).toEqual(uncertainRequests);
     expect(
       await form.evaluate((node, original) => node === original, formNode),
     ).toBe(true);

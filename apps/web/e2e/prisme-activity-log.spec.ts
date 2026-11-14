@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
@@ -56,7 +55,7 @@ const events = [
   },
 ];
 
-test('presents real Activity Log events in server order and preserves them across frames', async ({
+test('presents real Activity Log events in server order', async ({
   page,
 }, testInfo) => {
   let activityReads = 0;
@@ -111,22 +110,9 @@ test('presents real Activity Log events in server order and preserves them acros
     ),
     fullPage: true,
   });
-
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expect(page).toHaveURL(/\?frame=classic#activity$/);
-  await expect(activity).toBeVisible();
-  await expect(rows).toHaveCount(events.length);
-  expect(activityReads).toBe(1);
-
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(page).toHaveURL(/\/#activity$/);
-  await expect(rows).toHaveCount(events.length);
-  expect(activityReads).toBe(1);
 });
 
-test('opens the Request of a commercial event from the Classic Activity Log with the keyboard', async ({
+test('opens the Request of a commercial event from the Activity Log with the keyboard', async ({
   page,
 }, testInfo) => {
   const company = {
@@ -222,11 +208,16 @@ test('opens the Request of a commercial event from the Classic Activity Log with
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
+  const narrow = testInfo.project.name === 'narrow';
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
     page.getByLabel('Active Company', { exact: true }),
     company.id,
   );
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
   const activity = page.getByRole('region', { name: 'Activity Log' });
   const openRequest = activity
     .getByRole('listitem')
@@ -247,14 +238,14 @@ test('opens the Request of a commercial event from the Classic Activity Log with
   await openRequest.scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath(
-      `classic-activity-open-request-${testInfo.project.name}.png`,
+      `activity-open-request-${testInfo.project.name}.png`,
     ),
     fullPage: true,
   });
 
   await openRequest.focus();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\?frame=classic#requests$/);
+  await expect(page).toHaveURL(/\/#requests$/);
   await expect(page.locator('#requests')).toBeFocused();
   await expect(
     page
@@ -270,7 +261,7 @@ test('opens the Request of a commercial event from the Classic Activity Log with
   ).toBe(true);
   await page.screenshot({
     path: testInfo.outputPath(
-      `classic-activity-opened-request-${testInfo.project.name}.png`,
+      `activity-opened-request-${testInfo.project.name}.png`,
     ),
     fullPage: true,
   });

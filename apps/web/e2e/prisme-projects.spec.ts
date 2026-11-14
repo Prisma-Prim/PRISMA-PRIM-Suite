@@ -1,5 +1,4 @@
 import { expectSelectAppearance } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page } from '@playwright/test';
 import type { ProjectLifecycle } from '../src/project/project-lifecycle-response';
@@ -570,29 +569,7 @@ test('creates and opens a Project, then switches local panels without reloading 
     fullPage: true,
   });
 
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expectValue(page.getByLabel('Task title'), taskDraft);
-  await expect(
-    page
-      .locator('#project-documents-panel')
-      .getByRole('region', { name: 'Working Documents', exact: true }),
-  ).toBeVisible();
-  const classicLifecycle = page.getByRole('region', { name: 'Lifecycle' });
-  await expect(
-    classicLifecycle.getByText('Start declaration — declared, not verified'),
-  ).toBeVisible();
-  await expect(classicLifecycle.getByRole('listitem')).toHaveCount(3);
-  await expect(
-    classicLifecycle.getByRole('button', { name: 'Put on hold' }),
-  ).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-  await page.screenshot({
-    path: testInfo.outputPath('prisme-projects-lifecycle-classic.png'),
-    fullPage: true,
-  });
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
+  await expect(lifecycleSection.getByRole('listitem')).toHaveCount(3);
   await expectValue(tasksPanel.getByLabel('Task title'), taskDraft);
   expect(reads).toEqual(readsAfterOpen);
 
@@ -661,23 +638,6 @@ test('creates and opens a Project, then switches local panels without reloading 
     fullPage: true,
   });
 
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expect(
-    page.getByText(
-      'This Project is completed. Its Tasks, Documents and responsible member are read-only; its history remains available.',
-    ),
-  ).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Lifecycle' })).toContainText(
-    `Note${completionNote}`,
-  );
-  await expectNoHorizontalOverflow(page);
-  await page.screenshot({
-    path: testInfo.outputPath('prisme-projects-completed-classic.png'),
-    fullPage: true,
-  });
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   expect(transitions.at(-1)).toEqual({
     action: 'complete',
     expectedLifecycleRevision: 3,
