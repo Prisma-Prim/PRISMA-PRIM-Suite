@@ -24,7 +24,7 @@ const INDEPENDENT_PROJECT_CHILD_BUNDLES: ReadonlySet<CompanyGrantBundle> =
  * (#1334) removes them from the current Actor; the authority below leaves
  * them out unread, as it leaves out the grants themselves.
  */
-const INDEPENDENT_LEGACY_FIELDS: ReadonlySet<string> = new Set([
+const INDEPENDENT_PER_BUNDLE_FIELDS: ReadonlySet<string> = new Set([
   'projectNextActionPermissions',
   'projectNextActionCoordinatorAssignmentId',
   'projectNextActionCoordinatorPermissionSetVersion',
@@ -60,7 +60,7 @@ export function companyAuthorityWithoutProjectTemplate(
   if (!company) return;
   return Object.fromEntries(
     Object.entries(company).flatMap(([field, value]) =>
-      INDEPENDENT_LEGACY_FIELDS.has(field)
+      INDEPENDENT_PER_BUNDLE_FIELDS.has(field)
         ? []
         : field === 'grants'
           ? [
