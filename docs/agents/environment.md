@@ -104,7 +104,6 @@ pnpm test:access:postgres          # Access, assignment, suspension, and members
 pnpm test:company:postgres         # Company REST and idempotency suites
 pnpm test:client:postgres          # Client dossier REST suite
 pnpm test:preflight:postgres-smoke # one cross-Workspace REST smoke suite
-pnpm test:preflight:migration      # migration from the previous committed schema
 pnpm test:preflight:playwright     # one production-shell journey on desktop and narrow viewports
 ```
 

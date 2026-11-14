@@ -107,6 +107,29 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
       ).toEqual(context.project);
     });
 
+    it('keeps a declared action and replays its exact receipt after two application restarts', async () => {
+      const context = await coordinator();
+      const text = 'Declared before a restart.\r\n🌍';
+      const receipt = await change(context, 0, text, 'before-restart');
+      const loaded = await json(
+        await fixture.request(context.path, { companyId: context.companyId }),
+      );
+      expect(object(loaded.current)).toMatchObject({ revision: 1, text });
+      for (let restart = 0; restart < 2; restart++) {
+        await fixture.restart();
+        expect(
+          await json(
+            await fixture.request(context.path, {
+              companyId: context.companyId,
+            }),
+          ),
+        ).toEqual(loaded);
+        expect(await change(context, 0, text, 'before-restart')).toEqual(
+          receipt,
+        );
+      }
+    }, 30_000);
+
     it('replaces and explicitly clears without erasing history, then confirms the exact earlier key outcome', async () => {
       const context = await coordinator();
       const first = await change(

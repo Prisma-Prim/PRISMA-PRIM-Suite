@@ -293,8 +293,9 @@ reads remain possible after normal closure and Client succession. This contract
 does not generalize the pilot-only readiness/result-review or stage/closure policy.
 
 No existing source/Project can be deleted or retagged to make a malformed custom
-copy appear compatible. Unknown persisted formats/versions fail closed. Migration
-proof starts from the genuine preceding schema with representative existing data.
+copy appear compatible. Unknown persisted formats/versions fail closed. From launch on
+([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), migration proof starts from the genuine preceding schema with
+representative existing data.
 
 ## 9. Public acceptance and delivery readiness
 
@@ -311,7 +312,7 @@ proof starts from the genuine preceding schema with representative existing data
 4. Exact selected Version creates complete native Project/Tasks/mapping/defaults;
    later source publication, Task edits and extra Tasks leave the source unchanged.
    Reject mixed/partial/foreign mappings and cross-owner Project intent collisions.
-5. Genuine previous-schema upgrade preserves manual/illustrative/pilot data, receipts,
+5. From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), a genuine previous-schema upgrade preserves manual/illustrative/pilot data, receipts,
    assignments, stages, result/review and Document links; grants/immutable source
    rows are not widened or backfilled. Ordinary existing journeys still pass.
 6. Public HTTP/native-owner App tests cover malformed/foreign/stale responses,

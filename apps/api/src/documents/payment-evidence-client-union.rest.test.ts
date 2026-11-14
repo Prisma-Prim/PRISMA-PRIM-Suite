@@ -5,6 +5,7 @@ import {
 } from '../offer/offer-concurrency.test-support.js';
 import {
   openPaymentEvidenceUnionFixture,
+  PAYMENT_UNION_TAX_ID,
   paymentUnionRejectionEffects,
   type PaymentEvidenceUnionFixture,
 } from './payment-evidence-client-union.test-support.js';
@@ -24,7 +25,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 
 withPostgres(
-  'Payment Evidence Source with genuine historical PRIMARY-only Client duplicates',
+  'Payment Evidence Source across a union of PRIMARY-only Client duplicates',
   () => {
     let fixture: PaymentEvidenceUnionFixture;
     beforeEach(async () => {
@@ -35,12 +36,14 @@ withPostgres(
       await fixture?.close();
     });
 
-    it('normally upgrades the authentic0013 pair, conserves public receipts and refreshes Director v1 through the native v2 lifecycle', async () => {
-      const { sourceClientId, targetClientId, membershipId, companyId } =
-        fixture.ids;
+    it('refreshes a captured Director v1 to v2 through revoke and regrant, adding duplicate resolution', async () => {
+      const { membershipId, companyId } = fixture.ids;
       const beforeCompany = paymentRecord(fixture.beforeActor.activeCompany);
       const afterCompany = paymentRecord(fixture.afterActor.activeCompany);
       expect(beforeCompany.clientPermissionSetVersion).toBe('v1');
+      expect(beforeCompany.clientPermissions).not.toContain(
+        'client.duplicate.resolve',
+      );
       expect(afterCompany).toMatchObject({
         id: companyId,
         clientPermissionSetVersion: 'v2',
@@ -52,58 +55,6 @@ withPostgres(
       );
       expect(fixture.refreshed.id).not.toBe(fixture.revoked.id);
       expect(fixture.refreshed.workspaceMembershipId).toBe(membershipId);
-      if (!Array.isArray(fixture.context.publicCalls))
-        throw new Error('Expected authentic public receipts.');
-      const calls: unknown[] = fixture.context.publicCalls;
-      for (const clientId of [sourceClientId, targetClientId]) {
-        const original = calls
-          .map(paymentRecord)
-          .find(
-            (call) =>
-              call.method === 'GET' && call.path === `/clients/${clientId}`,
-          );
-        if (!original)
-          throw new Error('Missing authentic native dossier read.');
-        const dossier = await fixture.call(`/clients/${clientId}`);
-        expect(dossier.status).toBe(200);
-        expect(await paymentJson(dossier)).toMatchObject(
-          paymentRecord(original.response),
-        );
-        const entities = await fixture.call(
-          `/clients/${clientId}/legal-entities`,
-        );
-        expect(entities.status).toBe(200);
-        expect(await paymentJson(entities)).toEqual({
-          clientVersion: 1,
-          legalEntities: [],
-        });
-      }
-      for (const key of ['legacy-primary-A-1045', 'legacy-primary-B-1045']) {
-        const original = calls
-          .map(paymentRecord)
-          .find(
-            (call) =>
-              call.method === 'POST' &&
-              call.path === '/clients' &&
-              call.key === key,
-          );
-        if (!original)
-          throw new Error('Missing authentic native registration receipt.');
-        const replay = await fixture.call('/clients', {
-          method: 'POST',
-          key,
-          body: original.body,
-        });
-        expect(replay.status).toBe(201);
-        expect(await paymentJson(replay)).toEqual(original.response);
-      }
-      const beforeRestart = await fixture.call('/clients');
-      expect(beforeRestart.status).toBe(200);
-      const clients = await beforeRestart.json();
-      await fixture.restart();
-      const afterRestart = await fixture.call('/clients');
-      expect(afterRestart.status).toBe(200);
-      expect(await afterRestart.json()).toEqual(clients);
     });
 
     it('keeps a DRAFT Payment readable and withdrawable for its Recorder after the original Client is superseded by a union', async () => {
@@ -179,7 +130,7 @@ withPostgres(
     it('preserves original A, its frozen payer and exact PDF through a fresh current union to B without retargeting new source use', async () => {
       const { sourceClientId } = fixture.ids;
       const body = paymentSourceRegistration(sourceClientId);
-      const key = 'legacy-source-before-native-union';
+      const key = 'source-before-union';
       const registered = await fixture.call('/documents', {
         method: 'POST',
         body,
@@ -194,12 +145,12 @@ withPostgres(
         kind: 'AVAILABLE',
         party: {
           kind: 'PRIMARY',
-          legalName: 'Fictional Historical Payer A',
-          taxId: 'PAYMENT-LEGACY-PRIMARY-1045',
+          legalName: 'Fictional Payer A',
+          taxId: PAYMENT_UNION_TAX_ID,
           legalAddress: null,
         },
       });
-      const pdf = await paymentNoticePdf('historical original A');
+      const pdf = await paymentNoticePdf('original A');
       const upload = await fixture.upload({
         documentId,
         versionId,

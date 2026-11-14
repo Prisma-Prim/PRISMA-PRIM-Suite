@@ -195,6 +195,11 @@ fix; restore a tested backup into a separate database only under an owner-approv
 recovery plan that accounts for lost writes, identity settings and downtime.
 Railway rollback is limited by the deployment retention of the selected plan.
 
+The schema of the first activation is the launch schema. Until then, migration
+tests prove the current constraints on a database migrated from empty; from launch
+on, a migration test also proves the upgrade from the deployed schema with
+representative rows ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)).
+
 Official references: [Dockerfiles/build arguments](https://docs.railway.com/builds/dockerfiles),
 [pre-deploy semantics](https://docs.railway.com/deployments/pre-deploy-command),
 [healthchecks](https://docs.railway.com/deployments/healthchecks),

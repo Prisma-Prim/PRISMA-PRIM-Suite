@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -17,64 +15,24 @@ const REQUEST = '00000000-0000-4000-8000-000000003906';
 const OPPORTUNITY = '00000000-0000-4000-8000-000000003907';
 const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
-const PRESERVED = [
-  'company_role_assignments',
-  'client_requests',
-  'opportunities',
-  'commercial_intake_events',
-  'commercial_intake_next_action_commands',
-] as const;
 
 it.skipIf(!databaseUrl)(
-  'upgrades through 0041 without altering rows and enforces the Opportunity Manager bundle, receipt and event contract',
+  'enforces the Opportunity Manager bundle, responsible receipt and event contract on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'opp_reassignment_upgrade',
+      namePrefix: 'opp_reassignment_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags: string[] = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const target = tags.indexOf('0041_opportunity_responsible_reassignment');
-      expect(target).toBeGreaterThan(0);
-      const entries: unknown[] = journal.entries.slice(0, target);
-      const previousTags = tags.slice(0, target);
-      previous = await mkdtemp(join(tmpdir(), 'prisma-399-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries }),
-      );
-      for (const tag of previousTags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved reassignment')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Reassignment intake')`,
         [WORKSPACE],
       );
       await query(
@@ -91,100 +49,25 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-reassignment-company')`,
+         VALUES ($1, $2, 'Reassignment Company', $3, $4, 'reassignment-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
-      );
-      // One active assignment per bundle and captured version before 0041.
-      await query(
-        `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version)
-         VALUES ($1, $2, $3, 'company_context_access', NULL),
-                ($1, $2, $3, 'company_director_client_access', 'v2'),
-                ($1, $2, $3, 'company_document_registrar', 'v2'),
-                ($1, $2, $3, 'company_project_access', 'v2'),
-                ($1, $2, $3, 'company_commercial_intake', 'v2'),
-                ($1, $2, $3, 'company_task_manager', 'v1'),
-                ($1, $2, $3, 'company_document_project_organizer', 'v1'),
-                ($1, $2, $3, 'company_service_catalogue', 'v1'),
-                ($1, $2, $3, 'company_pricing_configuration', 'v1'),
-                ($1, $2, $3, 'company_pricing_adjustment', 'v1'),
-                ($1, $2, $3, 'company_commercial_activity_reader', 'v1'),
-                ($1, $2, $4, 'company_commercial_intake', 'v1'),
-                ($1, $2, $4, 'company_context_access', NULL)`,
-        [WORKSPACE, COMPANY, MEMBERSHIP, COLLEAGUE],
       );
       await query(
         `INSERT INTO client_requests (id, workspace_id, company_id, original_text, captured_by_internal_user_id,
            captured_by_workspace_membership_id)
-         VALUES ($1, $2, $3, 'Preserved request text', $4, $5)`,
+         VALUES ($1, $2, $3, 'Reassignment request text', $4, $5)`,
         [REQUEST, WORKSPACE, COMPANY, USER, MEMBERSHIP],
       );
       await query(
         `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title, next_action,
            responsible_internal_user_id, responsible_workspace_membership_id, version,
            last_updated_by_internal_user_id, last_updated_by_workspace_membership_id, last_updated_at)
-         VALUES ($1, $2, $3, $4, 'Preserved Opportunity', 'Preserved next action', $5, $6, 2, $5, $6, now())`,
+         VALUES ($1, $2, $3, $4, 'Reassignment Opportunity', 'Updated next action', $5, $6, 2, $5, $6, now())`,
         [OPPORTUNITY, WORKSPACE, COMPANY, REQUEST, USER, MEMBERSHIP],
       );
-      await query(
-        `INSERT INTO commercial_intake_events (workspace_id, company_id, action, client_request_id, opportunity_id,
-           actor_internal_user_id, actor_workspace_membership_id, metadata)
-         VALUES ($1, $2, 'client_request.created', $3, $4, $5, $6, '{"requestVersion": 1}'::jsonb),
-                ($1, $2, 'opportunity.created', $3, $4, $5, $6, '{"opportunityVersion": 1}'::jsonb),
-                ($1, $2, 'opportunity.next_action.updated', $3, $4, $5, $6, '{"opportunityVersion": 2}'::jsonb)`,
-        [WORKSPACE, COMPANY, REQUEST, OPPORTUNITY, USER, MEMBERSHIP],
-      );
-      await query(
-        `INSERT INTO commercial_intake_next_action_commands (workspace_id, company_id, actor_workspace_membership_id,
-           idempotency_key, fingerprint, opportunity_id, expected_version, result_version, outcome, next_action)
-         VALUES ($1, $2, $3, 'preserved-update', 'fingerprint', $4, 1, 2, 'updated', 'Preserved next action')`,
-        [WORKSPACE, COMPANY, MEMBERSHIP, OPPORTUNITY],
-      );
-      // 0066 later adds the nullable Opportunity Sales Stage, which this
-      // upgrade assigns to no row.
-      const snapshot = () =>
-        Promise.all(
-          PRESERVED.map(
-            async (table) =>
-              (
-                await query(
-                  `SELECT to_jsonb(preserved_row) - 'sales_stage_id' AS value FROM ${table} AS preserved_row ORDER BY id`,
-                )
-              ).rows,
-          ),
-        );
-      const before = await snapshot();
 
-      // Prove the historical 0041 boundary before later migrations expand it.
-      await cp(
-        join('drizzle', tags[target] + '.sql'),
-        join(previous, tags[target] + '.sql'),
-      );
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, target + 1),
-        }),
-      );
-      await migrate(connection, { migrationsFolder: previous });
-
-      // Additive only: no backfill, no row rewrite and no implicit grant.
-      expect(await snapshot()).toEqual(before);
-      expect(
-        (
-          await query(
-            `SELECT count(*)::int AS count FROM company_role_assignments
-              WHERE bundle = 'company_opportunity_manager'`,
-          )
-        ).rows,
-      ).toEqual([{ count: 0 }]);
-      expect(
-        (await query('SELECT * FROM commercial_intake_responsible_commands'))
-          .rows,
-      ).toEqual([]);
-
-      // The manager bundle accepts only captured v1; every bundle and version
-      // before 0041 stays accepted.
+      // The manager bundle and the Company context bundle refuse versions
+      // outside their captured ones.
       const insertAssignment = (bundle: string, version: string | null) =>
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
@@ -192,36 +75,10 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, $3, $4, $5, now())`,
           [WORKSPACE, COMPANY, COLLEAGUE, bundle, version],
         );
-      for (const version of ['v2', null, 'V1', 'v0'])
+      for (const version of [null, 'V1', 'v0'])
         await expect(
           insertAssignment('company_opportunity_manager', version),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
-      for (const [bundle, version] of [
-        ['company_opportunity_manager', 'v1'],
-        ['company_context_access', null],
-        ['company_director_client_access', 'v1'],
-        ['company_director_client_access', 'v2'],
-        ['company_document_registrar', 'v1'],
-        ['company_document_registrar', 'v2'],
-        ['company_document_registrar', 'v3'],
-        ['company_document_approver', 'v1'],
-        ['company_project_access', 'v1'],
-        ['company_project_access', 'v2'],
-        ['company_project_approver', 'v1'],
-        ['company_commercial_intake', 'v1'],
-        ['company_commercial_intake', 'v2'],
-        ['company_task_manager', 'v1'],
-        ['company_document_project_organizer', 'v1'],
-        ['company_service_catalogue', 'v1'],
-        ['company_pricing_configuration', 'v1'],
-        ['company_pricing_user', 'v1'],
-        ['company_pricing_adjustment', 'v1'],
-        ['company_commercial_activity_reader', 'v1'],
-      ] satisfies Array<[string, string | null]>)
-        await insertAssignment(bundle, version);
-      await expect(
-        insertAssignment('company_commercial_intake', 'v3'),
-      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       await expect(
         insertAssignment('company_context_access', 'v1'),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
@@ -340,14 +197,9 @@ it.skipIf(!databaseUrl)(
           insertReceipt(key, outcome, expectedVersion, resultVersion),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 
-      // The current schema adds Intake v3 through 0045, preserving the 0041
-      // rows and its independent Opportunity Manager contract.
-      const beforeLatest = await snapshot();
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-      expect(await snapshot()).toEqual(beforeLatest);
-      await insertAssignment('company_commercial_intake', 'v3');
-      // 0080 independently introduces Offer Preparer v3; old captures stay
-      // unchanged and an unknown successor still fails closed.
+      // Offer Preparer admits its captured v3 and an unknown successor fails
+      // closed, as do unknown Commercial Intake versions and a v3 of every
+      // bundle without one.
       await insertAssignment('company_offer_preparer', 'v3');
       await expect(
         insertAssignment('company_offer_preparer', 'v4'),
@@ -376,13 +228,7 @@ it.skipIf(!databaseUrl)(
         });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-399-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );

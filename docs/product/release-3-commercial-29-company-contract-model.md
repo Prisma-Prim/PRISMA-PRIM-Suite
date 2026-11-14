@@ -287,7 +287,7 @@ assert the valid serial result and absence of extra effects. Force the last
 recorded event to fail and compare all records/counters/fences/receipts/events.
 Verify scoped constraints and immutable storage through the public-owned state.
 
-Upgrade a genuine pre-slice schema containing existing Offer model states,
+From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), upgrade a genuine pre-slice schema containing existing Offer model states,
 captured old/new Offer grants, full generated model/economic and internal/ordinary
 Offer history plus ordinary/early executed synthetic Contracts and Project links.
 Compare preserved rows, exact representation bytes/digests and original receipts;

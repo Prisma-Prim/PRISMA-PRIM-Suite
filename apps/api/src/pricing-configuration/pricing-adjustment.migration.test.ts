@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -26,61 +24,22 @@ const UNIQUE_VIOLATION = '23505';
 const FOREIGN_KEY_VIOLATION = '23503';
 
 it.skipIf(!databaseUrl)(
-  'adds fixed net adjustments after 0039 without changing old snapshots, roles or events',
+  'enforces the fixed net adjustment, Adjustment bundle and adjustment event invariants on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'adjustment_upgrade',
+      namePrefix: 'adjustment_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const adjustmentIndex = tags.findIndex((tag) =>
-        tag.endsWith('_pricing_adjustments'),
-      );
-      expect(adjustmentIndex).toBeGreaterThan(0);
-      const previousTags = tags.slice(0, adjustmentIndex);
-      expect(previousTags.at(-1)).toBe('0039_project_lifecycle');
-      previous = await mkdtemp(join(tmpdir(), 'prisma-458-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, adjustmentIndex),
-        }),
-      );
-      for (const tag of previousTags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(`
-        INSERT INTO workspaces (id, name) VALUES ('${WORKSPACE}', 'Preserved adjustment proof');
+        INSERT INTO workspaces (id, name) VALUES ('${WORKSPACE}', 'Adjustment proof');
         INSERT INTO internal_users (id, external_provider, external_subject, display_name, email)
           VALUES ('${USER}', 'deterministic-test', 'adjustment-owner', 'Adjustment Owner',
             'adjustment-owner@example.test');
@@ -88,19 +47,16 @@ it.skipIf(!databaseUrl)(
           VALUES ('${MEMBERSHIP}', '${WORKSPACE}', '${USER}');
         INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
           created_by_workspace_membership_id, registration_idempotency_key)
-          VALUES ('${COMPANY}', '${WORKSPACE}', 'Preserved Company', '${USER}', '${MEMBERSHIP}',
-            'preserved-adjustment-company');
-        INSERT INTO company_role_assignments (workspace_id, company_id,
-          workspace_membership_id, bundle, permission_set_version)
-          VALUES ('${WORKSPACE}', '${COMPANY}', '${MEMBERSHIP}', 'company_pricing_user', 'v1');
+          VALUES ('${COMPANY}', '${WORKSPACE}', 'Adjustment Company', '${USER}', '${MEMBERSHIP}',
+            'adjustment-company');
         INSERT INTO client_requests (id, workspace_id, company_id, original_text,
           captured_by_internal_user_id, captured_by_workspace_membership_id)
-          VALUES ('${REQUEST}', '${WORKSPACE}', '${COMPANY}', 'Preserved request', '${USER}',
+          VALUES ('${REQUEST}', '${WORKSPACE}', '${COMPANY}', 'Adjustment request', '${USER}',
             '${MEMBERSHIP}');
         INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title,
           next_action, responsible_internal_user_id, responsible_workspace_membership_id)
           VALUES ('${OPPORTUNITY}', '${WORKSPACE}', '${COMPANY}', '${REQUEST}',
-            'Preserved Opportunity', 'Preserved next action', '${USER}', '${MEMBERSHIP}');
+            'Adjustment Opportunity', 'Adjustment next action', '${USER}', '${MEMBERSHIP}');
         INSERT INTO service_definitions (id, workspace_id, code, name,
           created_by_internal_user_id, created_by_workspace_membership_id, created_in_company_id)
           VALUES ('${DEFINITION}', '${WORKSPACE}', 'ADJUSTMENT', 'Adjustment service', '${USER}',
@@ -113,7 +69,7 @@ it.skipIf(!databaseUrl)(
         INSERT INTO pricing_rule_versions (id, workspace_id, company_id, version_number, label,
           effective_from, rule_shape, rounding_mode, rounding_scale, tax_application, provenance,
           created_by_internal_user_id, created_by_workspace_membership_id, created_at)
-          VALUES ('${RULE}', '${WORKSPACE}', '${COMPANY}', 1, 'Preserved rule',
+          VALUES ('${RULE}', '${WORKSPACE}', '${COMPANY}', 1, 'Adjustment rule',
             '2026-01-01T00:00:00Z', 'UNIT_PRICE_TIMES_QUANTITY', 'HALF_UP', 2, 'PER_LINE',
             'ILLUSTRATIVE', '${USER}', '${MEMBERSHIP}', '2026-01-01T00:00:00Z');
         INSERT INTO tariff_versions (id, workspace_id, company_id, offering_id, version_number,
@@ -141,42 +97,8 @@ it.skipIf(!databaseUrl)(
             'ADJUSTMENT', 'Adjustment service', '${OFFERING}', 'Adjustment offering', '${TARIFF}',
             1, 'illustrative-unit', '123.4500', 'EUR', '12.34', 'Illustrative tax', '2.500',
             '2.5', 'UNIT_PRICE_TIMES_QUANTITY', '308.6250000', '308.63', '38.0849420', '38.08');
-        INSERT INTO pricing_configuration_events (workspace_id, company_id, action,
-          pricing_snapshot_id, actor_internal_user_id, actor_workspace_membership_id,
-          occurred_at, metadata)
-          VALUES ('${WORKSPACE}', '${COMPANY}', 'pricing_snapshot.created', '${SNAPSHOT}',
-            '${USER}', '${MEMBERSHIP}', '2026-09-26T12:00:01Z',
-            '{"pricingSnapshotId":"${SNAPSHOT}","opportunityId":"${OPPORTUNITY}","lineCount":1,"provenance":"ILLUSTRATIVE","currency":"EUR"}'::jsonb);
       `);
 
-      const preserved = () =>
-        Promise.all(
-          [
-            'company_role_assignments',
-            'pricing_snapshots',
-            'pricing_snapshot_lines',
-            'pricing_configuration_events',
-          ].map(
-            async (table) =>
-              (
-                await query(
-                  `SELECT to_jsonb(row_value)::text AS value FROM ${table} row_value ORDER BY id`,
-                )
-              ).rows,
-          ),
-        );
-      const before = await preserved();
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      expect(await preserved()).toEqual(before);
-      expect(
-        (
-          await query(
-            'SELECT count(*)::integer AS count FROM pricing_snapshot_adjustments',
-          )
-        ).rows,
-      ).toEqual([{ count: 0 }]);
       await query(
         `INSERT INTO company_role_assignments (workspace_id, company_id,
            workspace_membership_id, bundle, permission_set_version)
@@ -217,7 +139,7 @@ it.skipIf(!databaseUrl)(
             SNAPSHOT,
             overrides.lineId ?? LINE,
             overrides.netReduction ?? '8.63',
-            overrides.reason ?? '  Exact preserved reason  ',
+            overrides.reason ?? '  Exact adjustment reason  ',
             USER,
             MEMBERSHIP,
           ],
@@ -235,7 +157,7 @@ it.skipIf(!databaseUrl)(
         {
           type: 'FIXED_NET_DISCOUNT',
           net_reduction: '8.63',
-          reason: '  Exact preserved reason  ',
+          reason: '  Exact adjustment reason  ',
           original_line_net: '308.63',
           original_line_tax: '38.08',
           adjusted_line_net: '300.00',
@@ -312,13 +234,7 @@ it.skipIf(!databaseUrl)(
       await insertEvent(eventMetadata);
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-458-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );

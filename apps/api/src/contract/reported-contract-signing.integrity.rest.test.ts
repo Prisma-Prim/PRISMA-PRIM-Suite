@@ -324,4 +324,89 @@ withPostgres('Independent reported-signing SQL integrity', () => {
       '23514',
     );
   }, 30_000);
+
+  it('refuses reported signing evidence attached to an approved Contract outside the Company-model origin', async () => {
+    const ready = await prepareReportedSigning(fixture);
+    expect(
+      (
+        await fixture.post({
+          ...ready.target,
+          path: ready.path,
+          body: ready.body,
+        })
+      ).status,
+    ).toBe(201);
+    const source = ready.f.ready.source;
+    const request = responseRecord(
+      await fixture.command({
+        ...ready.target,
+        path: '/commercial-intake/requests',
+        body: {
+          clientAccountId: source.clientId,
+          subject: 'Synthetic direct agreement',
+          originalText: 'Synthetic direct Contract beside a reported signing',
+          opportunity: {
+            title: 'Synthetic direct agreement',
+            nextAction: 'Review the exact agreement',
+          },
+        },
+      }),
+    );
+    const opportunityId = responseString(
+      responseRecord(request.initialOpportunity),
+      'id',
+    );
+    const snapshot = await fixture.illustrativeSnapshot({
+      companyId: source.companyId,
+      opportunityId,
+      preparerMembershipId: source.preparerMembershipId,
+    });
+    const directPath = `/contracts/opportunities/${opportunityId}`;
+    const direct = responseRecord(
+      await fixture.command({
+        ...ready.target,
+        path: directPath + '/direct',
+        body: {
+          pricingSnapshotId: responseString(snapshot, 'id'),
+          recipient: { kind: 'PRIMARY' },
+          directReason: 'Synthetic direct agreement',
+          scopeNote: 'Synthetic frozen consulting scope',
+        },
+      }),
+    );
+    const directVersionId = responseString(
+      responseRecord(direct.version),
+      'id',
+    );
+    await fixture.command({
+      ...ready.target,
+      path: `${directPath}/versions/${directVersionId}/approve`,
+      body: {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+      },
+    });
+    const connection = await fixture.pool.connect();
+    try {
+      await connection.query('BEGIN');
+      // Copies the valid received-PDF evidence onto the approved direct Version.
+      const inserted = await connection.query(
+        `INSERT INTO contract_signing_declarations(workspace_id,company_id,contract_id,contract_version_id,approval_decision_id,quality_run_id,representation_checksum,document_id,document_version_id,representation_id,result_revision,actor_workspace_membership_id,actor_internal_user_id,recorded_at,statement,pdf)
+        SELECT v.workspace_id,v.company_id,v.contract_id,v.id,d.id,d.quality_run_id,d.representation_checksum,s.document_id,s.document_version_id,s.representation_id,3,d.actor_workspace_membership_id,d.actor_internal_user_id,d.decided_at,s.statement,s.pdf
+        FROM contract_versions v JOIN contracts c ON c.id=v.contract_id JOIN contract_decisions d ON d.contract_version_id=v.id AND d.kind='APPROVE' CROSS JOIN contract_signing_declarations s
+        WHERE v.id=$1 AND c.origin<>'COMPANY_MODEL_OFFER' AND s.contract_version_id=$2`,
+        [directVersionId, ready.f.contractVersionId],
+      );
+      expect(inserted.rowCount).toBe(1);
+      await expect(
+        connection.query('SET CONSTRAINTS ALL IMMEDIATE'),
+      ).rejects.toMatchObject({
+        code: '23514',
+        message: 'Reported signing requires a Company-model Contract',
+      });
+    } finally {
+      await connection.query('ROLLBACK');
+      connection.release();
+    }
+  }, 30_000);
 });

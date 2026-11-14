@@ -524,7 +524,8 @@ The highest stable seam is actual App → authenticated native HTTP → isolated
 PostgreSQL, composing native Access/Client/Document/Accountability owners and the
 configured scanner fixture. Use public behavior assertions, exact bytes and
 original browser artifacts; private table-layout checks are reserved for separate
-integrity and populated-upgrade proof. These are plans, not executed evidence.
+integrity and, from launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), populated-upgrade proof. These are plans,
+not executed evidence.
 
 ### 12.1 First frontier: preserve and reopen the source
 
@@ -631,8 +632,8 @@ execution or a final current-source/base/tree gate.
 ## 13. Migration, ownership and all twelve readiness gates
 
 At runtime launch inspect actual delivered main, native public owner interfaces,
-captured protocols and journal/snapshot. Reserve no migration number here. Prepare
-a genuine populated immediate predecessor containing delivered Invoice Source,
+captured protocols and journal/snapshot. Reserve no migration number here. From launch on
+([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prepare a genuine populated immediate predecessor containing delivered Invoice Source,
 Invoice Records, Date, R2C and any intervening capability. Compare all old rows,
 captures, receipts, reads/events, exact PDF/ZIP bytes and protocol meaning through
 the additive migration twice and two real restarts. Infer no Payment, confirmation,
@@ -664,7 +665,7 @@ competing final main window. This is a future allocation plan, not a runtime lea
 | 6. Representative examples         | §12 fictional notice, payer choices and distinct synthetic authors.                      | Bind both payer branches and manager-only/Company-reader/replay controls to native fixtures; no real-operation claim.                            |
 | 7. Failure/empty/permission states | §§6–11 independent denial/unavailability/conflict/uncertainty/recovery.                  | Complete the then-current public/App lifetime proof plan.                                                                                        |
 | 8. Security/Activity/observability | §§6/9–12 scoped copies/native rights, private events and coupled integrity.              | Fit actual consumers/lock/seams against the approved privacy boundary.                                                                           |
-| 9. Dependencies/migration          | Genuine immediate predecessor and source-first boundary above.                           | Canonical clarification merge, selected Record/R2C sequencing, actual source/DTO/capture/journal/fixture fit and exclusive shared/heavy handoff. |
+| 9. Dependencies/migration          | Genuine immediate predecessor (from launch on) and source-first boundary above.          | Canonical clarification merge, selected Record/R2C sequencing, actual source/DTO/capture/journal/fixture fit and exclusive shared/heavy handoff. |
 | 10. Public acceptance              | §12 full native/App/restart/upgrade/provider/visual plan.                                | Bind actual public seams/fixtures before launch; execute proof during runtime delivery.                                                          |
 | 11. One fresh session              | Two complete sequential frontiers, optional disjoint helpers.                            | Fresh complexity/ownership assessment for the selected first vertical; no blocked follow-on launch.                                              |
 | 12. Every blocker closed           | Software contract 1.1 approved; runtime blockers remain open.                            | Canonical merge, complete current-source readiness and one fresh issue/claim/resource handoff.                                                   |

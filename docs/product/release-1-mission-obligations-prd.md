@@ -277,7 +277,7 @@ proposal adds no external provider, public signed URL or background integration.
 No backfill infers obligations, applicability, performed work or permission from
 existing Projects/Tasks, roles or archived dossiers. No active or closed Project
 is silently enrolled. New tables/capabilities are additive with reviewed migration;
-upgrade/repeat-upgrade proof conserves old identities, states, exact PDFs,
+from launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), upgrade/repeat-upgrade proof conserves old identities, states, exact PDFs,
 receipts, grants and history. Ordinary Task/result/Project APIs retain behavior
 outside explicitly adopted missions.
 
@@ -314,7 +314,7 @@ The approved implementation contract must prove at least:
    all exact result/PDF bytes; closed history is readable without resuming work.
 7. Foreign Company/Workspace, unknown captures, revoked approval and independently
    denied evidence fail without metadata leaks; unrelated reads/downloads survive.
-8. Genuine previous-schema upgrade and repeat upgrade preserve old public facts;
+8. From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), genuine previous-schema upgrade and repeat upgrade preserve old public facts;
    forged cross-scope, missing-coupled and mutable evidence is refused natively.
 9. Actual App demonstrates blockers, proposed/approved exception, uncertain retry,
    exact review and closed-dossier navigation; locale/frame/lifetime/access cases
@@ -711,7 +711,7 @@ history; protected public review history owns them. There is no new ordinary
 Activity projection. Assignment grant/revoke events use the existing minimal
 bundle-label administration convention exactly once per actual transition.
 
-Genuine previous-schema upgrade and repeat-upgrade preserve existing Projects,
+From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), genuine previous-schema upgrade and repeat-upgrade preserve existing Projects,
 Tasks, copied plans, exact result/PDF history, receipts/events, old captured roles
 and ordinary completion. This contract creates no real assignment or runtime;
 its complete independent implementation child follows documentation delivery.
@@ -725,7 +725,7 @@ exact formerly official PDF retention, closure/original-Client-supersession hist
 privacy and unsupported/corrupt scope. Native integrity and coupled rollback are
 proved without mocking owners. Deterministically test both serial and contested
 orders for competing keys, Task/result mutation, closure, union and revocation.
-Restart twice; compare conserved facts before/after real previous-schema upgrade
+Restart twice; from launch on, compare conserved facts before/after real previous-schema upgrade
 and repeat upgrade. Unknown role versions and no historical grants fail closed.
 
 Actual App at 1440×900/390×844 proves explicit multi-activity judgment, a literal
@@ -1085,7 +1085,7 @@ none and advance no Client fence. Separate grant/revoke events use Authorization
 existing bundle-label-only Company administration convention once per actual
 transition. There is no generic Activity-read expansion.
 
-The runtime must build a genuine immediate-predecessor database using all
+From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), the runtime must build a genuine immediate-predecessor database using all
 migrations before its new additive migration, populate representative open/closed,
 manual/illustrative/pilot/configured Projects with old source mappings, Task/result/review/
 PDF history, receipts/events and active/revoked captures, then upgrade and repeat
@@ -1179,7 +1179,7 @@ App/admin parent lifetimes, not just a child remount or permission-string compar
    receipt/event/response failures and inspect full rollback/fence. Native SQL
    negative attempts prove scoped links, predecessors, immutable coupled history
    and no partial audit commit. Restart the API twice and re-read exact facts.
-5. Prove the genuine immediate-predecessor upgrade/repeat-upgrade comparison in
+5. From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prove the genuine immediate-predecessor upgrade/repeat-upgrade comparison in
    §15.7, no auto-grants/enrollment, all existing captures/receipts/bytes and ordinary
    closure unchanged. Inspect generic Activity/Home/Task/history/search/counts/
    diagnostics and every changed selector for the same confidentiality pattern.

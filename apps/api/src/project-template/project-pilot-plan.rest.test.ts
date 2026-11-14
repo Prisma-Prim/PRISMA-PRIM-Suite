@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createPilotPlanFixture,
+  illustrativeTemplateKey,
   json,
   object,
   objects,
@@ -161,6 +162,34 @@ describe.skipIf(!databaseUrl)(
           )
         ).rows,
       ).toEqual([{ n: 0 }]);
+    });
+    it('bounds copied Task positions by their model in the database, four for the illustrative plan and thirteen for the pilot', async () => {
+      const illustrative = await fixture.command(
+        '/projects/from-template',
+        fixture.intent({
+          title: 'Illustrative preparation DEMO',
+          templateKey: illustrativeTemplateKey,
+        }),
+      );
+      for (const position of [4, 12])
+        await expect(
+          fixture.harness.pool.query(
+            'UPDATE project_template_task_copies SET position=$1 WHERE project_id=$2 AND position=3',
+            [position, text(illustrative.id)],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+      const pilotId = text(
+        (await fixture.command('/projects/from-template', fixture.intent())).id,
+      );
+      const extra = await fixture.command(`/projects/${pilotId}/tasks`, {
+        title: 'Independent fourteenth Task DEMO',
+      });
+      await expect(
+        fixture.harness.pool.query(
+          'INSERT INTO project_template_task_copies(workspace_id,company_id,project_id,task_id,position) VALUES($1,$2,$3,$4,13)',
+          [fixture.workspaceId, fixture.companyId, pilotId, text(extra.id)],
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
     });
     it('converges concurrent full-intent retries and conflicts changed title, Client, model, Version and manual commands', async () => {
       const key = randomUUID(),
