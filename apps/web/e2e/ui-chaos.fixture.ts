@@ -287,6 +287,38 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
       prototype.click = click;
     },
     async finish() {
+      // A journey that already failed keeps its own error first.
+      const checked = testInfo.status === testInfo.expectedStatus;
+      const states: string[] = [];
+      if (checked) {
+        const deadline = Date.now() + IDLE_DEADLINE_MILLISECONDS;
+        while (
+          (inFlight.size > 0 ||
+            Date.now() - lastActivity < IDLE_MILLISECONDS) &&
+          Date.now() < deadline
+        )
+          await wait(100);
+        if (inFlight.size > 0)
+          states.push(
+            `${inFlight.size} API requests still pending after ${IDLE_DEADLINE_MILLISECONDS / 1000} s`,
+          );
+        else {
+          let loading = await visibleLoadingStates(page);
+          const loadingDeadline = Date.now() + LOADING_DEADLINE_MILLISECONDS;
+          while (loading.length > 0 && Date.now() < loadingDeadline) {
+            await wait(250);
+            loading = await visibleLoadingStates(page);
+          }
+          states.push(
+            ...loading.map(
+              (state) =>
+                `loading state still shown with the network idle: ${state}`,
+            ),
+          );
+        }
+      }
+      // Read after the waits: a late answer can still raise an error.
+      const problems = checked ? [...errors, ...states] : [];
       await testInfo.attach('ui-chaos.json', {
         contentType: 'application/json',
         body: JSON.stringify(
@@ -306,33 +338,6 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
           2,
         ),
       });
-      // A journey that already failed keeps its own error first.
-      if (testInfo.status !== testInfo.expectedStatus) return;
-      const problems = [...errors];
-      const deadline = Date.now() + IDLE_DEADLINE_MILLISECONDS;
-      while (
-        (inFlight.size > 0 || Date.now() - lastActivity < IDLE_MILLISECONDS) &&
-        Date.now() < deadline
-      )
-        await wait(100);
-      if (inFlight.size > 0)
-        problems.push(
-          `${inFlight.size} API requests still pending after ${IDLE_DEADLINE_MILLISECONDS / 1000} s`,
-        );
-      else {
-        let loading = await visibleLoadingStates(page);
-        const loadingDeadline = Date.now() + LOADING_DEADLINE_MILLISECONDS;
-        while (loading.length > 0 && Date.now() < loadingDeadline) {
-          await wait(250);
-          loading = await visibleLoadingStates(page);
-        }
-        problems.push(
-          ...loading.map(
-            (state) =>
-              `loading state still shown with the network idle: ${state}`,
-          ),
-        );
-      }
       if (problems.length > 0)
         throw new Error(
           `UI chaos seed ${seed} (${project}): ${problems.join('; ')}. Replay: ${replay}`,
