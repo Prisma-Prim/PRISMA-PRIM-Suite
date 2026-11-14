@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1368-pr1394-workspace-refresh-proof",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1368,
+  "pullRequest": 1394,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T20:32:02.000Z",
+    "end": "2026-11-14T21:24:50.000Z",
+    "durationSeconds": 3168
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Complete normal workspace rebuild, safe missing-link retry and actual registry guard. Final scripts1114pass1Windows-onlyskip, exit0, styles/types pass; parallel real creation+repair restores bytes and preserves48 peer entries. CI parity fixed; interrupted suite rerun. Fresh native CI pending."
+  }
+}
