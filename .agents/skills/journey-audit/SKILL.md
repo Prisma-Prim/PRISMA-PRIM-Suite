@@ -12,7 +12,7 @@ An **audit** walks journeys of the [journey map](journey-map.md) as each of thei
 
 - A person starts a Claude audit, in a session they launch explicitly for it. No CI step, workflow, comment command, label, schedule or webhook may start Claude to audit, review or produce proof ([owner clarification on #1275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1275)). Codex automation remains allowed.
 - Run an audit after a batch of features, and before a delivery is shown to the first tenant.
-- The person names the scope: journeys of the map, roles, and widths (both by default).
+- The person names the scope: journeys of the map, roles, and widths (both by default). A scope given as screens or screenshots maps to journeys through the map's [Sections](journey-map.md#sections) table.
 
 ## Public and private mode
 
