@@ -462,19 +462,13 @@ describe.skipIf(!databaseUrl)(
       return result.rows[0]?.value;
     }
 
-    it('keeps legacy ignored query parameters and rejects malformed new directory selectors without writes', async () => {
+    it('rejects unknown query keys and malformed directory selectors without writes', async () => {
       await set(0, ownerMembershipId);
       const before = await directoryPersistence();
-      for (const path of [
-        '/projects?legacy=kept',
-        '/projects?membershipId=someone-else',
-        '/projects?viewName=mine_open',
-      ]) {
-        const response = await request(path);
-        expect(response.status).toBe(200);
-        expect(await response.json()).toEqual([project]);
-      }
       for (const query of [
+        'legacy=kept',
+        'membershipId=someone-else',
+        'viewName=mine_open',
         'view=',
         'view=all',
         'view=unknown',

@@ -487,7 +487,8 @@ Use an additive strict Client-scoped Project-list selection: one scalar UUID
 in that selection. Normalize UUID representation at the boundary; reject empty,
 repeated, bracketed, malformed, negative, fractional and unsafe values, and any
 combination with `view=mine_open`. Omitted Client selection preserves the existing
-All/My-open API and ignored legacy-query behavior. The new response identifies
+All/My-open API; without `view` or `clientDossierId`, any query key is invalid and
+answers 400. The new response identifies
 Company, dossier, offset, fixed page size 25, next-page presence and matching rows.
 Apply readable membership before the 25+1 lookahead, in one read-only
 repeatable-read transaction. Preserve ascending creation-time then identifier

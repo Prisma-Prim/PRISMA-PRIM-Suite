@@ -14,11 +14,8 @@ export function captureAcceptanceIntent(): AcceptanceIntent | undefined {
     const incomingId = url.searchParams.get('invitation');
     if (!isUuid(incomingId)) return undefined;
     const invitationId = incomingId.toLowerCase();
-    // Clerk's hash router requires a slash-prefixed route. Continue reading
-    // legacy fragments so already-issued authentication returns stay recoverable.
-    const fragment = url.hash.startsWith('#/?')
-      ? url.hash.slice(3)
-      : url.hash.slice(1);
+    // Clerk's hash router requires a slash-prefixed route.
+    const fragment = url.hash.startsWith('#/?') ? url.hash.slice(3) : '';
     const continuation = new URLSearchParams(fragment).get('invitation-intent');
     if (continuation !== null && continuation.length > 100_000)
       return undefined;

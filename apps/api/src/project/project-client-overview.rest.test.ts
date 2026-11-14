@@ -209,10 +209,11 @@ withPostgres('Client-scoped Project overview REST', () => {
       hasMore: false,
     });
     expect(
-      await (
-        await request('/projects?unknown=legacy&offset=bad', companyId)
-      ).json(),
-    ).toEqual([]);
+      (await request('/projects?unknown=value&offset=bad', companyId)).status,
+    ).toBe(400);
+    expect((await request('/projects?unknown=value', companyId)).status).toBe(
+      400,
+    );
     expect(
       await (await request('/projects?view=mine_open', companyId)).json(),
     ).toEqual([]);
