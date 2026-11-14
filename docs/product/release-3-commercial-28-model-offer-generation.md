@@ -172,8 +172,11 @@ source state on refusal; a denied source never erases the readable frozen Offer.
 
 The existing Offer boundary adds deliberate first and complete successor creation
 for this variant. The input names exact estimate Version id/displayed number,
-exact model Version id/displayed number, ordinary recipient/validity/terms and
-the full declaration. Successor input also carries observed Offer revision.
+exact model Version id/displayed number with the model approval decision it was
+selected under, ordinary recipient/validity/terms and the full declaration. A
+body without that approval is refused, the retry of an earlier receipt included
+([#1402](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1402)).
+Successor input also carries observed Offer revision.
 Server supplies all amounts except declared tax, source approvals, scopes,
 content/renderer/check bindings, actor/time and state. Selection is never implicit
 latest, and a second first-create never silently becomes a successor.

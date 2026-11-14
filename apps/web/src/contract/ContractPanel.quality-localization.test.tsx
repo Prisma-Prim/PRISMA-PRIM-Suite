@@ -392,14 +392,14 @@ for (const locale of contractQualityLocales) {
     });
   }
 
-  it(`preserves the current history cursor and reopens exact historical v1 on a v2-bound Version in ${locale.code}`, async () => {
+  it(`preserves the current history cursor and reopens an exact older run of a v2-bound Version in ${locale.code}`, async () => {
     localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const current = contractQualityRun({
       id: 'new-run-706',
       ruleSetVersion: 2,
       evaluatedAt: '2026-10-08T23:30:00.000Z',
     });
-    const old = contractQualityRun();
+    const old = contractQualityRun({ ruleSetVersion: 2 });
     const paths: string[] = [];
     const delayed = deferredResponse();
     const mounted = mountQuality({
@@ -462,14 +462,16 @@ for (const locale of contractQualityLocales) {
     ).not.toBeInTheDocument();
     expect(mounted.fetch).toHaveBeenCalledTimes(pagedCalls);
     fireEvent.click(oldAction);
-    await within(checks).findByText('CONTRACT_QUALITY_ILLUSTRATIVE v1');
-    expect(paths.at(-1)).toBe(
-      `${contractLocalePath}/versions/${contractLocaleIds.version}/quality-checks/recorded-run-706`,
-    );
-    expect(within(checks).getByText(locale.utc)).toHaveAttribute(
+    expect(await within(checks).findByText(locale.utc)).toHaveAttribute(
       'datetime',
       old.evaluatedAt,
     );
+    expect(paths.at(-1)).toBe(
+      `${contractLocalePath}/versions/${contractLocaleIds.version}/quality-checks/recorded-run-706`,
+    );
+    expect(
+      within(checks).getByText('CONTRACT_QUALITY_ILLUSTRATIVE v2'),
+    ).toBeVisible();
     expect(within(checks).getByText('recorded-member-706')).toBeVisible();
     expect(mounted.onActorRevalidated).not.toHaveBeenCalled();
   });
