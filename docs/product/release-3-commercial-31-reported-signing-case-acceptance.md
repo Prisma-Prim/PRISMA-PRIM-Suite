@@ -344,7 +344,7 @@ Losing Declarer or PDF rights must not destroy an independent pending Project li
 losing Project rights must not destroy an independently authorized declaration.
 
 Public acceptance uses existing authenticated isolated PostgreSQL REST and
-registered actual App at1440/390, in the current four-locale/classic/Prisme frame:
+registered actual App at1440/390, in the current four-locale Prisme frame:
 
 - New opt-in administration, null/future/revoked captures, independent ordinary
   signature/source/Client/metadata/family/content/Project boundaries and their

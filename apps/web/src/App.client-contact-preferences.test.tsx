@@ -11,7 +11,6 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
 import { ClientWorkspace } from './client/ClientWorkspace';
-import { ApplicationPresentation } from './production-shell/application-presentation';
 
 /** U+1F600 is one Unicode code point stored as two UTF-16 code units. */
 const astral = '\u{1F600}';
@@ -115,17 +114,15 @@ function renderDossier({
     }),
   );
   render(
-    <ApplicationPresentation value="prisme">
-      <ClientDossierPanel
-        clientAccountId={dossier.id}
-        companyContextId="company-a"
-        canUpdate
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={() => undefined}
-        onActivityRecorded={async () => undefined}
-        onClientsChanged={async () => undefined}
-      />
-    </ApplicationPresentation>,
+    <ClientDossierPanel
+      clientAccountId={dossier.id}
+      companyContextId="company-a"
+      canUpdate
+      identity={deterministicBrowserIdentity()}
+      onCompanyContextRejected={() => undefined}
+      onActivityRecorded={async () => undefined}
+      onClientsChanged={async () => undefined}
+    />,
   );
   return corrections;
 }
@@ -197,14 +194,12 @@ function renderDuplicateReview({
     }),
   );
   render(
-    <ApplicationPresentation value="prisme">
-      <ClientWorkspace
-        actor={directorActor({ resolvesDuplicates: true })}
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={vi.fn()}
-        onActivityRecorded={vi.fn(async () => undefined)}
-      />
-    </ApplicationPresentation>,
+    <ClientWorkspace
+      actor={directorActor({ resolvesDuplicates: true })}
+      identity={deterministicBrowserIdentity()}
+      onCompanyContextRejected={vi.fn()}
+      onActivityRecorded={vi.fn(async () => undefined)}
+    />,
   );
 }
 async function openDuplicateReview() {
@@ -492,17 +487,15 @@ describe('Client Contact communication preferences', () => {
       }),
     );
     const panel = (clientAccountId: string) => (
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={clientAccountId}
-          companyContextId="company-a"
-          canUpdate
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => undefined}
-          onClientsChanged={async () => undefined}
-        />
-      </ApplicationPresentation>
+      <ClientDossierPanel
+        clientAccountId={clientAccountId}
+        companyContextId="company-a"
+        canUpdate
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={async () => undefined}
+        onClientsChanged={async () => undefined}
+      />
     );
     const rendered = render(panel('client-one'));
     await waitFor(() => expect(fetch).toHaveBeenCalled());

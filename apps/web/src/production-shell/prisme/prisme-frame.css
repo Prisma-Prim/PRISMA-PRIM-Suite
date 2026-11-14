@@ -28,18 +28,6 @@
   display: none;
 }
 
-.frame-presentation-control {
-  margin-top: 0.6rem;
-  padding: 0.5rem 0.7rem;
-  border: 1px solid currentColor;
-  border-radius: 0.4rem;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-  white-space: normal;
-}
-
 .prisme-shell {
   --shell-ink: #15233b;
   --shell-muted: #69788e;
@@ -184,17 +172,6 @@
 .prisme-sidebar-bottom {
   margin-top: auto;
   padding-top: 2rem;
-}
-
-.prisme-sidebar-bottom .frame-presentation-control {
-  width: 100%;
-  margin-bottom: 1rem;
-  border-color: #e6e0f5;
-  color: #5d47bf;
-  background: #faf9ff;
-  text-align: left;
-  line-height: 1.5;
-  font-size: 0.75rem;
 }
 
 .prisme-user-area {
@@ -424,8 +401,7 @@
   border-radius: 7px;
 }
 
-.prisme-company-selector .company-context-heading,
-.prisme-company-selector .company-context-summary {
+.prisme-company-selector .company-context-heading {
   display: none;
 }
 

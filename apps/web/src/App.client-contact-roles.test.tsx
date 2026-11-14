@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
-import { ApplicationPresentation } from './production-shell/application-presentation';
 
 const ion = {
   name: 'Ion Demo',
@@ -96,17 +95,15 @@ function renderDossier({
     }),
   );
   render(
-    <ApplicationPresentation value="prisme">
-      <ClientDossierPanel
-        clientAccountId={dossier.id}
-        companyContextId="company-a"
-        canUpdate
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={() => undefined}
-        onActivityRecorded={async () => undefined}
-        onClientsChanged={async () => undefined}
-      />
-    </ApplicationPresentation>,
+    <ClientDossierPanel
+      clientAccountId={dossier.id}
+      companyContextId="company-a"
+      canUpdate
+      identity={deterministicBrowserIdentity()}
+      onCompanyContextRejected={() => undefined}
+      onActivityRecorded={async () => undefined}
+      onClientsChanged={async () => undefined}
+    />,
   );
   return corrections;
 }
@@ -360,17 +357,15 @@ describe('Client Contact position and decision roles', () => {
       }),
     );
     const panel = (clientAccountId: string) => (
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={clientAccountId}
-          companyContextId="company-a"
-          canUpdate
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => undefined}
-          onClientsChanged={async () => undefined}
-        />
-      </ApplicationPresentation>
+      <ClientDossierPanel
+        clientAccountId={clientAccountId}
+        companyContextId="company-a"
+        canUpdate
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={async () => undefined}
+        onClientsChanged={async () => undefined}
+      />
     );
     const rendered = render(panel('client-one'));
     await waitFor(() => expect(fetch).toHaveBeenCalled());

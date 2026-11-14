@@ -14,11 +14,6 @@ import {
   SectionIcon,
 } from './prisme/PrismeOverview';
 import { usePrismeCopy } from './prisme/prisme.copy';
-import {
-  ApplicationPresentation,
-  getApplicationPresentation,
-  getPresentationUrl,
-} from './application-presentation';
 import './application-shell.css';
 import './prisme/prisme-frame.css';
 
@@ -57,7 +52,7 @@ export interface ApplicationSection {
 
 /**
  * These sections render their own focusable destination; the layout wrapper
- * generates no box in either frame, so it cannot receive navigation focus.
+ * generates no box, so it cannot receive navigation focus.
  */
 const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
   new Set([
@@ -91,19 +86,10 @@ interface ApplicationShellProps {
   userArea: ReactNode;
   /** Optional overview content between the Prisme hero and its capabilities. */
   overviewSummary?: ReactNode;
-  children: ReactNode;
   /** Retires a pending continuation when the user deliberately leaves its view. */
   onNavigate?: () => void;
-  /** A held Source write may keep its section while presentation stays changeable. */
+  /** A held Source write keeps its section until the write settles. */
   navigationProtected?: boolean;
-}
-
-export function ApplicationContentSurface({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return <section className="production-content-surface">{children}</section>;
 }
 
 export function ApplicationShell({
@@ -112,7 +98,6 @@ export function ApplicationShell({
   companyContext,
   userArea,
   overviewSummary,
-  children,
   onNavigate,
   navigationProtected = false,
 }: ApplicationShellProps) {
@@ -123,12 +108,8 @@ export function ApplicationShell({
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const presentationControlRef = useRef<HTMLButtonElement>(null);
   const previousHash = useRef(window.location.hash);
   const url = new URL(location);
-  const isPrisme = getApplicationPresentation(url) === 'prisme';
-  const classicHome = '/?frame=classic';
-  const previousPresentation = useRef(isPrisme);
   // URL fragments only select from the sections already authorized by App.
   const entered = useRef(new Set<ApplicationSection['id']>());
   const selected = sections.find((section) => `#${section.id}` === url.hash);
@@ -156,50 +137,18 @@ export function ApplicationShell({
   }, []);
 
   useEffect(() => {
-    const presentationChanged = previousPresentation.current !== isPrisme;
     const fragmentChanged = previousHash.current !== url.hash;
-    const focused = document.activeElement;
-    const destination = selected ? document.getElementById(selected.id) : null;
-    // A frame-only history change keeps an existing business control mounted.
-    // Keep its focus; section navigation and disappearing shell controls retain
-    // the existing destination/fallback rules below.
-    const retainedBusinessFocus =
-      presentationChanged &&
-      !fragmentChanged &&
-      focused instanceof HTMLElement &&
-      destination?.contains(focused) &&
-      !focused.closest('[hidden]');
     if (fragmentChanged && selected) {
+      const destination = document.getElementById(selected.id);
       destination?.scrollIntoView?.({ block: 'start' });
       destination?.focus();
-    } else if (
-      !retainedBusinessFocus &&
-      isPrisme &&
-      (presentationChanged || fragmentChanged)
-    )
-      titleRef.current?.focus();
-    else if (presentationChanged && !retainedBusinessFocus) {
-      const menuButton = menuButtonRef.current;
-      if (menuButton && menuButton.getClientRects().length > 0)
-        menuButton.focus();
-      else presentationControlRef.current?.focus();
-    }
-    previousPresentation.current = isPrisme;
+    } else if (fragmentChanged) titleRef.current?.focus();
     previousHash.current = url.hash;
-  }, [isPrisme, url.hash]);
-
-  function changePresentation() {
-    onNavigate?.();
-    const nextUrl = getPresentationUrl(new URL(window.location.href), 'prisme');
-    window.history.replaceState(window.history.state, '', nextUrl);
-    navigation.current.href = nextUrl.href;
-    setLocation(nextUrl.href);
-    setIsNavigationOpen(false);
-  }
+  }, [url.hash]);
 
   function closeNavigation() {
     setIsNavigationOpen(false);
-    if (isPrisme) titleRef.current?.focus();
+    titleRef.current?.focus();
   }
 
   function navigate(event: ReactMouseEvent<HTMLAnchorElement>) {
@@ -222,10 +171,6 @@ export function ApplicationShell({
       return;
     }
     onNavigate?.();
-    if (!isPrisme) {
-      closeNavigation();
-      return;
-    }
     event.preventDefault();
     const nextUrl = event.currentTarget.href;
     if (nextUrl !== window.location.href) {
@@ -244,85 +189,44 @@ export function ApplicationShell({
     }
   }
 
-  const presentationControl = (
-    <button
-      ref={presentationControlRef}
-      className="frame-presentation-control"
-      type="button"
-      onClick={changePresentation}
-    >
-      {copy.optIn}
-    </button>
-  );
-  const menuControl = (
-    <button
-      ref={menuButtonRef}
-      className="production-menu-button"
-      type="button"
-      aria-controls="primary-navigation"
-      aria-expanded={isNavigationOpen}
-      aria-label={isNavigationOpen ? copy.closeNavigation : copy.openNavigation}
-      onClick={() => setIsNavigationOpen((isOpen) => !isOpen)}
-    >
-      {isNavigationOpen ? (
-        <X aria-hidden="true" />
-      ) : (
-        <Menu aria-hidden="true" />
-      )}
-    </button>
-  );
-
   return (
     <div
-      className={`production-shell${isPrisme ? ' prisme-shell' : ''}`}
+      className="production-shell prisme-shell"
       onKeyDown={handleNavigationKeyDown}
     >
-      {isPrisme && (
-        <a
-          className="prisme-skip-link"
-          href="#prisme-page-title"
-          onClick={(event) => {
-            event.preventDefault();
-            closeNavigation();
-          }}
-        >
-          {copy.skipToContent}
-        </a>
-      )}
+      <a
+        className="prisme-skip-link"
+        href="#prisme-page-title"
+        onClick={(event) => {
+          event.preventDefault();
+          closeNavigation();
+        }}
+      >
+        {copy.skipToContent}
+      </a>
       <header className="production-header">
-        {isPrisme ? (
-          <>
-            {menuControl}
-            <div className="prisme-breadcrumb">
-              <span>{context.workspaceName}</span>
-              <strong>{context.companyName ?? copy.noCompany}</strong>
-            </div>
-            <span className="prisme-presentation-label">
-              {copy.presentation}
-            </span>
-          </>
-        ) : (
-          <>
-            <a
-              className="production-brand"
-              href={classicHome}
-              aria-label={copy.brandHome}
-            >
-              <span className="production-brand-mark" aria-hidden="true">
-                P
-              </span>
-              <span>
-                <strong>PRISMA-PRIM</strong>
-                <small>Suite</small>
-              </span>
-            </a>
-            <div className="production-user-area">
-              {userArea}
-              {presentationControl}
-            </div>
-            {menuControl}
-          </>
-        )}
+        <button
+          ref={menuButtonRef}
+          className="production-menu-button"
+          type="button"
+          aria-controls="primary-navigation"
+          aria-expanded={isNavigationOpen}
+          aria-label={
+            isNavigationOpen ? copy.closeNavigation : copy.openNavigation
+          }
+          onClick={() => setIsNavigationOpen((isOpen) => !isOpen)}
+        >
+          {isNavigationOpen ? (
+            <X aria-hidden="true" />
+          ) : (
+            <Menu aria-hidden="true" />
+          )}
+        </button>
+        <div className="prisme-breadcrumb">
+          <span>{context.workspaceName}</span>
+          <strong>{context.companyName ?? copy.noCompany}</strong>
+        </div>
+        <span className="prisme-presentation-label">{copy.presentation}</span>
       </header>
       <div className="production-body">
         <nav
@@ -331,131 +235,92 @@ export function ApplicationShell({
           aria-label={copy.navigation}
           data-open={isNavigationOpen}
         >
-          {isPrisme && (
-            <>
-              <a
-                className="prisme-brand"
-                onClick={navigate}
-                href="#overview"
-                aria-label={copy.brandHome}
-              >
-                <PrismeMark />
-                <span>
-                  <strong>PRISMA</strong>
-                  <small>{copy.brandTagline}</small>
-                </span>
-              </a>
-              <div className="prisme-company-selector">{companyContext}</div>
-            </>
-          )}
+          <a
+            className="prisme-brand"
+            onClick={navigate}
+            href="#overview"
+            aria-label={copy.brandHome}
+          >
+            <PrismeMark />
+            <span>
+              <strong>PRISMA</strong>
+              <small>{copy.brandTagline}</small>
+            </span>
+          </a>
+          <div className="prisme-company-selector">{companyContext}</div>
           <p className="production-navigation-label">{copy.workspace}</p>
           <ul>
             <li>
               <a
-                href={isPrisme ? '#overview' : classicHome}
-                aria-current={!isPrisme || !selected ? 'page' : undefined}
+                href="#overview"
+                aria-current={selected ? undefined : 'page'}
                 onClick={navigate}
               >
-                {isPrisme && <SectionIcon id="overview" />}
-                {isPrisme ? copy.overview : copy.home}
-                {!isPrisme && (
-                  <span className="production-active-label">
-                    {copy.current}
-                  </span>
-                )}
+                <SectionIcon id="overview" />
+                {copy.overview}
               </a>
             </li>
-            {sections
-              .filter(
-                (section) =>
-                  isPrisme ||
-                  section.id === 'payments' ||
-                  section.id === 'invoice-records' ||
-                  section.id === 'knowledge-evidence' ||
-                  section.id === 'clients' ||
-                  section.id === 'projects' ||
-                  section.id === 'internal-tasks' ||
-                  section.id === 'unassigned-tasks' ||
-                  section.id === 'blocked-tasks' ||
-                  section.id === 'team-tasks',
-              )
-              .map((section) => (
-                <li key={section.id}>
-                  <a
-                    href={`#${section.id}`}
-                    aria-current={
-                      isPrisme && selected?.id === section.id
-                        ? 'page'
-                        : undefined
-                    }
-                    onClick={navigate}
-                  >
-                    {isPrisme && <SectionIcon id={section.id} />}
-                    {section.label}
-                  </a>
-                </li>
-              ))}
+            {sections.map((section) => (
+              <li key={section.id}>
+                <a
+                  href={`#${section.id}`}
+                  aria-current={
+                    selected?.id === section.id ? 'page' : undefined
+                  }
+                  onClick={navigate}
+                >
+                  <SectionIcon id={section.id} />
+                  {section.label}
+                </a>
+              </li>
+            ))}
           </ul>
-          {isPrisme && (
-            <div className="prisme-sidebar-bottom">
-              <div className="prisme-user-area">{userArea}</div>
-            </div>
-          )}
+          <div className="prisme-sidebar-bottom">
+            <div className="prisme-user-area">{userArea}</div>
+          </div>
         </nav>
         <main className="production-content">
-          {isPrisme ? (
-            <>
-              <div className="prisme-page-heading">
-                <p className="prisme-eyebrow">{context.workspaceName}</p>
-                <h1 id="prisme-page-title" tabIndex={-1} ref={titleRef}>
-                  {selected?.label ?? copy.greeting(context.actorName)}
-                </h1>
-                <p>{selected?.description ?? copy.introduction}</p>
-              </div>
-              {!selected && (
-                <PrismeOverview
-                  context={context}
-                  sections={sections}
-                  summary={overviewSummary}
-                  onNavigate={navigate}
-                />
-              )}
-            </>
-          ) : (
-            children
+          <div className="prisme-page-heading">
+            <p className="prisme-eyebrow">{context.workspaceName}</p>
+            <h1 id="prisme-page-title" tabIndex={-1} ref={titleRef}>
+              {selected?.label ?? copy.greeting(context.actorName)}
+            </h1>
+            <p>{selected?.description ?? copy.introduction}</p>
+          </div>
+          {!selected && (
+            <PrismeOverview
+              context={context}
+              sections={sections}
+              summary={overviewSummary}
+              onNavigate={navigate}
+            />
           )}
-          {!isPrisme && companyContext}
-          <ApplicationPresentation value={isPrisme ? 'prisme' : 'classic'}>
-            <div className="application-sections">
-              {sections.map((section) => (
-                <div
-                  className="application-section"
-                  key={section.id}
-                  id={
-                    sectionsOwningFocusTarget.has(section.id)
-                      ? undefined
-                      : section.id
-                  }
-                  tabIndex={
-                    sectionsOwningFocusTarget.has(section.id) ? undefined : -1
-                  }
-                  hidden={
-                    (isPrisme || section.mountWhenSelected) &&
-                    selected?.id !== section.id
-                  }
-                >
-                  {!section.mountWhenSelected ||
-                  selected?.id === section.id ||
-                  (section.retainAfterSelection &&
-                    entered.current.has(section.id)) ? (
-                    <SectionVisibility value={selected?.id === section.id}>
-                      {section.content}
-                    </SectionVisibility>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </ApplicationPresentation>
+          <div className="application-sections">
+            {sections.map((section) => (
+              <div
+                className="application-section"
+                key={section.id}
+                id={
+                  sectionsOwningFocusTarget.has(section.id)
+                    ? undefined
+                    : section.id
+                }
+                tabIndex={
+                  sectionsOwningFocusTarget.has(section.id) ? undefined : -1
+                }
+                hidden={selected?.id !== section.id}
+              >
+                {!section.mountWhenSelected ||
+                selected?.id === section.id ||
+                (section.retainAfterSelection &&
+                  entered.current.has(section.id)) ? (
+                  <SectionVisibility value={selected?.id === section.id}>
+                    {section.content}
+                  </SectionVisibility>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </main>
       </div>
     </div>

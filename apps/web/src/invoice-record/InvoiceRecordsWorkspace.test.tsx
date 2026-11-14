@@ -8,7 +8,6 @@ import {
 } from '../test/render-with-interface-locale';
 import { changeValue } from '../test/select-option';
 import { SectionVisibility } from '../production-shell/section-visibility';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -46,16 +45,14 @@ function view({
   projection?: string;
 } = {}) {
   return (
-    <ApplicationPresentation value="prisme">
-      <SectionVisibility value={visible}>
-        <InvoiceRecordsWorkspace
-          actor={currentActor}
-          identity={currentIdentity}
-          projectionAuthority={projection}
-          {...callbacks}
-        />
-      </SectionVisibility>
-    </ApplicationPresentation>
+    <SectionVisibility value={visible}>
+      <InvoiceRecordsWorkspace
+        actor={currentActor}
+        identity={currentIdentity}
+        projectionAuthority={projection}
+        {...callbacks}
+      />
+    </SectionVisibility>
   );
 }
 function LocaleSwitch() {

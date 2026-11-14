@@ -8,7 +8,6 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { SectionVisibility } from '../production-shell/section-visibility';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { changeValue } from '../test/select-option';
 import {
   paymentEvidenceActor,
@@ -239,9 +238,7 @@ function show(initial: Partial<HostProps> = {}) {
   let props: HostProps = { actor, identity, clientKey: 'client-A', ...initial };
   const ui = () => (
     <SectionVisibility value={true}>
-      <ApplicationPresentation value="prisme">
-        <DocumentsSection {...props} />
-      </ApplicationPresentation>
+      <DocumentsSection {...props} />
     </SectionVisibility>
   );
   const view = render(ui());

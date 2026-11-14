@@ -35,8 +35,8 @@ export function withOfferDecisionQueue(actor: ActorContext): ActorContext {
 /**
  * Prisme mounts the overview owners only while no section is selected. A
  * refused refresh of the overview's Offer decision queue re-reads the Actor
- * while they all stay mounted, as a refused Client search did beside the
- * Classic home. The test server refuses the next queue read in `refuse`.
+ * while they all stay mounted. The test server refuses the next queue read in
+ * `refuse`.
  */
 export async function refuseOverviewQueueRefresh({
   refuse,

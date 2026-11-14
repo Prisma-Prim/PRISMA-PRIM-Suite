@@ -24,16 +24,6 @@ export function CompanyContextSelector({
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id="company-context-title">{copy.title}</h2>
       </div>
-      <dl className="company-context-summary">
-        <div>
-          <dt>{copy.workspace}</dt>
-          <dd>{actor.workspaceName}</dd>
-        </div>
-        <div>
-          <dt>{copy.activeCompany}</dt>
-          <dd>{actor.activeCompany?.displayName ?? copy.selectCompany}</dd>
-        </div>
-      </dl>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'forbidden' && <p role="alert">{copy.forbidden}</p>}
       {state.status === 'error' && <p role="alert">{copy.unavailable}</p>}

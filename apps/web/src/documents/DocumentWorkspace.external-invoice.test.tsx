@@ -14,7 +14,6 @@ import {
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { changeValue } from '../test/select-option';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
 import type { ActorContext } from '../access-types';
 import {
@@ -312,10 +311,10 @@ it('preserves literal entry and focused native controls through all four locales
   const { reads, writes } = http();
   const identity = deterministicBrowserIdentity();
   render(
-    <ApplicationPresentation value="prisme">
+    <>
       <InterfaceLocaleSelect />
       {view(identity)}
-    </ApplicationPresentation>,
+    </>,
   );
   await fillRegistration();
   const title = screen.getByLabelText('Title');

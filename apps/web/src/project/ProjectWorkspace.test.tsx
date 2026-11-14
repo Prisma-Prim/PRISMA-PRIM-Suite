@@ -10,7 +10,6 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useLayoutEffect } from 'react';
 import { ProjectWorkspace } from './ProjectWorkspace';
@@ -1136,12 +1135,10 @@ it('presents the existing preparatory Project detail in Prisme without changing 
     }),
   );
   render(
-    <ApplicationPresentation value="prisme">
-      <ProjectWorkspace
-        actor={actor}
-        identity={deterministicBrowserIdentity()}
-      />
-    </ApplicationPresentation>,
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
   );
   const workspace = await screen.findByRole('region', { name: 'Projects' });
   expect(workspace).toHaveClass('project-workspace--prisme');

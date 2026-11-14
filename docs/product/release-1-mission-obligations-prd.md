@@ -1098,7 +1098,7 @@ rewriting of conserved facts. This documentation issue changes no schema/runtime
 
 ### 15.8 Native interface, lifetimes and complete recovery
 
-Extend the existing Project detail in Prisme and explicit legacy Classic, following
+Extend the existing Project detail in Prisme, following
 the [UX owner](ux-localization-configuration-prd.md). Show the source criterion,
 ordinary Task state, separate result/review region, applicability state and history.
 The coordinator selects one named activity and enters reason/scope/agreement
@@ -1194,7 +1194,7 @@ App/admin parent lifetimes, not just a child remount or permission-string compar
    effect from the retired operation, with real production parent wiring.
 7. Register an **actual App/API/disposable PostgreSQL** acceptance journey in the
    existing acceptance configuration, extending the registered Task-result/mission
-   journey or explicitly registering the new one. In both frames at both viewports,
+   journey or explicitly registering the new one. At both viewports,
    use public synthetic role grants and keyboard proposal → exact decision → reload/
    bounded history → restore. Include rejection/correction, reported agreement,
    denied evidence, uncertain identical retry/no duplicate and exact native Task/

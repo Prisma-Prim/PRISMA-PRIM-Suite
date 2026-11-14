@@ -2,7 +2,6 @@ import {
   type FormEvent,
   type ReactNode,
   type Ref,
-  useContext,
   useCallback,
   useEffect,
   useRef,
@@ -34,7 +33,6 @@ import {
   useClientRegistrationCopy,
   type ClientRegistrationValidationIssue,
 } from './client-registration.copy';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import { ClientCorrectionHistory } from './ClientCorrectionHistory';
 import { ClientLegalEntities } from './ClientLegalEntities';
@@ -124,7 +122,6 @@ export function ClientDossierPanel({
   renderMissionWork?: (clientDossierId: string) => ReactNode;
   renderDocumentWork?: (clientDossierId: string) => ReactNode;
 }) {
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const copy = useClientDossierCopy();
   const contactCopy = useClientContactEditorCopy();
   const sharedClientCopy = useClientRegistrationCopy();
@@ -454,7 +451,7 @@ export function ClientDossierPanel({
             {copy.version(displayedVersion)}
           </p>
         </div>
-        {isPrisme && canUpdate && (
+        {canUpdate && (
           <button
             type="button"
             ref={correctionTrigger}
@@ -517,7 +514,7 @@ export function ClientDossierPanel({
           {copy.openRequests}
         </button>
       )}
-      {isPrisme && !correctionOpen && correctionFeedback}
+      {!correctionOpen && correctionFeedback}
       <div className="client-dossier-reading">
         <section
           aria-labelledby="client-details-title"
@@ -593,31 +590,29 @@ export function ClientDossierPanel({
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
-      {(!isPrisme || correctionOpen) && correctionFeedback}
+      {correctionOpen && correctionFeedback}
       {canUpdate && (
         <div
           id="client-correction"
           className="client-correction"
-          hidden={isPrisme && !correctionOpen}
+          hidden={!correctionOpen}
         >
-          {isPrisme && (
-            <div className="client-correction-heading">
-              <div>
-                <h4>{copy.correctionFormLabel}</h4>
-                <p>{copy.correctionHint}</p>
-              </div>
-              <button
-                type="button"
-                className="client-secondary-action"
-                onClick={() => {
-                  setCorrectionOpen(false);
-                  correctionTrigger.current?.focus();
-                }}
-              >
-                {copy.closeCorrection}
-              </button>
+          <div className="client-correction-heading">
+            <div>
+              <h4>{copy.correctionFormLabel}</h4>
+              <p>{copy.correctionHint}</p>
             </div>
-          )}
+            <button
+              type="button"
+              className="client-secondary-action"
+              onClick={() => {
+                setCorrectionOpen(false);
+                correctionTrigger.current?.focus();
+              }}
+            >
+              {copy.closeCorrection}
+            </button>
+          </div>
           <CorrectionForm
             draft={draft}
             pending={correctionState.status === 'submitting'}

@@ -13,7 +13,6 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
 import { formatApplicationDateTime } from './presentation/date-time';
-import { ApplicationPresentation } from './production-shell/application-presentation';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -106,17 +105,15 @@ function renderDossier(history: HistoryRoute) {
     }),
   );
   render(
-    <ApplicationPresentation value="prisme">
-      <ClientDossierPanel
-        clientAccountId={dossier.id}
-        companyContextId={companyA.id}
-        canUpdate
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={() => undefined}
-        onActivityRecorded={async () => undefined}
-        onClientsChanged={async () => undefined}
-      />
-    </ApplicationPresentation>,
+    <ClientDossierPanel
+      clientAccountId={dossier.id}
+      companyContextId={companyA.id}
+      canUpdate
+      identity={deterministicBrowserIdentity()}
+      onCompanyContextRejected={() => undefined}
+      onActivityRecorded={async () => undefined}
+      onClientsChanged={async () => undefined}
+    />,
   );
   return requests;
 }
@@ -417,17 +414,15 @@ describe('Client correction history', () => {
       }),
     );
     render(
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={dossier.id}
-          companyContextId={companyA.id}
-          canUpdate
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => undefined}
-          onClientsChanged={async () => undefined}
-        />
-      </ApplicationPresentation>,
+      <ClientDossierPanel
+        clientAccountId={dossier.id}
+        companyContextId={companyA.id}
+        canUpdate
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={async () => undefined}
+        onClientsChanged={async () => undefined}
+      />,
     );
     const history = await expandHistory();
     expect(await listedCorrections(history)).toHaveLength(1);

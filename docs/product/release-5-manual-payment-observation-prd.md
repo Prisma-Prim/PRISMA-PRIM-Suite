@@ -472,8 +472,7 @@ transition. Denied/rolled-back/replayed commands emit no success event.
 Provide a distinct authorized financial entry, evidence preparation through its
 native Document owner and one Payment workspace with bounded inventory,
 current/copied detail, full history and independently authorized exact source.
-Reuse accepted Prisme controls and shared Select; preserve explicit Classic
-compatibility and `/ui-baseline`. Selecting evidence performs no registration,
+Reuse accepted Prisme controls and shared Select; preserve `/ui-baseline`. Selecting evidence performs no registration,
 Payment command, confirmation or automatic download. Clear copy distinguishes a
 manual observation, source-content designation, human financial confirmation and
 an untracked allocation; no paid badge or bank-certification wording is introduced.
@@ -516,7 +515,7 @@ Locale/frame-only changes while the operation owner remains present preserve
 literal text, invalid drafts, immutable attempts and exact decimal semantics with
 zero duplicate I/O. All interface/accessibility/error/date/number copy covers
 `ro`, `ru`, `fr`, `en`; business content is not translated. Prove keyboard/focus,
-error association, shared Select and actual 1440/390 fit in both Prisme and Classic.
+error association, shared Select and actual 1440/390 fit in Prisme.
 No new configuration/default source, role activation or permission from a title.
 
 ## 12. Public acceptance journeys and testing decisions
@@ -617,8 +616,8 @@ Acceptance also covers:
   official-empty integrity, max50 Versions and exact historical bytes/two restarts;
 - actual App uncertainty/malformed-success/confirmed-read-failure, sibling locking,
   held token/parser/hash/focus/Blob/full-Actor callbacks, scoped capture changes,
-  A → B → A/equal-permission retirement and locale/frame continuity;
-- all four locales, both frames and viewports, visible keyboard focus, original
+  A → B → A/equal-permission retirement and locale continuity;
+- all four locales and both viewports, visible keyboard focus, original
   inspected synthetic screenshots and the retained deliberate failure-evidence
   probe under the existing verification owner;
 - unchanged Invoice Record/financial source/Date, native old Document families,

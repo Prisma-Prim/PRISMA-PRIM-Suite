@@ -11,7 +11,6 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientWorkspace } from './client/ClientWorkspace';
-import { ApplicationPresentation } from './production-shell/application-presentation';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -316,16 +315,14 @@ describe('duplicate review ownership through App', () => {
       if (phase === 'detail') state.detail = pending;
       if (phase === 'attach') state.attach = pending;
       const workspace = (current: ActorContext) => (
-        <ApplicationPresentation value="prisme">
-          <ClientWorkspace
-            actor={current}
-            identity={identity}
-            onCompanyContextRejected={() => undefined}
-            onActivityRecorded={async () => {
-              state.activityReads++;
-            }}
-          />
-        </ApplicationPresentation>
+        <ClientWorkspace
+          actor={current}
+          identity={identity}
+          onCompanyContextRejected={() => undefined}
+          onActivityRecorded={async () => {
+            state.activityReads++;
+          }}
+        />
       );
       const rendered = render(workspace(actor));
       if (phase !== 'list') await openReview();

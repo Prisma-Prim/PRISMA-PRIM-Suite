@@ -14,7 +14,6 @@ import {
   interfaceLocaleStorageKey,
 } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientWorkspace } from './ClientWorkspace';
 import { selectOption } from '../test/select-option';
 
@@ -41,15 +40,13 @@ function renderWorkspace(workspaceActor: ActorContext = actor) {
   const content = (nextActor: ActorContext) => (
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ApplicationPresentation value="prisme">
-        <ClientWorkspace
-          actor={nextActor}
-          identity={identity}
-          onCompanyContextRejected={onCompanyContextRejected}
-          onActorRevalidated={onActorRevalidated}
-          onActivityRecorded={onActivityRecorded}
-        />
-      </ApplicationPresentation>
+      <ClientWorkspace
+        actor={nextActor}
+        identity={identity}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onActivityRecorded={onActivityRecorded}
+      />
     </InterfaceLocaleProvider>
   );
   const view = render(content(workspaceActor));

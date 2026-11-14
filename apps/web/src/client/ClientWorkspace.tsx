@@ -2,7 +2,6 @@ import {
   type FormEvent,
   type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -35,7 +34,6 @@ import {
   type ClientRegistrationValidationIssue,
 } from './client-registration.copy';
 import { useClientDirectoryCopy } from './client-directory.copy';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectory } from './ClientDirectory';
 import {
   readClientAccountList,
@@ -102,13 +100,12 @@ export function ClientWorkspace({
   const directoryCopy = useClientDirectoryCopy();
   const copy = useClientRegistrationCopy();
   const unionConfirmationCopy = useClientUnionConfirmationCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const registrationTrigger = useRef<HTMLButtonElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (isPrisme && registrationOpen) nameInput.current?.focus();
-  }, [isPrisme, registrationOpen]);
+    if (registrationOpen) nameInput.current?.focus();
+  }, [registrationOpen]);
   const [displayName, setDisplayName] = useState('');
   const [taxId, setTaxId] = useState('');
   const [address, setAddress] = useState('');
@@ -143,22 +140,21 @@ export function ClientWorkspace({
       const trigger = dossierOpeningTrigger.current;
       dossierOpeningTrigger.current = null;
       if (
-        isPrisme &&
         trigger &&
         document.activeElement === trigger &&
         !heading.closest('[hidden]')
       )
         heading.focus();
     },
-    [isPrisme],
+    [],
   );
   function openDossier(clientId: string) {
     setConfirmedUnionClientId(undefined);
-    if (isPrisme && clientId === selectedClientId) {
+    if (clientId === selectedClientId) {
       dossierHeading.current?.focus();
       return;
     }
-    dossierOpeningTrigger.current = isPrisme ? document.activeElement : null;
+    dossierOpeningTrigger.current = document.activeElement;
     setSelectedClientId(clientId);
   }
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
@@ -508,16 +504,12 @@ export function ClientWorkspace({
       aria-labelledby="client-workspace-title"
     >
       <div className="client-directory-heading">
-        <div className={isPrisme ? 'client-directory-context' : undefined}>
+        <div className="client-directory-context">
           <p className="eyebrow">{directoryCopy.eyebrow}</p>
           <h2 id="client-workspace-title">{directoryCopy.title}</h2>
-          <p>
-            {isPrisme
-              ? directoryCopy.directoryCompany(activeCompany.displayName)
-              : directoryCopy.description}
-          </p>
+          <p>{directoryCopy.directoryCompany(activeCompany.displayName)}</p>
         </div>
-        {isPrisme && canCreateClients && (
+        {canCreateClients && (
           <button
             ref={registrationTrigger}
             type="button"
@@ -535,26 +527,24 @@ export function ClientWorkspace({
         <div
           id="client-registration"
           className="client-registration"
-          hidden={isPrisme && !registrationOpen}
+          hidden={!registrationOpen}
         >
-          {isPrisme && (
-            <div className="client-registration-heading">
-              <div>
-                <h3>{copy.registrationTitle}</h3>
-                <p>{copy.registrationHint}</p>
-              </div>
-              <button
-                type="button"
-                className="client-secondary-action"
-                onClick={() => {
-                  setRegistrationOpen(false);
-                  registrationTrigger.current?.focus();
-                }}
-              >
-                {copy.closeRegistration}
-              </button>
+          <div className="client-registration-heading">
+            <div>
+              <h3>{copy.registrationTitle}</h3>
+              <p>{copy.registrationHint}</p>
             </div>
-          )}
+            <button
+              type="button"
+              className="client-secondary-action"
+              onClick={() => {
+                setRegistrationOpen(false);
+                registrationTrigger.current?.focus();
+              }}
+            >
+              {copy.closeRegistration}
+            </button>
+          </div>
           <form onSubmit={(event) => void createClient(event)} noValidate>
             <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
             <div>
@@ -661,7 +651,7 @@ export function ClientWorkspace({
       )}
       {createState.status === 'error' && (
         <ClientDirectoryFeedback role="alert" tone="error">
-          {isPrisme ? copy.createRetry : copy.retryableError}
+          {copy.createRetry}
         </ClientDirectoryFeedback>
       )}
       {createState.status === 'possibleDuplicate' && (
@@ -684,9 +674,7 @@ export function ClientWorkspace({
             aria-describedby={
               searchState.status === 'validation'
                 ? 'client-search-validation'
-                : isPrisme
-                  ? 'client-search-hint'
-                  : undefined
+                : 'client-search-hint'
             }
           />
           <button
@@ -701,16 +689,14 @@ export function ClientWorkspace({
               : directoryCopy.search}
           </button>
         </div>
-        {isPrisme && (
-          <p id="client-search-hint">
-            {canAttachClients
-              ? directoryCopy.workspaceSearchHint
-              : directoryCopy.companySearchHint}{' '}
-            {directoryCopy.searchLimitHint}
-          </p>
-        )}
+        <p id="client-search-hint">
+          {canAttachClients
+            ? directoryCopy.workspaceSearchHint
+            : directoryCopy.companySearchHint}{' '}
+          {directoryCopy.searchLimitHint}
+        </p>
       </form>
-      {isPrisme && searchState.status !== 'idle' && (
+      {searchState.status !== 'idle' && (
         <button
           className="client-secondary-action client-directory-return"
           type="button"
@@ -758,46 +744,18 @@ export function ClientWorkspace({
           <h3 id="client-search-results-title">
             {directoryCopy.searchResultsTitle}
           </h3>
-          {isPrisme ? (
-            <ClientDirectory
-              clients={searchState.clients}
-              companyName={activeCompany.displayName}
-              onOpenDossier={canReadClientDossiers ? openDossier : undefined}
-              onAttach={
-                canAttachClients ? (id) => void attachClient(id) : undefined
-              }
-              attachingClientId={attachingClientId}
-            />
-          ) : (
-            <ol className="client-search-results">
-              {searchState.clients.map((client) => (
-                <li key={client.id}>
-                  <h4>{client.displayName}</h4>
-                  <p>{directoryCopy.clientId(client.id)}</p>
-                  {client.relatedToActiveCompany ? (
-                    <p>
-                      {directoryCopy.availableInCompany(
-                        activeCompany.displayName,
-                      )}
-                    </p>
-                  ) : canAttachClients ? (
-                    <button
-                      type="button"
-                      disabled={attachingClientId !== undefined}
-                      onClick={() => void attachClient(client.id)}
-                    >
-                      {directoryCopy.addToCompany(activeCompany.displayName)}
-                    </button>
-                  ) : (
-                    <p>{directoryCopy.notAvailableInCompany}</p>
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
+          <ClientDirectory
+            clients={searchState.clients}
+            companyName={activeCompany.displayName}
+            onOpenDossier={canReadClientDossiers ? openDossier : undefined}
+            onAttach={
+              canAttachClients ? (id) => void attachClient(id) : undefined
+            }
+            attachingClientId={attachingClientId}
+          />
         </section>
       )}
-      {(!isPrisme || searchState.status === 'idle') && (
+      {searchState.status === 'idle' && (
         <>
           {listState.status === 'loading' && (
             <ClientDirectoryFeedback role="status" tone="pending">
@@ -819,33 +777,14 @@ export function ClientWorkspace({
               {directoryCopy.empty(activeCompany.displayName)}
             </ClientDirectoryFeedback>
           )}
-          {listState.status === 'ready' &&
-            listState.clients.length > 0 &&
-            (isPrisme ? (
-              <ClientDirectory
-                clients={listState.clients}
-                companyName={activeCompany.displayName}
-                onOpenDossier={canReadClientDossiers ? openDossier : undefined}
-                attachingClientId={attachingClientId}
-              />
-            ) : (
-              <ol className="client-list">
-                {listState.clients.map((client) => (
-                  <li key={client.id}>
-                    <h3>{client.displayName}</h3>
-                    <p>{directoryCopy.clientId(client.id)}</p>
-                    {canReadClientDossiers && (
-                      <button
-                        type="button"
-                        onClick={() => openDossier(client.id)}
-                      >
-                        {directoryCopy.openDossier}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            ))}
+          {listState.status === 'ready' && listState.clients.length > 0 && (
+            <ClientDirectory
+              clients={listState.clients}
+              companyName={activeCompany.displayName}
+              onOpenDossier={canReadClientDossiers ? openDossier : undefined}
+              attachingClientId={attachingClientId}
+            />
+          )}
         </>
       )}
       {canResolveDuplicateClients && (

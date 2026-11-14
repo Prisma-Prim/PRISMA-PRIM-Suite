@@ -204,8 +204,8 @@ administrators. No activity-read grant or projection is introduced.
 
 Reuse UX owner and accepted [Prisme provenance](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/main/apps/web/src/production-shell/prisme/README.md).
 Use the default violet/yellow Prisme hierarchy, clear primary/secondary/destructive
-review actions, styled accessible controls and four locales. Do not copy Classic
-captures as primary proof or introduce raw browser checkbox/select appearance.
+review actions, styled accessible controls and four locales. Do not introduce raw
+browser checkbox/select appearance.
 Semantic native inputs/buttons remain appropriate under custom presentation.
 
 Labels/errors/dates respect locale; original business text and canonical dates do

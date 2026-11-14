@@ -9,7 +9,6 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectDocuments as ProjectDocumentsComponent } from './ProjectDocuments';
 import type { ProjectStatus } from './project-lifecycle-response';
 
@@ -233,11 +232,7 @@ it('presents real Project Documents in Prisme', async () => {
     identity: deterministicBrowserIdentity(),
     projectId: 'project',
   };
-  render(
-    <ApplicationPresentation value="prisme">
-      <ProjectDocuments {...props} />
-    </ApplicationPresentation>,
-  );
+  render(<ProjectDocuments {...props} />);
   const section = await screen.findByRole('region', {
     name: 'Working Documents',
   });

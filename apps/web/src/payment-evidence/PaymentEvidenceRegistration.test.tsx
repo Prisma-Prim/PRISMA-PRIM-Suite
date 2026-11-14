@@ -8,7 +8,6 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { changeValue } from '../test/select-option';
 import { PaymentEvidenceRegistration } from './PaymentEvidenceRegistration';
 import {
@@ -230,10 +229,10 @@ it('preserves literal drafts through locale changes without repeated source read
     onRejected: vi.fn(),
   };
   render(
-    <ApplicationPresentation value="prisme">
+    <>
       <InterfaceLocaleSelect />
       <PaymentEvidenceRegistration {...props} />
-    </ApplicationPresentation>,
+    </>,
   );
   await fill();
   fireEvent.change(screen.getByLabelText('Title'), {

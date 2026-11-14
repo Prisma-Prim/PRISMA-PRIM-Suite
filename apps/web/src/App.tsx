@@ -59,7 +59,6 @@ import {
   type ProjectOpenTarget,
 } from './project/use-project-navigation';
 import {
-  ApplicationContentSurface,
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
@@ -1325,15 +1324,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           {operationalHome}
         </>
       }
-    >
-      <ApplicationContentSurface>
-        {workingEvidenceResolver}
-        <p className="eyebrow">{access.actor.workspaceName}</p>
-        <h1>{copy.homeTitle}</h1>
-        <p className="production-home-introduction">{copy.homeIntroduction}</p>
-        {operationalHome}
-      </ApplicationContentSurface>
-    </ApplicationShell>
+    />
   );
 }
 /** Every authority the Company summary was read under. */

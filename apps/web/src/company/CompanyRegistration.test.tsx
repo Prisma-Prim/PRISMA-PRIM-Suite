@@ -9,7 +9,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { CompanyRegistration } from './CompanyRegistration';
 
 const actor = {
@@ -46,9 +45,7 @@ describe('Company registration presentation', () => {
 
   it('presents first-Company onboarding in Prisme', () => {
     render(
-      <ApplicationPresentation value="prisme">
-        <CompanyRegistration actor={actor} identity={identity} {...callbacks} />
-      </ApplicationPresentation>,
+      <CompanyRegistration actor={actor} identity={identity} {...callbacks} />,
     );
     const prismeRegistration = screen.getByRole('region', {
       name: 'Provider Company',

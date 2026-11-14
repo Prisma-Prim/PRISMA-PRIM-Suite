@@ -27,7 +27,6 @@ import { ProjectContracts } from '../contract/ProjectContracts';
 import { ProjectResponsible } from './ProjectResponsible';
 import { ProjectTasks, type RequestedTask } from './ProjectTasks';
 import {
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -42,7 +41,6 @@ import {
 } from '../api/authenticated-api-client';
 import { useProjectCopy } from './project-localized.copy';
 import { useProjectDocumentsCopy } from './project-documents.copy';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { useProjectTaskCopy } from './task.copy';
@@ -166,7 +164,6 @@ export function ProjectWorkspace({
   >(null);
   const [templateSelection, setTemplateSelection] =
     useState<TemplateSelection | null>(null);
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   if (
     (!evidenceAuthority && detailPanel === 'working-evidence') ||
@@ -760,25 +757,16 @@ export function ProjectWorkspace({
     <section
       id="projects"
       tabIndex={-1}
-      className={`project-workspace${isPrisme ? ' project-workspace--prisme' : ''}`}
+      className="project-workspace project-workspace--prisme"
       aria-labelledby="project-title"
     >
-      {isPrisme ? (
-        <header className="project-workspace-heading">
-          <p className="prisme-eyebrow">{copy.eyebrow}</p>
-          <h2 id="project-title">{copy.title}</h2>
-          <p>
-            {copy.companyPrefix} {actor.activeCompany?.displayName}
-          </p>
-        </header>
-      ) : (
-        <>
-          <h2 id="project-title">{copy.title}</h2>
-          <p>
-            {copy.companyPrefix} {actor.activeCompany?.displayName}
-          </p>
-        </>
-      )}
+      <header className="project-workspace-heading">
+        <p className="prisme-eyebrow">{copy.eyebrow}</p>
+        <h2 id="project-title">{copy.title}</h2>
+        <p>
+          {copy.companyPrefix} {actor.activeCompany?.displayName}
+        </p>
+      </header>
       {load.kind === 'loading' && <p role="status">{copy.loading}</p>}
       {load.kind === 'denied' && <p role="alert">{copy.denied}</p>}
       {load.kind === 'error' && <p role="alert">{copy.error}</p>}
@@ -866,10 +854,7 @@ export function ProjectWorkspace({
               <p className="project-no-matches">{copy.noMatches}</p>
             )
           )}
-          <ul
-            className={isPrisme ? 'project-list' : undefined}
-            aria-label={copy.title}
-          >
+          <ul className="project-list" aria-label={copy.title}>
             {filteredProjects.map((project) => (
               <li key={project.id}>
                 <button
@@ -894,10 +879,7 @@ export function ProjectWorkspace({
           {actor.activeCompany?.projectPermissions?.includes(
             'project.create',
           ) && (
-            <form
-              className={isPrisme ? 'project-registration' : undefined}
-              onSubmit={submit}
-            >
+            <form className="project-registration" onSubmit={submit}>
               <p className="project-warning">{copy.warning}</p>
               <label>
                 {copy.projectTitle}
@@ -908,37 +890,20 @@ export function ProjectWorkspace({
                   disabled={pending}
                 />
               </label>
-              {isPrisme ? (
-                <div className="project-client-field">
-                  <label htmlFor="project-client">{copy.client}</label>
-                  <Select
-                    id="project-client"
-                    value={clientAccountId}
-                    disabled={pending}
-                    placeholder={copy.selectClient}
-                    options={load.clients.map((client) => ({
-                      value: client.id,
-                      label: client.displayName,
-                    }))}
-                    onValueChange={setClientAccountId}
-                  />
-                </div>
-              ) : (
-                <>
-                  <label htmlFor="project-client">{copy.client}</label>
-                  <Select
-                    id="project-client"
-                    value={clientAccountId}
-                    disabled={pending}
-                    placeholder={copy.selectClient}
-                    options={load.clients.map((client) => ({
-                      value: client.id,
-                      label: client.displayName,
-                    }))}
-                    onValueChange={setClientAccountId}
-                  />
-                </>
-              )}
+              <div className="project-client-field">
+                <label htmlFor="project-client">{copy.client}</label>
+                <Select
+                  id="project-client"
+                  value={clientAccountId}
+                  disabled={pending}
+                  placeholder={copy.selectClient}
+                  options={load.clients.map((client) => ({
+                    value: client.id,
+                    label: client.displayName,
+                  }))}
+                  onValueChange={setClientAccountId}
+                />
+              </div>
               {canInstantiateProjectTemplate(actor) &&
                 deniedTemplateAuthority !== templateAuthority && (
                   <ProjectTemplateSelector
@@ -990,76 +955,37 @@ export function ProjectWorkspace({
       )}
       {selected && (
         <article
-          className={isPrisme ? 'project-detail-card' : undefined}
+          className="project-detail-card"
           aria-labelledby="selected-project-title"
         >
-          {isPrisme ? (
-            <div className="project-detail-overview">
-              <p className="project-detail-status">
-                <ProjectStatusLabel status={selected.project.status} />
+          <div className="project-detail-overview">
+            <p className="project-detail-status">
+              <ProjectStatusLabel status={selected.project.status} />
+            </p>
+            <h3 id="selected-project-title" tabIndex={-1} ref={projectHeading}>
+              {selected.project.title}
+            </h3>
+            <p className="project-detail-client">
+              {copy.clientPrefix} {selected.project.clientDisplayName}
+            </p>
+            <ProjectRegistrationTime
+              registeredAt={selected.project.createdAt}
+            />
+            {selected.project.status === 'preparatory' && (
+              <p className="project-warning">{copy.warning}</p>
+            )}
+            {isClosedProjectStatus(selected.project.status) && (
+              <p className="project-closed-notice" role="status">
+                {copy.closedNotice(selected.project.status)}
               </p>
-              <h3
-                id="selected-project-title"
-                tabIndex={-1}
-                ref={projectHeading}
-              >
-                {selected.project.title}
-              </h3>
-              <p className="project-detail-client">
-                {copy.clientPrefix} {selected.project.clientDisplayName}
-              </p>
-              <ProjectRegistrationTime
-                registeredAt={selected.project.createdAt}
+            )}
+            {dossierTarget && onOpenClientDossier && (
+              <ClientDossierButton
+                clientDossierId={dossierTarget}
+                onOpen={onOpenClientDossier}
               />
-              {selected.project.status === 'preparatory' && (
-                <p className="project-warning">{copy.warning}</p>
-              )}
-              {isClosedProjectStatus(selected.project.status) && (
-                <p className="project-closed-notice" role="status">
-                  {copy.closedNotice(selected.project.status)}
-                </p>
-              )}
-              {dossierTarget && onOpenClientDossier && (
-                <ClientDossierButton
-                  clientDossierId={dossierTarget}
-                  onOpen={onOpenClientDossier}
-                />
-              )}
-            </div>
-          ) : (
-            <>
-              <h3
-                id="selected-project-title"
-                tabIndex={-1}
-                ref={projectHeading}
-              >
-                {selected.project.title}
-              </h3>
-              <p className="project-detail-status">
-                <ProjectStatusLabel status={selected.project.status} />
-              </p>
-              <p className="project-detail-client">
-                {copy.clientPrefix} {selected.project.clientDisplayName}
-              </p>
-              <ProjectRegistrationTime
-                registeredAt={selected.project.createdAt}
-              />
-              {selected.project.status === 'preparatory' && (
-                <p className="project-warning">{copy.warning}</p>
-              )}
-              {isClosedProjectStatus(selected.project.status) && (
-                <p className="project-closed-notice" role="status">
-                  {copy.closedNotice(selected.project.status)}
-                </p>
-              )}
-              {dossierTarget && onOpenClientDossier && (
-                <ClientDossierButton
-                  clientDossierId={dossierTarget}
-                  onOpen={onOpenClientDossier}
-                />
-              )}
-            </>
-          )}
+            )}
+          </div>
           <ProjectLifecycle
             actor={actor}
             identity={identity}
@@ -1129,64 +1055,60 @@ export function ProjectWorkspace({
                 directory.refreshMineAfterChange();
             }}
           />
-          {isPrisme && (
-            <div className="project-detail-tabs" role="tablist">
+          <div className="project-detail-tabs" role="tablist">
+            <button
+              id="project-tasks-tab"
+              type="button"
+              role="tab"
+              aria-selected={detailPanel === 'tasks'}
+              aria-controls="project-tasks-panel"
+              tabIndex={detailPanel === 'tasks' ? 0 : -1}
+              onClick={() => setDetailPanel('tasks')}
+              onKeyDown={(event) => moveDetailTab(event, 'tasks')}
+            >
+              {taskCopy.title}
+            </button>
+            <button
+              id="project-documents-tab"
+              type="button"
+              role="tab"
+              aria-selected={detailPanel === 'documents'}
+              aria-controls="project-documents-panel"
+              tabIndex={detailPanel === 'documents' ? 0 : -1}
+              onClick={() => setDetailPanel('documents')}
+              onKeyDown={(event) => moveDetailTab(event, 'documents')}
+            >
+              {documentsCopy.title}
+            </button>
+            {evidenceAuthority && (
               <button
-                id="project-tasks-tab"
+                id="project-working-evidence-tab"
                 type="button"
                 role="tab"
-                aria-selected={detailPanel === 'tasks'}
-                aria-controls="project-tasks-panel"
-                tabIndex={detailPanel === 'tasks' ? 0 : -1}
-                onClick={() => setDetailPanel('tasks')}
-                onKeyDown={(event) => moveDetailTab(event, 'tasks')}
+                aria-selected={detailPanel === 'working-evidence'}
+                aria-controls="project-working-evidence-panel"
+                tabIndex={detailPanel === 'working-evidence' ? 0 : -1}
+                onClick={() => setDetailPanel('working-evidence')}
+                onKeyDown={(event) => moveDetailTab(event, 'working-evidence')}
               >
-                {taskCopy.title}
+                {evidenceCopy('title')}
               </button>
+            )}
+            {certificationReader && (
               <button
-                id="project-documents-tab"
+                id="project-certification-tab"
                 type="button"
                 role="tab"
-                aria-selected={detailPanel === 'documents'}
-                aria-controls="project-documents-panel"
-                tabIndex={detailPanel === 'documents' ? 0 : -1}
-                onClick={() => setDetailPanel('documents')}
-                onKeyDown={(event) => moveDetailTab(event, 'documents')}
+                aria-selected={detailPanel === 'certification'}
+                aria-controls="project-certification-panel"
+                tabIndex={detailPanel === 'certification' ? 0 : -1}
+                onClick={() => setDetailPanel('certification')}
+                onKeyDown={(event) => moveDetailTab(event, 'certification')}
               >
-                {documentsCopy.title}
+                {certificationCopy('title')}
               </button>
-              {evidenceAuthority && (
-                <button
-                  id="project-working-evidence-tab"
-                  type="button"
-                  role="tab"
-                  aria-selected={detailPanel === 'working-evidence'}
-                  aria-controls="project-working-evidence-panel"
-                  tabIndex={detailPanel === 'working-evidence' ? 0 : -1}
-                  onClick={() => setDetailPanel('working-evidence')}
-                  onKeyDown={(event) =>
-                    moveDetailTab(event, 'working-evidence')
-                  }
-                >
-                  {evidenceCopy('title')}
-                </button>
-              )}
-              {certificationReader && (
-                <button
-                  id="project-certification-tab"
-                  type="button"
-                  role="tab"
-                  aria-selected={detailPanel === 'certification'}
-                  aria-controls="project-certification-panel"
-                  tabIndex={detailPanel === 'certification' ? 0 : -1}
-                  onClick={() => setDetailPanel('certification')}
-                  onKeyDown={(event) => moveDetailTab(event, 'certification')}
-                >
-                  {certificationCopy('title')}
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
           <MissionPlanProjectCopy
             actor={actor}
             identity={identity}
@@ -1267,11 +1189,9 @@ export function ProjectWorkspace({
           <div
             className="project-detail-panel"
             id="project-working-evidence-panel"
-            role={isPrisme ? 'tabpanel' : undefined}
-            aria-labelledby={
-              isPrisme ? 'project-working-evidence-tab' : undefined
-            }
-            hidden={isPrisme && detailPanel !== 'working-evidence'}
+            role="tabpanel"
+            aria-labelledby="project-working-evidence-tab"
+            hidden={detailPanel !== 'working-evidence'}
           >
             <WorkingEvidenceWorkspace
               actor={actor}
@@ -1288,11 +1208,9 @@ export function ProjectWorkspace({
             <div
               className="project-detail-panel"
               id="project-certification-panel"
-              role={isPrisme ? 'tabpanel' : undefined}
-              aria-labelledby={
-                isPrisme ? 'project-certification-tab' : undefined
-              }
-              hidden={isPrisme && detailPanel !== 'certification'}
+              role="tabpanel"
+              aria-labelledby="project-certification-tab"
+              hidden={detailPanel !== 'certification'}
             >
               <CertificationWorkspace
                 actor={actor}
@@ -1307,9 +1225,9 @@ export function ProjectWorkspace({
           <div
             className="project-detail-panel"
             id="project-documents-panel"
-            role={isPrisme ? 'tabpanel' : undefined}
-            aria-labelledby={isPrisme ? 'project-documents-tab' : undefined}
-            hidden={isPrisme && detailPanel !== 'documents'}
+            role="tabpanel"
+            aria-labelledby="project-documents-tab"
+            hidden={detailPanel !== 'documents'}
           >
             <ProjectDocuments
               actor={actor}
@@ -1334,9 +1252,9 @@ export function ProjectWorkspace({
       <div
         className="project-detail-panel"
         id="project-tasks-panel"
-        role={isPrisme ? 'tabpanel' : undefined}
-        aria-labelledby={isPrisme ? 'project-tasks-tab' : undefined}
-        hidden={isPrisme && (!selected || detailPanel !== 'tasks')}
+        role="tabpanel"
+        aria-labelledby="project-tasks-tab"
+        hidden={!selected || detailPanel !== 'tasks'}
         tabIndex={-1}
       >
         <ProjectTasks

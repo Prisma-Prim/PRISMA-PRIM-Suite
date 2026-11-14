@@ -13,7 +13,6 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
 import { ClientWorkspace } from './client/ClientWorkspace';
-import { ApplicationPresentation } from './production-shell/application-presentation';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -334,14 +333,12 @@ describe('Client correction ownership', () => {
       }),
     );
     const workspace = (currentActor: ActorContext) => (
-      <ApplicationPresentation value="prisme">
-        <ClientWorkspace
-          actor={currentActor}
-          identity={identity}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => undefined}
-        />
-      </ApplicationPresentation>
+      <ClientWorkspace
+        actor={currentActor}
+        identity={identity}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={async () => undefined}
+      />
     );
     const rendered = render(workspace(actor));
     await openCorrection();
@@ -391,17 +388,15 @@ describe('Client correction ownership', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     render(
-      <ApplicationPresentation value="prisme">
-        <ClientDossierPanel
-          clientAccountId={dossier.id}
-          companyContextId={companyA.id}
-          canUpdate={false}
-          identity={deterministicBrowserIdentity()}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => undefined}
-          onClientsChanged={async () => undefined}
-        />
-      </ApplicationPresentation>,
+      <ClientDossierPanel
+        clientAccountId={dossier.id}
+        companyContextId={companyA.id}
+        canUpdate={false}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={() => undefined}
+        onActivityRecorded={async () => undefined}
+        onClientsChanged={async () => undefined}
+      />,
     );
     await screen.findByText('TAX-233');
     expect(

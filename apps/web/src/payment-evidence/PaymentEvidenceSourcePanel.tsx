@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
@@ -8,7 +8,6 @@ import {
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useDocumentNavigationProtection } from '../documents/document-navigation-protection';
-import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   paymentEvidenceAuthority,
   type PaymentEvidenceOperationKeys,
@@ -46,7 +45,6 @@ export function PaymentEvidenceSourcePanel(
 ) {
   const copy = usePaymentEvidenceCopy(),
     authority = paymentEvidenceAuthority(props.actor);
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [identityOwner, setIdentityOwner] = useState({
     identity: props.identity,
     generation: 0,
@@ -59,7 +57,7 @@ export function PaymentEvidenceSourcePanel(
   if (!authority || !props.identity.loaded || !props.identity.signedIn)
     return (
       <section
-        className={`working-documents payment-evidence-source${isPrisme ? ' working-documents--prisme' : ''}`}
+        className="working-documents payment-evidence-source working-documents--prisme"
         aria-label={copy('title')}
       >
         <h3>{copy('title')}</h3>
@@ -100,7 +98,6 @@ function AvailablePaymentEvidencePanel({
   authority: PaymentEvidenceOperationKeys & { companyId: string };
 }) {
   const copy = usePaymentEvidenceCopy();
-  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [list, setList] = useState<ListState>({ status: 'loading' }),
     [revision, setRevision] = useState(0),
     [protectedWork, setProtectedWork] = useState(false),
@@ -194,7 +191,7 @@ function AvailablePaymentEvidencePanel({
     list.status === 'ready' && list.owner() ? list.documents : undefined;
   return (
     <section
-      className={`working-documents payment-evidence-source${isPrisme ? ' working-documents--prisme' : ''}`}
+      className="working-documents payment-evidence-source working-documents--prisme"
       aria-label={copy('title')}
     >
       <header>
