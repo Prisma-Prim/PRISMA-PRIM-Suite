@@ -24,10 +24,12 @@ import {
 } from './test/internal-task-app';
 import {
   invoiceUiActor,
+  invoiceUiGrantRequests,
   invoiceUiIds as ids,
   invoiceUiDocument,
   invoiceUiVersions,
 } from './documents/external-invoice.ui.test-fixture';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 
 // Negative external HTTP/token/crypto/effect fixtures exercise the actual App and native client.
 // The separately registered acceptance journey owns the actual positive Nest/PostgreSQL/browser proof.
@@ -37,6 +39,10 @@ const financialActor = {
   activeCompany: {
     ...internalTaskActor.activeCompany,
     ...invoiceUiActor.activeCompany,
+    grants: withCompanyGrants(
+      internalTaskActor.activeCompany.grants,
+      ...invoiceUiGrantRequests,
+    ),
     id: companyId,
     displayName: 'Company DEMO',
   },
