@@ -2,7 +2,7 @@
 
 **Status:** Local repository rule  
 **Owner:** Dan Popescu  
-**Issues:** [#1278](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1278), decision in [#1275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1275); one file per run since [#1328](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1328)
+**Issues:** [#1278](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1278), decision in [#1275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1275); one file per run since [#1328](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1328); subagent runs since [#1372](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1372)
 
 Every verification run leaves one cost record, so the owner can compare what proof costs with what it catches. [Issue execution](issue-execution.md#final-report) asks for the record; `scripts/verification-cost.mjs` builds, checks and summarizes it. Its `--help` lists every option, and its `validateRecord` is the schema.
 
@@ -32,6 +32,8 @@ The harness's own usage data comes first. `record` prints the record on one line
     --issue 1278 --pull-request 1300 --claude-code <session>.jsonl --claude-code <session>/ \
     --result pass --findings P2=1 --append
   ```
+
+  A subagent records only its own run. It passes only its transcript, the newest `<session>/subagents/agent-<agent id>.jsonl` that mentions its worktree, and no `--run-id`: the run is then `<session>:<agent id>`, in the file `<session>~<agent id>.json`. The session's transcript or folder would add the parent's tokens. A subagent that finds no such transcript records nothing and says so in its report.
 
 - **Codex, local** (`--harness codex-local`): pass the rollout, `~/.codex/sessions/<yyyy>/<mm>/<dd>/rollout-*.jsonl`. Decompress a `.zst` rollout first.
 - **Codex Cloud or CI** (`codex-cloud`, `ci`): no local trace exists. The session gives the figures it can report itself with `--model`, `--input`, `--output`, `--cache-creation`, `--cache-read`, `--start` and `--end` or `--duration-seconds`.
