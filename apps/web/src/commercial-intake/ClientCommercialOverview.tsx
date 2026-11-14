@@ -15,6 +15,7 @@ import {
   parseClientCommercialPage,
   type ClientCommercialPage,
 } from './client-commercial-response';
+import { grantOf, holds } from '../access/company-grants';
 import { useClientCommercialCopy } from './client-commercial.copy';
 import { useCommercialRequestCopy } from './commercial-request.copy';
 import { useSalesStageCopy } from './sales-stage.copy';
@@ -44,21 +45,18 @@ export function ClientCommercialOverview(props: Props) {
       generation: identity.current.generation + 1,
     };
   const company = props.actor.activeCompany;
+  // A live grant always carries a non-blank assignment and a registry version.
+  const clientGrant = grantOf(company, 'company_director_client_access');
+  const intakeGrant = grantOf(company, 'company_commercial_intake');
   if (
     !props.identity.loaded ||
     !props.identity.signedIn ||
     !company ||
-    !company.clientPermissions?.includes('client.read') ||
-    !company.clientPermissionAssignmentId ||
-    !['v1', 'v2'].includes(company.clientPermissionSetVersion ?? '') ||
-    !company.commercialIntakePermissions?.includes('commercial.request.read') ||
-    !company.commercialIntakePermissions.includes(
-      'commercial.opportunity.read',
-    ) ||
-    !company.commercialIntakePermissionAssignmentId ||
-    !['v1', 'v2', 'v3', 'v4'].includes(
-      company.commercialIntakePermissionSetVersion ?? '',
-    )
+    !clientGrant ||
+    !intakeGrant ||
+    !holds(company, 'company_director_client_access', 'client.read') ||
+    !holds(company, 'company_commercial_intake', 'commercial.request.read') ||
+    !holds(company, 'company_commercial_intake', 'commercial.opportunity.read')
   )
     return null;
   const capture = [
@@ -66,12 +64,12 @@ export function ClientCommercialOverview(props: Props) {
     props.actor.workspaceMembershipId,
     props.actor.workspaceId,
     company.id,
-    company.clientPermissionAssignmentId,
-    company.clientPermissionSetVersion,
-    [...company.clientPermissions].sort(),
-    company.commercialIntakePermissionAssignmentId,
-    company.commercialIntakePermissionSetVersion,
-    [...company.commercialIntakePermissions].sort(),
+    clientGrant.assignmentId,
+    clientGrant.permissionSetVersion,
+    [...clientGrant.permissions].sort(),
+    intakeGrant.assignmentId,
+    intakeGrant.permissionSetVersion,
+    [...intakeGrant.permissions].sort(),
     props.clientDossierId,
     props.clientIdentityRevision,
     identity.current.generation,

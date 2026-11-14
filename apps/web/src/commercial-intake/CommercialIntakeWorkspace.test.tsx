@@ -18,6 +18,11 @@ import {
 } from '../test/commercial-intake-responses';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { commercialIntakeCopy } from './commercial-intake.copy';
 
 const actor: ActorContext = {
@@ -32,13 +37,18 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-    ],
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-assignment',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'intake-assignment',
+      },
+    ),
   },
 };
 
@@ -109,13 +119,18 @@ function actorForCompany(id: string, displayName: string): ActorContext {
     activeCompany: {
       id,
       displayName,
-      clientPermissions: ['client.read'],
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-      ],
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-assignment',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'intake-assignment',
+        },
+      ),
     },
   };
 }
@@ -245,15 +260,18 @@ function editorActor(): ActorContext {
     activeCompany: {
       id: 'company-1',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: ['client.read'],
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-        'commercial.opportunity.next_action.update',
-      ],
-      commercialIntakePermissionSetVersion: 'v2',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-assignment',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v2',
+          assignmentId: 'intake-assignment',
+        },
+      ),
     },
   };
 }
@@ -928,7 +946,13 @@ describe('CommercialIntakeWorkspace', () => {
     const workspaceRejected = vi.fn();
     const clientOnlyRevokedActor = {
       ...actor,
-      activeCompany: { ...actor.activeCompany, clientPermissions: [] },
+      activeCompany: actor.activeCompany && {
+        ...actor.activeCompany,
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_director_client_access',
+        ),
+      },
     };
     vi.stubGlobal(
       'fetch',
@@ -1998,10 +2022,12 @@ describe('CommercialIntakeWorkspace', () => {
           activeCompany: actor.activeCompany
             ? {
                 ...actor.activeCompany,
-                commercialIntakePermissions: [
-                  ...(actor.activeCompany.commercialIntakePermissions ?? []),
-                  'commercial.request.client.associate',
-                ],
+                // v3 is the first version with the Client association.
+                grants: withCompanyGrants(actor.activeCompany.grants, {
+                  bundle: 'company_commercial_intake',
+                  version: 'v3',
+                  assignmentId: 'intake-assignment',
+                }),
               }
             : undefined,
         },

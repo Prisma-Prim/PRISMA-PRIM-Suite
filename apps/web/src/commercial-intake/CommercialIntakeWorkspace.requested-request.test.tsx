@@ -15,16 +15,8 @@ import {
   buildRequestListItem,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
-
-const intakePermissions: NonNullable<
-  NonNullable<ActorContext['activeCompany']>['commercialIntakePermissions']
-> = [
-  'commercial.request.read',
-  'commercial.request.create',
-  'commercial.opportunity.read',
-  'commercial.opportunity.create',
-];
 
 function actorFor(
   company: { id: string; displayName: string },
@@ -41,11 +33,18 @@ function actorFor(
     workspacePermissions: [],
     activeCompany: {
       ...company,
-      clientPermissions: ['client.read'],
-      commercialIntakePermissions: canUpdateNextAction
-        ? [...intakePermissions, 'commercial.opportunity.next_action.update']
-        : intakePermissions,
-      commercialIntakePermissionSetVersion: canUpdateNextAction ? 'v2' : 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-assignment',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: canUpdateNextAction ? 'v2' : 'v1',
+          assignmentId: 'intake-assignment',
+        },
+      ),
     },
   };
 }

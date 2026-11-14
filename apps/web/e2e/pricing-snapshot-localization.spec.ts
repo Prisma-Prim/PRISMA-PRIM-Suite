@@ -211,6 +211,11 @@ async function installRoutes(page: Page) {
                       version: 'v1',
                       assignmentId: 'adjustment-651',
                     },
+                    {
+                      bundle: 'company_commercial_intake',
+                      version: 'v2',
+                      assignmentId: 'intake-651',
+                    },
                   ),
                 },
               }

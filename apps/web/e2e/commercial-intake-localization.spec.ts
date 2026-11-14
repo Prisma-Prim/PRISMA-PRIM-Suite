@@ -8,6 +8,7 @@ import {
   buildClientRequest,
   requestListItemFor,
 } from '../src/test/commercial-intake-responses';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const locales = [
   {
@@ -160,6 +161,20 @@ async function installRoutes(page: Page) {
                     'commercial.opportunity.create',
                     'commercial.request.client.associate',
                   ],
+                  // The commercial screens read these grants; App still reads the
+                  // per-bundle fields above.
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'demo-client',
+                    },
+                    {
+                      bundle: 'company_commercial_intake',
+                      version: 'v3',
+                      assignmentId: 'demo-intake',
+                    },
+                  ),
                 },
               }
             : {}),

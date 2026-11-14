@@ -11,7 +11,6 @@ import {
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
-import { withCompanyGrants } from './access/company-grants.test-fixture';
 import {
   buildClientRequest,
   requestListItemFor,
@@ -34,6 +33,11 @@ import {
   malformedPdfBytes,
 } from './commercial-pdf/commercial-pdf.test-fixture';
 import type { CommercialPdfTarget } from './commercial-pdf/commercial-pdf-response';
+import { holds } from './access/company-grants';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 
 const companyId = modelOfferFixture().companyId,
   opportunityId = modelOfferFixture().opportunityId;
@@ -46,6 +50,49 @@ function companyOf(actor: ActorContext) {
   const company = actor.activeCompany;
   if (!company) throw new Error('Expected the synthetic PDF Company.');
   return company;
+}
+type Company = ReturnType<typeof companyOf>;
+/** The Company without its Client read, per-bundle field and grant alike. */
+function withoutClientRead(company: Company): Company {
+  return {
+    ...company,
+    clientPermissions: [],
+    grants: withoutCompanyGrants(
+      company.grants,
+      'company_director_client_access',
+    ),
+  };
+}
+/** The Company without any Offer read, per-bundle field and grants alike. */
+function withoutOfferRead(company: Company): Company {
+  return {
+    ...company,
+    offerPermissions: [],
+    grants: withoutCompanyGrants(
+      company.grants,
+      'company_offer_preparer',
+      'company_offer_approver',
+    ),
+  };
+}
+/**
+ * The Company keeping only the Offer read. No registry bundle confers that
+ * read alone; the Offer Approver is the one without preparation, so the
+ * commercial PDF keeps its Offer read while the Offer editing grant goes.
+ */
+function withOnlyOfferRead(company: Company): Company {
+  return {
+    ...company,
+    offerPermissions: ['commercial.offer.read'],
+    grants: withCompanyGrants(
+      withoutCompanyGrants(company.grants, 'company_offer_preparer'),
+      {
+        bundle: 'company_offer_approver',
+        version: 'v1',
+        assignmentId: 'offer-reader-965',
+      },
+    ),
+  };
 }
 function actor(): ActorContext {
   return {
@@ -288,7 +335,11 @@ function installTransport() {
       if (state.signed) {
         if (
           !state.actor.workspacePermissions.includes('client.manage') &&
-          !companyOf(state.actor).clientPermissions?.includes('client.read')
+          !holds(
+            companyOf(state.actor),
+            'company_director_client_access',
+            'client.read',
+          )
         )
           return new Response(null, { status: 403 });
         const approved = approvedSigningContract(),
@@ -459,13 +510,17 @@ it('keeps the exact PDF across an actual App edit-authority remount while the ol
   await waitFor(() => expect(state.pdf).toHaveLength(1));
   // Editing grant removal keeps the owner read; the existing key must still remount the editor.
   state.head = 2;
+  const reader = withOnlyOfferRead(companyOf(state.actor));
   await revalidate(state, {
     ...state.actor,
     activeCompany: {
-      ...companyOf(state.actor),
-      offerPermissions: ['commercial.offer.read'],
+      ...reader,
       profitabilityContributorPermissionAssignmentId: undefined,
       profitabilityContributorPermissions: [],
+      grants: withoutCompanyGrants(
+        reader.grants,
+        'company_profitability_contributor',
+      ),
     },
   });
   await waitFor(() =>
@@ -532,7 +587,7 @@ it.each([200, 403])(
     const original = state.actor;
     await revalidate(state, {
       ...original,
-      activeCompany: { ...companyOf(original), offerPermissions: [] },
+      activeCompany: withoutOfferRead(companyOf(original)),
     });
     await waitFor(() =>
       expect(
@@ -576,10 +631,7 @@ it('publishes only displayed absence through an actual reader loading/error, pre
   state.head = 2;
   await revalidate(state, {
     ...state.actor,
-    activeCompany: {
-      ...companyOf(state.actor),
-      offerPermissions: ['commercial.offer.read'],
-    },
+    activeCompany: withOnlyOfferRead(companyOf(state.actor)),
   });
   await waitFor(() =>
     expect(
@@ -831,7 +883,7 @@ it.each([200, 403])(
       workspacePermissions: granted.workspacePermissions.filter(
         (p) => p !== 'client.manage',
       ),
-      activeCompany: { ...companyOf(granted), clientPermissions: [] },
+      activeCompany: withoutClientRead(companyOf(granted)),
     });
     await waitFor(() => expect(state.pdf[0].signal?.aborted).toBe(true));
     expect(
@@ -883,7 +935,7 @@ it.each(['offer', 'contract'] satisfies ('offer' | 'contract')[])(
       workspacePermissions: state.actor.workspacePermissions.filter(
         (p) => p !== 'client.manage',
       ),
-      activeCompany: { ...companyOf(state.actor), clientPermissions: [] },
+      activeCompany: withoutClientRead(companyOf(state.actor)),
     });
     expect(state.pdf[0].signal?.aborted).toBe(false);
     await act(async () => state.pdf[0].resolve(await pdfReply(target(kind))));
@@ -920,10 +972,10 @@ it.each(['read', 'manage'])(
               (p) => p !== 'client.manage',
             )
           : state.actor.workspacePermissions,
-      activeCompany: {
-        ...companyOf(state.actor),
-        clientPermissions: remaining === 'manage' ? [] : ['client.read'],
-      },
+      activeCompany:
+        remaining === 'manage'
+          ? withoutClientRead(companyOf(state.actor))
+          : { ...companyOf(state.actor), clientPermissions: ['client.read'] },
     });
     expect(state.pdf[0].signal?.aborted).toBe(false);
     await act(async () =>
@@ -1014,7 +1066,7 @@ it('clears an EXECUTED Contract failed exact retry after consumed Client loss wh
     workspacePermissions: state.actor.workspacePermissions.filter(
       (permission) => permission !== 'client.manage',
     ),
-    activeCompany: { ...companyOf(state.actor), clientPermissions: [] },
+    activeCompany: withoutClientRead(companyOf(state.actor)),
   });
   await waitFor(() =>
     expect(
@@ -1049,7 +1101,7 @@ it.each([false, true])(
       workspacePermissions: granted.workspacePermissions.filter(
         (permission) => permission !== 'client.manage',
       ),
-      activeCompany: { ...companyOf(granted), clientPermissions: [] },
+      activeCompany: withoutClientRead(companyOf(granted)),
     };
     state.nextActorRead = actorReply.promise;
     await revalidate(state, denied);

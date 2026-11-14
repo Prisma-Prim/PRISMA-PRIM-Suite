@@ -11,19 +11,28 @@ import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { buildRequestListItem } from '../test/commercial-intake-responses';
 import { ClientCommercialOverview } from './ClientCommercialOverview';
+import { readCurrentActor } from '../access/current-actor';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company-1',
   displayName: 'Synthetic Company',
-  clientPermissions: ['client.read'],
-  clientPermissionAssignmentId: 'client-assignment',
-  clientPermissionSetVersion: 'v2',
-  commercialIntakePermissions: [
-    'commercial.request.read',
-    'commercial.opportunity.read',
-  ],
-  commercialIntakePermissionAssignmentId: 'intake-assignment',
-  commercialIntakePermissionSetVersion: 'v4',
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'client-assignment',
+    },
+    {
+      bundle: 'company_commercial_intake',
+      version: 'v4',
+      assignmentId: 'intake-assignment',
+    },
+  ),
 };
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -168,28 +177,20 @@ it.each([
   },
 );
 
-it.each([
-  'client-only',
-  'intake-only',
-  'unknown-client-capture',
-  'unknown-intake-capture',
-] as const)(
+it.each(['client-only', 'intake-only'] as const)(
   'does not prefetch or display protected facts for %s',
   (caseName) => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
-    const activeCompany = { ...company };
-    if (caseName === 'client-only')
-      activeCompany.commercialIntakePermissions = [];
-    if (caseName === 'intake-only') activeCompany.clientPermissions = [];
-    if (caseName === 'unknown-client-capture')
-      Reflect.set(activeCompany, 'clientPermissionSetVersion', 'future');
-    if (caseName === 'unknown-intake-capture')
-      Reflect.set(
-        activeCompany,
-        'commercialIntakePermissionSetVersion',
-        'future',
-      );
+    const activeCompany = {
+      ...company,
+      grants: withoutCompanyGrants(
+        company.grants,
+        caseName === 'client-only'
+          ? 'company_commercial_intake'
+          : 'company_director_client_access',
+      ),
+    };
     render(
       <ClientCommercialOverview
         {...props({ actor: { ...actor, activeCompany } })}
@@ -197,6 +198,35 @@ it.each([
     );
     expect(screen.queryByRole('region')).not.toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
+  },
+);
+
+it.each([
+  ['unknown-client-capture', 'company_director_client_access'],
+  ['unknown-intake-capture', 'company_commercial_intake'],
+] as const)(
+  'refuses the whole current Actor for %s, so no protected fact is offered',
+  async (_caseName, bundle) => {
+    // An unknown captured version refuses the whole current Actor (#1332), so
+    // the overview never receives authority from it.
+    const read = (value: unknown) =>
+      readCurrentActor({
+        api: { request: async () => ({ status: 'ok', value }) },
+      });
+    expect((await read(actor)).status).toBe('ok');
+    expect(
+      await read({
+        ...actor,
+        activeCompany: {
+          ...company,
+          grants: company.grants?.map((grant) =>
+            grant.bundle === bundle
+              ? { ...grant, permissionSetVersion: 'future' }
+              : grant,
+          ),
+        },
+      }),
+    ).toEqual({ status: 'error' });
   },
 );
 
@@ -236,7 +266,11 @@ it.each([
           ...actor,
           activeCompany: {
             ...company,
-            commercialIntakePermissionAssignmentId: 'replacement-intake',
+            grants: withCompanyGrants(company.grants, {
+              bundle: 'company_commercial_intake',
+              version: 'v4',
+              assignmentId: 'replacement-intake',
+            }),
           },
         };
       if (change === 'client-identity') next.clientIdentityRevision = 1;
@@ -317,7 +351,13 @@ it('retires loaded affairs on a current refusal and revalidates without clearing
     .mockResolvedValueOnce(
       Response.json({
         ...actor,
-        activeCompany: { ...company, commercialIntakePermissions: [] },
+        activeCompany: {
+          ...company,
+          grants: withoutCompanyGrants(
+            company.grants,
+            'company_commercial_intake',
+          ),
+        },
       }),
     );
   vi.stubGlobal('fetch', fetch);

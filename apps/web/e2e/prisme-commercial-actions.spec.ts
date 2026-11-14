@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import {
   buildClientRequest,
   requestListItemFor,
@@ -42,6 +43,20 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
               'commercial.opportunity.create',
               'commercial.opportunity.next_action.update',
             ],
+            // The commercial screens read these grants; App still reads the
+            // per-bundle fields above.
+            grants: companyGrants(
+              {
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'client-actions',
+              },
+              {
+                bundle: 'company_commercial_intake',
+                version: 'v2',
+                assignmentId: 'intake-actions',
+              },
+            ),
           },
         },
       });
