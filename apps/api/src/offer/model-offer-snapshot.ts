@@ -88,7 +88,7 @@ function readStoredSnapshot(row: VersionRow, illustrativeReference: number) {
     },
     content: readOfferModelContent(source.content),
   } satisfies ApprovedOfferModelSource;
-  // Unlike the legacy internal draft, this variant declares its own tax meaning.
+  // Unlike the APPROVED_ESTIMATE_INTERNAL_DRAFT variant, this variant declares its own tax meaning.
   const priceSource = storedApprovedEstimatePrice(row);
   const financial = exactRecord(snapshot.financialDeclaration, [
     'kind',

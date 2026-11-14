@@ -60,7 +60,7 @@ export class ContractDecisionQueueService {
           });
           modelDecision = true;
         } catch (error) {
-          // Optional source/model rights never become a prerequisite for legacy work.
+          // Optional source/model rights never become a prerequisite for illustrative work.
           if (!(error instanceof ForbiddenException)) throw error;
         }
         const rows = await this.database.connection

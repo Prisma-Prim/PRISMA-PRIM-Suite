@@ -6,9 +6,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import {
-  LegacyContractPanel,
+  IllustrativeContractPanel,
   type ContractPanelProps,
-} from './LegacyContractPanel';
+} from './IllustrativeContractPanel';
 import { ModelContractPanel } from './ModelContractPanel';
 import {
   readModelContract,
@@ -29,7 +29,7 @@ export function ContractPanel(props: PdfContractPanelProps) {
       value: generation.current.value + 1,
     };
   const c = props.actor.activeCompany;
-  const legacyKey = JSON.stringify([
+  const illustrativeKey = JSON.stringify([
     generation.current.value,
     props.actor.active,
     props.actor.workspaceId,
@@ -71,14 +71,23 @@ export function ContractPanel(props: PdfContractPanelProps) {
     c?.clientPermissions?.includes('client.read') ||
       props.actor.workspacePermissions.includes('client.manage'),
   ]);
-  return <ContractJourneyOwner key={key} {...props} legacyKey={legacyKey} />;
+  return (
+    <ContractJourneyOwner
+      key={key}
+      {...props}
+      illustrativeKey={illustrativeKey}
+    />
+  );
 }
 type Route =
   | { kind: 'loading' | 'error' | 'denied' }
-  | { kind: 'legacy'; initialRead: { contract: unknown; offer?: unknown } }
+  | {
+      kind: 'illustrative';
+      initialRead: { contract: unknown; offer?: unknown };
+    }
   | { kind: 'model'; contract: ModelContractView | null; offer?: unknown };
 function ContractJourneyOwner(
-  props: PdfContractPanelProps & { legacyKey: string },
+  props: PdfContractPanelProps & { illustrativeKey: string },
 ) {
   const copy = useContractCopy(),
     [route, setRoute] = useState<Route>({ kind: 'loading' }),
@@ -155,7 +164,7 @@ function ContractJourneyOwner(
             setRoute({ kind: 'model', contract: read });
           } else
             setRoute({
-              kind: 'legacy',
+              kind: 'illustrative',
               initialRead: { contract: result.value },
             });
           return;
@@ -195,11 +204,14 @@ function ContractJourneyOwner(
             setRoute({ kind: 'model', contract: null, offer: source.value });
           else
             setRoute({
-              kind: 'legacy',
+              kind: 'illustrative',
               initialRead: { contract: result.value, offer: source.value },
             });
         } else
-          setRoute({ kind: 'legacy', initialRead: { contract: result.value } });
+          setRoute({
+            kind: 'illustrative',
+            initialRead: { contract: result.value },
+          });
       } catch {
         if (!signal.aborted) setRoute({ kind: 'error' });
       }
@@ -207,10 +219,10 @@ function ContractJourneyOwner(
     return () => controller.abort();
   }, [props.identity, props.opportunityId, companyId, mayRead, path, reload]);
   if (!mayRead) return null;
-  if (route.kind === 'legacy')
+  if (route.kind === 'illustrative')
     return (
-      <LegacyContractPanel
-        key={props.legacyKey}
+      <IllustrativeContractPanel
+        key={props.illustrativeKey}
         {...props}
         initialRead={route.initialRead}
       />

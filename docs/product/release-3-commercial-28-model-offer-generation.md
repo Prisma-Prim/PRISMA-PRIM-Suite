@@ -59,8 +59,8 @@ model, tax amount, first-tenant identity or assignment.
     later state changes, while revoked authority still prevents replay disclosure.
 11. An unauthorized or foreign-scope user cannot infer source, Offer, history,
     count, event or representation existence.
-12. A legacy user continues the original Snapshot and internal-only journeys
-    without changed bytes, grants, checks, Contract sources or historical meaning.
+12. The illustrative Snapshot and internal-only journeys are product paths and
+    stay available without changed bytes, grants, checks, Contract sources or historical meaning.
 
 ## 28.3 One identity, three closed Version variants
 

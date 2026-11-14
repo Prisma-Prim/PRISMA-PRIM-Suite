@@ -5923,7 +5923,7 @@ function qualityRun() {
   };
 }
 
-it('wires scoped plan rejection through the actual Legacy Contract parent without replacing the manual draft', async () => {
+it('wires scoped plan rejection through the actual illustrative Contract parent without replacing the manual draft', async () => {
   const native = projectActor(),
     current: ActorContext = {
       ...native,

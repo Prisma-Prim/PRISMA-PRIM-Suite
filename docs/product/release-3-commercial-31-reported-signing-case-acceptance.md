@@ -67,8 +67,8 @@ open under §19.15; this bounded record resolves only D10's rehearsal outcome.
     those results or whole-milestone completion.
 
 Only ordinary `CONTRACT` / origin and provenance `COMPANY_MODEL_OFFER` is added.
-Legacy accepted/direct/early preparation, Precontract and Addendum paths remain
-unchanged. This mode still refuses legacy simulated-signature and Addendum
+Illustrative accepted/direct/early preparation, Precontract and Addendum paths remain
+product paths, unchanged. This mode still refuses illustrative simulated-signature and Addendum
 commands; they are not an alternative declaration or correction route.
 
 ## 31.3 Exact eligibility and frozen content

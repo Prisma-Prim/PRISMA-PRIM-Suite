@@ -649,7 +649,7 @@ export function readAcceptedOfferSource(value: unknown): string | null {
     ? string(version.id)
     : null;
 }
-/** This renderer/source family has no binding in the legacy Contract journey. */
+/** This renderer/source family has no binding in the illustrative Contract journey. */
 function unsupportedModelOfferSource(version: Record<string, unknown>) {
   if (version.provenance !== 'COMPANY_MODEL_ESTIMATE') return false;
   if (

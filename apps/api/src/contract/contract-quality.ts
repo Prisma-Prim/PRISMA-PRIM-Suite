@@ -277,7 +277,7 @@ export function readContractQualityResults(
   if (!Array.isArray(value) || value.length !== codes.length)
     throw new Error('Invalid Contract Quality Check results.');
   return codes.map((code, index) => {
-    if (!isLegacyQualityCode(code))
+    if (!isIllustrativeQualityCode(code))
       throw new Error('Invalid illustrative Contract quality code.');
     const item: unknown = value[index];
     if (
@@ -311,7 +311,7 @@ export function requireHeadContractVersion(input: {
     });
 }
 
-function isLegacyQualityCode(
+function isIllustrativeQualityCode(
   code: ContractQualityCode,
 ): code is keyof typeof CONTRACT_QUALITY_RULES {
   return Object.hasOwn(CONTRACT_QUALITY_RULES, code);

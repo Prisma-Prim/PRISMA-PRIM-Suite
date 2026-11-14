@@ -26,7 +26,7 @@ import {
   readModelContractQuality,
   type ModelContractQuality,
 } from './model-contract-quality-response';
-import type { ContractPanelProps } from './LegacyContractPanel';
+import type { ContractPanelProps } from './IllustrativeContractPanel';
 
 export type ModelContractDraft = {
   documentDate: string;

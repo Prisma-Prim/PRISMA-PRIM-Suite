@@ -39,7 +39,7 @@ export async function grantQueueReader(
   ).toMatchObject({ active: true, permissionSetVersion: version });
 }
 
-export async function prepareLegacyQueueScope(
+export async function prepareIllustrativeQueueScope(
   fixture: Fixture,
   readerVersion: 'v1' | 'v2' = 'v2',
 ) {
@@ -108,7 +108,7 @@ export async function prepareLegacyQueueScope(
         pricingSnapshotId: target.snapshotId,
         recipient: { kind: 'PRIMARY' },
         validityDays: 30,
-        scopeNote: 'Synthetic legacy scope',
+        scopeNote: 'Synthetic illustrative scope',
         commercialConditions: null,
       }),
     );
@@ -139,8 +139,8 @@ export async function prepareLegacyQueueScope(
   return { source, initial, invoke, newOpportunity, direct, offer };
 }
 
-export async function prepareAllLegacyQueueKinds(fixture: Fixture) {
-  const ready = await prepareLegacyQueueScope(fixture, 'v1');
+export async function prepareAllIllustrativeQueueKinds(fixture: Fixture) {
+  const ready = await prepareIllustrativeQueueScope(fixture, 'v1');
   const parent = await ready.direct();
   const parentId = responseString(parent, 'id'),
     parentVersionId = responseString(responseRecord(parent.version), 'id');
