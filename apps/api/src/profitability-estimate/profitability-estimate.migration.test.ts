@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { PoolClient } from 'pg';
@@ -64,7 +62,7 @@ const frozenInputs = readProfitabilitySubmission({
   targetProfitability: '+020.0000000000000000000001',
   pricingIntent: {
     kind: 'STRATEGIC',
-    reason: '  Synthetic preserved reason  ',
+    reason: '  Synthetic strategic reason  ',
   },
   costConfirmation: true,
 });
@@ -77,33 +75,11 @@ const calculationRule = {
   percentageScale: 2,
   rounding: 'HALF_UP',
 };
-const newTables = [
-  'profitability_estimates',
-  'profitability_estimate_versions',
-  'profitability_estimate_decisions',
-  'profitability_estimate_receipts',
-  'profitability_estimate_events',
-];
-const legacyTables = [
-  'workspaces',
-  'internal_users',
-  'workspace_memberships',
-  'companies',
-  'company_role_assignments',
-  'client_requests',
-  'opportunities',
-  'activity_log_events',
-  'pricing_snapshots',
-  'offer_versions',
-];
 
 describe.skipIf(!databaseUrl)(
-  'Confirmed-cost additive migration and database invariants',
+  'Confirmed-cost Profitability Estimate invariants on a database migrated from empty',
   () => {
     let database: IsolatedPostgresTestDatabase | undefined;
-    let before: unknown;
-    let after: unknown;
-    let initiallyEmpty: unknown;
 
     function pool() {
       if (!database) throw new Error('Migration fixture is unavailable.');
@@ -161,7 +137,7 @@ describe.skipIf(!databaseUrl)(
       );
     }
 
-    async function seedLegacy(value: typeof scope) {
+    async function seedScope(value: typeof scope) {
       await pool().query(
         `INSERT INTO workspace_memberships (id,workspace_id,internal_user_id) VALUES ($1,$2,$3)`,
         [value.membershipId, value.workspaceId, value.userId],
@@ -169,7 +145,7 @@ describe.skipIf(!databaseUrl)(
       await pool().query(
         `INSERT INTO companies
       (id,workspace_id,display_name,created_by_internal_user_id,created_by_workspace_membership_id,registration_idempotency_key)
-      VALUES ($1,$2,'Synthetic preserved Company',$3,$4,$5)`,
+      VALUES ($1,$2,'Synthetic Company',$3,$4,$5)`,
         [
           value.companyId,
           value.workspaceId,
@@ -185,7 +161,7 @@ describe.skipIf(!databaseUrl)(
       await pool().query(
         `INSERT INTO client_requests
       (id,workspace_id,company_id,original_text,captured_by_internal_user_id,captured_by_workspace_membership_id)
-      VALUES ($1,$2,$3,'Synthetic preserved request',$4,$5)`,
+      VALUES ($1,$2,$3,'Synthetic request',$4,$5)`,
         [
           value.requestId,
           value.workspaceId,
@@ -197,7 +173,7 @@ describe.skipIf(!databaseUrl)(
       await pool().query(
         `INSERT INTO opportunities
       (id,workspace_id,company_id,client_request_id,title,next_action,responsible_internal_user_id,responsible_workspace_membership_id)
-      VALUES ($1,$2,$3,$4,'Synthetic preserved Opportunity','Synthetic next action',$5,$6)`,
+      VALUES ($1,$2,$3,$4,'Synthetic Opportunity','Synthetic next action',$5,$6)`,
         [
           value.opportunityId,
           value.workspaceId,
@@ -213,202 +189,101 @@ describe.skipIf(!databaseUrl)(
       if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
       database = await createIsolatedPostgresTestDatabase({
         baseDatabaseUrl: databaseUrl,
-        namePrefix: 'profitability_upgrade',
+        namePrefix: 'profitability_schema',
       });
-      const previous = await mkdtemp(join(tmpdir(), 'prisma-498-upgrade-'));
-      try {
-        const journal: unknown = JSON.parse(
-          await readFile('drizzle/meta/_journal.json', 'utf8'),
-        );
-        if (
-          typeof journal !== 'object' ||
-          journal === null ||
-          !('entries' in journal) ||
-          !Array.isArray(journal.entries)
-        )
-          throw new Error('Invalid migration journal.');
-        const tags = journal.entries.map((entry: unknown) => {
-          if (
-            typeof entry !== 'object' ||
-            entry === null ||
-            !('tag' in entry) ||
-            typeof entry.tag !== 'string' ||
-            !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-          )
-            throw new Error('Invalid migration tag.');
-          return entry.tag;
-        });
-        const migrationIndex = tags.indexOf(
-          '0052_confirmed_cost_profitability_estimate',
-        );
-        expect(migrationIndex).toBeGreaterThan(0);
-        expect(tags[migrationIndex - 1]).toBe('0051_contract_first_version');
-        await mkdir(join(previous, 'meta'));
-        await writeFile(
-          join(previous, 'meta/_journal.json'),
-          JSON.stringify({
-            ...journal,
-            entries: journal.entries.slice(0, migrationIndex),
-          }),
-        );
-        for (const tag of tags.slice(0, migrationIndex))
-          await cp(join('drizzle', `${tag}.sql`), join(previous, `${tag}.sql`));
-        const connection = drizzle(pool());
-        await migrate(connection, { migrationsFolder: previous });
-        await pool().query(
-          `INSERT INTO workspaces (id,name) VALUES ($1,'Synthetic preserved Workspace'),($2,'Synthetic other Workspace')`,
-          [scope.workspaceId, otherWorkspace.workspaceId],
-        );
-        await pool().query(
-          `INSERT INTO internal_users (id,external_provider,external_subject,display_name,email)
+      await migrate(drizzle(pool()), { migrationsFolder: resolve('drizzle') });
+      await pool().query(
+        `INSERT INTO workspaces (id,name) VALUES ($1,'Synthetic Workspace'),($2,'Synthetic other Workspace')`,
+        [scope.workspaceId, otherWorkspace.workspaceId],
+      );
+      await pool().query(
+        `INSERT INTO internal_users (id,external_provider,external_subject,display_name,email)
         VALUES ($1,'synthetic','profitability-migration','Synthetic Actor','synthetic@example.test')`,
-          [scope.userId],
-        );
-        await seedLegacy(scope);
-        await seedLegacy(otherWorkspace);
-        await pool().query(
-          `INSERT INTO companies
+        [scope.userId],
+      );
+      await seedScope(scope);
+      await seedScope(otherWorkspace);
+      await pool().query(
+        `INSERT INTO companies
         (id,workspace_id,display_name,created_by_internal_user_id,created_by_workspace_membership_id,registration_idempotency_key)
         VALUES ($1,$2,'Synthetic other Company',$3,$4,$5)`,
-          [
-            otherCompany.companyId,
-            scope.workspaceId,
-            scope.userId,
-            scope.membershipId,
-            otherCompany.companyId,
-          ],
-        );
-        await seedOpportunity(otherCompany);
-        for (const [bundle, version] of [
-          ['company_context_access', null],
-          ['company_pricing_user', 'v1'],
-          ['company_offer_preparer', 'v1'],
-          ['company_opportunity_manager', 'v1'],
-        ])
-          await pool().query(
-            `INSERT INTO company_role_assignments (workspace_id,company_id,workspace_membership_id,bundle,permission_set_version)
-          VALUES ($1,$2,$3,$4,$5)`,
-            [
-              scope.workspaceId,
-              scope.companyId,
-              scope.membershipId,
-              bundle,
-              version,
-            ],
-          );
-        await pool().query(
-          `INSERT INTO activity_log_events
-        (workspace_id,actor_internal_user_id,actor_workspace_membership_id,action,target_type,target_company_id,metadata,idempotency_key)
-        VALUES ($1,$2,$3,'company.registered','company',$4,'{}'::jsonb,'synthetic-preserved-event')`,
-          [
-            scope.workspaceId,
-            scope.userId,
-            scope.membershipId,
-            scope.companyId,
-          ],
-        );
-        const capture = () =>
-          Promise.all(
-            legacyTables.map(
-              async (table) =>
-                (
-                  await pool().query(
-                    // 0066 later adds the nullable Opportunity Sales Stage,
-                    // which this upgrade assigns to no row.
-                    `SELECT (to_jsonb(preserved_row) - 'sales_stage_id')::text AS value FROM ${table} AS preserved_row ORDER BY id`,
-                  )
-                ).rows,
-            ),
-          );
-        before = await capture();
-        await migrate(connection, { migrationsFolder: resolve('drizzle') });
-        after = await capture();
-        initiallyEmpty = await Promise.all(
-          newTables.map(
-            async (table) =>
-              (
-                await pool().query(
-                  `SELECT count(*)::int AS count FROM ${table}`,
-                )
-              ).rows,
-          ),
-        );
-        await transaction(async (client) => {
-          await client.query(
-            `INSERT INTO profitability_estimates
+        [
+          otherCompany.companyId,
+          scope.workspaceId,
+          scope.userId,
+          scope.membershipId,
+          otherCompany.companyId,
+        ],
+      );
+      await seedOpportunity(otherCompany);
+      await transaction(async (client) => {
+        await client.query(
+          `INSERT INTO profitability_estimates
           (id,workspace_id,company_id,opportunity_id,client_request_id) VALUES ($1,$2,$3,$4,$5)`,
-            [
-              estimateId,
-              scope.workspaceId,
-              scope.companyId,
-              scope.opportunityId,
-              scope.requestId,
-            ],
-          );
-          await insertVersion(client);
-          await client.query(
-            'UPDATE profitability_estimates SET latest_version_number=1 WHERE id=$1',
-            [estimateId],
-          );
-        });
-        await pool().query(
-          `INSERT INTO profitability_estimate_decisions
+          [
+            estimateId,
+            scope.workspaceId,
+            scope.companyId,
+            scope.opportunityId,
+            scope.requestId,
+          ],
+        );
+        await insertVersion(client);
+        await client.query(
+          'UPDATE profitability_estimates SET latest_version_number=1 WHERE id=$1',
+          [estimateId],
+        );
+      });
+      await pool().query(
+        `INSERT INTO profitability_estimate_decisions
         (id,workspace_id,company_id,estimate_id,opportunity_id,client_request_id,version_id,version_number,code,decided_by_workspace_membership_id,decided_at)
         VALUES ($1,$2,$3,$4,$5,$6,$7,1,'MODIFY',$8,now())`,
-          [
-            decisionId,
-            scope.workspaceId,
-            scope.companyId,
-            estimateId,
-            scope.opportunityId,
-            scope.requestId,
-            versionId,
-            scope.membershipId,
-          ],
-        );
-        await pool().query(
-          `INSERT INTO profitability_estimate_receipts
+        [
+          decisionId,
+          scope.workspaceId,
+          scope.companyId,
+          estimateId,
+          scope.opportunityId,
+          scope.requestId,
+          versionId,
+          scope.membershipId,
+        ],
+      );
+      await pool().query(
+        `INSERT INTO profitability_estimate_receipts
         (id,workspace_id,company_id,actor_workspace_membership_id,command_kind,idempotency_key,fingerprint,opportunity_id,version_id,response,created_at)
         VALUES ($1,$2,$3,$4,'create','synthetic-key','synthetic-fingerprint',$5,$6,$7::jsonb,now())`,
-          [
-            receiptId,
-            scope.workspaceId,
-            scope.companyId,
-            scope.membershipId,
-            scope.opportunityId,
-            versionId,
-            JSON.stringify({ inputs, results }),
-          ],
-        );
-        await pool().query(
-          `INSERT INTO profitability_estimate_events
+        [
+          receiptId,
+          scope.workspaceId,
+          scope.companyId,
+          scope.membershipId,
+          scope.opportunityId,
+          versionId,
+          JSON.stringify({ inputs, results }),
+        ],
+      );
+      await pool().query(
+        `INSERT INTO profitability_estimate_events
         (id,workspace_id,company_id,estimate_id,version_id,version_number,opportunity_id,client_request_id,action,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
         VALUES ($1,$2,$3,$4,$5,1,$6,$7,'profitability_estimate_version.created',$8,$9,now(),$10::jsonb)`,
-          [
-            eventId,
-            scope.workspaceId,
-            scope.companyId,
-            estimateId,
-            versionId,
-            scope.opportunityId,
-            scope.requestId,
-            scope.userId,
-            scope.membershipId,
-            JSON.stringify({ estimateId, versionNumber: 1 }),
-          ],
-        );
-      } finally {
-        await rm(previous, { recursive: true, force: true });
-      }
-    }, 30_000);
+        [
+          eventId,
+          scope.workspaceId,
+          scope.companyId,
+          estimateId,
+          versionId,
+          scope.opportunityId,
+          scope.requestId,
+          scope.userId,
+          scope.membershipId,
+          JSON.stringify({ estimateId, versionNumber: 1 }),
+        ],
+      );
+    }, 60_000);
 
     afterAll(async () => {
       if (database) await database.close();
-    });
-
-    it('upgrades populated 0051 without changing legacy rows or backfilling any new storage', () => {
-      expect(after).toEqual(before);
-      expect(initiallyEmpty).toEqual(newTables.map(() => [{ count: 0 }]));
     });
 
     it('freezes accepted decimal spelling and precision without conversion or recomputation', async () => {
@@ -423,7 +298,7 @@ describe.skipIf(!databaseUrl)(
       ).toEqual([{ inputs, results, calculation_rule: calculationRule }]);
     });
 
-    it('requires captured v1 for new opt-in bundles and preserves independent grants', async () => {
+    it('requires captured v1 for the profitability opt-in bundles', async () => {
       for (const bundle of [
         'company_profitability_contributor',
         'company_profitability_director',

@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -8,7 +6,6 @@ import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgre
 
 // Synthetic records only; nothing here is a real price, Offer or Client.
 const databaseUrl = process.env.TEST_DATABASE_URL;
-const MIGRATION_SUFFIX = '_offer_adjusted_snapshot';
 const WORKSPACE = '00000000-0000-4000-8000-000000005590';
 const USER = '00000000-0000-4000-8000-000000005591';
 const MEMBERSHIP = '00000000-0000-4000-8000-000000005592';
@@ -43,58 +40,24 @@ const PASSING = [
 ].map((code) => ({ code, status: 'PASS' }));
 
 it.skipIf(!databaseUrl)(
-  'admits only Offer Template v2, rule set v2 and version-bound ruleSetVersion events while preserving delivered v1 evidence',
+  'admits only Offer Template v1 or v2, the bound rule set and version-bound ruleSetVersion events on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'offer_o8_upgrade',
+      namePrefix: 'offer_o8_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const index = tags.findIndex((tag) => tag.endsWith(MIGRATION_SUFFIX));
-      expect(index).toBeGreaterThan(tags.indexOf('0062_contract_precontracts'));
-      previous = await mkdtemp(join(tmpdir(), 'prisma-559-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, index),
-        }),
-      );
-      for (const tag of tags.slice(0, index))
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(`
-        INSERT INTO workspaces (id, name) VALUES ('${WORKSPACE}', 'Synthetic O8 upgrade');
+        INSERT INTO workspaces (id, name) VALUES ('${WORKSPACE}', 'Synthetic O8 binding');
         INSERT INTO internal_users (id, external_provider, external_subject, display_name, email)
-          VALUES ('${USER}', 'deterministic-test', 'o8-upgrade', 'O8 Owner', 'o8@example.test');
+          VALUES ('${USER}', 'deterministic-test', 'o8-binding', 'O8 Owner', 'o8@example.test');
         INSERT INTO workspace_memberships (id, workspace_id, internal_user_id)
           VALUES ('${MEMBERSHIP}', '${WORKSPACE}', '${USER}');
         INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
@@ -256,44 +219,21 @@ it.skipIf(!databaseUrl)(
         });
       await approved(first, 1);
       await transmitted(first, 1);
-      // Rule set v2 and Template v2 are refused before the O8 migration.
-      await expect(transmitted(first, 2)).rejects.toMatchObject({
-        code: '23514',
-      });
-
-      const evidence = () =>
-        Promise.all(
-          [
-            'offers',
-            'offer_versions',
-            'offer_quality_runs',
-            'offer_decisions',
-            'offer_transmissions',
-            'offer_events',
-            'pricing_snapshots',
-            'pricing_snapshot_lines',
-          ].map(
-            async (table) =>
-              (
-                await query(
-                  `SELECT to_jsonb(row_value)${table === 'offer_versions' ? " - ARRAY['estimate_source_id','estimate_source_version_id','estimate_source_version_number','estimate_source_decision_id','estimate_source_decision_code','estimate_source_approved_at','estimate_source_amount','estimate_source_currency','model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
-                )
-              ).rows,
-          ),
-        );
-      const before = await evidence();
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-      expect(await evidence()).toEqual(before);
-
-      const insertVersion = (id: string, number: number, template: number) =>
+      // A null Template leaves both Template columns to their defaults.
+      const insertVersion = (
+        id: string,
+        number: number,
+        template: number | null,
+      ) =>
         query(
           `INSERT INTO offer_versions (id, workspace_id, company_id, offer_id, opportunity_id,
              client_request_id, original_client_account_id, version_number, predecessor_version_id,
              pricing_snapshot_id, recipient_client_account_id, recipient_kind, recipient_legal_name,
-             issuing_company_label, validity_days, valid_until, template_code, template_version,
-             created_by_internal_user_id, created_by_workspace_membership_id, created_at)
+             issuing_company_label, validity_days, valid_until, created_by_internal_user_id,
+             created_by_workspace_membership_id, created_at, template_code, template_version)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$7,'PRIMARY','Synthetic Recipient',
-             'Synthetic Issuer',30,$11,'OFFER_ILLUSTRATIVE',$12,$13,$14,$15)`,
+             'Synthetic Issuer',30,$11,$12,$13,$14,
+             ${template === null ? 'DEFAULT,DEFAULT' : "'OFFER_ILLUSTRATIVE',$15"})`,
           [
             id,
             WORKSPACE,
@@ -306,15 +246,20 @@ it.skipIf(!databaseUrl)(
             VERSION,
             SNAPSHOT,
             VALID_UNTIL,
-            template,
             USER,
             MEMBERSHIP,
             CREATED_AT,
+            ...(template === null ? [] : [template]),
           ],
         );
-      await expect(
-        insertVersion('00000000-0000-4000-8000-000000005609', 2, 3),
-      ).rejects.toMatchObject({ code: '23514' });
+      // An illustrative Version names Template v1 or v2; no default binds one.
+      for (const template of [3, null])
+        await expect(
+          insertVersion('00000000-0000-4000-8000-000000005609', 2, template),
+        ).rejects.toMatchObject({
+          code: '23514',
+          constraint: 'offer_versions_template_check',
+        });
       await insertVersion(SUCCESSOR, 2, 2);
       const insertRun = (versionId: string, ruleSetVersion: number) =>
         query(
@@ -360,7 +305,7 @@ it.skipIf(!databaseUrl)(
           code: '23514',
         });
       await approved(second, 2);
-      // Delivered v1 events stay valid under the binding the upgrade enforces.
+      // Every recorded ruleSetVersion matches its own Version's Template.
       expect(
         (
           await query(
@@ -383,27 +328,9 @@ it.skipIf(!databaseUrl)(
         { action: 'offer_version.transmission_recorded', version: 1 },
         { action: 'offer_version.transmission_recorded', version: 2 },
       ]);
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-      expect(
-        (
-          await query(
-            'SELECT id, template_version FROM offer_versions ORDER BY version_number',
-          )
-        ).rows,
-      ).toEqual([
-        { id: VERSION, template_version: 1 },
-        { id: SUCCESSOR, template_version: 2 },
-      ]);
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-559-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );

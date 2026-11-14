@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -24,56 +22,22 @@ const FOREIGN_KEY_VIOLATION = '23503';
 const UNIQUE_VIOLATION = '23505';
 
 it.skipIf(!databaseUrl)(
-  'adds Sales Stages without seeding any stage or expanding captured assignments, and enforces their contract',
+  'enforces the Sales Stage, history, receipt and event contract on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'sales_stage_upgrade',
+      namePrefix: 'sales_stage_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags: string[] = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const target = tags.indexOf('0066_sales_stages');
-      expect(target).toBeGreaterThan(0);
-      previous = await mkdtemp(join(tmpdir(), 'prisma-591-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, target),
-        }),
-      );
-      for (const tag of tags.slice(0, target))
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved stages')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Sales stages')`,
         [WORKSPACE],
       );
       await query(
@@ -87,7 +51,7 @@ it.skipIf(!databaseUrl)(
         [MEMBERSHIP, WORKSPACE, USER],
       );
       for (const [company, key] of [
-        [COMPANY, 'preserved-stage-company'],
+        [COMPANY, 'stage-company'],
         [OTHER_COMPANY, 'other-stage-company'],
       ] as const)
         await query(
@@ -97,53 +61,17 @@ it.skipIf(!databaseUrl)(
           [company, WORKSPACE, key, USER, MEMBERSHIP],
         );
       await query(
-        `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version)
-         VALUES ($1, $2, $3, 'company_commercial_intake', 'v3')`,
-        [WORKSPACE, COMPANY, MEMBERSHIP],
-      );
-      await query(
         `INSERT INTO client_requests (id, workspace_id, company_id, original_text, captured_by_internal_user_id,
            captured_by_workspace_membership_id)
-         VALUES ($1, $2, $3, 'Preserved request text', $4, $5)`,
+         VALUES ($1, $2, $3, 'Stage request text', $4, $5)`,
         [REQUEST, WORKSPACE, COMPANY, USER, MEMBERSHIP],
       );
       await query(
         `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title, next_action,
            responsible_internal_user_id, responsible_workspace_membership_id)
-         VALUES ($1, $2, $3, $4, 'Preserved Opportunity', 'Preserved next action', $5, $6)`,
+         VALUES ($1, $2, $3, $4, 'Stage Opportunity', 'Call back', $5, $6)`,
         [OPPORTUNITY, WORKSPACE, COMPANY, REQUEST, USER, MEMBERSHIP],
       );
-      const opportunitiesBefore = (
-        await query('SELECT * FROM opportunities ORDER BY id')
-      ).rows;
-      const assignmentsBefore = (
-        await query('SELECT * FROM company_role_assignments ORDER BY id')
-      ).rows;
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      // Existing Opportunities have no stage, a captured v3 assignment stays
-      // v3, and no migration creates a stage, a revision or a history.
-      expect(
-        (await query('SELECT * FROM opportunities ORDER BY id')).rows,
-      ).toEqual(
-        opportunitiesBefore.map((row) => ({ ...row, sales_stage_id: null })),
-      );
-      expect(
-        (await query('SELECT * FROM company_role_assignments ORDER BY id'))
-          .rows,
-      ).toEqual(assignmentsBefore);
-      for (const table of [
-        'sales_stages',
-        'sales_stage_configurations',
-        'sales_stage_configuration_commands',
-        'sales_stage_events',
-        'opportunity_stage_history',
-        'commercial_intake_stage_commands',
-      ])
-        expect(
-          (await query(`SELECT count(*)::int AS count FROM ${table}`)).rows,
-        ).toEqual([{ count: 0 }]);
 
       // Commercial Intake admits v1 to v4; the configuration bundle v1 only.
       const insertAssignment = (bundle: string, version: string | null) =>
@@ -479,13 +407,7 @@ it.skipIf(!databaseUrl)(
       ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-591-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );

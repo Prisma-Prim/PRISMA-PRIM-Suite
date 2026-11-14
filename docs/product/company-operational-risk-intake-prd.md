@@ -598,14 +598,16 @@ holding one and says the development database must be recreated
 ([#1371](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1371)). Existing public intake,
 append, intake-correction, list/detail and all history variants keep their meaning.
 
-Prove a genuine upgrade: migrate a disposable database only through the real
+From launch on, prove a genuine upgrade: migrate a disposable database only through the real
 immediate predecessor of the new migration, populate it under that schema with
 intake, both journal kinds, motivated intake successors, all three old receipt
 kinds, restricted events, inactive/revoked and live grants plus representative
 unrelated data; capture their bytes/values. Apply the actual migration chain,
 compare preserved rows and receipt JSON/fingerprints, replay old commands through
 the current public API and then correct an old journal original. A fresh-schema
-fixture or merely asserting new tables exist is insufficient. Rollout recovery
+fixture or merely asserting new tables exist is insufficient. Until launch, migration
+tests prove the current constraints on a database migrated from empty instead
+([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)). Rollout recovery
 preserves appended history: use a compatible forward correction; an older reader
 must fail closed on unknown new variants, never delete or coerce them to restore
 compatibility. No environment/CI change or new dependency is included.

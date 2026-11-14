@@ -364,7 +364,7 @@ registered actual App at1440/390, in the current four-locale Prisme frame:
   rollback of every coupled effect. No timeout-only race proof.
 - Cross-Company and same Internal User/second Workspace list/cursor/history/
   association/Activity confidentiality. Independent SQL missing/wrong binding,
-  presence/execution/immutability guards and genuine 0083 upgrade preserving old
+  presence/execution/immutability guards and, from launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), a genuine upgrade preserving old
   declarations-free Contracts, PDFs, old receipts/grants/responses/signatures,
   links/results; repeat safely, no backfill, explicit fresh grant positive.
 - Actual App loading/empty/denied/error/stale/uncertain/malformed/confirmed/reload

@@ -1,14 +1,10 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
-const MIGRATION_TAG = '0038_previous_scorpion';
-const PREVIOUS_TAG = '0037_pricing_snapshots';
 const WORKSPACE = '00000000-0000-4000-8000-000000000393';
 const OTHER_WORKSPACE = '00000000-0000-4000-8000-000000003939';
 const USER = '00000000-0000-4000-8000-000000003931';
@@ -21,57 +17,22 @@ const CHECK_VIOLATION = '23514';
 const FOREIGN_KEY_VIOLATION = '23503';
 
 it.skipIf(!databaseUrl)(
-  'adds empty legal-entity storage and two Activity actions without changing existing Clients or events',
+  'enforces the Client legal-entity, receipt and Activity action invariants on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'legal_entities_upgrade',
+      namePrefix: 'legal_entities_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      // Everything before this slice's migration, wherever integration
-      // places it; merged migrations are never renumbered.
-      const index = tags.indexOf(MIGRATION_TAG);
-      expect(index).toBeGreaterThan(0);
-      expect(tags[index - 1]).toBe(PREVIOUS_TAG);
-      const entries: unknown[] = journal.entries.slice(0, index);
-      previous = await mkdtemp(join(tmpdir(), 'prisma-393-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries }),
-      );
-      for (const tag of tags.slice(0, index))
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved Clients'), ($2, 'Other Workspace')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Legal entity Clients'), ($2, 'Other Workspace')`,
         [WORKSPACE, OTHER_WORKSPACE],
       );
       await query(
@@ -87,7 +48,7 @@ it.skipIf(!databaseUrl)(
       await query(
         `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
            created_by_workspace_membership_id, registration_idempotency_key)
-         VALUES ($1, $2, 'PRISMA-PRIM', $3, $4, 'preserved-legal-entity-company')`,
+         VALUES ($1, $2, 'PRISMA-PRIM', $3, $4, 'legal-entity-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
       );
       await query(
@@ -103,51 +64,6 @@ it.skipIf(!databaseUrl)(
          VALUES ($1, $2, $3, $4, $5), ($1, $6, $3, $4, $5)`,
         [WORKSPACE, CLIENT, COMPANY, USER, MEMBERSHIP, SECOND_CLIENT],
       );
-      await query(
-        `INSERT INTO activity_log_events (workspace_id, actor_internal_user_id,
-           actor_workspace_membership_id, action, target_type, target_client_account_id,
-           target_company_id, metadata, idempotency_key)
-         VALUES ($1, $2, $3, 'client.corrected', 'client_account', $4, $5,
-           '{"changes":{"address":{"before":null,"after":"Str. Demo 1"}}}'::jsonb,
-           'client.corrected:preserved')`,
-        [WORKSPACE, USER, MEMBERSHIP, CLIENT, COMPANY],
-      );
-      const preserved = [
-        'client_accounts',
-        'client_company_relationships',
-        'activity_log_events',
-      ];
-      const snapshot = () =>
-        Promise.all(
-          preserved.map(
-            async (table) =>
-              (await query('SELECT * FROM ' + table + ' ORDER BY id')).rows,
-          ),
-        );
-      const before = await snapshot();
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      expect(await snapshot()).toEqual(before);
-      // Every existing Client starts with zero additional entities.
-      expect(
-        (
-          await query(
-            `SELECT client.id, count(entity.id)::integer AS entities
-               FROM client_accounts AS client
-               LEFT JOIN client_legal_entities AS entity
-                 ON entity.workspace_id = client.workspace_id
-                AND entity.client_account_id = client.id
-              GROUP BY client.id ORDER BY client.id`,
-          )
-        ).rows,
-      ).toEqual([
-        { id: CLIENT, entities: 0 },
-        { id: SECOND_CLIENT, entities: 0 },
-      ]);
-      expect(
-        (await query('SELECT * FROM client_legal_entity_commands')).rows,
-      ).toEqual([]);
 
       const insertEntity = (
         values: {
@@ -236,17 +152,9 @@ it.skipIf(!databaseUrl)(
                 ($1, $2, $3, 'client_legal_entity.corrected', 'client_account', $4, $5, '{}'::jsonb, 'corrected')`,
         [WORKSPACE, USER, MEMBERSHIP, CLIENT, COMPANY],
       );
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-393-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  20_000,
+  60_000,
 );

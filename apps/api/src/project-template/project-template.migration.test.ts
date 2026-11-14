@@ -1,146 +1,59 @@
-import {
-  restoreFrozenTaskSetup,
-  applyHistoricalTaskTarget,
-} from '../task/frozen-task-migration.test-support.js';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { resolve } from 'node:path';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
-import {
-  createPostgresRestTestHarness,
-  type PostgresRestTestHarness,
-} from '../database/postgres-rest-test-harness.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const workspaceId = '00000000-0000-4000-8000-000000006340';
-
-function record(value: unknown): Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('Expected an object.');
-  return Object.fromEntries(Object.entries(value));
-}
-function text(value: unknown): string {
-  if (typeof value !== 'string') throw new Error('Expected a string.');
-  return value;
-}
-function tag(entry: unknown) {
-  const value = record(entry).tag;
-  if (typeof value !== 'string' || !/^\d{4}_[a-z0-9_-]+$/u.test(value))
-    throw new Error('Invalid migration tag.');
-  return value;
-}
+const userId = '00000000-0000-4000-8000-000000006341';
+const membershipId = '00000000-0000-4000-8000-000000006342';
+const companyId = '00000000-0000-4000-8000-000000006343';
 
 it.skipIf(!databaseUrl)(
-  'preserves every existing row and receipt without assigning a Template or new authority during its own migration',
+  'accepts the Project Template User grant only as captured v1 or v2 on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'template_upgrade',
+      namePrefix: 'template_schema',
     });
-    const previous = await mkdtemp(join(tmpdir(), 'prisma-634-upgrade-'));
-    let harness: PostgresRestTestHarness | undefined;
     try {
-      const rawJournal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      const journal = record(rawJournal);
-      if (!Array.isArray(journal.entries))
-        throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries;
-      const tags = entries.map(tag);
-      const index = tags.findIndex((value) =>
-        value.endsWith('_project_template_copies'),
-      );
-      expect(index).toBeGreaterThan(0);
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries: entries.slice(0, index) }),
-      );
-      for (const name of tags.slice(0, index))
-        await cp(join('drizzle', name + '.sql'), join(previous, name + '.sql'));
-      harness = await createPostgresRestTestHarness({
-        databaseUrl: database.targetUrl,
-        migrationsFolder: previous,
-        environment: {
-          NODE_ENV: 'test',
-          ACCESS_IDENTITY_MODE: 'test',
-          ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
-          ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'upgrade-owner',
-          ACCESS_BOOTSTRAP_WORKSPACE_ID: workspaceId,
-          ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Preserved preparation',
-        },
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      const frozen = await restoreFrozenTaskSetup(
-        database.targetPool,
-        'project-template',
+      const query = (text: string, values: unknown[] = []) =>
+        database.targetPool.query(text, values);
+      await query(
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Template grants')`,
+        [workspaceId],
       );
-      const membershipId = text(frozen.membershipId),
-        companyId = text(frozen.companyId);
-      const tables = (
-        await database.targetPool.query<{ name: string }>(
-          `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
-        )
-      ).rows.map((row) => row.name);
-      async function snapshot() {
-        return Object.fromEntries(
-          await Promise.all(
-            tables.map(async (table): Promise<[string, string[]]> => [
-              table,
-              (
-                await database.targetPool.query<{ row: string }>(
-                  `SELECT (to_jsonb(preserved) ${table === 'tasks' ? "- 'description'" : ''})::text AS row FROM "${table}" AS preserved`,
-                )
-              ).rows
-                .map((row) => row.row)
-                .sort(),
-            ]),
-          ),
-        );
-      }
-      const before = await snapshot();
-      expect(before.projects).toHaveLength(1);
-      expect(before.tasks).toHaveLength(1);
-      expect(before.task_commands).toHaveLength(2);
-      expect(before.task_events).toHaveLength(2);
-      expect(before.project_creation_events).toHaveLength(1);
-      await applyHistoricalTaskTarget({
-        pool: database.targetPool,
-        previous,
-        journal,
-        entries,
-        index,
-      });
-      expect(await snapshot()).toEqual(before);
-      // Migration 0116 refuses these pre-description receipts (#1348), so the
-      // upgrade proof stops at its own migration (#1343 A6).
-      expect(
-        (
-          await database.targetPool.query(
-            `SELECT (SELECT count(*)::int FROM project_template_instances) AS instances, (SELECT count(*)::int FROM project_template_task_copies) AS copies, (SELECT count(*)::int FROM company_role_assignments WHERE bundle::text = 'company_project_template_user') AS grants`,
-          )
-        ).rows,
-      ).toEqual([{ instances: 0, copies: 0, grants: 0 }]);
+      await query(
+        `INSERT INTO internal_users (id, external_provider, external_subject, display_name, email)
+         VALUES ($1, 'deterministic-test', 'template-owner', 'Ana Popescu', 'ana@example.test')`,
+        [userId],
+      );
+      await query(
+        `INSERT INTO workspace_memberships (id, workspace_id, internal_user_id) VALUES ($1, $2, $3)`,
+        [membershipId, workspaceId, userId],
+      );
+      await query(
+        `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
+           created_by_workspace_membership_id, registration_idempotency_key)
+         VALUES ($1, $2, 'Template Company', $3, $4, 'template-company')`,
+        [companyId, workspaceId, userId, membershipId],
+      );
       const insert = (version: string | null) =>
-        database.targetPool.query(
+        query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version, revoked_at) VALUES ($1, $2, $3, 'company_project_template_user', $4, now())`,
           [workspaceId, companyId, membershipId, version],
         );
       for (const version of [null, 'v3', 'V1'])
         await expect(insert(version)).rejects.toMatchObject({ code: '23514' });
       await insert('v1');
+      await insert('v2');
     } finally {
-      try {
-        await harness?.close();
-      } finally {
-        try {
-          await database.close();
-        } finally {
-          await rm(previous, { recursive: true, force: true });
-        }
-      }
+      await database.close();
     }
   },
   60_000,

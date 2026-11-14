@@ -104,10 +104,7 @@ export async function paymentNoticePdf(revision = 'A'): Promise<Buffer> {
 }
 
 /** Real AppModule, isolated PostgreSQL and a deterministic external scanner boundary. */
-export async function createPaymentEvidenceFixture(
-  databaseUrl: string,
-  migrationsFolder?: string,
-) {
+export async function createPaymentEvidenceFixture(databaseUrl: string) {
   let database: IsolatedPostgresTestDatabase;
   let harness: PostgresRestTestHarness;
   let companyId: string;
@@ -117,7 +114,6 @@ export async function createPaymentEvidenceFixture(
   async function openHarness() {
     harness = await createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
-      ...(migrationsFolder ? { migrationsFolder } : {}),
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',

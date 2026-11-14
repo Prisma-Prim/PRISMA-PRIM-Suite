@@ -1,13 +1,7 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { gunzipSync } from 'node:zlib';
+import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { openDocumentScannerFixture } from './document-scanner.test-support.js';
-import {
-  paymentJson,
-  paymentRecord,
-  paymentText,
-} from './payment-evidence.test-support.js';
+import { paymentJson, paymentText } from './payment-evidence.test-support.js';
 import {
   createIsolatedPostgresTestDatabase,
   type IsolatedPostgresTestDatabase,
@@ -17,69 +11,59 @@ import {
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
 
-const directory = 'test-support/payment-evidence-legacy-union';
+const WORKSPACE_ID = '00000000-0000-4000-8000-000000001045';
+const OWNER = {
+  provider: 'deterministic-test',
+  subject: 'payment-union-owner',
+  displayName: 'Fictional Payment Union Owner',
+  email: 'payment-union-owner@example.test',
+};
+/** The tax ID both PRIMARY-only Client dossiers share. */
+export const PAYMENT_UNION_TAX_ID = 'PAYMENT-UNION-PRIMARY-1045';
 
-/** Genuine pre-union native0013 input; distinct from the complete f879 upgrade fixture. */
+interface PaymentUnionIds {
+  readonly workspaceId: string;
+  readonly membershipId: string;
+  readonly companyId: string;
+  readonly sourceClientId: string;
+  readonly targetClientId: string;
+}
+
+/**
+ * Two PRIMARY-only Client duplicates of one Company on a database migrated
+ * from empty. The owner's captured Director v1 is refreshed to v2 through the
+ * public revoke and regrant before the Document and Payment grants.
+ */
 export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
-  const backup = await readFile(directory + '/predecessor-native-0013.sql.gz');
-  // Compress the authentic raw JSON rather than reformatting its captured bytes.
-  const contextBytes = gunzipSync(
-    await readFile(directory + '/context.json.gz'),
-  );
-  const provenanceValue: unknown = JSON.parse(
-    await readFile(directory + '/provenance.json', 'utf8'),
-  );
-  const contextValue: unknown = JSON.parse(contextBytes.toString('utf8'));
-  const provenance = paymentRecord(provenanceValue);
-  const context = paymentRecord(contextValue);
-  if (
-    provenance.source !== '9b791d7f0fe5de862fab575ca0261c91cf2b8e59' ||
-    provenance.tree !== '8358eefdcf2ed0fcf0502b1b720507d206286f59' ||
-    provenance.closedProducerBeforeDump !== true ||
-    provenance.noUnionBeforeCapture !== true ||
-    createHash('sha256').update(backup).digest('hex') !==
-      provenance.backupSha256 ||
-    provenance.backupSha256 !==
-      '425e0208dab0cf0d1877ab29699770705d43fcd75516d28138d5820ee2df5343' ||
-    createHash('sha256').update(contextBytes).digest('hex') !==
-      provenance.contextSha256 ||
-    provenance.contextSha256 !==
-      'a1559792b656f97fe9bf0674433402d0d6e128525db5d86661ddc5e5872cb838'
-  )
-    throw new Error(
-      'The authentic historical Payment union fixture does not match its provenance.',
-    );
-  const idsValue = paymentRecord(context.ids);
-  const ids = {
-    workspaceId: paymentText(idsValue.workspaceId),
-    internalUserId: paymentText(idsValue.internalUserId),
-    membershipId: paymentText(idsValue.membershipId),
-    companyId: paymentText(idsValue.companyId),
-    sourceClientId: paymentText(idsValue.sourceClientId),
-    targetClientId: paymentText(idsValue.targetClientId),
-  };
-  const identity = paymentRecord(context.identity);
   let database: IsolatedPostgresTestDatabase;
   let harness: PostgresRestTestHarness;
   let scanner: Awaited<ReturnType<typeof openDocumentScannerFixture>>;
+  let companyId: string | null = null;
+  let established: PaymentUnionIds | undefined;
   const previousWorkspaceKey = process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY;
   delete process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY;
 
+  function ids(): PaymentUnionIds {
+    if (!established)
+      throw new Error('The Payment union fixture is not established yet.');
+    return established;
+  }
   async function openHarness() {
     harness = await createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
-      synchronizeIdentityProfile: false,
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
-        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: paymentText(identity.provider),
-        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: paymentText(identity.subject),
-        ACCESS_BOOTSTRAP_WORKSPACE_ID: ids.workspaceId,
-        ACCESS_BOOTSTRAP_WORKSPACE_NAME:
-          'Fictional Historical Payment Workspace',
+        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: OWNER.provider,
+        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: OWNER.subject,
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
+        ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Fictional Payment Union Workspace',
         ...scanner.environment,
       },
     });
+  }
+  function rawPool(): Pool {
+    return harness.pool;
   }
   async function close() {
     try {
@@ -94,10 +78,10 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
   }
   function headers(company: string | null) {
     return {
-      'x-test-external-provider': paymentText(identity.provider),
-      'x-test-external-subject': paymentText(identity.subject),
-      'x-test-display-name': paymentText(identity.displayName),
-      'x-test-email': paymentText(identity.email),
+      'x-test-external-provider': OWNER.provider,
+      'x-test-external-subject': OWNER.subject,
+      'x-test-display-name': OWNER.displayName,
+      'x-test-email': OWNER.email,
       ...(company ? { 'x-company-context-id': company } : {}),
     };
   }
@@ -113,9 +97,7 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
     return fetch(harness.origin + '/api' + path, {
       method: options.method ?? 'GET',
       headers: {
-        ...headers(
-          options.company === undefined ? ids.companyId : options.company,
-        ),
+        ...headers(options.company === undefined ? companyId : options.company),
         'content-type': 'application/json',
         'idempotency-key': options.key ?? randomUUID(),
       },
@@ -127,9 +109,16 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
   async function setup(response: Response, status: number) {
     if (response.status !== status)
       throw new Error(
-        `Native migrated union setup expected ${status}, received ${response.status}: ${await response.text()}`,
+        `Payment union setup expected ${status}, received ${response.status}: ${await response.text()}`,
       );
     return paymentJson(response);
+  }
+  function grant(path: string, membershipId: string) {
+    return call(path, {
+      method: 'POST',
+      company: null,
+      body: { companyId, workspaceMembershipId: membershipId },
+    });
   }
   function upload(input: {
     documentId: string;
@@ -143,7 +132,7 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
       {
         method: 'POST',
         headers: {
-          ...headers(ids.companyId),
+          ...headers(ids().companyId),
           'content-type': 'application/pdf',
           'idempotency-key': input.key ?? randomUUID(),
         },
@@ -153,7 +142,7 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
   }
   async function review() {
     return setup(
-      await call(`/clients/${ids.sourceClientId}/union-reviews`, {
+      await call(`/clients/${ids().sourceClientId}/union-reviews`, {
         method: 'POST',
         body: {},
       }),
@@ -161,20 +150,21 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
     );
   }
   function confirmation() {
+    const { companyId, sourceClientId, targetClientId } = ids();
     return {
-      canonicalClientId: ids.targetClientId,
+      canonicalClientId: targetClientId,
       fields: {
-        displayName: ids.targetClientId,
-        taxId: ids.sourceClientId,
-        address: ids.sourceClientId,
-        telephone: ids.sourceClientId,
-        generalEmail: ids.sourceClientId,
-        businessActivity: ids.sourceClientId,
+        displayName: targetClientId,
+        taxId: sourceClientId,
+        address: sourceClientId,
+        telephone: sourceClientId,
+        generalEmail: sourceClientId,
+        businessActivity: sourceClientId,
       },
-      companyIds: [ids.companyId],
+      companyIds: [companyId],
       reviewedDifferences: true,
       reason:
-        'Fictional historical PRIMARY dossiers reviewed; preserve both original identities',
+        'Fictional PRIMARY-only duplicates reviewed; preserve both original identities',
     };
   }
   function confirm(reviewReference: string, key = randomUUID()) {
@@ -184,57 +174,87 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
       key,
     });
   }
+  async function register(displayName: string, taxId: string) {
+    return paymentText(
+      (
+        await setup(
+          await call('/clients', {
+            method: 'POST',
+            body: { displayName, taxId },
+          }),
+          201,
+        )
+      ).id,
+    );
+  }
   try {
     scanner = await openDocumentScannerFixture();
     database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'payment_legacy_union',
+      namePrefix: 'payment_client_union',
     });
-    const sql = gunzipSync(backup).toString('utf8');
-    if (/DISABLE TRIGGER|session_replication_role/u.test(sql))
-      throw new Error('A historical input may not disable native integrity.');
-    // This genuine dump owns its public schema; the new isolated database has
-    // only PostgreSQL's empty default schema. Refuse to remove populated input.
-    const existing = await database.targetPool.query<{ count: number }>(
-      "SELECT count(*)::int AS count FROM pg_tables WHERE schemaname IN ('public','drizzle')",
-    );
-    if (existing.rows[0]?.count !== 0)
-      throw new Error('Legacy restore requires an empty isolated database.');
-    await database.targetPool.query('DROP SCHEMA public');
-    const emptySearchPath =
-      "SELECT pg_catalog.set_config('search_path', '', false);";
-    if (sql.split(emptySearchPath).length !== 2)
-      throw new Error('Expected the captured pg_dump session search path.');
-    // The artifact is unchanged. pg's SQL protocol omits only pg_dump's psql meta commands.
-    await database.targetPool.query(
-      sql
-        .replace(
-          emptySearchPath,
-          "SELECT pg_catalog.set_config('search_path', 'public', false);",
-        )
-        .split('\n')
-        .filter((line) => !/^\\(?:un)?restrict /u.test(line))
-        .join('\n'),
-    );
-    await database.targetPool.query('SET search_path TO public');
     await openHarness();
+    const membershipId = paymentText(
+      (await setup(await call('/access/current-actor'), 200))
+        .workspaceMembershipId,
+    );
+    const registeredCompanyId = paymentText(
+      (
+        await setup(
+          await call('/companies', {
+            method: 'POST',
+            body: { displayName: 'Fictional Payment Union Company' },
+          }),
+          201,
+        )
+      ).id,
+    );
+    companyId = registeredCompanyId;
+    for (const path of [
+      '/company-context-assignments',
+      '/company-director-client-assignments',
+    ])
+      await setup(await grant(path, membershipId), 201);
+    const sourceClientId = await register(
+      'Fictional Payer A',
+      'PAYMENT-UNION-A-1045',
+    );
+    const targetClientId = await register(
+      'Fictional Payer B',
+      'PAYMENT-UNION-B-1045',
+    );
+    // Current commands refuse a duplicate tax ID, so this labeled SQL seam
+    // makes the two public dossiers duplicates, as the other Client union
+    // suites do; the Company, grants and every union action stay public.
+    await rawPool().query(
+      'UPDATE client_accounts SET tax_id = $2 WHERE id = ANY($1::uuid[])',
+      [[sourceClientId, targetClientId], PAYMENT_UNION_TAX_ID],
+    );
+    // The registry still reads a captured Director v1 (#1148); this seam
+    // captures it on the owner's live grant before the public refresh.
+    await rawPool().query(
+      `UPDATE company_role_assignments SET permission_set_version = 'v1'
+       WHERE company_id = $1 AND workspace_membership_id = $2
+         AND bundle = 'company_director_client_access' AND revoked_at IS NULL`,
+      [registeredCompanyId, membershipId],
+    );
+    established = {
+      workspaceId: WORKSPACE_ID,
+      membershipId,
+      companyId: registeredCompanyId,
+      sourceClientId,
+      targetClientId,
+    };
     const beforeActor = await setup(await call('/access/current-actor'), 200);
     const revoked = await setup(
       await call(
-        `/company-director-client-assignments/${ids.membershipId}/${ids.companyId}`,
+        `/company-director-client-assignments/${membershipId}/${registeredCompanyId}`,
         { method: 'DELETE', company: null },
       ),
       200,
     );
     const refreshed = await setup(
-      await call('/company-director-client-assignments', {
-        method: 'POST',
-        company: null,
-        body: {
-          companyId: ids.companyId,
-          workspaceMembershipId: ids.membershipId,
-        },
-      }),
+      await grant('/company-director-client-assignments', membershipId),
       201,
     );
     for (const path of [
@@ -246,21 +266,10 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
       '/company-payment-recorder-assignments',
       '/company-payment-evidence-access-assignments',
     ])
-      await setup(
-        await call(path, {
-          method: 'POST',
-          company: null,
-          body: {
-            companyId: ids.companyId,
-            workspaceMembershipId: ids.membershipId,
-          },
-        }),
-        201,
-      );
+      await setup(await grant(path, membershipId), 201);
     const afterActor = await setup(await call('/access/current-actor'), 200);
     return {
-      ids,
-      context,
+      ids: established,
       beforeActor,
       afterActor,
       revoked,
@@ -279,7 +288,7 @@ export async function openPaymentEvidenceUnionFixture(databaseUrl: string) {
         return scanner;
       },
       get pool() {
-        return harness.pool;
+        return rawPool();
       },
     };
   } catch (error) {

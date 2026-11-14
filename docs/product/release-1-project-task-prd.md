@@ -1045,8 +1045,8 @@ bytes, correct, complete/reopen the Task and verify immutable declaration histor
 Cover malformed/draft/empty/other-family and mismatched Client/Project/Company/
 Workspace references; independent Task/record/metadata/family/content denials and
 unknown versions; revocation/replay, stale observations, competing correction and
-Task closure, exact/changed-key retry, no-op and injected atomic rollback. Prove
-upgrade preservation and no backfill grants. Inspect every affected list/history/
+Task closure, exact/changed-key retry, no-op and injected atomic rollback. From launch on
+([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prove upgrade preservation and no backfill grants. Inspect every affected list/history/
 Activity/selector for the same confidentiality pattern. Register the actual
 App/PostgreSQL journey at desktop1440/narrow390 with synthetic data, exact historical
 downloads, correction and negative authority. Deterministic provider fixtures are
@@ -1266,7 +1266,8 @@ Prove the owning PostgreSQL REST seam first: exact thirteen rows/Task defaults,
 model/Version qualification, malformed overrides, four-Task-only v1 refusal and deliberate
 v2 grant, all independent denials/unknown versions, foreign Company/Workspace,
 revocation/suspension ordering, concurrent exact/changed-key retry, atomic fault
-rollback, immutable mapping/source, genuine previous-schema upgrade and preserved
+rollback, immutable mapping/source, genuine previous-schema upgrade (from launch on,
+[#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)) and preserved
 closed/superseded-Client history. Edit an ordinary copied Task and publish an
 illustrative successor without changing the preserved pilot copy. A pilot advance
 must be refused while the old compatible stage journey remains usable.
@@ -2257,8 +2258,8 @@ Task text with matching scalar/NUL/length/storage constraints. Existing Task row
 read `null`; do not synthesize instructions or change IDs, state, timestamps,
 versions, assignments, Client fences, copied-source mappings, results, events,
 receipt JSON or grants. New copies without supplied instructions explicitly
-record current `null` and initial `null` under the new format. Prove the upgrade
-from the exact immediately preceding schema, including old single/group/nested
+record current `null` and initial `null` under the new format. From launch on
+([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prove the upgrade from the exact immediately preceding schema, including old single/group/nested
 receipts; a fresh empty database is insufficient. Old writers that omit the new
 column preserve/default its value appropriately. After new content exists,
 rollback must retain it through a compatible application/forward repair; no
@@ -2371,7 +2372,7 @@ page overflow at 1440×900 and 390×844, including long unbroken and multiline t
    union/reversal, actor/changed-assignee revoke/suspend operations in controlled
    orders on PG. Assert one serialized authorized outcome and inject row/history/
    receipt/response-construction failures to prove full rollback including fence.
-4. Upgrade an exact pre-description schema containing open/closed/manual/copied
+4. From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), upgrade an exact pre-description schema containing open/closed/manual/copied
    Tasks and immutable single/group/nested receipts/history. Compare old rows,
    IDs/versions/timestamps, receipt JSON/fingerprints, events, source mappings,
    results/PDF hashes and grants before/after. Fresh reads are current-null;
@@ -2706,7 +2707,7 @@ head/history/receipt/event conservation, rejecting missing or mismatched coupled
 facts and forged cross-scope references through native constraints/transactional
 guards. Application validation/locks remain mandatory alongside those constraints.
 
-Upgrade a populated predecessor with open/closed/manual/copied Projects and old
+From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), upgrade a populated predecessor with open/closed/manual/copied Projects and old
 Task/result/closure/union and single/group/nested command facts. Record predecessor
 public baseline using its compatible application/SQL fixtures, close it, apply
 the actual new migration, and validate with the matching new application. Do not
@@ -2822,7 +2823,7 @@ horizontal overflow. Synthetic actual App acceptance needs no manual owner test.
    receipt/fence/**response-construction** failures and assert full rollback,
    including zero orphan receipts/events and no Client fence advance. Exercise
    native SQL forged-scope/predecessor/missing-coupled/immutability constraints.
-5. Prove genuine populated immediate-predecessor upgrade and repeat-upgrade,
+5. From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prove genuine populated immediate-predecessor upgrade and repeat-upgrade,
    including old single/group/nested receipt JSON, captures, mappings, results/PDF
    hashes and fences. New virtual current is revision 0/null; no historical
    receipt acquires today's text. Restart twice and conserve new history/replay.
@@ -2851,7 +2852,7 @@ horizontal overflow. Synthetic actual App acceptance needs no manual owner test.
 This complete journey is intended for one fresh runtime context. At fresh
 readiness, inspect actual current owners, dependencies and test fit. If it does
 not fit, re-scope the **whole observable journey** before creating its child;
-never drop authority, integrity, lifetime, upgrade or actual acceptance proof.
+never drop authority, integrity, lifetime, upgrade (from launch on) or actual acceptance proof.
 Section 34 and Mission Obligations §15 remain independent neighboring contracts;
 #950/#954's text-representation work is not proof of all Actor lifetimes, and
 #972 still requires its complete existing guards. Do not take over those owners.
@@ -3202,7 +3203,7 @@ either excluded record. Test these acceptance groups through the highest stable 
    Inject failure at current/history/event/receipt/response and prove total rollback.
 5. Native SQL rejects foreign scope, immutable rewrite/delete, missing coupled
    facts and **fully coupled mismatched** predecessor/current/receipt/event facts.
-   Prove genuine populated immediate-predecessor upgrade, close old producers before
+   From launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prove genuine populated immediate-predecessor upgrade, close old producers before
    migration, repeat migration and restart twice. Compare old captured assignments,
    full stored single/group/nested receipts, Task/source/result/PDF facts/hashes and
    Client fences byte-for-byte; new history/replays survive restarts. No old grant

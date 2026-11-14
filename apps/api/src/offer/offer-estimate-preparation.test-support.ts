@@ -1,5 +1,3 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
@@ -16,13 +14,11 @@ export const ESTIMATE_OFFER_READER = memberHeaders('estimate-offer-reader');
 // prices and labels. The deterministic identity provider is the external seam.
 export async function openEstimateOfferFixture(
   options: {
-    migrationsFolder?: string;
     scannerEnvironment?: {
       DOCUMENT_MALWARE_SCANNER_ENGINE: string;
       DOCUMENT_MALWARE_SCANNER_HOST: string;
       DOCUMENT_MALWARE_SCANNER_PORT: string;
     };
-    legacyPreparer?: boolean;
     historicalOfferCaptures?: { preparer: 'v1' | 'v2' | 'v3'; approver: 'v1' };
     serverClock?: ServerClock;
     synchronizeIdentityProfile?: boolean;
@@ -37,7 +33,6 @@ export async function openEstimateOfferFixture(
   const startHarness = () =>
     createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
-      migrationsFolder: options.migrationsFolder,
       synchronizeIdentityProfile: options.synchronizeIdentityProfile,
       serverClock: options.serverClock ?? {
         now: () => new Date('2026-10-24T09:00:00.000Z'),
@@ -235,40 +230,16 @@ export async function openEstimateOfferFixture(
       '/company-profitability-contributor-assignments',
     ])
       if (
-        !options.legacyPreparer ||
-        path !== '/company-offer-preparer-assignments'
+        path === '/company-offer-preparer-assignments' &&
+        options.historicalOfferCaptures
       )
-        if (
-          path === '/company-offer-preparer-assignments' &&
-          options.historicalOfferCaptures
-        )
-          await seedHistoricalCapture({
-            companyId,
-            membershipId: preparerMembershipId,
-            bundle: 'company_offer_preparer',
-            version: options.historicalOfferCaptures.preparer,
-          });
-        else
-          await grant({ path, companyId, membershipId: preparerMembershipId });
-    if (options.legacyPreparer) {
-      // A genuine pre-0078 assignment and receipt, seeded under the old CHECK.
-      const owner = responseRecord(
-        await read({ path: '/access/current-actor' }),
-      );
-      await harness.pool.query(
-        `WITH assignment AS (
-        INSERT INTO company_role_assignments (workspace_id,company_id,workspace_membership_id,bundle,permission_set_version)
-        VALUES ($1,$2,$3,'company_offer_preparer','v1') RETURNING id
-      ) INSERT INTO company_context_assignment_commands (workspace_id,actor_workspace_membership_id,bundle,idempotency_key,operation,target_workspace_membership_id,company_id,result_assignment_id)
-        SELECT $1,$4,'company_offer_preparer','legacy-preparer-grant','grant',$3,$2,id FROM assignment`,
-        [
-          ESTIMATE_OFFER_WORKSPACE,
+        await seedHistoricalCapture({
           companyId,
-          preparerMembershipId,
-          responseString(owner, 'workspaceMembershipId'),
-        ],
-      );
-    }
+          membershipId: preparerMembershipId,
+          bundle: 'company_offer_preparer',
+          version: options.historicalOfferCaptures.preparer,
+        });
+      else await grant({ path, companyId, membershipId: preparerMembershipId });
     await grant({
       path: '/company-profitability-director-assignments',
       companyId,
@@ -469,9 +440,6 @@ export async function openEstimateOfferFixture(
     async restart() {
       await harness.close();
       harness = await startHarness();
-    },
-    async applyCurrentMigrations() {
-      await migrate(drizzle(harness.pool), { migrationsFolder: './drizzle' });
     },
     get origin() {
       return harness.origin;

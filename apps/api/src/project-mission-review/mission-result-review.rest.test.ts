@@ -275,6 +275,27 @@ describe.skipIf(!databaseUrl)(
       ).rows;
       expect(Number(after[0]?.version)).toBe(Number(before[0]?.version) + 1);
     });
+    it('reads the recorded review and replays its exact receipt after an application restart', async () => {
+      const { path, body } = await readyReview();
+      const submit = () =>
+        fixture.call(path, {
+          method: 'POST',
+          key: 'restart-review-demo',
+          body,
+        });
+      const first = await submit();
+      expect(first.status).toBe(201);
+      const receipt = await json(first);
+      const review = await json(await fixture.call(path));
+      await fixture.restart();
+      expect(await json(await fixture.call(path))).toEqual(review);
+      const replay = await submit();
+      expect(replay.status).toBe(201);
+      expect(await json(replay)).toEqual(receipt);
+      expect(await counts()).toEqual([
+        { batches: 1, items: 1, commands: 1, events: 1 },
+      ]);
+    }, 30_000);
     it('retains previous per-activity judgments and reports app changes as stale without erasing history', async () => {
       const { path, taskId, body } = await readyReview();
       expect((await fixture.call(path, { method: 'POST', body })).status).toBe(

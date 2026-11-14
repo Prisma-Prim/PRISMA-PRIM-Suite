@@ -93,10 +93,7 @@ export async function registerReceivedContract(
 }
 
 /** Opaque persisted facts for the required transaction/rollback integrity seam. */
-export async function receivedContractEffects(
-  pool: Pool,
-  receivedRelationExists = true,
-) {
+export async function receivedContractEffects(pool: Pool) {
   const effects: Record<string, unknown> = {};
   for (const table of [
     'working_documents',
@@ -111,11 +108,6 @@ export async function receivedContractEffects(
     'activity_log_events',
     'client_accounts',
   ]) {
-    if (
-      table === 'received_contract_document_relations' &&
-      !receivedRelationExists
-    )
-      continue;
     // All identifiers are literal test-owned tables. Ordering compares complete conserved rows.
     const result = await pool.query<{ facts: unknown }>(
       `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb) AS facts FROM ${table} t`,

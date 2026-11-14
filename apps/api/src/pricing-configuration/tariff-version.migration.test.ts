@@ -1,6 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
@@ -28,104 +26,23 @@ const UNIQUE_VIOLATION = '23505';
 const FOREIGN_KEY_VIOLATION = '23503';
 const NUMERIC_OUT_OF_RANGE = '22003';
 
-// Every bundle and captured version delivered before this migration,
-// including superseded versions kept as revoked history.
-const PRESERVED_ASSIGNMENTS: ReadonlyArray<
-  readonly [bundle: string, version: string | null, revoked: boolean]
-> = [
-  ['company_context_access', null, false],
-  ['company_director_client_access', 'v1', true],
-  ['company_director_client_access', 'v2', false],
-  ['company_document_registrar', 'v1', true],
-  ['company_document_registrar', 'v2', false],
-  ['company_commercial_intake', 'v1', true],
-  ['company_commercial_intake', 'v2', false],
-  ['company_project_access', 'v1', true],
-  ['company_project_access', 'v2', false],
-  ['company_task_manager', 'v1', false],
-  ['company_document_project_organizer', 'v1', false],
-  ['company_service_catalogue', 'v1', false],
-  ['company_pricing_configuration', 'v1', false],
-  ['company_commercial_activity_reader', 'v1', false],
-];
-
-// The tables the Pricing Rule slice delivered, and those it relies on, whose
-// existing rows must survive the migration byte-identical. The new nullable
-// tariff references are left out of the comparison and must be empty.
-const PRESERVED_TABLES: ReadonlyArray<
-  readonly [table: string, newColumns: readonly string[]]
-> = [
-  ['company_role_assignments', []],
-  ['activity_log_events', []],
-  ['service_definitions', []],
-  ['company_service_offerings', []],
-  ['pricing_rule_versions', []],
-  [
-    'pricing_configuration_commands',
-    ['result_tariff_version_id', 'result_pricing_snapshot_id'],
-  ],
-  [
-    'pricing_configuration_events',
-    ['tariff_version_id', 'pricing_snapshot_id'],
-  ],
-];
-
 it.skipIf(!databaseUrl)(
-  'adds Tariff Versions after the Pricing Rule migration, preserving every rule row and enforcing the tariff invariants',
+  'enforces the Tariff Version, tariff event and tariff receipt invariants beside the Pricing Rule ones on a database migrated from empty',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'tariff_version_upgrade',
+      namePrefix: 'tariff_version_schema',
     });
-    let previous: string | undefined;
     try {
-      const journal: unknown = JSON.parse(
-        await readFile('drizzle/meta/_journal.json', 'utf8'),
-      );
-      if (
-        typeof journal !== 'object' ||
-        journal === null ||
-        !('entries' in journal) ||
-        !Array.isArray(journal.entries)
-      )
-        throw new Error('Invalid migration journal.');
-      const tags = journal.entries.map((entry: unknown) => {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          !('tag' in entry) ||
-          typeof entry.tag !== 'string' ||
-          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
-        )
-          throw new Error('Invalid migration tag.');
-        return entry.tag;
+      await migrate(drizzle(database.targetPool), {
+        migrationsFolder: resolve('drizzle'),
       });
-      // Everything before this slice's migration, whatever its number.
-      const tariffIndex = tags.findIndex((tag) =>
-        tag.endsWith('_tariff_versions'),
-      );
-      expect(tariffIndex).toBeGreaterThan(0);
-      const previousTags = tags.slice(0, tariffIndex);
-      expect(previousTags).toContain('0032_pricing_rule_versions');
-      previous = await mkdtemp(join(tmpdir(), 'prisma-396-upgrade-'));
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({
-          ...journal,
-          entries: journal.entries.slice(0, tariffIndex),
-        }),
-      );
-      for (const tag of previousTags)
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      const connection = drizzle(database.targetPool);
-      await migrate(connection, { migrationsFolder: previous });
       const query = (text: string, values: unknown[] = []) =>
         database.targetPool.query(text, values);
 
       await query(
-        `INSERT INTO workspaces (id, name) VALUES ($1, 'Preserved pricing')`,
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Tariff pricing')`,
         [WORKSPACE],
       );
       await query(
@@ -140,7 +57,7 @@ it.skipIf(!databaseUrl)(
       // One parameter per column: PostgreSQL deduces a single type for each
       // parameter, so the uuid id and the text key cannot share one.
       for (const [id, name, registrationKey] of [
-        [COMPANY, 'Preserved Company', 'preserved-tariff-company'],
+        [COMPANY, 'Tariff Company', 'tariff-company'],
         [OTHER_COMPANY, 'Other Company', 'other-tariff-company'],
       ] as const)
         await query(
@@ -149,15 +66,8 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [id, WORKSPACE, name, USER, MEMBERSHIP, registrationKey],
         );
-      for (const [bundle, version, revoked] of PRESERVED_ASSIGNMENTS)
-        await query(
-          `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id,
-             bundle, permission_set_version, revoked_at)
-           VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 THEN now() ELSE NULL END)`,
-          [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version, revoked],
-        );
       for (const [id, code, company] of [
-        [DEFINITION, 'PRESERVED', COMPANY],
+        [DEFINITION, 'TARIFF', COMPANY],
         [OTHER_DEFINITION, 'OTHER', OTHER_COMPANY],
       ] as const)
         await query(
@@ -177,7 +87,7 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [id, WORKSPACE, company, definition, USER, MEMBERSHIP],
         );
-      // A Pricing Rule chain with its receipts and events, as #360 records it.
+      // A Pricing Rule chain and the publishing receipt of its first version.
       const client = await database.targetPool.connect();
       try {
         await client.query('BEGIN');
@@ -200,83 +110,16 @@ it.skipIf(!databaseUrl)(
       } finally {
         client.release();
       }
-      for (const [key, outcome, version] of [
-        ['rule-a', 'PUBLISHED', RULE_V1],
-        ['rule-b', 'PUBLISHED', RULE_V2],
-        ['rule-b-again', 'UNCHANGED', RULE_V2],
-      ] as const)
-        await query(
-          `INSERT INTO pricing_configuration_commands (workspace_id, company_id,
-             actor_workspace_membership_id, command, idempotency_key, fingerprint, outcome,
-             result_pricing_rule_version_id, created_at)
-           VALUES ($1, $2, $3, 'pricing_rule_version.publish', $4, 'fingerprint', $5, $6, now())`,
-          [WORKSPACE, COMPANY, MEMBERSHIP, key, outcome, version],
-        );
-      for (const [version, versionNumber] of [
-        [RULE_V1, 1],
-        [RULE_V2, 2],
-      ] as const)
-        await query(
-          `INSERT INTO pricing_configuration_events (workspace_id, company_id, action,
-             pricing_rule_version_id, actor_internal_user_id, actor_workspace_membership_id,
-             occurred_at, metadata)
-           VALUES ($1, $2, 'pricing_rule_version.published', $3, $4, $5, now(), $6::jsonb)`,
-          [
-            WORKSPACE,
-            COMPANY,
-            version,
-            USER,
-            MEMBERSHIP,
-            JSON.stringify({
-              pricingRuleVersionId: version,
-              versionNumber,
-              provenance: 'ILLUSTRATIVE',
-            }),
-          ],
-        );
-      const snapshot = () =>
-        Promise.all(
-          PRESERVED_TABLES.map(
-            async ([table, newColumns]) =>
-              (
-                await query(
-                  `SELECT (to_jsonb(preserved) - $1::text[])::text AS preserved_row
-                     FROM ${table} AS preserved ORDER BY id`,
-                  [newColumns],
-                )
-              ).rows,
-          ),
-        );
-      const before = await snapshot();
-      expect(before.map((rows) => rows.length)).toEqual([
-        PRESERVED_ASSIGNMENTS.length,
-        0,
-        2,
-        3,
-        2,
-        3,
-        2,
-      ]);
+      await query(
+        `INSERT INTO pricing_configuration_commands (workspace_id, company_id,
+           actor_workspace_membership_id, command, idempotency_key, fingerprint, outcome,
+           result_pricing_rule_version_id, created_at)
+         VALUES ($1, $2, $3, 'pricing_rule_version.publish', 'rule-a', 'fingerprint',
+           'PUBLISHED', $4, now())`,
+        [WORKSPACE, COMPANY, MEMBERSHIP, RULE_V1],
+      );
 
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
-
-      // Additive: every existing row keeps its stored text, no assignment
-      // gains a bundle, and no backfill creates a tariff or a reference.
-      expect(await snapshot()).toEqual(before);
-      expect(
-        (
-          await query(
-            `SELECT
-               (SELECT count(*)::int FROM tariff_versions) AS versions,
-               (SELECT count(*)::int FROM pricing_configuration_commands
-                 WHERE result_tariff_version_id IS NOT NULL) AS receipts,
-               (SELECT count(*)::int FROM pricing_configuration_events
-                 WHERE tariff_version_id IS NOT NULL) AS events`,
-          )
-        ).rows,
-      ).toEqual([{ versions: 0, receipts: 0, events: 0 }]);
-
-      // The Pricing Rule metadata cases #360 added still fail.
+      // The Pricing Rule metadata cases #360 added fail beside the tariff ones.
       const insertRuleEvent = (metadata: Record<string, unknown>) =>
         query(
           `INSERT INTO pricing_configuration_events (workspace_id, company_id, action,
@@ -722,19 +565,11 @@ it.skipIf(!databaseUrl)(
         code: UNIQUE_VIOLATION,
         constraint: 'pricing_configuration_commands_actor_key_unique',
       });
-
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
     } finally {
       await database.close();
-      if (
-        previous &&
-        dirname(resolve(previous)) === resolve(tmpdir()) &&
-        basename(previous).startsWith('prisma-396-upgrade-')
-      )
-        await rm(previous, { recursive: true, force: true });
     }
   },
-  30_000,
+  60_000,
 );
 
 function without(
