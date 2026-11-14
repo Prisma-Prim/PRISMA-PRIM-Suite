@@ -120,10 +120,10 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('offers the configuration screen in both frames to a configuration reader', async () => {
+it('offers the configuration screen to a configuration reader', async () => {
   const paths = serve(actor);
-  window.history.replaceState(null, '', '/?frame=prisme#pricing');
-  const view = render(<App identity={deterministicBrowserIdentity()} />);
+  window.history.replaceState(null, '', '/#pricing');
+  render(<App identity={deterministicBrowserIdentity()} />);
   const navigation = await screen.findByRole('navigation', {
     name: 'Primary navigation',
   });
@@ -161,28 +161,11 @@ it('offers the configuration screen in both frames to a configuration reader', a
   expect(paths).toContain(
     `/api/pricing-configuration/offerings/${OFFERING_ID}/tariff-scope`,
   );
-  view.unmount();
-
-  window.history.replaceState(null, '', '/?frame=classic');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const classic = await screen.findByRole('region', {
-    name: 'Pricing Configuration',
-  });
-  expect(
-    await within(classic).findByText(
-      pricingConfigurationCopy.illustrativeMarker,
-    ),
-  ).toBeInTheDocument();
-  expect(
-    await within(
-      await screen.findByRole('region', { name: tariffVersionCopy.title }),
-    ).findByText(tariffVersionCopy.illustrativeMarker),
-  ).toBeInTheDocument();
 });
 
 it('offers no configuration screen to a Catalogue-only member', async () => {
   const paths = serve(catalogueOnly);
-  window.history.replaceState(null, '', '/?frame=prisme#pricing');
+  window.history.replaceState(null, '', '/#pricing');
   render(<App identity={deterministicBrowserIdentity()} />);
   const navigation = await screen.findByRole('navigation', {
     name: 'Primary navigation',

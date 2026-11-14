@@ -86,7 +86,7 @@ function LocaleChoices() {
 
 // These public App tests remain UNRUN until the next authorized execution lease.
 it('retires a locale-preserved representation on session loss through the real App and suppresses the late bytes', async () => {
-  window.history.replaceState(null, '', '/?frame=classic#requests');
+  window.history.replaceState(null, '', '/#requests');
   let finish: (value: Response) => void = () => {
     throw new Error('No representation request');
   };
@@ -170,7 +170,7 @@ it('retires a locale-preserved representation on session loss through the real A
 it.each([200, 404])(
   'preserves a requested exact Contract Version across locale change and refuses head substitution at HTTP %s',
   async (status) => {
-    window.history.replaceState(null, '', '/?frame=classic#activity');
+    window.history.replaceState(null, '', '/#activity');
     const exactPath = `${contractLocalePath}/versions/${contractLocaleIds.version}`;
     const secondId = '90000000-0000-4000-8000-000000000657';
     const original = contractLocaleRecord();

@@ -240,6 +240,30 @@ async function open() {
   );
   await within(panel()).findByText('Task 00 — Literal');
 }
+function navigateTo(name: string) {
+  fireEvent.click(
+    within(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).getByRole('link', { name }),
+  );
+}
+/**
+ * Prisme keeps the Client search in Clients: its denial revalidates the Actor
+ * before the test returns to the overview.
+ */
+async function searchClientsAndReturn(requests: readonly string[]) {
+  const actorReads = () =>
+    requests.filter((request) => request === 'GET /api/access/current-actor')
+      .length;
+  navigateTo('Clients');
+  changeValue(screen.getByLabelText('Find a shared Client'), 'Synthetic');
+  const search = screen.getByRole('button', { name: 'Search Clients' });
+  await waitFor(() => expect(search).toBeEnabled());
+  const before = actorReads();
+  fireEvent.click(search);
+  await waitFor(() => expect(actorReads()).toBeGreaterThan(before));
+  navigateTo('Overview');
+}
 describe('Complete attention lifecycle through App', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -441,7 +465,7 @@ describe('Complete attention lifecycle through App', () => {
   });
 
   it('retires replies after captured authority or membership changes and after a new session owner', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const api = server();
     api.hold();
     const view = render(<App identity={deterministicBrowserIdentity()} />);
@@ -458,12 +482,7 @@ describe('Complete attention lifecycle through App', () => {
       };
     };
     api.state.searchStatus = 403;
-    changeValue(screen.getByLabelText('Find a shared Client'), 'Synthetic');
-    const search = screen.getByRole('button', {
-      name: 'Search Clients',
-    });
-    await waitFor(() => expect(search).toBeEnabled());
-    fireEvent.click(search);
+    await searchClientsAndReturn(api.requests);
     await waitFor(() =>
       expect(
         screen.queryByRole('button', { name: 'See all attention Tasks' }),
@@ -792,7 +811,7 @@ describe('Complete attention lifecycle through App', () => {
   });
 
   it('retires a pending page when the captured Task assignment is replaced', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const api = server();
     api.hold();
     render(<App identity={deterministicBrowserIdentity()} />);
@@ -812,10 +831,7 @@ describe('Complete attention lifecycle through App', () => {
       };
     };
     api.state.searchStatus = 403;
-    changeValue(screen.getByLabelText('Find a shared Client'), 'Synthetic');
-    const search = screen.getByRole('button', { name: 'Search Clients' });
-    await waitFor(() => expect(search).toBeEnabled());
-    fireEvent.click(search);
+    await searchClientsAndReturn(api.requests);
     await waitFor(() => expect(api.held[0]?.signal?.aborted).toBe(true));
     await api.release();
     await screen.findByRole('button', { name: 'See all attention Tasks' });

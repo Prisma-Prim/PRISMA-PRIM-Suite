@@ -44,24 +44,7 @@ describe('Company registration presentation', () => {
     localStorage.clear();
   });
 
-  it('presents first-Company onboarding in Prisme while preserving the Classic public markup', () => {
-    const classic = render(
-      <CompanyRegistration actor={actor} identity={identity} {...callbacks} />,
-    );
-    const classicRegistration = screen.getByRole('region', {
-      name: 'Provider Company',
-    });
-    expect(classicRegistration).toHaveClass('company-registration', {
-      exact: true,
-    });
-    expect(classicRegistration.querySelector('form')).not.toHaveClass(
-      'company-registration-form',
-    );
-    expect(
-      screen.getByRole('button', { name: 'Register Company' }),
-    ).not.toHaveClass('company-registration-primary-action');
-    classic.unmount();
-
+  it('presents first-Company onboarding in Prisme', () => {
     render(
       <ApplicationPresentation value="prisme">
         <CompanyRegistration actor={actor} identity={identity} {...callbacks} />

@@ -408,15 +408,10 @@ describe('Opening an assigned Task from My Tasks through App', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it.each([
-    { frame: 'classic', strict: false },
-    { frame: 'classic', strict: true },
-    { frame: 'prisme', strict: false },
-    { frame: 'prisme', strict: true },
-  ])(
-    'opens the first exact Task and its history cold in $frame with root StrictMode=$strict',
-    async ({ frame, strict }) => {
-      window.history.replaceState(null, '', `/?frame=${frame}#my-tasks`);
+  it.each([{ strict: false }, { strict: true }])(
+    'opens the first exact Task and its history cold with root StrictMode=$strict',
+    async ({ strict }) => {
+      window.history.replaceState(null, '', '/#my-tasks');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />, {
         reactStrictMode: strict,
@@ -437,7 +432,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   );
 
   it('preserves Mine through the real App exact outside-Project Task intent', async () => {
-    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    window.history.replaceState(null, '', '/#projects');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await projectRow(atelierRow);
@@ -493,7 +488,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   it.each(['all', 'mine_open'] as const)(
     'reads each repeated exact activation once from %s and preserves its directory semantics',
     async (selectedView) => {
-      window.history.replaceState(null, '', '/?frame=prisme#projects');
+      window.history.replaceState(null, '', '/#projects');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       await projectRow(atelierRow);
@@ -543,7 +538,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   );
 
   it('preserves Mine and focuses the exact overdue Task outside its directory through App', async () => {
-    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    window.history.replaceState(null, '', '/#projects');
     const server = installServer({ showOverdue: true });
     vi.stubGlobal(
       'matchMedia',
@@ -634,7 +629,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   });
 
   it('opens the exact Project and Task of a same-titled row by their own reads and keeps another Project’s Task draft', async () => {
-    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    window.history.replaceState(null, '', '/#projects');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await chooseProjectRow(atelierRow);
@@ -727,7 +722,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   ])(
     'opens a Task $change since My Tasks was read in its current state, leaving My Tasks unchanged until Refresh',
     async ({ current, shows }) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/#my-tasks');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       const open = await openAction(betaTask);
@@ -736,6 +731,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
       fireEvent.click(open);
       await openedProject(beta);
       shows(await openedTask(betaTask));
+      navigateTo(taskCopy.myTasks.title);
       expect(within(myTasksRegion()).getAllByRole('listitem')).toHaveLength(2);
       expect(server.count('GET /api/assigned-tasks')).toBe(1);
 
@@ -772,13 +768,15 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   ])(
     'renders only the latest of two quick activations when the earlier one waits on $held',
     async ({ route, earlierAborted, atelierTaskReads }) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/#my-tasks');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       server.hold(route);
       fireEvent.click(await openAction(atelierTask));
       const earlier = await server.requested(route);
 
+      // Prisme shows the opened Project; the second activation returns to My Tasks.
+      navigateTo(taskCopy.myTasks.title);
       fireEvent.click(await openAction(betaTask));
       await openedProject(beta);
       await openedTask(betaTask);
@@ -804,7 +802,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
   ])(
     'retires an activation waiting on $held when the Company changes, and never replays it on return',
     async ({ route, taskReads }) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/#my-tasks');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       server.hold(route);

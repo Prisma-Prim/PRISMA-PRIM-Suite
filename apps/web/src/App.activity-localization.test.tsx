@@ -83,7 +83,7 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   localStorage.setItem(interfaceLocaleStorageKey, 'en');
-  window.history.replaceState(null, '', '/?frame=classic#activity');
+  window.history.replaceState(null, '', '/#activity');
 });
 
 afterEach(() => {
@@ -356,7 +356,7 @@ function installJourney() {
   return { state, fetch };
 }
 function renderJourney(identity = deterministicBrowserIdentity()) {
-  window.history.replaceState(null, '', '/?frame=prisme#activity');
+  window.history.replaceState(null, '', '/#activity');
   return render(journeyUi(identity));
 }
 function journeyUi(identity = deterministicBrowserIdentity()) {

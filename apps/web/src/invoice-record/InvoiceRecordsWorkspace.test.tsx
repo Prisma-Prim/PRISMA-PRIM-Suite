@@ -39,16 +39,14 @@ function view({
   currentIdentity = identity,
   visible = true,
   projection = 'native-1',
-  frame = 'prisme',
 }: {
   currentActor?: ActorContext;
   currentIdentity?: BrowserIdentity;
   visible?: boolean;
   projection?: string;
-  frame?: 'prisme' | 'classic';
 } = {}) {
   return (
-    <ApplicationPresentation value={frame}>
+    <ApplicationPresentation value="prisme">
       <SectionVisibility value={visible}>
         <InvoiceRecordsWorkspace
           actor={currentActor}
@@ -199,7 +197,7 @@ it('reads literal copied declarations and withdraws without any native family, C
   expect(screen.getAllByText('1,255.00 MDL').length).toBeGreaterThan(1);
 });
 
-it('keeps one exact uncertain correction across locale and frame changes, then retries only the read after confirmation', async () => {
+it('keeps one exact uncertain correction across locale changes, then retries only the read after confirmation', async () => {
   const posts: RequestInit[] = [];
   let detailReads = 0;
   const reason = 'Transcription 1255.00 → 1255.50';
@@ -215,7 +213,7 @@ it('keeps one exact uncertain correction across locale and frame changes, then r
     if (detailReads === 2) return new Response(null, { status: 503 });
     return Response.json(posts.length === 2 ? corrected(reason) : current);
   });
-  const rendered = render(
+  render(
     <>
       {view()}
       <LocaleSwitch />
@@ -236,12 +234,6 @@ it('keeps one exact uncertain correction across locale and frame changes, then r
   );
   await screen.findByRole('button', { name: 'Retry identical command' });
   fireEvent.click(screen.getByRole('button', { name: 'Français' }));
-  rendered.rerender(
-    <>
-      {view({ frame: 'classic' })}
-      <LocaleSwitch />
-    </>,
-  );
   expect(screen.getByLabelText('Montant brut déclaré')).toHaveValue('1255.50');
   expect(screen.getByLabelText('Motif littéral')).toHaveValue(reason);
   expect(screen.getByLabelText('Montant brut déclaré')).toBeDisabled();

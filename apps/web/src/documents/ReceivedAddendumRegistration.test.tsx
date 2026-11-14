@@ -251,7 +251,7 @@ it('treats a well-formed response for a different immutable party as uncertain',
   expect(registered).not.toHaveBeenCalled();
 });
 
-it('preserves literal fields through all locales and both frames without duplicate source reads', async () => {
+it('preserves literal fields through all locales without duplicate source reads', async () => {
   const identity = deterministicBrowserIdentity(),
     currentActor = actor();
   const transport = vi.fn(async () =>
@@ -267,7 +267,7 @@ it('preserves literal fields through all locales and both frames without duplica
     onStarted: vi.fn(),
     onAccessRejected: vi.fn(),
   };
-  const view = render(
+  render(
     <ApplicationPresentation value="prisme">
       <InterfaceLocaleSelect />
       <ReceivedAddendumRegistration {...props} />
@@ -312,12 +312,6 @@ it('preserves literal fields through all locales and both frames without duplica
     expect(screen.getByLabelText(dateLabel)).toHaveValue('2026-02-30');
     expect(screen.getByRole('button', { name: family })).toBeInTheDocument();
   }
-  view.rerender(
-    <ApplicationPresentation value="classic">
-      <InterfaceLocaleSelect />
-      <ReceivedAddendumRegistration {...props} />
-    </ApplicationPresentation>,
-  );
   expect(screen.getByLabelText('Title')).toHaveValue('  Literal Титул 🧪  ');
   expect(transport).toHaveBeenCalledTimes(1);
 });

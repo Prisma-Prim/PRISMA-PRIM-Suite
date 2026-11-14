@@ -14,6 +14,7 @@ import { company, currentActor, id } from './mission-plan/current-work.fixture';
 import {
   deferred,
   installCurrentWorkApp,
+  openCompanyAccess,
   openCurrentWork,
   resetCurrentWorkApp,
   restoreCurrentWorkApp,
@@ -81,9 +82,7 @@ describe('Current-work rejection through actual App authority revalidation', () 
         'Protected native instructions during full Actor recovery\n  Ș / Я / 😀',
       );
       state.status = 200;
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
+      const access = await openCompanyAccess();
       changeValue(within(access).getByLabelText('Workspace member'), id(9));
       changeValue(
         within(access).getByLabelText('Company', { exact: true }),

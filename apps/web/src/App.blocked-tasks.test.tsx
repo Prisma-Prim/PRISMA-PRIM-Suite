@@ -137,123 +137,117 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it.each(['prisme', 'classic'])(
-  'discovers future and undated blocked Tasks and their literal reasons/responsible members through actual Company navigation while My Tasks stays personal (%s)',
-  async (frame) => {
-    const requests: string[] = [];
-    const unexpectedRequests: string[] = [];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = new URL(input.toString(), window.location.origin);
-        const route = `${init?.method ?? 'GET'} ${url.pathname}${url.search}`;
-        requests.push(route);
-        if (url.pathname === '/api/access/current-actor')
-          return Response.json(actor);
-        if (url.pathname === '/api/companies') return Response.json([company]);
-        if (url.pathname === '/api/operational-home')
-          return Response.json({
-            companyId: company.id,
-            today: '2026-10-21',
-            summaries: [
-              { kind: 'active_clients', count: 1 },
-              { kind: 'open_projects', count: 2 },
-              { kind: 'overdue_tasks', count: 0 },
-            ],
-            attention: { total: 0, tasks: [] },
-          });
-        if (url.pathname === '/api/activity-log')
-          return Response.json({ events: [] });
-        if (url.pathname === '/api/clients')
-          return Response.json([{ ...client, relatedToActiveCompany: true }]);
-        if (url.pathname === '/api/projects')
-          return Response.json([project, secondProject]);
-        if (url.pathname === '/api/assigned-tasks')
-          return Response.json({
-            tasks: [{ ...assigned, project: projection }],
-          });
-        if (url.pathname === '/api/blocked-tasks')
-          return Response.json({
-            companyId: company.id,
-            offset: 0,
-            pageSize: 25,
-            hasNextPage: false,
-            tasks: [future, undated].map((row) => ({
-              ...row,
-              project:
-                row.projectId === project.id
-                  ? projection
-                  : {
-                      id: secondProject.id,
-                      title: secondProject.title,
-                      clientDisplayName: secondProject.clientDisplayName,
-                    },
-            })),
-          });
-        unexpectedRequests.push(route);
-        throw new Error(`Unexpected HTTP boundary request: ${route}`);
-      }),
-    );
-    window.history.replaceState(null, '', `/?frame=${frame}#projects`);
-    render(<App identity={deterministicBrowserIdentity()} />);
+it('discovers future and undated blocked Tasks and their literal reasons/responsible members through actual Company navigation while My Tasks stays personal', async () => {
+  const requests: string[] = [];
+  const unexpectedRequests: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input.toString(), window.location.origin);
+      const route = `${init?.method ?? 'GET'} ${url.pathname}${url.search}`;
+      requests.push(route);
+      if (url.pathname === '/api/access/current-actor')
+        return Response.json(actor);
+      if (url.pathname === '/api/companies') return Response.json([company]);
+      if (url.pathname === '/api/operational-home')
+        return Response.json({
+          companyId: company.id,
+          today: '2026-10-21',
+          summaries: [
+            { kind: 'active_clients', count: 1 },
+            { kind: 'open_projects', count: 2 },
+            { kind: 'overdue_tasks', count: 0 },
+          ],
+          attention: { total: 0, tasks: [] },
+        });
+      if (url.pathname === '/api/activity-log')
+        return Response.json({ events: [] });
+      if (url.pathname === '/api/clients')
+        return Response.json([{ ...client, relatedToActiveCompany: true }]);
+      if (url.pathname === '/api/projects')
+        return Response.json([project, secondProject]);
+      if (url.pathname === '/api/assigned-tasks')
+        return Response.json({
+          tasks: [{ ...assigned, project: projection }],
+        });
+      if (url.pathname === '/api/blocked-tasks')
+        return Response.json({
+          companyId: company.id,
+          offset: 0,
+          pageSize: 25,
+          hasNextPage: false,
+          tasks: [future, undated].map((row) => ({
+            ...row,
+            project:
+              row.projectId === project.id
+                ? projection
+                : {
+                    id: secondProject.id,
+                    title: secondProject.title,
+                    clientDisplayName: secondProject.clientDisplayName,
+                  },
+          })),
+        });
+      unexpectedRequests.push(route);
+      throw new Error(`Unexpected HTTP boundary request: ${route}`);
+    }),
+  );
+  window.history.replaceState(null, '', '/#projects');
+  render(<App identity={deterministicBrowserIdentity()} />);
 
-    // Establish live actor, active Company, readable Projects and real navigation
-    // before asserting the new capability. Failure here is fixture/readiness failure.
-    const navigation = await screen.findByRole('navigation', {
-      name: 'Primary navigation',
-    });
-    const projects = await screen.findByRole('region', { name: 'Projects' });
-    expect(
-      await within(projects).findByRole('button', {
-        name: `${project.title} Client: ${client.displayName}`,
-      }),
-    ).toBeVisible();
-    expect(
-      within(projects).getByRole('button', {
-        name: `${secondProject.title} Client: ${client.displayName}`,
-      }),
-    ).toBeVisible();
-    expect(
-      screen.getByLabelText('Active Company', { exact: true }),
-    ).toHaveValue(company.id);
-    expect(requests).toContain('GET /api/access/current-actor');
-    expect(requests).toContain('GET /api/projects');
-    if (frame === 'prisme')
-      fireEvent.click(
-        within(navigation).getByRole('link', { name: 'My Tasks' }),
-      );
-    const personal = await screen.findByRole('region', { name: 'My Tasks' });
-    expect(
-      await within(personal).findByRole('heading', { name: assigned.title }),
-    ).toBeVisible();
-    expect(within(personal).queryByText(future.title)).not.toBeInTheDocument();
-    expect(within(personal).queryByText(undated.title)).not.toBeInTheDocument();
+  // Establish live actor, active Company, readable Projects and real navigation
+  // before asserting the new capability. Failure here is fixture/readiness failure.
+  const navigation = await screen.findByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  const projects = await screen.findByRole('region', { name: 'Projects' });
+  expect(
+    await within(projects).findByRole('button', {
+      name: `${project.title} Client: ${client.displayName}`,
+    }),
+  ).toBeVisible();
+  expect(
+    within(projects).getByRole('button', {
+      name: `${secondProject.title} Client: ${client.displayName}`,
+    }),
+  ).toBeVisible();
+  expect(screen.getByLabelText('Active Company', { exact: true })).toHaveValue(
+    company.id,
+  );
+  expect(requests).toContain('GET /api/access/current-actor');
+  expect(requests).toContain('GET /api/projects');
+  fireEvent.click(within(navigation).getByRole('link', { name: 'My Tasks' }));
+  const personal = await screen.findByRole('region', { name: 'My Tasks' });
+  expect(
+    await within(personal).findByRole('heading', { name: assigned.title }),
+  ).toBeVisible();
+  expect(within(personal).queryByText(future.title)).not.toBeInTheDocument();
+  expect(within(personal).queryByText(undated.title)).not.toBeInTheDocument();
 
-    expect(unexpectedRequests).toEqual([]);
+  expect(unexpectedRequests).toEqual([]);
 
-    // First RED must stop here: the existing App has no accessible discovery entry.
-    fireEvent.click(
-      within(navigation).getByRole('link', { name: 'Blocked Tasks' }),
-    );
-    const queue = await screen.findByRole('region', { name: 'Blocked Tasks' });
-    expect(
-      await within(queue).findByRole('heading', { name: future.title }),
-    ).toBeVisible();
-    expect(
-      within(queue).getByRole('heading', { name: undated.title }),
-    ).toBeVisible();
-    expect(within(queue).getByText('No due date')).toBeVisible();
-    expect(within(queue).getByText('Ion DEMO')).toBeVisible();
-    expect(
-      within(queue).getAllByText(
-        'Literal <script>blocaj</script> — Не хватает ответа',
-      ),
-    ).toHaveLength(2);
-    expect(queue.querySelector('script')).toBeNull();
-    expect(within(queue).queryByText(assigned.title)).not.toBeInTheDocument();
-    expect(
-      requests.some((route) => route.includes('eligible-task-assignees')),
-    ).toBe(false);
-    expect(requests.filter((route) => !route.startsWith('GET '))).toEqual([]);
-  },
-);
+  // First RED must stop here: the existing App has no accessible discovery entry.
+  fireEvent.click(
+    within(navigation).getByRole('link', { name: 'Blocked Tasks' }),
+  );
+  const queue = await screen.findByRole('region', { name: 'Blocked Tasks' });
+  expect(
+    await within(queue).findByRole('heading', { name: future.title }),
+  ).toBeVisible();
+  expect(
+    within(queue).getByRole('heading', { name: undated.title }),
+  ).toBeVisible();
+  expect(within(queue).getByText('No due date')).toBeVisible();
+  expect(within(queue).getByText('Ion DEMO')).toBeVisible();
+  expect(
+    within(queue).getAllByText(
+      'Literal <script>blocaj</script> — Не хватает ответа',
+    ),
+  ).toHaveLength(2);
+  expect(queue.querySelector('script')).toBeNull();
+  expect(within(queue).queryByText(assigned.title)).not.toBeInTheDocument();
+  expect(
+    requests.some((route) => route.includes('eligible-task-assignees')),
+  ).toBe(false);
+  expect(requests.filter((route) => !route.startsWith('GET '))).toEqual([]);
+});

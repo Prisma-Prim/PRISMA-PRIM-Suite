@@ -31,7 +31,7 @@ it('opens a recorded Contract from its Request without Offer or Client authority
   );
   localStorage.clear();
   sessionStorage.clear();
-  window.history.replaceState(null, '', '/?frame=prisme#requests');
+  window.history.replaceState(null, '', '/#requests');
   const company = { id: 'company-one', displayName: 'Company' };
   const actor: ActorContext = {
     internalUserId: 'user-one',

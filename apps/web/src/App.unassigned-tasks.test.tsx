@@ -177,7 +177,7 @@ it('discovers future and undated unassigned Tasks through the real Company navig
       throw new Error(`Unexpected HTTP boundary request: ${route}`);
     }),
   );
-  window.history.replaceState(null, '', '/?frame=prisme#projects');
+  window.history.replaceState(null, '', '/#projects');
   render(<App identity={deterministicBrowserIdentity()} />);
 
   // Establish live actor, active Company, readable Projects and real navigation

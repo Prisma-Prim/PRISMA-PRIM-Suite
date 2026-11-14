@@ -313,6 +313,31 @@ async function selectCompany(companyId: string) {
     expect(selector()).toBeEnabled();
   });
 }
+function navigateTo(name: string) {
+  fireEvent.click(
+    within(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).getByRole('link', { name }),
+  );
+}
+/**
+ * Prisme keeps the Client search in Clients: its refusal revalidates the Actor
+ * before the test returns to the overview.
+ */
+async function refuseClientSearchAndReturn(server: {
+  count: (route: string) => number;
+}) {
+  navigateTo('Clients');
+  const actorReads = server.count('GET /api/access/current-actor');
+  changeValue(screen.getByLabelText('Find a shared Client'), 'Demo');
+  fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+  await waitFor(() =>
+    expect(server.count('GET /api/access/current-actor')).toBeGreaterThan(
+      actorReads,
+    ),
+  );
+  navigateTo('Overview');
+}
 /** The counts the region currently shows, by their cards' accessible names. */
 function shownCards(): string[] {
   return within(summary())
@@ -364,7 +389,7 @@ describe('Operational home through App', () => {
   });
 
   it('collects independently authorized Company summaries without switching the working Company', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await screen.findByRole('button', {
@@ -409,7 +434,7 @@ describe('Operational home through App', () => {
   }>)(
     'opens the exact selected-Company $kind destination after the normal owner confirms it',
     async ({ kind, count, hash, route }) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       fireEvent.click(
@@ -485,7 +510,7 @@ describe('Operational home through App', () => {
   }
 
   it('permanently retires a held overdue continuation after another Company selection and return', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await continueToHeldOverdue(server);
@@ -516,7 +541,7 @@ describe('Operational home through App', () => {
   });
 
   it('preserves its own held selected-Company overdue continuation through a locale-only render', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(
       <>
@@ -537,7 +562,7 @@ describe('Operational home through App', () => {
   it.each(['selection', 'activity'])(
     'preserves current $s denial retirement instead of opening a staged destination',
     async (deniedAt) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       fireEvent.click(
@@ -569,7 +594,7 @@ describe('Operational home through App', () => {
   );
 
   it('does not open a staged destination after closing while the actual selection is pending', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
@@ -606,7 +631,7 @@ describe('Operational home through App', () => {
   });
 
   it('opens the exact Task from the next overdue page through the real App Project intent', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer({ overdueTasks: nextPageTasks });
     render(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
@@ -652,7 +677,7 @@ describe('Operational home through App', () => {
   });
 
   it('ignores a held next-page response after switching Company and restarts from zero on return', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer({ overdueTasks: nextPageTasks });
     render(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
@@ -718,7 +743,7 @@ describe('Operational home through App', () => {
   });
 
   it('retires a held overdue page when live actor revalidation removes Task read', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer({ overdueTasks: nextPageTasks });
     render(<App identity={deterministicBrowserIdentity()} />);
     fireEvent.click(
@@ -749,8 +774,7 @@ describe('Operational home through App', () => {
     server.state.showTaskSummary = false;
     server.state.refuseSearch = true;
     try {
-      changeValue(screen.getByLabelText('Find a shared Client'), 'Demo');
-      fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+      await refuseClientSearchAndReturn(server);
       await waitFor(() => expect(server.count(homeRoute)).toBe(2));
       await waitFor(() => expect(overduePanel(companyA)).toBeNull());
     } finally {
@@ -769,18 +793,13 @@ describe('Operational home through App', () => {
     expect(server.count(overdueRoute, companyA.id)).toBe(2);
   });
 
-  it('renders the region in the Classic home surface below the welcome text', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+  it('renders the region with its cards and counting date on the overview', async () => {
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await within(
       await screen.findByRole('region', { name: copy.title }),
     ).findByRole('button', { name: cardName('active_clients', 3) });
-    const welcome = screen.getByRole('heading', {
-      name: 'Welcome to PRISMA-PRIM Suite',
-    });
-    const surface = welcome.closest('.production-content-surface');
-    expect(surface).toContainElement(summary());
     expect(shownCards()).toEqual([
       cardName('active_clients', 3),
       cardName('open_projects', 2),
@@ -826,7 +845,7 @@ describe('Operational home through App', () => {
   });
 
   it('never renders a previous Company reply after a switch and closes the overdue panel', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     server.state.showAttention = true;
     server.hold(homeRoute, companyA.id);
@@ -865,7 +884,7 @@ describe('Operational home through App', () => {
   });
 
   it('remounts the region when the captured Client permission version changes', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await screen.findByRole('button', { name: cardName('active_clients', 3) });
@@ -875,14 +894,13 @@ describe('Operational home through App', () => {
     server.state.actor = (companyId) => actorFor(companyId, 'v2');
     server.state.refuseSearch = true;
     server.state.clientsInA = 4;
-    changeValue(screen.getByLabelText('Find a shared Client'), 'Demo');
-    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    await refuseClientSearchAndReturn(server);
     await screen.findByRole('button', { name: cardName('active_clients', 4) });
     expect(server.count(homeRoute)).toBe(2);
   });
 
   it('opens the Project list and an overdue Task in its Project through the App intents', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     const projectsRegion = () =>
@@ -898,8 +916,9 @@ describe('Operational home through App', () => {
       }),
     ).toBeVisible();
 
+    navigateTo('Overview');
     fireEvent.click(
-      screen.getByRole('button', { name: cardName('overdue_tasks', 1) }),
+      await screen.findByRole('button', { name: cardName('overdue_tasks', 1) }),
     );
     const panel = await waitFor(() => {
       const found = overduePanel(companyA);
@@ -951,7 +970,7 @@ describe('Operational home through App', () => {
   });
 
   it('opens an attention Task in its Project and ordinary My Tasks through App intents', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer();
     server.state.showAttention = true;
     render(<App identity={deterministicBrowserIdentity()} />);
@@ -973,8 +992,11 @@ describe('Operational home through App', () => {
     );
     expect(window.location.href).not.toContain(overdueTask.id);
 
+    navigateTo('Overview');
     fireEvent.click(
-      within(attention).getByRole('button', {
+      within(
+        await screen.findByRole('region', { name: copy.attention.title }),
+      ).getByRole('button', {
         name: copy.attention.openMyTasks,
       }),
     );
@@ -982,33 +1004,30 @@ describe('Operational home through App', () => {
     expect(screen.getByRole('region', { name: 'My Tasks' })).toBeVisible();
   });
 
-  it.each(['classic', 'prisme'])(
-    'focuses the My Tasks region from My attention in %s',
-    async (frame) => {
-      window.history.replaceState(null, '', `/?frame=${frame}`);
-      const server = installServer();
-      server.state.showAttention = true;
-      render(<App identity={deterministicBrowserIdentity()} />);
-      const attention = await screen.findByRole('region', {
-        name: copy.attention.title,
-      });
+  it('focuses the My Tasks region from My attention', async () => {
+    window.history.replaceState(null, '', '/');
+    const server = installServer();
+    server.state.showAttention = true;
+    render(<App identity={deterministicBrowserIdentity()} />);
+    const attention = await screen.findByRole('region', {
+      name: copy.attention.title,
+    });
 
-      fireEvent.click(
-        within(attention).getByRole('button', {
-          name: copy.attention.openMyTasks,
-        }),
-      );
+    fireEvent.click(
+      within(attention).getByRole('button', {
+        name: copy.attention.openMyTasks,
+      }),
+    );
 
-      const myTasks = await screen.findByRole('region', { name: 'My Tasks' });
-      expect(window.location.hash).toBe('#my-tasks');
-      expect(myTasks).toBeVisible();
-      await waitFor(() => expect(myTasks).toHaveFocus());
-      expect(document.querySelectorAll('#my-tasks')).toHaveLength(1);
-      expect(myTasks).toHaveAttribute('id', 'my-tasks');
-    },
-  );
+    const myTasks = await screen.findByRole('region', { name: 'My Tasks' });
+    expect(window.location.hash).toBe('#my-tasks');
+    expect(myTasks).toBeVisible();
+    await waitFor(() => expect(myTasks).toHaveFocus());
+    expect(document.querySelectorAll('#my-tasks')).toHaveLength(1);
+    expect(myTasks).toHaveAttribute('id', 'my-tasks');
+  });
   it('revalidates newly granted Project and Task destinations before exposing refreshed cards', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const server = installServer({
       actor: () => ({
         ...actorFor(companyA.id),
@@ -1021,7 +1040,11 @@ describe('Operational home through App', () => {
     server.state.showProjectSummaries = false;
     render(<App identity={deterministicBrowserIdentity()} />);
     await screen.findByRole('button', { name: cardName('active_clients', 3) });
-    expect(screen.queryByRole('region', { name: 'Projects' })).toBeNull();
+    expect(
+      within(
+        screen.getByRole('navigation', { name: 'Primary navigation' }),
+      ).queryByRole('link', { name: 'Projects' }),
+    ).toBeNull();
 
     server.state.actor = (companyId) => actorFor(companyId);
     server.state.showProjectSummaries = true;
@@ -1043,8 +1066,9 @@ describe('Operational home through App', () => {
     expect(
       await screen.findByRole('region', { name: 'Projects' }),
     ).toBeVisible();
+    navigateTo('Overview');
     fireEvent.click(
-      screen.getByRole('button', { name: cardName('overdue_tasks', 1) }),
+      await screen.findByRole('button', { name: cardName('overdue_tasks', 1) }),
     );
     const panel = await screen.findByRole('region', {
       name: copy.overdue.title({ company: companyA.displayName }),
@@ -1078,11 +1102,11 @@ describe('Operational home through App', () => {
   ] satisfies Array<[string, ActorContext]>)(
     'requests nothing and renders no region with %s',
     async (_case, actor) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/');
       const server = installServer({ actor: () => actor });
       render(<App identity={deterministicBrowserIdentity()} />);
       await screen.findByRole('heading', {
-        name: 'Welcome to PRISMA-PRIM Suite',
+        name: `Hello, ${attribution.displayName}.`,
       });
       await act(
         async () => await new Promise((resolve) => setTimeout(resolve)),

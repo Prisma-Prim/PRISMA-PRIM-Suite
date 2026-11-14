@@ -287,6 +287,23 @@ describe('Opening the linked Project from a working Document through App', () =>
     localStorage.clear();
     sessionStorage.clear();
     scrollable.scrollIntoView = vi.fn();
+    // The Prisme overview renders the motion hero when no section is selected.
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(
+        (query: string) =>
+          ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(() => false),
+          }) satisfies MediaQueryList,
+      ),
+    );
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -296,7 +313,7 @@ describe('Opening the linked Project from a working Document through App', () =>
   });
 
   it('preserves Mine through the real App exact outside-Project Document intent', async () => {
-    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    window.history.replaceState(null, '', '/#projects');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await projectRow(betaRow);
@@ -351,7 +368,7 @@ describe('Opening the linked Project from a working Document through App', () =>
   });
 
   it('opens the linked one of two same-titled Projects by its own read and keeps the other Project’s Task draft', async () => {
-    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    window.history.replaceState(null, '', '/#projects');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await chooseProjectRow(betaRow);
@@ -407,7 +424,7 @@ describe('Opening the linked Project from a working Document through App', () =>
   });
 
   it('keeps an uncertain Task command in the previously opened Project for an unchanged retry', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/#projects');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await chooseProjectRow(betaRow);
@@ -421,6 +438,7 @@ describe('Opening the linked Project from a working Document through App', () =>
       }),
     ).toBeInTheDocument();
 
+    navigateTo('Working Documents');
     fireEvent.click(
       within(await openLinkedDocument()).getByRole('button', {
         name: 'Open Project',
@@ -479,10 +497,12 @@ describe('Opening the linked Project from a working Document through App', () =>
   ])(
     'retires the open requested while $waiting when the Company changes, and never replays it on return',
     async ({ prepare, atelierReads }) => {
-      window.history.replaceState(null, '', '/?frame=classic');
+      window.history.replaceState(null, '', '/#projects');
       const server = installServer();
       render(<App identity={deterministicBrowserIdentity()} />);
       await prepare(server);
+      await screen.findByRole('link', { name: 'Working Documents' });
+      navigateTo('Working Documents');
       fireEvent.click(
         within(await openLinkedDocument()).getByRole('button', {
           name: 'Open Project',
@@ -514,7 +534,7 @@ describe('Opening the linked Project from a working Document through App', () =>
   );
 
   it('hides the action while project.read is lost and never replays the earlier open when it returns', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/#documents');
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     server.hold(`GET ${atelierDetailPath}`);
@@ -533,6 +553,7 @@ describe('Opening the linked Project from a working Document through App', () =>
         screen.queryByRole('region', { name: 'Projects' }),
       ).not.toBeInTheDocument(),
     );
+    navigateTo('Working Documents');
     const readerDetail = await openLinkedDocument();
     expect(
       within(readerDetail).getByText(workingDocument.purpose),
@@ -547,6 +568,7 @@ describe('Opening the linked Project from a working Document through App', () =>
     server.grantProjects(['project.read']);
     await selectCompany(companyB.id);
     await selectCompany(companyA.id);
+    navigateTo('Projects');
     await projectRow(atelierRow);
     server.serve(`GET ${atelierDetailPath}`);
     await server.release(`GET ${atelierDetailPath}`);

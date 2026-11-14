@@ -180,52 +180,49 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it.each(['classic', 'prisme'])(
-  'mounts the Lifecycle section above the responsible member and refreshes the detail status and the list row together in %s',
-  async (frame) => {
-    const paths = serve();
-    window.history.replaceState(null, '', `/?frame=${frame}#projects`);
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const projects = await screen.findByRole('region', { name: 'Projects' });
-    const row = await within(projects).findByRole('button', {
-      name: `${project.title} Client: ${project.clientDisplayName}`,
-    });
-    const listItem = row.closest('li');
-    if (!listItem) throw new Error('The Project row is not a list item.');
-    expect(within(listItem).getByText('Active')).toBeInTheDocument();
-    fireEvent.click(row);
-    const detail = await within(projects).findByRole('article', {
-      name: project.title,
-    });
-    const lifecycle = within(detail).getByRole('region', { name: 'Lifecycle' });
-    const responsible = within(detail).getByRole('region', {
-      name: 'Responsible member',
-    });
-    expect(
-      lifecycle.compareDocumentPosition(responsible) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    // Only a preparatory Project repeats the preparation notice.
-    expect(
-      within(detail).queryByText(
-        'Preparation only. This record does not authorize work to start.',
-      ),
-    ).toBeNull();
-    fireEvent.click(
-      await within(lifecycle).findByRole('button', { name: 'Put on hold' }),
-    );
-    fireEvent.change(within(lifecycle).getByLabelText('Hold reason'), {
-      target: { value: 'Client asked to pause.' },
-    });
-    fireEvent.click(
-      within(lifecycle).getByRole('button', { name: 'Put Project on hold' }),
-    );
-    await within(lifecycle).findByRole('button', { name: 'Resume Project' });
-    expect(await within(listItem).findByText('On hold')).toBeInTheDocument();
-    expect(within(detail).getAllByText('On hold')).toHaveLength(2);
-    expect(paths).toContain(`GET /api/projects/${project.id}`);
-  },
-);
+it('mounts the Lifecycle section above the responsible member and refreshes the detail status and the list row together', async () => {
+  const paths = serve();
+  window.history.replaceState(null, '', '/#projects');
+  render(<App identity={deterministicBrowserIdentity()} />);
+  const projects = await screen.findByRole('region', { name: 'Projects' });
+  const row = await within(projects).findByRole('button', {
+    name: `${project.title} Client: ${project.clientDisplayName}`,
+  });
+  const listItem = row.closest('li');
+  if (!listItem) throw new Error('The Project row is not a list item.');
+  expect(within(listItem).getByText('Active')).toBeInTheDocument();
+  fireEvent.click(row);
+  const detail = await within(projects).findByRole('article', {
+    name: project.title,
+  });
+  const lifecycle = within(detail).getByRole('region', { name: 'Lifecycle' });
+  const responsible = within(detail).getByRole('region', {
+    name: 'Responsible member',
+  });
+  expect(
+    lifecycle.compareDocumentPosition(responsible) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  // Only a preparatory Project repeats the preparation notice.
+  expect(
+    within(detail).queryByText(
+      'Preparation only. This record does not authorize work to start.',
+    ),
+  ).toBeNull();
+  fireEvent.click(
+    await within(lifecycle).findByRole('button', { name: 'Put on hold' }),
+  );
+  fireEvent.change(within(lifecycle).getByLabelText('Hold reason'), {
+    target: { value: 'Client asked to pause.' },
+  });
+  fireEvent.click(
+    within(lifecycle).getByRole('button', { name: 'Put Project on hold' }),
+  );
+  await within(lifecycle).findByRole('button', { name: 'Resume Project' });
+  expect(await within(listItem).findByText('On hold')).toBeInTheDocument();
+  expect(within(detail).getAllByText('On hold')).toHaveLength(2);
+  expect(paths).toContain(`GET /api/projects/${project.id}`);
+});
 
 it('labels lifecycle and Approver events from centralized copy and omits an event with malformed metadata', async () => {
   serve({
@@ -289,7 +286,7 @@ it('labels lifecycle and Approver events from centralized copy and omits an even
       assignmentEvent('company_project_approver_assignment.granted', 0),
     ],
   });
-  window.history.replaceState(null, '', '/?frame=classic#activity');
+  window.history.replaceState(null, '', '/#activity');
   render(<App identity={deterministicBrowserIdentity()} />);
   const activity = await screen.findByRole('region', { name: 'Activity Log' });
   const items = await within(activity).findAllByRole('listitem');
@@ -324,7 +321,7 @@ it('keeps a Project with a preparatory status labelled and its notice beside the
       return Response.json([]);
     }),
   );
-  window.history.replaceState(null, '', '/?frame=classic#projects');
+  window.history.replaceState(null, '', '/#projects');
   render(<App identity={deterministicBrowserIdentity()} />);
   const projects = await screen.findByRole('region', { name: 'Projects' });
   const row = await within(projects).findByRole('button', {

@@ -77,7 +77,7 @@ function stubTransport(events: unknown[]): void {
 
 describe('commercial history in the Activity Log', () => {
   beforeEach(() => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/#activity');
   });
 
   afterEach(() => {

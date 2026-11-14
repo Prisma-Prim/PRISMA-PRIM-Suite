@@ -257,7 +257,7 @@ beforeEach(() => {
   );
   localStorage.clear();
   sessionStorage.clear();
-  window.history.replaceState(null, '', '/?frame=prisme#blocked-tasks');
+  window.history.replaceState(null, '', '/#blocked-tasks');
   Element.prototype.scrollIntoView = vi.fn();
 });
 afterEach(() => {
@@ -592,7 +592,7 @@ it('preserves the exact pending and uncertain native creation across discovery/o
       taskPermissions: ['task.read', 'task.manage'],
     },
   };
-  window.history.replaceState(null, '', '/?frame=prisme#projects');
+  window.history.replaceState(null, '', '/#projects');
   const writes: Array<{ body: string | undefined; key: string | null }> = [];
   let release: ((response: Response) => void) | undefined;
   api.state.writeReply = async (init) => {

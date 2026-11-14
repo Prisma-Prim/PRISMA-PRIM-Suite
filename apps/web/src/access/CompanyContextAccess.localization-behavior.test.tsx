@@ -66,17 +66,11 @@ function accessProps() {
   };
 }
 
-function accessTree({
-  props,
-  presentation = 'classic',
-}: {
-  props: AccessProps;
-  presentation?: 'classic' | 'prisme';
-}) {
+function accessTree({ props }: { props: AccessProps }) {
   return (
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ApplicationPresentation value={presentation}>
+      <ApplicationPresentation value="prisme">
         <CompanyContextAccess {...props} />
       </ApplicationPresentation>
     </InterfaceLocaleProvider>
@@ -86,15 +80,13 @@ function accessTree({
 function renderAccess({
   props = accessProps(),
   savedLocale = 'ro',
-  presentation = 'classic',
 }: {
   props?: AccessProps;
   savedLocale?: string | null;
-  presentation?: 'classic' | 'prisme';
 } = {}) {
   if (savedLocale === null) localStorage.removeItem(interfaceLocaleStorageKey);
   else localStorage.setItem(interfaceLocaleStorageKey, savedLocale);
-  return render(accessTree({ props, presentation }));
+  return render(accessTree({ props }));
 }
 
 function switchLocale({ locale }: { locale: AssignmentLocaleFixture }) {
@@ -228,7 +220,7 @@ it.each(assignmentLocaleCases)(
     );
     vi.stubGlobal('fetch', fetch);
     const props = accessProps();
-    renderAccess({ props, savedLocale: locale.locale, presentation: 'prisme' });
+    renderAccess({ props, savedLocale: locale.locale });
     const controls = await chooseTargets({ locale });
     const access = screen.getByRole('region', { name: locale.title });
     expect(access).toHaveClass('company-access--prisme');

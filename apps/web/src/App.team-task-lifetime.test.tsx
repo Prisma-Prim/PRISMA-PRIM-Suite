@@ -21,6 +21,7 @@ import {
   CurrentWorkLocaleProbe,
   deferred,
   installCurrentWorkApp,
+  openCompanyAccess,
   openCurrentWork,
   resetCurrentWorkApp,
   restoreCurrentWorkApp,
@@ -113,7 +114,7 @@ async function team() {
   return region;
 }
 async function grant(bundle: string) {
-  const access = await screen.findByRole('region', { name: 'Company access' });
+  const access = await openCompanyAccess();
   changeValue(within(access).getByLabelText('Workspace member'), id(9));
   changeValue(
     within(access).getByLabelText('Company', { exact: true }),
@@ -406,7 +407,7 @@ it.each(['task', 'project', 'client'] as const)(
       mounted.unmount();
       localStorage.clear();
       sessionStorage.clear();
-      window.history.replaceState(null, '', '/?frame=classic#projects');
+      window.history.replaceState(null, '', '/#projects');
     }
   },
 );
@@ -426,7 +427,9 @@ it('does not start recovery for an old403 after an unconsumed full Actor snapsho
   await grant('document-content-reader');
   const before = { actors: native.actorReads, activity: native.activityReads };
   await act(async () => held.resolve(Response.json({}, { status: 403 })));
-  await within(panel).findByRole('alert');
+  // Team Tasks stays mounted, hidden behind Team & access; returning to it
+  // would start a fresh read, so the retained panel is read where it is.
+  await within(panel).findByRole('alert', { hidden: true });
   expect({ actors: native.actorReads, activity: native.activityReads }).toEqual(
     before,
   );
@@ -458,6 +461,7 @@ it.each(['pending', 'uncertain', 'confirmed'] as const)(
     await within(panel).findByRole('alert');
     expect(state.projectPosts).toHaveLength(1);
     if (mode === 'confirmed') {
+      navigate('Projects');
       expect(
         await within(projects).findByRole('heading', {
           name: 'Protected native Project literal',
@@ -713,6 +717,7 @@ it('suppresses the held App focus frame after a team Open loses only consumed Ta
     native.taskRead = false;
     await grant('task-manager');
     expect(panel).not.toBeInTheDocument();
+    navigate('Projects');
     expect(projects).toBeInTheDocument();
     expect(window.location.hash).toBe('#projects');
     const independent = screen.getByRole('combobox', {

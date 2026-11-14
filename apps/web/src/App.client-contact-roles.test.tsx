@@ -37,7 +37,6 @@ const dossier = {
   version: 2,
   involvedCompanyDisplayNames: ['PRISMA-PRIM', 'BIC'],
 };
-type Presentation = 'prisme' | 'classic';
 
 function directorActor(): ActorContext {
   return {
@@ -68,9 +67,8 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function renderDossier({
-  presentation = 'prisme',
   history = { corrections: [], nextCursor: null },
-}: { presentation?: Presentation; history?: unknown } = {}) {
+}: { history?: unknown } = {}) {
   const corrections: Record<string, unknown>[] = [];
   let current: Record<string, unknown> = dossier;
   vi.stubGlobal(
@@ -98,7 +96,7 @@ function renderDossier({
     }),
   );
   render(
-    <ApplicationPresentation value={presentation}>
+    <ApplicationPresentation value="prisme">
       <ClientDossierPanel
         clientAccountId={dossier.id}
         companyContextId="company-a"
@@ -112,12 +110,11 @@ function renderDossier({
   );
   return corrections;
 }
-async function openCorrection(presentation: Presentation = 'prisme') {
+async function openCorrection() {
   await screen.findByRole('heading', { name: dossier.displayName });
-  if (presentation === 'prisme')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Correct Client dossier' }),
-    );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Correct Client dossier' }),
+  );
   const form = screen.getByRole('form', { name: 'Correct Client dossier' });
   await waitFor(() => expect(form).toBeVisible());
   return form;
@@ -177,48 +174,45 @@ describe('Client Contact position and decision roles', () => {
     expect(within(plain).queryByText(/Decision roles/u)).toBeNull();
   });
 
-  it.each<Presentation>(['prisme', 'classic'])(
-    'pre-fills every Contact position and decision roles and resubmits them unchanged when another field changes (%s)',
-    async (presentation) => {
-      const corrections = renderDossier({ presentation });
-      const form = await openCorrection(presentation);
+  it('pre-fills every Contact position and decision roles and resubmits them unchanged when another field changes', async () => {
+    const corrections = renderDossier();
+    const form = await openCorrection();
 
-      const first = contactGroup(form, 1);
-      expect(within(first).getByLabelText('Contact position')).toHaveValue(
-        'Director general',
-      );
-      expect(roleBox(first, 'Final decision-maker')).toBeChecked();
-      expect(roleBox(first, 'Financial')).toBeChecked();
-      expect(roleBox(first, 'Influencer')).not.toBeChecked();
-      const second = contactGroup(form, 2);
-      expect(within(second).getByLabelText('Contact position')).toHaveValue(
-        'Responsabil calitate',
-      );
-      expect(roleBox(second, 'Influencer')).toBeChecked();
-      expect(roleBox(second, 'Technical')).toBeChecked();
-      const third = contactGroup(form, 3);
-      expect(within(third).getByLabelText('Contact position')).toHaveValue('');
-      expect(
-        within(
-          within(third).getByRole('group', { name: 'Decision roles' }),
-        ).getAllByRole('checkbox'),
-      ).toHaveLength(6);
-      expect(
-        within(third)
-          .getAllByRole('checkbox')
-          .some(
-            (checkbox) =>
-              checkbox instanceof HTMLInputElement && checkbox.checked,
-          ),
-      ).toBe(false);
+    const first = contactGroup(form, 1);
+    expect(within(first).getByLabelText('Contact position')).toHaveValue(
+      'Director general',
+    );
+    expect(roleBox(first, 'Final decision-maker')).toBeChecked();
+    expect(roleBox(first, 'Financial')).toBeChecked();
+    expect(roleBox(first, 'Influencer')).not.toBeChecked();
+    const second = contactGroup(form, 2);
+    expect(within(second).getByLabelText('Contact position')).toHaveValue(
+      'Responsabil calitate',
+    );
+    expect(roleBox(second, 'Influencer')).toBeChecked();
+    expect(roleBox(second, 'Technical')).toBeChecked();
+    const third = contactGroup(form, 3);
+    expect(within(third).getByLabelText('Contact position')).toHaveValue('');
+    expect(
+      within(
+        within(third).getByRole('group', { name: 'Decision roles' }),
+      ).getAllByRole('checkbox'),
+    ).toHaveLength(6);
+    expect(
+      within(third)
+        .getAllByRole('checkbox')
+        .some(
+          (checkbox) =>
+            checkbox instanceof HTMLInputElement && checkbox.checked,
+        ),
+    ).toBe(false);
 
-      fireEvent.change(within(form).getByLabelText('Telephone'), {
-        target: { value: '+373 22 000 366' },
-      });
+    fireEvent.change(within(form).getByLabelText('Telephone'), {
+      target: { value: '+373 22 000 366' },
+    });
 
-      expect(await save(form, corrections)).toEqual([ion, maria, ana]);
-    },
-  );
+    expect(await save(form, corrections)).toEqual([ion, maria, ana]);
+  });
 
   it("keeps every other Contact's values when one Contact changes or is removed", async () => {
     const corrections = renderDossier();

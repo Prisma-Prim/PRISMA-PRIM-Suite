@@ -273,7 +273,7 @@ describe('Offer history in the Activity Log', () => {
           }) satisfies MediaQueryList,
       ),
     );
-    window.history.replaceState(null, '', '/?frame=classic#activity');
+    window.history.replaceState(null, '', '/#activity');
   });
   afterEach(() => {
     vi.restoreAllMocks();

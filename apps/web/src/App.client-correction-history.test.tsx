@@ -145,7 +145,7 @@ describe('Client correction history', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    window.history.replaceState(null, '', '/?frame=prisme#clients');
+    window.history.replaceState(null, '', '/#clients');
   });
   afterEach(() => {
     vi.restoreAllMocks();

@@ -19,7 +19,9 @@ import {
 import {
   deferred,
   installCurrentWorkApp as install,
+  openCompanyAccess,
   openCurrentWork as open,
+  openSection,
   CurrentWorkLocaleProbe as LocaleProbe,
   resetCurrentWorkApp,
   restoreCurrentWorkApp,
@@ -346,9 +348,7 @@ describe('Configured current work through the actual App HTTP/native parents', (
       );
       await waitFor(() => expect(state.reads).toBe(2));
       state.held = undefined;
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
+      const access = await openCompanyAccess();
       changeValue(within(access).getByLabelText('Workspace member'), id(9));
       changeValue(
         within(access).getByLabelText('Company', { exact: true }),
@@ -414,9 +414,7 @@ describe('Configured current work through the actual App HTTP/native parents', (
         view.rerender(<App identity={identity} />);
         panel = await open();
       } else {
-        const access = await screen.findByRole('region', {
-          name: 'Company access',
-        });
+        let access = await openCompanyAccess();
         changeValue(within(access).getByLabelText('Workspace member'), id(9));
         changeValue(
           within(access).getByLabelText('Company', { exact: true }),
@@ -443,12 +441,15 @@ describe('Configured current work through the actual App HTTP/native parents', (
             ).toBeEnabled(),
           );
           await screen.findByText('Access granted. Server state refreshed.');
-          if (!active)
+          if (!active) {
+            await openSection('Projects');
             await waitFor(() =>
               expect(
                 screen.queryByRole('region', { name: 'Current mission work' }),
               ).toBeNull(),
             );
+            access = await openCompanyAccess();
+          }
         }
         panel = await open();
       }
@@ -486,9 +487,7 @@ describe('Configured current work through the actual App HTTP/native parents', (
       changeValue(title, 'Protected connected native Task');
       const result = await screen.findByLabelText('Result declaration');
       changeValue(result, 'Protected connected result under source grant');
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
+      const access = await openCompanyAccess();
       changeValue(within(access).getByLabelText('Workspace member'), id(9));
       changeValue(
         within(access).getByLabelText('Company', { exact: true }),
@@ -531,9 +530,7 @@ describe('Configured current work through the actual App HTTP/native parents', (
       );
       await waitFor(() => expect(state.reads).toBe(2));
       state.held = undefined;
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
+      const access = await openCompanyAccess();
       changeValue(within(access).getByLabelText('Workspace member'), id(9));
       changeValue(
         within(access).getByLabelText('Company', { exact: true }),

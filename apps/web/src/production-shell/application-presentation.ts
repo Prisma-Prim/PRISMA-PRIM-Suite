@@ -20,4 +20,4 @@ export function getPresentationUrl(
 
 // Presentation only; feature ownership and authority keys remain in App.
 export const ApplicationPresentation =
-  createContext<ApplicationPresentationName>('classic');
+  createContext<ApplicationPresentationName>('prisme');

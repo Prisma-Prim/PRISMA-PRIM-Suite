@@ -439,7 +439,7 @@ it('discards a held old-Company Activity response after a real Company switch', 
 });
 
 it('retires the Home preview on real authority loss and cannot revive a held response', async () => {
-  window.history.replaceState(null, '', '/?frame=classic');
+  window.history.replaceState(null, '', '/');
   const server = installServer();
   renderApp();
   await screen.findByText('Target: Company sixth');
@@ -458,8 +458,19 @@ it('retires the Home preview on real authority loss and cannot revive a held res
   server.state.summaryRead = false;
   server.state.activity = () => Response.json({ events: [] });
   server.state.searchStatus = 403;
+  // Prisme keeps the Client search in Clients; its refusal revalidates the Actor.
+  const navigation = screen.getByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  fireEvent.click(within(navigation).getByRole('link', { name: 'Clients' }));
+  const actorReads = () =>
+    server.requests.filter(({ path }) => path === '/api/access/current-actor')
+      .length;
+  const before = actorReads();
   changeValue(screen.getByLabelText('Find a shared Client'), 'synthetic');
   fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+  await waitFor(() => expect(actorReads()).toBeGreaterThan(before));
+  fireEvent.click(within(navigation).getByRole('link', { name: 'Overview' }));
   await waitFor(() =>
     expect(screen.queryByRole('region', { name: 'Recent changes' })).toBeNull(),
   );

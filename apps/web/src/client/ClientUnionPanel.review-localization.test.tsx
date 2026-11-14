@@ -89,7 +89,7 @@ function respond(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status });
 }
 
-/** Renders the Classic panel (no `onConfirmed`) in the given interface locale. */
+/** Renders the panel without `onConfirmed` in the given interface locale. */
 function renderPanel(locale: InterfaceLocale, responses: Response[]) {
   localStorage.setItem(interfaceLocaleStorageKey, locale);
   const fetcher = vi.fn();

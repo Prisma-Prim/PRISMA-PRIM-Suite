@@ -31,6 +31,21 @@ const actor: ActorContext = {
   },
 };
 
+/** Prisme keeps the registration form behind its directory action. */
+function openRegistration() {
+  const trigger = screen.getByRole('button', { name: 'New Client' });
+  if (trigger.getAttribute('aria-expanded') !== 'true')
+    fireEvent.click(trigger);
+}
+
+/** Prisme opens the dossier correction form from its own action. */
+async function openCorrection() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Correct Client dossier' }),
+  );
+  return screen.findByRole('form', { name: 'Correct Client dossier' });
+}
+
 describe('ClientWorkspace', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -81,6 +96,7 @@ describe('ClientWorkspace', () => {
       await screen.findByText('No Clients for PRISMA-PRIM yet.'),
     ).toBeInTheDocument();
 
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Exemplu Client SRL' },
     });
@@ -147,6 +163,7 @@ describe('ClientWorkspace', () => {
     );
 
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Ordered Contacts Client' },
     });
@@ -220,6 +237,7 @@ describe('ClientWorkspace', () => {
     );
 
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'AGRONOVA Demo SRL' },
     });
@@ -277,6 +295,7 @@ describe('ClientWorkspace', () => {
     );
 
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Exemplu Client SRL' },
     });
@@ -370,9 +389,7 @@ describe('ClientWorkspace', () => {
     expect(await screen.findByText('Version 1')).toBeInTheDocument();
     expect(screen.getByText('BIC, PRISMA-PRIM')).toBeInTheDocument();
 
-    const correctionForm = screen.getByRole('form', {
-      name: 'Correct Client dossier',
-    });
+    const correctionForm = await openCorrection();
     fireEvent.change(within(correctionForm).getByLabelText('Telephone'), {
       target: { value: '+373 69 111 222' },
     });
@@ -580,6 +597,7 @@ describe('ClientWorkspace', () => {
     );
 
     await screen.findByRole('heading', { name: client.displayName });
+    openRegistration();
     expect(
       screen.getByRole('textbox', { name: 'Client display name' }),
     ).toBeInTheDocument();
@@ -658,9 +676,7 @@ describe('ClientWorkspace', () => {
 
     await screen.findByRole('heading', { name: dossier.displayName });
     fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
-    const correctionForm = await screen.findByRole('form', {
-      name: 'Correct Client dossier',
-    });
+    const correctionForm = await openCorrection();
     fireEvent.change(within(correctionForm).getByLabelText('Telephone'), {
       target: { value: '+373 60 000 000' },
     });
@@ -736,9 +752,7 @@ describe('ClientWorkspace', () => {
 
     await screen.findByRole('heading', { name: dossier.displayName });
     fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
-    const correctionForm = await screen.findByRole('form', {
-      name: 'Correct Client dossier',
-    });
+    const correctionForm = await openCorrection();
     fireEvent.change(within(correctionForm).getByLabelText('IDNO / tax code'), {
       target: { value: 'DUPLICATE-ID' },
     });
@@ -817,6 +831,7 @@ describe('ClientWorkspace', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     const initialSignal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal;
 
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'New Client' },
     });
@@ -843,7 +858,9 @@ describe('ClientWorkspace', () => {
       );
       await initialList.promise;
     });
-    expect(screen.getByText('New Client')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'New Client' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Stale Client')).not.toBeInTheDocument();
   });
 
@@ -946,6 +963,7 @@ describe('ClientWorkspace', () => {
     );
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
 
+    openRegistration();
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Client display name is required.',
@@ -1117,6 +1135,7 @@ describe('ClientWorkspace', () => {
       />,
     );
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Stale Registration' },
     });
@@ -1188,6 +1207,7 @@ describe('ClientWorkspace', () => {
       />,
     );
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Stable Client' },
     });
@@ -1235,6 +1255,7 @@ describe('ClientWorkspace', () => {
     );
     const { rerender } = render(workspace(assignedActor()));
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Refreshed Client' },
     });
@@ -1283,6 +1304,7 @@ describe('ClientWorkspace', () => {
     );
     const { rerender } = render(workspace(assignedActor()));
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Uncertain Client' },
     });
@@ -1297,7 +1319,7 @@ describe('ClientWorkspace', () => {
       api.registrations[0]?.response.reject(new TypeError('Failed to fetch'));
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'We could not load Clients. Please try again.',
+      'The Client creation could not be confirmed. Retry the same details safely.',
     );
     rerender(workspace(assignedActor()));
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
@@ -1387,6 +1409,7 @@ describe('ClientWorkspace', () => {
         />,
       );
       await screen.findByText('No Clients for PRISMA-PRIM yet.');
+      openRegistration();
       fireEvent.change(screen.getByLabelText('Client display name'), {
         target: { value: 'Stale Client' },
       });
@@ -1661,6 +1684,7 @@ describe('ClientWorkspace', () => {
       />,
     );
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Retry Client' },
     });
@@ -1790,6 +1814,7 @@ describe('ClientWorkspace', () => {
       />,
     );
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Possible Duplicate' },
     });

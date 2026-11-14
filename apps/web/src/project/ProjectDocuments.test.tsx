@@ -218,7 +218,7 @@ it('keeps the Document search draft and requires a Project reload when closure w
   expect(onProjectChanged).toHaveBeenCalledTimes(1);
 });
 
-it('presents real Project Documents in Prisme while preserving the Classic public markup', async () => {
+it('presents real Project Documents in Prisme', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async () =>
@@ -233,17 +233,6 @@ it('presents real Project Documents in Prisme while preserving the Classic publi
     identity: deterministicBrowserIdentity(),
     projectId: 'project',
   };
-  const classic = render(<ProjectDocuments {...props} />);
-  const classicSection = await screen.findByRole('region', {
-    name: 'Working Documents',
-  });
-  expect(classicSection).toHaveClass('project-documents');
-  expect(classicSection).not.toHaveClass('project-documents--prisme');
-  expect(classicSection.firstElementChild).toBe(
-    within(classicSection).getByRole('heading', { name: 'Working Documents' }),
-  );
-  classic.unmount();
-
   render(
     <ApplicationPresentation value="prisme">
       <ProjectDocuments {...props} />

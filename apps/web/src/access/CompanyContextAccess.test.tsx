@@ -177,32 +177,11 @@ describe('CompanyContextAccess', () => {
     vi.unstubAllGlobals();
   });
 
-  it('presents access administration in Prisme while preserving the Classic public markup', async () => {
+  it('presents access administration in Prisme', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Response.json(administration())),
     );
-
-    const classic = render(
-      <CompanyContextAccess
-        actor={ownerActor}
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
-    const classicAccess = await screen.findByRole('region', {
-      name: 'Company access',
-    });
-    expect(classicAccess).not.toHaveClass('company-access--prisme');
-    expect(classicAccess.firstElementChild).toHaveClass('eyebrow');
-    expect(classicAccess.querySelector('form')).not.toHaveClass(
-      'company-access-form',
-    );
-    expect(
-      within(classicAccess).getByRole('region', {
-        name: 'Identity-provider sessions',
-      }),
-    ).not.toHaveClass('session-revocations--prisme');
-    classic.unmount();
 
     render(
       <ApplicationPresentation value="prisme">
@@ -287,38 +266,31 @@ describe('CompanyContextAccess', () => {
     ).toBeDisabled();
   });
 
-  it.each(['classic', 'prisme'] as const)(
-    'shows the exact captured version of an active legacy assignment in %s',
-    async (presentation) => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn(async () => Response.json(administration('director', 'v1'))),
-      );
+  it('shows the exact captured version of an active legacy assignment', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(administration('director', 'v1'))),
+    );
 
-      render(
-        <ApplicationPresentation value={presentation}>
-          <CompanyContextAccess
-            actor={ownerActor}
-            identity={deterministicBrowserIdentity()}
-          />
-        </ApplicationPresentation>,
-      );
-      await screen.findByLabelText('Workspace member');
-      chooseTargets();
-      chooseBundle('director-client');
+    render(
+      <ApplicationPresentation value="prisme">
+        <CompanyContextAccess
+          actor={ownerActor}
+          identity={deterministicBrowserIdentity()}
+        />
+      </ApplicationPresentation>,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
 
-      expect(screen.getByText(/Current server state:/)).toHaveTextContent(
-        /^Current server state: Granted — captured version v1$/,
-      );
-      expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Revoke access' }),
-      ).toBeEnabled();
-      expect(
-        screen.getByRole('button', { name: 'Grant access' }),
-      ).toBeDisabled();
-    },
-  );
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Revoke access' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeDisabled();
+  });
 
   it('shows the server-captured version only after an explicit revoke and fresh grant', async () => {
     let assignment: 'legacy' | 'revoked' | 'fresh' = 'legacy';

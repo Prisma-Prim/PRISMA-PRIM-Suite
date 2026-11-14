@@ -199,7 +199,7 @@ describe('ApplicationRoot', () => {
 
   it('preserves the Company draft and exact retry command across locale changes', async () => {
     localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    window.history.replaceState(null, '', '/?frame=prisme#companies');
+    window.history.replaceState(null, '', '/#companies');
     const commands: Array<{ body: string | undefined; key: string | null }> =
       [];
     const company = {

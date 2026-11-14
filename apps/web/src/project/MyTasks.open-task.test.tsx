@@ -85,11 +85,10 @@ function serve(reply: () => Response | Promise<Response>) {
   return calls;
 }
 function renderTasks(
-  frame: 'classic' | 'prisme',
   onOpenTask?: (task: { projectId: string; taskId: string }) => void,
 ) {
   return render(
-    <ApplicationPresentation value={frame}>
+    <ApplicationPresentation value="prisme">
       <MyTasks
         actor={actor}
         identity={deterministicBrowserIdentity()}
@@ -103,48 +102,45 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-it.each(['classic', 'prisme'] as const)(
-  'offers Open on every ready row, named by its Task and Project, and hands over that row’s exact identities in the %s frame',
-  async (frame) => {
-    const calls = serve(() =>
-      Response.json({
-        tasks: [
-          assigned('task-atelier', atelier, '2026-09-30'),
-          assigned('task-beta', beta, '2026-10-05'),
-        ],
-      }),
-    );
-    const onOpenTask = vi.fn();
-    renderTasks(frame, onOpenTask);
-    const list = await screen.findByRole('list', { name: copy.listLabel });
-    const rows = within(list).getAllByRole('listitem');
-    expect(rows).toHaveLength(2);
-    const [atelierRow, betaRow] = rows;
-    if (!atelierRow || !betaRow) throw new Error('Expected two rows.');
-    expect(
-      within(atelierRow).getByRole('button', { name: openName(atelier) }),
-    ).toHaveTextContent(copy.open);
-    const open = within(betaRow).getByRole('button', { name: openName(beta) });
-    expect(open).toHaveTextContent(copy.open);
-    expect(open).toHaveAttribute('type', 'button');
+it('offers Open on every ready row, named by its Task and Project, and hands over that row’s exact identities', async () => {
+  const calls = serve(() =>
+    Response.json({
+      tasks: [
+        assigned('task-atelier', atelier, '2026-09-30'),
+        assigned('task-beta', beta, '2026-10-05'),
+      ],
+    }),
+  );
+  const onOpenTask = vi.fn();
+  renderTasks(onOpenTask);
+  const list = await screen.findByRole('list', { name: copy.listLabel });
+  const rows = within(list).getAllByRole('listitem');
+  expect(rows).toHaveLength(2);
+  const [atelierRow, betaRow] = rows;
+  if (!atelierRow || !betaRow) throw new Error('Expected two rows.');
+  expect(
+    within(atelierRow).getByRole('button', { name: openName(atelier) }),
+  ).toHaveTextContent(copy.open);
+  const open = within(betaRow).getByRole('button', { name: openName(beta) });
+  expect(open).toHaveTextContent(copy.open);
+  expect(open).toHaveAttribute('type', 'button');
 
-    fireEvent.click(open);
-    expect(onOpenTask).toHaveBeenCalledTimes(1);
-    expect(onOpenTask).toHaveBeenCalledWith({
-      projectId: beta.id,
-      taskId: 'task-beta',
-    });
-    // Opening neither re-reads nor changes the list.
-    expect(calls).toEqual(['/api/assigned-tasks']);
-    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
-  },
-);
+  fireEvent.click(open);
+  expect(onOpenTask).toHaveBeenCalledTimes(1);
+  expect(onOpenTask).toHaveBeenCalledWith({
+    projectId: beta.id,
+    taskId: 'task-beta',
+  });
+  // Opening neither re-reads nor changes the list.
+  expect(calls).toEqual(['/api/assigned-tasks']);
+  expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+});
 
 it('offers no Open action without the shell callback', async () => {
   serve(() =>
     Response.json({ tasks: [assigned('task-beta', beta, '2026-10-05')] }),
   );
-  renderTasks('prisme');
+  renderTasks();
   const list = await screen.findByRole('list', { name: copy.listLabel });
   expect(within(list).getAllByRole('listitem')).toHaveLength(1);
   expect(within(list).queryByRole('button')).not.toBeInTheDocument();
@@ -157,7 +153,7 @@ it.each([
   { state: 'empty', reply: () => Response.json({ tasks: [] }) },
 ])('offers no Open action in the $state state', async ({ state, reply }) => {
   serve(reply);
-  renderTasks('classic', vi.fn());
+  renderTasks(vi.fn());
   await waitFor(() =>
     expect(
       screen.getByText(

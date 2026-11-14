@@ -118,78 +118,74 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-it.each(['classic', 'prisme'] as const)(
-  'shows loading, then the server-ordered open Tasks with their date, Project and Client in the %s frame',
-  async (frame) => {
-    const reply = deferred<Response>();
-    const calls = stub(() => reply.promise);
-    render(
-      <ApplicationPresentation value={frame}>
-        <MyTasks actor={actor} identity={deterministicBrowserIdentity()} />
-      </ApplicationPresentation>,
-    );
-    expect(await screen.findByRole('status')).toHaveTextContent(copy.loading);
-    expect(region()).toHaveClass(
-      frame === 'prisme' ? 'my-tasks my-tasks--prisme' : 'my-tasks',
-      { exact: true },
-    );
-    reply.resolve(
-      Response.json({
-        tasks: [
-          assigned('early', 'Early notes', '0099-12-31'),
-          september,
-          october,
-          undated,
-        ],
-      }),
-    );
-    await screen.findByRole('list', { name: copy.listLabel });
-    expect(rows()).toEqual([
-      [
-        'Early notes',
-        'ISO preparation',
-        'Synthetic Client',
-        'Dec 31, 99',
-        'Normal',
+it('shows loading, then the server-ordered open Tasks with their date, Project and Client', async () => {
+  const reply = deferred<Response>();
+  const calls = stub(() => reply.promise);
+  render(
+    <ApplicationPresentation value="prisme">
+      <MyTasks actor={actor} identity={deterministicBrowserIdentity()} />
+    </ApplicationPresentation>,
+  );
+  expect(await screen.findByRole('status')).toHaveTextContent(copy.loading);
+  expect(region()).toHaveClass('my-tasks my-tasks--prisme', {
+    exact: true,
+  });
+  reply.resolve(
+    Response.json({
+      tasks: [
+        assigned('early', 'Early notes', '0099-12-31'),
+        september,
+        october,
+        undated,
       ],
-      [
-        'September notes',
-        'Audit preparation',
-        'Second Synthetic Client',
-        'Sep 30, 2026',
-        'Normal',
-      ],
-      [
-        'October notes',
-        'ISO preparation',
-        'Synthetic Client',
-        'Oct 5, 2026',
-        'Normal',
-      ],
-      [
-        'Undated notes',
-        'ISO preparation',
-        'Synthetic Client',
-        'No due date',
-        'Normal',
-      ],
-    ]);
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe('/api/assigned-tasks');
-    expect(calls[0]?.init?.method ?? 'GET').toBe('GET');
-    expect(calls[0]?.init?.headers).toMatchObject({
-      'x-company-context-id': 'company',
-    });
-    expect(region()).not.toHaveTextContent(
-      /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+)?tasks?\b/i,
-    );
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /done|complete|edit/i }),
-    ).not.toBeInTheDocument();
-  },
-);
+    }),
+  );
+  await screen.findByRole('list', { name: copy.listLabel });
+  expect(rows()).toEqual([
+    [
+      'Early notes',
+      'ISO preparation',
+      'Synthetic Client',
+      'Dec 31, 99',
+      'Normal',
+    ],
+    [
+      'September notes',
+      'Audit preparation',
+      'Second Synthetic Client',
+      'Sep 30, 2026',
+      'Normal',
+    ],
+    [
+      'October notes',
+      'ISO preparation',
+      'Synthetic Client',
+      'Oct 5, 2026',
+      'Normal',
+    ],
+    [
+      'Undated notes',
+      'ISO preparation',
+      'Synthetic Client',
+      'No due date',
+      'Normal',
+    ],
+  ]);
+  expect(calls).toHaveLength(1);
+  expect(calls[0]?.url).toBe('/api/assigned-tasks');
+  expect(calls[0]?.init?.method ?? 'GET').toBe('GET');
+  expect(calls[0]?.init?.headers).toMatchObject({
+    'x-company-context-id': 'company',
+  });
+  expect(region()).not.toHaveTextContent(
+    /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+)?tasks?\b/i,
+  );
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /done|complete|edit/i }),
+  ).not.toBeInTheDocument();
+});
 
 it('labels each row with its priority as text while keeping the server date order', async () => {
   stub(

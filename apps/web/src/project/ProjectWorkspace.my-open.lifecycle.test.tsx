@@ -415,6 +415,7 @@ it('retains real Task, Document and registration drafts through a pending and un
     await screen.findByRole('region', { name: 'Tasks' }),
   ).findByRole('textbox', { name: 'Task title' });
   changeValue(taskTitle, 'Keep Task {draft} — Демо');
+  fireEvent.click(screen.getByRole('tab', { name: 'Working Documents' }));
   fireEvent.click(
     await screen.findByRole('button', { name: 'Attach working Document' }),
   );
@@ -1095,6 +1096,7 @@ it.each(['clear', 'reassign'] as const)(
       screen.getByRole('region', { name: 'Tasks' }),
     ).findByRole('textbox', { name: 'Task title' });
     changeValue(taskTitle, 'Independent Task {draft}');
+    fireEvent.click(screen.getByRole('tab', { name: 'Working Documents' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Attach working Document' }),
     );

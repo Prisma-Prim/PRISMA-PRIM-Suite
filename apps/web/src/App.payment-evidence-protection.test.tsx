@@ -349,7 +349,7 @@ const originalScroll = scrollable.scrollIntoView;
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
-  window.history.replaceState(null, '', '/?frame=prisme#documents');
+  window.history.replaceState(null, '', '/#documents');
   scrollable.scrollIntoView = vi.fn();
   vi.stubGlobal(
     'matchMedia',
@@ -408,17 +408,6 @@ describe('Payment Source protection through the actual App navigation boundary',
         changeValue(locale, value);
         expect(lockedControl.isConnected).toBe(true);
         expect(lockedControl).toBeDisabled();
-      }
-      retry.focus();
-      for (const frame of ['classic', 'prisme']) {
-        act(() => {
-          const url = new URL(window.location.href);
-          url.searchParams.set('frame', frame);
-          window.history.pushState(window.history.state, '', url);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        });
-        expect(lockedControl.isConnected).toBe(true);
-        expect(retry).toHaveFocus();
       }
       fireEvent.click(retry);
       await waitFor(() => expect(api.writes).toHaveLength(2));

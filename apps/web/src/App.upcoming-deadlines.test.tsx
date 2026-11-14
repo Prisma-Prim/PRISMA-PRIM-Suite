@@ -201,6 +201,33 @@ async function open() {
   );
   await within(panel()).findByText('Task 00 — Literal');
 }
+function navigateTo(name: string) {
+  fireEvent.click(
+    within(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).getByRole('link', { name }),
+  );
+}
+/**
+ * Prisme keeps the Client search in Clients: its denial revalidates the Actor
+ * before the test returns to the overview.
+ */
+async function searchClientsAndReturn() {
+  const actorReads = () =>
+    vi
+      .mocked(fetch)
+      .mock.calls.filter(([input]) =>
+        input.toString().endsWith('/access/current-actor'),
+      ).length;
+  navigateTo('Clients');
+  changeValue(screen.getByLabelText('Find a shared Client'), 'Synthetic');
+  const search = screen.getByRole('button', { name: 'Search Clients' });
+  await waitFor(() => expect(search).toBeEnabled());
+  const before = actorReads();
+  fireEvent.click(search);
+  await waitFor(() => expect(actorReads()).toBeGreaterThan(before));
+  navigateTo('Overview');
+}
 describe('Personal upcoming deadlines through App', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -400,7 +427,7 @@ describe('Personal upcoming deadlines through App', () => {
   });
 
   it('retires replies after captured authority or membership changes and after a new session owner', async () => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
     const api = server();
     api.hold();
     const view = render(<App identity={deterministicBrowserIdentity()} />);
@@ -417,12 +444,7 @@ describe('Personal upcoming deadlines through App', () => {
       };
     };
     api.state.searchStatus = 403;
-    changeValue(screen.getByLabelText('Find a shared Client'), 'Synthetic');
-    const search = screen.getByRole('button', {
-      name: 'Search Clients',
-    });
-    await waitFor(() => expect(search).toBeEnabled());
-    fireEvent.click(search);
+    await searchClientsAndReturn();
     await waitFor(() =>
       expect(
         screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),

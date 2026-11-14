@@ -308,16 +308,15 @@ it('allows an independently captured Invoice Reader to reopen metadata and Versi
   ).not.toBeInTheDocument();
 });
 
-it('preserves literal entry and focused native controls through all four locales and frame-only changes without duplicate reads', async () => {
+it('preserves literal entry and focused native controls through all four locales without duplicate reads', async () => {
   const { reads, writes } = http();
   const identity = deterministicBrowserIdentity();
-  const content = (frame: 'classic' | 'prisme') => (
-    <ApplicationPresentation value={frame}>
+  render(
+    <ApplicationPresentation value="prisme">
       <InterfaceLocaleSelect />
       {view(identity)}
-    </ApplicationPresentation>
+    </ApplicationPresentation>,
   );
-  const rendered = render(content('classic'));
   await fillRegistration();
   const title = screen.getByLabelText('Title');
   title.focus();
@@ -333,7 +332,6 @@ it('preserves literal entry and focused native controls through all four locales
     ).toBeInTheDocument();
   }
   title.focus();
-  rendered.rerender(content('prisme'));
   expect(screen.getByLabelText('Title')).toBe(title);
   expect(title).toHaveFocus();
   expect(reads).toEqual(before);

@@ -115,54 +115,24 @@ async function openFinancial() {
 }
 
 const cases = [
-  { stage: 'token', retirement: 'navigation', frame: 'prisme', status: 200 },
-  { stage: 'token', retirement: 'navigation', frame: 'classic', status: 200 },
-  { stage: 'response', retirement: 'navigation', frame: 'prisme', status: 401 },
-  {
-    stage: 'response',
-    retirement: 'navigation',
-    frame: 'classic',
-    status: 403,
-  },
-  {
-    stage: 'response',
-    retirement: 'finance A→B→A',
-    frame: 'prisme',
-    status: 200,
-  },
-  {
-    stage: 'response',
-    retirement: 'family A→B→A',
-    frame: 'classic',
-    status: 403,
-  },
-  { stage: 'body', retirement: 'Company A→B→A', frame: 'prisme', status: 200 },
-  { stage: 'body', retirement: 'Company A→B→A', frame: 'classic', status: 200 },
-  { stage: 'hash', retirement: 'session A→B→A', frame: 'prisme', status: 200 },
-  { stage: 'hash', retirement: 'session A→B→A', frame: 'classic', status: 200 },
-  {
-    stage: 'object URL',
-    retirement: 'navigation',
-    frame: 'prisme',
-    status: 200,
-  },
-  {
-    stage: 'object URL',
-    retirement: 'navigation',
-    frame: 'classic',
-    status: 200,
-  },
+  { stage: 'token', retirement: 'navigation', status: 200 },
+  { stage: 'response', retirement: 'navigation', status: 401 },
+  { stage: 'response', retirement: 'navigation', status: 403 },
+  { stage: 'response', retirement: 'finance A→B→A', status: 200 },
+  { stage: 'response', retirement: 'family A→B→A', status: 403 },
+  { stage: 'body', retirement: 'Company A→B→A', status: 200 },
+  { stage: 'hash', retirement: 'session A→B→A', status: 200 },
+  { stage: 'object URL', retirement: 'navigation', status: 200 },
 ] satisfies Array<{
   stage: Stage;
   retirement: Retirement;
-  frame: 'prisme' | 'classic';
   status: number;
 }>;
 
 it.each(cases)(
-  'keeps the held financial $stage HTTP$status inert after actual App $retirement in $frame',
-  async ({ stage, retirement, frame, status }) => {
-    window.history.replaceState(null, '', `/?frame=${frame}#documents`);
+  'keeps the held financial $stage HTTP$status inert after actual App $retirement',
+  async ({ stage, retirement, status }) => {
+    window.history.replaceState(null, '', '/#documents');
     const digest = await webcrypto.subtle.digest('SHA-256', bytes);
     const sha256 = Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, '0'),
@@ -342,7 +312,7 @@ it.each(cases)(
     }
     async function navigateAway() {
       fireEvent.click(link('Projects'));
-      // Classic uses a real native anchor; observe its hashchange before releasing old work.
+      // Observe the navigation's hashchange before releasing old work.
       await waitFor(() => expect(window.location.hash).toBe('#projects'));
       await waitFor(() =>
         expect(

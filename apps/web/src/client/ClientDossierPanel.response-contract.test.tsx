@@ -53,6 +53,13 @@ function mount({
   return { ...render(<ClientDossierPanel {...props} />), props, fetcher };
 }
 
+/** Prisme opens the dossier correction form from its own action. */
+function openCorrection() {
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Correct Client dossier' }),
+  );
+}
+
 it('rejects a dossier with an unproved version instead of opening a correction against it', async () => {
   mount({ read: { ...dossier, version: 1.5 } });
   expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -68,6 +75,7 @@ it('keeps an uncertain correction draft and old dossier when the successful corr
     patch: () => Response.json({ ...dossier, version: 1.5 }),
   });
   await screen.findByRole('heading', { name: dossier.displayName });
+  openCorrection();
   fireEvent.change(screen.getByLabelText('Client display name'), {
     target: { value: 'Corrected Client' },
   });
@@ -139,6 +147,7 @@ it('preserves nullable details, omitted and populated Contact fields and the exa
     },
   });
   await screen.findByRole('heading', { name: dossier.displayName });
+  openCorrection();
   expect(screen.getAllByLabelText('Contact position')[1]).toHaveValue(
     'Director',
   );
@@ -181,6 +190,7 @@ it('rejects authentication loss during correction before decoding a successful d
   const { props } = mount({ patch: () => Response.json({}, { status: 401 }) });
   const rejectSession = vi.spyOn(props.identity, 'rejectSession');
   await screen.findByRole('heading', { name: dossier.displayName });
+  openCorrection();
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   await waitFor(() => expect(rejectSession).toHaveBeenCalledOnce());
   expect(props.onActivityRecorded).not.toHaveBeenCalled();
@@ -197,6 +207,7 @@ it('does not reject the session or publish an acknowledgement after the correcti
   const { props, fetcher, unmount } = mount({ patch: () => response });
   const rejectSession = vi.spyOn(props.identity, 'rejectSession');
   await screen.findByRole('heading', { name: dossier.displayName });
+  openCorrection();
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   await waitFor(() =>
     expect(

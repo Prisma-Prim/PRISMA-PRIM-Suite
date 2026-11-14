@@ -260,14 +260,14 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('shows a Pricing User alone the configuration read-only in both frames', async () => {
+it('shows a Pricing User alone the configuration read-only', async () => {
   const api = serve({
     actors: { [companyA.id]: actorIn(companyA, pricingUser('pricing-user-a')) },
     rules: { [companyA.id]: publishedRules('Company A') },
     refused: new Set(),
   });
-  window.history.replaceState(null, '', '/?frame=prisme#pricing');
-  const view = render(<App identity={deterministicBrowserIdentity()} />);
+  window.history.replaceState(null, '', '/#pricing');
+  render(<App identity={deterministicBrowserIdentity()} />);
   const navigation = await screen.findByRole('navigation', {
     name: 'Primary navigation',
   });
@@ -280,11 +280,6 @@ it('shows a Pricing User alone the configuration read-only in both frames', asyn
   // Pricing User opens no catalogue or Commercial Intake screen.
   for (const name of ['Service Catalogue', 'Client Requests'])
     expect(within(navigation).queryByRole('link', { name })).toBeNull();
-  view.unmount();
-
-  window.history.replaceState(null, '', '/?frame=classic');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  await expectReadOnlyRules(await pricingSection(), 'Company A');
   expect(api.requests.filter((request) => request.method !== 'GET')).toEqual(
     [],
   );
@@ -302,7 +297,7 @@ it('offers publication only when Configuration also grants it, and no section to
     rules: { [companyA.id]: publishedRules('Company A') },
     refused: new Set(),
   });
-  window.history.replaceState(null, '', '/?frame=prisme#pricing');
+  window.history.replaceState(null, '', '/#pricing');
   const both = render(<App identity={deterministicBrowserIdentity()} />);
   const section = await pricingSection();
   expect(
@@ -339,7 +334,7 @@ it('revalidates the actor after a refused read and removes the section with its 
     refused: new Set(),
   };
   const api = serve(state);
-  window.history.replaceState(null, '', '/?frame=classic');
+  window.history.replaceState(null, '', '/#pricing');
   render(<App identity={deterministicBrowserIdentity()} />);
   const section = await pricingSection();
   await expectReadOnlyRules(section, 'Company A');
@@ -389,7 +384,7 @@ it('ignores a late reply of the previous Company and hides the section in a Comp
     held: companyA.id,
   };
   const api = serve(state);
-  window.history.replaceState(null, '', '/?frame=classic');
+  window.history.replaceState(null, '', '/#pricing');
   render(<App identity={deterministicBrowserIdentity()} />);
   await pricingSection();
   await waitFor(() =>
@@ -444,26 +439,35 @@ it('remounts the whole section when Pricing User is granted, granted again or re
     refused: new Set(),
   };
   serve(state);
-  window.history.replaceState(null, '', '/?frame=classic');
+  window.history.replaceState(null, '', '/#pricing');
   render(<App identity={deterministicBrowserIdentity()} />);
-  const revalidateAccess = () => {
-    changeValue(screen.getByLabelText('Find a shared Client'), 'Example');
-    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-  };
-
-  // Revalidating an unchanged actor keeps the mounted section and its draft.
-  const kept = within(await pricingSection()).getByLabelText(copy.label);
-  changeValue(kept, 'Kept draft');
   const actorReads = () =>
     vi
       .mocked(fetch)
       .mock.calls.filter(([input]) =>
         input.toString().endsWith('/access/current-actor'),
       ).length;
-  const readsBefore = actorReads();
-  // A real refused search revalidates the actor without replacing the Company.
-  revalidateAccess();
-  await waitFor(() => expect(actorReads()).toBeGreaterThan(readsBefore));
+  const navigateTo = (name: string) =>
+    fireEvent.click(
+      within(
+        screen.getByRole('navigation', { name: 'Primary navigation' }),
+      ).getByRole('link', { name }),
+    );
+  // A real refused search in Clients revalidates the actor without replacing
+  // the Company; the hidden Pricing section stays mounted meanwhile.
+  const revalidateAccess = async () => {
+    const readsBefore = actorReads();
+    navigateTo('Clients');
+    changeValue(screen.getByLabelText('Find a shared Client'), 'Example');
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    await waitFor(() => expect(actorReads()).toBeGreaterThan(readsBefore));
+    navigateTo('Pricing Configuration');
+  };
+
+  // Revalidating an unchanged actor keeps the mounted section and its draft.
+  const kept = within(await pricingSection()).getByLabelText(copy.label);
+  changeValue(kept, 'Kept draft');
+  await revalidateAccess();
   expect(within(await pricingSection()).getByLabelText(copy.label)).toHaveValue(
     'Kept draft',
   );
@@ -478,11 +482,7 @@ it('remounts the whole section when Pricing User is granted, granted again or re
     expect(draft).toHaveValue('Unsent draft');
 
     state.actors[companyA.id] = actorIn(companyA, ...grants, clientReader);
-    const readsBeforeChange = actorReads();
-    revalidateAccess();
-    await waitFor(() =>
-      expect(actorReads()).toBeGreaterThan(readsBeforeChange),
-    );
+    await revalidateAccess();
     await waitFor(() =>
       expect(
         within(

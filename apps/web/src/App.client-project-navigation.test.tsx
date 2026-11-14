@@ -355,9 +355,8 @@ async function returnToCurrentDossier(displayName: string) {
   return screen.findByRole('region', { name: displayName });
 }
 
-// jsdom does not implement scrolling. The real scroll, focus and Prisme frame
-// behaviour is proven by the browser specs; the lighter Classic frame keeps
-// these long journeys within the default test timeout.
+// jsdom does not implement scrolling. The real scroll and focus behaviour is
+// proven by the browser specs.
 const scrollable: {
   scrollIntoView?: (options?: ScrollIntoViewOptions) => void;
 } = Element.prototype;
@@ -367,7 +366,7 @@ describe('Client dossier and Project navigation through App', () => {
   beforeEach(() => {
     resetCurrentWorkApp();
     scrollable.scrollIntoView = vi.fn();
-    window.history.replaceState(null, '', '/?frame=classic#clients');
+    window.history.replaceState(null, '', '/#clients');
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -607,6 +606,7 @@ describe('Client dossier and Project navigation through App', () => {
         await act(async () => selected.resolve(respond({}, 403)));
         await waitFor(() => expect(workspaceSeen).toBe(true));
       }
+      navigateTo('Team & access');
       const access = await screen.findByRole('region', {
         name: 'Company access',
       });
@@ -823,6 +823,7 @@ describe('Client dossier and Project navigation through App', () => {
     expect(projectSearch()).toHaveValue(firstClient.displayName);
     await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
 
+    navigateTo('Overview');
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Open Projects: 1. Open the Project list',
@@ -874,13 +875,14 @@ describe('Client dossier and Project navigation through App', () => {
       expect(closed).toBeChecked();
       changeValue(view, 'mine_open');
       await waitFor(() => expect(view).toHaveTextContent('My open Projects'));
-      if (source === 'Home')
+      if (source === 'Home') {
+        navigateTo('Overview');
         fireEvent.click(
           await screen.findByRole('button', {
             name: 'Open Projects: 1. Open the Project list',
           }),
         );
-      else {
+      } else {
         navigateTo('Clients');
         openClientProjects(dossier);
       }

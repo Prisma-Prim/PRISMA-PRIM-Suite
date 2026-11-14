@@ -183,68 +183,63 @@ async function ready() {
     await screen.findByRole('region', { name: 'Team Tasks' }),
   ).findAllByRole('heading', { name: f.task.title });
 }
-it.each(['classic', 'prisme'])(
-  'retains literal draft/applied criteria/page through actual hidden %s panels and reads freshly on return',
-  async (frame) => {
-    window.history.replaceState(null, '', `/?frame=${frame}#team-tasks`);
-    const api = server();
-    const first = {
-      ...f.page,
-      hasNextPage: true,
-      tasks: Array.from({ length: 25 }, (_, i) => ({
-        ...f.task,
-        id: f.id(String(100 + i)),
-      })),
-    };
-    api.state.page = first;
-    api.state.pages.set(25, { ...f.page, offset: 25 });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await ready();
-    fireEvent.click(
-      within(region()).getByRole('button', { name: 'Next page' }),
-    );
-    await waitFor(() =>
-      expect(within(region()).getAllByRole('listitem')).toHaveLength(1),
-    );
-    changeValue(
-      within(region()).getByRole('combobox', { name: 'Responsibility' }),
-      'name',
-    );
-    const draft = within(region()).getByLabelText('Responsible name contains');
-    fireEvent.change(draft, { target: { value: '  Unsaved literal Ж  ' } });
-    fireEvent.click(
-      within(region()).getByRole('button', { name: /^Open Exact team work/ }),
-    );
-    const projects = await screen.findByRole('region', { name: 'Projects' });
-    await within(projects).findByDisplayValue(f.task.title);
-    expect(regionHidden().contains(draft)).toBe(true);
-    expect(draft).toBeInTheDocument();
-    const nativeTitle = within(projects).getByLabelText('Task title');
-    fireEvent.change(nativeTitle, {
-      target: { value: 'Independent native title draft' },
-    });
-    api.state.pages.set(25, { ...f.page, offset: 25, tasks: [] });
-    navigate('Team Tasks');
-    await within(
-      await screen.findByRole('region', { name: 'Team Tasks' }),
-    ).findByText(
-      'This page no longer contains Tasks. Go back or refresh the list.',
-    );
-    expect(draft).toHaveValue('  Unsaved literal Ж  ');
-    expect(nativeTitle).toBeInTheDocument();
-    expect(nativeTitle).toHaveValue('Independent native title draft');
-    expect(
-      api.calls
-        .filter((u) => u.pathname === '/api/team-tasks')
-        .map((u) => u.searchParams.get('offset')),
-    ).toEqual(['0', '25', '25']);
-    fireEvent.click(
-      within(region()).getByRole('button', { name: 'Refresh Team Tasks' }),
-    );
-    await ready();
-    expect(draft).toHaveValue('  Unsaved literal Ж  ');
-  },
-);
+it('retains literal draft/applied criteria/page through actual hidden panels and reads freshly on return', async () => {
+  window.history.replaceState(null, '', '/#team-tasks');
+  const api = server();
+  const first = {
+    ...f.page,
+    hasNextPage: true,
+    tasks: Array.from({ length: 25 }, (_, i) => ({
+      ...f.task,
+      id: f.id(String(100 + i)),
+    })),
+  };
+  api.state.page = first;
+  api.state.pages.set(25, { ...f.page, offset: 25 });
+  render(<App identity={deterministicBrowserIdentity()} />);
+  await ready();
+  fireEvent.click(within(region()).getByRole('button', { name: 'Next page' }));
+  await waitFor(() =>
+    expect(within(region()).getAllByRole('listitem')).toHaveLength(1),
+  );
+  changeValue(
+    within(region()).getByRole('combobox', { name: 'Responsibility' }),
+    'name',
+  );
+  const draft = within(region()).getByLabelText('Responsible name contains');
+  fireEvent.change(draft, { target: { value: '  Unsaved literal Ж  ' } });
+  fireEvent.click(
+    within(region()).getByRole('button', { name: /^Open Exact team work/ }),
+  );
+  const projects = await screen.findByRole('region', { name: 'Projects' });
+  await within(projects).findByDisplayValue(f.task.title);
+  expect(regionHidden().contains(draft)).toBe(true);
+  expect(draft).toBeInTheDocument();
+  const nativeTitle = within(projects).getByLabelText('Task title');
+  fireEvent.change(nativeTitle, {
+    target: { value: 'Independent native title draft' },
+  });
+  api.state.pages.set(25, { ...f.page, offset: 25, tasks: [] });
+  navigate('Team Tasks');
+  await within(
+    await screen.findByRole('region', { name: 'Team Tasks' }),
+  ).findByText(
+    'This page no longer contains Tasks. Go back or refresh the list.',
+  );
+  expect(draft).toHaveValue('  Unsaved literal Ж  ');
+  expect(nativeTitle).toBeInTheDocument();
+  expect(nativeTitle).toHaveValue('Independent native title draft');
+  expect(
+    api.calls
+      .filter((u) => u.pathname === '/api/team-tasks')
+      .map((u) => u.searchParams.get('offset')),
+  ).toEqual(['0', '25', '25']);
+  fireEvent.click(
+    within(region()).getByRole('button', { name: 'Refresh Team Tasks' }),
+  );
+  await ready();
+  expect(draft).toHaveValue('  Unsaved literal Ж  ');
+});
 function regionHidden() {
   const el = document.getElementById('team-tasks');
   if (!el) throw new Error('Missing retained Team Tasks');
