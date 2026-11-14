@@ -26,6 +26,7 @@ import {
   qualityActor,
   qualityPath,
 } from '../src/test/contract-quality-localization-fixture';
+import { withoutCompanyGrants } from '../src/access/company-grants.test-fixture';
 
 // Quality keeps UTC even when the browser uses a different local time.
 test.use({ timezoneId: 'America/New_York' });
