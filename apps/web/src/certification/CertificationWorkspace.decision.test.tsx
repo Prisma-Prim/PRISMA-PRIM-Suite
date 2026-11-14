@@ -1285,11 +1285,9 @@ describe('Certification recommendation, decision and Certificate', () => {
       agreedOn: '2026-10-21',
       agreementAttachmentId: dataForm,
     });
-    // Recorded before the Certificate stored its attestation.
     server.recordCertificateAsColleague(caseId, {
       number: 'DEMO-0002',
       attachmentId: pdf,
-      independenceAttested: false,
     });
     server.install();
     renderWorkspace(actor);
@@ -1312,7 +1310,7 @@ describe('Certification recommendation, decision and Certificate', () => {
     expect(definition(certificate, 'Certificate number')).toBe('DEMO-0002');
     expect(definition(certificate, 'Signed by')).toBe('Not provided');
     expect(definition(certificate, 'Independence from the audit team')).toBe(
-      'Not attested: recorded before the attestation was stored',
+      'Attested by the member who recorded it',
     );
     expect(definition(certificate, 'Valid until')).toBe('Nov 5, 2029');
     expect(

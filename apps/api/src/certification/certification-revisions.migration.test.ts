@@ -10,51 +10,34 @@ import {
   openCertificationFixture,
   record,
 } from './certification.test-support.js';
-import {
-  certificateReleaseCommands,
-  CERTIFICATE_TEXTS,
-} from './certification-release.test-support.js';
+import { certificateReleaseCommands } from './certification-release.test-support.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 
 withPostgres('Certificate Revision migration', () => {
-  it('upgrades real issued and legacy Cases without rewriting issuance, receipts or events and guards immutable scoped revisions', async () => {
+  it('upgrades a real issued Case without rewriting issuance, receipts or events and guards immutable scoped revisions', async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL required.');
     const { fixture, migrationWhen, close } =
       await openRevisionMigrationFixture(databaseUrl);
     try {
-      const { approved, issue, granted, attach, read, ok } =
-        certificateReleaseCommands(() => fixture);
-      const ordinary = await approved('MIGRATION-CURRENT-1295');
-      await issue(ordinary, 'MIGRATION-CURRENT-1295');
-      const legacy = await granted();
-      const attachmentId = await attach(legacy, 'certificate');
-      // Exact pre-release persisted shape, with real Case/actor/document FKs.
-      await fixture.databasePool.query(
-        `
-        INSERT INTO certification_certificates (workspace_id,company_id,case_id,case_revision,number,valid_from,valid_until,first_surveillance_by,texts,independence_attested,attachment_id,actor_membership_id,actor_internal_user_id,actor_display_name,recorded_at)
-        SELECT workspace_id,company_id,case_id,(SELECT revision+1 FROM certification_cases WHERE id=$1),'MIGRATION-LEGACY-1295','2026-11-06','2029-11-05','2027-11-06',$2::jsonb,true,$3,actor_membership_id,actor_internal_user_id,actor_display_name,recorded_at
-        FROM certification_step_versions WHERE case_id=$1 AND step='decision' ORDER BY version DESC LIMIT 1`,
-        [legacy, JSON.stringify(CERTIFICATE_TEXTS), attachmentId],
+      const { approved, issue, attach, read, ok } = certificateReleaseCommands(
+        () => fixture,
       );
-      await fixture.databasePool.query(
-        "UPDATE certification_cases SET status='certified', revision=revision+1 WHERE id=$1",
-        [legacy],
-      );
-      const ordinaryBefore = await read(ordinary);
-      const legacyBefore = await read(legacy);
+      const issued = await approved('MIGRATION-CURRENT-1295');
+      await issue(issued, 'MIGRATION-CURRENT-1295');
+      const before = await read(issued);
       const originals = await fixture.databasePool.query(
-        'SELECT * FROM certification_certificates WHERE case_id=ANY($1::uuid[]) ORDER BY case_id',
-        [[ordinary, legacy]],
+        'SELECT * FROM certification_certificates WHERE case_id=$1',
+        [issued],
       );
       const receipts = await fixture.databasePool.query(
-        'SELECT * FROM certification_receipts WHERE case_id=ANY($1::uuid[]) ORDER BY id',
-        [[ordinary, legacy]],
+        'SELECT * FROM certification_receipts WHERE case_id=$1 ORDER BY id',
+        [issued],
       );
       const events = await fixture.databasePool.query(
-        'SELECT * FROM certification_events WHERE case_id=ANY($1::uuid[]) ORDER BY id',
-        [[ordinary, legacy]],
+        'SELECT * FROM certification_events WHERE case_id=$1 ORDER BY id',
+        [issued],
       );
       expect(
         (
@@ -77,61 +60,39 @@ withPostgres('Certificate Revision migration', () => {
       expect(
         (
           await fixture.databasePool.query(
-            'SELECT * FROM certification_certificates WHERE case_id=ANY($1::uuid[]) ORDER BY case_id',
-            [[ordinary, legacy]],
+            'SELECT * FROM certification_certificates WHERE case_id=$1',
+            [issued],
           )
         ).rows,
       ).toEqual(originals.rows);
       expect(
         (
           await fixture.databasePool.query(
-            'SELECT * FROM certification_receipts WHERE case_id=ANY($1::uuid[]) ORDER BY id',
-            [[ordinary, legacy]],
+            'SELECT * FROM certification_receipts WHERE case_id=$1 ORDER BY id',
+            [issued],
           )
         ).rows,
       ).toEqual(receipts.rows);
       expect(
         (
           await fixture.databasePool.query(
-            'SELECT * FROM certification_events WHERE case_id=ANY($1::uuid[]) ORDER BY id',
-            [[ordinary, legacy]],
+            'SELECT * FROM certification_events WHERE case_id=$1 ORDER BY id',
+            [issued],
           )
         ).rows,
       ).toEqual(events.rows);
-      expect(await read(ordinary)).toEqual(ordinaryBefore);
-      expect(await read(legacy)).toEqual(legacyBefore);
-      const release = record(legacyBefore.release);
-      expect(release).toMatchObject({
-        legacyIssuance: true,
-        drafts: [],
-        opinions: [],
-        approvals: [],
-        revisions: [],
-        currentRevisionIndex: 0,
-      });
-      expect(record(legacyBefore.certificate)).toMatchObject({
-        issuedOn: null,
-        approvedDraftVersionId: null,
-      });
-      expect(await fixture.numberObservationCount(legacy)).toBe(0);
-      await ok(legacy, APPROVER, 'certificate-revisions', {
-        reason: 'Correct a legacy PDF without inventing release history.',
-        revisedOn: '2026-11-01',
-        attachmentId: await attach(legacy, 'certificate'),
+      expect(await read(issued)).toEqual(before);
+      await ok(issued, APPROVER, 'certificate-revisions', {
+        reason: 'Correct the PDF after the upgrade.',
+        revisedOn: '2026-11-07',
+        attachmentId: await attach(issued, 'certificate'),
         revisionMarked: false,
         independenceAttested: true,
       });
-      expect(record((await read(legacy)).release)).toMatchObject({
-        legacyIssuance: true,
+      expect(record((await read(issued)).release)).toMatchObject({
         currentRevisionIndex: 1,
-        drafts: [],
-        opinions: [],
-        approvals: [],
       });
-      expect((await read(legacy)).certificate).toEqual(
-        legacyBefore.certificate,
-      );
-      expect(await fixture.numberObservationCount(legacy)).toBe(0);
+      expect((await read(issued)).certificate).toEqual(before.certificate);
       for (const sql of [
         "UPDATE certification_certificate_revisions SET reason='mutated'",
         'DELETE FROM certification_certificate_revisions',
@@ -157,7 +118,7 @@ withPostgres('Certificate Revision migration', () => {
       await expect(
         fixture.databasePool.query(
           "UPDATE certification_certificates SET number='MUTATED' WHERE case_id=$1",
-          [legacy],
+          [issued],
         ),
       ).rejects.toBeDefined();
     } finally {

@@ -105,7 +105,6 @@ export interface CertificateRelease {
   issuanceBlockers: ReleaseBlocker[];
   transmission: ExchangeVersion | null;
   daysSinceIssuance: number | null;
-  legacyIssuance: boolean;
 }
 export type ReleaseCommand =
   | {
@@ -201,10 +200,7 @@ export function parseDraftApproval(
 }
 
 /** Additive HTTP fields are accepted; every consumed release field is proved. */
-export function parseCertificateRelease(
-  value: unknown,
-  context?: { hasCertificate: boolean },
-): CertificateRelease {
+export function parseCertificateRelease(value: unknown): CertificateRelease {
   const body = object(value);
   const validityBody =
     body.validity === undefined || body.validity === null
@@ -252,16 +248,7 @@ export function parseCertificateRelease(
       days !== null)
   )
     invalid();
-  const additions = [
-    body.revisions,
-    body.currentRevisionIndex,
-    body.revisionRequired,
-  ];
-  const legacy = additions.every((entry) => entry === undefined);
-  if (!legacy && additions.some((entry) => entry === undefined)) invalid();
-  const revisions = legacy
-    ? []
-    : list(body.revisions).map(parseCertificateRevision);
+  const revisions = list(body.revisions).map(parseCertificateRevision);
   if (
     revisions.some(
       (entry, index) =>
@@ -274,11 +261,8 @@ export function parseCertificateRelease(
       revisions.length
   )
     invalid();
-  const currentRevisionIndex = legacy
-    ? context?.hasCertificate
-      ? 0
-      : null
-    : body.currentRevisionIndex === null
+  const currentRevisionIndex =
+    body.currentRevisionIndex === null
       ? null
       : nonnegative(body.currentRevisionIndex);
   if (
@@ -286,11 +270,7 @@ export function parseCertificateRelease(
       currentRevisionIndex !== revisions.at(-1)?.index) ||
     (revisions.length === 0 &&
       currentRevisionIndex !== 0 &&
-      currentRevisionIndex !== null) ||
-    (context &&
-      (context.hasCertificate
-        ? currentRevisionIndex === null
-        : currentRevisionIndex !== null))
+      currentRevisionIndex !== null)
   )
     invalid();
   const transmissions = revisions.flatMap((revision) =>
@@ -308,7 +288,7 @@ export function parseCertificateRelease(
     )
   )
     invalid();
-  const revisionRequired = legacy ? false : flag(body.revisionRequired);
+  const revisionRequired = flag(body.revisionRequired);
   if (currentRevisionIndex === null && revisionRequired) invalid();
   return {
     revisions,
@@ -324,7 +304,6 @@ export function parseCertificateRelease(
     issuanceBlockers: blockers(body.issuanceBlockers),
     transmission,
     daysSinceIssuance: days,
-    legacyIssuance: flag(body.legacyIssuance),
   };
 }
 

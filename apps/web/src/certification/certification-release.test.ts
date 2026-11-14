@@ -31,7 +31,9 @@ const release = {
   issuanceBlockers: ['opinion_missing', 'approval_missing'],
   transmission: null,
   daysSinceIssuance: null,
-  legacyIssuance: false,
+  revisions: [],
+  currentRevisionIndex: null,
+  revisionRequired: false,
 };
 
 const revision = {
@@ -61,12 +63,7 @@ const revision = {
 
 describe('Certificate release response boundary', () => {
   it('preserves exact draft references and an explicit opinion blocker', () => {
-    expect(parseCertificateRelease(release)).toEqual({
-      ...release,
-      revisions: [],
-      currentRevisionIndex: null,
-      revisionRequired: false,
-    });
+    expect(parseCertificateRelease(release)).toEqual(release);
     expect(() =>
       parseCertificateRelease({ ...release, currentDraftId: 'foreign-draft' }),
     ).toThrow();
@@ -91,16 +88,20 @@ describe('Certificate release response boundary', () => {
       revisionRequired: false,
     });
   });
-  it('defaults absent revision additions for old issued payloads and rejects incomplete or unknown revision states', () => {
-    expect(
-      parseCertificateRelease(release, { hasCertificate: true }),
-    ).toMatchObject({
-      revisions: [],
-      currentRevisionIndex: 0,
-      revisionRequired: false,
-    });
+  it('rejects a release without its revision fields and incomplete or unknown revision states', () => {
+    for (const field of [
+      'revisions',
+      'currentRevisionIndex',
+      'revisionRequired',
+    ])
+      expect(() =>
+        parseCertificateRelease(
+          Object.fromEntries(
+            Object.entries(release).filter(([key]) => key !== field),
+          ),
+        ),
+      ).toThrow();
     for (const change of [
-      { revisions: [] },
       { revisions: [], currentRevisionIndex: 0, revisionRequired: 'pending' },
       { revisions: [], currentRevisionIndex: 1, revisionRequired: false },
       { revisions: [], currentRevisionIndex: null, revisionRequired: true },
@@ -131,10 +132,7 @@ describe('Certificate release response boundary', () => {
       },
     ])
       expect(() =>
-        parseCertificateRelease(
-          { ...release, ...change },
-          { hasCertificate: true },
-        ),
+        parseCertificateRelease({ ...release, ...change }),
       ).toThrow();
   });
 
@@ -163,8 +161,7 @@ describe('Certificate release response boundary', () => {
       revisionRequired: false,
     };
     expect(
-      parseCertificateRelease(payload, { hasCertificate: true }).revisions[0]
-        ?.transmission?.id,
+      parseCertificateRelease(payload).revisions[0]?.transmission?.id,
     ).toBe('exchange-revision');
     for (const change of [
       { direction: 'received' },
@@ -172,38 +169,32 @@ describe('Certificate release response boundary', () => {
       { attachmentIds: ['another-pdf'] },
     ])
       expect(() =>
-        parseCertificateRelease(
-          {
-            ...payload,
-            revisions: [{ ...revision, transmission: { ...sent, ...change } }],
-          },
-          { hasCertificate: true },
-        ),
+        parseCertificateRelease({
+          ...payload,
+          revisions: [{ ...revision, transmission: { ...sent, ...change } }],
+        }),
       ).toThrow();
     expect(() =>
-      parseCertificateRelease(
-        {
-          ...payload,
-          revisions: [
-            {
-              ...revision,
-              transmission: {
-                ...sent,
-                attachmentIds: ['certificate-pdf-2', 'certificate-pdf-3'],
-              },
+      parseCertificateRelease({
+        ...payload,
+        revisions: [
+          {
+            ...revision,
+            transmission: {
+              ...sent,
+              attachmentIds: ['certificate-pdf-2', 'certificate-pdf-3'],
             },
-            {
-              ...revision,
-              id: 'revision-2',
-              index: 2,
-              caseRevision: 33,
-              attachmentId: 'certificate-pdf-3',
-            },
-          ],
-          currentRevisionIndex: 2,
-        },
-        { hasCertificate: true },
-      ),
+          },
+          {
+            ...revision,
+            id: 'revision-2',
+            index: 2,
+            caseRevision: 33,
+            attachmentId: 'certificate-pdf-3',
+          },
+        ],
+        currentRevisionIndex: 2,
+      }),
     ).toThrow();
   });
 });

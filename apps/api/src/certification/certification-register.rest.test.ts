@@ -369,6 +369,33 @@ withPostgres('Certification Case dossier register', { timeout: 60_000 }, () => {
     expect(french).toContain(compactPdfText('Registre du dossier'));
   });
 
+  it('states the issuance without a pre-circuit paragraph in every language', async () => {
+    for (const [language, issuance, removed] of [
+      ['en', 'Issuance · Revision 0 · Current', 'issue date unknown'],
+      ['fr', 'Émission · Révision 0 · En vigueur', 'date d’émission inconnue'],
+      ['ro', 'Emiterea · Revizia 0 · Curentă', 'data emiterii necunoscută'],
+      ['ru', 'Выдача · Редакция 0 · Текущая', 'дата выдачи неизвестна'],
+    ]) {
+      const pdf = compactPdfText(
+        (
+          await inspectCommercialPdf(
+            await pdfOf(
+              await register(
+                CERTIFICATION_READER,
+                caseId,
+                `?language=${language}`,
+              ),
+            ),
+          )
+        )
+          .map((page) => page.text)
+          .join('\n'),
+      );
+      expect(pdf).toContain(compactPdfText(issuance));
+      expect(pdf).not.toContain(compactPdfText(removed));
+    }
+  });
+
   it('yields byte-identical PDFs for the same Case revision', async () => {
     const first = await pdfOf(await register(CERTIFICATION_READER, caseId));
     const second = await pdfOf(

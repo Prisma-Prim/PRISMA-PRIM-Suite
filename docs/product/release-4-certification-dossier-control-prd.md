@@ -357,7 +357,7 @@ The Suite is the source of truth for the declarations it records. Signed PDFs re
 
 ## 15. Migration and compatibility
 
-Additive schema with a reviewed Drizzle migration per ticket. Old payloads decode. Cases recorded earlier are checked on read, and the gates apply only to commands after deployment. A Certificate recorded before the release circuit shows its issuance as recorded before the circuit, with its recording time and no issue date; its transmission and revisions can be recorded. Certificate data recorded after a decision in an earlier Case stay valid. No existing Activity event changes.
+Each ticket ships a reviewed Drizzle migration. Nothing is deployed before launch, so the web application reads only the current payload ([#1343](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1343)). Every Certificate carries its issue date, its approved draft and the independence attestation. The migration that requires them stops on a database still holding a Certificate without them and says the development database must be recreated ([#1344](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1344)). Cases recorded earlier are checked on read, and the gates apply only to commands after deployment. Certificate data recorded after a decision in an earlier Case stay valid. No existing Activity event changes.
 
 ## 16. Security, reliability and performance
 

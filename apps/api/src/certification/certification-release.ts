@@ -84,7 +84,6 @@ export interface CertificateRelease {
   issuanceBlockers: ReleaseBlocker[];
   transmission: ExchangeRecordVersion | null;
   daysSinceIssuance: number | null;
-  legacyIssuance: boolean;
 }
 
 /*
@@ -93,9 +92,8 @@ export interface CertificateRelease {
  * Each body is { expectedRevision, reason?, ...Value } above. The server
  * validates all explicit version IDs against the locked Case. A correction
  * supplies reason. Commands return the existing Case receipt; clients then
- * reload the live Case. CaseDetail gains `release: CertificateRelease`.
- * Certificate gains issuedOn: string|null and approvedDraftVersionId:
- * string|null. New issuance commands require issuedOn; legacy rows stay null.
+ * reload the live Case. CaseDetail carries `release: CertificateRelease`;
+ * every Certificate carries its issuedOn and approvedDraftVersionId.
  */
 
 import type {
@@ -213,8 +211,7 @@ export function certificateRelease(input: {
             exchange.itemKind === 'certificate' &&
             exchange.counterpart.kind === 'client' &&
             exchange.attachmentIds.includes(certificate.attachmentId) &&
-            (certificate.issuedOn === null ||
-              exchange.businessDate >= certificate.issuedOn),
+            exchange.businessDate >= certificate.issuedOn,
         )
         .sort(
           (left, right) =>
@@ -239,7 +236,7 @@ export function certificateRelease(input: {
     issuanceBlockers,
     transmission,
     daysSinceIssuance:
-      certificate?.issuedOn && !transmission
+      certificate && !transmission
         ? Math.max(
             0,
             Math.round(
@@ -249,7 +246,6 @@ export function certificateRelease(input: {
             ),
           )
         : null,
-    legacyIssuance: certificate !== null && certificate.issuedOn === null,
   };
 }
 

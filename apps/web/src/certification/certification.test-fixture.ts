@@ -423,8 +423,8 @@ const FINDING_CLASSIFICATION_VALUES = [
 ];
 type StoredCertificate = {
   id: string;
-  issuedOn: string | null;
-  approvedDraftVersionId: string | null;
+  issuedOn: string;
+  approvedDraftVersionId: string;
   number: string;
   validFrom: string;
   validUntil: string;
@@ -432,7 +432,7 @@ type StoredCertificate = {
   texts: unknown[];
   signedBy: string | null;
   signedByFunction: string | null;
-  independenceAttested: boolean;
+  independenceAttested: true;
   attachmentId: string;
   recordedBy: Actor;
   recordedAt: string;
@@ -775,7 +775,11 @@ export class FakeCertificationServer {
       stored.status = 'refused';
   }
 
-  /** A colleague approver records the Certificate, certifying the Case. */
+  /**
+   * A colleague drafts the Certificate on the decision date, records that the
+   * client opinion was not sought, approves the draft and issues it on that
+   * date, certifying the Case.
+   */
   recordCertificateAsColleague(
     caseId: string,
     {
@@ -783,29 +787,79 @@ export class FakeCertificationServer {
       attachmentId,
       signedBy = null,
       signedByFunction = null,
-      independenceAttested = true,
     }: {
       number: string;
       attachmentId: string;
       signedBy?: string | null;
       signedByFunction?: string | null;
-      /** False for a Certificate recorded before the attestation was stored. */
-      independenceAttested?: boolean;
     },
   ) {
     const stored = this.cases.get(caseId);
     const decided = stored && latestStep(stored, 'decision');
     const agreed = stored && latestStep(stored, 'certificate_data');
     if (!stored || !decided || !agreed) throw new Error('Not decided');
+    const decidedOn = String(decided.value.decidedOn);
+    const draftPdf = this.attach(
+      stored,
+      this.addSource(`Certificate draft ${number}`),
+      'certificate_draft',
+      null,
+      colleague,
+    ).id;
+    this.append(
+      stored,
+      'certificate_draft',
+      {
+        attachmentId: draftPdf,
+        number,
+        decisionVersionId: decided.id,
+        certificateDataVersionId: agreed.id,
+        draftedOn: decidedOn,
+      },
+      null,
+      colleague,
+    );
+    const draft = latestStep(stored, 'certificate_draft');
+    if (!draft) throw new Error('Not drafted');
+    this.append(
+      stored,
+      'client_opinion',
+      {
+        draftVersionId: draft.id,
+        businessDate: decidedOn,
+        outcome: 'skipped',
+        skipReason: 'texts_already_agreed',
+        note: null,
+      },
+      null,
+      colleague,
+    );
+    this.append(
+      stored,
+      'certificate_draft_approval',
+      {
+        draftVersionId: draft.id,
+        approvedOn: decidedOn,
+        textsConfirmed: true,
+        numberConfirmed: true,
+        validityConfirmed: true,
+        independenceAttested: true,
+        onBehalf: null,
+      },
+      null,
+      colleague,
+    );
     this.issue(
       stored,
-      String(decided.value.decidedOn),
+      decidedOn,
       {
         number,
+        issuedOn: decidedOn,
+        approvedDraftVersionId: draft.id,
         attachmentId,
         signedBy,
         signedByFunction,
-        independenceAttested,
+        independenceAttested: true,
         texts: list(agreed.value.texts),
       },
       colleague,
@@ -1545,12 +1599,12 @@ export class FakeCertificationServer {
     decidedOn: string,
     input: {
       number: string;
-      issuedOn?: string | null;
-      approvedDraftVersionId?: string | null;
+      issuedOn: string;
+      approvedDraftVersionId: string;
       attachmentId: string;
       signedBy: string | null;
       signedByFunction: string | null;
-      independenceAttested: boolean;
+      independenceAttested: true;
       texts: unknown[];
     },
     by: Actor,
@@ -1560,8 +1614,6 @@ export class FakeCertificationServer {
     stored.certificate = {
       id: `11310000-0000-4000-8000-9000000000${String(++this.sequence).padStart(2, '0')}`,
       ...input,
-      issuedOn: input.issuedOn ?? null,
-      approvedDraftVersionId: input.approvedDraftVersionId ?? null,
       validFrom: decidedOn,
       validUntil: addDays(addMonths(decidedOn, 36), -1),
       firstSurveillanceBy: addMonths(decidedOn, 12),
@@ -1693,7 +1745,7 @@ export class FakeCertificationServer {
       issuanceBlockers: issued ? [] : issuanceBlockers,
       transmission,
       daysSinceIssuance:
-        issued?.issuedOn && !transmission
+        issued && !transmission
           ? Math.max(
               0,
               Math.floor(
@@ -1703,7 +1755,6 @@ export class FakeCertificationServer {
               ),
             )
           : null,
-      legacyIssuance: issued !== null && issued.issuedOn === null,
     };
   }
 

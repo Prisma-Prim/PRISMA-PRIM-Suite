@@ -118,15 +118,14 @@ export type Certificate = {
   texts: CertificateText[];
   signedBy: string | null;
   signedByFunction: string | null;
-  /** False only in Certificates recorded before the attestation was stored. */
-  independenceAttested: boolean;
+  /** The recording approver attested the signatory is not on the audit team. */
+  independenceAttested: true;
   attachmentId: string;
   recordedBy: CertificationActorReference;
   recordedAt: string;
-} & (
-  | { issuedOn: null; approvedDraftVersionId: null }
-  | { issuedOn: string; approvedDraftVersionId: string }
-);
+  issuedOn: string;
+  approvedDraftVersionId: string;
+};
 
 /** The server's bounds for these records. */
 export const DECISION_LIMITS = {

@@ -741,8 +741,7 @@ export function CertificateReleaseRegion(props: Props) {
         </li>
         <li>
           <h6>{t('issuance')}</h6>
-          {release.legacyIssuance && <p>{t('legacy')}</p>}
-          {current.certificate?.issuedOn && (
+          {current.certificate && (
             <p>
               {businessDate(current.certificate.issuedOn)} ·{' '}
               {current.certificate.recordedBy.displayName}

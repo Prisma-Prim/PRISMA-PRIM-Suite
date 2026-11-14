@@ -2520,27 +2520,21 @@ export class CertificationService {
         ),
       );
     if (!row) return null;
-    const release =
-      row.issuedOn === null && row.approvedDraftVersionId === null
-        ? { issuedOn: null, approvedDraftVersionId: null }
-        : row.issuedOn !== null && row.approvedDraftVersionId !== null
-          ? {
-              issuedOn: row.issuedOn,
-              approvedDraftVersionId: row.approvedDraftVersionId,
-            }
-          : unreadableCertificate();
     const texts = persisted(() => certificateTexts(row.texts));
     return {
       id: row.id,
       number: row.number,
-      ...release,
+      issuedOn: row.issuedOn,
+      approvedDraftVersionId: row.approvedDraftVersionId,
       validFrom: row.validFrom,
       validUntil: row.validUntil,
       firstSurveillanceBy: row.firstSurveillanceBy,
       texts,
       signedBy: row.signedBy,
       signedByFunction: row.signedByFunction,
-      independenceAttested: row.independenceAttested,
+      independenceAttested: persisted(() =>
+        requireIndependenceAttestation(row.independenceAttested),
+      ),
       attachmentId: row.attachmentId,
       recordedBy: {
         workspaceMembershipId: row.actorMembershipId,
@@ -5021,10 +5015,4 @@ function certificateNumberConflict(error: unknown): boolean {
     candidate = candidate.cause;
   }
   return false;
-}
-
-function unreadableCertificate(): never {
-  throw new InternalServerErrorException(
-    'A recorded Certificate is unreadable.',
-  );
 }

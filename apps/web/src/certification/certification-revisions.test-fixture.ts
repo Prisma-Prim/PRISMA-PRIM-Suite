@@ -10,7 +10,7 @@ import {
   stage2Report,
 } from './certification.test-fixture';
 
-/** Issuance recorded before the release circuit, still eligible for revisions. */
+/** A Case issued through the release circuit, eligible for revisions. */
 export function seedIssuedCertificationCase(
   server: FakeCertificationServer,
   reference: string,

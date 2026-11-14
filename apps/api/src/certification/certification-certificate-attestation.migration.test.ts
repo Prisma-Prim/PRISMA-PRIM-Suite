@@ -18,8 +18,10 @@ withPostgres('Certificate independence attestation migration', () => {
       namePrefix: 'certification1198_upgrade',
     });
     let previous: string | undefined;
+    let through: string | undefined;
     try {
       previous = await mkdtemp(join(tmpdir(), 'certification1198-previous-'));
+      through = await mkdtemp(join(tmpdir(), 'certification1198-through-'));
       const directory = resolve('drizzle');
       const journal = record(
         JSON.parse(
@@ -38,17 +40,23 @@ withPostgres('Certificate independence attestation migration', () => {
         entry.tag.endsWith('_certification_certificate_attestation'),
       );
       expect(index).toBeGreaterThan(0);
-      const old = entries.slice(0, index);
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta', '_journal.json'),
-        JSON.stringify({ ...journal, entries: old }),
-      );
-      for (const entry of old)
-        await cp(
-          join(directory, `${entry.tag}.sql`),
-          join(previous, `${entry.tag}.sql`),
+      // Later migrations refuse a Certificate without an issue date, so the
+      // upgrade stops at the migration under test.
+      for (const [folder, kept] of [
+        [previous, entries.slice(0, index)],
+        [through, entries.slice(0, index + 1)],
+      ] as const) {
+        await mkdir(join(folder, 'meta'));
+        await writeFile(
+          join(folder, 'meta', '_journal.json'),
+          JSON.stringify({ ...journal, entries: kept }),
         );
+        for (const entry of kept)
+          await cp(
+            join(directory, `${entry.tag}.sql`),
+            join(folder, `${entry.tag}.sql`),
+          );
+      }
       const connection = drizzle(database.targetPool);
       await migrate(connection, { migrationsFolder: previous });
       // A Certificate recorded before the attestation was stored. Its Case,
@@ -70,7 +78,7 @@ withPostgres('Certificate independence attestation migration', () => {
         (workspace_id, company_id, case_id, case_revision, number, valid_from, valid_until, first_surveillance_by, texts, attachment_id, actor_membership_id, actor_internal_user_id, actor_display_name, recorded_at)
         VALUES ($1, $2, $3, 23, $4, '2026-11-06', '2029-11-05', '2027-11-06', '[]'::jsonb, $5, $6, $7, 'Synthetic approver', now())`;
       await database.targetPool.query(insert, certificate('DEMO-OLD-0001'));
-      await migrate(connection, { migrationsFolder: directory });
+      await migrate(connection, { migrationsFolder: through });
       const existing = await database.targetPool.query(
         'SELECT number, independence_attested FROM certification_certificates',
       );
@@ -84,7 +92,8 @@ withPostgres('Certificate independence attestation migration', () => {
       try {
         await database.close();
       } finally {
-        if (previous) await rm(previous, { recursive: true, force: true });
+        for (const folder of [previous, through])
+          if (folder) await rm(folder, { recursive: true, force: true });
       }
     }
   }, 60000);
