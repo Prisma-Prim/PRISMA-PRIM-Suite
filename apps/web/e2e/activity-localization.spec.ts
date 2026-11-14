@@ -1,5 +1,4 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { enterClassicCompatibility } from './classic-compatibility';
 import {
   activityLocaleIds,
   activityLiteral,
@@ -34,7 +33,6 @@ const locales = [
     time: '21 sept. 2026, 06:05',
     navigation: 'Navigare principală',
     openNav: 'Deschideți navigarea',
-    optIn: 'Încercați Prisme',
     edit: 'Editează acțiunea următoare',
     next: 'Acțiunea următoare',
     save: 'Salvează acțiunea următoare',
@@ -62,7 +60,6 @@ const locales = [
     time: '21 сент. 2026 г., 06:05',
     navigation: 'Основная навигация',
     openNav: 'Открыть навигацию',
-    optIn: 'Попробовать Prisme',
     edit: 'Изменить следующее действие',
     next: 'Следующее действие',
     save: 'Сохранить следующее действие',
@@ -88,7 +85,6 @@ const locales = [
     time: '21 sept. 2026, 06:05',
     navigation: 'Navigation principale',
     openNav: 'Ouvrir la navigation',
-    optIn: 'Essayer Prisme',
     edit: 'Modifier la prochaine action',
     next: 'Prochaine action',
     save: 'Enregistrer la prochaine action',
@@ -115,7 +111,6 @@ const locales = [
     time: 'Sep 21, 2026, 6:05 AM',
     navigation: 'Primary navigation',
     openNav: 'Open navigation',
-    optIn: 'Try Prisme',
     edit: 'Edit next action',
     next: 'Next action',
     save: 'Save next action',
@@ -248,12 +243,6 @@ async function install(page: Page) {
     });
   });
   return state;
-}
-function orderedReads(reads: Array<{ path: string; companyId: string }>) {
-  return [...reads].sort(
-    (a, b) =>
-      a.companyId.localeCompare(b.companyId) || a.path.localeCompare(b.path),
-  );
 }
 for (const locale of locales) {
   test(`reads localized Activity and opens exact historical versions with keyboard in ${locale.code}`, async ({
@@ -397,33 +386,14 @@ for (const locale of locales) {
     expect(state.activityReads).toBe(1);
     await capture(page, testInfo, `activity-exact-contract-${locale.code}`);
     await go(page, 'activity', locale);
-    const beforeFrame = [...state.gets];
-    const expectedFrameReads = [
-      ...beforeFrame,
-      {
-        path: '/api/offer-decision-queue',
-        companyId: activityLocaleIds.company,
-      },
-      {
-        path: '/api/contract-decision-queue',
-        companyId: activityLocaleIds.company,
-      },
-    ];
-    await enterClassicCompatibility(page, locale.optIn);
-    // Classic compatibility mounts Home alongside the retained Activity owner.
-    // Each independently authorized family reads once; Activity does not reload.
-    await expect
-      .poll(() => orderedReads(state.gets))
-      .toEqual(orderedReads(expectedFrameReads));
+    // Returning to the retained Activity owner does not reload it.
     await expect(ledger).toBeVisible();
     await expect(rows).toHaveCount(11);
     for (const original of originalRows)
       expect(await original.evaluate((element) => element.isConnected)).toBe(
         true,
       );
-    await page.getByRole('button', { name: locale.optIn, exact: true }).click();
-    await expect(page).toHaveURL(/\/#activity$/u);
-    expect(orderedReads(state.gets)).toEqual(orderedReads(expectedFrameReads));
+    expect(state.activityReads).toBe(1);
     expect(state.commands).toEqual([]);
   });
 

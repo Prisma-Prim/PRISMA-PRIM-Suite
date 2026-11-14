@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import {
   attachReviewButton,
@@ -475,12 +474,6 @@ test('preserves the mounted owner across frame and section navigation without as
     page.getByText(state.comparison.candidate.displayName),
   ).toBeHidden();
   await navigate('Clients');
-  await expect(attachReviewButton(page)).toBeVisible();
-  const menu = page.getByRole('button', { name: 'Open navigation' });
-  if (await menu.isVisible()) await menu.click();
-  await enterClassicCompatibility(page);
-  await expect(attachReviewButton(page)).toBeVisible();
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(attachReviewButton(page)).toBeVisible();
   expect(state.detailReads).toBe(1);
   expect(state.listRequests).toHaveLength(1);

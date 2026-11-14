@@ -1,5 +1,4 @@
 import { expectSelectAppearance } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -341,93 +340,6 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await page.screenshot({
     path: testInfo.outputPath(
       `task-filtering-prisme-${testInfo.project.name}.png`,
-    ),
-    fullPage: true,
-  });
-
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expect(page.getByLabel('Search Tasks')).toBeVisible();
-  await selectOption(page.getByLabel('Task status'), 'all');
-  const classicNavigation = page.getByRole('navigation', { name: 'Tasks' });
-  const classicListed = classicNavigation
-    .getByRole('listitem')
-    .getByRole('button');
-  await expect(classicListed).toHaveText([
-    'Collect preparation notes',
-    'Archive preparation evidence',
-    'Review archive notes',
-  ]);
-  await expect(
-    classicNavigation.getByRole('button', { name: 'New Task' }),
-  ).toBeVisible();
-  await page.getByLabel('Search Tasks').focus();
-  expect(
-    await page
-      .getByLabel('Search Tasks')
-      .evaluate((element) => getComputedStyle(element).outlineStyle),
-  ).toBe('solid');
-  expect(
-    await page
-      .getByLabel('Search Tasks')
-      .evaluate((element) => getComputedStyle(element).outlineColor),
-  ).toBe('rgb(75, 54, 181)');
-
-  const classicResponsible = page.getByLabel('Task responsible member');
-  await expectValue(classicResponsible, 'all');
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
-  await expect(classicResponsible).toBeFocused();
-  expect(
-    await classicResponsible.evaluate(
-      (element) => getComputedStyle(element).outlineStyle,
-    ),
-  ).toBe('solid');
-  expect(
-    await classicResponsible.evaluate(
-      (element) => getComputedStyle(element).outlineColor,
-    ),
-  ).toBe('rgb(75, 54, 181)');
-  await selectOption(classicResponsible, { label: 'Unassigned' });
-  await expect(classicListed).toHaveText(['Review archive notes']);
-  await selectOption(classicResponsible, { label: 'All' });
-
-  const classicDates = page.getByLabel('Task date filter');
-  await expectValue(classicDates, 'all');
-  await selectOption(classicDates, { label: 'Date range' });
-  const classicFrom = page.getByLabel('Task date from');
-  await classicDates.focus();
-  await page.keyboard.press('Tab');
-  await expect(classicFrom).toBeFocused();
-  expect(
-    await classicFrom.evaluate(
-      (element) => getComputedStyle(element).outlineStyle,
-    ),
-  ).toBe('solid');
-  expect(
-    await classicFrom.evaluate(
-      (element) => getComputedStyle(element).outlineColor,
-    ),
-  ).toBe('rgb(75, 54, 181)');
-  await classicFrom.fill('2026-11-01');
-  await expect(classicListed).toHaveText(['Archive preparation evidence']);
-  await page.getByRole('button', { name: 'Reset date filter' }).click();
-  await expectValue(classicDates, 'all');
-  await expect(classicListed).toHaveText([
-    'Collect preparation notes',
-    'Archive preparation evidence',
-    'Review archive notes',
-  ]);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({
-    path: testInfo.outputPath(
-      `task-filtering-classic-${testInfo.project.name}.png`,
     ),
     fullPage: true,
   });

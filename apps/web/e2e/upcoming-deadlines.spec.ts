@@ -190,116 +190,107 @@ async function fit(page: Page, region: Locator) {
     ),
   ).toBe(true);
 }
-for (const frame of ['prisme', 'classic'])
-  for (const locale of locales) {
-    test(`browses all upcoming deadlines in ${locale.code} with ${frame} and preserves locale-only state`, async ({
-      page,
-    }, testInfo) => {
-      await page.addInitScript(
-        (code) => localStorage.setItem('prisma-prim.interface-locale', code),
-        locale.code,
-      );
-      const api = await installServer(page);
-      // Home's current-authority read must settle before checking its lazy action.
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            new URL(response.url()).pathname === '/api/operational-home',
-        ),
-        page.goto(frame === 'classic' ? '/?frame=classic' : '/'),
-      ]);
-      const trigger = page.getByRole('button', {
-        name: locale.open,
-        exact: true,
-      });
-      await expect(trigger).toBeVisible();
-      expect(api.pages).toEqual([]);
-      if (frame === 'prisme' && locale.code === 'en')
-        await page.screenshot({
-          path: testInfo.outputPath('upcoming-prisme-home-entry.png'),
-          fullPage: true,
-        });
-      await trigger.focus();
-      await trigger.press('Enter');
-      const panel = page.getByRole('region', {
-        name: `${locale.title} — ${company.displayName}`,
-        exact: true,
-      });
-      await expect(panel.getByRole('listitem')).toHaveCount(25);
-      await expect(panel.getByRole('heading', { level: 4 })).toBeFocused();
-      await expect(panel.locator('time').first()).toHaveAttribute(
-        'datetime',
-        '2026-09-27',
-      );
-      await expect(panel.locator('time').first()).toHaveText(locale.date);
-      await expect(panel).toContainText(project.title);
-      await expect(panel).toContainText(project.clientDisplayName);
-      await expect(
-        panel.getByRole('button', { name: locale.previous, exact: true }),
-      ).toBeDisabled();
-      await fit(page, panel);
-      await panel.screenshot({
-        path: testInfo.outputPath(
-          `upcoming-${frame}-${locale.code}-full-page.png`,
-        ),
-      });
-      await panel
-        .getByRole('button', { name: locale.next, exact: true })
-        .focus();
-      await page.keyboard.press('Enter');
-      await expect(panel.getByRole('listitem')).toHaveCount(1);
-      await expect(
-        panel.getByRole('heading', { name: title(25), exact: true }),
-      ).toBeVisible();
-      await expect(
-        panel.getByRole('button', { name: locale.next, exact: true }),
-      ).toBeDisabled();
-      await expect(
-        panel.getByRole('button', { name: locale.previous, exact: true }),
-      ).toBeEnabled();
-      const last = await panel.getByRole('listitem').elementHandle();
-      if (last === null) throw new Error('Expected last Task row');
-      const before = api.requests.length;
-      const previousUrl = page.url();
-      const alternate = locale.code === 'fr' ? 'English' : 'Français';
-      await chooseLanguage(page, alternate);
-      await chooseLanguage(page, locale.name);
-      expect(api.requests).toHaveLength(before);
-      expect(api.pages).toEqual([0, 25]);
-      expect(page.url()).toBe(previousUrl);
-      expect(
-        await panel
-          .getByRole('listitem')
-          .evaluate((element, original) => element === original, last),
-      ).toBe(true);
-      await fit(page, panel);
-      await panel.screenshot({
-        path: testInfo.outputPath(
-          `upcoming-${frame}-${locale.code}-last-page.png`,
-        ),
-      });
-      await panel
-        .getByRole('button', { name: locale.close, exact: true })
-        .focus();
-      await page.keyboard.press('Enter');
-      await expect(panel).toHaveCount(0);
-      await expect(trigger).toBeFocused();
-      await trigger.press('Enter');
-      await expect(panel.getByRole('listitem')).toHaveCount(25);
-      await panel
-        .getByRole('button', { name: locale.next, exact: true })
-        .focus();
-      await page.keyboard.press('Enter');
-      await expect(panel.getByRole('listitem')).toHaveCount(1);
-      await panel.getByRole('listitem').getByRole('button').click();
-      await expect(
-        page
-          .locator('.project-tasks')
-          .getByRole('heading', { name: title(25), exact: true }),
-      ).toBeVisible();
-      expect(page.url()).not.toContain(project.id);
-      expect(page.url()).not.toContain('upcoming-task-25');
-      expect(api.pages).toEqual([0, 25, 0, 25]);
-      await fit(page, page.locator('.project-tasks'));
+for (const locale of locales) {
+  test(`browses all upcoming deadlines in ${locale.code} and preserves locale-only state`, async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript(
+      (code) => localStorage.setItem('prisma-prim.interface-locale', code),
+      locale.code,
+    );
+    const api = await installServer(page);
+    // Home's current-authority read must settle before checking its lazy action.
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/operational-home',
+      ),
+      page.goto('/'),
+    ]);
+    const trigger = page.getByRole('button', {
+      name: locale.open,
+      exact: true,
     });
-  }
+    await expect(trigger).toBeVisible();
+    expect(api.pages).toEqual([]);
+    if (locale.code === 'en')
+      await page.screenshot({
+        path: testInfo.outputPath('upcoming-prisme-home-entry.png'),
+        fullPage: true,
+      });
+    await trigger.focus();
+    await trigger.press('Enter');
+    const panel = page.getByRole('region', {
+      name: `${locale.title} — ${company.displayName}`,
+      exact: true,
+    });
+    await expect(panel.getByRole('listitem')).toHaveCount(25);
+    await expect(panel.getByRole('heading', { level: 4 })).toBeFocused();
+    await expect(panel.locator('time').first()).toHaveAttribute(
+      'datetime',
+      '2026-09-27',
+    );
+    await expect(panel.locator('time').first()).toHaveText(locale.date);
+    await expect(panel).toContainText(project.title);
+    await expect(panel).toContainText(project.clientDisplayName);
+    await expect(
+      panel.getByRole('button', { name: locale.previous, exact: true }),
+    ).toBeDisabled();
+    await fit(page, panel);
+    await panel.screenshot({
+      path: testInfo.outputPath(`upcoming-${locale.code}-full-page.png`),
+    });
+    await panel.getByRole('button', { name: locale.next, exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByRole('listitem')).toHaveCount(1);
+    await expect(
+      panel.getByRole('heading', { name: title(25), exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole('button', { name: locale.next, exact: true }),
+    ).toBeDisabled();
+    await expect(
+      panel.getByRole('button', { name: locale.previous, exact: true }),
+    ).toBeEnabled();
+    const last = await panel.getByRole('listitem').elementHandle();
+    if (last === null) throw new Error('Expected last Task row');
+    const before = api.requests.length;
+    const previousUrl = page.url();
+    const alternate = locale.code === 'fr' ? 'English' : 'Français';
+    await chooseLanguage(page, alternate);
+    await chooseLanguage(page, locale.name);
+    expect(api.requests).toHaveLength(before);
+    expect(api.pages).toEqual([0, 25]);
+    expect(page.url()).toBe(previousUrl);
+    expect(
+      await panel
+        .getByRole('listitem')
+        .evaluate((element, original) => element === original, last),
+    ).toBe(true);
+    await fit(page, panel);
+    await panel.screenshot({
+      path: testInfo.outputPath(`upcoming-${locale.code}-last-page.png`),
+    });
+    await panel
+      .getByRole('button', { name: locale.close, exact: true })
+      .focus();
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await trigger.press('Enter');
+    await expect(panel.getByRole('listitem')).toHaveCount(25);
+    await panel.getByRole('button', { name: locale.next, exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByRole('listitem')).toHaveCount(1);
+    await panel.getByRole('listitem').getByRole('button').click();
+    await expect(
+      page
+        .locator('.project-tasks')
+        .getByRole('heading', { name: title(25), exact: true }),
+    ).toBeVisible();
+    expect(page.url()).not.toContain(project.id);
+    expect(page.url()).not.toContain('upcoming-task-25');
+    expect(api.pages).toEqual([0, 25, 0, 25]);
+    await fit(page, page.locator('.project-tasks'));
+  });
+}

@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -157,29 +156,6 @@ test('shows the registration time of listed and opened Working Documents', async
     fullPage: true,
   });
 
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  const classicDetail = page.locator('#documents article');
-  await expect(
-    classicDetail.getByRole('heading', { name: secondDocument.title }),
-  ).toBeVisible();
-  await expect(classicDetail.getByRole('term')).toHaveText('Registration time');
-  await expect(classicDetail.getByRole('definition')).toHaveText(
-    await applicationDateTime(secondDocument.createdAt),
-  );
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({
-    path: testInfo.outputPath(
-      `working-document-registration-time-classic-${testInfo.project.name}.png`,
-    ),
-    fullPage: true,
-  });
   expect(mutationRequests).toEqual([]);
 });
 

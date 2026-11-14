@@ -1,5 +1,4 @@
 import { expectSelectAppearance } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
@@ -356,42 +355,19 @@ test('registers and reopens a Company-confidential working reference', async ({
     path: testInfo.outputPath('documents-correction-history.png'),
     fullPage: true,
   });
-  // Classic presents the same open history with the same keyboard controls.
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  const classicHistory = page
-    .locator('#documents article')
-    .getByRole('region', { name: 'Correction history', exact: true });
-  const classicToggle = classicHistory.getByRole('button', {
+  // The open history collapses and reopens with the keyboard.
+  const toggle = page.getByRole('button', {
     name: /reference correction history$/u,
   });
-  await expect(classicToggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(
-    classicHistory.getByText('Working revision 2', { exact: true }),
-  ).toBeVisible();
-  await expect(classicHistory.getByRole('listitem')).toContainText(
-    `${document.purpose} → changed to Prepare the corrected assessment`,
-  );
-  await classicToggle.focus();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await toggle.focus();
   await page.keyboard.press('Enter');
-  await expect(classicToggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(classicHistory.getByRole('listitem')).toHaveCount(0);
-  await expect(classicToggle).toBeFocused();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+  await expect(toggle).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(classicHistory.getByRole('listitem')).toHaveCount(1);
+  await expect(history.getByRole('listitem')).toHaveCount(1);
   expect(historyReads).toBe(2);
-  expect(
-    await page.evaluate(
-      () => window.document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await classicHistory.scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: testInfo.outputPath('documents-correction-history-classic.png'),
-    fullPage: true,
-  });
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(history.getByRole('listitem')).toHaveCount(1);
   await page.getByRole('button', { name: 'Edit reference' }).click();
   await page

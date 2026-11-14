@@ -1,4 +1,3 @@
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -177,9 +176,6 @@ test('filters loaded Working Documents locally and resets at the Company boundar
     fullPage: true,
   });
 
-  if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
   await expectValue(
     page.getByLabel('Filter working Documents'),
     'hidden while detail stays open',
@@ -192,23 +188,15 @@ test('filters loaded Working Documents locally and resets at the Company boundar
       .getByLabel('Filter working Documents')
       .evaluate((element) => getComputedStyle(element).outlineStyle),
   ).toBe('solid');
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({
-    path: testInfo.outputPath(
-      `working-document-filter-classic-${testInfo.project.name}.png`,
-    ),
-    fullPage: true,
-  });
 
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
     page.getByLabel('Active Company', { exact: true }),
     secondCompany.id,
   );
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Close navigation' }).click();
   await expect(
     page.getByRole('button', { name: secondCompanyDocument.title }),
   ).toBeVisible();

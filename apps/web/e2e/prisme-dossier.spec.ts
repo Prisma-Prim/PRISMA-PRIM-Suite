@@ -7,7 +7,6 @@ import {
   correctionTrigger,
   captureDossier,
   navigateTo,
-  changeFrame,
   dossierFixture,
   dossierCompany,
 } from './prisme-dossier.fixture';
@@ -277,7 +276,7 @@ test('records Contact positions and decision roles and keeps them when another C
   await captureDossier(page, testInfo, 'dossier-contact-roles-editor.png');
 });
 
-test('preserves uncertain corrections and pending saves across closing, navigation and frames', async ({
+test('preserves uncertain corrections and pending saves across closing and navigation', async ({
   page,
 }, testInfo) => {
   const state = await installDossierFixture(page);
@@ -299,13 +298,11 @@ test('preserves uncertain corrections and pending saves across closing, navigati
   await expect(page.locator('#client-correction :focus')).toHaveCount(0);
   await navigateTo(page, 'Overview');
   await navigateTo(page, 'Clients');
-  await changeFrame(page, 'Use classic frame');
+  await expect(form).toBeHidden();
+  await correctionTrigger(page).click();
   await expect(form.getByLabel('Telephone', { exact: true })).toHaveValue(
     '  +373 60 999 888  ',
   );
-  await changeFrame(page, 'Try Prisme');
-  await expect(form).toBeHidden();
-  await correctionTrigger(page).click();
   await form.getByRole('button', { name: 'Save correction' }).click();
   await expect.poll(() => state.commands.length).toBe(2);
   expect(state.commands[0]?.key).toBeTruthy();
@@ -646,11 +643,10 @@ test('removes a correction and its data when Director authority is revoked', asy
   );
   await expect(page.getByText('TAX-233', { exact: true })).toHaveCount(0);
   await expect(page.locator('input[value="Private draft"]')).toHaveCount(0);
-  await changeFrame(page, 'Use classic frame');
   await expect(correctionForm(page)).toHaveCount(0);
 });
 
-test('does not steal focus when a dossier arrives after navigation or presentation changes', async ({
+test('does not steal focus when a dossier arrives after navigation', async ({
   page,
 }) => {
   const state = await installDossierFixture(page);
@@ -666,19 +662,10 @@ test('does not steal focus when a dossier arrives after navigation or presentati
   await release();
   await expect(page.getByText('Version 1', { exact: true })).toBeHidden();
   await expect(page.locator('#client-dossier-title')).not.toBeFocused();
-  await changeFrame(page, 'Use classic frame');
-  await changeFrame(page, 'Try Prisme');
-  await expect(page.locator('#client-dossier-title')).not.toBeFocused();
   await navigateTo(page, 'Clients');
   await expect(page.locator('#client-dossier-title')).not.toBeFocused();
   await page.getByRole('button', { name: 'Open dossier' }).click();
   await expect(page.locator('#client-dossier-title')).toBeFocused();
-  await correctionTrigger(page).click();
-  await changeFrame(page, 'Use classic frame');
-  await changeFrame(page, 'Try Prisme');
-  await expect(
-    correctionForm(page).getByLabel('Client display name'),
-  ).not.toBeFocused();
 });
 
 test('records and corrects additional legal entities while an open dossier draft keeps its version', async ({
@@ -820,7 +807,6 @@ test('records and corrects additional legal entities while an open dossier draft
     page.getByText(/changed before your correction was saved/u),
   ).toBeVisible();
 
-  await changeFrame(page, 'Use classic frame');
   await expect(
     page.getByRole('region', {
       name: 'Legal entities and branches',
@@ -828,7 +814,7 @@ test('records and corrects additional legal entities while an open dossier draft
     }),
   ).toHaveCount(1);
   await expect(list.getByRole('listitem')).toHaveCount(2);
-  await captureDossier(page, testInfo, 'legal-entities-classic.png');
+  await captureDossier(page, testInfo, 'legal-entities-conflict.png');
 });
 
 test('opens a fresh dossier correction with current fields after an entity mutation', async ({

@@ -161,7 +161,6 @@ export const confirmationLocaleCases = {
     navigation: 'Navigare principală',
     clients: 'Clienți',
     activity: 'Jurnal de activitate',
-    optIn: 'Încercați Prisme',
   },
   ru: {
     code: 'ru',
@@ -218,7 +217,6 @@ export const confirmationLocaleCases = {
     navigation: 'Основная навигация',
     clients: 'Клиенты',
     activity: 'Журнал активности',
-    optIn: 'Попробовать Prisme',
   },
   fr: {
     code: 'fr',
@@ -277,7 +275,6 @@ export const confirmationLocaleCases = {
     navigation: 'Navigation principale',
     clients: 'Clients',
     activity: 'Journal d’activité',
-    optIn: 'Essayer Prisme',
   },
   en: {
     code: 'en',
@@ -335,7 +332,6 @@ export const confirmationLocaleCases = {
     navigation: 'Primary navigation',
     clients: 'Clients',
     activity: 'Activity Log',
-    optIn: 'Try Prisme',
   },
 } as const satisfies Record<
   InterfaceLocale,

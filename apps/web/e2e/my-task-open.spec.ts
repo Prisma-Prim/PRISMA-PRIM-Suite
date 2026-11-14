@@ -239,130 +239,127 @@ function openName(project: { title: string; clientDisplayName: string }) {
   return `Open ${taskTitle} in ${project.title} (${project.clientDisplayName})`;
 }
 
-for (const frame of ['classic', 'prisme'] as const)
-  test(`${frame} opens the exact assigned Task in its Project from My Tasks and keeps other drafts`, async ({
-    page,
-  }, testInfo) => {
-    const server = await installServer(page);
-    const narrowPrisme =
-      frame === 'prisme' && testInfo.project.name === 'narrow';
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(`/?frame=${frame}#projects`);
-    if (narrowPrisme)
-      await page.getByRole('button', { name: 'Open navigation' }).click();
-    await selectOption(
-      page.getByLabel('Active Company', { exact: true }),
-      company.id,
-    );
-    if (narrowPrisme)
-      await page.getByRole('button', { name: 'Close navigation' }).click();
-    await page.goto(`/?frame=${frame}#projects`);
+test(`opens the exact assigned Task in its Project from My Tasks and keeps other drafts`, async ({
+  page,
+}, testInfo) => {
+  const server = await installServer(page);
+  const narrowPrisme = testInfo.project.name === 'narrow';
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#projects');
+  if (narrowPrisme)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
+  if (narrowPrisme)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await page.goto('/#projects');
 
-    const workspace = page.locator('.project-workspace');
-    const projectTasks = workspace.getByRole('region', {
-      name: 'Tasks',
+  const workspace = page.locator('.project-workspace');
+  const projectTasks = workspace.getByRole('region', {
+    name: 'Tasks',
+    exact: true,
+  });
+  const myTasks = page.locator('.my-tasks');
+  const projectRow = (client: { displayName: string }) =>
+    workspace.getByRole('button', {
+      name: `${sharedTitle} Client: ${client.displayName}`,
       exact: true,
     });
-    const myTasks = page.locator('.my-tasks');
-    const projectRow = (client: { displayName: string }) =>
-      workspace.getByRole('button', {
-        name: `${sharedTitle} Client: ${client.displayName}`,
-        exact: true,
-      });
 
-    // A draft in Atelier's Task, chosen by hand.
-    const draft = 'Colectare chestionar semnat';
-    await projectRow(atelier).click();
-    await projectTasks
-      .getByRole('button', { name: taskTitle, exact: true })
-      .click();
-    const atelierDueDate = projectTasks.locator(
-      `dd time[datetime="${atelierTask.dueDate}"]`,
-    );
-    await expect(atelierDueDate).toBeVisible();
-    await expect(atelierDueDate).toHaveText('Sep 30, 2026');
-    await projectTasks.getByLabel('Task title').fill(draft);
+  // A draft in Atelier's Task, chosen by hand.
+  const draft = 'Colectare chestionar semnat';
+  await projectRow(atelier).click();
+  await projectTasks
+    .getByRole('button', { name: taskTitle, exact: true })
+    .click();
+  const atelierDueDate = projectTasks.locator(
+    `dd time[datetime="${atelierTask.dueDate}"]`,
+  );
+  await expect(atelierDueDate).toBeVisible();
+  await expect(atelierDueDate).toHaveText('Sep 30, 2026');
+  await projectTasks.getByLabel('Task title').fill(draft);
 
-    if (frame === 'prisme') await navigate(page, testInfo, 'My Tasks');
-    const rows = myTasks.getByRole('listitem');
-    await expect(rows).toHaveCount(3);
-    const openBeta = rows
-      .filter({ has: page.locator(`time[datetime="${betaTask.dueDate}"]`) })
-      .getByRole('button', { name: openName(betaProject), exact: true });
-    await expect(openBeta).toHaveText('Open');
-    await capture(page, testInfo, `my-task-open-${frame}-rows.png`);
-    // Only Refresh re-reads My Tasks; opening its rows never does.
-    const listReads = server.assignedReads;
+  await navigate(page, testInfo, 'My Tasks');
+  const rows = myTasks.getByRole('listitem');
+  await expect(rows).toHaveCount(3);
+  const openBeta = rows
+    .filter({ has: page.locator(`time[datetime="${betaTask.dueDate}"]`) })
+    .getByRole('button', { name: openName(betaProject), exact: true });
+  await expect(openBeta).toHaveText('Open');
+  await capture(page, testInfo, 'my-task-open-rows.png');
+  // Only Refresh re-reads My Tasks; opening its rows never does.
+  const listReads = server.assignedReads;
 
-    // Keyboard activation moves focus to the Projects section.
-    await openBeta.focus();
-    await page.keyboard.press('Enter');
-    await expect(workspace).toBeFocused();
-    await expect(page).toHaveURL(/#projects$/u);
-    const opened = workspace.getByRole('article', { name: sharedTitle });
-    await expect(opened.getByText(`Client: ${beta.displayName}`)).toBeVisible();
-    await expect(
-      projectTasks.getByRole('heading', { name: taskTitle, exact: true }),
-    ).toBeVisible();
-    const betaDueDate = projectTasks.locator(
-      `dd time[datetime="${betaTask.dueDate}"]`,
-    );
-    await expect(betaDueDate).toBeVisible();
-    await expect(betaDueDate).toHaveText('Oct 5, 2026');
-    await expectValue(projectTasks.getByLabel('Task title'), taskTitle);
-    await expect(
-      projectTasks.getByRole('region', { name: 'Task history' }),
-    ).toBeVisible();
-    if (frame === 'prisme')
-      await expect(
-        workspace.getByRole('tab', { name: 'Tasks', exact: true }),
-      ).toHaveAttribute('aria-selected', 'true');
-    await expect(workspace).toBeFocused();
-    expect(server.projectReads).toEqual([atelierProject.id, betaProject.id]);
-    expect(server.taskReads).toEqual([atelierTask.id, betaTask.id]);
-    for (const id of [betaProject.id, betaTask.id]) {
-      expect(page.url()).not.toContain(id);
-      expect(
-        JSON.stringify(await page.evaluate(() => history.state)),
-      ).not.toContain(id);
-      await expect(page.locator('body')).not.toContainText(id);
-    }
-    await capture(page, testInfo, `my-task-open-${frame}-opened.png`);
+  // Keyboard activation moves focus to the Projects section.
+  await openBeta.focus();
+  await page.keyboard.press('Enter');
+  await expect(workspace).toBeFocused();
+  await expect(page).toHaveURL(/#projects$/u);
+  const opened = workspace.getByRole('article', { name: sharedTitle });
+  await expect(opened.getByText(`Client: ${beta.displayName}`)).toBeVisible();
+  await expect(
+    projectTasks.getByRole('heading', { name: taskTitle, exact: true }),
+  ).toBeVisible();
+  const betaDueDate = projectTasks.locator(
+    `dd time[datetime="${betaTask.dueDate}"]`,
+  );
+  await expect(betaDueDate).toBeVisible();
+  await expect(betaDueDate).toHaveText('Oct 5, 2026');
+  await expectValue(projectTasks.getByLabel('Task title'), taskTitle);
+  await expect(
+    projectTasks.getByRole('region', { name: 'Task history' }),
+  ).toBeVisible();
+  await expect(
+    workspace.getByRole('tab', { name: 'Tasks', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(workspace).toBeFocused();
+  expect(server.projectReads).toEqual([atelierProject.id, betaProject.id]);
+  expect(server.taskReads).toEqual([atelierTask.id, betaTask.id]);
+  for (const id of [betaProject.id, betaTask.id]) {
+    expect(page.url()).not.toContain(id);
+    expect(
+      JSON.stringify(await page.evaluate(() => history.state)),
+    ).not.toContain(id);
+    await expect(page.locator('body')).not.toContainText(id);
+  }
+  await capture(page, testInfo, 'my-task-open-opened.png');
 
-    // A Task under a superseded original Client opens read-only.
-    if (frame === 'prisme') await navigate(page, testInfo, 'My Tasks');
-    await myTasks
-      .getByRole('button', { name: openName(archivedProject), exact: true })
-      .click();
-    await expect(workspace).toBeFocused();
-    await expect(
-      workspace
-        .getByRole('article', { name: archivedProject.title })
-        .getByText(`Client: ${gamma.displayName}`),
-    ).toBeVisible();
-    await expect(projectTasks.getByText(readOnlyNotice)).toBeVisible();
-    const archivedDueDate = projectTasks.locator(
-      `dd time[datetime="${archivedTask.dueDate}"]`,
-    );
-    await expect(archivedDueDate).toBeVisible();
-    await expect(archivedDueDate).toHaveText('Oct 12, 2026');
-    await expect(
-      projectTasks.getByRole('region', { name: 'Task history' }),
-    ).toBeVisible();
-    await expect(projectTasks.getByLabel('Task title')).toHaveCount(0);
-    await expect(
-      projectTasks.getByRole('button', { name: /Save Task|Mark done/u }),
-    ).toHaveCount(0);
-    await capture(page, testInfo, `my-task-open-${frame}-read-only.png`);
+  // A Task under a superseded original Client opens read-only.
+  await navigate(page, testInfo, 'My Tasks');
+  await myTasks
+    .getByRole('button', { name: openName(archivedProject), exact: true })
+    .click();
+  await expect(workspace).toBeFocused();
+  await expect(
+    workspace
+      .getByRole('article', { name: archivedProject.title })
+      .getByText(`Client: ${gamma.displayName}`),
+  ).toBeVisible();
+  await expect(projectTasks.getByText(readOnlyNotice)).toBeVisible();
+  const archivedDueDate = projectTasks.locator(
+    `dd time[datetime="${archivedTask.dueDate}"]`,
+  );
+  await expect(archivedDueDate).toBeVisible();
+  await expect(archivedDueDate).toHaveText('Oct 12, 2026');
+  await expect(
+    projectTasks.getByRole('region', { name: 'Task history' }),
+  ).toBeVisible();
+  await expect(projectTasks.getByLabel('Task title')).toHaveCount(0);
+  await expect(
+    projectTasks.getByRole('button', { name: /Save Task|Mark done/u }),
+  ).toHaveCount(0);
+  await capture(page, testInfo, 'my-task-open-read-only.png');
 
-    // Returning to Atelier's Project by hand finds its Task draft intact.
-    await projectRow(atelier).click();
-    await expectValue(projectTasks.getByLabel('Task title'), draft);
-    expect(server.taskReads).toEqual([
-      atelierTask.id,
-      betaTask.id,
-      archivedTask.id,
-    ]);
-    expect(server.assignedReads).toBe(listReads);
-    expect(server.commands).toEqual([]);
-  });
+  // Returning to Atelier's Project by hand finds its Task draft intact.
+  await projectRow(atelier).click();
+  await expectValue(projectTasks.getByLabel('Task title'), draft);
+  expect(server.taskReads).toEqual([
+    atelierTask.id,
+    betaTask.id,
+    archivedTask.id,
+  ]);
+  expect(server.assignedReads).toBe(listReads);
+  expect(server.commands).toEqual([]);
+});

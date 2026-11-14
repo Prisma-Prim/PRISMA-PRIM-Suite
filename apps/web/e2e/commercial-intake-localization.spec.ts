@@ -366,15 +366,6 @@ for (const locale of locales) {
       path: testInfo.outputPath(`request-${locale.code}.png`),
       fullPage: true,
     });
-    if (testInfo.project.name === 'narrow') {
-      await page.goto('/?frame=classic#requests');
-      await expect(page.locator('html')).toHaveAttribute('lang', locale.code);
-      await expectNarrowLocaleRow(page);
-      await page.screenshot({
-        path: testInfo.outputPath(`locale-row-classic-${locale.code}.png`),
-        fullPage: true,
-      });
-    }
   });
 }
 

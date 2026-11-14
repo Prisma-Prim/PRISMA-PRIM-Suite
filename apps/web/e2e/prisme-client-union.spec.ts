@@ -1,5 +1,4 @@
 import { expectSelectAppearance } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
@@ -17,7 +16,7 @@ import {
   unionPanel,
 } from './prisme-client-union.fixture';
 
-test('keeps the second canonical intention through uncertain retry, navigation and presentation changes', async ({
+test('keeps the second canonical intention through uncertain retry and navigation', async ({
   page,
 }, testInfo) => {
   const state = await installUnionFixture(page);
@@ -99,9 +98,6 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   await captureUnion(page, testInfo, 'union-uncertain');
   await navigateUnion(page, 'Activity Log');
   await navigateUnion(page, 'Clients');
-  const menu = page.getByRole('button', { name: 'Open navigation' });
-  if (await menu.isVisible()) await menu.click();
-  await enterClassicCompatibility(page);
   await expectValue(
     unionForm(page).getByRole('combobox', {
       name: 'Canonical Client dossier',
@@ -109,7 +105,6 @@ test('keeps the second canonical intention through uncertain retry, navigation a
     }),
     secondId,
   );
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expectValue(
     unionForm(page).getByRole('combobox', { name: 'Telephone', exact: true }),
     firstId,
