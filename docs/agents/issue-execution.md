@@ -19,7 +19,7 @@ One session owns one issue and delivers it as one focused pull request. One Code
 
 ## Handoffs
 
-A handoff between sessions, such as Codex to Claude Code, is compact: issue and branch, current commit, decisions with source links, checks run with their results, unresolved findings and the next action. Link evidence instead of copying transcripts or logs. The receiving session works from the issue, the PR and this procedure, without private conversation history.
+A handoff names the issue, branch, commit, decisions, check results, unresolved findings and next action. Use [private checkpoints](private-verification-evidence.md) to resume; share technical results and public source/CI links, never raw diagnostics or uninspected screenshots.
 
 ## Structural decisions
 

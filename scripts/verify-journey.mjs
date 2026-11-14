@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -9,6 +10,11 @@ import { stripVTControlCharacters } from 'node:util';
 import { Worker } from 'node:worker_threads';
 import { assertLocalTestDatabaseUrl } from '../apps/api/test-support/postgres-database-target.mjs';
 import { plan as localBrowserPlan } from './verify-local-browser.mjs';
+import {
+  EvidenceError,
+  openPrivateEvidence,
+  preparePrivateOutput,
+} from './private-evidence.mjs';
 
 // One named acceptance journey (apps/web/e2e/<name>.acceptance.spec.ts) at the
 // canonical desktop and narrow projects, each repetition on a fresh isolated
@@ -108,6 +114,7 @@ export function planJourneyVerification({
   repeat,
   cpuLoad,
   output,
+  evidenceRoot,
   parallelism,
   playwrightCli,
   startedAt,
@@ -118,9 +125,13 @@ export function planJourneyVerification({
     );
   const web = join(root, 'apps/web');
   // Absolute, because Playwright resolves outputDir against the wrapper config.
+  if (!output && !evidenceRoot)
+    throw new JourneyUsageError(
+      'A qualified private evidence root is required.',
+    );
   const evidenceDirectory = output
     ? resolve(output)
-    : join(web, 'test-results/journeys', `${journey}-${timestamp(startedAt)}`);
+    : join(evidenceRoot, `${journey}-${timestamp(startedAt)}-${randomUUID()}`);
   const local = localBrowserPlan(root, evidenceDirectory, 'acceptance');
   return {
     schema,
@@ -276,7 +287,7 @@ async function runOutcome(run, result, signal) {
 
 // Child output goes to its log; Playwright's own lines are echoed too.
 async function executeStep(step, { log, echo, signal }) {
-  const stream = createWriteStream(log);
+  const stream = createWriteStream(log, { mode: 0o600 });
   // Windows only starts pnpm's .cmd shim through a shell; the words are fixed.
   const shell = process.platform === 'win32' && step.command === 'pnpm';
   const child = spawn(
@@ -343,7 +354,7 @@ export async function runJourneyVerification(
   };
   const env = { ...process.env, ...plan.environment };
   try {
-    await mkdir(plan.evidenceDirectory, { recursive: true });
+    await mkdir(plan.evidenceDirectory, { recursive: true, mode: 0o700 });
     // Only the generated outputs the shared local startup protocol names.
     for (const path of plan.clean)
       await rm(join(plan.root, path), { recursive: true, force: true });
@@ -373,8 +384,10 @@ export async function runJourneyVerification(
       : async () => {};
     try {
       for (const run of plan.runs) {
-        await mkdir(run.directory, { recursive: true });
-        await writeFile(run.config, renderJourneyConfig(plan, run));
+        await mkdir(run.directory, { recursive: true, mode: 0o700 });
+        await writeFile(run.config, renderJourneyConfig(plan, run), {
+          mode: 0o600,
+        });
         report(
           `Run ${run.run}/${plan.repeat}: ${plan.journey}, fresh database${plan.cpuLoadThreads ? `, ${plan.cpuLoadThreads} CPU load threads` : ''}.`,
         );
@@ -404,7 +417,11 @@ export async function runJourneyVerification(
 async function finish(summary) {
   summary.exitCode = exitCodes[summary.status];
   summary.finishedAt = new Date().toISOString();
-  await writeFile(summary.summaryFile, `${JSON.stringify(summary, null, 2)}\n`);
+  await writeFile(
+    summary.summaryFile,
+    `${JSON.stringify(summary, null, 2)}\n`,
+    { mode: 0o600 },
+  );
   return summary;
 }
 
@@ -439,6 +456,12 @@ async function main(argv, environment) {
       root,
       journeys,
       ...options,
+      output: options.output
+        ? preparePrivateOutput({ cwd: root, output: options.output })
+        : null,
+      evidenceRoot: options.output
+        ? null
+        : openPrivateEvidence({ cwd: root, category: 'journeys' }).directory,
       parallelism: availableParallelism(),
       playwrightCli: createRequire(join(root, 'apps/web/package.json')).resolve(
         '@playwright/test/cli',
@@ -454,7 +477,7 @@ async function main(argv, environment) {
     if (existing.length)
       throw new JourneyUsageError('--output must be a new or empty directory.');
   } catch (error) {
-    if (error instanceof JourneyUsageError)
+    if (error instanceof JourneyUsageError || error instanceof EvidenceError)
       return refuse('usage-error', `${error.message}\n${usage}`, { journeys });
     throw error;
   }

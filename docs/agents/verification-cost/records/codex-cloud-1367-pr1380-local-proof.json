@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1367-pr1380-local-proof",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1367,
+  "pullRequest": 1380,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T12:41:11.000Z",
+    "end": "2026-11-14T13:37:14.000Z",
+    "durationSeconds": 3363
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "1037 script tests pass; one existing Windows-only skip on Linux. Types, lint, format pass. Real synthetic journey:four desktop/narrow scenarios pass; captures inspected privately. Standards0/Spec0 on exact source tree. No prompts, Client data or raw diagnostics published."
+  }
+}
