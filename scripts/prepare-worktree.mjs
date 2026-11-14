@@ -211,7 +211,9 @@ async function main(argv) {
       throw new PreparationError(
         'The target repository or branch does not match.',
       );
-    const modules = privateModules(target);
+    const modules = privateModules(target, {
+      allowMissingLocalLinks: options.refresh,
+    });
     if (
       git(target, [
         'status',
@@ -339,6 +341,7 @@ async function main(argv) {
       `--lockfile-dir=${target}`,
       '--config.node-linker=isolated',
       '--config.enable-global-virtual-store=false',
+      '--config.optimistic-repeat-install=false',
     ];
     if (options.offline) install.push('--offline');
     if (options.store)

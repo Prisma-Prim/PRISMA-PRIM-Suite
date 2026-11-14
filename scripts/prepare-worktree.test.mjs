@@ -1048,15 +1048,33 @@ function packDependency(directory) {
   assert.equal(result.status, 0, result.stderr);
 }
 
-function archiveFixture() {
+function archiveFixture({
+  consumer = false,
+  postinstall = true,
+  optimistic = false,
+} = {}) {
   const f = fixture({ workspaceDependency: false });
   const manifest = JSON.parse(readFileSync(join(f.repo, 'package.json')));
   manifest.dependencies['synthetic-dependency'] = '1.0.0';
+  if (!postinstall) delete manifest.scripts.postinstall;
   writeFileSync(join(f.repo, 'package.json'), JSON.stringify(manifest));
   writeFileSync(
     join(f.repo, 'pnpm-workspace.yaml'),
-    'packages: []\noverrides:\n  synthetic-dependency: file:packages/dependency.tgz\n',
+    `${consumer ? 'packages:\n  - packages/consumer\n' : 'packages: []\n'}${optimistic ? 'optimisticRepeatInstall: true\n' : ''}overrides:\n  synthetic-dependency: file:packages/dependency.tgz\n`,
   );
+  if (consumer) {
+    mkdirSync(join(f.repo, 'packages/consumer'));
+    writeFileSync(
+      join(f.repo, 'packages/consumer/package.json'),
+      JSON.stringify({
+        name: 'synthetic-consumer',
+        private: true,
+        dependencies: {
+          'synthetic-consumer-dependency': 'file:../dependency.tgz',
+        },
+      }),
+    );
+  }
   packDependency(f.repo);
   const lock = spawnSync(
     'bash',
@@ -1122,7 +1140,7 @@ test('an effective pnpm override local archive cannot reuse stale installed cont
 
 for (const damage of ['deletion', 'corruption']) {
   test(`explicit refresh repairs archive package ${damage} before qualification`, () => {
-    const f = archiveFixture();
+    const f = archiveFixture({ consumer: damage === 'deletion' });
     const first = prepare(f);
     assert.equal(first.status, 0, first.stderr);
     const installed = realpathSync(
@@ -1146,6 +1164,18 @@ for (const damage of ['deletion', 'corruption']) {
     const repaired = importing();
     assert.equal(repaired.status, 0, repaired.stderr);
     assert.equal(repaired.stdout, 'synthetic-v1');
+    if (damage === 'deletion') {
+      const consuming = spawnSync(
+        process.execPath,
+        [
+          '--eval',
+          'process.stdout.write(require("synthetic-consumer-dependency"))',
+        ],
+        { cwd: join(f.target, 'packages/consumer'), encoding: 'utf8' },
+      );
+      assert.equal(consuming.status, 0, consuming.stderr);
+      assert.equal(consuming.stdout, 'synthetic-v1');
+    }
     const ready = prepare(f);
     assert.equal(ready.status, 0, ready.stderr);
     assert.equal(JSON.parse(ready.stdout).status, 'ready');
@@ -1154,7 +1184,7 @@ for (const damage of ['deletion', 'corruption']) {
 }
 
 test('explicit refresh retains frozen-lockfile validation before any repair', () => {
-  const f = fixture();
+  const f = archiveFixture({ consumer: true });
   assert.equal(prepare(f).status, 0);
   const path = join(f.target, 'package.json');
   const manifest = JSON.parse(readFileSync(path));
@@ -1176,13 +1206,14 @@ test('explicit refresh retains frozen-lockfile validation before any repair', ()
   assert.equal(refused.status, 2, refused.stderr);
   assert.match(refused.stderr, /pnpm-install/u);
   assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
-  // All payloads are available locally: removing only frozen validation lets
-  // the same real package manager install this otherwise valid graph.
+  // All payloads are available locally; only the outdated lockfile blocks.
   const control = spawnSync(
     'bash',
     [
       'scripts/agent-pnpm.sh',
       'install',
+      '--lockfile-only',
+      '--ignore-scripts',
       '--offline',
       '--package-import-method=copy',
       `--store-dir=${f.store}`,
@@ -1190,6 +1221,29 @@ test('explicit refresh retains frozen-lockfile validation before any repair', ()
     { cwd: f.target, encoding: 'utf8', timeout: 30_000 },
   );
   assert.equal(control.status, 0, control.stderr);
+  git(f.target, 'add', 'pnpm-lock.yaml');
+  git(
+    f.target,
+    '-c',
+    'user.name=Synthetic Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'update the local lockfile',
+  );
+  const repaired = prepare(f, ['--refresh']);
+  assert.equal(repaired.status, 0, repaired.stderr);
+  assert.equal(JSON.parse(repaired.stdout).status, 'prepared');
+  const consuming = spawnSync(
+    process.execPath,
+    ['--eval', 'process.stdout.write(require("synthetic-added"))'],
+    { cwd: f.target, encoding: 'utf8' },
+  );
+  assert.equal(consuming.status, 0, consuming.stderr);
+  assert.equal(consuming.stdout, 'synthetic-v1');
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\ninstalled\n');
 });
 
 test('failed archive refresh preserves retired data and retries with only the active graph', () => {
@@ -1250,6 +1304,43 @@ test('failed archive refresh preserves retired data and retries with only the ac
     readFileSync(f.counter, 'utf8'),
     'installed\ninstalled\ninstalled\n',
   );
+});
+
+test('workspace refresh rebuilds all project paths with optimistic repeat installation enabled', () => {
+  const f = archiveFixture({
+    consumer: true,
+    postinstall: false,
+    optimistic: true,
+  });
+  const first = prepare(f);
+  assert.equal(first.status, 0, first.stderr);
+  unlinkSync(
+    realpathSync(join(f.target, 'node_modules/synthetic-dependency/index.cjs')),
+  );
+  const refreshed = prepare(f, ['--refresh']);
+  assert.equal(refreshed.status, 0, refreshed.stderr);
+  assert.equal(JSON.parse(refreshed.stdout).status, 'prepared');
+  for (const [directory, name] of [
+    [f.target, 'synthetic-dependency'],
+    [join(f.target, 'packages/consumer'), 'synthetic-consumer-dependency'],
+  ]) {
+    const imported = spawnSync(
+      process.execPath,
+      ['--eval', `process.stdout.write(require(${JSON.stringify(name)}))`],
+      { cwd: directory, encoding: 'utf8' },
+    );
+    assert.equal(imported.status, 0, imported.stderr);
+    assert.equal(imported.stdout, 'synthetic-v1');
+  }
+  assert.equal(
+    readdirSync(join(f.target, 'node_modules')).filter((name) =>
+      name.startsWith('.pnpm-retired-'),
+    ).length,
+    0,
+  );
+  const ready = prepare(f);
+  assert.equal(ready.status, 0, ready.stderr);
+  assert.equal(JSON.parse(ready.stdout).status, 'ready');
 });
 
 test(

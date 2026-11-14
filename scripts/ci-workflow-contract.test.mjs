@@ -46,6 +46,15 @@ async function readWorkflow() {
   return (await readFile(workflowUrl, 'utf8')).replaceAll('\r\n', '\n');
 }
 
+test('the script family enables the actual repository refresh regression', async () => {
+  const checks = jobsIn(await readWorkflow()).checks;
+  assert.ok(
+    stepBody(checks, 'Test scripts').includes(
+      "PRISMA_WORKTREE_REPOSITORY_SMOKE: '1'",
+    ),
+  );
+});
+
 const officialImages = {
   node: 'public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df',
   postgres:

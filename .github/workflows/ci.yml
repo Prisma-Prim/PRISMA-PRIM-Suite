@@ -50,6 +50,7 @@ jobs:
       - name: Test scripts
         env:
           CI_TEST_RESULTS_FILE: ${{ runner.temp }}/ci-test-results/scripts.json
+          PRISMA_WORKTREE_REPOSITORY_SMOKE: '1'
         run: pnpm test:scripts
 
       - name: Test documentation contracts

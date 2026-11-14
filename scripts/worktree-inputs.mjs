@@ -4,6 +4,7 @@ import {
   lstatSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   realpathSync,
   watch,
 } from 'node:fs';
@@ -344,7 +345,7 @@ function assertOwnedHardlinks(root) {
     );
 }
 
-export function privateModules(root) {
+export function privateModules(root, { allowMissingLocalLinks = false } = {}) {
   assertOwnedHardlinks(root);
   const retiredName =
     /^\.pnpm-retired-[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/u;
@@ -361,13 +362,21 @@ export function privateModules(root) {
       )
         continue;
       if (entry.isSymbolicLink()) {
+        if (directory === modulesRoot && entry.name === '.pnpm')
+          throw new PreparationError(
+            'The virtual store must be a private directory; existing files were preserved.',
+          );
         let target;
+        let missing = false;
         try {
           target = realpathSync.native(path);
-        } catch {
-          throw new PreparationError(
-            'Broken dependency links need explicit repair.',
-          );
+        } catch (error) {
+          if (!allowMissingLocalLinks || error.code !== 'ENOENT')
+            throw new PreparationError(
+              'Broken dependency links need explicit --refresh repair or a fresh isolated target.',
+            );
+          target = canonicalPath(resolve(directory, readlinkSync(path)));
+          missing = true;
         }
         if (!within(root, target))
           throw new PreparationError(
@@ -378,7 +387,10 @@ export function privateModules(root) {
           throw new PreparationError(
             'Dependency links into a retired installation are refused.',
           );
-        metadata.push([relative(root, path), `link:${relative(root, target)}`]);
+        metadata.push([
+          relative(root, path),
+          `${missing ? 'missing-link' : 'link'}:${relative(root, target)}`,
+        ]);
       } else if (entry.isDirectory()) visit(path);
       else if (entry.isFile())
         metadata.push([
