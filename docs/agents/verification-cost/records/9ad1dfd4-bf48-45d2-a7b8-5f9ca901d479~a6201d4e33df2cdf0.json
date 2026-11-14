@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9ad1dfd4-bf48-45d2-a7b8-5f9ca901d479:a6201d4e33df2cdf0",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1338,
+  "pullRequest": 1351,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T08:56:44.457Z",
+    "end": "2026-11-14T09:18:22.070Z",
+    "durationSeconds": 1298
+  },
+  "tokens": {
+    "input": 142,
+    "output": 87434,
+    "cacheCreation": 177863,
+    "cacheRead": 10980857
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 142,
+        "output": 87434,
+        "cacheCreation": 177863,
+        "cacheRead": 10980857
+      },
+      "estimatedPriceUsd": 4.834734
+    }
+  ],
+  "price": {
+    "estimatedUsd": 4.834734,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": ""
+  }
+}
