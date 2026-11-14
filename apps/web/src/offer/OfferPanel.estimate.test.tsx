@@ -19,6 +19,10 @@ import {
 } from '../profitability-estimate/profitability.fixture';
 import { OfferPanel } from './OfferPanel';
 import { internalOfferFixture } from './offer-estimate.fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'synthetic-preparer',
@@ -37,6 +41,19 @@ const actor: ActorContext = {
       'commercial.offer.prepare',
       'commercial.offer.estimate.prepare',
     ],
+    grants: withCompanyGrants(
+      profitabilityActor.activeCompany?.grants,
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_offer_preparer',
+        version: 'v2',
+        assignmentId: 'preparer-2',
+      },
+    ),
   },
 };
 function panel(current = actor, currentIdentity = identity) {
@@ -308,6 +325,10 @@ it.each(['identity', 'company', 'authority'])(
                     offerPermissions: ['commercial.offer.read'],
                     offerPermissionAssignmentId: undefined,
                     offerPermissionSetVersion: undefined,
+                    grants: withoutCompanyGrants(
+                      actor.activeCompany?.grants,
+                      'company_offer_preparer',
+                    ),
                   }
                 : {}),
             },
@@ -357,9 +378,19 @@ it('reopens price-only content without requesting economic history or source det
       offerPermissions: ['commercial.offer.read'],
       offerPermissionAssignmentId: undefined,
       offerPermissionSetVersion: undefined,
-      profitabilityContributorPermissions: undefined,
-      profitabilityContributorPermissionAssignmentId: undefined,
-      profitabilityContributorPermissionSetVersion: undefined,
+      // Offer read without estimate preparation: the lowest Offer Preparer
+      // version, without any Profitability grant.
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_profitability_contributor',
+        ),
+        {
+          bundle: 'company_offer_preparer',
+          version: 'v1',
+          assignmentId: 'offer-reader-grant',
+        },
+      ),
     },
   };
   render(panel(reader));

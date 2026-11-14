@@ -13,6 +13,7 @@ import {
   buildClientRequest,
   requestListItemFor,
 } from './test/commercial-intake-responses';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const companyId = 'company-a';
 const requestId = 'request-592';
@@ -104,6 +105,18 @@ function reader(): ActorContext {
       ],
       offerApproverAssignmentId: 'approver-1',
       offerApproverPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'intake-1',
+        },
+        {
+          bundle: 'company_offer_approver',
+          version: 'v1',
+          assignmentId: 'approver-1',
+        },
+      ),
     },
   };
 }

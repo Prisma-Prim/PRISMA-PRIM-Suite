@@ -1,3 +1,4 @@
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import type { ActorContext } from '../access-types';
 import {
   profitabilityActor,
@@ -30,6 +31,19 @@ export const modelOfferActor: ActorContext = {
       'commercial.offer.transmission.record',
       'commercial.offer.model_based.transmission.record',
     ],
+    grants: withCompanyGrants(
+      profitabilityActor.activeCompany?.grants,
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_offer_preparer',
+        version: 'v3',
+        assignmentId: 'preparer-852',
+      },
+    ),
   },
 };
 export const selectedModelFixture = {

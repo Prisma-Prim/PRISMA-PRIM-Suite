@@ -10,6 +10,10 @@ import {
 } from '../src/profitability-estimate/profitability.fixture';
 import { actorContextFixture } from './actor-context.fixture';
 import {
+  companyGrants,
+  type CompanyGrantRequest,
+} from '../src/access/company-grants.test-fixture';
+import {
   buildClientRequest,
   requestListItemFor,
 } from '../src/test/commercial-intake-responses';
@@ -55,6 +59,30 @@ function requestDetail() {
   });
 }
 function actor(contributor: boolean, director: boolean): ActorContext {
+  const requests: CompanyGrantRequest[] = [
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-reader-498',
+    },
+    {
+      bundle: 'company_commercial_intake',
+      version: 'v1',
+      assignmentId: 'intake-498',
+    },
+  ];
+  if (contributor)
+    requests.push({
+      bundle: 'company_profitability_contributor',
+      version: 'v1',
+      assignmentId: 'contributor-498',
+    });
+  if (director)
+    requests.push({
+      bundle: 'company_profitability_director',
+      version: 'v1',
+      assignmentId: 'director-498',
+    });
   return {
     ...actorContextFixture,
     workspacePermissions: ['company.assignment.manage'],
@@ -67,26 +95,7 @@ function actor(contributor: boolean, director: boolean): ActorContext {
         'commercial.opportunity.read',
         'commercial.opportunity.create',
       ],
-      ...(contributor
-        ? {
-            profitabilityContributorPermissions: [
-              'commercial.profitability_estimate.read',
-              'commercial.profitability_estimate.create',
-            ],
-            profitabilityContributorPermissionAssignmentId: 'contributor-498',
-            profitabilityContributorPermissionSetVersion: 'v1',
-          }
-        : {}),
-      ...(director
-        ? {
-            profitabilityDirectorPermissions: [
-              'commercial.profitability_estimate.read',
-              'commercial.profitability_estimate.decide',
-            ],
-            profitabilityDirectorPermissionAssignmentId: 'director-498',
-            profitabilityDirectorPermissionSetVersion: 'v1',
-          }
-        : {}),
+      grants: companyGrants(...requests),
     },
   };
 }

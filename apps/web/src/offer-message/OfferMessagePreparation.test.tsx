@@ -19,6 +19,7 @@ import {
   ready,
   target,
 } from './offer-message.test-fixture';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 
 beforeEach(() => {
   localStorage.setItem(interfaceLocaleStorageKey, 'en');
@@ -94,7 +95,14 @@ describe('exact Offer manual message preparation', () => {
           ...actor,
           displayName: 'Updated profile',
           workspacePermissions: ['company.manage'],
-          activeCompany: { ...actor.activeCompany, clientPermissions: [] },
+          activeCompany: {
+            ...actor.activeCompany,
+            clientPermissions: [],
+            grants: withoutCompanyGrants(
+              actor.activeCompany.grants,
+              'company_director_client_access',
+            ),
+          },
         },
       }),
     );
@@ -275,12 +283,17 @@ describe('exact Offer manual message preparation', () => {
             ...actor,
             activeCompany: {
               ...actor.activeCompany,
-              commercialIntakePermissions:
-                actor.activeCompany.commercialIntakePermissions?.filter(
-                  (item) => item !== permission,
-                ),
-              offerPermissions: actor.activeCompany.offerPermissions?.filter(
-                (item) => item !== permission,
+              // Every Commercial Intake version confers both reads, and
+              // both Offer bundles confer Offer read: losing one permission
+              // is losing the grants that confer it.
+              grants: withoutCompanyGrants(
+                actor.activeCompany.grants,
+                ...(permission === 'commercial.offer.read'
+                  ? ([
+                      'company_offer_preparer',
+                      'company_offer_approver',
+                    ] as const)
+                  : (['company_commercial_intake'] as const)),
               ),
             },
           },

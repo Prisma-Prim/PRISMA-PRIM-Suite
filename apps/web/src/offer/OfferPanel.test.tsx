@@ -18,6 +18,11 @@ import { resolveMessage } from '../localization/messages';
 import { offerBindingMessages } from './offer-binding.copy';
 import { offerPreparationMessages } from './offer-preparation.copy';
 import { OfferPanel } from './OfferPanel';
+import { offerGrants } from './offer-grants.test-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'offer-preparer',
@@ -226,7 +231,14 @@ describe('OfferPanel', () => {
     if (!authorized.activeCompany) throw new Error('Expected Company.');
     renderPanel({
       ...authorized,
-      activeCompany: { ...authorized.activeCompany, clientPermissions: [] },
+      activeCompany: {
+        ...authorized.activeCompany,
+        clientPermissions: [],
+        grants: withoutCompanyGrants(
+          authorized.activeCompany.grants,
+          'company_director_client_access',
+        ),
+      },
     });
     await screen.findByText('Current version');
     expect(
@@ -1379,10 +1391,9 @@ describe('OfferPanel', () => {
       await screen.findByRole('button', { name: 'Running Quality Checks…' }),
     ).toBeDisabled();
     await waitFor(() => expect(release).toBeTypeOf('function'));
-    const revoked = actor('company-one');
-    if (!revoked.activeCompany) throw new Error('Expected active Company');
-    revoked.activeCompany.offerPermissions = [];
-    rendered.rerender(panel(revoked, 'opportunity-one'));
+    rendered.rerender(
+      panel(actorWithOfferPermissions('company-one', []), 'opportunity-one'),
+    );
     expect(
       await screen.findByText(
         'Offer access is not available for this Opportunity.',
@@ -2042,6 +2053,23 @@ function actor(companyId: string): ActorContext {
       ],
       offerPermissionAssignmentId: `assignment-${companyId}`,
       offerPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'commercial-intake-grant',
+        },
+        {
+          bundle: 'company_offer_preparer',
+          version: 'v1',
+          assignmentId: `assignment-${companyId}`,
+        },
+      ),
     },
   };
 }
@@ -2056,7 +2084,20 @@ function actorWithOfferPermissions(
   if (!current.activeCompany) throw new Error('Expected an active Company.');
   return {
     ...current,
-    activeCompany: { ...current.activeCompany, offerPermissions },
+    activeCompany: {
+      ...current.activeCompany,
+      offerPermissions,
+      grants: [
+        ...withoutCompanyGrants(
+          current.activeCompany.grants,
+          'company_offer_preparer',
+          'company_offer_approver',
+        ),
+        ...offerGrants(offerPermissions, {
+          preparer: `assignment-${companyId}`,
+        }),
+      ],
+    },
   };
 }
 

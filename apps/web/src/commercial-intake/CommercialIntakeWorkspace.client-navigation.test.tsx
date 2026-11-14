@@ -16,7 +16,11 @@ import {
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
-import { withCompanyGrants } from '../access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const intakePermissions: NonNullable<
   NonNullable<ActorContext['activeCompany']>['commercialIntakePermissions']
@@ -47,6 +51,18 @@ function actorFor(
         ? [...intakePermissions, 'commercial.opportunity.next_action.update']
         : intakePermissions,
       commercialIntakePermissionSetVersion: canUpdateNextAction ? 'v2' : 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: canUpdateNextAction ? 'v2' : 'v1',
+          assignmentId: 'commercial-intake-grant',
+        },
+      ),
     },
   };
 }
@@ -65,6 +81,18 @@ const associationEditor: ActorContext = {
       'commercial.request.client.associate',
     ],
     commercialIntakePermissionSetVersion: 'v3',
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v3',
+        assignmentId: 'commercial-intake-grant',
+      },
+    ),
   },
 };
 
@@ -1565,6 +1593,16 @@ function clientAuthority(
       opportunityManagerPermissions: ['commercial.opportunity.assign'],
       opportunityManagerPermissionAssignmentId: 'manager-1',
       opportunityManagerPermissionSetVersion: 'v1',
+      grants: readable
+        ? withCompanyGrants(company.grants, {
+            bundle: 'company_director_client_access',
+            version: 'v2',
+            assignmentId,
+          })
+        : withoutCompanyGrants(
+            company.grants,
+            'company_director_client_access',
+          ),
     },
   };
 }
@@ -1979,11 +2017,21 @@ describe('Commercial Intake projection boundary preserves unrelated work', () =>
       ...fullActor,
       activeCompany: {
         ...company,
-        grants: withCompanyGrants(company.grants, {
-          bundle: 'company_pricing_user',
-          version: 'v1',
-          assignmentId: 'pricing-user-grant',
-        }),
+        grants: withCompanyGrants(
+          withoutCompanyGrants(
+            withCompanyGrants(company.grants, {
+              bundle: 'company_pricing_user',
+              version: 'v1',
+              assignmentId: 'pricing-user-grant',
+            }),
+            'company_offer_approver',
+          ),
+          {
+            bundle: 'company_offer_preparer',
+            version: 'v1',
+            assignmentId: 'offer-preparer-grant',
+          },
+        ),
         offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
       },
     };
@@ -2038,6 +2086,10 @@ describe('Commercial Intake projection boundary preserves unrelated work', () =>
         id: company.id,
         displayName: company.displayName,
         clientPermissions: [],
+        grants: withoutCompanyGrants(
+          panelsActor.activeCompany?.grants,
+          'company_director_client_access',
+        ),
       },
     });
     expect(
