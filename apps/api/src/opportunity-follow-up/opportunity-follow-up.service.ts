@@ -5,16 +5,15 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
-import { isDeepStrictEqual } from 'node:util';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
+import { runKeyedCommand } from '../command/idempotent-command.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { OpportunityFollowUpStore } from './opportunity-follow-up.store.js';
 import {
+  FOLLOW_UP_KEY_MAX_LENGTH,
   followUpInput,
-  followUpKey,
   followUpQuery,
 } from './opportunity-follow-up.input.js';
 import {
@@ -183,34 +182,32 @@ export class OpportunityFollowUpService {
     body: unknown,
     key: string | undefined,
   ) {
-    const input = followUpInput(body),
-      normalizedKey = followUpKey(key);
-    return this.database
-      .transaction(async () => {
+    const input = followUpInput(body);
+    return runKeyedCommand(this.database, {
+      name: 'opportunity.follow-up',
+      actor,
+      key,
+      maxKeyLength: FOLLOW_UP_KEY_MAX_LENGTH,
+      authorize: async () => {
         const capture = await this.access.requireOpportunityFollowUpAccess(
           actor,
           { manage: true, lock: true },
         );
         await this.commercial.requireFollowUpTarget(actor, opportunityId);
-        const scope = {
+        const scope: FollowUpScope = {
           workspaceId: actor.workspaceId,
           companyId: capture.companyId,
           opportunityId,
         };
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['opportunity.follow-up', scope.workspaceId, scope.companyId, actor.workspaceMembershipId, normalizedKey])},0))`,
-        );
-        const saved = await this.store.findReceipt(actor, scope, normalizedKey);
-        if (saved) {
-          if (
-            !isDeepStrictEqual(
-              saved.intent,
-              this.store.intent(actor, scope, input),
-            )
-          )
-            conflict('IDEMPOTENCY_CONFLICT');
-          return this.store.replay(scope, saved);
-        }
+        return { scope, assignmentId: capture.assignmentId };
+      },
+      findReceipt: ({ scope: { scope }, key: used }) =>
+        this.store.findReceipt(actor, scope, used),
+      recordedIntent: (receipt) => receipt.intent,
+      intent: ({ scope: { scope } }) => this.store.intent(actor, scope, input),
+      replay: ({ scope: { scope }, receipt }) =>
+        this.store.replay(scope, receipt),
+      execute: async ({ scope: { scope, assignmentId }, key: used }) => {
         const native = await this.commercial.requireFollowUpOpportunity(
             actor,
             opportunityId,
@@ -237,13 +234,13 @@ export class OpportunityFollowUpService {
         return this.store.write({
           actor,
           scope,
-          assignmentId: capture.assignmentId,
+          assignmentId,
           intakeAssignmentId: nativeAssignmentId,
-          key: normalizedKey,
+          key: used,
           body: input,
         });
-      })
-      .catch(unavailable);
+      },
+    }).catch(unavailable);
   }
   async discover(actor: ActorContext, query: unknown) {
     const parsed = followUpQuery(query, 'discovery');

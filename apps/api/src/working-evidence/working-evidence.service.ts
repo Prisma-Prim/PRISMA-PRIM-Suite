@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   ForbiddenException,
   HttpException,
@@ -12,6 +12,11 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
+import {
+  commandFingerprint,
+  runKeyedCommand,
+  type CommandDatabase,
+} from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   workingEvidenceCases as cases,
@@ -50,8 +55,8 @@ import {
 
 type CaseRow = typeof cases.$inferSelect;
 type RevisionRow = typeof revisions.$inferSelect;
-const hash = (value: unknown) =>
-  createHash('sha256').update(JSON.stringify(value)).digest('hex');
+// A Case command's key is its body's commandId, a canonical UUID.
+const COMMAND_ID_LENGTH = 36;
 @Injectable()
 export class WorkingEvidenceService {
   private readonly cursors: ReturnType<typeof workingEvidenceCursors>;
@@ -82,9 +87,12 @@ export class WorkingEvidenceService {
   ) {
     const input = command(body, action);
     return this.safe(() =>
-      runClientReferenceTransaction({
-        database: this.database,
-        work: async () => {
+      runKeyedCommand(this.clientReferenceCommands(), {
+        name: 'working-evidence-case',
+        actor,
+        key: input.commandId,
+        maxKeyLength: COMMAND_ID_LENGTH,
+        authorize: async () => {
           const { companyId } =
             await this.access.requireWorkingEvidenceCaseAccess(actor, {
               record: true,
@@ -132,44 +140,31 @@ export class WorkingEvidenceService {
             reason: input.reason,
             values: input.values,
           };
+          return { companyId, existing, projectId, originalClientId, intent };
+        },
+        findReceipt: ({ key }) => this.findReceipt(actor, key),
+        recordedIntent: (receipt) => receipt.intent,
+        intent: ({ scope }) => scope.intent,
+        replay: async ({ receipt }) => {
+          const recorded = readReceipt(receipt.receipt);
+          if (
+            recorded.commandId !== input.commandId ||
+            recorded.caseId !== receipt.caseId ||
+            recorded.revisionId !== receipt.revisionId
+          )
+            return refuse('content_unavailable');
+          return recorded;
+        },
+        execute: async ({
+          scope: { companyId, existing, projectId, originalClientId, intent },
+        }) => {
+          const context = { companyId, originalClientId };
           const intentDigest = await this.database.connection.execute(
             sql`select encode(sha256(convert_to(${JSON.stringify(intent)}::jsonb::text,'UTF8')),'hex') as fingerprint`,
           );
           const fingerprint: unknown = intentDigest.rows[0]?.fingerprint;
           if (typeof fingerprint !== 'string')
             return refuse('content_unavailable');
-          await this.database.connection.execute(
-            sql`select pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}/${actor.workspaceMembershipId}/${input.commandId}`},0))`,
-          );
-          const [replay] = await this.database.connection
-            .select()
-            .from(receipts)
-            .where(
-              and(
-                eq(receipts.workspaceId, actor.workspaceId),
-                eq(receipts.actorMembershipId, actor.workspaceMembershipId),
-                eq(receipts.commandId, input.commandId),
-              ),
-            );
-          if (replay) {
-            const storedIntent = readIntent(replay.intent);
-            if (hashCanonical(storedIntent) !== hashCanonical(replay.intent))
-              return refuse('content_unavailable');
-            if (
-              replay.companyId !== companyId ||
-              replay.fingerprint !== fingerprint ||
-              hashCanonical(replay.intent) !== hashCanonical(intent)
-            )
-              return refuse('conflict');
-            const receipt = readReceipt(replay.receipt);
-            if (
-              receipt.commandId !== input.commandId ||
-              receipt.caseId !== replay.caseId ||
-              receipt.revisionId !== replay.revisionId
-            )
-              return refuse('content_unavailable');
-            return receipt;
-          }
           let client;
           try {
             client = await this.clients.lockActiveReferenceClient(
@@ -346,6 +341,39 @@ export class WorkingEvidenceService {
         },
       }),
     );
+  }
+  // Client reference drift restarts the whole keyed command, authority,
+  // key lock and receipt lookup included.
+  private clientReferenceCommands(): CommandDatabase {
+    const database = this.database;
+    return {
+      get connection() {
+        return database.connection;
+      },
+      transaction: (work) => runClientReferenceTransaction({ database, work }),
+    };
+  }
+  // The actor's receipt for a commandId, whatever Case or Company recorded it.
+  // A stored intent this version cannot read exactly fails closed before it
+  // is compared.
+  private async findReceipt(actor: ActorContext, commandId: string) {
+    const [row] = await this.database.connection
+      .select()
+      .from(receipts)
+      .where(
+        and(
+          eq(receipts.workspaceId, actor.workspaceId),
+          eq(receipts.actorMembershipId, actor.workspaceMembershipId),
+          eq(receipts.commandId, commandId),
+        ),
+      );
+    if (
+      row &&
+      commandFingerprint(readIntent(row.intent)) !==
+        commandFingerprint(row.intent)
+    )
+      return refuse('content_unavailable');
+    return row;
   }
 
   detail(actor: ActorContext, caseId: string, query: unknown) {
@@ -813,6 +841,7 @@ export class WorkingEvidenceService {
             'new_use_unavailable',
             'not_found',
             'content_unavailable',
+            'IDEMPOTENCY_CONFLICT',
           ].includes(String(response.code))
         )
           throw error;
@@ -884,17 +913,4 @@ export class WorkingEvidenceService {
     }
     return { access, decoded };
   }
-}
-function hashCanonical(value: unknown): string {
-  return hash(canonical(value));
-}
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === 'object')
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => [k, canonical(v)]),
-    );
-  return value;
 }
