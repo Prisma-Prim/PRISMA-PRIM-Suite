@@ -1122,6 +1122,19 @@ withPostgres('Approved-model Offer generation public REST', () => {
       headers: ESTIMATE_OFFER_PREPARER,
     };
     const intent = generatedOfferIntent(source);
+    const unnamed = Object.fromEntries(
+      Object.entries(intent).filter(
+        ([field]) => field !== 'modelApprovalDecisionId',
+      ),
+    );
+    const unpinned = await fixture.post({ ...command, body: unnamed });
+    expect({
+      status: unpinned.status,
+      body: await unpinned.json(),
+    }).toMatchObject({
+      status: 400,
+      body: { field: 'modelApprovalDecisionId' },
+    });
     for (const body of [
       intent,
       {
