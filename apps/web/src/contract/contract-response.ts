@@ -4,7 +4,7 @@ import {
 } from './contract-decision-response';
 import {
   isContractQualityRuleSetVersion,
-  readRecordedContractQualityRun,
+  readContractQualityRun,
   type ContractQualityRunBinding,
   type ContractQualityRuleSetVersion,
   type ContractQualityRunView,
@@ -414,7 +414,7 @@ export function readContract(value: unknown): ContractView {
       latestQualityRun:
         version.latestQualityRun === null
           ? null
-          : readRecordedContractQualityRun(version.latestQualityRun, binding),
+          : readContractQualityRun(version.latestQualityRun, binding),
       recipient: {
         legalName: string(recipient.legalName),
         taxId: nullableString(recipient.taxId),

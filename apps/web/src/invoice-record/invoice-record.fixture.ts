@@ -1,5 +1,6 @@
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type {
   InvoiceCurrent,
   InvoiceSource,
@@ -74,6 +75,25 @@ const company = {
       permissionSetVersion: 'v1',
     },
   ],
+  // The Contract link reads these grants; the invoice record and document
+  // screens still read the per-bundle fields above.
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: '20000000-0000-4000-8000-000000000001',
+    },
+    {
+      bundle: 'company_contract_preparer',
+      version: 'v2',
+      assignmentId: '20000000-0000-4000-8000-000000000006',
+    },
+    {
+      bundle: 'company_commercial_intake',
+      version: 'v4',
+      assignmentId: '20000000-0000-4000-8000-000000000007',
+    },
+  ),
 } satisfies NonNullable<ActorContext['activeCompany']> & {
   invoiceRecordReadCapture: string;
 };
@@ -96,6 +116,7 @@ export const financeOnly: ActorContext = {
     documentPermissions: [],
     contractPermissions: [],
     commercialIntakePermissions: [],
+    grants: [],
     externalInvoiceGrants: [
       {
         bundle: 'company_invoice_recorder',

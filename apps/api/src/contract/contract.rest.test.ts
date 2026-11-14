@@ -11655,24 +11655,23 @@ withPostgres('First illustrative Contract REST', () => {
         })),
       );
     });
-    it('keeps an older v1 run of a pending adjusted version readable and binds its next run to v2', async () => {
+    it('refuses to read a v1 run stored on a pending version bound to rule set v2, an earlier shape, instead of serving it', async () => {
       const fixture = await adjustedAcceptedOffer();
-      await grantContract(fixture, 'cadj-legacy-grant');
-      await grantApprover(fixture);
+      await grantContract(fixture, 'cadj-earlier-grant');
       const base = '/contracts/opportunities/' + fixture.opportunityId;
       const version = record(
         record(
           await command({
             path: base,
             companyId: fixture.companyId,
-            key: 'cadj-legacy-create',
+            key: 'cadj-earlier-create',
             body: await contractPayload(fixture),
           }),
         ).version,
       );
       const versionId = stringField(version, 'id');
       // A run recorded before rule set v2 existed: v1 could only report ERROR.
-      const legacy = ACCEPTED_OFFER_CODES.map((code) => ({
+      const earlier = ACCEPTED_OFFER_CODES.map((code) => ({
         code,
         status: code === 'PRICING_SNAPSHOT_COHERENT' ? 'ERROR' : 'PASS',
       }));
@@ -11684,7 +11683,7 @@ withPostgres('First illustrative Contract REST', () => {
         );
         await client.query(
           'INSERT INTO contract_quality_runs (workspace_id,company_id,contract_id,contract_version_id,rule_set_version,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,results) SELECT workspace_id,company_id,contract_id,id,1,created_by_internal_user_id,created_by_workspace_membership_id,created_at,$2 FROM contract_versions WHERE id=$1',
-          [versionId, JSON.stringify(legacy)],
+          [versionId, JSON.stringify(earlier)],
         );
         await client.query(
           'ALTER TABLE contract_quality_runs ENABLE TRIGGER contract_quality_runs_bound_rule_set',
@@ -11696,41 +11695,12 @@ withPostgres('First illustrative Contract REST', () => {
       } finally {
         client.release();
       }
-      const reread = record(
-        record(
-          await json(
-            await request({ path: base, companyId: fixture.companyId }),
-          ),
-        ).contract,
-      );
-      expect(record(reread.version)).toMatchObject({
-        qualityRuleSetVersion: 2,
-        latestQualityRun: { ruleSetVersion: 1, results: legacy },
+      const refused = await request({
+        path: base,
+        companyId: fixture.companyId,
       });
-      const history = record(
-        await json(
-          await request({
-            path: base + '/versions/' + versionId + '/quality-checks',
-            companyId: fixture.companyId,
-          }),
-        ),
-      );
-      expect(history.items).toMatchObject([{ ruleSetVersion: 1 }]);
-      expect(
-        await command({
-          path: base + '/versions/' + versionId + '/approve',
-          companyId: fixture.companyId,
-          key: 'cadj-legacy-approve',
-          body: { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
-        }),
-      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
-      expect(
-        (
-          await pool.query<{ version: number }>(
-            'SELECT rule_set_version AS version FROM contract_quality_runs ORDER BY sequence',
-          )
-        ).rows.map((row) => row.version),
-      ).toEqual([1, 2]);
+      expect(refused.status).toBe(500);
+      expect(JSON.stringify(await json(refused))).not.toContain(versionId);
     });
     it('replays a v2 approval exactly and keeps permission and Company boundaries', async () => {
       const fixture = await adjustedAcceptedOffer();

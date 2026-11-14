@@ -834,6 +834,13 @@
       "when": 1794673678146,
       "tag": "0118_operational_risk_receipts_current_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1794685654948,
+      "tag": "0119_contract_quality_runs_current_shape",
+      "breakpoints": true
     }
   ]
 }

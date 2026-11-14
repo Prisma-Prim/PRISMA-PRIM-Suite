@@ -86,12 +86,6 @@ export interface CompanyModelKind<
   readonly tables: CompanyModelTables;
   /** Readers refusing with the kind's own content error. */
   readonly fields: CompanyModelFields;
-  /**
-   * Whether the kind recorded receipts before #1191 under the fingerprint of
-   * its validated intent with the model code. Those receipts keep replaying
-   * the retries that rule recognized; new receipts use the raw payload.
-   */
-  readonly parsedIntentReceipts: boolean;
   /** The member authority that reads, edits and approves the kind. */
   readonly authority: CompanyModelAuthority;
   readonly selection: {

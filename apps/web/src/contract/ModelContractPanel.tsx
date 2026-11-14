@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import type { ApiResult } from '../api/authenticated-api-client';
 import { ContractProjectsPanel } from './ContractProjectsPanel';
+import { grantOf, holds } from '../access/company-grants';
 import { SigningPdfDownload } from './SigningPdfDownload';
 import type { SigningPdfReference } from './reported-signing-response';
 import { ReportedSigningForm } from './ReportedSigningForm';
@@ -66,15 +67,20 @@ export function ModelContractPanel(
       props.onWorkspaceAccessRejected,
     ],
   );
+  const contractPreparer = grantOf(company, 'company_contract_preparer'),
+    project = grantOf(company, 'company_project_access'),
+    client = grantOf(company, 'company_director_client_access');
   const projectKey = JSON.stringify([
-    company?.contractPermissionAssignmentId,
-    company?.contractPermissionSetVersion,
-    company?.contractPermissions?.includes('commercial.contract.project.link'),
-    company?.projectPermissionAssignmentId,
-    company?.projectPermissionSetVersion,
-    company?.projectPermissions,
-    company?.clientPermissionAssignmentId,
-    company?.clientPermissionSetVersion,
+    contractPreparer?.assignmentId,
+    contractPreparer?.permissionSetVersion,
+    holds(
+      company,
+      'company_contract_preparer',
+      'commercial.contract.project.link',
+    ),
+    project,
+    client?.assignmentId,
+    client?.permissionSetVersion,
     props.actor.workspacePermissions.includes('client.manage'),
   ]);
   const { contract, locked } = journey;
@@ -266,20 +272,25 @@ export function ModelContractPanel(
               opportunityId={props.opportunityId}
               opportunityTitle={props.opportunityTitle ?? ''}
               contract={contract}
-              mayCreate={
-                company.projectPermissions?.includes('project.create') === true
-              }
-              mayLink={Boolean(
-                company.contractPermissionAssignmentId &&
-                (company.contractPermissionSetVersion === 'v1' ||
-                  company.contractPermissionSetVersion === 'v2') &&
-                company.contractPermissions?.includes(
+              mayCreate={holds(
+                company,
+                'company_project_access',
+                'project.create',
+              )}
+              mayLink={
+                holds(
+                  company,
+                  'company_contract_preparer',
                   'commercial.contract.project.link',
                 ) &&
-                company.projectPermissions?.includes('project.read') &&
-                (company.clientPermissions?.includes('client.read') ||
-                  props.actor.workspacePermissions.includes('client.manage')),
-              )}
+                holds(company, 'company_project_access', 'project.read') &&
+                (holds(
+                  company,
+                  'company_director_client_access',
+                  'client.read',
+                ) ||
+                  props.actor.workspacePermissions.includes('client.manage'))
+              }
               protectedCommand={journey.ownProtected || declarationProtected}
               reject={reject}
               onProtectionChange={setProjectProtected}

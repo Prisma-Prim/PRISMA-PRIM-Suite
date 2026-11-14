@@ -1,4 +1,8 @@
 import { fireEvent, render, screen } from './test/render-with-interface-locale';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -60,6 +64,18 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       ],
       commercialIntakePermissionAssignmentId: 'intake-grant',
       commercialIntakePermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_contract_preparer',
+          version: 'v1',
+          assignmentId: 'contract-grant',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'intake-grant',
+        },
+      ),
     },
   };
   const detail = buildClientRequest({
@@ -213,6 +229,10 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       ...actor.activeCompany,
       ...company,
       contractPermissions: [],
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_contract_preparer',
+      ),
     },
   };
   fireEvent.click(

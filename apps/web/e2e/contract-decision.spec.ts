@@ -1,6 +1,7 @@
 import { contractQualityLocales } from '../src/test/contract-quality-localization-fixture';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { contractDecisionMessages } from '../src/contract/contract-decision.copy';
 import { resolveMessage } from '../src/localization/messages';
 import { interfaceLocales } from '../src/localization/interface-locale';
@@ -35,6 +36,20 @@ const actor = {
     ],
     commercialIntakePermissionAssignmentId: 'intake-one',
     commercialIntakePermissionSetVersion: 'v1',
+    // The Contract screens read these grants; the screens of areas not
+    // migrated yet still read the per-bundle fields above.
+    grants: companyGrants(
+      {
+        bundle: 'company_contract_approver',
+        version: 'v1',
+        assignmentId: 'approver-one',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'intake-one',
+      },
+    ),
   },
 } satisfies ActorContext;
 function run(opportunity: string, errors = false) {
