@@ -4,7 +4,7 @@ Source: [mattpocock/skills](https://github.com/mattpocock/skills) at commit `4ae
 
 Copied unchanged from `skills/engineering/`: every engineering skill. Copied from `skills/productivity/` because engineering skills call them: `grilling`, `writing-for-agents`.
 
-The other folders here (`deslop`, `journey-audit`, `thermo-nuclear-code-quality-review`, `thermo-nuclear-review`, `thermos`, `verify`) are not from this source.
+The other folders here (`delegate-issue`, `deslop`, `journey-audit`, `thermo-nuclear-code-quality-review`, `thermo-nuclear-review`, `thermos`, `verify`) are not from this source.
 
 ## Local adaptations to reapply on every update
 

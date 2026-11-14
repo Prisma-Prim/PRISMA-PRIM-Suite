@@ -1,0 +1,5 @@
+interface:
+  display_name: "Delegate Issue"
+  short_description: "Prepare, brief, follow and close an issue delegated to a subagent"
+policy:
+  allow_implicit_invocation: false
