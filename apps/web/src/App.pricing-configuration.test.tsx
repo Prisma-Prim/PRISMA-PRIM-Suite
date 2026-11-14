@@ -6,18 +6,17 @@ import type { ActorContext } from './access-types';
 import { pricingConfigurationCopy } from './pricing-configuration/pricing-configuration.copy';
 import { tariffVersionCopy } from './pricing-configuration/tariff-version.copy';
 import { selectOption } from './test/select-option';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
   clientPermissions: [],
-  pricingConfigurationPermissions: [
-    'commercial.offering.read',
-    'commercial.pricing.configuration.read',
-    'commercial.pricing.configuration.manage',
-  ],
-  pricingConfigurationPermissionAssignmentId: 'configuration-grant',
-  pricingConfigurationPermissionSetVersion: 'v1',
+  grants: companyGrants({
+    bundle: 'company_pricing_configuration',
+    version: 'v1',
+    assignmentId: 'configuration-grant',
+  }),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -37,14 +36,11 @@ const catalogueOnly: ActorContext = {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
     clientPermissions: [],
-    serviceCataloguePermissions: [
-      'service.definition.read',
-      'service.definition.create',
-      'commercial.offering.read',
-      'commercial.offering.manage',
-    ],
-    serviceCataloguePermissionAssignmentId: 'catalogue-grant',
-    serviceCataloguePermissionSetVersion: 'v1',
+    grants: companyGrants({
+      bundle: 'company_service_catalogue',
+      version: 'v1',
+      assignmentId: 'catalogue-grant',
+    }),
   },
 };
 

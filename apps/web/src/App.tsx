@@ -72,6 +72,7 @@ import { ClientDocumentOverview } from './documents/ClientDocumentOverview';
 import { usePrismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { grantOf, holds } from './access/company-grants';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { WorkspaceInvitations } from './access/WorkspaceInvitations';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
@@ -480,26 +481,43 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       'document.read',
     ) === true;
   const canAccessCommercial = requestsMount !== undefined;
-  const cataloguePermissions =
-    access.actor.activeCompany?.serviceCataloguePermissions ?? [];
+  const currentCompany = access.actor.activeCompany;
   const canAccessCatalogue =
     activeCompanyId !== undefined &&
-    cataloguePermissions.includes('service.definition.read') &&
-    cataloguePermissions.includes('service.definition.create') &&
-    cataloguePermissions.includes('commercial.offering.read') &&
-    cataloguePermissions.includes('commercial.offering.manage');
-  const pricingConfigurationPermissions =
-    access.actor.activeCompany?.pricingConfigurationPermissions ?? [];
-  const pricingUserPermissions =
-    access.actor.activeCompany?.pricingUserPermissions ?? [];
+    holds(
+      currentCompany,
+      'company_service_catalogue',
+      'service.definition.read',
+    ) &&
+    holds(
+      currentCompany,
+      'company_service_catalogue',
+      'service.definition.create',
+    ) &&
+    holds(
+      currentCompany,
+      'company_service_catalogue',
+      'commercial.offering.read',
+    ) &&
+    holds(
+      currentCompany,
+      'company_service_catalogue',
+      'commercial.offering.manage',
+    );
   // Configuration v1 and Pricing User v1 each carry configuration read. The
   // screen offers publication only through Configuration management.
   const canReadPricingConfiguration =
     activeCompanyId !== undefined &&
-    (pricingConfigurationPermissions.includes(
+    (holds(
+      currentCompany,
+      'company_pricing_configuration',
       'commercial.pricing.configuration.read',
     ) ||
-      pricingUserPermissions.includes('commercial.pricing.configuration.read'));
+      holds(
+        currentCompany,
+        'company_pricing_user',
+        'commercial.pricing.configuration.read',
+      ));
   const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
@@ -803,7 +821,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.risks,
       content: (
         <OperationalRiskWorkspace
-          key={`operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.operationalRiskReaderAssignmentId ?? 'none'}:${access.actor.activeCompany.operationalRiskReaderPermissionSetVersion ?? 'none'}:${access.actor.activeCompany.operationalRiskRecorderAssignmentId ?? 'none'}:${access.actor.activeCompany.operationalRiskRecorderPermissionSetVersion ?? 'none'}:${access.actor.activeCompany.operationalRiskPermissions?.join(',') ?? 'none'}`}
+          key={`operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_operational_risk_reader') ?? null, grantOf(access.actor.activeCompany, 'company_operational_risk_recorder') ?? null])}`}
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}
@@ -852,7 +870,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.catalogue,
       content: (
         <ServiceCatalogueWorkspace
-          key={`service-catalogue:${access.sessionGeneration}:${access.actor.activeCompany.id}:${access.actor.activeCompany.serviceCataloguePermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.serviceCataloguePermissionSetVersion ?? 'no-version'}`}
+          key={`service-catalogue:${access.sessionGeneration}:${access.actor.activeCompany.id}:${JSON.stringify(grantOf(access.actor.activeCompany, 'company_service_catalogue') ?? null)}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
@@ -870,7 +888,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.pricing,
       content: (
         <Fragment
-          key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.pricingConfigurationPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.pricingConfigurationPermissionSetVersion ?? 'no-version'}:${pricingConfigurationPermissions.join(',')}:${access.actor.activeCompany.pricingUserPermissionAssignmentId ?? 'no-pricing-user-assignment'}:${access.actor.activeCompany.pricingUserPermissionSetVersion ?? 'no-pricing-user-version'}:${pricingUserPermissions.join(',')}`}
+          key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_pricing_configuration') ?? null, grantOf(access.actor.activeCompany, 'company_pricing_user') ?? null])}`}
         >
           <PricingConfigurationWorkspace
             actor={access.actor}

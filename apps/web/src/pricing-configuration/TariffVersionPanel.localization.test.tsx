@@ -18,6 +18,7 @@ import {
 } from '../localization/interface-locale';
 import { changeValue } from '../test/select-option';
 import { TariffVersionPanel } from './TariffVersionPanel';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const offeringId = '10000000-0000-4000-8000-000000000660';
 const actor: ActorContext = {
@@ -33,11 +34,11 @@ const actor: ActorContext = {
     id: 'company-660',
     displayName: 'Companie {originală} / Компания',
     clientPermissions: [],
-    pricingConfigurationPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.configuration.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_pricing_configuration',
+      version: 'v1',
+      assignmentId: 'pricing-configuration-grant',
+    }),
   },
 };
 

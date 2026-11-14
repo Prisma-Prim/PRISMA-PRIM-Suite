@@ -371,6 +371,91 @@ export const COMPANY_GRANT_REGISTRY = {
   Record<string, Readonly<Record<string, readonly string[]>>>
 >;
 
+/**
+ * The label of each bundle, as the API registry names it and the access
+ * administration state reports it. `company-grants.test.ts` fails, naming the
+ * label to fix, whenever a label differs from the API registry.
+ */
+export const COMPANY_GRANT_LABELS = {
+  company_context_access: 'Company Context Access',
+  company_director_client_access: 'Company Director Client Access',
+  company_internal_task_manager: 'Company Internal Task Manager',
+  company_task_manager: 'Company Task Manager',
+  company_document_project_organizer: 'Company Document Project Organizer',
+  company_document_registrar: 'Company Document Registrar',
+  company_document_approver: 'Company Document Approver',
+  company_project_access: 'Company Project Access',
+  company_commercial_intake: 'Company Commercial Intake',
+  company_service_catalogue: 'Company Service Catalogue',
+  company_pricing_configuration: 'Company Pricing Configuration',
+  company_pricing_user: 'Company Pricing User',
+  company_pricing_adjustment: 'Company Pricing Adjustment',
+  company_offer_preparer: 'Company Offer Preparer',
+  company_contract_preparer: 'Company Contract Preparer',
+  company_contract_early_preparation: 'Company Contract Early Preparation',
+  company_contract_approver: 'Company Contract Approver',
+  company_offer_approver: 'Company Offer Approver',
+  company_commercial_activity_reader: 'Company Commercial Activity Reader',
+  company_opportunity_manager: 'Company Opportunity Manager',
+  company_project_approver: 'Company Project Approver',
+  company_profitability_contributor: 'Company Profitability Contributor',
+  company_profitability_director: 'Company Profitability Director',
+  company_sales_stage_configuration: 'Company Sales Stage Configuration',
+  company_document_content_reader: 'Company Document Content Reader',
+  company_document_content_uploader: 'Company Document Content Uploader',
+  company_project_template_user: 'Company Project Template User',
+  company_project_stage_advancer: 'Company Project Stage Advancer',
+  company_project_template_configuration:
+    'Company Project Template Configuration',
+  company_ideas_reader: 'Company Ideas Reader',
+  company_ideas_recorder: 'Company Ideas Recorder',
+  company_ideas_reviewer: 'Company Ideas Reviewer',
+  company_operational_risk_reader: 'Company Operational Risk Reader',
+  company_operational_risk_recorder: 'Company Operational Risk Recorder',
+  company_task_result_recorder: 'Company Task Result Recorder',
+  company_project_next_action_coordinator:
+    'Company Project Next Action Coordinator',
+  company_mission_applicability_coordinator:
+    'Company Mission Applicability Coordinator',
+  company_mission_applicability_approver:
+    'Company Mission Applicability Approver',
+  company_mission_result_reviewer: 'Company Mission Result Reviewer',
+  company_mission_deliverable_access: 'Company Mission Deliverable Access',
+  company_contract_signature_declarer: 'Company Contract Signature Declarer',
+  company_received_contract_access: 'Company Received Contract Access',
+  company_received_addendum_access: 'Company Received Addendum Access',
+  company_offer_model_editor: 'Company Offer Model Editor',
+  company_offer_model_approver: 'Company Offer Model Approver',
+  company_contract_model_editor: 'Company Contract Model Editor',
+  company_contract_model_approver: 'Company Contract Model Approver',
+  company_mission_plan_configuration: 'Company Mission Plan Configuration',
+  company_mission_plan_user: 'Company Mission Plan User',
+  company_knowledge_source_administrator:
+    'Company Knowledge Source Administrator',
+  company_knowledge_evidence_reader: 'Company Knowledge Evidence Reader',
+  company_payment_reader: 'Company Payment Reader',
+  company_payment_recorder: 'Company Payment Recorder',
+  company_payment_confirmer: 'Company Payment Confirmer',
+  company_payment_reverser: 'Company Payment Reverser',
+  company_payment_evidence_access: 'Company Payment Evidence Access',
+  company_invoice_reader: 'Company Invoice Reader',
+  company_invoice_recorder: 'Company Invoice Recorder',
+  company_external_invoice_access: 'Company External Invoice Access',
+  company_opportunity_follow_up_coordinator:
+    'Company Opportunity Follow-up Coordinator',
+  company_working_evidence_case_reader: 'Company Working Evidence Case Reader',
+  company_working_evidence_case_recorder:
+    'Company Working Evidence Case Recorder',
+  company_received_audit_source_access: 'Company Received Audit Source Access',
+  company_certification_reader: 'Company Certification Reader',
+  company_certification_programme_manager:
+    'Company Certification Programme Manager',
+  company_certification_approver: 'Company Certification Approver',
+  company_certification_auditor: 'Company Certification Auditor',
+} as const satisfies Readonly<
+  Record<keyof typeof COMPANY_GRANT_REGISTRY, string>
+>;
+
 type Registry = typeof COMPANY_GRANT_REGISTRY;
 export type CompanyGrantBundle = keyof Registry;
 type CapturedVersion<Bundle extends CompanyGrantBundle> =

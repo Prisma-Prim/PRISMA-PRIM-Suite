@@ -15,6 +15,7 @@ import type { ActorContext } from '../access-types';
 import { changeValue, selectOption } from '../test/select-option';
 import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { ServiceCatalogueWorkspace } from './ServiceCatalogueWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -29,12 +30,11 @@ const actor: ActorContext = {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
     clientPermissions: [],
-    serviceCataloguePermissions: [
-      'service.definition.read',
-      'service.definition.create',
-      'commercial.offering.read',
-      'commercial.offering.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_service_catalogue',
+      version: 'v1',
+      assignmentId: 'service-catalogue-grant',
+    }),
   },
 };
 
@@ -44,12 +44,11 @@ const secondCompanyActor: ActorContext = {
     id: 'company-2',
     displayName: 'Second Company',
     clientPermissions: [],
-    serviceCataloguePermissions: [
-      'service.definition.read',
-      'service.definition.create',
-      'commercial.offering.read',
-      'commercial.offering.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_service_catalogue',
+      version: 'v1',
+      assignmentId: 'service-catalogue-grant',
+    }),
   },
 };
 

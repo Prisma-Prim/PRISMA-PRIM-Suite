@@ -9,6 +9,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import {
   InterfaceLocaleProvider,
   interfaceLocaleStorageKey,
@@ -30,10 +31,11 @@ const actor: ActorContext = {
     id: 'company-649',
     displayName: 'Companie {originală} / Компания',
     clientPermissions: [],
-    pricingConfigurationPermissions: [
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.configuration.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_pricing_configuration',
+      version: 'v1',
+      assignmentId: 'pricing-configuration-grant',
+    }),
   },
 };
 const version = {
@@ -704,9 +706,12 @@ it('keeps publication unavailable for a read-only actor when the interface langu
       id: 'company-649',
       displayName: 'Companie {originală} / Компания',
       clientPermissions: [],
-      pricingConfigurationPermissions: [
-        'commercial.pricing.configuration.read',
-      ],
+      // Configuration read without management: a Pricing User grant.
+      grants: companyGrants({
+        bundle: 'company_pricing_user',
+        version: 'v1',
+        assignmentId: 'pricing-user-grant',
+      }),
     },
   });
   await screen.findByText('No Pricing Rule Version has been published yet.');

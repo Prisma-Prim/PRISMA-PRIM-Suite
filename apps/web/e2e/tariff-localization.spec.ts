@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 import { selectOption } from './select-option';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 test.use({ timezoneId: 'Europe/Chisinau' });
 
@@ -181,13 +182,11 @@ async function installRoutes(page: Page) {
                   id: company.id,
                   displayName: company.displayName,
                   clientPermissions: [],
-                  pricingConfigurationPermissionAssignmentId: 'grant-660',
-                  pricingConfigurationPermissionSetVersion: 'v1',
-                  pricingConfigurationPermissions: [
-                    'commercial.offering.read',
-                    'commercial.pricing.configuration.read',
-                    'commercial.pricing.configuration.manage',
-                  ],
+                  grants: companyGrants({
+                    bundle: 'company_pricing_configuration',
+                    version: 'v1',
+                    assignmentId: 'grant-660',
+                  }),
                 },
               }
             : {}),

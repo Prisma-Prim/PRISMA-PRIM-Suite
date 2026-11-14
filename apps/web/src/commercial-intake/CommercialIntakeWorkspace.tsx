@@ -18,6 +18,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { grantOf } from '../access/company-grants';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -3187,7 +3188,7 @@ function RequestDetail({
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
       <PricingSnapshotPanel
-        key={`${clientAuthority}:${request.initialOpportunity.id}:${actor.activeCompany?.pricingUserPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.pricingUserPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.pricingUserPermissions?.join(',') ?? ''}:${actor.activeCompany?.pricingAdjustmentPermissionAssignmentId ?? 'no-adjustment-assignment'}:${actor.activeCompany?.pricingAdjustmentPermissionSetVersion ?? 'no-adjustment-version'}:${actor.activeCompany?.pricingAdjustmentPermissions?.join(',') ?? ''}`}
+        key={`${clientAuthority}:${request.initialOpportunity.id}:${JSON.stringify([grantOf(actor.activeCompany, 'company_pricing_user') ?? null, grantOf(actor.activeCompany, 'company_pricing_adjustment') ?? null])}`}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}

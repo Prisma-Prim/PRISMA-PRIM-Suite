@@ -1,83 +1,33 @@
-// The captured versions the server may report for each administrable bundle.
-// An unlisted label or version fails closed; the screen never infers one.
-const CAPTURED_VERSIONS = {
-  'Company Working Evidence Case Reader': ['v1'],
-  'Company Working Evidence Case Recorder': ['v1'],
-  'Company Received Audit Source Access': ['v1'],
+import {
+  COMPANY_GRANT_LABELS,
+  COMPANY_GRANT_REGISTRY,
+  type CompanyGrantBundle,
+  type CompanyGrantOf,
+} from './company-grants';
 
-  'Company Opportunity Follow-up Coordinator': ['v1'],
-  'Company Payment Reader': ['v1'],
-  'Company Payment Recorder': ['v1'],
-  'Company Payment Confirmer': ['v1'],
-  'Company Payment Reverser': ['v1'],
-  'Company Payment Evidence Access': ['v1'],
-  'Company Invoice Reader': ['v1'],
-  'Company Invoice Recorder': ['v1'],
-  'Company External Invoice Access': ['v1'],
+// The captured versions the server may report for each administrable bundle
+// come from the Company grants registry mirror, keyed by bundle label. An
+// unlisted label or version fails closed; the screen never infers one.
+type LabelOf<Bundle extends CompanyGrantBundle> =
+  (typeof COMPANY_GRANT_LABELS)[Bundle];
+export type AssignmentBundleLabel = LabelOf<CompanyGrantBundle>;
+type BundleLabelled<Label extends AssignmentBundleLabel> = {
+  [Bundle in CompanyGrantBundle]: LabelOf<Bundle> extends Label
+    ? Bundle
+    : never;
+}[CompanyGrantBundle];
+type CapturedVersion<Label extends AssignmentBundleLabel> = CompanyGrantOf<
+  BundleLabelled<Label>
+>['permissionSetVersion'];
 
-  'Company Knowledge Source Administrator': ['v1'],
-  'Company Knowledge Evidence Reader': ['v1'],
-  'Company Mission Plan Configuration': ['v1'],
-  'Company Mission Plan User': ['v1'],
-  'Company Contract Model Editor': ['v1'],
-  'Company Contract Model Approver': ['v1'],
-  'Company Offer Model Editor': ['v1'],
-  'Company Offer Model Approver': ['v1'],
-  'Company Ideas Reader': ['v1'],
-  'Company Ideas Recorder': ['v1'],
-  'Company Ideas Reviewer': ['v1'],
-  'Company Certification Reader': ['v1'],
-  'Company Certification Programme Manager': ['v1'],
-  'Company Certification Approver': ['v1'],
-  'Company Certification Auditor': ['v1'],
-  'Company Context Access': [null],
-  'Company Director Client Access': ['v1', 'v2'],
-  'Company Mission Deliverable Access': ['v1'],
-  'Company Contract Signature Declarer': ['v1'],
-  'Company Received Contract Access': ['v1'],
-  'Company Received Addendum Access': ['v1'],
-  'Company Document Registrar': ['v1', 'v2', 'v3'],
-  'Company Document Approver': ['v1'],
-  'Company Document Content Reader': ['v1'],
-  'Company Document Content Uploader': ['v1'],
-  'Company Commercial Intake': ['v1', 'v2', 'v3', 'v4'],
-  'Company Document Project Organizer': ['v1'],
-  'Company Project Access': ['v1', 'v2'],
-  'Company Internal Task Manager': ['v1'],
-  'Company Task Manager': ['v1'],
-  'Company Task Result Recorder': ['v1'],
-  'Company Mission Result Reviewer': ['v1'],
-  'Company Mission Applicability Coordinator': ['v1'],
-  'Company Project Next Action Coordinator': ['v1'],
-  'Company Mission Applicability Approver': ['v1'],
-  'Company Service Catalogue': ['v1'],
-  'Company Pricing Configuration': ['v1'],
-  'Company Pricing User': ['v1'],
-  'Company Offer Preparer': ['v1', 'v2', 'v3'],
-  'Company Contract Preparer': ['v1', 'v2'],
-  'Company Contract Early Preparation': ['v1'],
-  'Company Contract Approver': ['v1', 'v2'],
-  'Company Offer Approver': ['v1', 'v2'],
-  'Company Pricing Adjustment': ['v1'],
-  'Company Commercial Activity Reader': ['v1'],
-  'Company Opportunity Manager': ['v1', 'v2'],
-  'Company Project Approver': ['v1'],
-  'Company Profitability Contributor': ['v1'],
-  'Company Profitability Director': ['v1'],
-  'Company Operational Risk Reader': ['v1'],
-  'Company Operational Risk Recorder': ['v1'],
-  'Company Sales Stage Configuration': ['v1'],
-  'Company Project Template User': ['v1', 'v2'],
-  'Company Project Stage Advancer': ['v1'],
-  'Company Project Template Configuration': ['v1'],
-} as const satisfies Record<
-  string,
-  readonly ('v1' | 'v2' | 'v3' | 'v4' | null)[]
->;
+const BUNDLE_BY_LABEL: ReadonlyMap<string, CompanyGrantBundle> = new Map(
+  Object.keys(COMPANY_GRANT_LABELS)
+    .filter((bundle): bundle is CompanyGrantBundle =>
+      Object.hasOwn(COMPANY_GRANT_LABELS, bundle),
+    )
+    .map((bundle) => [COMPANY_GRANT_LABELS[bundle], bundle]),
+);
 
-export type AssignmentBundleLabel = keyof typeof CAPTURED_VERSIONS;
-type CapturedVersion<Label extends AssignmentBundleLabel> =
-  (typeof CAPTURED_VERSIONS)[Label][number];
 interface AssignmentBase {
   id: string;
   workspaceMembershipId: string;
@@ -172,17 +122,26 @@ function versionedAssignment<Label extends AssignmentBundleLabel>(
   version: unknown,
   base: AssignmentBase,
 ): AssignmentFor<Label> {
-  const allowed: readonly CapturedVersion<Label>[] = CAPTURED_VERSIONS[bundle];
-  const permissionSetVersion = allowed.find(
-    (candidate) => candidate === version,
-  );
-  if (permissionSetVersion === undefined)
+  if (!isCapturedVersion(bundle, version))
     throw new Error('Unknown captured Company access version.');
-  return { ...base, bundle, permissionSetVersion };
+  return { ...base, bundle, permissionSetVersion: version };
+}
+
+/** Whether an assignment of `label` can have captured `version`. */
+function isCapturedVersion<Label extends AssignmentBundleLabel>(
+  label: Label,
+  version: unknown,
+): version is CapturedVersion<Label> {
+  const bundle = BUNDLE_BY_LABEL.get(label);
+  if (bundle === undefined) return false;
+  const versions = Object.keys(COMPANY_GRANT_REGISTRY[bundle]);
+  return versions.length === 0
+    ? version === null
+    : typeof version === 'string' && versions.includes(version);
 }
 
 function assignmentBundleLabel(value: unknown): value is AssignmentBundleLabel {
-  return typeof value === 'string' && Object.hasOwn(CAPTURED_VERSIONS, value);
+  return typeof value === 'string' && BUNDLE_BY_LABEL.has(value);
 }
 
 function record(value: unknown): value is Record<string, unknown> {

@@ -22,14 +22,21 @@ import {
   nextActionPath,
   emptyNextAction,
 } from './project-next-action-app';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { isCompanyGrants } from '../access/company-grants';
 export const internalTaskId = '80000000-0000-4000-8000-000000001006';
 export const internalTaskActor = {
   ...nextActionActor,
   activeCompany: {
     ...nextActionActor.activeCompany,
-    internalTaskPermissions: ['internal_task.read', 'internal_task.manage'],
-    internalTaskManagerAssignmentId: '90000000-0000-4000-8000-000000001006',
-    internalTaskManagerPermissionSetVersion: 'v1',
+    grants: companyGrants({
+      bundle: 'company_internal_task_manager',
+      version: 'v1',
+      assignmentId: '90000000-0000-4000-8000-000000001006',
+    }),
   },
 };
 export function internalSnapshot(title = 'Internal inventory DEMO') {
@@ -96,7 +103,11 @@ export function installInternalTaskApp(
       displayName: 'Fresh internal Actor DEMO',
       activeCompany: {
         ...internalTaskActor.activeCompany,
-        internalTaskManagerAssignmentId: '90000000-0000-4000-8000-000000001007',
+        grants: companyGrants({
+          bundle: 'company_internal_task_manager',
+          version: 'v1',
+          assignmentId: '90000000-0000-4000-8000-000000001007',
+        }),
       },
     },
     internalGranted = true,
@@ -146,9 +157,12 @@ export function installInternalTaskApp(
             ...value,
             activeCompany: {
               ...company,
-              internalTaskPermissions: [],
-              internalTaskManagerAssignmentId: undefined,
-              internalTaskManagerPermissionSetVersion: undefined,
+              grants: isCompanyGrants(company.grants)
+                ? withoutCompanyGrants(
+                    company.grants,
+                    'company_internal_task_manager',
+                  )
+                : company.grants,
             },
           };
         }

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 import { selectOption } from './select-option';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 const locales = [
   {
     code: 'ro',
@@ -117,15 +118,11 @@ async function installRoutes(page: Page) {
                   id: company.id,
                   displayName: company.displayName,
                   clientPermissions: [],
-                  serviceCataloguePermissionAssignmentId:
-                    'catalogue-assignment-637',
-                  serviceCataloguePermissionSetVersion: 'v1',
-                  serviceCataloguePermissions: [
-                    'service.definition.read',
-                    'service.definition.create',
-                    'commercial.offering.read',
-                    'commercial.offering.manage',
-                  ],
+                  grants: companyGrants({
+                    bundle: 'company_service_catalogue',
+                    version: 'v1',
+                    assignmentId: 'catalogue-assignment-637',
+                  }),
                 },
               }
             : {}),

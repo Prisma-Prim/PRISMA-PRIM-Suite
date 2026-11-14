@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import type { FollowUpCurrent } from './opportunity-follow-up/follow-up-contract';
 import {
@@ -89,8 +93,15 @@ const current = {
   },
 } satisfies FollowUpCurrent;
 
-type Capture =
-  'complete' | 'absent' | 'unknown' | 'missing-native' | 'missing-token';
+// An unknown captured version is not a capture variant any more: the
+// current Actor parser refuses the whole Actor for it (#1332), as
+// access/opportunity-follow-up-authority.test.ts shows.
+type Capture = 'complete' | 'absent' | 'missing-native' | 'missing-token';
+const intakeGrant = {
+  bundle: 'company_commercial_intake',
+  version: 'v2',
+  assignmentId: '70000000-0000-4000-8000-000000000001',
+} as const;
 function actor(
   capture: Capture = 'complete',
   displayName = 'Original Actor DEMO',
@@ -110,6 +121,7 @@ function actor(
     commercialIntakePermissionAssignmentId:
       '70000000-0000-4000-8000-000000000001',
     commercialIntakePermissionSetVersion: 'v2',
+    grants: companyGrants(intakeGrant),
   } satisfies NonNullable<ActorContext['activeCompany']>;
   return {
     internalUserId: '80000000-0000-4000-8000-000000000001',
@@ -129,13 +141,14 @@ function actor(
               capture === 'missing-native'
                 ? undefined
                 : nativeCompany.commercialIntakePermissionAssignmentId,
-            opportunityFollowUpPermissions: [
-              'commercial.opportunity.follow_up.read',
-              'commercial.opportunity.follow_up.manage',
-            ],
-            opportunityFollowUpCoordinatorAssignmentId: coordinatorId,
-            opportunityFollowUpCoordinatorPermissionSetVersion:
-              capture === 'unknown' ? 'v99' : 'v1',
+            grants: companyGrants(
+              ...(capture === 'missing-native' ? [] : [intakeGrant]),
+              {
+                bundle: 'company_opportunity_follow_up_coordinator',
+                version: 'v1',
+                assignmentId: coordinatorId,
+              },
+            ),
             opportunityFollowUpReadCapture:
               capture === 'missing-token'
                 ? undefined
@@ -473,7 +486,7 @@ describe('Opportunity follow-up through the actual App', () => {
     },
   );
 
-  it.each<Capture>(['absent', 'unknown', 'missing-native', 'missing-token'])(
+  it.each<Capture>(['absent', 'missing-native', 'missing-token'])(
     'leaves native Request reading unchanged and fetches no follow-up under %s captures',
     async (capture) => {
       const server = installTransport(actor(capture));
@@ -587,8 +600,11 @@ describe('Opportunity follow-up through the actual App', () => {
       ...replacement,
       activeCompany: {
         ...replacement.activeCompany,
-        opportunityFollowUpCoordinatorAssignmentId:
-          '30000000-0000-4000-8000-000000000002',
+        grants: withCompanyGrants(replacement.activeCompany.grants, {
+          bundle: 'company_opportunity_follow_up_coordinator',
+          version: 'v1',
+          assignmentId: '30000000-0000-4000-8000-000000000002',
+        }),
         opportunityFollowUpReadCapture: `opportunity-follow-up-read.v1.${'b'.repeat(64)}`,
       },
     });

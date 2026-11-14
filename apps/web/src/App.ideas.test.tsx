@@ -11,10 +11,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  companyGrants,
+  type CompanyGrantRequest,
+} from './access/company-grants.test-fixture';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 
 const COMPANY = '00000000-0000-4000-8000-000000000733';
 const IDEA = '00000000-0000-4000-8000-000000001733';
+const READER = {
+  bundle: 'company_ideas_reader',
+  version: 'v1',
+  assignmentId: 'reader-a',
+} as const satisfies CompanyGrantRequest;
+const RECORDER = {
+  bundle: 'company_ideas_recorder',
+  version: 'v1',
+  assignmentId: 'recorder-a',
+} as const satisfies CompanyGrantRequest;
+const REVIEWER = {
+  bundle: 'company_ideas_reviewer',
+  version: 'v1',
+  assignmentId: 'reviewer-a',
+} as const satisfies CompanyGrantRequest;
 const original = {
   id: IDEA,
   companyId: COMPANY,
@@ -29,7 +48,7 @@ const original = {
   },
   submittedAt: '2026-10-20T05:00:00.000Z',
 };
-function actor(): ActorContext {
+function actor(...grants: CompanyGrantRequest[]): ActorContext {
   return {
     internalUserId: 'person-a',
     workspaceMembershipId: 'member-a',
@@ -43,9 +62,7 @@ function actor(): ActorContext {
       id: COMPANY,
       displayName: 'Synthetic Company',
       clientPermissions: [],
-      ideasReaderPermissions: ['idea.read'],
-      ideasReaderPermissionAssignmentId: 'reader-a',
-      ideasReaderPermissionSetVersion: 'v1',
+      grants: companyGrants(READER, ...grants),
     },
   };
 }
@@ -124,17 +141,7 @@ describe('Ideas through the real App composition', () => {
     expect(requests.filter((route) => route.startsWith('POST'))).toEqual([]);
   });
   it('retains the exact uncertain recording intent and keeps confirmed save visible after refresh fails', async () => {
-    const reader = actor();
-    if (!reader.activeCompany) throw new Error('Company fixture required');
-    const recorder: ActorContext = {
-      ...reader,
-      activeCompany: {
-        ...reader.activeCompany,
-        ideasRecorderPermissions: ['idea.record'],
-        ideasRecorderPermissionAssignmentId: 'recorder-a',
-        ideasRecorderPermissionSetVersion: 'v1',
-      },
-    };
+    const recorder = actor(RECORDER);
     const submissions: {
       body: RequestInit['body'];
       key: string | null;
@@ -426,17 +433,7 @@ describe('Ideas through the real App composition', () => {
   );
 
   it('requires a fresh reload after stale review before submitting a new attributed disposition', async () => {
-    const reader = actor();
-    if (!reader.activeCompany) throw new Error('Company fixture required');
-    const reviewer: ActorContext = {
-      ...reader,
-      activeCompany: {
-        ...reader.activeCompany,
-        ideasReviewerPermissions: ['idea.disposition.record'],
-        ideasReviewerPermissionAssignmentId: 'reviewer-a',
-        ideasReviewerPermissionSetVersion: 'v1',
-      },
-    };
+    const reviewer = actor(REVIEWER);
     const other = {
       id: 'other-review',
       ideaId: IDEA,
@@ -642,10 +639,16 @@ describe('Ideas through the real App composition', () => {
               ...initial,
               activeCompany: {
                 ...company,
-                [`ideas${role === 'reader' ? 'Reader' : role === 'recorder' ? 'Recorder' : 'Reviewer'}Permission${field === 'id' ? 'AssignmentId' : 'SetVersion'}`]:
-                  field === 'id'
-                    ? 'fresh-assignment'
-                    : 'unknown-future-version',
+                grants: company.grants?.map((grant) =>
+                  grant.bundle !== `company_ideas_${role}`
+                    ? grant
+                    : field === 'id'
+                      ? { ...grant, assignmentId: 'fresh-assignment' }
+                      : {
+                          ...grant,
+                          permissionSetVersion: 'unknown-future-version',
+                        },
+                ),
               },
             };
       denyNextList = true;
@@ -870,18 +873,5 @@ describe('Ideas through the real App composition', () => {
 });
 
 function writingActor(): ActorContext {
-  const reader = actor();
-  if (!reader.activeCompany) throw new Error('Missing Company fixture.');
-  return {
-    ...reader,
-    activeCompany: {
-      ...reader.activeCompany,
-      ideasRecorderPermissions: ['idea.record'],
-      ideasRecorderPermissionAssignmentId: 'recorder-a',
-      ideasRecorderPermissionSetVersion: 'v1',
-      ideasReviewerPermissions: ['idea.disposition.record'],
-      ideasReviewerPermissionAssignmentId: 'reviewer-a',
-      ideasReviewerPermissionSetVersion: 'v1',
-    },
-  };
+  return actor(RECORDER, REVIEWER);
 }

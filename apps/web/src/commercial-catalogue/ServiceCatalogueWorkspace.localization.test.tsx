@@ -12,6 +12,7 @@ import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { changeValue, selectOption } from '../test/select-option';
 import { ServiceCatalogueWorkspace } from './ServiceCatalogueWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user-catalogue',
@@ -26,12 +27,11 @@ const actor: ActorContext = {
     id: 'company-catalogue',
     displayName: 'Companie {originală}',
     clientPermissions: [],
-    serviceCataloguePermissions: [
-      'service.definition.read',
-      'service.definition.create',
-      'commercial.offering.read',
-      'commercial.offering.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_service_catalogue',
+      version: 'v1',
+      assignmentId: 'service-catalogue-grant',
+    }),
   },
 };
 

@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 
 export interface Attribution {
   workspaceMembershipId: string;
@@ -154,32 +155,13 @@ export function ideasAuthority(actor: ActorContext): {
     nonblank(actor.workspaceId) &&
     nonblank(actor.workspaceMembershipId) &&
     nonblank(company?.id);
-  const read =
-    active &&
-    grant(
-      company?.ideasReaderPermissions,
-      'idea.read',
-      company?.ideasReaderPermissionAssignmentId,
-      company?.ideasReaderPermissionSetVersion,
-    );
+  const read = active && holds(company, 'company_ideas_reader', 'idea.read');
   return {
     read,
-    record:
-      read &&
-      grant(
-        company?.ideasRecorderPermissions,
-        'idea.record',
-        company?.ideasRecorderPermissionAssignmentId,
-        company?.ideasRecorderPermissionSetVersion,
-      ),
+    record: read && holds(company, 'company_ideas_recorder', 'idea.record'),
     review:
       read &&
-      grant(
-        company?.ideasReviewerPermissions,
-        'idea.disposition.record',
-        company?.ideasReviewerPermissionAssignmentId,
-        company?.ideasReviewerPermissionSetVersion,
-      ),
+      holds(company, 'company_ideas_reviewer', 'idea.disposition.record'),
   };
 }
 export function ideasContextKey(actor: ActorContext): string {
@@ -190,15 +172,9 @@ export function ideasContextKey(actor: ActorContext): string {
     actor.workspaceMembershipId,
     actor.active,
     company?.id,
-    company?.ideasReaderPermissionAssignmentId,
-    company?.ideasReaderPermissionSetVersion,
-    company?.ideasReaderPermissions,
-    company?.ideasRecorderPermissionAssignmentId,
-    company?.ideasRecorderPermissionSetVersion,
-    company?.ideasRecorderPermissions,
-    company?.ideasReviewerPermissionAssignmentId,
-    company?.ideasReviewerPermissionSetVersion,
-    company?.ideasReviewerPermissions,
+    grantOf(company, 'company_ideas_reader') ?? null,
+    grantOf(company, 'company_ideas_recorder') ?? null,
+    grantOf(company, 'company_ideas_reviewer') ?? null,
   ]);
 }
 export function calendarDate(value: unknown): value is string {
@@ -208,20 +184,6 @@ export function calendarDate(value: unknown): value is string {
     !value.startsWith('0000-') &&
     Number.isFinite(Date.parse(`${value}T00:00:00.000Z`)) &&
     new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value
-  );
-}
-function grant(
-  permissions: unknown,
-  expected: string,
-  assignmentId: unknown,
-  version: unknown,
-): boolean {
-  return (
-    version === 'v1' &&
-    nonblank(assignmentId) &&
-    Array.isArray(permissions) &&
-    permissions.length === 1 &&
-    permissions[0] === expected
   );
 }
 function pagination(body: Record<string, unknown>, rows: number) {

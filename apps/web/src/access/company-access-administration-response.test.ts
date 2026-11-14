@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { companyAccessAdministrationResponse } from './company-access-administration-response';
+import { COMPANY_GRANT_LABELS, COMPANY_GRANT_REGISTRY } from './company-grants';
 
 const member = {
   workspaceMembershipId: '00000000-0000-4000-8000-000000007041',
@@ -77,4 +78,42 @@ describe('Company assignment administration Knowledge compatibility', () => {
       ).toThrow();
     },
   );
+});
+
+describe('Company assignment administration captured versions', () => {
+  // The accepted versions are derived from the Company grants registry
+  // mirror, which company-grants.test.ts ties to the API registry.
+  const labels = new Map<string, string>(Object.entries(COMPANY_GRANT_LABELS));
+  const cases = Object.entries(COMPANY_GRANT_REGISTRY).map(
+    ([bundle, versions]): [string, (string | null)[]] => {
+      const captured = Object.keys(versions);
+      return [
+        labels.get(bundle) ?? bundle,
+        captured.length === 0 ? [null] : captured,
+      ];
+    },
+  );
+
+  it.each(cases)(
+    'reads %s at each version it can capture',
+    (label, versions) => {
+      for (const version of versions)
+        expect(
+          companyAccessAdministrationResponse(
+            response([assignment(label, version)]),
+          ).assignments,
+        ).toEqual([assignment(label, version)]);
+    },
+  );
+
+  it.each(cases)('refuses %s at any other version', (label, versions) => {
+    for (const version of [null, 'v0', `v${versions.length + 1}`].filter(
+      (candidate) => !versions.includes(candidate),
+    ))
+      expect(() =>
+        companyAccessAdministrationResponse(
+          response([assignment(label, version)]),
+        ),
+      ).toThrow();
+  });
 });
