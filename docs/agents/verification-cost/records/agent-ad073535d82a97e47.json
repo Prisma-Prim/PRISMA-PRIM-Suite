@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "agent-ad073535d82a97e47",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1344,
+  "pullRequest": 1360,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T09:16:48.328Z",
+    "end": "2026-11-14T11:19:09.154Z",
+    "durationSeconds": 7341
+  },
+  "tokens": {
+    "input": 376,
+    "output": 117375,
+    "cacheCreation": 1915722,
+    "cacheRead": 44087473
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 376,
+        "output": 117375,
+        "cacheCreation": 1915722,
+        "cacheRead": 44087473
+      },
+      "estimatedPriceUsd": 20.745109
+    }
+  ],
+  "price": {
+    "estimatedUsd": 20.745109,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Local API certification folder and web certification tests, migration 0115 refusal and upgrade proofs; CI run 43585422052 green; Codex review without findings."
+  }
+}
