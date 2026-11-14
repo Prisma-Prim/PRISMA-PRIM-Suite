@@ -1,0 +1,19 @@
+worktree /work/sample-suite
+HEAD 0000000000000000000000000000000000000000
+branch refs/heads/main
+
+worktree /work/sample-suite/.worktrees/queue-order
+HEAD 4444444444444444444444444444444444444444
+branch refs/heads/feat/904-queue-order
+
+worktree /work/sample-suite/.worktrees/totals-row
+HEAD 7777777777777777777777777777777777777777
+branch refs/heads/feat/907-totals-row
+
+worktree /elsewhere/import-header
+HEAD 2222222222222222222222222222222222222222
+branch refs/heads/fix/902-import-header
+
+worktree /work/sample-suite/.worktrees/inspection
+HEAD 5555555555555555555555555555555555555555
+detached

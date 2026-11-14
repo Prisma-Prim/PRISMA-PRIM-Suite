@@ -1,0 +1,748 @@
+{
+  "data": {
+    "repository": {
+      "pullRequests": {
+        "totalCount": 9,
+        "pageInfo": {
+          "hasNextPage": false
+        },
+        "nodes": [
+          {
+            "number": 911,
+            "title": "Export the sample ledger as CSV",
+            "headRefName": "feat/901-ledger-export",
+            "headRefOid": "1111111111111111111111111111111111111111",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "CONFLICTING",
+            "mergeStateStatus": "DIRTY",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 901
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "1111111111111111111111111111111111111111",
+                    "committedDate": "2026-11-13T09:00:00Z",
+                    "statusCheckRollup": null
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"1111111111111111111111111111111111111111\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 912,
+            "title": "Validate the sample import header",
+            "headRefName": "fix/902-import-header",
+            "headRefOid": "2222222222222222222222222222222222222222",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 902
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "2222222222222222222222222222222222222222",
+                    "committedDate": "2026-11-14T10:30:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 6,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "COMPLETED",
+                            "conclusion": "FAILURE"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"2222222222222222222222222222222222222222\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 913,
+            "title": "Name the sample report columns",
+            "headRefName": "docs/903-report-columns",
+            "headRefOid": "3333333333333333333333333333333333333333",
+            "author": {
+              "login": "sample-reviewer"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 903
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "3333333333333333333333333333333333333333",
+                    "committedDate": "2026-11-14T11:15:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 6,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 3,
+              "nodes": [
+                {
+                  "isResolved": false
+                },
+                {
+                  "isResolved": true
+                },
+                {
+                  "isResolved": false
+                }
+              ]
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"3333333333333333333333333333333333333333\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 914,
+            "title": "Sort the sample queue by age",
+            "headRefName": "feat/904-queue-order",
+            "headRefOid": "4444444444444444444444444444444444444444",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BEHIND",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 904
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "4444444444444444444444444444444444444444",
+                    "committedDate": "2026-11-14T11:40:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 6,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"4444444444444444444444444444444444444444\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 915,
+            "title": "Retry the sample upload once",
+            "headRefName": "fix/905-upload-retry",
+            "headRefOid": "5555555555555555555555555555555555555555",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 905
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "5555555555555555555555555555555555555555",
+                    "committedDate": "2026-11-14T11:58:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 3,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "IN_PROGRESS",
+                            "conclusion": null
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "QUEUED",
+                            "conclusion": null
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 2,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "sample-agent"
+                  },
+                  "body": "Claimed by a local session."
+                },
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":null,\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"in_progress\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 916,
+            "title": "Trim the sample audit message",
+            "headRefName": "refactor/906-audit-message",
+            "headRefOid": "6666666666666666666666666666666666666666",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 906
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "6666666666666666666666666666666666666666",
+                    "committedDate": "2026-11-14T09:00:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 6,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 917,
+            "title": "Show the sample totals row",
+            "headRefName": "feat/907-totals-row",
+            "headRefOid": "7777777777777777777777777777777777777777",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "autoMergeRequest": {
+              "enabledAt": "2026-11-14T11:00:00Z"
+            },
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 907
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "7777777777777777777777777777777777777777",
+                    "committedDate": "2026-11-14T11:30:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 6,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "IN_PROGRESS",
+                            "conclusion": null
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "QUEUED",
+                            "conclusion": null
+                          },
+                          {
+                            "__typename": "StatusContext",
+                            "context": "sample/preview",
+                            "state": "PENDING"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "QUEUED",
+                            "conclusion": null
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"7777777777777777777777777777777777777777\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 918,
+            "title": "Label the sample export button",
+            "headRefName": "feat/908-export-label",
+            "headRefOid": "8888888888888888888888888888888888888888",
+            "author": {
+              "login": "sample-agent"
+            },
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "autoMergeRequest": {
+              "enabledAt": "2026-11-14T11:00:00Z"
+            },
+            "closingIssuesReferences": {
+              "nodes": [
+                {
+                  "number": 908
+                }
+              ]
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "8888888888888888888888888888888888888888",
+                    "committedDate": "2026-11-12T08:00:00Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 7,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "StatusContext",
+                            "context": "sample/preview",
+                            "state": "SUCCESS"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 1,
+              "nodes": [
+                {
+                  "author": {
+                    "login": "chatgpt-codex-connector"
+                  },
+                  "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"8888888888888888888888888888888888888888\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong></summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n</details>"
+                }
+              ]
+            }
+          },
+          {
+            "number": 919,
+            "title": "Draft the sample onboarding note",
+            "headRefName": "docs/909-onboarding-note",
+            "headRefOid": "9999999999999999999999999999999999999999",
+            "author": null,
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "DRAFT",
+            "autoMergeRequest": null,
+            "closingIssuesReferences": {
+              "nodes": []
+            },
+            "commits": {
+              "nodes": [
+                {
+                  "commit": {
+                    "oid": "9999999999999999999999999999999999999999",
+                    "committedDate": "2026-11-14T11:59:30Z",
+                    "statusCheckRollup": {
+                      "contexts": {
+                        "totalCount": 6,
+                        "nodes": [
+                          {
+                            "__typename": "CheckRun",
+                            "name": "checks",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "scope",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "web_unit",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "api (1/3)",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "build",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          },
+                          {
+                            "__typename": "CheckRun",
+                            "name": "quality",
+                            "status": "COMPLETED",
+                            "conclusion": "SUCCESS"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reviewThreads": {
+              "totalCount": 0,
+              "nodes": []
+            },
+            "comments": {
+              "totalCount": 0,
+              "nodes": []
+            }
+          }
+        ]
+      }
+    }
+  }
+}
