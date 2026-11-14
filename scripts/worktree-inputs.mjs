@@ -21,6 +21,11 @@ import { fileURLToPath } from 'node:url';
 
 export class PreparationError extends Error {}
 export const hash = (value) => createHash('sha256').update(value).digest('hex');
+export function samePath(left, right) {
+  return process.platform === 'win32'
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
 export function within(parent, child) {
   const part = relative(parent, child);
   return (
@@ -40,7 +45,10 @@ export function canonicalPath(path) {
     throw new PreparationError(
       'Target and installation roots cannot be symlinks.',
     );
-  return resolve(realpathSync(ancestor), relative(ancestor, resolve(path)));
+  return resolve(
+    realpathSync.native(ancestor),
+    relative(ancestor, resolve(path)),
+  );
 }
 
 const omitted = new Set([
@@ -226,7 +234,7 @@ export function preparationInputs(
     reusable:
       !files.some((path) => basename(path).includes('pnpmfile')) &&
       !Object.entries(config).some(
-        ([key, value]) => /^(?:global-)?pnpmfile$/iu.test(key) && value,
+        ([key, value]) => /^(?:global-?)?pnpmfile$/iu.test(key) && value,
       ),
   };
 }
@@ -297,7 +305,7 @@ export function privateModules(root) {
       if (entry.isSymbolicLink()) {
         let target;
         try {
-          target = realpathSync(path);
+          target = realpathSync.native(path);
         } catch {
           throw new PreparationError(
             'Broken dependency links need explicit repair.',

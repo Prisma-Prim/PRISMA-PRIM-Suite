@@ -5,7 +5,6 @@ import {
   lstatSync,
   mkdirSync,
   readFileSync,
-  realpathSync,
   renameSync,
   writeFileSync,
 } from 'node:fs';
@@ -17,6 +16,7 @@ import {
   PreparationError,
   preparationInputs,
   privateModules,
+  samePath,
   watchPreparationInputs,
   within,
 } from './worktree-inputs.mjs';
@@ -107,25 +107,25 @@ async function main(argv) {
     return;
   }
   const options = argumentsFor(argv);
-  const caller = realpathSync(
+  const caller = canonicalPath(
     git(process.cwd(), ['rev-parse', '--show-toplevel']),
   );
-  const common = realpathSync(
+  const common = canonicalPath(
     git(caller, ['rev-parse', '--path-format=absolute', '--git-common-dir']),
   );
-  const target = canonicalPath(resolve(options.path));
+  let target = canonicalPath(resolve(options.path));
   const worktrees = git(caller, ['worktree', 'list', '--porcelain', '-z'])
     .split('\0')
     .filter((field) => field.startsWith('worktree '))
     .map((field) => canonicalPath(field.slice(9)));
   if (
-    target === worktrees[0] ||
-    worktrees.some((path) => path !== target && within(target, path))
+    samePath(target, worktrees[0]) ||
+    worktrees.some((path) => !samePath(path, target) && within(target, path))
   )
     throw new PreparationError(
       'The primary checkout and worktree ancestors are refused.',
     );
-  for (const path of worktrees.filter((path) => path !== target)) {
+  for (const path of worktrees.filter((path) => !samePath(path, target))) {
     if (
       within(path, target) &&
       git(path, ['check-ignore', '--quiet', target], true) === null
@@ -159,6 +159,12 @@ async function main(argv) {
         cwd: root,
         environment,
         capture,
+        stage: {
+          '--version': 'pnpm-version',
+          config: 'pnpm-config',
+          store: 'pnpm-store',
+          install: 'pnpm-install',
+        }[args[0]],
       });
     const created = !existsSync(target);
     if (created)
@@ -174,26 +180,30 @@ async function main(argv) {
           target,
           options.base,
         ],
-        { cwd: caller, environment: process.env },
+        { cwd: caller, environment: process.env, stage: 'worktree' },
       );
     else if (
       !git(caller, ['worktree', 'list', '--porcelain', '-z'])
         .split('\0')
         .filter((field) => field.startsWith('worktree '))
         .map((field) => canonicalPath(field.slice(9)))
-        .includes(target)
+        .some((path) => samePath(path, target))
     )
       throw new PreparationError(
         'An existing target must be a registered worktree of this repository.',
       );
+    target = canonicalPath(target);
     if (
-      realpathSync(
-        git(target, [
-          'rev-parse',
-          '--path-format=absolute',
-          '--git-common-dir',
-        ]),
-      ) !== common ||
+      !samePath(
+        canonicalPath(
+          git(target, [
+            'rev-parse',
+            '--path-format=absolute',
+            '--git-common-dir',
+          ]),
+        ),
+        common,
+      ) ||
       git(target, ['symbolic-ref', '--quiet', '--short', 'HEAD']) !==
         options.branch
     )
@@ -349,7 +359,7 @@ if (result.checks.some(check => check.status === 'FAIL')) process.exitCode = 1;`
     await lock.run(
       process.execPath,
       ['--input-type=module', '--eval', doctorSource],
-      { cwd: target, environment, timeout: 30_000 },
+      { cwd: target, environment, timeout: 30_000, stage: 'doctor' },
     );
     const after = preparationInputs(
       target,

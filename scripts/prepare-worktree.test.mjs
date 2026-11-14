@@ -269,7 +269,10 @@ test('simultaneous creators of one worktree serialize one real pinned-pnpm insta
   f.environment = { PREP_TEST_GATE: gate };
   const entered = fileAppears(join(gate, 'worktree.entered'), t);
   const first = worker(t, f);
-  const second = worker(t, f);
+  const second = worker(
+    t,
+    process.platform === 'win32' ? { ...f, target: f.target.toUpperCase() } : f,
+  );
   await Promise.all([entered, Promise.race([first.waiting, second.waiting])]);
   assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
   writeFileSync(join(gate, 'release'), 'release');
@@ -691,15 +694,22 @@ process.once('message', async () => {
   writeFileSync(
     readerFile,
     `import fs from 'node:fs'; import { syncBuiltinESMExports } from 'node:module';
-const original = fs.readFileSync; let paused = false;
+const original = fs.readFileSync; const originalClose = fs.closeSync; let observed; let paused = false;
 fs.readFileSync = function(...args) {
   const value = original.apply(this, args);
   if (!paused && typeof args[0] === 'number' && typeof value === 'string' && value.includes('"phase":"idle"')) {
+    observed = args[0];
+  }
+  return value;
+};
+fs.closeSync = function(descriptor) {
+  const result = originalClose.call(this, descriptor);
+  if (!paused && descriptor === observed) {
     paused = true; fs.writeFileSync(process.env.SNAPSHOT, 'snapshot');
     const memory = new Int32Array(new SharedArrayBuffer(4));
     while (!fs.existsSync(process.env.RELEASE)) Atomics.wait(memory, 0, 0, 10);
   }
-  return value;
+  return result;
 };
 syncBuiltinESMExports();
 const { acquirePreparationLock } = await import(${JSON.stringify(lockModule)});
@@ -754,4 +764,59 @@ catch { process.send('refused'); }`,
       }
     }
   }
+});
+
+test('the normalized global pnpm hook setting never qualifies for automatic reuse', () => {
+  const f = fixture();
+  const hook = join(f.parent, 'global-hook.cjs');
+  writeFileSync(
+    hook,
+    'module.exports={hooks:{readPackage(pkg){return pkg;}}};\n',
+  );
+  f.environment = { pnpm_config_global_pnpmfile: hook };
+  const lock = spawnSync(
+    'bash',
+    [
+      'scripts/agent-pnpm.sh',
+      'install',
+      '--lockfile-only',
+      '--offline',
+      '--ignore-scripts',
+    ],
+    {
+      cwd: f.repo,
+      env: { ...process.env, ...f.environment },
+      encoding: 'utf8',
+      timeout: 30_000,
+    },
+  );
+  assert.equal(lock.status, 0, lock.stderr);
+  git(f.repo, 'add', 'pnpm-lock.yaml');
+  git(
+    f.repo,
+    '-c',
+    'user.name=Synthetic Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '--quiet',
+    '--allow-empty',
+    '-m',
+    'qualify synthetic hook',
+  );
+  const initial = prepare(f);
+  assert.equal(initial.status, 0, initial.stderr);
+  const unchanged = prepare(f);
+  assert.equal(unchanged.status, 2, unchanged.stderr);
+  assert.match(unchanged.stderr, /--refresh/u);
+  writeFileSync(
+    hook,
+    'module.exports={hooks:{readPackage(pkg){return {...pkg, description:"synthetic-v2"};}}};\n',
+  );
+  const changed = prepare(f);
+  assert.equal(changed.status, 2, changed.stderr);
+  assert.match(changed.stderr, /--refresh/u);
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
 });

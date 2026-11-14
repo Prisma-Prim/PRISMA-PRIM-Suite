@@ -118,8 +118,26 @@ export async function acquirePreparationLock({ directory, waitMilliseconds }) {
   async function run(
     command,
     args,
-    { cwd, environment, capture = false, timeout = 300_000 } = {},
+    {
+      cwd,
+      environment,
+      capture = false,
+      timeout = 300_000,
+      stage = 'command',
+    } = {},
   ) {
+    if (
+      ![
+        'command',
+        'worktree',
+        'pnpm-version',
+        'pnpm-config',
+        'pnpm-store',
+        'pnpm-install',
+        'doctor',
+      ].includes(stage)
+    )
+      throw new PreparationError('Unknown preparation stage.');
     if (abort.signal.aborted)
       throw new PreparationError(
         'Preparation interrupted; no command was started.',
@@ -219,7 +237,7 @@ export async function acquirePreparationLock({ directory, waitMilliseconds }) {
         );
       if (spawnError || overflow || result.status !== 0)
         throw new PreparationError(
-          'A supported preparation command failed; qualification remains incomplete. Child output was not published.',
+          `Preparation stage ${stage} failed (exit ${result.status ?? 'unavailable'}); qualification remains incomplete. Child output was not published.`,
         );
       return output;
     } finally {
