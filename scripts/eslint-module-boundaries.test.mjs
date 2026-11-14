@@ -351,3 +351,66 @@ test('the primitive, web tests and API code may create an AbortController', asyn
 
   assert.equal(result.status, 0, result.output);
 });
+
+// Deliberate mutations of #1349: a new `legacy` name or comment in application
+// code fails, while tests, fixtures and third-party import paths do not.
+const legacyNames = [
+  "import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';",
+  '',
+  'export const legacyFoo = getDocument;',
+  '',
+].join('\n');
+
+const legacyComment = [
+  '// The legacy reader stays until the new shape lands.',
+  'export const reader = 1;',
+  '',
+].join('\n');
+
+test('a new legacy identifier or comment in application code fails lint and tells the agent to move to the new shape', async () => {
+  const result = await lintFiles({
+    'apps/api/src/offer/offer.service.ts': legacyNames,
+    'apps/web/src/offer/OfferView.tsx': legacyNames,
+    'apps/api/src/offer/offer.reader.ts': legacyComment,
+    'apps/web/src/offer/offer-reader.ts': legacyComment,
+  });
+
+  assert.equal(result.status, lintErrors, result.output);
+  const identifiers = result.output.match(
+    /error .*nothing is deployed before launch.*no-restricted-syntax/g,
+  );
+  assert.equal(identifiers?.length, 2, result.output);
+  const comments = result.output.match(
+    /error .*Unexpected 'legacy' comment.*no-warning-comments/g,
+  );
+  assert.equal(comments?.length, 2, result.output);
+  assert.doesNotMatch(result.output, /pdfjs-dist/);
+});
+
+test('legacy names stay allowed in tests, test support and fixtures, and the existing restrictions still fire beside the new one', async () => {
+  const allowed = await lintFiles({
+    'apps/api/src/offer/offer.service.test.ts': legacyNames + legacyComment,
+    'apps/api/src/offer/offer.test-fixture.ts': legacyNames + legacyComment,
+    'apps/api/test-support/offer.ts': legacyNames + legacyComment,
+    'apps/web/src/offer/OfferView.test.tsx': legacyNames + legacyComment,
+    'apps/web/src/offer/offer.test-support.ts': legacyNames + legacyComment,
+    'apps/web/src/test/offer.ts': legacyNames + legacyComment,
+    'apps/api/drizzle/0001.ts': legacyNames + legacyComment,
+  });
+  assert.equal(allowed.status, 0, allowed.output);
+
+  const together = await lintFiles({
+    'apps/api/src/offer/offer.service.ts': [
+      "import { activityLogEvents } from '../database/schema/index.js';",
+      'declare const transaction: { delete(table: unknown): void };',
+      'export const legacyFoo = transaction.delete(activityLogEvents);',
+      '',
+    ].join('\n'),
+    'apps/web/src/offer/offer.ts':
+      'export const legacyFoo = new AbortController();\n',
+  });
+  assert.equal(together.status, lintErrors, together.output);
+  assert.match(together.output, /append a correcting event/);
+  assert.match(together.output, /useScopedOperation/);
+  assert.equal(together.output.match(/nothing is deployed/g)?.length, 2);
+});
