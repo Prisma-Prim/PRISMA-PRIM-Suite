@@ -3,35 +3,35 @@
   "runId": "a1abb245-0698-4410-adcb-26d09ff6a565",
   "date": "2026-11-14",
   "runType": "pull-request-proof",
-  "issue": 1347,
-  "pullRequest": 1352,
+  "issue": 1341,
+  "pullRequest": 1342,
   "harness": "claude-code-local",
   "figuresSource": "claude-code-transcript",
   "time": {
-    "start": "2026-11-14T08:43:25.685Z",
-    "end": "2026-11-14T09:19:48.591Z",
-    "durationSeconds": 2183
+    "start": "2026-11-14T08:55:35.920Z",
+    "end": "2026-11-14T09:55:32.366Z",
+    "durationSeconds": 3596
   },
   "tokens": {
-    "input": 222,
-    "output": 133514,
-    "cacheCreation": 289948,
-    "cacheRead": 22777285
+    "input": 186,
+    "output": 130288,
+    "cacheCreation": 216564,
+    "cacheRead": 24058916
   },
   "models": [
     {
       "model": "claude-opus-5-5",
       "tokens": {
-        "input": 222,
-        "output": 133514,
-        "cacheCreation": 289948,
-        "cacheRead": 22777285
+        "input": 186,
+        "output": 130288,
+        "cacheCreation": 216564,
+        "cacheRead": 24058916
       },
-      "estimatedPriceUsd": 9.546209
+      "estimatedPriceUsd": 9.150799
     }
   ],
   "price": {
-    "estimatedUsd": 9.546209,
+    "estimatedUsd": 9.150799,
     "priceTable": "2026-11-11"
   },
   "outcome": {
@@ -39,9 +39,9 @@
     "findings": {
       "P0": 0,
       "P1": 0,
-      "P2": 0,
+      "P2": 1,
       "P3": 0
     },
-    "notes": ""
+    "notes": "Orchestrating session window; main transcript only, which also carries the #1343 ticketing done in the same window. Subagents excluded."
   }
 }
