@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1093-pr1326-final-base-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1093,
+  "pullRequest": 1326,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-13T22:58:29.000Z",
+    "end": "2026-11-13T22:59:53.000Z",
+    "durationSeconds": 84
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Final maina35 integration after1185: reviewed websrc/e2e byte-identical, incoming180s test-server budgets preserved. Fresh web types,199 calls with0 generic arguments/0 remaining edits,112 canonical ESM comparisons to actual pre-transport parente2f1f60 pass. Passing broad/native proof not repeated solely for independent backend context."
+  }
+}

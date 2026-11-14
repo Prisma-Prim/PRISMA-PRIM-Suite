@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1185-pr1323-codec-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1185,
+  "pullRequest": 1323,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Independent codec phase: original literals8, shared/compact34 and three native paging suites9 pass. Reported Vitest durations468ms,856ms,40.96s,45.58s; complete phase wall-clock window unavailable. No usage or pricing supplied."
+  }
+}

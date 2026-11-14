@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "e01ce890-278e-4f99-9e49-d47523ec6136",
+  "date": "2026-11-11",
+  "runType": "pull-request-proof",
+  "issue": 1285,
+  "pullRequest": 1301,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-11T18:12:09.469Z",
+    "end": "2026-11-11T18:35:27.942Z",
+    "durationSeconds": 1398
+  },
+  "tokens": {
+    "input": 212,
+    "output": 100219,
+    "cacheCreation": 305836,
+    "cacheRead": 27891943
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 212,
+        "output": 100219,
+        "cacheCreation": 305836,
+        "cacheRead": 27891943
+      },
+      "estimatedPriceUsd": 10.030305
+    }
+  ],
+  "price": {
+    "estimatedUsd": 10.030305,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Fix of journey audit finding #1285. P2: the run confirmed with red tests the same defect in the Stage and Finding forms, unconfirmed by the audit. Local: web certification suite 434/434, web types, lint, format, certification acceptance journey at both widths. Excludes GitHub CI."
+  }
+}

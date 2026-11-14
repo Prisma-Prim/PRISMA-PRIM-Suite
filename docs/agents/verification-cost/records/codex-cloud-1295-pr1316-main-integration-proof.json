@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1295-pr1316-main-integration-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1295,
+  "pullRequest": 1316,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-13T20:12:11.000Z",
+    "end": "2026-11-13T20:17:07.000Z",
+    "durationSeconds": 296
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Only cost-ledger append conflicted with merged R12 PR1314; preserved both records and upstream R12 files verbatim. Own revision implementation unchanged. Combined PostgreSQL65 tests/5files, whole-workspace types and targeted lint pass. Original CI1914 passed20 jobs. Tokens/model/price not reported."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1093-pr1326-browser-fixture-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1093,
+  "pullRequest": 1326,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-13T23:15:21.000Z",
+    "end": "2026-11-13T23:20:58.000Z",
+    "durationSeconds": 337
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Browser CI regression reproduced locally: current-dossier mock reused history data without the published relatedToActiveCompany flag. Added only that flag to its current HTTP reply; history snapshots, production readers and all assertions unchanged. Whole history/localization suite16/16 passes in4languages at desktop/narrow; types/lint/format pass."
+  }
+}

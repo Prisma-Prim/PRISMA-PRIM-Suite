@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "bf0e9ec4-9d01-4d9f-b4af-b73ded19654d:adec108390fb88d7a",
+  "date": "2026-11-11",
+  "runType": "pull-request-proof",
+  "issue": 1284,
+  "pullRequest": 1302,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-11T18:54:42.434Z",
+    "end": "2026-11-11T19:08:59.460Z",
+    "durationSeconds": 857
+  },
+  "tokens": {
+    "input": 140,
+    "output": 40429,
+    "cacheCreation": 223551,
+    "cacheRead": 11495616
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 140,
+        "output": 40429,
+        "cacheCreation": 223551,
+        "cacheRead": 11495616
+      },
+      "estimatedPriceUsd": 4.226018
+    }
+  ],
+  "price": {
+    "estimatedUsd": 4.226018,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Delegated Claude Code subagent: regression test, fix and local acceptance journey. Excludes the orchestrator's CI follow-up in the parent session."
+  }
+}

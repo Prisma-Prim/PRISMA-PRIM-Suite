@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import {
   mkdtemp,
   readFile,
+  readdir,
   rm,
+  stat,
   writeFile,
   mkdir,
   copyFile,
@@ -12,7 +15,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { main } from './verification-cost.mjs';
+import { main, summarize, validateRecords } from './verification-cost.mjs';
 
 const fixtures = fileURLToPath(
   new URL('./fixtures/verification-cost/', import.meta.url),
@@ -26,7 +29,7 @@ const codexRollout = join(
   'rollout-2026-11-10T10-00-00-synthetic.jsonl',
 );
 const fixtureTable = join(fixtures, 'price-tables', 'fixture-a.json');
-const fixtureLedger = join(fixtures, 'ledger.jsonl');
+const fixtureLedger = join(fixtures, 'records');
 const NOW = new Date('2026-11-11T12:00:00Z');
 
 async function run(argv) {
@@ -482,49 +485,102 @@ test('the committed ledger and price tables are valid', async () => {
   assert.match(result.stdout, /^Ledger valid: \d+ records?/);
 });
 
-test('the check fails on a malformed ledger line and names it', async (t) => {
+/** A ledger directory with the fixture price table and no record yet. */
+async function emptyLedger(t) {
   const directory = await temporaryDirectory(t);
   await mkdir(join(directory, 'price-tables'));
   await copyFile(
     fixtureTable,
     join(directory, 'price-tables', 'fixture-a.json'),
   );
-  const [first] = (await readFile(fixtureLedger, 'utf8')).split('\n');
-  const valid = JSON.parse(first);
-  const lines = [
-    first,
-    '{"schemaVersion": 1,',
-    JSON.stringify({ ...valid, runId: 'synthetic-extra', prompt: 'text' }),
-    JSON.stringify({ ...valid, runId: 'synthetic-harness', harness: 'other' }),
-    JSON.stringify({
+  const ledger = join(directory, 'records');
+  await mkdir(ledger);
+  return { directory, ledger };
+}
+
+async function fixtureRecord(runId) {
+  return JSON.parse(
+    await readFile(join(fixtureLedger, `${runId}.json`), 'utf8'),
+  );
+}
+
+function recordFile(record) {
+  return `${JSON.stringify(record, null, 2)}\n`;
+}
+
+async function ledgerFiles(ledger) {
+  return (await readdir(ledger)).sort();
+}
+
+test('the check fails on a malformed record file and names it', async (t) => {
+  const { ledger } = await emptyLedger(t);
+  const valid = await fixtureRecord('synthetic-run-1');
+  const files = {
+    'synthetic-run-1.json': recordFile(valid),
+    'broken.json': '{"schemaVersion": 1,',
+    'synthetic-extra.json': recordFile({
+      ...valid,
+      runId: 'synthetic-extra',
+      prompt: 'text',
+    }),
+    'synthetic-harness.json': recordFile({
+      ...valid,
+      runId: 'synthetic-harness',
+      harness: 'other',
+    }),
+    'synthetic-total.json': recordFile({
       ...valid,
       runId: 'synthetic-total',
       tokens: { ...valid.tokens, input: valid.tokens.input + 1 },
     }),
-    JSON.stringify({
+    'synthetic-table.json': recordFile({
       ...valid,
       runId: 'synthetic-table',
       price: { ...valid.price, priceTable: 'missing-table' },
     }),
-    first,
-  ];
-  const ledger = join(directory, 'ledger.jsonl');
-  await writeFile(ledger, `${lines.join('\n')}\n`);
+    // A copy of the first run under another name.
+    'synthetic-copy.json': recordFile(valid),
+    'synthetic-line.jsonl': `${JSON.stringify(valid)}\n`,
+  };
+  for (const [name, text] of Object.entries(files)) {
+    await writeFile(join(ledger, name), text);
+  }
 
   const result = await run(['check', '--ledger', ledger]);
 
   assert.equal(result.code, 1);
   for (const expected of [
-    /line 2: .*JSON/,
-    /line 3: .*prompt/,
-    /line 4: .*harness/,
-    /line 5: .*tokens\.input/,
-    /line 6: .*missing-table/,
-    /line 7: .*runId/,
+    /broken\.json: .*JSON/,
+    /synthetic-extra\.json: .*prompt/,
+    /synthetic-harness\.json: .*harness/,
+    /synthetic-total\.json: .*tokens\.input/,
+    /synthetic-table\.json: .*missing-table/,
+    /synthetic-copy\.json: .*synthetic-run-1\.json/,
+    /synthetic-line\.jsonl: .*record file/,
   ]) {
     assert.match(result.stderr, expected);
   }
-  assert.doesNotMatch(result.stderr, /line 1:/);
+  assert.doesNotMatch(result.stderr, /synthetic-run-1\.json:/);
+});
+
+test('the check refuses run identifiers whose files differ only in case', async () => {
+  const valid = await fixtureRecord('synthetic-run-1');
+  const upper = { ...valid, runId: 'Synthetic-Run-1' };
+
+  const { errors, records } = validateRecords(
+    [
+      { name: 'Synthetic-Run-1.json', text: recordFile(upper) },
+      { name: 'synthetic-run-1.json', text: recordFile(valid) },
+    ],
+    new Set(['fixture-a']),
+  );
+
+  assert.deepEqual(
+    records.map(({ runId }) => runId),
+    ['Synthetic-Run-1'],
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /^synthetic-run-1\.json: .*Synthetic-Run-1\.json/);
 });
 
 // Criterion 4: the summary.
@@ -609,38 +665,37 @@ test('the summary prints one table per dimension', async () => {
   assert.match(result.stdout, /\| \$0\.25 \|$/m);
 });
 
-// Criterion 5: recorded prices are history.
-test('a new price table never rewrites a recorded price', async (t) => {
-  const directory = await temporaryDirectory(t);
-  await mkdir(join(directory, 'price-tables'));
-  await copyFile(
-    fixtureTable,
-    join(directory, 'price-tables', 'fixture-a.json'),
-  );
-  const ledger = join(directory, 'ledger.jsonl');
-  await writeFile(ledger, '');
-  const recordRun = (runId, table) =>
-    run([
-      'record',
-      '--run-type',
-      'pull-request-proof',
-      '--harness',
-      'claude-code-local',
-      '--claude-code',
-      sessionFile,
-      '--claude-code',
-      sessionDirectory,
-      '--run-id',
-      runId,
-      '--price-table',
-      table,
-      '--ledger',
-      ledger,
-      '--append',
-    ]);
+/// Criterion 5: recorded prices are history.
+function recordSession(ledger, runId, table) {
+  return run([
+    'record',
+    '--run-type',
+    'pull-request-proof',
+    '--harness',
+    'claude-code-local',
+    '--claude-code',
+    sessionFile,
+    '--claude-code',
+    sessionDirectory,
+    '--run-id',
+    runId,
+    '--price-table',
+    table,
+    '--ledger',
+    ledger,
+    '--append',
+  ]);
+}
 
-  assert.equal((await recordRun('synthetic-first', fixtureTable)).code, 0);
-  const before = await readFile(ledger, 'utf8');
+test('a new price table never rewrites a recorded price', async (t) => {
+  const { directory, ledger } = await emptyLedger(t);
+
+  assert.equal(
+    (await recordSession(ledger, 'synthetic-first', fixtureTable)).code,
+    0,
+  );
+  const firstFile = join(ledger, 'synthetic-first.json');
+  const before = await readFile(firstFile, 'utf8');
 
   const doubled = JSON.parse(await readFile(fixtureTable, 'utf8'));
   doubled.version = 'fixture-b';
@@ -657,11 +712,20 @@ test('a new price table never rewrites a recorded price', async (t) => {
   }
   const tableB = join(directory, 'price-tables', 'fixture-b.json');
   await writeFile(tableB, `${JSON.stringify(doubled, null, 2)}\n`);
-  assert.equal((await recordRun('synthetic-second', tableB)).code, 0);
+  assert.equal(
+    (await recordSession(ledger, 'synthetic-second', tableB)).code,
+    0,
+  );
 
-  const after = await readFile(ledger, 'utf8');
-  assert.ok(after.startsWith(before), 'the first line is left untouched');
-  const [first, second] = after.trimEnd().split('\n').map(JSON.parse);
+  assert.equal(
+    await readFile(firstFile, 'utf8'),
+    before,
+    'the first record is left untouched',
+  );
+  const first = JSON.parse(before);
+  const second = JSON.parse(
+    await readFile(join(ledger, 'synthetic-second.json'), 'utf8'),
+  );
   assert.deepEqual(first.price, {
     estimatedUsd: 0.020125,
     priceTable: 'fixture-a',
@@ -681,27 +745,245 @@ test('a new price table never rewrites a recorded price', async (t) => {
 test('appending refuses a price table missing from the ledger tables', async (t) => {
   const directory = await temporaryDirectory(t);
   await mkdir(join(directory, 'price-tables'));
-  const ledger = join(directory, 'ledger.jsonl');
-  await writeFile(ledger, '');
+  const ledger = join(directory, 'records');
 
-  const result = await run([
-    'record',
-    '--run-type',
-    'pull-request-proof',
-    '--harness',
-    'claude-code-local',
-    '--claude-code',
-    sessionFile,
-    '--price-table',
-    fixtureTable,
-    '--ledger',
-    ledger,
-    '--append',
-  ]);
+  const result = await recordSession(ledger, 'synthetic-run', fixtureTable);
 
   assert.equal(result.code, 1);
   assert.match(result.stderr, /fixture-a/);
-  assert.equal(await readFile(ledger, 'utf8'), '');
+  assert.deepEqual(await readdir(directory), ['price-tables']);
+});
+
+test('appending refuses a run already in the ledger and keeps its file', async (t) => {
+  const { ledger } = await emptyLedger(t);
+  assert.equal(
+    (await recordSession(ledger, 'synthetic-run', fixtureTable)).code,
+    0,
+  );
+  const before = await readFile(join(ledger, 'synthetic-run.json'), 'utf8');
+
+  const again = await recordSession(ledger, 'synthetic-run', fixtureTable);
+  const otherCase = await recordSession(ledger, 'Synthetic-Run', fixtureTable);
+
+  assert.equal(again.code, 1);
+  assert.match(again.stderr, /already in the ledger/);
+  assert.equal(otherCase.code, 1);
+  assert.match(otherCase.stderr, /already in the ledger/);
+  assert.deepEqual(await ledgerFiles(ledger), ['synthetic-run.json']);
+  assert.equal(
+    await readFile(join(ledger, 'synthetic-run.json'), 'utf8'),
+    before,
+  );
+});
+
+// #1328: concurrent pull requests never conflict on the cost records.
+test('a run identifier with a colon gets a file name every platform accepts', async (t) => {
+  const { ledger } = await emptyLedger(t);
+
+  const result = await recordSession(
+    ledger,
+    'synthetic-session:subagent',
+    fixtureTable,
+  );
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(await ledgerFiles(ledger), [
+    'synthetic-session~subagent.json',
+  ]);
+  const check = await run(['check', '--ledger', ledger]);
+  assert.equal(check.code, 0, check.stderr);
+});
+
+function git(directory, ...args) {
+  return execFileSync('git', args, {
+    cwd: directory,
+    encoding: 'utf8',
+    // The user's Git configuration (hooks, signing, drivers) stays out.
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: join(directory, '.git-test-config'),
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_AUTHOR_NAME: 'Synthetic',
+      GIT_AUTHOR_EMAIL: 'synthetic@example.invalid',
+      GIT_COMMITTER_NAME: 'Synthetic',
+      GIT_COMMITTER_EMAIL: 'synthetic@example.invalid',
+    },
+  });
+}
+
+test('two pull requests that each record a run from the same main merge without conflict', async (t) => {
+  const { directory, ledger } = await emptyLedger(t);
+  await writeFile(join(directory, '.git-test-config'), '');
+  await writeFile(join(directory, '.gitignore'), '.git-test-config\n');
+  await copyFile(
+    join(fixtureLedger, 'synthetic-run-1.json'),
+    join(ledger, 'synthetic-run-1.json'),
+  );
+  git(directory, 'init', '--quiet', '--initial-branch=main');
+  git(directory, 'add', '.');
+  git(directory, 'commit', '--quiet', '--message', 'main with one record');
+
+  const changedPaths = {};
+  for (const branch of ['first-pull-request', 'second-pull-request']) {
+    git(directory, 'switch', '--quiet', '--create', branch, 'main');
+    const recorded = await recordSession(
+      ledger,
+      `synthetic-session:${branch}`,
+      fixtureTable,
+    );
+    assert.equal(recorded.code, 0, recorded.stderr);
+    git(directory, 'add', '.');
+    git(directory, 'commit', '--quiet', '--message', `${branch} cost`);
+    changedPaths[branch] = git(directory, 'diff', '--name-only', 'main', branch)
+      .trim()
+      .split('\n');
+  }
+
+  assert.deepEqual(changedPaths, {
+    'first-pull-request': ['records/synthetic-session~first-pull-request.json'],
+    'second-pull-request': [
+      'records/synthetic-session~second-pull-request.json',
+    ],
+  });
+  git(directory, 'switch', '--quiet', 'main');
+  // The first pull request merges, then the second one from the same base.
+  for (const branch of ['first-pull-request', 'second-pull-request']) {
+    git(directory, 'merge', '--quiet', '--no-ff', '--no-edit', branch);
+  }
+  assert.equal(git(directory, 'status', '--porcelain'), '');
+  const check = await run(['check', '--ledger', ledger]);
+  assert.equal(check.code, 0, check.stderr);
+  assert.match(check.stdout, /^Ledger valid: 3 records/);
+});
+
+async function singleFileLedger(directory, records) {
+  const path = join(directory, 'ledger.jsonl');
+  await writeFile(
+    path,
+    records.map((record) => `${JSON.stringify(record)}\n`).join(''),
+  );
+  return path;
+}
+
+test('migrate moves every line of the single-file ledger into record files with the same totals', async (t) => {
+  const { directory, ledger } = await emptyLedger(t);
+  const records = await Promise.all(
+    ['synthetic-run-1', 'synthetic-run-2', 'synthetic-run-3'].map(
+      fixtureRecord,
+    ),
+  );
+  const jsonl = await singleFileLedger(directory, records);
+  const expected = await run(['summary', '--ledger', fixtureLedger, '--json']);
+
+  const blocked = await run(['check', '--ledger', ledger]);
+  const migrated = await run(['migrate', '--ledger', ledger]);
+
+  assert.equal(blocked.code, 1);
+  assert.match(blocked.stderr, /ledger\.jsonl: .*migrate/);
+  assert.equal(migrated.code, 0, migrated.stderr);
+  assert.match(migrated.stdout, /Migrated 3 records/);
+  await assert.rejects(stat(jsonl), { code: 'ENOENT' });
+  assert.deepEqual(await ledgerFiles(ledger), [
+    'synthetic-run-1.json',
+    'synthetic-run-2.json',
+    'synthetic-run-3.json',
+  ]);
+  for (const record of records) {
+    assert.equal(
+      await readFile(join(ledger, `${record.runId}.json`), 'utf8'),
+      recordFile(record),
+    );
+  }
+  const check = await run(['check', '--ledger', ledger]);
+  assert.equal(check.code, 0, check.stderr);
+  const summary = await run(['summary', '--ledger', ledger, '--json']);
+  assert.equal(summary.stdout, expected.stdout);
+
+  const rerun = await run(['migrate', '--ledger', ledger]);
+  assert.equal(rerun.code, 0, rerun.stderr);
+  assert.match(rerun.stdout, /nothing to migrate/);
+});
+
+test('migrate keeps the records already moved and adds the newer lines of a branch', async (t) => {
+  const { directory, ledger } = await emptyLedger(t);
+  const first = await fixtureRecord('synthetic-run-1');
+  const second = await fixtureRecord('synthetic-run-2');
+  await writeFile(join(ledger, 'synthetic-run-1.json'), recordFile(first));
+  await singleFileLedger(directory, [first, second]);
+
+  const migrated = await run(['migrate', '--ledger', ledger]);
+
+  assert.equal(migrated.code, 0, migrated.stderr);
+  assert.match(migrated.stdout, /Migrated 1 record .*1 already present/);
+  assert.deepEqual(await ledgerFiles(ledger), [
+    'synthetic-run-1.json',
+    'synthetic-run-2.json',
+  ]);
+});
+
+test('migrate refuses a line that differs from the record already present and writes nothing', async (t) => {
+  const { directory, ledger } = await emptyLedger(t);
+  const first = await fixtureRecord('synthetic-run-1');
+  const second = await fixtureRecord('synthetic-run-2');
+  await writeFile(join(ledger, 'synthetic-run-1.json'), recordFile(first));
+  const jsonl = await singleFileLedger(directory, [
+    { ...first, outcome: { ...first.outcome, notes: 'changed' } },
+    second,
+  ]);
+
+  const migrated = await run(['migrate', '--ledger', ledger]);
+
+  assert.equal(migrated.code, 1);
+  assert.match(migrated.stderr, /synthetic-run-1\.json: .*differs/);
+  assert.deepEqual(await ledgerFiles(ledger), ['synthetic-run-1.json']);
+  assert.ok((await stat(jsonl)).isFile(), 'the single-file ledger is kept');
+});
+
+// Record files are read in name order, no longer in the order the lines were
+// appended, so the summary must not depend on the order.
+test('the summary does not depend on the order of the records', async () => {
+  const base = await fixtureRecord('synthetic-run-1');
+  const priced = (runId, price, findings) => ({
+    ...base,
+    runId,
+    models: [{ ...base.models[0], estimatedPriceUsd: price }],
+    price: { ...base.price, estimatedUsd: price },
+    outcome: {
+      ...base.outcome,
+      findings: { P0: 0, P1: 0, P2: findings, P3: 0 },
+    },
+  });
+  // Floating-point sums of these prices differ with the order; the exact
+  // cost per finding, 0.400001 / 2 = 0.2000005, rounds half up.
+  const records = [
+    priced('synthetic-a', 0.1, 2),
+    priced('synthetic-b', 0.3, 0),
+    priced('synthetic-c', 0.000001, 0),
+  ];
+
+  const forward = summarize(records);
+  const backward = summarize([...records].reverse());
+
+  assert.deepEqual(backward, forward);
+  assert.equal(forward.byHarness[0].costPerFindingUsd, 0.200001);
+  assert.deepEqual(forward.byHarness[0].estimatedPriceUsd, {
+    total: 0.400001,
+    average: 0.133334,
+    reported: 3,
+  });
+});
+
+test('the guide describes one record file per run', async () => {
+  const guide = (
+    await readFile(
+      new URL('../docs/agents/verification-cost.md', import.meta.url),
+      'utf8',
+    )
+  ).replaceAll('\r\n', '\n');
+
+  assert.match(guide, /verification-cost\/records\//);
+  assert.match(guide, /one file per run/i);
+  assert.match(guide, /verification-cost\.mjs migrate/);
 });
 
 // Criterion 6: the delivery report and the pull request ask for the record.

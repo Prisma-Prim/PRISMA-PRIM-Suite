@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1185-pr1323-main-integration-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1185,
+  "pullRequest": 1323,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-13T22:01:58.000Z",
+    "end": "2026-11-13T22:09:19.000Z",
+    "durationSeconds": 441
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Integrate reviewed upstream1320 keyed commands and1319 startup budget; ledger append conflict preserves all records. Combined commands/paging79/79; historical Certificate migration reproduces CI RED then12/12 migration/revision checks pass after fixed historical fixture boundary. Types/lint/format pass. Production and migration SQL unchanged by correction."
+  }
+}
