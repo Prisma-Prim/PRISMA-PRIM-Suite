@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1366-pr1369-local-proof",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1366,
+  "pullRequest": 1369,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T10:59:48.000Z",
+    "end": "2026-11-14T11:49:49.000Z",
+    "durationSeconds": 3001
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Local preflight RED/GREEN and real read-only GitHub smoke;72 focused tests;1014 script tests pass,one existing Windows-only case skipped on Linux.Types/lint/format pass.Standards0/Spec1P2 staged-index omission reproduced and fixed.Private frozen cache install and base doctor included;external CI wait excluded.Usage/model/price unavailable."
+  }
+}
