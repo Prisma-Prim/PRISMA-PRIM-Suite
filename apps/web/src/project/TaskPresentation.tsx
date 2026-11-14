@@ -216,18 +216,13 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                     copy.unassigned}{' '}
                   · <TaskCalendarDate value={event.metadata.initial.dueDate} />
                 </p>
-                {/* A creation recorded before priority existed shows no priority line. */}
-                {event.metadata.initial.priority && (
-                  <p>
-                    {copy.priority}:{' '}
-                    {copy.priorities[event.metadata.initial.priority]}
-                  </p>
-                )}
+                <p>
+                  {copy.priority}:{' '}
+                  {copy.priorities[event.metadata.initial.priority]}
+                </p>
                 <p className="task-description">
                   {copy.description}:{' '}
-                  {'description' in event.metadata.initial
-                    ? (event.metadata.initial.description ?? copy.noDescription)
-                    : copy.unrecordedDescription}
+                  {event.metadata.initial.description ?? copy.noDescription}
                 </p>
               </>
             )}

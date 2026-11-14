@@ -20,7 +20,7 @@ import {
 } from '../access/company-permissions.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
 import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
-import type { TaskEvent } from '../task/task.types.js';
+import type { TaskActivityEvent } from '../task/task.types.js';
 import type { ProjectResponsibleChangedActivityEvent } from '../project/project-responsibility.types.js';
 import type { ProjectLifecycleChangedActivityEvent } from '../project/project-lifecycle.types.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -901,7 +901,7 @@ export type ContractActivityEvent = ContractActivityProjection & {
 };
 
 export type ActivityLogEvent =
-  | TaskEvent
+  | TaskActivityEvent
   | DocumentProjectActivityEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityEvent

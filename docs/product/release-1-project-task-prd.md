@@ -2049,8 +2049,8 @@ business-decision and tenancy ownership; no new architecture decision is require
 5. As a reader of a closed Task/Project or superseded original Client, I retain
    truthful current instructions and history without acquiring mutation authority.
 6. As a manager with an uncertain command, I deliberately retry the exact saved intent, without duplicating its correction or losing independent work.
-7. As a reader of legacy history or receipts, I distinguish an unrecorded field
-   from a recorded absence and from today's current value.
+7. As a reader of history or receipts, I distinguish a recorded absence from
+   today's current value.
 8. As a user in either production frame or any supported locale, I use the same
    native controls by keyboard and keep literal business text and drafts unchanged.
 9. As a user whose consumed authority changes, I receive no retired Task data or
@@ -2186,7 +2186,7 @@ rolls back the complete unit. Competing ordinary/grouped/result edits, Project
 closure, Client union/reversal and actor/changed-assignee revocation retain the
 owning lock order and serialized outcome; no write may slip through a lost guard.
 
-### Current, historical and legacy formats
+### Current and recorded formats
 
 Fresh native Task views contain `description: string | null`, alongside their
 existing complete fields, versions, state and attribution. New command outcomes
@@ -2198,38 +2198,32 @@ adds exactly `metadata.changes.description: { before: string | null, after: stri
 when changed; unrelated corrections omit it. Native history retains server actor,
 time, target and version ordering and offers no mutation/deletion route.
 
-| Format                                              | Description representation                                                                                                   |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Current native Task view                            | Required `description`, normalized string or `null`                                                                          |
-| New immutable Task outcome, including a nested Task | Recorded `description`, normalized string or `null`                                                                          |
-| Legacy immutable Task outcome                       | Property absent, other validated historical fields preserved                                                                 |
-| New creation `metadata.initial`                     | Required `description`, normalized string or `null`                                                                          |
-| Legacy creation `metadata.initial`                  | Property absent, including pre-priority initial formats                                                                      |
-| Description correction                              | `changes.description` contains exactly present `before` and `after`, each normalized string or `null`, with different values |
-| Old or unrelated correction                         | No `changes.description`; never synthesize one                                                                               |
+| Format                                          | Description representation                                                                                                   |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Current native Task view                        | Required `description`, normalized string or `null`                                                                          |
+| Immutable Task outcome, including a nested Task | Recorded `description`, normalized string or `null`                                                                          |
+| Creation `metadata.initial`                     | Required `description`, normalized string or `null`                                                                          |
+| Description correction                          | `changes.description` contains exactly present `before` and `after`, each normalized string or `null`, with different values |
+| Unrelated correction                            | No `changes.description`; never synthesize one                                                                               |
 
 Reject malformed present description values, partial/unknown description-pair
 fields and unrecognized changed-field names. Do not trim, repair or default
-persisted or received description facts while decoding them. Other existing
-historical formats retain their own validators and compatibility; a text-only
-change cannot discard them.
+persisted or received description facts while decoding them.
 
-Legacy stored receipt JSON, command strings, event meanings and initial history
-remain immutable, including a pre-priority record's existing optional priority.
-Absence of `description` in a legacy initial snapshot or command outcome means
-**not recorded in that historical format**, never proof of an empty value then
-and never a request to insert today's text. Preserve the absence when decoding
-and returning a legacy committed outcome; do not rewrite its JSON or decorate its
-replay with `description: null` or a current value. Existing pre-description
-compatibility transformations for other fields remain unchanged. Old nested Task
-outcomes in grouped/Project creation receipts have the same preservation rule.
+Stored receipt JSON, command strings, event meanings and initial history remain
+immutable. Every stored Task outcome, grouped planning outcome and creation
+`metadata.initial` carries `description` and `priority`; a reader refuses one
+without them instead of defaulting it. A replay returns the recorded outcome with
+its recorded description, never today's text. Before launch no earlier outcome
+or creation shape is read: migration 0116 refuses a development database that
+still holds one and asks to recreate it
+([#1348](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1348)).
 
-The new current-reader contract requires present `description` and validates
-null or exact normalized scalar text; missing/malformed current data is an
-explicit unavailable/malformed response, not a silent empty description. A
-separate compatible command/history reader accepts only the identified legacy
-absence or a valid recorded value, retaining that distinction in its model.
-Neither reader may silently discard a recognized description correction. Preserve
+The current-reader contract requires present `description` and validates null or
+exact normalized scalar text; missing/malformed data is an explicit
+unavailable/malformed response, not a silent empty description. Command replies,
+grouped receipts and history use that same reader, which never silently discards
+a recognized description correction. Preserve
 unknown-field tolerance of existing HTTP consumers for unrelated additive data;
 strict publisher and command validation remain strict. An older client that
 omits the edit field preserves current text; deploy the updated history consumers
@@ -2305,7 +2299,7 @@ idempotency key; disable replacement/submission until explicit identical retry
 or governed recovery. A conflict requires explicit fresh reload before a new
 intent, never an automatic rebase. Confirmation remains confirmed when the fresh
 detail/history/queue read fails. Reload must read today's state separately from
-the immutable command result, particularly a legacy result with no field.
+the immutable command result.
 
 Preserve independent native Task, result and Project drafts, pending/uncertain/
 confirmed outcomes and exact continuation through filters, section/frame
@@ -2341,7 +2335,7 @@ or alter the current session/Company/Actor after retirement, even when transport
 ignores abort. Prove production parent/admin wiring, not child remount fixtures.
 
 Centralized ro/ru/fr/en copy covers labels, optionality/limit, clear, current-empty,
-legacy-unrecorded, history and every failure/recovery state. Locale-only changes
+history and every failure/recovery state. Locale-only changes
 preserve literal text/indentation, dirty state, control nodes/focus and exact
 command identity without Task, eligible-member or Actor I/O. Reuse accepted
 Prisme controls and native semantic textarea/button behavior: keyboard entry,
@@ -2358,7 +2352,7 @@ page overflow at 1440×900 and 390×844, including long unbroken and multiline t
    history/fence, and material mixed edit exactly once. Include normalized 2000 and
    2001 code points, combining marks, CR/LF/CRLF/interior spaces, exterior trim set,
    NUL, lone high/low surrogates, valid pairs, wrong types and unknown fields.
-2. Through that seam, prove exact new/legacy replay, preserved old fingerprints
+2. Through that seam, prove exact replay, preserved old fingerprints
    and receipt JSON, explicit-null versus omitted identity, changed-key/action/
    target/Company conflict, replay after subsequent edits/closure/Client union,
    native no-op guards, version exhaustion and no partial writes. A historical

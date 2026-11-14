@@ -5,7 +5,6 @@ import {
   editInput,
   readTaskMeaning,
   readTaskView,
-  readTaskOutcome,
 } from './task.validation.js';
 
 const actor = {
@@ -19,14 +18,23 @@ const storedResult = {
   projectId: '00000000-0000-4000-8000-000000000005',
   clientAccountId: '00000000-0000-4000-8000-000000000006',
   title: 'Collect preparation notes',
+  description: null,
   assignee: null,
   dueDate: null,
+  priority: 'normal',
   status: 'todo',
   completion: null,
   version: 1,
   createdAt: '2026-09-24T08:00:00.000Z',
   updatedAt: '2026-09-24T08:00:00.000Z',
   createdBy: actor,
+};
+const storedInitial = {
+  title: storedResult.title,
+  description: null,
+  assignee: null,
+  dueDate: null,
+  priority: 'normal',
 };
 const invalidPriorities: unknown[] = [
   'Critical',
@@ -37,17 +45,24 @@ const invalidPriorities: unknown[] = [
   '',
 ];
 
+/** The same stored JSON without the given keys, as an earlier application wrote it. */
+function without(value: object, keys: readonly string[]) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => !keys.includes(key)),
+  );
+}
+
 describe('Task priority command validation', () => {
   it('keeps an omitted priority out of the create and edit fingerprints', () => {
-    const create = createInput({ title: '  Legacy notes  ' });
+    const create = createInput({ title: '  Preparation notes  ' });
     expect(create).toEqual({
-      title: 'Legacy notes',
+      title: 'Preparation notes',
       assigneeMembershipId: null,
       dueDate: null,
     });
-    // A pre-priority receipt fingerprint is the serialized input; it must stay byte-identical.
+    // The fingerprint is the serialized input: an omitted field adds no key.
     expect(JSON.stringify(create)).toBe(
-      '{"title":"Legacy notes","assigneeMembershipId":null,"dueDate":null}',
+      '{"title":"Preparation notes","assigneeMembershipId":null,"dueDate":null}',
     );
     expect(JSON.stringify(editInput({ expectedVersion: 2, title: 'x' }))).toBe(
       '{"expectedVersion":2,"title":"x"}',
@@ -87,23 +102,18 @@ describe('Task priority command validation', () => {
 });
 
 describe('stored Task results and history', () => {
-  it('requires exact current description while preserving legacy absence in immutable outcomes and history', () => {
-    expect(readTaskOutcome(storedResult)).not.toHaveProperty('description');
-    expect(() =>
-      readTaskView({ ...storedResult, priority: 'normal' }),
-    ).toThrow();
+  it('requires the exact current description in stored results and creation history', () => {
     const current = {
       ...storedResult,
-      priority: 'normal',
       description: 'Ș / Я / 😀\r\n  <b>literal</b>',
     };
+    expect(readTaskView(storedResult)).toEqual(storedResult);
     expect(readTaskView(current)).toEqual(current);
-    expect(readTaskOutcome(current)).toEqual(current);
     const creation = {
       action: 'task.created',
       metadata: {
         version: 1,
-        initial: { title: storedResult.title, assignee: null, dueDate: null },
+        initial: { ...storedInitial, description: current.description },
       },
     };
     expect(readTaskMeaning(creation)).toEqual(creation);
@@ -129,7 +139,6 @@ describe('stored Task results and history', () => {
       {},
     ]) {
       expect(() => readTaskView({ ...current, description })).toThrow();
-      expect(() => readTaskOutcome({ ...current, description })).toThrow();
       expect(() =>
         readTaskMeaning({
           ...creation,
@@ -163,18 +172,32 @@ describe('stored Task results and history', () => {
       }),
     ).toThrow();
   });
-  it('returns a pre-priority receipt result as normal and keeps a recorded priority', () => {
-    expect(readTaskOutcome(storedResult)).toEqual({
-      ...storedResult,
-      priority: 'normal',
-    });
-    expect(readTaskOutcome({ ...storedResult, priority: 'critical' })).toEqual({
+
+  it.each([
+    ['description', ['description']],
+    ['priority', ['priority']],
+    ['priority and description', ['priority', 'description']],
+  ])(
+    'refuses a stored result and a creation recorded without %s',
+    (_name, keys) => {
+      expect(() => readTaskView(without(storedResult, keys))).toThrow();
+      expect(() =>
+        readTaskMeaning({
+          action: 'task.created',
+          metadata: { version: 1, initial: without(storedInitial, keys) },
+        }),
+      ).toThrow();
+    },
+  );
+
+  it('reads a stored result with its recorded priority', () => {
+    expect(readTaskView({ ...storedResult, priority: 'critical' })).toEqual({
       ...storedResult,
       priority: 'critical',
     });
   });
 
-  it('returns pre-priority blocked and cancelled results as normal with their Unicode reasons', () => {
+  it('reads stored blocked and cancelled results with their Unicode reasons and refuses them without priority', () => {
     const declaration = {
       reason: 'Attente du questionnaire signé — Clientă 🙂',
       actor,
@@ -192,49 +215,28 @@ describe('stored Task results and history', () => {
       version: 2,
       cancellation: declaration,
     };
-    expect(readTaskOutcome(blocked)).toEqual({
-      ...blocked,
-      priority: 'normal',
-    });
-    expect(readTaskOutcome(cancelled)).toEqual({
-      ...cancelled,
-      priority: 'normal',
-    });
+    expect(readTaskView(blocked)).toEqual(blocked);
+    expect(readTaskView(cancelled)).toEqual(cancelled);
+    expect(() => readTaskView(without(blocked, ['priority']))).toThrow();
+    expect(() => readTaskView(without(cancelled, ['priority']))).toThrow();
   });
 
   it.each(invalidPriorities)(
     'fails closed for the stored result priority %j',
     (priority) => {
-      expect(() => readTaskOutcome({ ...storedResult, priority })).toThrow();
+      expect(() => readTaskView({ ...storedResult, priority })).toThrow();
     },
   );
 
-  it('keeps a historical creation without priority absent instead of normal', () => {
-    const initial = {
-      title: 'Collect preparation notes',
-      assignee: null,
-      dueDate: null,
+  it('reads a creation with its recorded priority', () => {
+    const creation = {
+      action: 'task.created',
+      metadata: {
+        version: 1,
+        initial: { ...storedInitial, priority: 'critical' },
+      },
     };
-    const meaning = readTaskMeaning({
-      action: 'task.created',
-      metadata: { version: 1, initial },
-    });
-    expect(meaning).toEqual({
-      action: 'task.created',
-      metadata: { version: 1, initial },
-    });
-    if (meaning.action !== 'task.created')
-      throw new Error('Expected a creation.');
-    expect(Object.keys(meaning.metadata.initial)).not.toContain('priority');
-    expect(
-      readTaskMeaning({
-        action: 'task.created',
-        metadata: { version: 1, initial: { ...initial, priority: 'critical' } },
-      }),
-    ).toEqual({
-      action: 'task.created',
-      metadata: { version: 1, initial: { ...initial, priority: 'critical' } },
-    });
+    expect(readTaskMeaning(creation)).toEqual(creation);
   });
 
   it('reads a priority correction with the other corrected fields', () => {
@@ -258,12 +260,7 @@ describe('stored Task results and history', () => {
           action: 'task.created',
           metadata: {
             version: 1,
-            initial: {
-              title: 'Notes',
-              assignee: null,
-              dueDate: null,
-              priority,
-            },
+            initial: { ...storedInitial, priority },
           },
         }),
       ).toThrow();

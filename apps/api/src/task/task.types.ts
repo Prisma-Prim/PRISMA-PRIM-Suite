@@ -21,11 +21,6 @@ export interface TaskFields {
   dueDate: string | null;
   priority: TaskPriority;
 }
-/** Creation facts; a creation recorded before priority existed has none, never `normal`. */
-export type TaskInitialFields = Omit<TaskFields, 'priority' | 'description'> & {
-  priority?: TaskPriority;
-  description?: string | null;
-};
 export const OPEN_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
 export type OpenTaskState = (typeof OPEN_TASK_STATES)[number];
 export type ClosedTaskState = 'done' | 'cancelled';
@@ -55,11 +50,6 @@ export type TaskView = TaskFields & {
         cancellation: TaskDeclaration;
       }
   );
-/** Immutable outcomes retain legacy absence rather than inventing historical text. */
-type RecordedTask<T> = T extends TaskView
-  ? Omit<T, 'description'> & { description?: string | null }
-  : never;
-export type TaskOutcome = RecordedTask<TaskView>;
 /** The Project list's own labels for a Task row. */
 export interface TaskProjectLabels {
   id: string;
@@ -164,7 +154,7 @@ export type TaskStatusChange =
 export type TaskEventMeaning =
   | {
       action: 'task.created';
-      metadata: { version: number; initial: TaskInitialFields };
+      metadata: { version: number; initial: TaskFields };
     }
   | {
       action: 'task.updated';
@@ -191,7 +181,8 @@ export type TaskEventMeaning =
       action: 'task.reopened';
       metadata: { version: number; before: ClosedTaskState; after: 'todo' };
     };
-export type TaskEvent = TaskEventMeaning & {
+/** The server-established facts every recorded Task event carries. */
+export interface TaskEventRecord {
   id: string;
   occurredAt: string;
   actor: TaskActor;
@@ -201,4 +192,17 @@ export type TaskEvent = TaskEventMeaning & {
     taskTitle: string;
     companyId: string;
   };
-};
+}
+export type TaskEvent = TaskEventMeaning & TaskEventRecord;
+/** The generic Activity Log leaves Task instructions to native Task history. */
+export type TaskActivityMeaning =
+  | Exclude<TaskEventMeaning, { action: 'task.created' | 'task.updated' }>
+  | {
+      action: 'task.created';
+      metadata: { version: number; initial: Omit<TaskFields, 'description'> };
+    }
+  | {
+      action: 'task.updated';
+      metadata: { version: number; changes: Omit<TaskChanges, 'description'> };
+    };
+export type TaskActivityEvent = TaskActivityMeaning & TaskEventRecord;

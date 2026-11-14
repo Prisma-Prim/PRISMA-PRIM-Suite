@@ -142,6 +142,7 @@ test('manages manual Tasks through the production shell with retained retry and 
             version: 1,
             initial: {
               title: task.title,
+              description: null,
               assignee: null,
               dueDate: null,
               priority: task.priority,
@@ -498,6 +499,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
         version: 1,
         initial: {
           title: common.title,
+          description: common.description,
           assignee,
           dueDate: common.dueDate,
           priority: common.priority,

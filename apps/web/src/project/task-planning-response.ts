@@ -1,4 +1,4 @@
-import { readTaskOutcome, type TaskOutcome } from './task-response';
+import { readTask, type TaskView } from './task-response';
 
 export type PlanningRow = Readonly<{
   taskId: string;
@@ -17,7 +17,7 @@ export function readTaskPlanningReceipt(
   value: unknown,
   scope: { companyId: string; projectId: string },
   attempt: PlanningAttempt,
-): TaskOutcome[] {
+): TaskView[] {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid planning receipt.');
   const row = Object.fromEntries(Object.entries(value));
@@ -30,7 +30,7 @@ export function readTaskPlanningReceipt(
     throw new Error('Invalid planning result.');
   const values: unknown[] = row.tasks;
   return values.map((value, index) => {
-    const task = readTaskOutcome(value, scope),
+    const task = readTask(value, scope),
       planned = attempt.body.tasks[index];
     if (
       !planned ||

@@ -93,7 +93,13 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
             },
             metadata: {
               version: 1,
-              initial: { title: task.title, assignee: null, dueDate: null },
+              initial: {
+                title: task.title,
+                description: null,
+                assignee: null,
+                dueDate: null,
+                priority: 'normal',
+              },
             },
           });
         } else if (options.method === 'PATCH') {
@@ -2824,6 +2830,7 @@ it('creates a Critical Task, shows its priority label in the list, detail and hi
               version: 1,
               initial: {
                 title: task.title,
+                description: null,
                 assignee: null,
                 dueDate: null,
                 priority: 'critical',
@@ -3003,7 +3010,7 @@ it.each([
   },
 );
 
-it('renders a historical creation without a priority line and a later priority change', async () => {
+it('renders the created priority and a later priority change', async () => {
   fixture({
     read: (url) => {
       if (url === '/api/projects/project/tasks')
@@ -3019,8 +3026,10 @@ it('renders a historical creation without a priority line and a later priority c
                 version: 1,
                 initial: {
                   title: priorityTask.title,
+                  description: null,
                   assignee: null,
                   dueDate: null,
+                  priority: 'normal',
                 },
               },
             }),
@@ -3040,8 +3049,8 @@ it('renders a historical creation without a priority line and a later priority c
   const [created, changed] = historyEntries(tasks);
   if (!created || !changed) throw new Error('Missing Task history');
   expect(created).toHaveTextContent(priorityTask.title);
-  expect(created).not.toHaveTextContent('Priority');
-  expect(created).not.toHaveTextContent('Normal');
+  expect(created).toHaveTextContent('Priority: Normal');
+  expect(created).toHaveTextContent('Instructions: No description');
   expect(
     within(changed).getByText('Priority', { selector: 'dt' }),
   ).toBeInTheDocument();
@@ -3065,9 +3074,42 @@ it.each([
         version: 1,
         initial: {
           title: priorityTask.title,
+          description: null,
           assignee: null,
           dueDate: null,
           priority: 'Critical',
+        },
+      },
+    }),
+  ],
+  [
+    'a creation without priority',
+    'history',
+    taskEvent('created', {
+      action: 'task.created',
+      metadata: {
+        version: 1,
+        initial: {
+          title: priorityTask.title,
+          description: null,
+          assignee: null,
+          dueDate: null,
+        },
+      },
+    }),
+  ],
+  [
+    'a creation without description',
+    'history',
+    taskEvent('created', {
+      action: 'task.created',
+      metadata: {
+        version: 1,
+        initial: {
+          title: priorityTask.title,
+          assignee: null,
+          dueDate: null,
+          priority: 'critical',
         },
       },
     }),

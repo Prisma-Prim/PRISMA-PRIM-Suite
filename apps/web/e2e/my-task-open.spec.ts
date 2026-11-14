@@ -92,8 +92,10 @@ function created(task: TaskView): TaskEvent {
       version: 1,
       initial: {
         title: task.title,
+        description: task.description,
         assignee: task.assignee,
         dueDate: task.dueDate,
+        priority: task.priority,
       },
     },
   };

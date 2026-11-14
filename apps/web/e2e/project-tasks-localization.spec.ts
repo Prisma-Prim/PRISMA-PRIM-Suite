@@ -708,6 +708,7 @@ async function installTasks(page: Page) {
             version: 1,
             initial: {
               title: originalTitle,
+              description: null,
               assignee: null,
               dueDate: null,
               priority: 'normal',

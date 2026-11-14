@@ -5,7 +5,6 @@ import {
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import {
   ESTIMATE_OFFER_PREPARER,
@@ -14,11 +13,10 @@ import {
   responseString,
 } from '../offer/offer-estimate-preparation.test-support.js';
 import { openDocumentScannerFixture } from './document-scanner.test-support.js';
-import { PDF_A, PDF_B } from './mission-document.test-support.js';
 import { receivedContractEffects } from './received-contract.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
-  'upgrades genuine 0082 without changing existing captures, model Contracts, questionnaire/mission PDFs, receipts, associations or Task results',
+  'applies the received Contract migration to genuine 0082 without changing existing captures, model Contracts, questionnaire/mission PDFs, receipts, associations or Task results',
   async () => {
     const previous = await mkdtemp(join(tmpdir(), 'received-contract-0082-'));
     let fixture:
@@ -65,35 +63,6 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         opportunityId: responseString(source, 'opportunityId'),
         preparerMembershipId: responseString(source, 'preparerMembershipId'),
       };
-      const contract = responseRecord(frozen.contract);
-      if (!Array.isArray(frozen.preserved))
-        throw new Error('Missing preserved historical Documents.');
-      const preserved = frozen.preserved.map((value: unknown) => {
-        const item = responseRecord(value);
-        return {
-          documentId: responseString(item, 'documentId'),
-          firstVersionId: responseString(item, 'firstVersionId'),
-          versionId: responseString(item, 'versionId'),
-          before: item.before,
-          body: item.body,
-          key: responseString(item, 'key'),
-        };
-      });
-      const mission = preserved[1];
-      if (!mission) throw new Error('Missing prior mission');
-      const taskId = responseString(frozen, 'taskId');
-      const command = (
-        path: string,
-        body: unknown,
-        key: string = randomUUID(),
-      ) =>
-        f.command({
-          path,
-          body,
-          key,
-          companyId: s.companyId,
-          headers: ESTIMATE_OFFER_PREPARER,
-        });
       const request = (path: string, init: RequestInit = {}) =>
         f.request({
           path,
@@ -104,7 +73,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       const actorBefore = await (await request('/access/current-actor')).json();
       const before = await receivedContractEffects(f.pool, false);
       // Compare existing business rows outside the Document-owned effects too.
-      const domainSnapshot = async (descriptionAdded = false) => {
+      const domainSnapshot = async () => {
         const rows: Record<string, unknown> = {};
         for (const table of [
           'company_role_assignments',
@@ -124,7 +93,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         ])
           rows[table] = (
             await f.pool.query<{ facts: unknown }>(
-              `SELECT coalesce(jsonb_agg(to_jsonb(t) ${descriptionAdded && table === 'tasks' ? "- 'description'" : ''} ORDER BY to_jsonb(t)::text),'[]'::jsonb) AS facts FROM ${table} t`,
+              `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb) AS facts FROM ${table} t`,
             )
           ).rows[0]?.facts;
         return rows;
@@ -159,76 +128,13 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
             [capture, s.companyId, s.preparerMembershipId],
           ),
         ).rejects.toHaveProperty('code', '23514');
-      await f.applyCurrentMigrations();
-      expect(await domainSnapshot(true)).toEqual(domainBefore);
-      expect(
-        (await f.pool.query('SELECT description FROM tasks')).rows,
-      ).toEqual([{ description: null }]);
-      const receivedBody = {
-        type: 'received-contract',
-        opportunityId: s.opportunityId,
-        contractId: responseString(contract, 'id'),
-        contractVersionId: responseString(
-          responseRecord(contract.version),
-          'id',
-        ),
-        title: 'Post-upgrade received original',
-        purpose: 'Explicit new authority only',
-        sourceDescription: 'Synthetic received source',
-      };
-      expect(
-        (
-          await f.post({
-            path: '/documents',
-            companyId: s.companyId,
-            headers: ESTIMATE_OFFER_PREPARER,
-            body: receivedBody,
-          })
-        ).status,
-      ).toBe(403);
-      await f.restart();
-      for (const item of preserved) {
-        expect(await command('/documents', item.body, item.key)).toEqual(
-          item.before,
-        );
-        for (const [versionId, bytes] of [
-          [item.firstVersionId, PDF_A],
-          [item.versionId, PDF_B],
-        ] as const) {
-          const download = await request(
-            `/documents/${item.documentId}/versions/${versionId}/content`,
-          );
-          expect(download.status).toBe(200);
-          expect(Buffer.from(await download.arrayBuffer())).toEqual(bytes);
-        }
-      }
-      expect(
-        await (await request(`/tasks/${taskId}/results`)).json(),
-      ).toMatchObject({
-        current: {
-          reference: {
-            documentId: mission.documentId,
-            versionId: mission.versionId,
-          },
-        },
-      });
-      await f.applyCurrentMigrations();
-      expect(await domainSnapshot(true)).toEqual(domainBefore);
-      await f.grant({
-        path: '/company-received-contract-access-assignments',
-        companyId: s.companyId,
-        membershipId: s.preparerMembershipId,
-      });
-      expect(await command('/documents', receivedBody)).toMatchObject({
-        type: 'received-contract',
-        receivedContractRelation: { access: 'granted' },
-      });
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
     } finally {
       await fixture?.close();
       await scanner.close();
       await rm(previous, { recursive: true, force: true });
     }
   },
-  // Covers the prior schema, public Contract/PDF workflows, restarts and repeat migration.
   15_000,
 );

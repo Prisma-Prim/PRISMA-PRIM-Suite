@@ -325,6 +325,7 @@ const created: TaskEvent = {
     version: 1,
     initial: {
       title: task.title,
+      description: task.description,
       assignee: member,
       dueDate: task.dueDate,
       priority: task.priority,

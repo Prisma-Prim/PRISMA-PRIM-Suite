@@ -51,7 +51,7 @@ import {
   dueSoonTasksQuery,
   isOpenTaskState,
   overdueTasksQuery,
-  readTaskOutcome,
+  readTaskView,
   statusInput,
   transitionInput,
   type TaskEdit,
@@ -935,7 +935,6 @@ export class TaskService {
       idempotencyKey = requireIdempotencyKey(key);
     return this.database.transaction(async () => {
       const companyId = await this.access.requireActor(actor, true, true);
-      // Receipts recorded before blocked and cancelled states existed use this same fingerprint.
       const command = JSON.stringify({ companyId, taskId, ...commandInput });
       await this.lockCommand(actor, idempotencyKey);
       const visible = await this.visibleRow(actor, taskId);
@@ -1110,7 +1109,7 @@ export class TaskService {
   }
   private async replay(actor: ActorContext, key: string, command: string) {
     const result = await this.commands.read({ actor, key, command });
-    return result === undefined ? undefined : readTaskOutcome(result);
+    return result === undefined ? undefined : readTaskView(result);
   }
   private async recordCommand(
     actor: ActorContext,
