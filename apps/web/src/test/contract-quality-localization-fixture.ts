@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import type {
   ContractQualityCode,
   ContractQualityRunView,
@@ -361,6 +362,11 @@ export function qualityActor(
                 ? 'commercial.contract.approve'
                 : 'commercial.contract.prepare',
             ],
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_director_client_access',
+        'company_offer_preparer',
+      ),
     },
   };
 }

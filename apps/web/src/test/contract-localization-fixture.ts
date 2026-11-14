@@ -95,13 +95,31 @@ export function contractLocaleActor(hasCompany = true) {
             ],
             commercialActivityPermissionSetVersion: 'v1',
             commercialActivityPermissions: ['commercial.activity.read'],
-            // The Pricing screens read this grant; the Contract screens still
-            // read the Pricing User fields above until their area migrates.
-            grants: companyGrants({
-              bundle: 'company_pricing_user',
-              version: 'v1',
-              assignmentId: 'pricing-657',
-            }),
+            // The Pricing, Offer and Profitability screens read these grants;
+            // the Contract screens still read the per-bundle fields above
+            // until their area migrates.
+            grants: companyGrants(
+              {
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'client-657',
+              },
+              {
+                bundle: 'company_commercial_intake',
+                version: 'v1',
+                assignmentId: 'intake-657',
+              },
+              {
+                bundle: 'company_pricing_user',
+                version: 'v1',
+                assignmentId: 'pricing-657',
+              },
+              {
+                bundle: 'company_offer_preparer',
+                version: 'v1',
+                assignmentId: 'offer-657',
+              },
+            ),
           } satisfies NonNullable<ActorContext['activeCompany']>,
         }
       : {}),
