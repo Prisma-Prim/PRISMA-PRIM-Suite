@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1368-pr1394-hardlink-fix",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1368,
+  "pullRequest": 1394,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T18:43:28.000Z",
+    "end": "2026-11-14T18:50:27.000Z",
+    "durationSeconds": 419
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Owner-approved hardlink correction: public CLI red2/green3, full scripts1101pass1platformskip, format/lint/types pass, real concurrent repository smoke preserves48 primary/peer entries; native Windows awaits required CI."
+  }
+}

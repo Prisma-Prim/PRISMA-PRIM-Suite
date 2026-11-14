@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -588,6 +588,57 @@ describe.skipIf(!databaseUrl)(
         next_action: 'Ask for feedback',
         responsible_workspace_membership_id: ion,
       });
+    });
+
+    it('replays an identical outcome retry, refuses another body and refuses a receipt stored under the insertion-order fingerprint, writing nothing', async () => {
+      await grant('ada', MANAGER);
+      const opportunityId = opportunityOf(await capture('ada'));
+      const key = randomUUID();
+      const value = { expectedVersion: 1, status: 'WON' };
+      const first = await changed(opportunityId, value, { key });
+      expect(await changed(opportunityId, value, { key })).toEqual(first);
+      const different = await change(
+        opportunityId,
+        { expectedVersion: 1, status: 'ON_HOLD', reason: 'Postponed' },
+        { key },
+      );
+      expect(different.status).toBe(409);
+      await harness.pool.query(
+        'UPDATE commercial_intake_outcome_commands SET fingerprint = $2 WHERE opportunity_id = $1',
+        [
+          opportunityId,
+          createHash('sha256')
+            .update(
+              JSON.stringify({
+                opportunityId,
+                expectedVersion: 1,
+                change: {
+                  status: 'WON',
+                  reason: { supplied: false },
+                  lossReasonCode: { supplied: false },
+                  note: { supplied: false },
+                },
+              }),
+            )
+            .digest('hex'),
+        ],
+      );
+      const before = await harness.pool.query(
+        'SELECT id, fingerprint FROM commercial_intake_outcome_commands WHERE opportunity_id = $1',
+        [opportunityId],
+      );
+      const old = await change(opportunityId, value, { key });
+      expect(old.status).toBe(409);
+      expect(await body(old)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+      expect(
+        (
+          await harness.pool.query(
+            'SELECT id, fingerprint FROM commercial_intake_outcome_commands WHERE opportunity_id = $1',
+            [opportunityId],
+          )
+        ).rows,
+      ).toEqual(before.rows);
+      await expectNothingWritten(opportunityId, 2);
     });
 
     it('walks every section 23.2 transition with exactly its required fields and keeps each entry consultable', async () => {

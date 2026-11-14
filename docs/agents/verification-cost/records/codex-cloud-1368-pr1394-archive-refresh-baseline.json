@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1368-pr1394-archive-refresh-baseline",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1368,
+  "pullRequest": 1394,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T20:03:01.000Z",
+    "end": "2026-11-14T20:32:02.000Z",
+    "durationSeconds": 1741
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "fail",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Archive repair candidate passed1111 scripts but failed actual cached-registry workspace refresh: normal pnpm returned0 without recreating its virtual store. Candidate stayed unpublished; raw proof retained privately and exact-profile diagnosis followed."
+  }
+}

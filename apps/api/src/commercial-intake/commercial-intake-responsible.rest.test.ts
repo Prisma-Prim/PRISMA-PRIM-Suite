@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
@@ -1324,6 +1324,83 @@ describe.skipIf(!databaseUrl)(
       expect(await responsibleEvents(opportunityId)).toHaveLength(2);
       expect(await responsibleEvents(second)).toEqual([]);
       await expectUnchanged(opportunityId, mihai, 3);
+    });
+
+    it('replays an identical retry, refuses another body and refuses a receipt stored under the insertion-order fingerprint, writing nothing, for the responsible actor and next action commands', async () => {
+      await grant('ada', MANAGER);
+      const ion = await grant('ion', ELIGIBLE);
+      const opportunityId = opportunityOf(await capture('ada'));
+      const insertionOrder = (value: Record<string, unknown>) =>
+        createHash('sha256').update(JSON.stringify(value)).digest('hex');
+      const rows = async (table: string) =>
+        (
+          await harness.pool.query(
+            `SELECT id, fingerprint FROM ${table} WHERE opportunity_id = $1`,
+            [opportunityId],
+          )
+        ).rows;
+      const nextActionKey = randomUUID();
+      const nextAction = { expectedVersion: 1, nextAction: 'Call the client' };
+      const first = await body(
+        await updateNextAction(opportunityId, nextAction, {
+          key: nextActionKey,
+        }),
+      );
+      const reply = await updateNextAction(opportunityId, nextAction, {
+        key: nextActionKey,
+      });
+      expect(reply.status).toBe(200);
+      expect(await body(reply)).toEqual(first);
+      const different = await updateNextAction(
+        opportunityId,
+        { ...nextAction, nextAction: 'Write to the client' },
+        { key: nextActionKey },
+      );
+      expect(different.status).toBe(409);
+      expect(await nextActionEvents(opportunityId)).toHaveLength(1);
+      await harness.pool.query(
+        'UPDATE commercial_intake_next_action_commands SET fingerprint = $2 WHERE opportunity_id = $1',
+        [opportunityId, insertionOrder({ opportunityId, ...nextAction })],
+      );
+      const storedBefore = await rows('commercial_intake_next_action_commands');
+      const oldNextAction = await updateNextAction(opportunityId, nextAction, {
+        key: nextActionKey,
+      });
+      expect(oldNextAction.status).toBe(409);
+      expect(await body(oldNextAction)).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+      expect(await rows('commercial_intake_next_action_commands')).toEqual(
+        storedBefore,
+      );
+      expect(await nextActionEvents(opportunityId)).toHaveLength(1);
+
+      const responsibleKey = randomUUID();
+      const responsible = { expectedVersion: 2, workspaceMembershipId: ion };
+      const done = await reassigned(opportunityId, responsible, {
+        key: responsibleKey,
+      });
+      expect(
+        await reassigned(opportunityId, responsible, { key: responsibleKey }),
+      ).toEqual(done);
+      await harness.pool.query(
+        'UPDATE commercial_intake_responsible_commands SET fingerprint = $2 WHERE opportunity_id = $1',
+        [opportunityId, insertionOrder({ opportunityId, ...responsible })],
+      );
+      const responsibleBefore = await rows(
+        'commercial_intake_responsible_commands',
+      );
+      const oldResponsible = await reassign(opportunityId, responsible, {
+        key: responsibleKey,
+      });
+      expect(oldResponsible.status).toBe(409);
+      expect(await body(oldResponsible)).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+      expect(await rows('commercial_intake_responsible_commands')).toEqual(
+        responsibleBefore,
+      );
+      expect(await responsibleEvents(opportunityId)).toHaveLength(1);
     });
 
     it('refuses a material change from the PostgreSQL integer maximum and still confirms a no-op there', async () => {
