@@ -24,3 +24,5 @@ A **journey** is one `apps/web/e2e/<journey>.acceptance.spec.ts`; `pnpm verify:j
 | 3    | Could not run: database, build, server start or interrupt | Read `message` and the log it names; fix the environment, not the test.                                                      |
 
 To reproduce an intermittent race, add `--repeat N` (stops at the first failing run) and `--cpu-load` (one busy thread per CPU, or `--cpu-load=THREADS`). `--output DIR` chooses a new private evidence directory outside Git. Run directories have unique IDs; journey execution still needs exclusive use of its fixed ports.
+
+To replay a nightly UI chaos failure ([#1376](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1376)), run the command it printed, `pnpm verify:journey <journey> --chaos <seed>`. The seed fixes the response delays, the slowed CPU, the double submits and the back navigation; `--chaos random` draws a seed. Only a journey that imports `test` from `./ui-chaos.fixture` accepts it. With `--repeat`, each run gets its own seed, recorded in `summary.json`; `--budget-minutes M` starts no run that would end after M minutes.
