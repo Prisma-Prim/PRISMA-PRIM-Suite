@@ -38,7 +38,6 @@ const keys = [
   'validation',
   'issuedOn',
   'pendingDays',
-  'legacy',
   'readonly',
   'not_granted',
   'draft_missing',
@@ -98,8 +97,6 @@ export const releaseMessages = defineMessages(keys, {
       'Complete the required fields and every explicit confirmation. A new version states its reason.',
     issuedOn: 'Issue date',
     pendingDays: 'Days since issuance, awaiting transmission: {days}',
-    legacy:
-      'Issuance recorded before the release circuit; the issue date is unknown.',
     readonly: 'The release is read-only for this member.',
     not_granted: 'A granting Certification Decision is required.',
     draft_missing: 'Record a Certificate draft first.',
@@ -165,8 +162,6 @@ export const releaseMessages = defineMessages(keys, {
       'Complétez les champs requis et chaque confirmation explicite. Toute nouvelle version indique son motif.',
     issuedOn: 'Date d’émission',
     pendingDays: 'Jours depuis l’émission, en attente de transmission : {days}',
-    legacy:
-      'Émission enregistrée avant le circuit de délivrance ; date d’émission inconnue.',
     readonly: 'La délivrance est en lecture seule pour ce membre.',
     not_granted: 'Une décision accordant la certification est requise.',
     draft_missing: 'Enregistrez d’abord un projet de certificat.',
@@ -232,8 +227,6 @@ export const releaseMessages = defineMessages(keys, {
       'Completează câmpurile obligatorii și fiecare confirmare explicită. O versiune nouă precizează motivul.',
     issuedOn: 'Data emiterii',
     pendingDays: 'Zile de la emitere, în așteptarea transmiterii: {days}',
-    legacy:
-      'Emitere înregistrată înainte de circuitul de eliberare; data emiterii nu este cunoscută.',
     readonly: 'Eliberarea este doar pentru citire pentru acest membru.',
     not_granted: 'Este necesară o decizie de acordare a certificării.',
     draft_missing: 'Înregistrează mai întâi un proiect de certificat.',
@@ -298,8 +291,6 @@ export const releaseMessages = defineMessages(keys, {
       'Заполните обязательные поля и каждое явное подтверждение. Новая версия требует причины.',
     issuedOn: 'Дата выдачи',
     pendingDays: 'Дней с выдачи, ожидается передача: {days}',
-    legacy:
-      'Выдача зарегистрирована до введения порядка выпуска; дата выдачи неизвестна.',
     readonly: 'Для этого участника выпуск доступен только для чтения.',
     not_granted: 'Требуется решение о предоставлении сертификации.',
     draft_missing: 'Сначала зарегистрируйте проект сертификата.',

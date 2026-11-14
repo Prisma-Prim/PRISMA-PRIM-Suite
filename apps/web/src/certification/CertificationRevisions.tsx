@@ -27,7 +27,6 @@ import type { ReleaseCommand } from './certification-release';
 import type { ExchangeVersion } from './certification-exchanges';
 import { useExchangeCopy } from './certification-exchanges.copy';
 import { useCertificationCopy } from './certification.copy';
-import { useReleaseCopy } from './certification-release.copy';
 import { useRevisionCopy } from './certification-revisions.copy';
 
 interface RevisionDraft {
@@ -85,7 +84,6 @@ export function CertificateRevisions(props: {
 }) {
   const { current, form } = props;
   const t = useRevisionCopy();
-  const releaseCopy = useReleaseCopy();
   const copy = useCertificationCopy();
   const ex = useExchangeCopy();
   const { formatDate, formatDateTime } = useInterfaceLocale();
@@ -238,11 +236,8 @@ export function CertificateRevisions(props: {
         <li>
           <h6>{formatMessage(t('original'), { state: state(0) })}</h6>
           <p>
-            {certificate.number} ·{' '}
-            {certificate.issuedOn
-              ? date(certificate.issuedOn)
-              : releaseCopy('legacy')}{' '}
-            · {certificate.recordedBy.displayName}
+            {certificate.number} · {date(certificate.issuedOn)} ·{' '}
+            {certificate.recordedBy.displayName}
           </p>
           {exactPdf(certificate.attachmentId, 0)}
           {sending(current.release.transmission)}

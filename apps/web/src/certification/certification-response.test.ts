@@ -84,11 +84,29 @@ function detail(overrides: Record<string, unknown> = {}) {
     decision: null,
     certificateData: null,
     certificate: null,
+    release: noRelease,
     consistency: noDiscrepancy,
     exchanges: noExchange,
     ...overrides,
   };
 }
+
+/** The release section of a Case without any draft or Certificate. */
+const noRelease = {
+  revisions: [],
+  currentRevisionIndex: null,
+  revisionRequired: false,
+  validity: null,
+  drafts: [],
+  opinions: [],
+  approvals: [],
+  currentDraftId: null,
+  outdated: false,
+  approvalBlockers: ['draft_missing'],
+  issuanceBlockers: ['draft_missing', 'approval_missing'],
+  transmission: null,
+  daysSinceIssuance: null,
+};
 
 const noExchange = {
   nextCursor: null,
@@ -2465,6 +2483,8 @@ const agreedData = stageVersion('certificate_data', 21, {
 const certificate = {
   id: 'certificate-1',
   number: 'DEMO-0001',
+  issuedOn: '2026-11-06',
+  approvedDraftVersionId: 'draft-1',
   validFrom: '2026-11-06',
   validUntil: '2029-11-05',
   firstSurveillanceBy: '2027-11-06',
@@ -2501,12 +2521,74 @@ function decidedDetail(overrides: Record<string, unknown> = {}) {
     ...overrides,
   });
 }
-function certifiedDetail(certified: Record<string, unknown> = {}) {
+/** Drafted (22), opinion skipped (23), draft approved (24). */
+const releaseVersion = (
+  id: string,
+  caseRevision: number,
+  value: Record<string, unknown>,
+) => ({
+  id,
+  version: 1,
+  caseRevision,
+  reason: null,
+  recordedBy: by,
+  recordedAt: `2026-11-07T09:${String(caseRevision)}:00.000Z`,
+  value,
+});
+const issuedRelease = {
+  ...noRelease,
+  currentRevisionIndex: 0,
+  validity: {
+    validFrom: '2026-11-06',
+    validUntil: '2029-11-05',
+    firstSurveillanceBy: '2027-11-06',
+  },
+  drafts: [
+    releaseVersion('draft-1', 22, {
+      attachmentId: 'certificate-draft-pdf',
+      number: 'DEMO-0001',
+      decisionVersionId: decided.id,
+      certificateDataVersionId: agreedData.id,
+      draftedOn: '2026-11-06',
+    }),
+  ],
+  opinions: [
+    releaseVersion('opinion-1', 23, {
+      draftVersionId: 'draft-1',
+      businessDate: '2026-11-06',
+      outcome: 'skipped',
+      skipReason: 'texts_already_agreed',
+      note: null,
+    }),
+  ],
+  approvals: [
+    releaseVersion('approval-1', 24, {
+      draftVersionId: 'draft-1',
+      approvedOn: '2026-11-06',
+      textsConfirmed: true,
+      numberConfirmed: true,
+      validityConfirmed: true,
+      independenceAttested: true,
+      onBehalf: null,
+    }),
+  ],
+  currentDraftId: 'draft-1',
+  approvalBlockers: [],
+  issuanceBlockers: [],
+  daysSinceIssuance: 1,
+};
+/** The approved draft issued at 25. */
+function certifiedDetail(
+  certified: Record<string, unknown> = {},
+  overrides: Record<string, unknown> = {},
+) {
   return decidedDetail({
     status: 'certified',
-    revision: 22,
+    revision: 25,
     nextStep: null,
     certificate: { ...certificate, ...certified },
+    release: issuedRelease,
+    ...overrides,
   });
 }
 function refusedDetail(overrides: Record<string, unknown> = {}) {
@@ -2602,24 +2684,14 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
     const parsed = parseCaseDetail(certifiedDetail(), { ...scope, caseId });
     expect(parsed.status).toBe('certified');
     expect(parsed.nextStep).toBeNull();
-    expect(parsed.certificate).toEqual({
-      ...certificate,
-      issuedOn: null,
-      approvedDraftVersionId: null,
-    });
+    expect(parsed.certificate).toEqual(certificate);
     expect(
       parseCaseDetail(
         certifiedDetail({ signedBy: null, signedByFunction: null }),
         { ...scope, caseId },
       ).certificate,
     ).toMatchObject({ signedBy: null, signedByFunction: null });
-    expect(
-      parseCaseDetail(certifiedDetail({ independenceAttested: false }), {
-        ...scope,
-        caseId,
-      }).certificate,
-    ).toMatchObject({ independenceAttested: false });
-    for (const independenceAttested of [undefined, 'yes'])
+    for (const independenceAttested of [false, undefined, 'yes'])
       expect(() =>
         parseCaseDetail(certifiedDetail({ independenceAttested }), {
           ...scope,
@@ -2628,18 +2700,45 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
       ).toThrow();
   });
 
-  it('rejects a partial issue date and approved-draft link while preserving legacy absence', () => {
-    for (const partial of [
-      { issuedOn: '2026-11-06', approvedDraftVersionId: null },
-      { issuedOn: null, approvedDraftVersionId: 'draft-1' },
-    ]) {
+  it('rejects a Certificate without its issue date or approved draft', () => {
+    for (const missing of [
+      { issuedOn: null },
+      { issuedOn: undefined },
+      { approvedDraftVersionId: null },
+      { approvedDraftVersionId: undefined },
+      { issuedOn: null, approvedDraftVersionId: null },
+    ])
       expect(() =>
-        parseCaseDetail(certifiedDetail(partial), { ...scope, caseId }),
+        parseCaseDetail(certifiedDetail(missing), { ...scope, caseId }),
       ).toThrow();
+  });
+
+  it('rejects a Case read without its release or the release revision fields', () => {
+    for (const value of [decidedDetail(), certifiedDetail()]) {
+      expect(parseCaseDetail(value, { ...scope, caseId }).release).toEqual(
+        value.release,
+      );
+      const { release, ...withoutRelease } = value;
+      expect(() =>
+        parseCaseDetail(withoutRelease, { ...scope, caseId }),
+      ).toThrow();
+      for (const field of [
+        'revisions',
+        'currentRevisionIndex',
+        'revisionRequired',
+      ])
+        expect(() =>
+          parseCaseDetail(
+            {
+              ...value,
+              release: Object.fromEntries(
+                Object.entries(release).filter(([key]) => key !== field),
+              ),
+            },
+            { ...scope, caseId },
+          ),
+        ).toThrow();
     }
-    expect(
-      parseCaseDetail(certifiedDetail(), { ...scope, caseId }).certificate,
-    ).toMatchObject({ issuedOn: null, approvedDraftVersionId: null });
   });
 
   it('reads a refusal that closes the Case', () => {
@@ -2850,7 +2949,7 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
     ],
     [
       'a Certificate on an open Case',
-      decidedDetail({ revision: 22, certificate }),
+      certifiedDetail({}, { status: 'open', nextStep: 'certificate' }),
     ],
     [
       'a certified Case without its Certificate',
@@ -2881,25 +2980,45 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
       }),
     ],
     [
-      // The same texts as granted, but not exactly as the data were agreed.
-      'a Certificate stating other texts than the agreed data',
-      certifiedDetail({ texts: [CERTIFICATE_TEXTS[1], CERTIFICATE_TEXTS[0]] }),
+      'a Certificate stating other texts than the agreed data without a required revision',
+      certifiedDetail({ texts: [CERTIFICATE_TEXTS[0]] }),
     ],
     [
-      'a Certificate stating texts the decision did not grant',
-      decidedDetail({
-        status: 'certified',
-        revision: 22,
-        nextStep: null,
-        certificateData: {
-          ...agreedData,
-          value: { ...agreedData.value, texts: [CERTIFICATE_TEXTS[1]] },
+      'a Certificate stating texts the decision did not grant without a required revision',
+      certifiedDetail(
+        { texts: [CERTIFICATE_TEXTS[1]] },
+        {
+          certificateData: {
+            ...agreedData,
+            value: { ...agreedData.value, texts: [CERTIFICATE_TEXTS[1]] },
+          },
         },
-        certificate: { ...certificate, texts: [CERTIFICATE_TEXTS[1]] },
-      }),
+      ),
+    ],
+    [
+      'a Certificate issued before its validity starts',
+      certifiedDetail({ issuedOn: '2026-11-05' }),
+    ],
+    [
+      'a Certificate issued from a draft the release does not hold',
+      certifiedDetail({ approvedDraftVersionId: 'draft-2' }),
+    ],
+    [
+      'a Certificate without a recorded release',
+      certifiedDetail({}, { release: noRelease }),
     ],
     ['a Certificate without its number', certifiedDetail({ number: ' ' })],
-    ['a refused Case with a Certificate', refusedDetail({ certificate })],
+    [
+      'a refused Case with a Certificate',
+      certifiedDetail(
+        {},
+        {
+          status: 'refused',
+          recommendation: negative,
+          decision: refusedDecision,
+        },
+      ),
+    ],
     [
       'a refused Case whose decision grants',
       refusedDetail({ recommendation: recommended, decision: decided }),
@@ -3073,7 +3192,7 @@ describe('Certification acts on behalf and impartiality parsers', () => {
       ],
       impartialityAnalysis: null,
     });
-    const legacy = parseCaseDetail(
+    const earlier = parseCaseDetail(
       decidedDetail({
         dossierReview: {
           ...reviewed,
@@ -3082,13 +3201,13 @@ describe('Certification acts on behalf and impartiality parsers', () => {
       }),
       { ...scope, caseId },
     );
-    expect(legacy.dossierReview?.value).toMatchObject({
+    expect(earlier.dossierReview?.value).toMatchObject({
       reviewedBy: null,
       approvedBy: null,
       independenceAttested: false,
     });
-    expect(legacy.application?.value.submittedOn).toBeNull();
-    expect(legacy.applicationReview?.value.onBehalf).toBeNull();
+    expect(earlier.application?.value.submittedOn).toBeNull();
+    expect(earlier.applicationReview?.value.onBehalf).toBeNull();
   });
 
   it('reads a decision correction that keeps the outcome, with its reason and its versions', () => {

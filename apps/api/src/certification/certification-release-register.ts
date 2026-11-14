@@ -27,8 +27,6 @@ const COPY = {
     date: 'Date',
     actor: 'Recorded by',
     missing: 'Not recorded',
-    legacy:
-      'Certificate recorded before the release circuit; issue date unknown',
     pending: 'Days since issuance',
     agreed: 'Agreed',
     changes_requested: 'Changes requested',
@@ -54,7 +52,6 @@ const COPY = {
     date: 'Date',
     actor: 'Enregistré par',
     missing: 'Non enregistré',
-    legacy: 'Certificat enregistré avant le circuit; date d’émission inconnue',
     pending: 'Jours depuis l’émission',
     agreed: 'Accordé',
     changes_requested: 'Modifications demandées',
@@ -80,8 +77,6 @@ const COPY = {
     date: 'Data',
     actor: 'Înregistrat de',
     missing: 'Neînregistrat',
-    legacy:
-      'Certificat înregistrat înaintea circuitului; data emiterii necunoscută',
     pending: 'Zile de la emitere',
     agreed: 'De acord',
     changes_requested: 'Modificări solicitate',
@@ -107,7 +102,6 @@ const COPY = {
     date: 'Дата',
     actor: 'Записал',
     missing: 'Не записано',
-    legacy: 'Сертификат записан до введения процедуры; дата выдачи неизвестна',
     pending: 'Дней с выдачи',
     agreed: 'Согласовано',
     changes_requested: 'Запрошены изменения',
@@ -170,13 +164,11 @@ export function releaseRegisterBlocks(
     blocks.push(
       entry(
         `${c.issue} · ${c.revision} 0 · ${release.currentRevisionIndex === 0 ? c.current : c.superseded}`,
-        certificate.issuedOn ?? certificate.recordedAt,
+        certificate.issuedOn,
         certificate.recordedBy.displayName,
       ),
     );
   else blocks.push({ kind: 'paragraph', text: `${c.issue}: ${c.missing}` });
-  if (release.legacyIssuance)
-    blocks.push({ kind: 'paragraph', text: c.legacy });
   if (release.transmission)
     blocks.push(
       entry(

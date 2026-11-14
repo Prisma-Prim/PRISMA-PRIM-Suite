@@ -524,26 +524,10 @@ export function parseCaseDetail(
         : certificateDataVersion(body.certificateData),
     certificate:
       body.certificate === null ? null : certificateValue(body.certificate),
-    release:
-      body.release === undefined
-        ? legacyRelease(body.certificate)
-        : parseCertificateRelease(body.release, {
-            hasCertificate: body.certificate !== null,
-          }),
+    release: parseCertificateRelease(body.release),
     consistency: parseConsistency(body.consistency),
     exchanges: parseExchanges(body.exchanges),
   };
-  // Older publishers guaranteed an issued snapshot exactly equal to the agreed
-  // data, including order. Only an explicit revision contract admits pending texts.
-  const oldRelease =
-    body.release === undefined || object(body.release).revisions === undefined;
-  if (
-    oldRelease &&
-    detail.certificate &&
-    JSON.stringify(detail.certificate.texts) !==
-      JSON.stringify(detail.certificateData?.value.texts)
-  )
-    invalid();
   if (!consistent(detail)) invalid();
   return detail;
 }
@@ -1397,15 +1381,11 @@ export function certificateTexts(value: unknown): CertificateText[] {
 /** The recorded Certificate with the validity the server computed. */
 function certificateValue(value: unknown): Certificate {
   const row = object(value);
-  const issuedOn = optionalDate(row.issuedOn);
-  const approvedDraftVersionId =
-    row.approvedDraftVersionId === undefined ||
-    row.approvedDraftVersionId === null
-      ? null
-      : text(row.approvedDraftVersionId);
-  const base = {
+  return {
     id: text(row.id),
     number: text(row.number, DECISION_LIMITS.number),
+    issuedOn: calendarDate(row.issuedOn),
+    approvedDraftVersionId: text(row.approvedDraftVersionId),
     validFrom: calendarDate(row.validFrom),
     validUntil: calendarDate(row.validUntil),
     firstSurveillanceBy: calendarDate(row.firstSurveillanceBy),
@@ -1415,18 +1395,11 @@ function certificateValue(value: unknown): Certificate {
       row.signedByFunction,
       DECISION_LIMITS.person,
     ),
-    // The server stores and returns it with every Certificate.
-    independenceAttested: flag(row.independenceAttested),
+    independenceAttested: row.independenceAttested === true ? true : invalid(),
     attachmentId: text(row.attachmentId),
     recordedBy: actorReference(row.recordedBy),
     recordedAt: instant(row.recordedAt),
   };
-  if (issuedOn === null) {
-    if (approvedDraftVersionId !== null) return invalid();
-    return { ...base, issuedOn: null, approvedDraftVersionId: null };
-  }
-  if (approvedDraftVersionId === null) return invalid();
-  return { ...base, issuedOn, approvedDraftVersionId };
 }
 
 /** Only a correction states a reason; the first version never does. */
@@ -2292,26 +2265,6 @@ function unexpectedValue(value: never): never {
   throw new Error(`Unexpected Certification value: ${String(value)}`);
 }
 
-/** Older live payloads predate release; immutable command receipts have their own reader. */
-function legacyRelease(certificate: unknown): CertificateRelease {
-  return {
-    revisions: [],
-    currentRevisionIndex: certificate === null ? null : 0,
-    revisionRequired: false,
-    validity: null,
-    drafts: [],
-    opinions: [],
-    approvals: [],
-    currentDraftId: null,
-    outdated: false,
-    approvalBlockers: ['draft_missing'],
-    issuanceBlockers: ['draft_missing', 'approval_missing'],
-    transmission: null,
-    daysSinceIssuance: null,
-    legacyIssuance: certificate !== null,
-  };
-}
-
 /** Immutable release references stay readable while a later draft is outdated. */
 function releaseConsistent(detail: CaseDetail): boolean {
   const release = detail.release;
@@ -2350,15 +2303,8 @@ function releaseConsistent(detail: CaseDetail): boolean {
   if ((certificate === null) !== (release.currentRevisionIndex === null))
     return false;
   if (!certificate)
-    return (
-      release.transmission === null &&
-      release.daysSinceIssuance === null &&
-      !release.legacyIssuance
-    );
-  if (certificate.issuedOn === null)
-    return release.legacyIssuance && release.daysSinceIssuance === null;
-  if (certificate.issuedOn < certificate.validFrom || release.legacyIssuance)
-    return false;
+    return release.transmission === null && release.daysSinceIssuance === null;
+  if (certificate.issuedOn < certificate.validFrom) return false;
   return (
     drafts.some(
       (draft) =>

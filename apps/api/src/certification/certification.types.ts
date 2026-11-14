@@ -334,15 +334,14 @@ export type CertificateRecord = {
   }[];
   signedBy: string | null;
   signedByFunction: string | null;
-  /** False only in Certificates recorded before the attestation was stored. */
-  independenceAttested: boolean;
+  /** The recording approver attested the signatory is not on the audit team. */
+  independenceAttested: true;
   attachmentId: string;
   recordedBy: CertificationActorReference;
   recordedAt: string;
-} & (
-  | { issuedOn: null; approvedDraftVersionId: null }
-  | { issuedOn: string; approvedDraftVersionId: string }
-);
+  issuedOn: string;
+  approvedDraftVersionId: string;
+};
 
 export interface CertificationCaseList {
   projectId: string;

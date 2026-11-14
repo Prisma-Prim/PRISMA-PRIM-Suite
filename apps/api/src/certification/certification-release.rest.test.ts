@@ -247,11 +247,30 @@ withPostgres('Certificate release', { timeout: 60_000 }, () => {
         number: 'RELEASE-ORDER',
         issuedOn: '2026-11-06',
         approvedDraftVersionId: draftVersionId,
+        independenceAttested: true,
         validFrom: '2026-11-06',
         validUntil: '2029-11-05',
       },
       release: { daysSinceIssuance: 1, transmission: null },
     });
+    // Every Certificate carries its issue date and approved draft; the
+    // release has no state for an issuance recorded before the circuit.
+    for (const current of [certified, await read(id)])
+      expect(Object.keys(record(current.release)).sort()).toEqual([
+        'approvalBlockers',
+        'approvals',
+        'currentDraftId',
+        'currentRevisionIndex',
+        'daysSinceIssuance',
+        'drafts',
+        'issuanceBlockers',
+        'opinions',
+        'outdated',
+        'revisionRequired',
+        'revisions',
+        'transmission',
+        'validity',
+      ]);
   });
 
   it('requires a new draft after requested changes, then the new matching data and same-outcome decision versions', async () => {

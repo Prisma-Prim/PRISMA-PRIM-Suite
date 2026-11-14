@@ -603,8 +603,8 @@ export const certificationCertificates = pgTable(
     caseId: uuid('case_id').notNull(),
     caseRevision: integer('case_revision').notNull(),
     number: text('number').notNull(),
-    issuedOn: date('issued_on', { mode: 'string' }),
-    approvedDraftVersionId: uuid('approved_draft_version_id'),
+    issuedOn: date('issued_on', { mode: 'string' }).notNull(),
+    approvedDraftVersionId: uuid('approved_draft_version_id').notNull(),
     validFrom: date('valid_from', { mode: 'string' }).notNull(),
     validUntil: date('valid_until', { mode: 'string' }).notNull(),
     firstSurveillanceBy: date('first_surveillance_by', {
@@ -613,7 +613,7 @@ export const certificationCertificates = pgTable(
     texts: jsonb('texts').$type<unknown>().notNull(),
     signedBy: text('signed_by'),
     signedByFunction: text('signed_by_function'),
-    /** False only in Certificates recorded before the attestation was stored. */
+    /** The recording approver attested the signatory is not on the audit team. */
     independenceAttested: boolean('independence_attested').notNull(),
     attachmentId: uuid('attachment_id').notNull(),
     actorMembershipId: uuid('actor_membership_id').notNull(),
@@ -686,11 +686,11 @@ export const certificationCertificates = pgTable(
     }),
     check(
       'certification_certificates_release_check',
-      sql`(${table.issuedOn} IS NULL AND ${table.approvedDraftVersionId} IS NULL) OR (${table.issuedOn} IS NOT NULL AND ${table.approvedDraftVersionId} IS NOT NULL AND ${table.issuedOn} >= ${table.validFrom})`,
+      sql`${table.issuedOn} >= ${table.validFrom}`,
     ),
     check(
       'certification_certificates_values_check',
-      sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.texts}) = 'array'`,
+      sql`length(btrim(${table.number})) BETWEEN 1 AND 64 AND ${table.validFrom} < ${table.validUntil} AND ${table.validFrom} < ${table.firstSurveillanceBy} AND ${table.caseRevision} > 1 AND jsonb_typeof(${table.texts}) = 'array' AND ${table.independenceAttested} = true`,
     ),
   ],
 );
