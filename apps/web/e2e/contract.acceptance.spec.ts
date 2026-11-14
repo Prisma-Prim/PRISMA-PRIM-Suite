@@ -263,7 +263,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       companyId,
     }),
   );
-  await page.goto('/?frame=classic#requests');
+  await page.goto('/#requests');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(page.getByLabel('Active Company', { exact: true }), {
@@ -2284,7 +2284,7 @@ test('C9 governs a persisted DIRECT Contract without Offer authority', async ({
   ).toBe(403);
   const calls: string[] = [];
   page.on('request', (sent) => calls.push(new URL(sent.url()).pathname));
-  await page.goto('/?frame=classic#requests');
+  await page.goto('/#requests');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(page.getByLabel('Active Company', { exact: true }), {
@@ -2814,7 +2814,7 @@ test('C7 prepares, executes and references a persisted illustrative Precontract'
     ).status(),
   ).toBe(200);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=classic#requests');
+  await page.goto('/#requests');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(page.getByLabel('Active Company', { exact: true }), {
@@ -3325,7 +3325,7 @@ test('#561 checks, approves and executes a Contract over an adjusted accepted Sn
     companyId,
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=classic#requests');
+  await page.goto('/#requests');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(page.getByLabel('Active Company', { exact: true }), {

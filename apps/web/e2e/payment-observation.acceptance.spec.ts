@@ -15,7 +15,6 @@ import {
   type PaymentIdentity,
 } from './payment-evidence-source.acceptance.fixture';
 import {
-  changePaymentFrame,
   createNativePayment,
   fillPaymentValues,
   openPaymentObservation,
@@ -42,16 +41,13 @@ async function expectCompanyDisabled({
   page,
   locale,
   narrow,
-  frame,
 }: {
   page: Page;
   locale: PaymentLocale;
   narrow: boolean;
-  frame: 'classic' | 'prisme';
 }) {
-  const mobileDrawer = narrow && frame === 'prisme';
   const url = page.url();
-  if (mobileDrawer)
+  if (narrow)
     await page
       .getByRole('button', {
         name: resolveMessage(prismeMessages, locale, 'openNavigation'),
@@ -60,7 +56,7 @@ async function expectCompanyDisabled({
       .click();
   await expect(paymentCompanyControl(page, locale)).toBeVisible();
   await expect(paymentCompanyControl(page, locale)).toBeDisabled();
-  if (mobileDrawer)
+  if (narrow)
     await page
       .getByRole('button', {
         name: resolveMessage(prismeMessages, locale, 'closeNavigation'),
@@ -70,7 +66,7 @@ async function expectCompanyDisabled({
   expect(page.url()).toBe(url);
 }
 
-test('records literal observations, keeps the immutable uncertain command across four locales and both frames, independently confirms and reverses with copied facts and lineage', async ({
+test('records literal observations, keeps the immutable uncertain command across four locales, independently confirms and reverses with copied facts and lineage', async ({
   page,
 }, info) => {
   test.setTimeout(180_000);
@@ -110,28 +106,19 @@ test('records literal observations, keeps the immutable uncertain command across
   const baselineReads = reads;
   for (const locale of ['ro', 'ru', 'fr', 'en'] as const) {
     await selectOption(page.locator('#interface-locale'), { value: locale });
-    for (const frame of ['classic', 'prisme'] as const) {
-      await changePaymentFrame(page, frame);
-      const copy = paymentCopy[locale];
-      await expect(panel.getByLabel(copy.amount, { exact: true })).toHaveValue(
-        '1255.005',
-      );
-      await expect(
-        panel.getByRole('textbox', {
-          name: copy.observationBasis,
-          exact: true,
-        }),
-      ).toHaveValue(literal);
-      await panel.getByLabel(copy.amount, { exact: true }).focus();
-      await expect(
-        panel.getByLabel(copy.amount, { exact: true }),
-      ).toBeFocused();
-      await paymentScreenshot(
-        page,
-        info,
-        `${locale}-${frame}-invalid-literal-draft`,
-      );
-    }
+    const copy = paymentCopy[locale];
+    await expect(panel.getByLabel(copy.amount, { exact: true })).toHaveValue(
+      '1255.005',
+    );
+    await expect(
+      panel.getByRole('textbox', {
+        name: copy.observationBasis,
+        exact: true,
+      }),
+    ).toHaveValue(literal);
+    await panel.getByLabel(copy.amount, { exact: true }).focus();
+    await expect(panel.getByLabel(copy.amount, { exact: true })).toBeFocused();
+    await paymentScreenshot(page, info, `${locale}-invalid-literal-draft`);
   }
   expect(reads).toBe(baselineReads);
   expect(bodies).toHaveLength(0);
@@ -149,23 +136,20 @@ test('records literal observations, keeps the immutable uncertain command across
   await page.route('**/api/payments', dropCommitted);
   await panel.getByRole('button', { name: en.create, exact: true }).click();
   await expect(panel.getByRole('alert')).toHaveText(en.uncertain);
-  await expectCompanyDisabled({ page, locale: 'en', narrow, frame: 'prisme' });
+  await expectCompanyDisabled({ page, locale: 'en', narrow });
   await expect(
     workspace.getByRole('button', { name: en.newObservation, exact: true }),
   ).toBeDisabled();
   const pendingReads = reads;
   for (const locale of ['ro', 'ru', 'fr', 'en'] as const) {
     await selectOption(page.locator('#interface-locale'), { value: locale });
-    for (const frame of ['classic', 'prisme'] as const) {
-      await changePaymentFrame(page, frame);
-      await expect(
-        panel.getByRole('button', {
-          name: paymentCopy[locale].retrySame,
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expectCompanyDisabled({ page, locale, narrow, frame });
-    }
+    await expect(
+      panel.getByRole('button', {
+        name: paymentCopy[locale].retrySame,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expectCompanyDisabled({ page, locale, narrow });
   }
   expect(bodies).toHaveLength(1);
   expect(reads).toBe(pendingReads);

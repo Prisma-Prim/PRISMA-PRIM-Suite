@@ -106,23 +106,6 @@ async function uploadPdf(
   };
 }
 
-async function changeFrame(page: Page, frame: 'classic' | 'prisme') {
-  // The same legacy URL transition as classic-compatibility.ts, without reload.
-  await page.evaluate((next) => {
-    const url = new URL(window.location.href);
-    if (next === 'classic') url.searchParams.set('frame', 'classic');
-    else url.searchParams.delete('frame');
-    window.history.pushState(window.history.state, '', url);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }, frame);
-  if (frame === 'prisme')
-    await expect(page.locator('.prisme-shell')).toBeVisible();
-  else
-    await expect(page.locator('.production-shell')).not.toHaveClass(
-      /prisme-shell/u,
-    );
-}
-
 async function expectProtectedSourceNavigation(
   page: Page,
   source: Locator,
@@ -646,7 +629,7 @@ for (const kind of ['PRIMARY', 'ADDITIONAL'] as const) {
   });
 }
 
-test('retains literal protected registration through four locales and both frames, then replays the real uncertain command after payer-only loss', async ({
+test('retains literal protected registration through four locales, then replays the real uncertain command after payer-only loss', async ({
   page,
 }, info) => {
   test.setTimeout(180_000);
@@ -716,34 +699,18 @@ test('retains literal protected registration through four locales and both frame
   const beforePresentation = traffic.length;
   for (const locale of ['ro', 'ru', 'fr', 'en']) {
     await selectOption(page.locator('#interface-locale'), { value: locale });
-    for (const frame of ['classic', 'prisme'] as const) {
-      await changeFrame(page, frame);
-      await expect(literalField).toHaveValue(declaredSource);
-      await expect(dateField).toHaveValue('unrecorded literal date');
-      await expect(titleField).toHaveValue(title);
-      expect(
-        await originalField.evaluate((element) => element.isConnected),
-      ).toBe(true);
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth,
-        ),
-      ).toBe(true);
-      await artifacts.screenshot(
-        page,
-        `${suffix}-${locale}-${frame}-literal-draft`,
-      );
-      if (narrow && frame === 'classic') {
-        await source
-          .locator('.payment-evidence-registration h4')
-          .scrollIntoViewIfNeeded();
-        await artifacts.screenshot(
-          page,
-          `${suffix}-${locale}-${frame}-literal-draft-viewport`,
-          { fullPage: false },
-        );
-      }
-    }
+    await expect(literalField).toHaveValue(declaredSource);
+    await expect(dateField).toHaveValue('unrecorded literal date');
+    await expect(titleField).toHaveValue(title);
+    expect(await originalField.evaluate((element) => element.isConnected)).toBe(
+      true,
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await artifacts.screenshot(page, `${suffix}-${locale}-literal-draft`);
   }
   expect(traffic).toHaveLength(beforePresentation);
   await dateField.fill('');
@@ -793,32 +760,19 @@ test('retains literal protected registration through four locales and both frame
     ).toBeDisabled();
     const afterDispatch = traffic.length;
     await expectProtectedSourceNavigation(page, source, narrow);
-    // Locale and frame changes preserve the disabled in-flight fields and one command.
+    // Locale changes preserve the disabled in-flight fields and one command.
     for (const locale of ['ro', 'ru', 'fr', 'en']) {
       await selectOption(page.locator('#interface-locale'), { value: locale });
-      for (const frame of ['classic', 'prisme'] as const) {
-        await changeFrame(page, frame);
-        await expect(literalField).toHaveValue(declaredSource);
-        await expect(literalField).toBeDisabled();
-        await expect(dateField).toHaveValue('');
-        expect(
-          await originalField.evaluate((element) => element.isConnected),
-        ).toBe(true);
-        await artifacts.screenshot(
-          page,
-          `${suffix}-${locale}-${frame}-protected-dispatch`,
-        );
-        if (narrow && frame === 'classic') {
-          await source
-            .locator('.payment-evidence-registration h4')
-            .scrollIntoViewIfNeeded();
-          await artifacts.screenshot(
-            page,
-            `${suffix}-${locale}-${frame}-protected-dispatch-viewport`,
-            { fullPage: false },
-          );
-        }
-      }
+      await expect(literalField).toHaveValue(declaredSource);
+      await expect(literalField).toBeDisabled();
+      await expect(dateField).toHaveValue('');
+      expect(
+        await originalField.evaluate((element) => element.isConnected),
+      ).toBe(true);
+      await artifacts.screenshot(
+        page,
+        `${suffix}-${locale}-protected-dispatch`,
+      );
     }
     expect(traffic).toHaveLength(afterDispatch);
     expect(attempts).toHaveLength(1);
@@ -971,8 +925,6 @@ test('opens native Client Document commands after selecting Source without repla
     await workspace
       .getByRole('button', { name: 'Payment evidence', exact: true })
       .click();
-    const frame = index === 1 ? 'classic' : 'prisme';
-    await changeFrame(page, frame);
     await expect(
       page.getByRole('form', {
         name: 'Register payment evidence',
@@ -997,17 +949,7 @@ test('opens native Client Document commands after selecting Source without repla
     await expect(heading).toBeFocused();
     await expect(page.locator('.payment-evidence-source')).toHaveCount(0);
     expect(detailReads.get(document.id)).toBe(index === 2 ? 2 : 1);
-    await artifacts.screenshot(page, `${suffix}-${frame}-native-${index}`);
-    if (narrow && frame === 'classic') {
-      await heading.scrollIntoViewIfNeeded();
-      await artifacts.screenshot(
-        page,
-        `${suffix}-${frame}-native-${index}-viewport`,
-        {
-          fullPage: false,
-        },
-      );
-    }
+    await artifacts.screenshot(page, `${suffix}-native-${index}`);
   }
   expect(detailReads.get(first.id)).toBe(2);
   expect(detailReads.get(second.id)).toBe(1);

@@ -9,7 +9,6 @@ import {
   text,
 } from './model-contract.acceptance.fixture';
 import { selectOption, expectValue } from './select-option';
-import { enterClassicCompatibility } from './classic-compatibility';
 
 test('preserves a full corresponding Contract/annex from pending Offer through exact retries, review, successor, historical bytes and actual scope/access retirement', async ({
   page,
@@ -407,13 +406,11 @@ test('preserves a full corresponding Contract/annex from pending Offer through e
       await expect(
         panel.getByRole('button', { name, exact: true }),
       ).toBeDisabled();
-    await enterClassicCompatibility(page);
     await expect(
       form.getByLabel('Case Client requisites and representative wording', {
         exact: true,
       }),
     ).toHaveValue(revised);
-    await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
     await expect(
       panel.getByRole('button', {
         name: 'Retry the same Contract command',

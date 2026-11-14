@@ -1,5 +1,4 @@
 import { removeRoute } from './route-removal';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { selectOption } from './select-option';
@@ -184,11 +183,9 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await expect(
     workspace.getByLabel('Full provider requisites wording', { exact: true }),
   ).toHaveValue(syntheticContent.providerDetails);
-  await enterClassicCompatibility(page);
   await expect(
     workspace.getByLabel('Romanian service title', { exact: true }),
   ).toHaveValue(syntheticContent.serviceTitle);
-  await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
   await expect(
     workspace.getByLabel('Contract title', { exact: true }),
   ).toHaveValue(syntheticContent.title);

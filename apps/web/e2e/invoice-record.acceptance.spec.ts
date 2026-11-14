@@ -8,7 +8,6 @@ import {
   text,
   invoiceApiOrigin,
 } from './external-invoice-source.acceptance.fixture';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
 import { invoiceRecordMessages } from '../src/invoice-record/invoice-record-copy';
 import { sourceKey } from '../src/invoice-record/invoice-record-contract';
@@ -31,19 +30,21 @@ async function menu(page: Page, open: boolean) {
   });
   if (await button.isVisible()) await activate(button);
 }
-for (const frame of ['prisme', 'classic'] as const) {
-  test(`keeps unresolved native Invoice commands through changed history in ${frame}`, async ({
+// Each receiving party kind walks the same journey; the additional party's
+// source is superseded by an equal-byte successor before it is copied.
+for (const partyKind of ['PRIMARY', 'ADDITIONAL'] as const) {
+  const superseded = partyKind === 'ADDITIONAL';
+  test(`keeps unresolved native Invoice commands through changed history for a ${partyKind} receiving party`, async ({
     page,
   }, info) => {
     test.setTimeout(180_000);
-    await exerciseInvoiceRecordHistoryOwnership({ page, info, frame });
+    await exerciseInvoiceRecordHistoryOwnership({ page, info, partyKind });
   });
-  test(`keeps actual copied Invoice Records and exact-source lifetimes in ${frame}`, async ({
+  test(`keeps actual copied Invoice Records and exact-source lifetimes for a ${partyKind} receiving party`, async ({
     page,
   }, info) => {
     test.setTimeout(180_000);
-    const partyKind = frame === 'prisme' ? 'PRIMARY' : 'ADDITIONAL',
-      suffix = `record-${frame}-${info.project.name.endsWith('narrow') ? 'narrow' : 'desktop'}`;
+    const suffix = `record-${partyKind.toLowerCase()}-${info.project.name.endsWith('narrow') ? 'narrow' : 'desktop'}`;
     const ready = await prepareExternalInvoiceSourceCase(
       page,
       suffix,
@@ -132,7 +133,7 @@ for (const frame of ['prisme', 'classic'] as const) {
       },
     );
     expect(designation.status()).toBe(200);
-    if (frame === 'classic') {
+    if (superseded) {
       // The App deliberately selects preserved V1 after a real V2 designation.
       // Equal bytes do not make the two native Representation identities equal.
       const successor = await ready.command(
@@ -176,7 +177,6 @@ for (const frame of ['prisme', 'classic'] as const) {
       value: ready.companyId,
     });
     await menu(page, false);
-    if (frame === 'classic') await enterClassicCompatibility(page);
     const nav = page.getByRole('navigation', { name: 'Primary navigation' });
     await menu(page, true);
     await activate(nav.getByRole('link', { name: en.title, exact: true }));
@@ -319,7 +319,7 @@ for (const frame of ['prisme', 'classic'] as const) {
       documentId,
       documentVersionId,
       versionNumber: 1,
-      versionState: frame === 'classic' ? 'superseded' : 'official',
+      versionState: superseded ? 'superseded' : 'official',
       content: { kind: 'AVAILABLE', representationId },
     });
     await activate(
@@ -494,7 +494,6 @@ for (const frame of ['prisme', 'classic'] as const) {
       value: ready.companyId,
     });
     await menu(page, false);
-    if (frame === 'classic') await enterClassicCompatibility(page);
     await menu(page, true);
     await activate(nav.getByRole('link', { name: en.title, exact: true }));
     await menu(page, false);

@@ -2,7 +2,6 @@ import {
   expectSelectAppearance,
   expectSelectOptionsDoNotOverlap,
 } from './select-appearance';
-import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Response } from '@playwright/test';
 
@@ -196,12 +195,7 @@ test('defines a shared Service and records a Company offering through the real A
   await expect(offerings.getByText(label, { exact: true })).toBeVisible();
   await expect(catalogue.getByText(disclaimer, { exact: true })).toBeVisible();
 
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
-  await expect(catalogue.getByText(disclaimer, { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
 
   await navigate(page, navigation, 'Activity Log', narrow);
   const activity = page.locator('.activity-log');

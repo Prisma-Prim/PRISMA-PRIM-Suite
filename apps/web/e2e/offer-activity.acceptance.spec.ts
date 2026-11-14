@@ -83,7 +83,7 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
   const offer = await performOfferSequence(request, companyId, suffix);
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(page.getByLabel('Active Company', { exact: true }), {
@@ -171,7 +171,7 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
 
   // The response event opens the accepted current version. Changing only the
   // fragment keeps the loaded page.
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   await expect(acceptedV2).toHaveCount(1);
   versionRead = offerRead(page, `/versions/${offer.v2}`);
   await acceptedV2.getByRole('button', { name: 'Open Offer Version' }).click();
@@ -182,7 +182,7 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
   ).toBeDisabled();
 
   // The Offer creation opens version 1, not the current head.
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   await expect(createdOffer).toHaveCount(1);
   versionRead = offerRead(page, `/versions/${offer.v1}`);
   await createdOffer
@@ -210,7 +210,7 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
     );
     expect(response.status()).toBe(200);
   }
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   await page.reload();
   await expect(
     activity.getByText('Ada Ionescu captured a Client Request'),

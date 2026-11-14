@@ -12,7 +12,6 @@ import {
   exactReceivedDownload,
 } from './received-contract.acceptance.fixture';
 import { selectOption } from './select-option';
-import { enterClassicCompatibility } from './classic-compatibility';
 
 const apiOrigin = 'http://127.0.0.1:4174/api';
 test('records reported signing through exact uncertain retries, literal locale/frame continuity, independent PDF denial and the existing thirteen-Task Project', async ({
@@ -288,9 +287,6 @@ test('records reported signing through exact uncertain retries, literal locale/f
     await selectOption(page.locator('#interface-locale'), { value: locale });
     await expect(preservedProvider).toHaveValue(providerLabel);
   }
-  await enterClassicCompatibility(page);
-  await expect(preservedProvider).toHaveValue(providerLabel);
-  await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
   await expect(preservedProvider).toHaveValue(providerLabel);
   await exactReceivedDownload(
     page,
@@ -364,12 +360,10 @@ test('records reported signing through exact uncertain retries, literal locale/f
   await expect(
     panel.getByRole('button', { name: 'Retry the identical declaration' }),
   ).toBeVisible();
-  await enterClassicCompatibility(page);
   await panel
     .getByRole('button', { name: 'Retry the identical declaration' })
     .click();
   await expect.poll(() => declarationRequests.length).toBe(2);
-  await page.getByRole('button', { name: 'Try Prisme', exact: true }).click();
   await panel
     .getByRole('button', { name: 'Retry the identical declaration' })
     .click();

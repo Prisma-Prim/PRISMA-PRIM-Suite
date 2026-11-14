@@ -205,49 +205,37 @@ test('prepares and reviews literal fields from an exact native Offer after sourc
   await expect(composer).toContainText('PDF was offered to the browser');
 
   const calls = { observations, downloads };
-  for (const frame of ['classic', 'prisme']) {
-    await page.evaluate((frame) => {
-      const url = new URL(location.href);
-      if (frame === 'classic') url.searchParams.set('frame', frame);
-      else url.searchParams.delete('frame');
-      history.pushState(null, '', url);
-      dispatchEvent(new PopStateEvent('popstate'));
-    }, frame);
-    await expect(page.locator('.production-shell')).toHaveClass(
-      frame === 'prisme' ? /prisme-shell/u : /production-shell/u,
+  for (const { locale, names } of [
+    { locale: 'ro', names: ['Destinatar', 'Subiect', 'Corpul mesajului'] },
+    { locale: 'ru', names: ['Получатель', 'Тема', 'Текст сообщения'] },
+    { locale: 'fr', names: ['Destinataire', 'Objet', 'Corps du message'] },
+    { locale: 'en', names: ['Recipient', 'Subject', 'Message body'] },
+  ] satisfies { locale: string; names: [string, string, string] }[]) {
+    const language = page.locator('#interface-locale');
+    if (!(await language.isVisible()))
+      await page.locator('.production-menu-button').click();
+    await selectOption(language, locale);
+    const menu = page.locator('.production-menu-button');
+    if (narrow && (await menu.getAttribute('aria-expanded')) === 'true')
+      await menu.click();
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(recipient).toHaveAccessibleName(names[0]);
+    await expect(subject).toHaveAccessibleName(names[1]);
+    await expect(body).toHaveAccessibleName(names[2]);
+    await expect(recipient).toHaveValue(literal.recipient);
+    await expect(subject).toHaveValue(literal.subject);
+    await expect(body).toHaveValue(literal.body);
+    await expect(
+      composer.locator('.offer-message-actions button').nth(1),
+    ).toBeEnabled();
+    const imagePath = info.outputPath(
+      `message-${locale}-${info.project.name}.png`,
     );
-    for (const { locale, names } of [
-      { locale: 'ro', names: ['Destinatar', 'Subiect', 'Corpul mesajului'] },
-      { locale: 'ru', names: ['Получатель', 'Тема', 'Текст сообщения'] },
-      { locale: 'fr', names: ['Destinataire', 'Objet', 'Corps du message'] },
-      { locale: 'en', names: ['Recipient', 'Subject', 'Message body'] },
-    ] satisfies { locale: string; names: [string, string, string] }[]) {
-      const language = page.locator('#interface-locale');
-      if (!(await language.isVisible()))
-        await page.locator('.production-menu-button').click();
-      await selectOption(language, locale);
-      const menu = page.locator('.production-menu-button');
-      if (narrow && (await menu.getAttribute('aria-expanded')) === 'true')
-        await menu.click();
-      await expect(page.locator('html')).toHaveAttribute('lang', locale);
-      await expect(recipient).toHaveAccessibleName(names[0]);
-      await expect(subject).toHaveAccessibleName(names[1]);
-      await expect(body).toHaveAccessibleName(names[2]);
-      await expect(recipient).toHaveValue(literal.recipient);
-      await expect(subject).toHaveValue(literal.subject);
-      await expect(body).toHaveValue(literal.body);
-      await expect(
-        composer.locator('.offer-message-actions button').nth(1),
-      ).toBeEnabled();
-      const imagePath = info.outputPath(
-        `message-${frame}-${locale}-${info.project.name}.png`,
-      );
-      await composer.screenshot({ path: imagePath });
-      await info.attach(`message-${frame}-${locale}-${info.project.name}`, {
-        path: imagePath,
-        contentType: 'image/png',
-      });
-    }
+    await composer.screenshot({ path: imagePath });
+    await info.attach(`message-${locale}-${info.project.name}`, {
+      path: imagePath,
+      contentType: 'image/png',
+    });
   }
   expect({ observations, downloads }).toEqual(calls);
   await subject.fill(literal.subject + ' edited');

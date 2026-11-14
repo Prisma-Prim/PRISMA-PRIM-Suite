@@ -89,7 +89,7 @@ test('reads Contract events in the commercial Activity Log and opens each exact 
   const contract = await performContractSequence(request, companyId, suffix);
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(page.getByLabel('Active Company', { exact: true }), {
@@ -175,7 +175,7 @@ test('reads Contract events in the commercial Activity Log and opens each exact 
   });
 
   // The Project link opens the executed version it followed.
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   await expect(linkedProject).toHaveCount(1);
   versionRead = contractRead(page, `/versions/${contract.v2}`);
   await linkedProject
@@ -197,7 +197,7 @@ test('reads Contract events in the commercial Activity Log and opens each exact 
 
   // A Contract reader who cannot read the linked Project loses only the link.
   await revoke(request, 'company-project', membership, companyId, suffix);
-  await page.goto('/?frame=classic#activity');
+  await page.goto('/#activity');
   await page.reload();
   await expect(createdContract).toHaveCount(1);
   await expect(

@@ -7,7 +7,6 @@ import {
   type TestInfo,
 } from '@playwright/test';
 import { invoiceRecordMessages } from '../src/invoice-record/invoice-record-copy';
-import { enterClassicCompatibility } from './classic-compatibility';
 import {
   invoiceApiOrigin,
   modelContractIdentities,
@@ -38,18 +37,14 @@ async function menu(page: Page, open: boolean) {
 export async function exerciseInvoiceRecordHistoryOwnership({
   page,
   info,
-  frame,
+  partyKind,
 }: {
   page: Page;
   info: TestInfo;
-  frame: 'prisme' | 'classic';
+  partyKind: 'PRIMARY' | 'ADDITIONAL';
 }) {
-  const suffix = `history-${frame}-${info.project.name.endsWith('narrow') ? 'narrow' : 'desktop'}`;
-  const ready = await prepareExternalInvoiceSourceCase(
-    page,
-    suffix,
-    frame === 'prisme' ? 'PRIMARY' : 'ADDITIONAL',
-  );
+  const suffix = `history-${partyKind.toLowerCase()}-${info.project.name.endsWith('narrow') ? 'narrow' : 'desktop'}`;
+  const ready = await prepareExternalInvoiceSourceCase(page, suffix, partyKind);
   for (const bundle of [
     'company-invoice-recorder',
     'company-external-invoice-access',
@@ -167,7 +162,6 @@ export async function exerciseInvoiceRecordHistoryOwnership({
         value: ready.companyId,
       });
       await menu(page, false);
-      if (frame === 'classic') await enterClassicCompatibility(page);
       await menu(page, true);
       await activate(
         page
@@ -277,7 +271,9 @@ export async function exerciseInvoiceRecordHistoryOwnership({
         form.getByRole('button', { name: copy.cancel, exact: true }),
       ).toBeDisabled();
       await page.screenshot({
-        path: info.outputPath(`invoice-history-${frame}-${label}-owned.png`),
+        path: info.outputPath(
+          `invoice-history-${partyKind.toLowerCase()}-${label}-owned.png`,
+        ),
         fullPage: true,
       });
       releaseCommand?.();

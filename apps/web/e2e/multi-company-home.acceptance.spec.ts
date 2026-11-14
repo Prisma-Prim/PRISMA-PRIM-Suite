@@ -11,7 +11,6 @@ import {
   type TestInfo,
 } from '@playwright/test';
 import { expectValue, selectOption } from './select-option';
-import { enterClassicCompatibility } from './classic-compatibility';
 
 type Scope = { companyId?: string; owner?: boolean };
 type Company = { id: string; name: string };
@@ -299,6 +298,16 @@ async function selectWorkingCompany(
       .click();
 }
 
+async function openSection(page: Page, label: string, narrow: boolean) {
+  if (narrow)
+    await page
+      .getByRole('button', { name: 'Open navigation', exact: true })
+      .click();
+  await page
+    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('link', { name: label, exact: true })
+    .click();
+}
 async function openView(page: Page, company: Company) {
   // Fence the initial discovery and qualification/read before any later locale
   // or Cancel no-I/O snapshot. A mounted row or temporarily empty pending set
@@ -530,15 +539,25 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
       ),
     ).toEqual(beforeEvents);
 
-    // Classic keeps the ordinary native owners alongside Home. Hold the real
+    // The ordinary native owners stay mounted beside Home. Hold the real
     // Task creation response after PostgreSQL commits while a separate Client
     // registration draft stays open. Opening/staging/Cancel must reset neither.
-    await enterClassicCompatibility(page);
+    await page
+      .getByRole('button', {
+        name: 'Close All Companies summaries',
+        exact: true,
+      })
+      .click();
+    await openSection(page, 'Clients', narrow);
     const clients = page.locator('.client-workspace');
     const clientDraft = `Independent registration — Brouillon ${suffix}`;
     await clients
+      .getByRole('button', { name: 'New Client', exact: true })
+      .click();
+    await clients
       .getByLabel('Client display name', { exact: true })
       .fill(clientDraft);
+    await openSection(page, 'Projects', narrow);
     const projects = page.locator('.project-workspace');
     await projects
       .getByRole('list', { name: 'Projects', exact: true })
@@ -576,6 +595,7 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
       await expect(
         tasks.getByRole('button', { name: 'Create Task', exact: true }),
       ).toBeDisabled();
+      await openSection(page, 'Overview', narrow);
       const independentView = await openView(page, fixture.b);
       await expect.poll(() => pending.size).toBe(1);
       const beforeCancel = [...calls];
@@ -595,23 +615,26 @@ test('uses independently authorized PostgreSQL Company summaries, four locales a
       expect(writes).toEqual(originalWrite);
       expect(writes).toHaveLength(1);
       expect(writes[0]?.key).toBeTruthy();
+      await expectValue(
+        page.getByLabel('Active Company', { exact: true }),
+        fixture.a.id,
+      );
+      await openSection(page, 'Clients', narrow);
       await expect(
         clients.getByLabel('Client display name', { exact: true }),
       ).toHaveValue(clientDraft);
+      await openSection(page, 'Projects', narrow);
       await expect(tasks.getByLabel('Task title', { exact: true })).toHaveValue(
         pendingTaskTitle,
       );
       await expect(
         tasks.getByRole('button', { name: 'Create Task', exact: true }),
       ).toBeDisabled();
-      await expectValue(
-        page.getByLabel('Active Company', { exact: true }),
-        fixture.a.id,
-      );
       release.release();
       await expect(
         tasks.getByRole('heading', { name: pendingTaskTitle, exact: true }),
       ).toBeVisible();
+      await openSection(page, 'Clients', narrow);
       await expect(
         clients.getByLabel('Client display name', { exact: true }),
       ).toHaveValue(clientDraft);
