@@ -16,6 +16,7 @@ import {
   useInterfaceLocale,
 } from '../localization/interface-locale';
 import { OfferPanel } from './OfferPanel';
+import { offerGrants } from './offer-grants.test-fixture';
 import { OfferVersionHistory } from './OfferVersionHistory';
 import type {
   OfferClientResponseView,
@@ -23,6 +24,10 @@ import type {
   OfferView,
   OfferReadView,
 } from './offer-response';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'localized-offer-preparer',
@@ -44,6 +49,23 @@ const actor: ActorContext = {
     offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
     offerPermissionAssignmentId: 'offer-preparer-assignment',
     offerPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'commercial-intake-grant',
+      },
+      {
+        bundle: 'company_offer_preparer',
+        version: 'v1',
+        assignmentId: 'offer-preparer-assignment',
+      },
+    ),
   },
 };
 
@@ -613,6 +635,16 @@ function companyActor({
       displayName: companyId,
       offerPermissionAssignmentId: `offer-assignment-${companyId}`,
       offerPermissions,
+      grants: [
+        ...withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_offer_preparer',
+          'company_offer_approver',
+        ),
+        ...offerGrants(offerPermissions, {
+          preparer: `offer-assignment-${companyId}`,
+        }),
+      ],
     },
   };
 }
@@ -1793,6 +1825,12 @@ it.each(['client', 'opportunity'] as const)(
         clientPermissions: prerequisite === 'client' ? [] : ['client.read'],
         commercialIntakePermissions:
           prerequisite === 'opportunity' ? [] : ['commercial.opportunity.read'],
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          prerequisite === 'client'
+            ? 'company_director_client_access'
+            : 'company_commercial_intake',
+        ),
       },
     } satisfies ActorContext;
     const fetch = vi

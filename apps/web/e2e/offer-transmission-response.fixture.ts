@@ -4,6 +4,10 @@ import {
   operationalHomeFixture,
 } from './actor-context.fixture';
 import {
+  companyGrants,
+  type CompanyGrantRequest,
+} from '../src/access/company-grants.test-fixture';
+import {
   buildClientRequest,
   requestListItemFor,
 } from '../src/test/commercial-intake-responses';
@@ -183,6 +187,29 @@ export async function installTransmissionRoutes(
                       'commercial.offer.transmission.record',
                       'commercial.offer.response.record',
                     ],
+              grants: companyGrants(
+                {
+                  bundle: 'company_commercial_intake',
+                  version: 'v1',
+                  assignmentId: 'intake-reader-707',
+                },
+                // The reader without transmission authority keeps Offer read
+                // through the Approver grant alone.
+                {
+                  bundle: 'company_offer_approver',
+                  version: 'v1',
+                  assignmentId: 'offer-approver-707',
+                },
+                ...(readOnly || retired
+                  ? []
+                  : [
+                      {
+                        bundle: 'company_offer_preparer',
+                        version: 'v1',
+                        assignmentId: 'offer-preparer-707',
+                      } satisfies CompanyGrantRequest,
+                    ]),
+              ),
             },
           }
         : {}),

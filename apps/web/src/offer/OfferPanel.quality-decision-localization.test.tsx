@@ -16,6 +16,7 @@ import {
   useInterfaceLocale,
 } from '../localization/interface-locale';
 import { OfferPanel } from './OfferPanel';
+import { offerGrants } from './offer-grants.test-fixture';
 import type { OfferView } from './offer-response';
 import {
   pendingOffer,
@@ -25,6 +26,10 @@ import {
   withRecordedDecision,
   literalRejectionReason,
 } from '../test/offer-quality-decision-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'localized-offer-approver',
@@ -44,6 +49,18 @@ const actor: ActorContext = {
     commercialIntakePermissions: ['commercial.opportunity.read'],
     offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
     offerApproverAssignmentId: 'approver-assignment-one',
+    grants: companyGrants(
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'commercial-intake-grant',
+      },
+      {
+        bundle: 'company_offer_approver',
+        version: 'v1',
+        assignmentId: 'approver-assignment-one',
+      },
+    ),
   },
 };
 
@@ -197,7 +214,18 @@ function actorWithPermissions(
     throw new Error('Expected synthetic active Company.');
   return {
     ...actor,
-    activeCompany: { ...actor.activeCompany, offerPermissions: permissions },
+    activeCompany: {
+      ...actor.activeCompany,
+      offerPermissions: permissions,
+      grants: [
+        ...withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_offer_preparer',
+          'company_offer_approver',
+        ),
+        ...offerGrants(permissions, { approver: 'approver-assignment-one' }),
+      ],
+    },
   };
 }
 

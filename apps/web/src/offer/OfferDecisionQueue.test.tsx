@@ -8,6 +8,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { readCurrentActor } from '../access/current-actor';
 import {
   InterfaceLocaleProvider,
   useInterfaceLocale,
@@ -15,6 +16,10 @@ import {
 import { modelOfferActor, modelOfferFixture } from './model-offer.fixture';
 import { OfferDecisionQueue } from './OfferDecisionQueue';
 import { pendingOffer } from '../test/offer-quality-decision-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const company = modelOfferActor.activeCompany;
 if (!company) throw new Error('Missing synthetic Company');
@@ -36,6 +41,23 @@ const actor: ActorContext = {
       'commercial.offer.approve',
       'commercial.offer.model_based.approve',
     ],
+    grants: withCompanyGrants(
+      withoutCompanyGrants(
+        company.grants,
+        'company_director_client_access',
+        'company_offer_preparer',
+      ),
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v4',
+        assignmentId: 'intake-911',
+      },
+      {
+        bundle: 'company_offer_approver',
+        version: 'v2',
+        assignmentId: 'approver-911',
+      },
+    ),
   },
 };
 const offer = modelOfferFixture();
@@ -420,6 +442,11 @@ it('keeps old captured approvers useful and fails closed on unknown captures wit
       ...base,
       offerApproverPermissionSetVersion: 'v1',
       offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
+      grants: withCompanyGrants(base.grants, {
+        bundle: 'company_offer_approver',
+        version: 'v1',
+        assignmentId: 'approver-911',
+      }),
     },
   };
   const fetch = vi.fn(async () =>
@@ -436,12 +463,39 @@ it('keeps old captured approvers useful and fails closed on unknown captures wit
       displayName: company.displayName,
     },
   };
-  Reflect.set(
-    unknown.activeCompany,
-    'offerApproverPermissionSetVersion',
-    'future',
+  // The current Actor parser refuses an unknown captured version for the
+  // whole Actor (#1332), so no screen receives it; the queue still fails
+  // closed without I/O once the Approver grant is gone.
+  const read = (current: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value: current }) },
+    });
+  expect((await read(unknown)).status).toBe('ok');
+  expect(
+    await read({
+      ...unknown,
+      activeCompany: {
+        ...unknown.activeCompany,
+        grants: unknown.activeCompany.grants?.map((grant) =>
+          grant.bundle === 'company_offer_approver'
+            ? { ...grant, permissionSetVersion: 'future' }
+            : grant,
+        ),
+      },
+    }),
+  ).toEqual({ status: 'error' });
+  rendered.rerender(
+    tree({
+      ...unknown,
+      activeCompany: {
+        ...unknown.activeCompany,
+        grants: withoutCompanyGrants(
+          unknown.activeCompany.grants,
+          'company_offer_approver',
+        ),
+      },
+    }),
   );
-  rendered.rerender(tree(unknown));
   expect(screen.queryByText(item.opportunityTitle)).not.toBeInTheDocument();
   expect(fetch).toHaveBeenCalledTimes(1);
 });

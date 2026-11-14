@@ -98,9 +98,9 @@ export function contractLocaleActor(hasCompany = true) {
             ],
             commercialActivityPermissionSetVersion: 'v1',
             commercialActivityPermissions: ['commercial.activity.read'],
-            // The Pricing and Contract screens read these grants; the
-            // Commercial intake, Client and Offer screens still read the
-            // per-bundle fields above until their areas migrate.
+            // The Pricing, Contract and Offer screens read these grants; the
+            // Commercial intake and Client screens still read the per-bundle
+            // fields above until their areas migrate.
             grants: companyGrants(
               {
                 bundle: 'company_commercial_intake',

@@ -8,12 +8,14 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { readCurrentActor } from '../access/current-actor';
 import {
   InterfaceLocaleProvider,
   useInterfaceLocale,
 } from '../localization/interface-locale';
 import { profitabilityActor, syntheticVersion } from './profitability.fixture';
 import { ProfitabilityDecisionQueue } from './ProfitabilityDecisionQueue';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 
 const director: ActorContext = {
   ...profitabilityActor,
@@ -21,12 +23,11 @@ const director: ActorContext = {
     ...profitabilityActor.activeCompany,
     id: 'company-1',
     displayName: 'Synthetic Company',
-    profitabilityDirectorPermissionAssignmentId: 'director-1',
-    profitabilityDirectorPermissionSetVersion: 'v1',
-    profitabilityDirectorPermissions: [
-      'commercial.profitability_estimate.read',
-      'commercial.profitability_estimate.decide',
-    ],
+    grants: withCompanyGrants(profitabilityActor.activeCompany?.grants, {
+      bundle: 'company_profitability_director',
+      version: 'v1',
+      assignmentId: 'director-1',
+    }),
   },
 };
 const item = {
@@ -99,26 +100,32 @@ function tree(
     </InterfaceLocaleProvider>
   );
 }
-it('never reads for Contributor-only or unknown Director captures', () => {
+it('never reads for Contributor-only or unknown Director captures', async () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
-  const rendered = render(tree(profitabilityActor));
-  const unsupported = {
-    ...director,
-    activeCompany: {
-      ...director.activeCompany,
-      id: 'company-1',
-      displayName: 'Synthetic Company',
-    },
-  };
-  // Simulate an unsupported current-actor wire capture at the public UI seam.
-  Reflect.set(
-    unsupported.activeCompany,
-    'profitabilityDirectorPermissionSetVersion',
-    'future',
-  );
-  rendered.rerender(tree(unsupported));
+  render(tree(profitabilityActor));
   expect(screen.queryByRole('region')).not.toBeInTheDocument();
+  expect(fetch).not.toHaveBeenCalled();
+  // An unsupported captured Director version never reaches the screen: the
+  // current Actor parser refuses the whole Actor (#1332).
+  const read = (current: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value: current }) },
+    });
+  expect((await read(director)).status).toBe('ok');
+  expect(
+    await read({
+      ...director,
+      activeCompany: {
+        ...director.activeCompany,
+        grants: director.activeCompany?.grants?.map((grant) =>
+          grant.bundle === 'company_profitability_director'
+            ? { ...grant, permissionSetVersion: 'future' }
+            : grant,
+        ),
+      },
+    }),
+  ).toEqual({ status: 'error' });
   expect(fetch).not.toHaveBeenCalled();
 });
 it('reaches the next page, previous page and explicit refreshed beginning', async () => {

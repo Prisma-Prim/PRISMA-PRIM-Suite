@@ -20,6 +20,7 @@ import {
   modelOfferFixture,
 } from './model-offer.fixture';
 import { modelOfferQualityCodes } from './offer-response';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'synthetic-command-owner',
@@ -53,12 +54,23 @@ function fixture(kind: Kind) {
       offerApproverAssignmentId: 'approver-852',
       offerApproverPermissionSetVersion: 'v2',
       offerPermissions: [
-        ...(company.offerPermissions ?? []),
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+        'commercial.offer.estimate.prepare',
+        'commercial.offer.model.select',
+        'commercial.offer.model_based.prepare',
+        'commercial.offer.transmission.record',
+        'commercial.offer.model_based.transmission.record',
         'commercial.offer.approve',
         'commercial.offer.model_based.approve',
         'commercial.offer.response.record',
         'commercial.offer.model_based.response.record',
       ],
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_offer_approver',
+        version: 'v2',
+        assignmentId: 'approver-852',
+      }),
     },
   };
   const original = modelOfferFixture();

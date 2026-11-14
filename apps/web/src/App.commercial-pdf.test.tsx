@@ -11,6 +11,7 @@ import {
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import {
   buildClientRequest,
   requestListItemFor,
@@ -62,6 +63,21 @@ function actor(): ActorContext {
         'commercial.opportunity.create',
       ],
       commercialActivityPermissions: ['commercial.activity.read'],
+      // The model Offer preparation also reads the Profitability
+      // Contributor grant beside the model Contract actor's grants.
+      grants: withCompanyGrants(
+        modelContractActor.activeCompany?.grants,
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'intake-965',
+        },
+        {
+          bundle: 'company_profitability_contributor',
+          version: 'v1',
+          assignmentId: 'contributor-assignment',
+        },
+      ),
     },
   };
 }

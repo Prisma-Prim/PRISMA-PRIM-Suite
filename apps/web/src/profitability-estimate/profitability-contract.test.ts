@@ -8,6 +8,8 @@ import {
   validTarget,
 } from './profitability-contract';
 import { profitabilityActor, syntheticVersion } from './profitability.fixture';
+import { readCurrentActor } from '../access/current-actor';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 const scope = {
   workspaceId: 'workspace-1',
   companyId: 'company-1',
@@ -90,34 +92,56 @@ describe('Profitability external boundary and exact decimal display', () => {
     ])
       expect(() => parseEstimateHistory(page, scope)).toThrow();
   });
-  it('fails closed for externally unknown captured versions or grants', () => {
+  it('fails closed for externally unknown captured versions or grants', async () => {
     const company = profitabilityActor.activeCompany;
     expect(profitabilityAuthority(profitabilityActor)).toEqual({
       read: true,
       create: true,
       decide: false,
     });
-    const actor = structuredClone(profitabilityActor);
-    // Simulate untrusted JSON at the typed composition boundary without casting it.
-    Object.assign(actor.activeCompany ?? {}, {
-      profitabilityContributorPermissionSetVersion: 'v999',
+    expect(
+      profitabilityAuthority({
+        ...profitabilityActor,
+        activeCompany: company && {
+          ...company,
+          grants: withoutCompanyGrants(
+            company.grants,
+            'company_profitability_contributor',
+          ),
+        },
+      }),
+    ).toEqual({ read: false, create: false, decide: false });
+    // An unknown captured version, or a permission its version does not
+    // confer, is refused for the whole current Actor (#1332).
+    const read = (current: unknown) =>
+      readCurrentActor({
+        api: { request: async () => ({ status: 'ok', value: current }) },
+      });
+    const withContributor = (change: Record<string, unknown>) => ({
+      ...profitabilityActor,
+      activeCompany: {
+        ...company,
+        grants: company?.grants?.map((grant) =>
+          grant.bundle === 'company_profitability_contributor'
+            ? { ...grant, ...change }
+            : grant,
+        ),
+      },
     });
-    expect(profitabilityAuthority(actor)).toEqual({
-      read: false,
-      create: false,
-      decide: false,
-    });
-    Object.assign(actor.activeCompany ?? {}, {
-      profitabilityContributorPermissionSetVersion: 'v1',
-      profitabilityContributorPermissions: [
-        ...(company?.profitabilityContributorPermissions ?? []),
-        'commercial.profitability_estimate.decide',
-      ],
-    });
-    expect(profitabilityAuthority(actor)).toEqual({
-      read: false,
-      create: false,
-      decide: false,
-    });
+    expect((await read(profitabilityActor)).status).toBe('ok');
+    expect(
+      await read(withContributor({ permissionSetVersion: 'v999' })),
+    ).toEqual({ status: 'error' });
+    expect(
+      await read(
+        withContributor({
+          permissions: [
+            'commercial.profitability_estimate.read',
+            'commercial.profitability_estimate.create',
+            'commercial.profitability_estimate.decide',
+          ],
+        }),
+      ),
+    ).toEqual({ status: 'error' });
   });
 });

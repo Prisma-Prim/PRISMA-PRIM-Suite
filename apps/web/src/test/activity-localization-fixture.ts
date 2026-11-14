@@ -1442,8 +1442,8 @@ export function activityLocaleActor({
             ],
             contractApproverAssignmentId: 'contract-reader-703',
             contractApproverPermissionSetVersion: 'v1',
-            // The Contract screens read these grants; the Commercial intake
-            // and Offer screens still read the per-bundle fields above.
+            // The Contract and Offer screens read these grants; the
+            // Commercial intake screens still read the per-bundle fields above.
             grants: companyGrants(
               {
                 bundle: 'company_commercial_intake',

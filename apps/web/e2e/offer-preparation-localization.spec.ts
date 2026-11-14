@@ -4,6 +4,7 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { selectOption } from './select-option';
 import {
   buildClientRequest,
@@ -259,6 +260,23 @@ async function installRoutes(page: Page) {
                     'commercial.offer.transmission.record',
                     'commercial.pricing.snapshot.read',
                   ],
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'client-reader-654',
+                    },
+                    {
+                      bundle: 'company_commercial_intake',
+                      version: 'v1',
+                      assignmentId: 'intake-reader-654',
+                    },
+                    {
+                      bundle: 'company_offer_preparer',
+                      version: 'v1',
+                      assignmentId: 'offer-preparer-654',
+                    },
+                  ),
                 },
               }
             : {}),

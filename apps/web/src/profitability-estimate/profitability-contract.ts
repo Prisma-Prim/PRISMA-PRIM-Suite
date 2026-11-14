@@ -1,3 +1,4 @@
+import { grantOf, holds } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import type { InterfaceLocale } from '../localization/interface-locale';
 
@@ -315,51 +316,39 @@ export function profitabilityAuthority(actor: ActorContext): {
     actor.workspaceMembershipId.length > 0 &&
     typeof company?.id === 'string' &&
     company.id.length > 0;
-  const contributor = company?.profitabilityContributorPermissions;
-  const director = company?.profitabilityDirectorPermissions;
-  const contributorValid =
-    company?.profitabilityContributorPermissionSetVersion === 'v1' &&
-    typeof company.profitabilityContributorPermissionAssignmentId ===
-      'string' &&
-    company.profitabilityContributorPermissionAssignmentId.length > 0 &&
-    Array.isArray(contributor) &&
-    contributor.every(
-      (permission) =>
-        permission === 'commercial.profitability_estimate.read' ||
-        permission === 'commercial.profitability_estimate.create',
-    );
-  const directorValid =
-    company?.profitabilityDirectorPermissionSetVersion === 'v1' &&
-    typeof company.profitabilityDirectorPermissionAssignmentId === 'string' &&
-    company.profitabilityDirectorPermissionAssignmentId.length > 0 &&
-    Array.isArray(director) &&
-    director.every(
-      (permission) =>
-        permission === 'commercial.profitability_estimate.read' ||
-        permission === 'commercial.profitability_estimate.decide',
-    );
-  const opportunityRead =
-    Array.isArray(company?.commercialIntakePermissions) &&
-    company.commercialIntakePermissions.includes('commercial.opportunity.read');
   const read =
     actorValid &&
-    opportunityRead &&
-    ((contributorValid &&
-      contributor?.includes('commercial.profitability_estimate.read') ===
-        true) ||
-      (directorValid &&
-        director?.includes('commercial.profitability_estimate.read') === true));
+    holds(
+      company,
+      'company_commercial_intake',
+      'commercial.opportunity.read',
+    ) &&
+    (holds(
+      company,
+      'company_profitability_contributor',
+      'commercial.profitability_estimate.read',
+    ) ||
+      holds(
+        company,
+        'company_profitability_director',
+        'commercial.profitability_estimate.read',
+      ));
   return {
     read,
     create:
       read &&
-      contributorValid &&
-      contributor?.includes('commercial.profitability_estimate.create') ===
-        true,
+      holds(
+        company,
+        'company_profitability_contributor',
+        'commercial.profitability_estimate.create',
+      ),
     decide:
       read &&
-      directorValid &&
-      director?.includes('commercial.profitability_estimate.decide') === true,
+      holds(
+        company,
+        'company_profitability_director',
+        'commercial.profitability_estimate.decide',
+      ),
   };
 }
 export function profitabilityContextKey(actor: ActorContext): string {
@@ -369,14 +358,8 @@ export function profitabilityContextKey(actor: ActorContext): string {
     actor.workspaceId,
     actor.workspaceMembershipId,
     company?.id,
-    company?.commercialIntakePermissionAssignmentId,
-    company?.commercialIntakePermissionSetVersion,
-    company?.commercialIntakePermissions,
-    company?.profitabilityContributorPermissionAssignmentId,
-    company?.profitabilityContributorPermissionSetVersion,
-    company?.profitabilityContributorPermissions,
-    company?.profitabilityDirectorPermissionAssignmentId,
-    company?.profitabilityDirectorPermissionSetVersion,
-    company?.profitabilityDirectorPermissions,
+    grantOf(company, 'company_commercial_intake'),
+    grantOf(company, 'company_profitability_contributor'),
+    grantOf(company, 'company_profitability_director'),
   ]);
 }

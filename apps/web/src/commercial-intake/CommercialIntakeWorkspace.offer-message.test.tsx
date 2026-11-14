@@ -19,6 +19,10 @@ import {
   requestListItemFor,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const identity = deterministicBrowserIdentity();
 const capture = 'offer-message-read.v1.' + 'b'.repeat(64);
@@ -62,6 +66,23 @@ function reader(): ActorContext {
       ],
       commercialIntakePermissionAssignmentId: 'intake-1043',
       commercialIntakePermissionSetVersion: 'v2',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v2',
+          assignmentId: 'intake-1043',
+        },
+        {
+          bundle: 'company_offer_preparer',
+          version: 'v1',
+          assignmentId: 'offer-reader-1043',
+        },
+      ),
     },
   };
 }
@@ -174,10 +195,11 @@ it('holds the exact composer outside Client/economic refresh keys and preserves 
     activeCompany: {
       ...company,
       clientPermissions: [],
-      profitabilityContributorPermissionAssignmentId:
-        'unrelated-new-economic-assignment',
-      profitabilityContributorPermissionSetVersion: 'v1',
-      profitabilityContributorPermissions: [],
+      grants: withoutCompanyGrants(
+        company?.grants,
+        'company_director_client_access',
+        'company_profitability_contributor',
+      ),
     },
   };
   view.rerender(element());

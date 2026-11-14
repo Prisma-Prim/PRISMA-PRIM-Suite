@@ -30,6 +30,7 @@ import {
   activitySavedRequest,
   readActivityJourneyFixture,
 } from './test/activity-localization-fixture';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const companyId = '00000000-0000-4000-8000-000000000313';
 const requestId = '00000000-0000-4000-8000-000000000314';
@@ -53,6 +54,11 @@ const reader = {
       'commercial.opportunity.create',
     ],
     commercialActivityPermissions: ['commercial.activity.read'],
+    grants: companyGrants({
+      bundle: 'company_commercial_intake',
+      version: 'v1',
+      assignmentId: 'commercial-intake-grant',
+    }),
   },
 };
 
