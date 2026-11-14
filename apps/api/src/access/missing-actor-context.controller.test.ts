@@ -6,7 +6,11 @@ import {
   type Provider,
   type Type,
 } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import {
+  METHOD_METADATA,
+  MODULE_METADATA,
+  PATH_METADATA,
+} from '@nestjs/common/constants.js';
 import { Test } from '@nestjs/testing';
 import {
   afterAll,
@@ -18,6 +22,9 @@ import {
   vi,
 } from 'vitest';
 import { ActivityLogController } from '../accountability/activity-log.controller.js';
+import { AppController } from '../app.controller.js';
+import { AppModule } from '../app.module.js';
+import { CertificationController } from '../certification/certification.controller.js';
 import { ClientDuplicateReviewController } from '../client/client-duplicate-review.controller.js';
 import { ClientUnionController } from '../client/client-union.controller.js';
 import { ClientController } from '../client/client.controller.js';
@@ -84,6 +91,7 @@ import {
   type ActorContextRequest,
 } from './actor-context.adapter.js';
 import { CompanyRoleAssignmentController } from './company-role-assignment.controller.js';
+import { WorkspaceInvitationAcceptanceController } from './workspace-invitation-acceptance.controller.js';
 import { WorkspaceInvitationController } from './workspace-invitation.controller.js';
 import { WorkspaceMembershipSuspensionController } from './workspace-membership-suspension.controller.js';
 import { WorkspaceSessionRevocationController } from './workspace-session-revocation.controller.js';
@@ -104,6 +112,7 @@ const actor: ActorContext = {
 const actorControllers: readonly Type[] = [
   AccessController,
   ActivityLogController,
+  CertificationController,
   ClientController,
   ClientDuplicateReviewController,
   ClientUnionController,
@@ -159,11 +168,34 @@ const actorControllers: readonly Type[] = [
   WorkspaceSessionRevocationController,
 ];
 
+// Controllers whose routes run without an actor context, each with the
+// reason it stays outside this test. Every other controller of the
+// application must be listed in `actorControllers`.
+const exemptControllers = new Map<Type, string>([
+  [AppController, 'Public health check, answered before any sign-in.'],
+  [
+    WorkspaceInvitationAcceptanceController,
+    'An invitee accepts with a verified principal before holding any Workspace membership, so no actor context can exist yet; a missing principal is denied with 401.',
+  ],
+]);
+
 // Route parameters take values their route admits, a well-formed identifier
 // unless listed, so only the missing actor can deny the request.
 const identifierParameter = ['66666666-6666-4666-8666-666666666666'];
 const routeParameters = new Map<string, readonly string[]>([
   ['noun', ['context', 'director-client']],
+  ['stage', ['stage-1', 'stage-2']],
+  [
+    'update',
+    [
+      'correction',
+      'classification',
+      'reclassification',
+      'response',
+      'plan-judgment',
+      'verification',
+    ],
+  ],
 ]);
 
 interface ActorRoute {
@@ -265,6 +297,71 @@ function dependenciesOf(controller: Type): readonly Type[] {
   throw new Error(`Unresolved constructor dependency of ${controller.name}.`);
 }
 
+function isClass(value: unknown): value is Type {
+  return typeof value === 'function';
+}
+
+function listOf(value: unknown, what: string): readonly unknown[] {
+  if (value === undefined) return [];
+  if (Array.isArray(value)) return value;
+  throw new Error(`Unsupported ${what}.`);
+}
+
+function controllersOf(value: unknown, owner: string): readonly Type[] {
+  const controllers = listOf(value, `controllers of ${owner}`);
+  if (controllers.every(isClass)) return controllers;
+  throw new Error(`Unsupported controller of ${owner}.`);
+}
+
+// Every controller Nest registers for the application, read from the module
+// graph rooted at AppModule: static and dynamic modules, awaited like Nest
+// awaits an asynchronous import. Any other import form fails the test.
+async function applicationControllers(root: Type): Promise<readonly Type[]> {
+  const modules = new Set<Type>();
+  const controllers = new Set<Type>();
+  const pending: unknown[] = [root];
+  while (pending.length > 0) {
+    const entry: unknown = await pending.pop();
+    if (isClass(entry)) {
+      if (modules.has(entry)) continue;
+      modules.add(entry);
+      pending.push(
+        ...listOf(
+          Reflect.getMetadata(MODULE_METADATA.IMPORTS, entry),
+          `imports of ${entry.name}`,
+        ),
+      );
+      for (const controller of controllersOf(
+        Reflect.getMetadata(MODULE_METADATA.CONTROLLERS, entry),
+        entry.name,
+      ))
+        controllers.add(controller);
+    } else if (
+      typeof entry === 'object' &&
+      entry !== null &&
+      'module' in entry &&
+      isClass(entry.module)
+    ) {
+      const { name } = entry.module;
+      pending.push(
+        entry.module,
+        ...listOf(
+          'imports' in entry ? entry.imports : undefined,
+          `imports of ${name}`,
+        ),
+      );
+      for (const controller of controllersOf(
+        'controllers' in entry ? entry.controllers : undefined,
+        name,
+      ))
+        controllers.add(controller);
+    } else {
+      throw new Error('Unsupported module import.');
+    }
+  }
+  return [...controllers];
+}
+
 const actorRoutes = actorControllers.flatMap(routesOf);
 
 describe('Controllers without an established actor context', () => {
@@ -333,6 +430,15 @@ describe('Controllers without an established actor context', () => {
 
   afterAll(async () => {
     await app?.close();
+  });
+
+  it('covers every controller of the application or names why it is exempt', async () => {
+    const controllers = await applicationControllers(AppModule);
+    const accountedFor = [...actorControllers, ...exemptControllers.keys()];
+
+    expect(accountedFor.map(({ name }) => name).sort()).toEqual(
+      controllers.map(({ name }) => name).sort(),
+    );
   });
 
   it('covers every handler of the actor controllers', () => {
