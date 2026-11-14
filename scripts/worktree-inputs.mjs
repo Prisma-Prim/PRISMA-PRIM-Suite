@@ -132,6 +132,24 @@ export function preparationInputs(
         'Local dependency inputs must be regular files.',
       );
   };
+  const addReference = (value, directory) => {
+    const match =
+      typeof value === 'string' && value.match(/^(?:file|link):(.+)$/u);
+    if (match) addLocal(resolve(directory, match[1]));
+  };
+  const addConfiguredReferences = (value) => {
+    if (typeof value === 'string') addReference(value, root);
+    else if (value && typeof value === 'object')
+      for (const child of Object.values(value)) addConfiguredReferences(child);
+  };
+  for (const key of [
+    'overrides',
+    'catalog',
+    'catalogs',
+    'packageExtensions',
+    'package-extensions',
+  ])
+    addConfiguredReferences(config[key]);
   for (const path of [...selected].filter(
     (path) => basename(path) === 'package.json',
   )) {
@@ -141,11 +159,8 @@ export function preparationInputs(
       manifest.devDependencies,
       manifest.optionalDependencies,
     ])
-      for (const value of Object.values(dependencies ?? {})) {
-        const match =
-          typeof value === 'string' && value.match(/^(?:file|link):(.+)$/u);
-        if (match) addLocal(resolve(dirname(path), match[1]));
-      }
+      for (const value of Object.values(dependencies ?? {}))
+        addReference(value, dirname(path));
     for (const patch of Object.values(manifest.pnpm?.patchedDependencies ?? {}))
       addLocal(resolve(root, typeof patch === 'string' ? patch : patch.path));
   }
@@ -351,7 +366,11 @@ export function privateModules(root) {
         metadata.push([relative(root, path), `link:${relative(root, target)}`]);
       } else if (entry.isDirectory()) visit(path);
       else if (entry.isFile())
-        metadata.push([relative(root, path), hash(readFileSync(path))]);
+        metadata.push([
+          relative(root, path),
+          hash(readFileSync(path)),
+          String(lstatSync(path, { bigint: true }).mode & 0o111n),
+        ]);
       else
         throw new PreparationError(
           'Unsupported file type in dependency installation.',

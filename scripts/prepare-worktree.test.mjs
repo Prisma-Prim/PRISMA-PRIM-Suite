@@ -1031,3 +1031,112 @@ await import(${JSON.stringify(new URL('./prepare-worktree.mjs', import.meta.url)
     assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
   });
 }
+
+function packDependency(directory) {
+  const result = spawnSync(
+    'bash',
+    [
+      'scripts/agent-pnpm.sh',
+      '--dir',
+      join(directory, 'packages/dependency'),
+      'pack',
+      '--out',
+      join(directory, 'packages/dependency.tgz'),
+    ],
+    { cwd: directory, encoding: 'utf8', timeout: 30_000 },
+  );
+  assert.equal(result.status, 0, result.stderr);
+}
+
+test('an effective pnpm override local archive cannot reuse stale installed contents', () => {
+  const f = fixture({ workspaceDependency: false });
+  const manifest = JSON.parse(readFileSync(join(f.repo, 'package.json')));
+  manifest.dependencies['synthetic-dependency'] = '1.0.0';
+  writeFileSync(join(f.repo, 'package.json'), JSON.stringify(manifest));
+  writeFileSync(
+    join(f.repo, 'pnpm-workspace.yaml'),
+    'packages: []\noverrides:\n  synthetic-dependency: file:packages/dependency.tgz\n',
+  );
+  packDependency(f.repo);
+  const lock = spawnSync(
+    'bash',
+    [
+      'scripts/agent-pnpm.sh',
+      'install',
+      '--lockfile-only',
+      '--offline',
+      '--ignore-scripts',
+    ],
+    { cwd: f.repo, encoding: 'utf8', timeout: 30_000 },
+  );
+  assert.equal(lock.status, 0, lock.stderr);
+  git(f.repo, 'add', '.');
+  git(
+    f.repo,
+    '-c',
+    'user.name=Synthetic Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'use effective local override',
+  );
+  assert.equal(prepare(f).status, 0);
+  const readInstalled = () =>
+    spawnSync(
+      process.execPath,
+      ['--eval', 'process.stdout.write(require("synthetic-dependency"))'],
+      { cwd: f.target, encoding: 'utf8' },
+    );
+  assert.equal(readInstalled().stdout, 'synthetic-v1');
+  const source = join(f.target, 'packages/dependency/index.cjs');
+  const original = readFileSync(source);
+  writeFileSync(source, "module.exports = 'synthetic-v2';\n");
+  packDependency(f.target);
+  writeFileSync(source, original);
+  git(f.target, 'add', 'packages/dependency.tgz');
+  git(
+    f.target,
+    '-c',
+    'user.name=Synthetic Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'change only override archive',
+  );
+  assert.equal(git(f.target, 'status', '--porcelain'), '');
+  const again = prepare(f);
+  assert.equal(again.status, 2, again.stderr);
+  assert.match(again.stderr, /--refresh/u);
+  assert.equal(readInstalled().stdout, 'synthetic-v1');
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+});
+
+test(
+  'a non-executable installed shim cannot reuse ready qualification',
+  {
+    skip:
+      process.platform === 'win32'
+        ? 'POSIX execution permission semantics'
+        : false,
+  },
+  () => {
+    const f = fixture();
+    assert.equal(prepare(f).status, 0);
+    const binary = join(f.target, 'node_modules/.bin/synthetic');
+    assert.equal(spawnSync(binary, [], { cwd: f.target }).status, 0);
+    chmodSync(binary, 0o644);
+    assert.equal(
+      spawnSync(binary, [], { cwd: f.target }).error?.code,
+      'EACCES',
+    );
+    assert.equal(git(f.target, 'status', '--porcelain'), '');
+    const again = prepare(f);
+    assert.equal(again.status, 2, again.stderr);
+    assert.match(again.stderr, /--refresh/u);
+    assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+  },
+);

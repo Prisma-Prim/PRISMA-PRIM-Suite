@@ -22,7 +22,7 @@ Private home/cache/state directories and technical qualification hashes live und
 
 ## Reruns and changed inputs
 
-Qualification covers the actual manifests, lockfile, workspace/configuration, patches, local dependency contents, runtime/tool identity, environment/configuration fingerprints and installed-file names and bytes, including mutable metadata. A missing or altered package file prevents ready reuse even when tracked source is unchanged. Added internal aliases also change the installation inventory and need explicit refresh before reuse. A matching commit alone is insufficient. Local dependency paths must stay inside the target; source links and external local dependencies are conservatively refused. Dynamic pnpm hooks cannot qualify for automatic reuse.
+Qualification covers the actual manifests, lockfile, workspace/configuration, patches, local dependency contents, runtime/tool identity, environment/configuration fingerprints and installed-file names, bytes and execution permissions, including mutable metadata. Local payload discovery also follows file/link references in pnpm's effective overrides, catalogs and package extensions through the same private-path checks. A missing or altered package file or non-executable shim prevents ready reuse even when tracked source is unchanged. Added internal aliases also change the installation inventory and need explicit refresh before reuse. A matching commit alone is insufficient. Local dependency paths must stay inside the target; source links and external local dependencies are conservatively refused. Dynamic pnpm hooks cannot qualify for automatic reuse.
 
 If inputs or installation are changed or unknown, stop consumers and explicitly authorize a private frozen preparation:
 
@@ -46,6 +46,6 @@ On POSIX, graceful interruption stops and awaits owned process groups. After abr
 
 ## Evidence and platform coverage
 
-`node --test scripts/prepare-worktree.test.mjs` drives the public CLI with real pinned pnpm and synthetic local packages. Process barriers prove same-target serialization, different-target overlap, byte isolation, failure/recovery, input divergence and a surviving installer after owner death. POSIX-only graceful-signal assertions are labelled; Windows runs the remaining coverage natively in CI and `quality` requires its success. No test substitutes a mocked install plan for those real package-manager operations.
+`node --test scripts/prepare-worktree.test.mjs` drives the public CLI with real pinned pnpm and synthetic local packages. Process barriers prove same-target serialization, different-target overlap, byte isolation, failure/recovery, input divergence and a surviving installer after owner death. POSIX-only graceful-signal and executable-permission assertions are labelled; Windows runs the remaining coverage natively in CI and `quality` requires its success. No test substitutes a mocked install plan for those real package-manager operations.
 
 Keep local smoke results technical and private under the [verification evidence rules](private-verification-evidence.md). Inspect any artifact before publishing; this tool does not collect screenshots or certify arbitrary content.
