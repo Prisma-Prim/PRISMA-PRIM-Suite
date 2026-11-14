@@ -10,10 +10,7 @@ export type ModelCommandNotice = {
   key: 'saved' | 'decisionSaved' | 'withdrawalSaved';
   number: number;
 };
-export type ModelCommandConfirmation = {
-  receipt: unknown;
-  read: (path: string) => Promise<unknown>;
-};
+export type ModelCommandConfirmation = { receipt: unknown };
 type PreparedAttempt = {
   path: string;
   body: string;
@@ -40,13 +37,7 @@ type Outcome =
   | { kind: 'denied'; result: ApiResult<unknown> }
   | { kind: 'invalid' | 'stale' | 'uncertain' };
 
-class ConfirmationDenied extends Error {
-  constructor(readonly result: ApiResult<unknown>) {
-    super('Model confirmation access denied.');
-  }
-}
-
-/** Private to the two model command hooks, inside ModelAccessLifetime's scope. */
+/** Private to the Company model command hook, inside ModelAccessLifetime's scope. */
 export function useCompanyModelCommandAttempt({
   identity,
   companyId,
@@ -97,30 +88,10 @@ export function useCompanyModelCommandAttempt({
       if (result.status === 'conflict' || result.status === 'notFound')
         return { kind: 'stale' };
       if (result.status !== 'ok') return { kind: 'uncertain' };
-      const notice = await attempt.confirm({
-        receipt: result.value,
-        read: async (path) => {
-          if (!live(run)) throw new Error('Model attempt retired.');
-          const confirmation = await api.request(path, {
-            companyContextId: attempt.companyId,
-            signal: run.signal,
-          });
-          if (!live(run)) throw new Error('Model attempt retired.');
-          if (
-            confirmation.status === 'unauthorized' ||
-            confirmation.status === 'forbidden'
-          )
-            throw new ConfirmationDenied(confirmation);
-          if (confirmation.status !== 'ok')
-            throw new Error('Model confirmation unavailable.');
-          return confirmation.value;
-        },
-      });
+      const notice = await attempt.confirm({ receipt: result.value });
       return { kind: 'confirmed', notice };
-    } catch (error: unknown) {
-      return error instanceof ConfirmationDenied
-        ? { kind: 'denied', result: error.result }
-        : { kind: 'uncertain' };
+    } catch {
+      return { kind: 'uncertain' };
     }
   }
 

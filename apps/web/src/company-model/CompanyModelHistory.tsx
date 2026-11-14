@@ -1,23 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import type { ApiResult } from '../api/authenticated-api-client';
 import { formatMessage } from '../localization/messages';
 import { useInterfaceLocale } from '../localization/interface-locale';
+import type {
+  CompanyModelContentBase,
+  CompanyModelDraftBase,
+  CompanyModelKind,
+} from './company-model-kind';
 import {
   readExactModelVersion,
   readModelHistory,
-  type ContractModel,
-  type ContractModelHistory as History,
-  type ContractModelVersion,
-} from './contract-model-response';
-import { ContractModelVersionContent } from './ContractModelVersionContent';
-import { useContractModelCopy } from './contract-model.copy';
-import type { ApiResult } from '../api/authenticated-api-client';
+  type CompanyModel,
+  type CompanyModelHistory as History,
+  type CompanyModelVersion as Version,
+} from './company-model-response';
+import { CompanyModelVersion } from './CompanyModelVersion';
 
 type Read<T> =
   | { kind: 'closed' | 'loading' | 'error' | 'unavailable' }
   | { kind: 'ready'; value: T };
-export function ContractModelHistory({
+export function CompanyModelHistory<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+>({
+  kind,
   identity,
   model,
   blocked,
@@ -25,17 +33,18 @@ export function ContractModelHistory({
   onDenied,
   onCopy,
 }: {
+  kind: CompanyModelKind<Content, Draft>;
   identity: BrowserIdentity;
-  model: ContractModel;
+  model: CompanyModel<Content>;
   blocked: boolean;
   epoch: { current: number };
   onDenied: (result: ApiResult<unknown>) => void;
-  onCopy?: (content: ContractModelVersion['content']) => void;
+  onCopy?: (content: Content) => void;
 }) {
-  const copy = useContractModelCopy();
+  const copy = kind.useCopy();
   const { formatNumber } = useInterfaceLocale();
   const [history, setHistory] = useState<Read<History>>({ kind: 'closed' });
-  const [exact, setExact] = useState<Read<ContractModelVersion>>({
+  const [exact, setExact] = useState<Read<Version<Content>>>({
     kind: 'closed',
   });
   const historyPending = useRef<AbortController | undefined>(undefined);
@@ -85,7 +94,7 @@ export function ContractModelHistory({
         try {
           if (result.status !== 'ok') throw new Error('Unavailable history.');
           if (versionId) {
-            const value = readExactModelVersion(result.value).version;
+            const value = readExactModelVersion(kind, result.value).version;
             if (value.id !== versionId)
               throw new Error('Unexpected historical version.');
             setExact({ kind: 'ready', value });
@@ -127,13 +136,13 @@ export function ContractModelHistory({
     });
   }
   return (
-    <section className="contract-model-history">
+    <section className="company-model-history">
       <button
         type="button"
         disabled={blocked || history.kind === 'loading'}
         onClick={() =>
           load({
-            path: '/contract-models/consulting-ro/versions',
+            path: `${kind.path}/versions`,
             versionId: null,
             append: null,
           })
@@ -147,13 +156,13 @@ export function ContractModelHistory({
         <>
           <ol>
             {history.value.versions.map((row) => (
-              <li className="contract-model-literal" key={row.id}>
+              <li className="company-model-literal" key={row.id}>
                 <button
                   type="button"
                   disabled={blocked || exact.kind === 'loading'}
                   onClick={() =>
                     load({
-                      path: `/contract-models/consulting-ro/versions/${row.id}`,
+                      path: `${kind.path}/versions/${row.id}`,
                       versionId: row.id,
                       append: null,
                     })
@@ -175,7 +184,7 @@ export function ContractModelHistory({
               onClick={() => {
                 if (history.kind === 'ready' && history.value.nextCursor)
                   load({
-                    path: `/contract-models/consulting-ro/versions?cursor=${encodeURIComponent(history.value.nextCursor)}`,
+                    path: `${kind.path}/versions?cursor=${encodeURIComponent(history.value.nextCursor)}`,
                     versionId: null,
                     append: history.value,
                   });
@@ -193,7 +202,7 @@ export function ContractModelHistory({
       {exact.kind === 'ready' && (
         <>
           <p>{copy('historical')}</p>
-          <ContractModelVersionContent version={exact.value} />
+          <CompanyModelVersion kind={kind} version={exact.value} />
           {onCopy && (
             <button
               type="button"

@@ -1,45 +1,45 @@
 import type { BrowserIdentity } from '../access-composition';
 import type { ApiResult } from '../api/authenticated-api-client';
+import type { CompanyModelAuthority } from './company-model-authority';
+import type { CompanyModelContentBase } from './company-model-kind';
+import {
+  readCompanyModelResponse,
+  type CompanyModel,
+  type ModelResponseKind,
+} from './company-model-response';
 import {
   useCompanyModelCommandAttempt,
-  type ModelCommandConfirmation,
   type ModelCommandNotice,
-} from '../company-model/use-company-model-command-attempt';
-import type { contractModelAuthority } from './contract-model-authority';
-import type { ContractModelContent } from './contract-model-content';
-import {
-  readContractModelResponse,
-  type ContractModel,
-} from './contract-model-response';
+} from './use-company-model-command-attempt';
 
-type Authority = NonNullable<ReturnType<typeof contractModelAuthority>>;
-export type ModelCommand =
-  | {
-      kind: 'CREATE';
-      previous: ContractModel | null;
-      content: ContractModelContent;
-    }
+export type ModelCommand<Content extends CompanyModelContentBase> =
+  | { kind: 'CREATE'; previous: CompanyModel<Content> | null; content: Content }
   | {
       kind: 'DECIDE';
-      previous: ContractModel;
+      previous: CompanyModel<Content>;
       outcome: 'APPROVE' | 'REJECT';
       basis: string;
     }
   | {
       kind: 'WITHDRAW';
-      previous: ContractModel;
-      target: NonNullable<ContractModel['activeVersion']>;
+      previous: CompanyModel<Content>;
+      target: NonNullable<CompanyModel<Content>['activeVersion']>;
       reason: string;
     };
-export function useContractModelCommand({
+
+export function useCompanyModelCommand<
+  Content extends CompanyModelContentBase,
+>({
+  kind,
   identity,
   authority,
   onStart,
   onConfirmed,
   onDenied,
 }: {
+  kind: ModelResponseKind<Content> & { path: string };
   identity: BrowserIdentity;
-  authority: Authority;
+  authority: CompanyModelAuthority;
   onStart: () => void;
   onConfirmed: () => void;
   onDenied: (result: ApiResult<unknown>) => void;
@@ -52,11 +52,11 @@ export function useContractModelCommand({
     onDenied,
   });
 
-  async function confirm(
-    { receipt }: ModelCommandConfirmation,
-    command: ModelCommand,
-  ): Promise<ModelCommandNotice> {
-    const { model } = readContractModelResponse(receipt);
+  function confirm(
+    receipt: unknown,
+    command: ModelCommand<Content>,
+  ): ModelCommandNotice {
+    const { model } = readCompanyModelResponse(kind, receipt);
     if (
       !model ||
       model.workspaceId !== authority.workspaceId ||
@@ -101,8 +101,7 @@ export function useContractModelCommand({
         JSON.stringify(model.activeVersion) !== JSON.stringify(selected)
       )
         throw new Error('Unexpected decision receipt.');
-    }
-    if (command.kind === 'WITHDRAW') {
+    } else {
       const selected = command.previous.activeVersion;
       if (
         !selected ||
@@ -154,13 +153,13 @@ export function useContractModelCommand({
   return {
     state: attempt.state,
     blocked: attempt.blocked,
-    start(command: ModelCommand) {
+    start(command: ModelCommand<Content>) {
       attempt.start(() => {
-        const { payload, path } = prepare(command);
+        const { payload, path } = prepare(kind.path, command);
         return {
           body: JSON.stringify(payload),
           path,
-          confirm: (confirmation) => confirm(confirmation, command),
+          confirm: ({ receipt }) => confirm(receipt, command),
         };
       });
     },
@@ -168,11 +167,14 @@ export function useContractModelCommand({
   };
 }
 
-function prepare(command: ModelCommand) {
+function prepare<Content extends CompanyModelContentBase>(
+  root: string,
+  command: ModelCommand<Content>,
+) {
   switch (command.kind) {
     case 'CREATE':
       return {
-        path: '/contract-models/consulting-ro/versions',
+        path: `${root}/versions`,
         payload: {
           expectedModelRevision: command.previous?.revision ?? 0,
           content: command.content,
@@ -180,7 +182,7 @@ function prepare(command: ModelCommand) {
       };
     case 'DECIDE':
       return {
-        path: `/contract-models/consulting-ro/versions/${command.previous.head.id}/decision`,
+        path: `${root}/versions/${command.previous.head.id}/decision`,
         payload: {
           expectedModelRevision: command.previous.revision,
           versionNumber: command.previous.head.versionNumber,
@@ -190,7 +192,7 @@ function prepare(command: ModelCommand) {
       };
     case 'WITHDRAW':
       return {
-        path: `/contract-models/consulting-ro/versions/${command.target.id}/withdrawal`,
+        path: `${root}/versions/${command.target.id}/withdrawal`,
         payload: {
           expectedModelRevision: command.previous.revision,
           versionNumber: command.target.versionNumber,

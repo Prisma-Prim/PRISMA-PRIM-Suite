@@ -165,20 +165,15 @@ it.each([
   { stage: 'identity', status: 200 },
   { stage: 'POST', status: 200 },
   { stage: 'POST', status: 403 },
-  { stage: 'confirmation', status: 200 },
-  { stage: 'confirmation', status: 403 },
 ])(
   'permanently retires $stage with late HTTP $status even when cancellation is ignored',
   async ({ stage, status }) => {
     const token = deferred<string>();
     const post = deferred<Response>();
-    const detail = deferred<Response>();
     let signal: AbortSignal | null | undefined;
-    const fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const fetch = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
       signal = init?.signal;
-      return input.toString().endsWith('/detail')
-        ? detail.promise
-        : post.promise;
+      return post.promise;
     });
     vi.stubGlobal('fetch', fetch);
     const onStart = vi.fn();
@@ -206,20 +201,14 @@ it.each([
       retained.start(() => ({
         path: '/model',
         body: '{}',
-        confirm: async ({ read }) => {
-          await read('/model/detail');
-          return { key: 'saved', number: 1 };
-        },
+        confirm: () => ({ key: 'saved', number: 1 }),
       })),
     );
-    if (stage === 'confirmation')
-      await act(async () => post.resolve(Response.json({ accepted: true })));
     unmount();
     expect(signal?.aborted ?? stage === 'identity').toBe(true);
     await act(async () => {
       token.resolve('synthetic-token');
       post.resolve(Response.json({ accepted: true }, { status }));
-      detail.resolve(Response.json({ accepted: true }, { status }));
     });
     act(() => {
       retained.start(() => {
@@ -227,9 +216,7 @@ it.each([
       });
       retained.retry();
     });
-    expect(fetch).toHaveBeenCalledTimes(
-      stage === 'identity' ? 0 : stage === 'POST' ? 1 : 2,
-    );
+    expect(fetch).toHaveBeenCalledTimes(stage === 'identity' ? 0 : 1);
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(onConfirmed).not.toHaveBeenCalled();
     expect(onDenied).not.toHaveBeenCalled();
@@ -354,63 +341,5 @@ it.each([
     expect(onDenied).toHaveBeenCalledTimes(
       status === 401 || status === 403 ? 1 : 0,
     );
-  },
-);
-
-it.each([401, 403, 404, 503])(
-  'classifies confirmation GET HTTP %s within the same Company and cancellation span',
-  async (status) => {
-    const requests: { path: string; init: RequestInit | undefined }[] = [];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        requests.push({ path: input.toString(), init });
-        return Response.json(
-          {},
-          { status: init?.method === 'POST' ? 200 : status },
-        );
-      }),
-    );
-    const onConfirmed = vi.fn();
-    const onDenied = vi.fn();
-    const { result } = renderHook(() =>
-      useCompanyModelCommandAttempt({
-        identity: deterministicBrowserIdentity(),
-        companyId: 'company-a',
-        onStart: vi.fn(),
-        onConfirmed,
-        onDenied,
-      }),
-    );
-    await act(async () =>
-      result.current.start(() => ({
-        path: '/model',
-        body: '{}',
-        confirm: async ({ read }) => {
-          await read('/model/exact-version');
-          return { key: 'withdrawalSaved', number: 4 };
-        },
-      })),
-    );
-    expect(requests).toHaveLength(2);
-    expect(requests[1]?.path).toBe('/api/model/exact-version');
-    expect(requests[1]?.init?.method).toBeUndefined();
-    expect(requests[1]?.init?.signal).toBe(requests[0]?.init?.signal);
-    expect(
-      new Headers(requests[1]?.init?.headers).get('x-company-context-id'),
-    ).toBe('company-a');
-    expect(result.current.state).toEqual(
-      status === 401 || status === 403
-        ? { kind: 'idle', notice: null, error: null }
-        : { kind: 'uncertain' },
-    );
-    expect(onConfirmed).not.toHaveBeenCalled();
-    expect(onDenied).toHaveBeenCalledTimes(
-      status === 401 || status === 403 ? 1 : 0,
-    );
-    if (status === 401 || status === 403)
-      expect(onDenied).toHaveBeenCalledWith({
-        status: status === 401 ? 'unauthorized' : 'forbidden',
-      });
   },
 );

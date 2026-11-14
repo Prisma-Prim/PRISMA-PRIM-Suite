@@ -15,7 +15,7 @@ import {
   reportedSigningPdfAuthority,
 } from './reported-signing-authority';
 import { useReportedSigningCopy } from './reported-signing.copy';
-import { ContractModelBody } from '../contract-model/ContractModelVersionContent';
+import { ContractModelBody } from '../contract-model/ContractModelBody';
 import { useContractCopy } from './contract.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
 import { useContractVersionCopy } from './contract-version.copy';

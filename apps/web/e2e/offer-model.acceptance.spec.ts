@@ -274,7 +274,7 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await workspace
     .getByRole('button', { name: 'Open version 1', exact: true })
     .click();
-  const history = workspace.locator('.offer-model-history');
+  const history = workspace.locator('.company-model-history');
   await expect(
     history.getByRole('heading', {
       name: 'Version 1: Consultanță demonstrativă',
@@ -292,6 +292,12 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   ).toBeVisible();
   await expect(
     history.getByText('Withdrawn from new use', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    history.getByRole('button', {
+      name: 'Copy this version into a new draft',
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.locator('body')).toHaveJSProperty(
     'scrollWidth',
@@ -404,7 +410,7 @@ test('preserves every accepted multiline title and identity when reviewing and c
   await selectCompany(page, companyName, narrow);
   await navigate(page, 'Consulting Offer model', narrow);
   const workspace = page.locator('.offer-model-workspace');
-  const version = workspace.locator('.offer-model-version').first();
+  const version = workspace.locator('.company-model-version').first();
   await expect(version.locator('h3')).toBeVisible();
   expect(await version.locator('h3').innerText()).toBe(
     'Version 1: Titlu unu\nTitlu doi',
@@ -428,7 +434,7 @@ test('preserves every accepted multiline title and identity when reviewing and c
     .getByRole('button', { name: 'Version history', exact: true })
     .click();
   const historyRow = workspace
-    .locator('.offer-model-history > ol > li')
+    .locator('.company-model-history > ol > li')
     .first();
   await expect(historyRow).toBeVisible();
   expect(await historyRow.innerText()).toContain('Titlu unu\nTitlu doi');
@@ -456,6 +462,6 @@ test('preserves every accepted multiline title and identity when reviewing and c
     .click();
   await expect(workspace.getByText('Version 2 saved.')).toBeVisible();
   expect(
-    await workspace.locator('.offer-model-version h3').first().innerText(),
+    await workspace.locator('.company-model-version h3').first().innerText(),
   ).toBe('Version 2: Titlu editat\nAl doilea rând');
 });

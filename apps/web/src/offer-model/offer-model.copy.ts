@@ -3,6 +3,7 @@ import { defineMessages, useMessages } from '../localization/messages';
 const keys = [
   'newVersion',
   'copyHead',
+  'copyVersion',
   'submit',
   'cancel',
   'sourceKind',
@@ -88,6 +89,7 @@ export const offerModelMessages = defineMessages(keys, {
   en: {
     newVersion: 'New model version',
     copyHead: 'Copy current version into a new draft',
+    copyVersion: 'Copy this version into a new draft',
     submit: 'Submit complete version',
     cancel: 'Cancel draft',
     sourceKind: 'Source kind',
@@ -181,6 +183,7 @@ export const offerModelMessages = defineMessages(keys, {
   fr: {
     newVersion: 'Nouvelle version du modèle',
     copyHead: 'Copier la version courante dans un brouillon',
+    copyVersion: 'Copier cette version dans un brouillon',
     submit: 'Proposer la version complète',
     cancel: 'Annuler le brouillon',
     sourceKind: 'Nature de la source',
@@ -275,6 +278,7 @@ export const offerModelMessages = defineMessages(keys, {
   ro: {
     newVersion: 'Versiune nouă a modelului',
     copyHead: 'Copiați versiunea curentă într-o ciornă',
+    copyVersion: 'Copiați această versiune într-o ciornă',
     submit: 'Propuneți versiunea completă',
     cancel: 'Anulați ciorna',
     sourceKind: 'Tipul sursei',
@@ -369,6 +373,7 @@ export const offerModelMessages = defineMessages(keys, {
   ru: {
     newVersion: 'Новая версия шаблона',
     copyHead: 'Скопировать текущую версию в черновик',
+    copyVersion: 'Скопировать эту версию в черновик',
     submit: 'Предложить полную версию',
     cancel: 'Отменить черновик',
     sourceKind: 'Тип источника',

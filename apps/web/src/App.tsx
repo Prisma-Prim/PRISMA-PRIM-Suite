@@ -38,11 +38,15 @@ import {
   canReadProjectTemplateCatalogue,
 } from './project/ProjectTemplateConfiguration';
 import { useAppCopy } from './app.copy';
-import { OfferModelWorkspace } from './offer-model/OfferModelWorkspace';
-import { offerModelAuthority } from './offer-model/offer-model-authority';
+import {
+  OfferModelWorkspace,
+  offerModelAuthority,
+} from './offer-model/offer-model.kind';
 import { useOfferModelCopy } from './offer-model/offer-model.copy';
-import { ContractModelWorkspace } from './contract-model/ContractModelWorkspace';
-import { contractModelAuthority } from './contract-model/contract-model-authority';
+import {
+  ContractModelWorkspace,
+  contractModelAuthority,
+} from './contract-model/contract-model.kind';
 import { useContractModelCopy } from './contract-model/contract-model.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
 import { BlockedTasks } from './project/BlockedTasks';

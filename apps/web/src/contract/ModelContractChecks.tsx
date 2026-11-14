@@ -148,7 +148,7 @@ export function ModelContractChecks({
             · {contract.version.decision.actorWorkspaceMembershipId} ·{' '}
             {contract.version.decision.decidedAt}
           </p>
-          <p className="contract-model-literal">
+          <p className="company-model-literal">
             {contract.version.decision.kind === 'APPROVE'
               ? contract.version.decision.reviewBasis
               : contract.version.decision.reason}

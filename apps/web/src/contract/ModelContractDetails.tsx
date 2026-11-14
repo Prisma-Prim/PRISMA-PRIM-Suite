@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ContractModelBody } from '../contract-model/ContractModelVersionContent';
+import { ContractModelBody } from '../contract-model/ContractModelBody';
 import { useModelOfferCopy } from '../offer/model-offer.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useContractCopy } from './contract.copy';
