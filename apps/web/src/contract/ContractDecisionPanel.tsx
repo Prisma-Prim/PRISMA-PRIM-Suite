@@ -112,7 +112,7 @@ export function ContractDecisionPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${contractPath(opportunityId, contract)}/versions/${encodeURIComponent(contract.version.id)}/${command.kind}`,
         {
           method: 'POST',

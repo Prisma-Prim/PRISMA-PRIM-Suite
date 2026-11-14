@@ -148,7 +148,7 @@ function DocumentOverviewOwner(
         pending,
         identity: callbacks.current.identity,
         execute: (api, signal) =>
-          api.request<unknown>('/documents', {
+          api.request('/documents', {
             companyContextId: props.company.id,
             signal,
           }),

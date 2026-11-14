@@ -144,7 +144,7 @@ function SourceVersions({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (!current()) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           '/documents/' + encodeURIComponent(documentId) + '/versions',
           {
             companyContextId: companyId,

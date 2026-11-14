@@ -72,7 +72,7 @@ export function ContractModelHistory({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(path, {
+        api.request(path, {
           companyContextId: model.companyId,
           signal,
         }),

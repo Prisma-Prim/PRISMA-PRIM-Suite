@@ -103,7 +103,7 @@ export function MissionResultReviewForm({
     setState({ kind: 'pending', command });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      const response = await api.request<unknown>(
+      const response = await api.request(
         `/projects/${projectId}/mission-result-reviews`,
         {
           method: 'POST',

@@ -176,7 +176,7 @@ function ConfigurationSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>('/project-templates', {
+      const result = await api.request('/project-templates', {
         companyContextId: companyId,
         signal: controller.signal,
       });
@@ -223,7 +223,7 @@ function ConfigurationSection({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         '/project-templates/CONSULTING_PREPARATION_ILLUSTRATIVE/versions',
         {
           method: 'POST',

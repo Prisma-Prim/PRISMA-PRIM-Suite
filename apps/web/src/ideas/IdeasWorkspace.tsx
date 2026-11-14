@@ -98,7 +98,7 @@ function IdeasRegistry(props: Props) {
       const api = await createAuthenticatedApiClient(identity);
       if (signal.aborted || epoch !== authorityEpoch.current)
         return { status: 'error' };
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         companyContextId: companyId,
         signal,
         ...(command

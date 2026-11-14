@@ -223,7 +223,7 @@ export function createMultiCompanySummaryReader({
   async function recheckVisibility(scope: Collection) {
     if (!current(scope)) return;
     const request = ++scope.visibilityRequest;
-    const result = await scope.api.request<unknown>('/companies', {
+    const result = await scope.api.request('/companies', {
       signal: scope.controller.signal,
     });
     if (!current(scope) || request !== scope.visibilityRequest) return;
@@ -311,7 +311,7 @@ export function createMultiCompanySummaryReader({
         return;
       }
       row(scope, job, { kind: 'loading', company });
-      let result = await scope.api.request<unknown>('/operational-home', {
+      let result = await scope.api.request('/operational-home', {
         companyContextId: company.id,
         signal: controller.signal,
       });
@@ -352,7 +352,7 @@ export function createMultiCompanySummaryReader({
         row(scope, job, { kind: 'loading', company });
         // One bounded owning-read retry under the freshly qualified authority;
         // repeated denial is an error, never an automatic retry loop.
-        result = await scope.api.request<unknown>('/operational-home', {
+        result = await scope.api.request('/operational-home', {
           companyContextId: company.id,
           signal: controller.signal,
         });
@@ -397,7 +397,7 @@ export function createMultiCompanySummaryReader({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!active()) return;
-      const result = await api.request<unknown>('/companies', {
+      const result = await api.request('/companies', {
         signal: controller.signal,
       });
       if (!active()) return;

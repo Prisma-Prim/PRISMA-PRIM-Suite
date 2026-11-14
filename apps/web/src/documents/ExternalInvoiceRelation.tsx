@@ -66,7 +66,7 @@ function RelationSession({ actor, identity, documentId, ...callbacks }: Props) {
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/documents/${encodeURIComponent(documentId)}`,
           { companyContextId: companyId, signal: request.signal },
         );

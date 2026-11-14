@@ -110,7 +110,7 @@ function ContractModelBody({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>('/contract-models/consulting-ro', {
+        api.request('/contract-models/consulting-ro', {
           companyContextId: authority.companyId,
           signal,
         }),

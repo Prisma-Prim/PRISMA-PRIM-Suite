@@ -150,7 +150,7 @@ export function ClientUnionPanel({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(path, {
+        api.request(path, {
           companyContextId,
           signal,
           ...(command

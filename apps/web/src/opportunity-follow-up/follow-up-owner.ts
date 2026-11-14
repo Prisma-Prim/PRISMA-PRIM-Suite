@@ -96,7 +96,7 @@ export function useFollowUpOwner(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return { status: 'retired' };
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         ...options,
         companyContextId: authority.companyId,
         signal: controller.signal,

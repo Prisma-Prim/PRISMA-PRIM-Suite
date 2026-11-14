@@ -176,7 +176,7 @@ export function useApplicabilityHistory(props: {
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         props.path +
           '/history' +
           (purpose.before === undefined

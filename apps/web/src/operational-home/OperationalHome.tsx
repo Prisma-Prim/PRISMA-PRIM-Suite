@@ -98,7 +98,7 @@ function CompanySummary({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>('/operational-home', {
+        api.request('/operational-home', {
           companyContextId: company.id,
           signal,
         }),

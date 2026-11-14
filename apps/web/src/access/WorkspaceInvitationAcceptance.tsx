@@ -44,7 +44,7 @@ export function WorkspaceInvitationAcceptance({
       saveAcceptanceIntent({ ...intent, attempted: true });
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>('/access/invitations/accept', {
+      const result = await api.request('/access/invitations/accept', {
         method: 'POST',
         signal: controller.signal,
         headers: {
@@ -68,7 +68,7 @@ export function WorkspaceInvitationAcceptance({
       }
       if (result.status !== 'ok') throw new Error('Acceptance unconfirmed.');
       const receipt = acceptanceResult(result.value, intent.invitationId);
-      const context = await api.request<unknown>('/access/current-actor', {
+      const context = await api.request('/access/current-actor', {
         signal: controller.signal,
         headers: { 'x-workspace-context-id': receipt.workspaceId },
       });

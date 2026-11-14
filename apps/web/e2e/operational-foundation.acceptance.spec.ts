@@ -89,6 +89,11 @@ test('operates the delivered Client, Project, Task and working Document journey 
       .getByRole('region', { name: 'Shared details', exact: true })
       .getByText('PRISMA-PRIM', { exact: true }),
   ).toBeVisible();
+  await capture(
+    page,
+    testInfo,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-client-dossier.png`,
+  );
   await clientDossier
     .getByRole('button', { name: 'Open Client Projects' })
     .click();

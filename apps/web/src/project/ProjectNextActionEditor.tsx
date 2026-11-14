@@ -85,7 +85,7 @@ export function NextActionEditor(props: {
       try {
         const api = await createAuthenticatedApiClient(props.identity);
         if (!live()) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/projects/${encodeURIComponent(props.scope.projectId)}/lifecycle`,
           {
             companyContextId: props.scope.companyId,
@@ -144,7 +144,7 @@ export function NextActionEditor(props: {
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
-      const result = await api.request<unknown>(props.path, {
+      const result = await api.request(props.path, {
         method: 'POST',
         body: command.body,
         headers: {

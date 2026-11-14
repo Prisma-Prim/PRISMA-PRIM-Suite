@@ -87,7 +87,7 @@ export function PaymentEvidencePdfUpload({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!current()) return;
-      const result = await api.request<unknown>(command.path, {
+      const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: companyId,
         signal: request.signal,

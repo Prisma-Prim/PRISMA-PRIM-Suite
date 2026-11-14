@@ -116,7 +116,7 @@ export function ContractQualityPanel({
           : action.kind === 'reopen'
             ? base + '/' + encodeURIComponent(action.id)
             : base;
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         companyContextId: companyId,
         signal: request.signal,
         ...(command

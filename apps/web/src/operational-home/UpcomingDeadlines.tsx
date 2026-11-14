@@ -104,7 +104,7 @@ function UpcomingPanel({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(`/due-soon-tasks?offset=${offset}`, {
+        api.request(`/due-soon-tasks?offset=${offset}`, {
           companyContextId: company.id,
           signal,
         }),

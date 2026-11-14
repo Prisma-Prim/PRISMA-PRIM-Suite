@@ -109,7 +109,7 @@ export function ProjectTemplateSelector({
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        const response = await api.request<unknown>(
+        const response = await api.request(
           beforeVersion === undefined
             ? '/project-templates'
             : `/project-templates?beforeVersion=${beforeVersion}`,
@@ -146,7 +146,7 @@ export function ProjectTemplateSelector({
           return;
         }
         if (includePilot) {
-          const pilot = await api.request<unknown>(
+          const pilot = await api.request(
             `/project-templates?templateKey=${pilotTemplateKey}`,
             { companyContextId: companyId, signal: controller.signal },
           );
@@ -364,10 +364,10 @@ export function ProjectTemplatePlan({
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        const response = await api.request<unknown>(
-          `/projects/${projectId}/template`,
-          { companyContextId: companyId, signal: controller.signal },
-        );
+        const response = await api.request(`/projects/${projectId}/template`, {
+          companyContextId: companyId,
+          signal: controller.signal,
+        });
         if (controller.signal.aborted) return;
         if (response.status === 'unauthorized') {
           await identity.rejectSession();

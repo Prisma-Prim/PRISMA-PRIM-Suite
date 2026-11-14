@@ -291,7 +291,7 @@ export function LegacyContractPanel({
       initial.current = undefined;
       const result: ApiResult<unknown> = bootstrap
         ? { status: 'ok', value: bootstrap.contract }
-        : await api.request<unknown>(
+        : await api.request(
             `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}${versionId ? '/versions/' + encodeURIComponent(versionId) : ''}`,
             { companyContextId: companyId, signal },
           );
@@ -332,7 +332,7 @@ export function LegacyContractPanel({
         const source: ApiResult<unknown> =
           bootstrap && bootstrap.offer !== undefined
             ? { status: 'ok', value: bootstrap.offer }
-            : await api.request<unknown>(
+            : await api.request(
                 `/offers/opportunities/${encodeURIComponent(opportunityId)}`,
                 { companyContextId: companyId, signal },
               );
@@ -430,7 +430,7 @@ export function LegacyContractPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/contracts/opportunities/${encodeURIComponent(opportunityId)}${view.pendingSource && !view.acceptedVersionId ? '/preparation' : ''}`,
         {
           method: 'POST',

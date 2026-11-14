@@ -68,7 +68,7 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>('/assigned-tasks', {
+        api.request('/assigned-tasks', {
           companyContextId: companyId,
           signal,
         }),

@@ -143,7 +143,7 @@ export function ContractProjectCreatePanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(command.path, {
+      const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: companyId,
         signal: controller.signal,

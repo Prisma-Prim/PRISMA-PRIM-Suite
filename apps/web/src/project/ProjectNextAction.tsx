@@ -186,7 +186,7 @@ function NextActionReader(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         path + (cursor === undefined ? '' : `?beforeRevision=${cursor}`),
         { companyContextId: companyId, signal: controller.signal },
       );

@@ -162,7 +162,7 @@ export function ClientLegalEntities({
         pending: pendingList,
         identity,
         execute: (api, signal) =>
-          api.request<unknown>(
+          api.request(
             `/clients/${encodeURIComponent(clientAccountId)}/legal-entities`,
             { companyContextId, signal },
           ),
@@ -255,7 +255,7 @@ export function ClientLegalEntities({
       pending: pendingMutation,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(mutation.path, {
+        api.request(mutation.path, {
           method: mutation.method,
           headers: {
             'content-type': 'application/json',

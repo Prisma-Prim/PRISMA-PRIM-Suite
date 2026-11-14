@@ -80,7 +80,7 @@ export function useCompanyModelCommandAttempt({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!live(run)) return { kind: 'uncertain' };
-      const result = await api.request<unknown>(attempt.path, {
+      const result = await api.request(attempt.path, {
         method: 'POST',
         body: attempt.body,
         headers: {
@@ -101,7 +101,7 @@ export function useCompanyModelCommandAttempt({
         receipt: result.value,
         read: async (path) => {
           if (!live(run)) throw new Error('Model attempt retired.');
-          const confirmation = await api.request<unknown>(path, {
+          const confirmation = await api.request(path, {
             companyContextId: attempt.companyId,
             signal: run.signal,
           });

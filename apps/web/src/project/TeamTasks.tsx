@@ -105,7 +105,7 @@ function TeamTasksOwner(props: Props) {
       pending,
       identity: props.identity,
       execute: (api, signal) =>
-        api.request<unknown>(teamTasksPath(filters, offset), {
+        api.request(teamTasksPath(filters, offset), {
           companyContextId: companyId,
           signal,
         }),

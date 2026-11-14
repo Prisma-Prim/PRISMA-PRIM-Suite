@@ -42,7 +42,7 @@ export function useMissionPlanRead<T>(
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(path, { companyContextId: companyId, signal }),
+        api.request(path, { companyContextId: companyId, signal }),
       onResult: (result) => {
         if (result.status === 'ok')
           setState({
@@ -117,7 +117,7 @@ export function useMissionPlanCommand<T>(
     try {
       const api = await createAuthenticatedApiClient(context.identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(attempt.path, {
+      const result = await api.request(attempt.path, {
         method: 'POST',
         body: attempt.body,
         headers: {

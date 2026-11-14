@@ -169,7 +169,7 @@ function EvidenceReader(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!request.current()) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/projects/${props.projectId}/working-evidence-cases${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         {
           companyContextId: props.actor.activeCompany?.id,
@@ -236,7 +236,7 @@ function EvidenceReader(
       const path = revisionId
         ? `/working-evidence-cases/${caseId}/revisions/${revisionId}`
         : `/working-evidence-cases/${caseId}`;
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         companyContextId: props.actor.activeCompany?.id,
         signal: request.controller.signal,
         cache: 'no-store',
@@ -284,7 +284,7 @@ function EvidenceReader(
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!request.current()) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/working-evidence-cases/${current.caseId}/revisions${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         {
           companyContextId: props.actor.activeCompany?.id,

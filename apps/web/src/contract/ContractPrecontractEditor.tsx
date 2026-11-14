@@ -109,7 +109,7 @@ export function ContractPrecontractEditor({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/contracts/opportunities/${encodeURIComponent(opportunityId)}`,
         {
           method: 'POST',

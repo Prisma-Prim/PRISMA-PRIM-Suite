@@ -127,7 +127,7 @@ function PaymentEvidencePdfRead({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (!current()) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           '/documents/' + encodeURIComponent(documentId) + '/versions',
           {
             companyContextId: companyId,
@@ -207,7 +207,7 @@ function PaymentEvidencePdfRead({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!current()) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         path +
           '/history' +
           (beforeRevision === undefined

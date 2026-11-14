@@ -144,7 +144,7 @@ export function usePaymentOwner(
   }
   function request(path: string, options: ApiRequest = {}) {
     return run((api, signal) =>
-      api.request<unknown>(path, {
+      api.request(path, {
         ...options,
         signal,
         companyContextId: companyId,

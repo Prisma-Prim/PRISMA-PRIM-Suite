@@ -72,7 +72,7 @@ export function WorkspaceInvitations({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/workspace-invitations${after ? `?after=${encodeURIComponent(after)}` : ''}`,
           { signal: controller.signal },
         );
@@ -130,18 +130,15 @@ export function WorkspaceInvitations({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
-        `/workspace-invitations${path}`,
-        {
-          method: 'POST',
-          body: command.body,
-          headers: {
-            'content-type': 'application/json',
-            'idempotency-key': command.key,
-          },
-          signal: controller.signal,
+      const result = await api.request(`/workspace-invitations${path}`, {
+        method: 'POST',
+        body: command.body,
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': command.key,
         },
-      );
+        signal: controller.signal,
+      });
       if (controller.signal.aborted) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         await reject(result.status);

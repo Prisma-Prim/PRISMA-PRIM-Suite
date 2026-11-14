@@ -166,7 +166,7 @@ export function ClientDuplicateReviewPanel({
         pending: pendingList,
         identity,
         execute: (api, signal) =>
-          api.request<unknown>(duplicateReviewListPath(cursor), {
+          api.request(duplicateReviewListPath(cursor), {
             companyContextId,
             signal,
           }),
@@ -246,7 +246,7 @@ export function ClientDuplicateReviewPanel({
       pending: pendingDetail,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(
+        api.request(
           `/client-duplicate-reviews/${encodeURIComponent(reference)}`,
           { companyContextId, signal },
         ),
@@ -280,7 +280,7 @@ export function ClientDuplicateReviewPanel({
       pending: pendingAttach,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(
+        api.request(
           `/clients/${encodeURIComponent(candidateId)}/active-company-relationship`,
           { method: 'PUT', companyContextId, signal },
         ),

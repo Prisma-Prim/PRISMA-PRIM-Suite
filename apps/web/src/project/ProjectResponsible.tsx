@@ -134,7 +134,7 @@ function Responsible({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(`${path}/responsible`, {
+      const result = await api.request(`${path}/responsible`, {
         companyContextId: companyId,
         signal: controller.signal,
       });
@@ -189,10 +189,10 @@ function Responsible({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
-        `${path}/eligible-responsible-members`,
-        { companyContextId: companyId, signal: controller.signal },
-      );
+      const result = await api.request(`${path}/eligible-responsible-members`, {
+        companyContextId: companyId,
+        signal: controller.signal,
+      });
       if (controller.signal.aborted) return;
       if (result.status === 'unauthorized') {
         await identity.rejectSession();
@@ -229,7 +229,7 @@ function Responsible({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(`${path}/responsible`, {
+      const result = await api.request(`${path}/responsible`, {
         companyContextId: companyId,
         signal: controller.signal,
         method: 'PUT',

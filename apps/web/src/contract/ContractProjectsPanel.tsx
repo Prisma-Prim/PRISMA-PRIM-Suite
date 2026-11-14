@@ -123,7 +123,7 @@ export function ContractProjectsPanel({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `${contractPath(opportunityId, contract)}/project-candidates`,
           { companyContextId: companyId, signal: controller.signal },
         );
@@ -204,7 +204,7 @@ export function ContractProjectsPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${contractPath(opportunityId, contract)}/projects`,
         {
           method: 'POST',

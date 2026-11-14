@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1093-pr1326-latest-main-proof",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1093,
+  "pullRequest": 1326,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T00:07:56.000Z",
+    "end": "2026-11-14T00:13:50.000Z",
+    "durationSeconds": 354
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Integrate reviewed main54e4: only cost ledger conflicted; own web code unchanged and incoming API/presentation/tests preserved verbatim.80 tests/6files, web types/lint/format,199-call inventory0args and112ESM parity pass. Both ledger sequences and every record byte preserved, with concurrent EOF anchor retained for future appends."
+  }
+}

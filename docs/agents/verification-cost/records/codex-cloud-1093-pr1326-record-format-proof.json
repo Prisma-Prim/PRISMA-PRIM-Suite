@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1093-pr1326-record-format-proof",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1093,
+  "pullRequest": 1326,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T00:58:36.000Z",
+    "end": "2026-11-14T01:04:03.000Z",
+    "durationSeconds": 327
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Adopt main1329 one-file-per-run format. Official migrate moved5 own records, skipped31 identical, and rerun was a no-op; all36 prior objects and all application blobs unchanged. New cost CLI26/26 tests, syntax/lint/format and ledger check pass. No application tests repeated for this tooling-only merge."
+  }
+}

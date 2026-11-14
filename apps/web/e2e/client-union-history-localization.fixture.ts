@@ -168,6 +168,7 @@ export async function installHistoryLocalizationFixture({
       return route.fulfill({
         json: {
           ...dossier,
+          relatedToActiveCompany: true,
           involvedCompanyDisplayNames: historyCompanies.map(
             ({ displayName }) => displayName,
           ),

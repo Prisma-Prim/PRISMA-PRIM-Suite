@@ -107,7 +107,7 @@ function OfferModelBody({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>('/offer-models/consulting-ro', {
+        api.request('/offer-models/consulting-ro', {
           companyContextId: authority.companyId,
           signal,
         }),

@@ -186,16 +186,16 @@ function EstimateOfferPreparationOwner({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const [history, legal, selectedModel] = await Promise.all([
-        api.request<unknown>(
+        api.request(
           `/opportunities/${encodeURIComponent(opportunityId)}/profitability-estimates?limit=25${nextCursor ? '&cursor=' + encodeURIComponent(nextCursor) : ''}`,
           { companyContextId: companyId, signal: request.signal },
         ),
-        api.request<unknown>(
-          `/clients/${encodeURIComponent(clientId)}/legal-entities`,
-          { companyContextId: companyId, signal: request.signal },
-        ),
+        api.request(`/clients/${encodeURIComponent(clientId)}/legal-entities`, {
+          companyContextId: companyId,
+          signal: request.signal,
+        }),
         mode === 'COMPANY_MODEL'
-          ? api.request<unknown>('/offer-models/consulting-ro/for-offer', {
+          ? api.request('/offer-models/consulting-ro/for-offer', {
               companyContextId: companyId,
               signal: request.signal,
             })
@@ -345,7 +345,7 @@ function EstimateOfferPreparationOwner({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}/${offer ? 'versions/' : ''}from-approved-${command.mode === 'COMPANY_MODEL' ? 'model' : 'estimate'}`,
         {
           companyContextId: companyId,

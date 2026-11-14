@@ -47,7 +47,7 @@ export function AttentionTasksPanel({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>(`/attention-tasks?offset=${offset}`, {
+        api.request(`/attention-tasks?offset=${offset}`, {
           companyContextId: company.id,
           signal,
         }),

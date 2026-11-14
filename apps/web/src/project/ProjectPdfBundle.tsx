@@ -138,10 +138,10 @@ function BundleSession({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!live(controller)) return;
-      const result = await api.request<unknown>(
-        `/projects/${projectId}/documents`,
-        { companyContextId: company?.id, signal: controller.signal },
-      );
+      const result = await api.request(`/projects/${projectId}/documents`, {
+        companyContextId: company?.id,
+        signal: controller.signal,
+      });
       if (!live(controller)) return;
       if (result.status === 'unauthorized') {
         deny();
@@ -179,7 +179,7 @@ function BundleSession({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!live(controller)) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/documents/${row.document.id}/versions`,
         { companyContextId: company?.id, signal: controller.signal },
       );

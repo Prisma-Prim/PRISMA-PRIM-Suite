@@ -96,7 +96,7 @@ export function ContractAddendumEditor({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/pricing/opportunities/${encodeURIComponent(opportunityId)}/snapshots?limit=25${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
         { companyContextId: companyId, signal: controller.signal },
       );
@@ -167,7 +167,7 @@ export function ContractAddendumEditor({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         revising
           ? contractPath(opportunityId, contract) + '/versions'
           : `/contracts/opportunities/${encodeURIComponent(opportunityId)}/agreements/${encodeURIComponent(contract.id)}/addenda`,

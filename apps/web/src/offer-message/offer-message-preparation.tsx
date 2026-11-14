@@ -237,7 +237,7 @@ function Preparation({
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live() || request.signal.aborted || !current()) return null;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/offers/opportunities/${encodeURIComponent(owner.source.opportunityId)}/versions/${encodeURIComponent(owner.source.versionId)}/message-preparation?sourceHtmlSha256=${owner.source.sourceHtmlSha256}`,
         {
           companyContextId: owner.source.companyId,

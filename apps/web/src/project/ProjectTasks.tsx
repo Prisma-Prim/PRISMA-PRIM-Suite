@@ -487,7 +487,7 @@ function TaskProject({
     const api = await createAuthenticatedApiClient(identity);
     if (!live()) return false;
     const options = { companyContextId: companyId, signal: controller.signal };
-    const listingResult = await api.request<unknown>(
+    const listingResult = await api.request(
       `/projects/${encodeURIComponent(projectId)}/tasks`,
       options,
     );
@@ -498,11 +498,8 @@ function TaskProject({
     let nextDetail: Detail | null = null;
     if (taskId) {
       const [taskResult, historyResult] = await Promise.all([
-        api.request<unknown>(`/tasks/${encodeURIComponent(taskId)}`, options),
-        api.request<unknown>(
-          `/tasks/${encodeURIComponent(taskId)}/history`,
-          options,
-        ),
+        api.request(`/tasks/${encodeURIComponent(taskId)}`, options),
+        api.request(`/tasks/${encodeURIComponent(taskId)}/history`, options),
       ]);
       if (!live()) return false;
       try {
@@ -577,7 +574,7 @@ function TaskProject({
       (!nextDetail || (nextDetail.kind === 'ready' && nextDetail.mutable))
     ) {
       try {
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/projects/${encodeURIComponent(projectId)}/eligible-task-assignees`,
           options,
         );
@@ -743,7 +740,7 @@ function TaskProject({
         command.action === 'create'
           ? `/projects/${encodeURIComponent(projectId)}/tasks`
           : `/tasks/${encodeURIComponent(command.taskId)}${command.action === 'edit' ? '' : `/${command.action}`}`;
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         companyContextId: companyId,
         signal: controller.signal,
         method: command.action === 'edit' ? 'PATCH' : 'POST',

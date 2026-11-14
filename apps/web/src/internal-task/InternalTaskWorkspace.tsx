@@ -111,7 +111,7 @@ export function InternalTaskWorkspace(props: InternalTaskProps) {
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
-      const result = await api.request<unknown>(path, {
+      const result = await api.request(path, {
         companyContextId: scope.companyId,
         ...(options.method ? { method: options.method } : {}),
         ...(options.body ? { body: options.body } : {}),

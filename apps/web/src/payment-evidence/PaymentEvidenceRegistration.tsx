@@ -131,7 +131,7 @@ export function PaymentEvidenceRegistration({
         return;
       }
       dispatched = true;
-      const result = await api.request<unknown>('/documents', {
+      const result = await api.request('/documents', {
         method: 'POST',
         companyContextId: companyId,
         signal: request.signal,

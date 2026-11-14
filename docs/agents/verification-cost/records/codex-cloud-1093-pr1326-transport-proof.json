@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1093-pr1326-transport-proof",
+  "date": "2026-11-13",
+  "runType": "pull-request-proof",
+  "issue": 1093,
+  "pullRequest": 1326,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-13T20:27:38.000Z",
+    "end": "2026-11-13T21:14:33.047Z",
+    "durationSeconds": 2815
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "199 compiler-driven caller removals and non-generic unknown transport. Full web357files/5666tests passes on pre1295 checkpoint; fresh actual1295 types/inventory/parity pass. ESM112 identical,101 raw. Native PostgreSQL foundation4 tests desktop/narrow with dossier captures inspected; coverage limited to Company loading/dossierGET. Static gates pass."
+  }
+}

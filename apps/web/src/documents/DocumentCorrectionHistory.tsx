@@ -136,7 +136,7 @@ function CorrectionHistorySection({
         pending,
         identity,
         execute: (api, signal) =>
-          api.request<unknown>(
+          api.request(
             `/documents/${encodeURIComponent(documentId)}/correction-history${
               beforeRevision === undefined
                 ? ''

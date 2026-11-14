@@ -67,7 +67,7 @@ function ProjectContractsSession({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
-        const result = await api.request<unknown>(
+        const result = await api.request(
           `/contracts/projects/${encodeURIComponent(projectId)}`,
           { companyContextId: company?.id, signal: controller.signal },
         );

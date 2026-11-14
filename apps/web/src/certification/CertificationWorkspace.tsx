@@ -884,7 +884,7 @@ function CertificationRegistry(
   ): Promise<ApiResult<unknown>> {
     const api = await createAuthenticatedApiClient(identity);
     if (signal.aborted) return ABANDONED;
-    const result = await api.request<unknown>(
+    const result = await api.request(
       path,
       post
         ? {

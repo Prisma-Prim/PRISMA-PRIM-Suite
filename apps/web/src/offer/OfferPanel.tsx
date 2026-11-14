@@ -270,7 +270,7 @@ function OfferPanelOwner({
     }
     try {
       const api = await createAuthenticatedApiClient(identity);
-      const offerResult = await api.request<unknown>(
+      const offerResult = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}${
           requestedVersionId === undefined
             ? ''
@@ -323,11 +323,11 @@ function OfferPanelOwner({
         return;
       }
       const [snapshotsResult, entitiesResult] = await Promise.all([
-        api.request<unknown>(
+        api.request(
           `/pricing/opportunities/${encodeURIComponent(opportunityId)}/snapshots?limit=25`,
           { companyContextId: companyId, signal: request.signal },
         ),
-        api.request<unknown>(
+        api.request(
           `/clients/${encodeURIComponent(currentClientId)}/legal-entities`,
           { companyContextId: companyId, signal: request.signal },
         ),
@@ -396,11 +396,11 @@ function OfferPanelOwner({
     try {
       const api = await createAuthenticatedApiClient(identity);
       const [snapshots, entities] = await Promise.all([
-        api.request<unknown>(
+        api.request(
           `/pricing/opportunities/${encodeURIComponent(opportunityId)}/snapshots?limit=25`,
           { companyContextId: companyId, signal: request.signal },
         ),
-        api.request<unknown>(
+        api.request(
           `/clients/${encodeURIComponent(currentClientId)}/legal-entities`,
           { companyContextId: companyId, signal: request.signal },
         ),
@@ -476,7 +476,7 @@ function OfferPanelOwner({
     pendingRequest.current = request;
     try {
       const api = await createAuthenticatedApiClient(identity);
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}${view.kind === 'version' ? '/versions' : ''}`,
         {
           method: 'POST',

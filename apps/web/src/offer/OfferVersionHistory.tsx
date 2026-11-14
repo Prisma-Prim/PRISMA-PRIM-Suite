@@ -50,7 +50,7 @@ export function OfferVersionHistory({
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${base}/versions${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
         { companyContextId: companyId, signal: request.signal },
       );
@@ -85,7 +85,7 @@ export function OfferVersionHistory({
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${base}/versions/${encodeURIComponent(id)}`,
         { companyContextId: companyId, signal: request.signal },
       );

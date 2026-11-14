@@ -210,7 +210,7 @@ function TaskResultOwner({
         companyContextId: companyId,
         signal: controller.signal,
       };
-      const currentValue = await api.request<unknown>(path, options);
+      const currentValue = await api.request(path, options);
       if (!alive.current || controller.signal.aborted) return;
       const snapshot = readTaskResultSnapshot(
         await value(currentValue),
@@ -218,7 +218,7 @@ function TaskResultOwner({
       );
       let versions: TaskResultReference[] = [];
       if (snapshot.mutable && canRecord) {
-        const candidates = await api.request<unknown>(
+        const candidates = await api.request(
           `${path}/eligible-versions`,
           options,
         );
@@ -252,7 +252,7 @@ function TaskResultOwner({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!alive.current) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${path}${command.kind === 'correct' ? '/corrections' : ''}`,
         {
           method: 'POST',
@@ -355,7 +355,7 @@ function TaskResultOwner({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!alive.current || controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `${path}/history${beforeRevision === undefined ? '' : `?beforeRevision=${beforeRevision}`}`,
         { companyContextId: companyId, signal: controller.signal },
       );

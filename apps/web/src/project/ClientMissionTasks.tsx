@@ -67,10 +67,10 @@ function TaskOwner(props: Props) {
       pending,
       identity: callbacks.current.identity,
       execute: (api, signal) =>
-        api.request<unknown>(
-          `/projects/${encodeURIComponent(props.project.id)}/tasks`,
-          { companyContextId: props.project.companyId, signal },
-        ),
+        api.request(`/projects/${encodeURIComponent(props.project.id)}/tasks`, {
+          companyContextId: props.project.companyId,
+          signal,
+        }),
       onResult: async (result, signal) => {
         if (
           result.status === 'unauthorized' ||

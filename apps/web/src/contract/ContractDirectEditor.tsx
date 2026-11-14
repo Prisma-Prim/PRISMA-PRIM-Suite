@@ -109,12 +109,12 @@ export function ContractDirectEditor({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const [prices, entities] = await Promise.all([
-        api.request<unknown>(
+        api.request(
           `/pricing/opportunities/${encodeURIComponent(opportunityId)}/snapshots?limit=25${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`,
           { companyContextId: companyId, signal: controller.signal },
         ),
         mode.kind === 'create' && !cursor
-          ? api.request<unknown>(
+          ? api.request(
               `/clients/${encodeURIComponent(mode.clientId)}/legal-entities`,
               { companyContextId: companyId, signal: controller.signal },
             )
@@ -224,7 +224,7 @@ export function ContractDirectEditor({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
+      const result = await api.request(
         `/contracts/opportunities/${encodeURIComponent(opportunityId)}/${mode.kind === 'create' ? 'direct' : 'versions'}`,
         {
           method: 'POST',

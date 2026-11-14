@@ -116,7 +116,7 @@ function ContractJourneyOwner(
       try {
         const api = await createAuthenticatedApiClient(props.identity);
         if (signal.aborted) return;
-        const result = await api.request<unknown>(path, {
+        const result = await api.request(path, {
           companyContextId: companyId,
           signal,
         });
@@ -164,7 +164,7 @@ function ContractJourneyOwner(
           company.offerPermissions?.includes('commercial.offer.read') &&
           !requested
         ) {
-          const source = await api.request<unknown>(
+          const source = await api.request(
             `/offers/opportunities/${encodeURIComponent(props.opportunityId)}`,
             { companyContextId: companyId, signal },
           );

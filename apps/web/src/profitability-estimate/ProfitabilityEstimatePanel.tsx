@@ -135,7 +135,7 @@ function ProfitabilityEstimateOwner({
     ): Promise<ApiResult<unknown> | undefined> => {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return undefined;
-      return api.request<unknown>(path, {
+      return api.request(path, {
         companyContextId: company.id,
         signal: controller.signal,
         ...(command

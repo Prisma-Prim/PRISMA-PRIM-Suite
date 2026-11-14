@@ -72,7 +72,7 @@ export interface AuthenticatedApiClient {
         status: 'malformed' | 'unsupported' | 'stale' | 'limit' | 'unavailable';
       }
   >;
-  request<T>(path: string, request?: ApiRequest): Promise<ApiResult<T>>;
+  request(path: string, request?: ApiRequest): Promise<ApiResult<unknown>>;
   downloadSelection(
     path: string,
     body: string,
@@ -137,10 +137,10 @@ export async function createAuthenticatedApiClient(
       if (response.status !== 200) return { status: 'error' };
       return readCommercialPdfResponse(response, target);
     },
-    async request<T>(
+    async request(
       path: string,
       request: ApiRequest = {},
-    ): Promise<ApiResult<T>> {
+    ): Promise<ApiResult<unknown>> {
       try {
         const response = await authenticatedFetch(path, request);
         if (request.cache === 'no-store' && request.signal?.aborted)
@@ -192,8 +192,7 @@ export async function createAuthenticatedApiClient(
         if (!response.ok) return { status: 'error' };
         return {
           status: 'ok',
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Transport boundary: `T` is the caller's declared API response contract, not runtime proof. Callers that rely on the shape request `unknown` and parse it.
-          value: (await response.json()) as T,
+          value: await response.json(),
         };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')

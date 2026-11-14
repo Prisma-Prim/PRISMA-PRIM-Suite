@@ -13,16 +13,13 @@ import {
 } from '../api/latest-authenticated-request';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useCompanyRegistrationCopy } from './company-registration.copy';
+import {
+  readCreatedCompanyReference,
+  readRegisteredCompany,
+} from './company-response';
 import './company-registration.css';
 
-interface CompanyRecord {
-  id: string;
-  workspaceId: string;
-  displayName: string;
-  status: 'active';
-  createdAt: string;
-  createdByInternalUserId: string;
-}
+type CompanyRecord = ReturnType<typeof readRegisteredCompany>;
 
 type RegistrationState =
   | { status: 'idle' }
@@ -116,7 +113,7 @@ export function CompanyRegistration({
       pending: pendingRequest,
       identity,
       execute: async (api, signal) => {
-        const createResult = await api.request<CompanyRecord>('/companies', {
+        const createResult = await api.request('/companies', {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -129,14 +126,19 @@ export function CompanyRegistration({
         if (createResult.status !== 'ok')
           return { phase: 'create' as const, result: createResult };
         signal.throwIfAborted();
-        const readResult = await api.request<CompanyRecord>(
-          `/companies/${createResult.value.id}`,
+        const createdCompany = readCreatedCompanyReference(createResult.value);
+        const readResult = await api.request(
+          `/companies/${encodeURIComponent(createdCompany.id)}`,
           {
             companyContextId: requestCompanyContextId,
             signal,
           },
         );
-        return { phase: 'read' as const, result: readResult };
+        return {
+          phase: 'read' as const,
+          companyId: createdCompany.id,
+          result: readResult,
+        };
       },
       async onResult(request, signal) {
         if (
@@ -159,9 +161,13 @@ export function CompanyRegistration({
           setState({ status: 'error' });
           return;
         }
+        const company = readRegisteredCompany(request.result.value, {
+          companyId: request.companyId,
+          workspaceId: actor.workspaceId,
+        });
         retryCommand.current = undefined;
-        onCompanyRegistered(request.result.value);
-        setState({ status: 'ready', company: request.result.value });
+        onCompanyRegistered(company);
+        setState({ status: 'ready', company });
       },
       onError: () => setState({ status: 'error' }),
     });

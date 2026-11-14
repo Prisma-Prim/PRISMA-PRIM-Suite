@@ -113,7 +113,7 @@ function CommercialOwner(
         pending,
         identity: callbacks.current.identity,
         execute: (api, signal) =>
-          api.request<unknown>(
+          api.request(
             `/commercial-intake/requests?clientDossierId=${encodeURIComponent(props.clientDossierId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
             { companyContextId: props.company.id, signal },
           ),

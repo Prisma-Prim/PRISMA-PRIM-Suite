@@ -86,7 +86,7 @@ export function ClientCorrectionHistory({
         pending,
         identity,
         execute: (api, signal) =>
-          api.request<unknown>(
+          api.request(
             `/clients/${encodeURIComponent(clientAccountId)}/correction-history${
               cursor === undefined
                 ? ''
