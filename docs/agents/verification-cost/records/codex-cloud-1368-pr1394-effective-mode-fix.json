@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1368-pr1394-effective-mode-fix",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1368,
+  "pullRequest": 1394,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-14T19:37:02.000Z",
+    "end": "2026-11-14T19:52:04.000Z",
+    "durationSeconds": 902
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 0
+    },
+    "notes": "Real override archive and chmod/EACCES public CLI regressions RED2 then GREEN2. Full scripts1107pass1Windows-onlyskip, format/lint/types pass; final concurrent repository smoke preserves48 primary/peer entries. CI2044 cancelled; fresh native Windows/full CI required."
+  }
+}
