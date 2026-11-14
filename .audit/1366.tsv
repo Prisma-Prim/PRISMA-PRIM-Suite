@@ -1,0 +1,2 @@
+ts	phase	decision	why	evidence	result
+2026-11-14T10:59:48Z	boundary	Add a read-only PR-description preflight through the same structural validator as the CI gate; retain distinct public entry points for description and executed evidence	Detect the three observed Markdown failures without manufacturing functional or visual success or duplicating the proof policy	#1366; owner approval of retrospective items1-3 on2026-11-14; scripts/verify-acceptance-proof.mjs	Implementation pending; full CI remains mandatory

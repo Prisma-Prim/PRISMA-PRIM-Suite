@@ -340,7 +340,16 @@ function lineValue(sectionLines, label) {
 const redGreen = String.raw`red\s*(?:-|→|->|to)\s*green`;
 
 /** Verifies one pull request. The input is data only; the caller fetches it. */
-export function verifyAcceptanceProof({
+export function verifyAcceptanceProof(input) {
+  return verifyProof({ ...input, evidenceStage: 'ci' });
+}
+
+/** Checks description requirements only; it never establishes executed proof. */
+export function preflightAcceptanceProof(input) {
+  return verifyProof({ ...input, evidenceStage: 'description' });
+}
+
+function verifyProof({
   repository,
   pullRequest,
   issues,
@@ -350,6 +359,7 @@ export function verifyAcceptanceProof({
   approvers,
   readSource = () => null,
   reusedFamilies = {},
+  evidenceStage,
 }) {
   const failures = [];
   const notes = [];
@@ -471,6 +481,7 @@ export function verifyAcceptanceProof({
     const family = familyOf(citation.file);
     if (!family)
       return `is not in a test family that CI runs (${families.slice(0, -1).join(', ')} or ${families.at(-1)}).`;
+    if (evidenceStage === 'description') return null;
     const found = locate(citation, family);
     if (found.missing) {
       const run = reusedFamilies[family];
@@ -496,6 +507,7 @@ export function verifyAcceptanceProof({
   function visualProblem(citation) {
     if (familyOf(citation.file) !== 'acceptance')
       return 'is not an acceptance journey test; visual proof must cite apps/web/e2e/*.acceptance.spec.ts.';
+    if (evidenceStage === 'description') return null;
     const found = locate(citation, 'acceptance');
     if (found.missing)
       return 'did not run in this CI run (there are no acceptance results).';
@@ -575,7 +587,7 @@ export function verifyAcceptanceProof({
       'A bug fix row needs a "Red-green:" line in the section stating that its regression test failed before the fix and passes after it.',
     );
 
-  for (const file of results.unreadable ?? [])
+  for (const file of (evidenceStage === 'ci' ? results.unreadable : []) ?? [])
     notes.push(`The CI result file ${file} could not be read.`);
 
   const exception = verifyException({

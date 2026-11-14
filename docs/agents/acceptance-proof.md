@@ -10,6 +10,28 @@ Read this when you write the **Acceptance proof** section of a pull request, or 
 
 Every pull request carries the Acceptance proof section of the [pull request template](../../.github/pull_request_template.md). It has one row per acceptance criterion of each issue the pull request closes. A pull request that closes no issue, such as a quick fix or a dependency bump, lists its own claims as criteria, at least one row. The check blocks the merge when a criterion has no row, or when a cited test is absent from the suite, failed or was skipped in the same CI run.
 
+## Description preflight
+
+Before publishing, check the proposed body against the current GitHub issue criteria and the local change:
+
+```bash
+node scripts/preflight-pr.mjs --body /path/to/pr.md --repo Prisma-Prim/PRISMA-PRIM-Suite --base origin/main
+```
+
+The command uses the authenticated `gh` CLI for GET requests only. It includes committed, staged, unstaged and untracked files from the whole worktree. An existing pull request can supply its body and changed files:
+
+```bash
+node scripts/preflight-pr.mjs --pr 123 --repo Prisma-Prim/PRISMA-PRIM-Suite
+```
+
+Add `--body FILE` to check a proposed replacement without editing GitHub. An existing exception also needs `PROOF_EXCEPTION_APPROVERS` matching the repository setting; unavailable approver facts cannot grant an exception.
+
+Preflight shares the final check's structural rules: criterion coverage, row kinds, proof-reference forms, visual-reference requirements and exceptions. Its success validates the description only. It does not read test reports, establish that a test exists or passed, inspect a screenshot, or replace the required `quality` check.
+
+For an offline demonstration, use `--body FILE --context FILE`. The JSON context contains `repository`, `pullRequest` (0 before creation), `issues` as `{ number, body }` objects, and `changedFiles` as repository-relative paths; `comments` and `approvers` are optional. An unreadable issue has a null body. Duplicate/malformed facts are refused, and the output states that GitHub freshness was not checked. Use synthetic/public issue facts only.
+
+Exit codes: 0 for an accepted description, 1 for rejected proof requirements, and 2 for invalid arguments or unavailable/malformed inputs. The command publishes nothing and starts no tests or agents.
+
 ## Row format
 
 | Column           | Content                                                                                                                                       |
