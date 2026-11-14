@@ -249,17 +249,21 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           membershipId,
         });
       }
-      await fixture.command({
-        path: `/offer-models/consulting-ro/versions/${pendingModelVersionId}/decision`,
-        companyId: source.companyId,
-        headers: ESTIMATE_OFFER_DIRECTOR,
-        body: {
-          expectedModelRevision: 6,
-          versionNumber: 3,
-          outcome: 'APPROVE',
-          basis: 'Synthetic pre-slice approval',
-        },
-      });
+      const pendingApproval = responseRecord(
+        responseRecord(
+          await fixture.command({
+            path: `/offer-models/consulting-ro/versions/${pendingModelVersionId}/decision`,
+            companyId: source.companyId,
+            headers: ESTIMATE_OFFER_DIRECTOR,
+            body: {
+              expectedModelRevision: 6,
+              versionNumber: 3,
+              outcome: 'APPROVE',
+              basis: 'Synthetic pre-slice approval',
+            },
+          }),
+        ).model,
+      );
       const generatedCommand = {
         path: `/offers/opportunities/${source.opportunityId}/versions/from-approved-model`,
         companyId: source.companyId,
@@ -270,6 +274,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
             ...source,
             modelVersionId: pendingModelVersionId,
             modelVersionNumber: 3,
+            modelApprovalDecisionId: responseString(
+              responseRecord(responseRecord(pendingApproval.head).decision),
+              'id',
+            ),
           }),
           expectedOfferRevision: 1,
         },

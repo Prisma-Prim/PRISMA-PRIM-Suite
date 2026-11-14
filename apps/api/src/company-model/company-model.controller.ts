@@ -1,25 +1,30 @@
+import { Body, Get, Headers, Param, Post, Query, Req } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Param,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ActorContextAdapter,
   type ActorContextRequest,
   requireActorContext,
 } from '../access/actor-context.adapter.js';
-import { ContractModelService } from './contract-model.service.js';
+import type {
+  CompanyModelContent,
+  CompanyModelIdentity,
+} from './company-model.kind.js';
+import type { CompanyModelService } from './company-model.service.js';
 
-@Controller('contract-models/consulting-ro')
-@UseGuards(ActorContextAdapter)
-export class ContractModelController {
-  constructor(private readonly models: ContractModelService) {}
+/**
+ * The routes every Company model kind serves. A kind's controller extends it
+ * with its own `@Controller` path and `ActorContextAdapter` guard.
+ */
+export abstract class CompanyModelController<
+  Content extends CompanyModelContent,
+  Identity extends CompanyModelIdentity,
+  Selection extends string,
+> {
+  protected constructor(
+    protected readonly models: CompanyModelService<
+      Content,
+      Identity,
+      Selection
+    >,
+  ) {}
 
   @Get()
   read(@Req() request: ActorContextRequest) {

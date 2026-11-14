@@ -30,7 +30,7 @@ import { ProfitabilityEstimateService } from '../profitability-estimate/profitab
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { OfferCommandStore } from './offer-command-store.js';
 import { ModelOfferView } from './model-offer-view.js';
-import { OfferModelService } from '../offer-model/offer-model.service.js';
+import { OfferModelService } from '../offer-model/offer-model.adapter.js';
 import { modelOfferFinancials } from './model-offer-financials.js';
 import { renderModelOfferRepresentation } from './model-offer-representation.js';
 import { EstimateOfferView } from './offer-estimate-view.js';
@@ -303,6 +303,8 @@ export class EstimateOfferPreparationService {
                 content.modelSource.versionId !== command.modelVersionId ||
                 content.modelSource.versionNumber !==
                   command.modelVersionNumber ||
+                content.modelSource.approvalDecisionId !==
+                  command.modelApprovalDecisionId ||
                 content.financialDeclaration.taxAmount !==
                   command.financialDeclaration.taxAmount ||
                 content.financialDeclaration.taxLabel !==
@@ -318,10 +320,11 @@ export class EstimateOfferPreparationService {
           }
           const modelSource =
             'modelVersionId' in command
-              ? await this.models.requireSelectedForOfferWithinTransaction({
+              ? await this.models.requireSelectedWithinTransaction({
                   actor,
                   versionId: command.modelVersionId,
                   versionNumber: command.modelVersionNumber,
+                  approvalDecisionId: command.modelApprovalDecisionId,
                 })
               : null;
           if (

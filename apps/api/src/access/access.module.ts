@@ -3,8 +3,7 @@ import { MissionApplicabilityAccessService } from './mission-applicability-acces
 import { MissionPlanAccessService } from './mission-plan-access.service.js';
 import { TaskAccessService } from './task-access.service.js';
 import { OperationalRiskAccessService } from './operational-risk-access.service.js';
-import { ContractModelAccessService } from './contract-model-access.service.js';
-import { OfferModelAccessService } from './offer-model-access.service.js';
+import { CompanyModelAccessService } from './company-model-access.service.js';
 import { ProjectResponsibleAccessService } from './project-responsible-access.service.js';
 import { CommercialResponsibleAccessService } from './commercial-responsible-access.service.js';
 import { Module } from '@nestjs/common';
@@ -21,8 +20,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
   providers: [
     MissionApplicabilityAccessService,
     MissionPlanAccessService,
-    ContractModelAccessService,
-    OfferModelAccessService,
+    CompanyModelAccessService,
     OperationalRiskAccessService,
     InternalTaskAccessService,
     TaskAccessService,
@@ -58,8 +56,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
   exports: [
     MissionApplicabilityAccessService,
     MissionPlanAccessService,
-    ContractModelAccessService,
-    OfferModelAccessService,
+    CompanyModelAccessService,
     OperationalRiskAccessService,
     ACCESS_ADMISSION,
     CompanyContextAuthorization,

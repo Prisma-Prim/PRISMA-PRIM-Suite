@@ -1,7 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
+import { companyModelFields } from '../company-model/company-model.fields.js';
 
 export const OFFER_MODEL_CODE = 'INTEGRATED_MANAGEMENT_CONSULTING_RO';
 export const OFFER_MODEL_LANGUAGE = 'ro';
+
+export const offerModelFields = companyModelFields(invalidContent);
+export const { exactRecord, text, modelInteger, sourceKind } = offerModelFields;
 
 /** The fixed pilot structure accepts plain content, never executable templates. */
 export function readOfferModelContent(value: unknown) {
@@ -70,11 +74,6 @@ export function readOfferModelContent(value: unknown) {
 
 export type OfferModelContent = ReturnType<typeof readOfferModelContent>;
 
-function sourceKind(value: unknown): 'ILLUSTRATIVE' | 'COMPANY_SUPPLIED' {
-  if (value === 'ILLUSTRATIVE' || value === 'COMPANY_SUPPLIED') return value;
-  throw invalidContent();
-}
-
 function narrativeSections(value: unknown) {
   const input = exactRecord(value, [
     'introduction',
@@ -100,47 +99,6 @@ function narrativeSections(value: unknown) {
     paymentConditions: text(input.paymentConditions, 4_000),
     closingRationale: text(input.closingRationale, 4_000),
   };
-}
-
-export function exactRecord(
-  value: unknown,
-  required: readonly string[],
-  optional: readonly string[] = [],
-): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    throw invalidContent();
-  const record = Object.fromEntries(Object.entries(value));
-  if (
-    required.some((key) => !Object.hasOwn(record, key)) ||
-    Object.keys(record).some(
-      (key) => !required.includes(key) && !optional.includes(key),
-    )
-  )
-    throw invalidContent();
-  return record;
-}
-
-export function text(value: unknown, limit: number): string {
-  if (
-    typeof value !== 'string' ||
-    !value.trim() ||
-    value.includes('\u0000') ||
-    /[\uD800-\uDFFF]/u.test(value) ||
-    value.length > limit
-  )
-    throw invalidContent();
-  return value;
-}
-
-export function modelInteger(value: unknown, minimum: number): number {
-  if (
-    typeof value !== 'number' ||
-    !Number.isInteger(value) ||
-    value < minimum ||
-    value > 2_147_483_647
-  )
-    throw invalidContent();
-  return value;
 }
 
 function invalidContent() {

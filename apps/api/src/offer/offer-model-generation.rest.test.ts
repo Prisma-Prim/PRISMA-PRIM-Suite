@@ -1015,7 +1015,7 @@ withPostgres('Approved-model Offer generation public REST', () => {
     }
     expect(bodies[0]).toEqual(bodies[1]);
     expect(bodies[1]).toEqual(bodies[2]);
-    await fixture.command({
+    const replacement = await fixture.command({
       path: `/offer-models/consulting-ro/versions/${pendingId}/decision`,
       companyId: source.companyId,
       headers: ESTIMATE_OFFER_DIRECTOR,
@@ -1040,6 +1040,7 @@ withPostgres('Approved-model Offer generation public REST', () => {
           ...command.body,
           modelVersionId: pendingId,
           modelVersionNumber: 2,
+          modelApprovalDecisionId: approvalDecisionId(replacement),
           expectedOfferRevision: 1,
         },
       }),
@@ -1067,6 +1068,104 @@ withPostgres('Approved-model Offer generation public REST', () => {
         { code: 'DECLARED_TAX_UNVERIFIED', status: 'WARNING' },
       ]),
     );
+  });
+
+  // Divergence 2 of #1190: before #1191 an Offer generation named only the
+  // model Version and its number, so the approval it relied on was not
+  // fenced. It now names the approval decision too, as a Contract does.
+  it('refuses a generation whose model approval changed during selection, as for Contracts', async () => {
+    const source = await prepareGeneratedOfferSource(fixture);
+    const read = {
+      path: '/offer-models/consulting-ro/for-offer',
+      companyId: source.companyId,
+      headers: ESTIMATE_OFFER_PREPARER,
+    };
+    const selected = responseRecord(
+      responseRecord(await fixture.read(read)).selection,
+    );
+    expect(selected).toMatchObject({
+      versionId: source.modelVersionId,
+      versionNumber: 1,
+      approvalDecisionId: source.modelApprovalDecisionId,
+    });
+    const successor = responseRecord(
+      responseRecord(
+        await fixture.command({
+          path: '/offer-models/consulting-ro/versions',
+          companyId: source.companyId,
+          headers: ESTIMATE_OFFER_PREPARER,
+          body: {
+            expectedModelRevision: 2,
+            content: {
+              ...generatedOfferModelContent,
+              serviceTitle: 'Approved during selection',
+            },
+          },
+        }),
+      ).model,
+    );
+    const successorId = responseString(responseRecord(successor.head), 'id');
+    const replacement = await fixture.command({
+      path: `/offer-models/consulting-ro/versions/${successorId}/decision`,
+      companyId: source.companyId,
+      headers: ESTIMATE_OFFER_DIRECTOR,
+      body: {
+        expectedModelRevision: 3,
+        versionNumber: 2,
+        outcome: 'APPROVE',
+        basis: 'Successor approved while the preparer selected',
+      },
+    });
+    const command = {
+      path: `/offers/opportunities/${source.opportunityId}/from-approved-model`,
+      companyId: source.companyId,
+      headers: ESTIMATE_OFFER_PREPARER,
+    };
+    const intent = generatedOfferIntent(source);
+    for (const body of [
+      intent,
+      {
+        ...intent,
+        modelVersionId: successorId,
+        modelVersionNumber: 2,
+        modelApprovalDecisionId: source.modelApprovalDecisionId,
+      },
+    ]) {
+      const refused = await fixture.post({ ...command, body });
+      expect({
+        status: refused.status,
+        body: await refused.json(),
+      }).toMatchObject({
+        status: 409,
+        body: { code: 'OFFER_MODEL_SELECTION_UNAVAILABLE' },
+      });
+    }
+    const offers = await fixture.pool.query<{ count: number }>(
+      'SELECT count(*)::int AS count FROM offers WHERE company_id=$1',
+      [source.companyId],
+    );
+    expect(offers.rows).toEqual([{ count: 0 }]);
+    const approval = approvalDecisionId(replacement);
+    const created = responseRecord(
+      await fixture.command({
+        ...command,
+        body: {
+          ...intent,
+          modelVersionId: successorId,
+          modelVersionNumber: 2,
+          modelApprovalDecisionId: approval,
+        },
+      }),
+    );
+    expect(created).toMatchObject({
+      version: {
+        modelSource: {
+          versionId: successorId,
+          versionNumber: 2,
+          approvalDecisionId: approval,
+        },
+      },
+    });
   });
 
   it('rejects forged frozen-source/declaration/representation combinations and all in-place content changes in PostgreSQL', async () => {
@@ -1380,3 +1479,12 @@ withPostgres('Approved-model Offer generation public REST', () => {
     });
   });
 });
+
+/** The approval decision a model decision command recorded on its head. */
+function approvalDecisionId(result: unknown) {
+  const model = responseRecord(responseRecord(result).model);
+  return responseString(
+    responseRecord(responseRecord(model.head).decision),
+    'id',
+  );
+}

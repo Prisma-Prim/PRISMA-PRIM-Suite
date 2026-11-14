@@ -1,14 +1,12 @@
 import { createHash } from 'node:crypto';
-import type { ContractModelService } from '../contract-model/contract-model.service.js';
+import type { ContractModelService } from '../contract-model/contract-model.adapter.js';
 import type { OfferService } from '../offer/offer.service.js';
 import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import { escapeHtml } from '../offer/offer-representation.js';
 import type { readModelContractCase } from './model-contract-case.js';
 
 export type ApprovedContractModelSource = Awaited<
-  ReturnType<
-    ContractModelService['requireSelectedForContractWithinTransaction']
-  >
+  ReturnType<ContractModelService['requireSelectedWithinTransaction']>
 >;
 export type ModelContractOfferSource = Awaited<
   ReturnType<OfferService['resolveModelContractSource']>

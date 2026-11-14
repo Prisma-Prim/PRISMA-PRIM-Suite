@@ -183,7 +183,7 @@ async function prepareInvoiceCommercialCase(
       ).model,
     ),
     offerModelId = text(object(offerModel.head).id);
-  await command(
+  const offerModelApproval = await command(
     `/offer-models/consulting-ro/versions/${offerModelId}/decision`,
     {
       expectedModelRevision: 1,
@@ -193,6 +193,9 @@ async function prepareInvoiceCommercialCase(
     },
     modelContractIdentities.preparer,
     companyId,
+  );
+  const offerModelApprovalId = text(
+    object(object(object(offerModelApproval.model).head).decision).id,
   );
   let recipient:
     { kind: 'PRIMARY' } | { kind: 'ADDITIONAL'; legalEntityId: string } = {
@@ -252,6 +255,7 @@ async function prepareInvoiceCommercialCase(
         estimateVersionNumber: 1,
         modelVersionId: offerModelId,
         modelVersionNumber: 1,
+        modelApprovalDecisionId: offerModelApprovalId,
         recipient,
         validityDays: 30,
         scopeNote:

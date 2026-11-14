@@ -4,7 +4,7 @@ import { MissionPlanModule } from '../mission-plan/mission-plan.module.js';
 import { ReportedContractSigningService } from './reported-contract-signing.service.js';
 import { DocumentsModule } from '../documents/documents.module.js';
 import { ModelContractService } from './model-contract.service.js';
-import { ContractModelModule } from '../contract-model/contract-model.module.js';
+import { CompanyModelModule } from '../company-model/company-model.module.js';
 import { ContractVersionReader } from './contract-version-reader.js';
 import { Module } from '@nestjs/common';
 import { ContractDecisionQueueService } from './contract-decision-queue.service.js';
@@ -26,7 +26,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
     MissionPlanModule,
     DocumentsModule,
     AccessModule,
-    ContractModelModule,
+    CompanyModelModule,
     ProjectModule,
     AccountabilityModule,
     ClientModule,

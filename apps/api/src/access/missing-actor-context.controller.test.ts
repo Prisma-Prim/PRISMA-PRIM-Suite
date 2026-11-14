@@ -27,7 +27,7 @@ import {
   CommercialIntakeOpportunityController,
 } from '../commercial-intake/commercial-intake.controller.js';
 import { CompanyController } from '../company/company.controller.js';
-import { ContractModelController } from '../contract-model/contract-model.controller.js';
+import { ContractModelController } from '../contract-model/contract-model.adapter.js';
 import { ContractAgreementsController } from '../contract/contract-agreements.controller.js';
 import { ContractDecisionQueueController } from '../contract/contract-decision-queue.controller.js';
 import {
@@ -51,7 +51,7 @@ import {
 } from '../knowledge/knowledge.controller.js';
 import { MissionPlanCopyController } from '../mission-plan/mission-plan-copy.controller.js';
 import { MissionPlanController } from '../mission-plan/mission-plan.controller.js';
-import { OfferModelController } from '../offer-model/offer-model.controller.js';
+import { OfferModelController } from '../offer-model/offer-model.adapter.js';
 import { OfferDecisionQueueController } from '../offer/offer-decision-queue.controller.js';
 import { OfferController } from '../offer/offer.controller.js';
 import { OperationalHomeController } from '../operational-home/operational-home.controller.js';
@@ -212,12 +212,9 @@ function routeTemplate(...segments: readonly string[]): string {
 // that a handler added later is covered without editing this list.
 function routesOf(controller: Type): ActorRoute[] {
   const bases = pathSegments(Reflect.getMetadata(PATH_METADATA, controller));
-  return Object.getOwnPropertyNames(controller.prototype).flatMap((name) => {
-    const handler: unknown = Object.getOwnPropertyDescriptor(
-      controller.prototype,
-      name,
-    )?.value;
-    if (name === 'constructor' || typeof handler !== 'function') return [];
+  return methodNames(controller).flatMap((name) => {
+    const handler: unknown = Reflect.get(controller.prototype, name);
+    if (typeof handler !== 'function') return [];
     const pathMetadata: unknown = Reflect.getMetadata(PATH_METADATA, handler);
     if (pathMetadata === undefined) return [];
     const method = httpMethods.get(
@@ -234,6 +231,22 @@ function routesOf(controller: Type): ActorRoute[] {
       ),
     );
   });
+}
+
+// The methods a class declares or inherits, as Nest scans a controller: a
+// handler or service method defined on a shared base class counts too.
+function methodNames(type: Type): readonly string[] {
+  const names = new Set<string>();
+  for (
+    let prototype: unknown = type.prototype;
+    typeof prototype === 'object' &&
+    prototype !== null &&
+    prototype !== Object.prototype;
+    prototype = Reflect.getPrototypeOf(prototype)
+  )
+    for (const name of Object.getOwnPropertyNames(prototype))
+      if (name !== 'constructor') names.add(name);
+  return [...names];
 }
 
 function dependenciesOf(controller: Type): readonly Type[] {
@@ -264,9 +277,7 @@ describe('Controllers without an established actor context', () => {
 
   // Answers every method the service class declares through one recorder.
   function serviceDouble(service: Type): Provider {
-    const methods = Object.getOwnPropertyNames(service.prototype).filter(
-      (name) => name !== 'constructor',
-    );
+    const methods = methodNames(service);
     return {
       provide: service,
       useValue: Object.fromEntries(

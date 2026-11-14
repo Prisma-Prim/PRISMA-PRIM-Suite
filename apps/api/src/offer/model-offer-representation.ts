@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
-import type { OfferModelService } from '../offer-model/offer-model.service.js';
+import type { OfferModelService } from '../offer-model/offer-model.adapter.js';
 import type { ApprovedEstimateCommercialProjection } from '../profitability-estimate/profitability-estimate.types.js';
 import type { modelOfferFinancials } from './model-offer-financials.js';
 import type { OfferRecipientCopy } from './offer.types.js';
 import { escapeHtml } from './offer-representation.js';
 
 export type ApprovedOfferModelSource = Awaited<
-  ReturnType<OfferModelService['requireSelectedForOfferWithinTransaction']>
+  ReturnType<OfferModelService['requireSelectedWithinTransaction']>
 >;
 
 export const MODEL_OFFER_RENDERER = 'OFFER_COMPANY_CONSULTING_RO';

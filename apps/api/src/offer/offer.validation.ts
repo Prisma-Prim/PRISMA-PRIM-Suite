@@ -259,6 +259,7 @@ function readModelOfferCommand(value: unknown, successor: boolean) {
     ...ESTIMATE_CONTENT_FIELDS,
     'modelVersionId',
     'modelVersionNumber',
+    'modelApprovalDecisionId',
     'financialDeclaration',
     ...(successor ? ['expectedOfferRevision'] : []),
   ];
@@ -282,6 +283,10 @@ function readModelOfferCommand(value: unknown, successor: boolean) {
     ...content,
     modelVersionId: uuid(input.modelVersionId, 'modelVersionId').toLowerCase(),
     modelVersionNumber,
+    modelApprovalDecisionId: uuid(
+      input.modelApprovalDecisionId,
+      'modelApprovalDecisionId',
+    ).toLowerCase(),
     financialDeclaration: readModelOfferFinancialDeclaration(
       input.financialDeclaration,
     ),

@@ -23,9 +23,9 @@ export async function prepareContractDecisionQueue(page: Page, suffix: string) {
     (await f.read(`/offers/opportunities/${f.opportunityId}`, f.companyId))
       .offer,
   );
-  const offerModelId = text(
-    object(object(firstOffer.version).modelSource).versionId,
-  );
+  const offerModelSource = object(object(firstOffer.version).modelSource);
+  const offerModelId = text(offerModelSource.versionId);
+  const offerModelApprovalId = text(offerModelSource.approvalDecisionId);
   const model = object(
     (await f.read('/contract-models/consulting-ro', f.companyId)).model,
   );
@@ -88,6 +88,7 @@ export async function prepareContractDecisionQueue(page: Page, suffix: string) {
           estimateVersionNumber: 1,
           modelVersionId: offerModelId,
           modelVersionNumber: 1,
+          modelApprovalDecisionId: offerModelApprovalId,
           recipient: { kind: 'PRIMARY' },
           validityDays: 30,
           scopeNote: 'Synthetic pending Contract scope',

@@ -239,7 +239,7 @@ export async function prepareOfferMessageCase(page: Page, suffix: string) {
       ).model,
     ),
     offerModelId = text(object(offerModel.head).id);
-  await command(
+  const offerModelApproval = await command(
     `/offer-models/consulting-ro/versions/${offerModelId}/decision`,
     {
       expectedModelRevision: 1,
@@ -250,11 +250,15 @@ export async function prepareOfferMessageCase(page: Page, suffix: string) {
     offerMessageIdentities.preparer,
     companyId,
   );
+  const offerModelApprovalId = text(
+    object(object(object(offerModelApproval.model).head).decision).id,
+  );
   const intent = {
     estimateVersionId: text(estimate.id),
     estimateVersionNumber: 1,
     modelVersionId: offerModelId,
     modelVersionNumber: 1,
+    modelApprovalDecisionId: offerModelApprovalId,
     recipient: { kind: 'PRIMARY' },
     validityDays: 30,
     scopeNote:

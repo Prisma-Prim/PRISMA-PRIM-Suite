@@ -1,27 +1,32 @@
 import { BadRequestException } from '@nestjs/common';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import type { DatabaseContext } from '../database/database-context.js';
-import {
-  contractModelDecisions,
-  contractModelVersions,
-} from '../database/schema/index.js';
-import { exactRecord, modelInteger } from './contract-model.content.js';
-import {
-  attribution,
-  versionSummary,
-  type ModelRow,
-} from './contract-model.view.js';
+import type {
+  CompanyModelContent,
+  CompanyModelIdentity,
+  CompanyModelKind,
+  ModelRow,
+} from './company-model.kind.js';
+import { attribution, versionSummary } from './company-model.view.js';
 
 /** Called only after the model owner establishes live authority and a root lock. */
-export async function readContractModelHistory({
+export async function readCompanyModelHistory<
+  Content extends CompanyModelContent,
+  Identity extends CompanyModelIdentity,
+  Selection extends string,
+>({
+  kind,
   database,
   model,
   query,
 }: {
+  kind: CompanyModelKind<Content, Identity, Selection>;
   database: DatabaseContext;
   model: ModelRow | undefined;
   query: unknown;
 }) {
+  const { exactRecord, modelInteger } = kind.fields;
+  const invalidCursor = () => invalidHistoryPage(kind);
   const input = exactRecord(query, [], ['limit', 'cursor']);
   const limit =
     input.limit === undefined
@@ -63,52 +68,45 @@ export async function readContractModelHistory({
     }
   }
   if (!model) return { versions: [], nextCursor: null };
+  const { versions, decisions } = kind.tables;
   const scope = and(
-    eq(contractModelVersions.workspaceId, model.workspaceId),
-    eq(contractModelVersions.companyId, model.companyId),
-    eq(contractModelVersions.modelId, model.id),
+    eq(versions.workspaceId, model.workspaceId),
+    eq(versions.companyId, model.companyId),
+    eq(versions.modelId, model.id),
   );
   if (before !== undefined) {
     const [known] = await database.connection
-      .select({ id: contractModelVersions.id })
-      .from(contractModelVersions)
-      .where(and(scope, eq(contractModelVersions.versionNumber, before)))
+      .select({ id: versions.id })
+      .from(versions)
+      .where(and(scope, eq(versions.versionNumber, before)))
       .limit(1);
     if (!known) throw invalidCursor();
   }
   const rows = await database.connection
-    .select({
-      version: contractModelVersions,
-      decision: contractModelDecisions,
-    })
-    .from(contractModelVersions)
+    .select({ version: versions, decision: decisions })
+    .from(versions)
     .leftJoin(
-      contractModelDecisions,
+      decisions,
       and(
-        eq(
-          contractModelDecisions.workspaceId,
-          contractModelVersions.workspaceId,
-        ),
-        eq(contractModelDecisions.companyId, contractModelVersions.companyId),
-        eq(contractModelDecisions.modelId, contractModelVersions.modelId),
-        eq(contractModelDecisions.versionId, contractModelVersions.id),
+        eq(decisions.workspaceId, versions.workspaceId),
+        eq(decisions.companyId, versions.companyId),
+        eq(decisions.modelId, versions.modelId),
+        eq(decisions.versionId, versions.id),
       ),
     )
     .where(
       and(
         scope,
-        before === undefined
-          ? undefined
-          : lt(contractModelVersions.versionNumber, before),
+        before === undefined ? undefined : lt(versions.versionNumber, before),
       ),
     )
-    .orderBy(desc(contractModelVersions.versionNumber))
+    .orderBy(desc(versions.versionNumber))
     .limit(limit + 1);
   const selected = rows.slice(0, limit);
   const last = selected.at(-1);
   return {
     versions: selected.map(({ version, decision }) => ({
-      ...versionSummary(version),
+      ...versionSummary(kind, version),
       predecessorVersionId: version.predecessorVersionId,
       ...attribution(version),
       decision: decision
@@ -132,9 +130,12 @@ export async function readContractModelHistory({
   };
 }
 
-function invalidCursor(): never {
+function invalidHistoryPage(kind: {
+  readonly noun: string;
+  readonly codePrefix: string;
+}): never {
   throw new BadRequestException({
-    code: 'CONTRACT_MODEL_CURSOR_INVALID',
-    message: 'The Contract model history page is invalid.',
+    code: `${kind.codePrefix}_CURSOR_INVALID`,
+    message: `The ${kind.noun} model history page is invalid.`,
   });
 }
