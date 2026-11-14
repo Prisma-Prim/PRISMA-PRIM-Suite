@@ -27,7 +27,7 @@ type Props = Omit<
   | 'onProtectedReceivedAddendumWorkChange'
   | 'clientFilter'
 > & {
-  legacyKey: string;
+  clientKey: string;
   requestedPaymentEvidence?: RequestedDocument & {
     paymentEvidenceVersionId?: string;
   };
@@ -55,9 +55,9 @@ function currentNativeIntent(
   );
 }
 
-/** One Documents surface: Source selection outlives unrelated legacy Client keys. */
+/** One Documents surface: Source selection outlives unrelated Client keys. */
 export function DocumentsSection({
-  legacyKey,
+  clientKey,
   onProtectedSourceWorkChange,
   ...props
 }: Props) {
@@ -152,7 +152,7 @@ export function DocumentsSection({
     props.requestedDocument,
     props.clientFilter,
   ]);
-  // Legacy deliberately ignores an intent present at its initial mount. Mount
+  // The illustrative Client journey deliberately ignores an intent present at its initial mount. Mount
   // once without it, then deliver only this newly accepted native command.
   useEffect(() => {
     if (pane.kind === 'native-opening')
@@ -179,7 +179,7 @@ export function DocumentsSection({
   if (pane.kind !== 'payment-evidence')
     return (
       <DocumentWorkspace
-        key={legacyKey}
+        key={clientKey}
         {...props}
         requestedDocument={
           pane.kind === 'native-opening' ? undefined : props.requestedDocument

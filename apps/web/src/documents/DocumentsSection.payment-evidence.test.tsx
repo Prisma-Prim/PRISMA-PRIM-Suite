@@ -236,7 +236,7 @@ function apiBoundary(sourceVersions?: unknown) {
 
 type HostProps = Parameters<typeof DocumentsSection>[0];
 function show(initial: Partial<HostProps> = {}) {
-  let props: HostProps = { actor, identity, legacyKey: 'legacy-A', ...initial };
+  let props: HostProps = { actor, identity, clientKey: 'client-A', ...initial };
   const ui = () => (
     <SectionVisibility value={true}>
       <ApplicationPresentation value="prisme">
@@ -400,23 +400,23 @@ it('keeps a protected Source command and identical uncertain retry until the lat
   expect(api.registrations()).toHaveLength(2);
   view.update({
     requestedDocument: intent(latest.id, 2),
-    legacyKey: 'legacy-B',
+    clientKey: 'client-B',
   });
   await screen.findByRole('button', { name: first.title });
-  view.update({ legacyKey: 'legacy-A' });
+  view.update({ clientKey: 'client-A' });
   await screen.findByRole('button', { name: first.title });
   expect(api.detailReads(latest.id)).toHaveLength(1);
 });
 
-it('never replays its initial or already-aborted native intent across Source and legacy A→B→A', async () => {
+it('never replays its initial or already-aborted native intent across Source and Client-key A→B→A', async () => {
   const api = apiBoundary();
   const mounted = intent(second.id, 7);
   const view = show({ requestedDocument: mounted });
   await screen.findByRole('button', { name: first.title });
   expect(api.detailReads(second.id)).toHaveLength(0);
   await selectSource();
-  view.update({ legacyKey: 'legacy-B' });
-  view.update({ legacyKey: 'legacy-A' });
+  view.update({ clientKey: 'client-B' });
+  view.update({ clientKey: 'client-A' });
   expect(
     screen.getByRole('form', {
       name: 'Register payment evidence',
@@ -452,16 +452,16 @@ it.each(['shell-cleared', 'source-aborted'] as const)(
     expect(api.detailReads(second.id)).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Other Documents' }));
     await screen.findByRole('button', { name: first.title });
-    view.update({ legacyKey: 'legacy-B' });
+    view.update({ clientKey: 'client-B' });
     await screen.findByRole('button', { name: first.title });
-    view.update({ legacyKey: 'legacy-A' });
+    view.update({ clientKey: 'client-A' });
     await screen.findByRole('button', { name: first.title });
     expect(api.detailReads(second.id)).toHaveLength(0);
     expect(api.registrations()).toHaveLength(1);
   },
 );
 
-it('retires an abort-ignoring late native read before returning through Source and legacy remounts', async () => {
+it('retires an abort-ignoring late native read before returning through Source and Client-key remounts', async () => {
   const api = apiBoundary();
   api.holdDetail(second.id);
   const view = show();
@@ -476,8 +476,8 @@ it('retires an abort-ignoring late native read before returning through Source a
   expect(
     screen.queryByRole('heading', { name: second.title }),
   ).not.toBeInTheDocument();
-  view.update({ legacyKey: 'legacy-B' });
-  view.update({ legacyKey: 'legacy-A' });
+  view.update({ clientKey: 'client-B' });
+  view.update({ clientKey: 'client-A' });
   expect(
     screen.getByRole('form', {
       name: 'Register payment evidence',
@@ -504,7 +504,7 @@ it('routes a fresh Client working-Documents filter to native inventory while pay
       activeCompany: { ...actor.activeCompany, clientPermissions: [] },
     },
     clientFilter: undefined,
-    legacyKey: 'legacy-B',
+    clientKey: 'client-B',
   });
   expect(
     screen.getByRole('form', {
@@ -516,7 +516,7 @@ it('routes a fresh Client working-Documents filter to native inventory while pay
       'Company Client identity-read access is required to select and copy a new payer.',
     ),
   ).toBeVisible();
-  view.update({ actor, legacyKey: 'legacy-A' });
+  view.update({ actor, clientKey: 'client-A' });
   expect(
     screen.getByRole('form', {
       name: 'Register payment evidence',

@@ -158,7 +158,7 @@ export class OfferVersionDifferences {
         opportunityId: version.opportunityId,
         offerVersionId: version.id,
       }));
-    // Preserve the original field order and exact legacy history vocabulary.
+    // Preserve the original field order and exact history vocabulary of the ILLUSTRATIVE variant.
     return {
       recipientKind: content.recipientKind,
       recipientAdditionalLegalEntityId:

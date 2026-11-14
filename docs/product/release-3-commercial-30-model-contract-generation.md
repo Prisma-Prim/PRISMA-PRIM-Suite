@@ -58,8 +58,8 @@ before D10's separate exact signing/acceptance declaration. Existing illustrativ
     business content; scope/session/authority loss retires protected state.
 11. A foreign Company or Workspace cannot discover records, sources or receipts;
     losing model/economic access does not erase independently readable copies.
-12. An existing user retains every legacy origin, capture, receipt, representation
-    and Project link without automatic migration into the new mode.
+12. Every illustrative origin, capture, receipt, representation and Project link
+    is a product path that stays available and is not migrated into the new mode.
 
 Only kind `CONTRACT` is supported. The new immutable origin is
 `COMPANY_MODEL_OFFER`; each Version has provenance `COMPANY_MODEL_OFFER`, language

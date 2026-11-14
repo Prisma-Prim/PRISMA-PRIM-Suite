@@ -928,7 +928,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <DocumentsSection
           key={`documents:${access.sessionGeneration}:${access.actor.activeCompany.id}`}
-          legacyKey={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+          clientKey={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
           actor={access.actor}
           identity={identity}
           onActivityRecorded={refreshActivityLog}

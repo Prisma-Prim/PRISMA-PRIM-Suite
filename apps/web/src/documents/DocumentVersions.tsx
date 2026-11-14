@@ -346,7 +346,7 @@ function VersionsSection({
   reject.current = rejection;
   const confirmButton = useRef<HTMLButtonElement>(null);
   const captureRead = useAuthorityLifetime(
-    receivedAddendum?.versions ?? 'legacy',
+    receivedAddendum?.versions ?? 'absent',
     identity,
   );
   const captureDesignation = useAuthorityLifetime(
@@ -358,7 +358,7 @@ function VersionsSection({
     identity,
   );
   const captureRecovery = useAuthorityLifetime(
-    receivedAddendum?.recovery ?? 'legacy',
+    receivedAddendum?.recovery ?? 'absent',
     identity,
   );
   const commandRequest = useRef<AbortController | undefined>(undefined);

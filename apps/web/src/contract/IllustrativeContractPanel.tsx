@@ -95,7 +95,7 @@ export type ContractPanelProps = {
   /** Reports native pending/uncertain work without exposing its intent or key. */
   onProtectedWorkChange?: (locked: boolean) => void;
 };
-export function LegacyContractPanel({
+export function IllustrativeContractPanel({
   initialRead,
   actor,
   identity,

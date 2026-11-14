@@ -4,12 +4,12 @@ import {
   responseString,
   type openEstimateOfferFixture,
 } from '../offer/offer-estimate-preparation.test-support.js';
-import { prepareLegacyQueueScope } from './contract-decision-queue.test-support.js';
+import { prepareIllustrativeQueueScope } from './contract-decision-queue.test-support.js';
 
 export async function prepareContractMissionPlan(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
 ) {
-  const ready = await prepareLegacyQueueScope(fixture, 'v1');
+  const ready = await prepareIllustrativeQueueScope(fixture, 'v1');
   const contract = await ready.direct();
   const path = `/contracts/opportunities/${ready.source.opportunityId}`;
   const versionId = responseString(responseRecord(contract.version), 'id');

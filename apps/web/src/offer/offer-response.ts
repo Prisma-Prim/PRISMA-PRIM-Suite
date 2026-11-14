@@ -641,7 +641,7 @@ export const modelOfferQualityCodes = [
   'NON_OFFICIAL_OFFER',
   'ILLUSTRATIVE_MODEL',
 ] as const;
-const legacyOfferQualityCodes = [
+const illustrativeOfferQualityCodes = [
   'PRICING_SNAPSHOT_COHERENT',
   'CURRENCY_UNCHANGED',
   'VALIDITY_OPEN',
@@ -731,7 +731,7 @@ export function readOfferQualityRun(
   const expectedCodes =
     ruleSet === 'OFFER_QUALITY_COMPANY_MODEL'
       ? modelOfferQualityCodes
-      : legacyOfferQualityCodes;
+      : illustrativeOfferQualityCodes;
   const results = run.results.map(
     (value: unknown, index): OfferQualityRunView['results'][number] => {
       const item = record(value);

@@ -32,7 +32,7 @@ The outcome creates a **Document**, not a Contract of kind `ADDENDUM`. It neithe
 generates nor executes an Addendum, allocates an Addendum ordinal/reference,
 consolidates terms nor changes its parent. The wider Addendum/SARCINA requirement
 remains open. [Commercial §19.10](release-3-commercial-19-contracts.md#1910-post-signature-addendum)
-continues to own legacy illustrative Addenda. The ordinary Company-model
+continues to own illustrative Addenda, a product path. The ordinary Company-model
 [model §29](release-3-commercial-29-company-contract-model.md#292-stories-and-fixed-boundary),
 [generation §30](release-3-commercial-30-model-contract-generation.md#302-stories-and-fixed-boundary),
 [reported signing §31](release-3-commercial-31-reported-signing-case-acceptance.md#312-stories-and-fixed-scope)

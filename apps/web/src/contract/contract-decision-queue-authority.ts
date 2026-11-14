@@ -55,7 +55,7 @@ export function contractDecisionQueueAuthority(actor: ActorContext) {
       c?.commercialIntakePermissionSetVersion,
       read,
       modelDecision,
-      // Legacy discovery consumes no source Offer authority.
+      // Illustrative discovery consumes no source Offer authority.
       modelCandidate ? [sourcePreparer, sourceApprover, sourceRead] : null,
     ]),
   };

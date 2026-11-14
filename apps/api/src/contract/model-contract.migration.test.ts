@@ -12,7 +12,7 @@ import {
 import { prepareGeneratedOfferWorkflow } from '../offer/offer-model-generation.test-fixture.js';
 import { seedLegacyOffer } from '../offer/offer-historical.test-fixture.js';
 import { generatedContractModelContent } from './model-contract.test-fixture.js';
-import { seedPreModelAgreement } from './model-contract-legacy.test-fixture.js';
+import { seedPreModelAgreement } from './model-contract-illustrative.test-fixture.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
   'upgrades genuine 0081 with old origins, all quality versions, executed links, model states and full Offer bytes without expanding captures or rewriting historical facts',

@@ -241,7 +241,7 @@
       "count": 2
     }
   },
-  "apps/web/src/contract/LegacyContractPanel.tsx": {
+  "apps/web/src/contract/IllustrativeContractPanel.tsx": {
     "no-restricted-syntax": {
       "count": 8
     }

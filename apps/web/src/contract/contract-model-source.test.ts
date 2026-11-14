@@ -5,7 +5,7 @@ import {
   readContractPreparationSource,
 } from './contract-response';
 
-describe('Legacy Contract model-source boundary', () => {
+describe('Illustrative Contract model-source boundary', () => {
   it('never offers the new non-official model for either accepted or early Contract preparation', () => {
     const offer = modelOfferFixture();
     for (const clientResponseState of ['NONE', 'PENDING', 'ACCEPTED']) {

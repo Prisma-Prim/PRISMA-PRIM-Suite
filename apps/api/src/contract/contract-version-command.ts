@@ -138,7 +138,7 @@ export async function createContractVersion(
           found.contract.originalClientAccountId,
           selection,
         );
-      const legacyRecipient = early ? null : await lockRecipient();
+      const earlyLockedRecipient = early ? null : await lockRecipient();
       const selectedSnapshotId =
         found.contract.origin === 'DIRECT' || found.contract.kind === 'ADDENDUM'
           ? selectedAddendumSnapshotId(input.payload)
@@ -197,7 +197,7 @@ export async function createContractVersion(
           actor,
           found.contract.originalClientAccountId,
         );
-      const recipient = legacyRecipient ?? (await lockRecipient());
+      const recipient = earlyLockedRecipient ?? (await lockRecipient());
       const command = readVersionCommand(found, input.payload, earlyCommand);
       const earlySource = earlyCommand
         ? await dependencies.offers.resolvePreparationContractSource({

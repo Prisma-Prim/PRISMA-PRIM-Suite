@@ -664,7 +664,7 @@ export const projectTaskMessages = defineMessages(projectTaskKeys, {
   },
 });
 
-/** Display resources for Project-owned Tasks; legacy Activity and My Tasks copy stays stable. */
+/** Display resources for Project-owned Tasks; Activity and My Tasks copy stays stable. */
 export function useProjectTaskCopy() {
   const message = useMessages(projectTaskMessages);
   return {

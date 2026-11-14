@@ -14,8 +14,8 @@ import {
 import { modelContractEffects } from './model-contract.test-support.js';
 import {
   grantQueueReader,
-  prepareAllLegacyQueueKinds,
-  prepareLegacyQueueScope,
+  prepareAllIllustrativeQueueKinds,
+  prepareIllustrativeQueueScope,
   queueItems,
 } from './contract-decision-queue.test-support.js';
 
@@ -81,8 +81,8 @@ withPostgres('Pending Contract discovery through public REST', () => {
     ).toBe(403);
   });
 
-  it('preserves all ordinary kinds and legacy origins under v1 without independent Offer read', async () => {
-    const ready = await prepareAllLegacyQueueKinds(fixture);
+  it('preserves all ordinary kinds and illustrative origins under v1 without independent Offer read', async () => {
+    const ready = await prepareAllIllustrativeQueueKinds(fixture);
     await revokeModelContractFixtureGrant(
       fixture,
       '/company-offer-approver-assignments',
@@ -322,7 +322,7 @@ withPostgres('Pending Contract discovery through public REST', () => {
   );
 
   it('rejects malformed, repeated, array, foreign and unsupported queries after authority without effects', async () => {
-    const ready = await prepareLegacyQueueScope(fixture);
+    const ready = await prepareIllustrativeQueueScope(fixture);
     const contract = await ready.direct();
     const versionId = responseString(responseRecord(contract.version), 'id');
     const encode = (patch: Record<string, unknown>) =>
@@ -388,7 +388,7 @@ withPostgres('Pending Contract discovery through public REST', () => {
   });
 
   it('iterates all tied-date heads, retains a decided anchor and preserves microsecond cursor precision', async () => {
-    const ready = await prepareLegacyQueueScope(fixture);
+    const ready = await prepareIllustrativeQueueScope(fixture);
     const created: Record<string, unknown>[] = [];
     for (let n = 0; n < 27; n++)
       created.push(

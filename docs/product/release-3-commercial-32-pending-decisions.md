@@ -47,8 +47,8 @@ first-tenant persona, never a name check, hard-coded identity or new role.
 
 Absent ordinary family/Intake rights denies the entire family, including empty
 reads. Missing additional model rights excludes that variant without hiding
-otherwise authorized legacy Versions. In particular, Offer read is **not** a
-prerequisite for legacy Contract decisions or frozen Contract reads. Ordinary v1
+otherwise authorized illustrative Versions. In particular, Offer read is **not** a
+prerequisite for illustrative Contract decisions or frozen Contract reads. Ordinary v1
 captures remain useful and gain no model authority. Null/unknown captures fail
 closed. No Owner/Director title substitutes for an explicit grant. Company and
 Workspace isolation applies before selection, pagination or metadata disclosure.
