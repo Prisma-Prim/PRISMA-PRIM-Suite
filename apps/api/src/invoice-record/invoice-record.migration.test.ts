@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -297,7 +298,9 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await emptyRecords();
         for (const [path, expected] of Object.entries(oldReads))
           if (path !== searchPath)
-            expect(await read(path), path).toEqual(expected);
+            expect(withoutGrantsList(path, await read(path)), path).toEqual(
+              expected,
+            );
         for (const command of oldCommands) {
           const path = fixtureString(command.path),
             response = await call(path, {

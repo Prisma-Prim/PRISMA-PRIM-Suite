@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { conserveFrozenPdfPolicyUpgrade } from '../documents/frozen-pdf-policy-schema.test-support.js';
 import { certificationTables } from '../certification/certification-schema.test-support.js';
 import {
@@ -372,7 +373,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL).each([
             expect(response.status, path).toBe(200);
             const value: unknown = await response.json();
             if (path === '/access/current-actor') {
-              const actor = fixtureObject(value),
+              const actor = fixtureObject(withoutGrantsList(path, value)),
                 company = fixtureObject(actor.activeCompany),
                 {
                   paymentObservationReadCapture,
