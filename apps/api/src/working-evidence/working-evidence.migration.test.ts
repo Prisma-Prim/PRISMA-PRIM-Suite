@@ -1,3 +1,4 @@
+import { withoutGrantsList } from '../access/company-grants.test-support.js';
 import { conserveWorkingEvidenceSchema } from './working-evidence-schema.test-support.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -281,7 +282,10 @@ async function replayActualAddendum(
   for (const captured of fixtureObjects(context.sourceReads)) {
     const response = await call(captured);
     expect(response.status, fixtureString(captured.path)).toBe(200);
-    const body: unknown = await response.json();
+    const body: unknown = withoutGrantsList(
+      fixtureString(captured.path),
+      await response.json(),
+    );
     expect(body).toEqual(captured.response);
   }
   for (const captured of fixtureObjects(context.sourceBinaries)) {

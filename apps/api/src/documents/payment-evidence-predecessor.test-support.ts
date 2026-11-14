@@ -283,10 +283,13 @@ export async function replayPaymentPredecessorDelivered1044(
   }
   for (const captured of fixtureObjects(context.native1044Reads))
     expect(
-      await read(fixtureString(captured.path), {
-        companyId: fixtureString(captured.companyId),
-        identity: fixtureHeaders(captured.identity),
-      }),
+      withoutGrantsList(
+        fixtureString(captured.path),
+        await read(fixtureString(captured.path), {
+          companyId: fixtureString(captured.companyId),
+          identity: fixtureHeaders(captured.identity),
+        }),
+      ),
       fixtureString(captured.path),
     ).toEqual(captured.value);
   for (const captured of fixtureObjects(context.native1044Binaries)) {
