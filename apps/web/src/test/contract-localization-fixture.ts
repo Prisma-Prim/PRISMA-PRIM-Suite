@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type { OfferView } from '../offer/offer-response';
 import {
   buildClientRequest,
@@ -94,6 +95,13 @@ export function contractLocaleActor(hasCompany = true) {
             ],
             commercialActivityPermissionSetVersion: 'v1',
             commercialActivityPermissions: ['commercial.activity.read'],
+            // The Pricing screens read this grant; the Contract screens still
+            // read the Pricing User fields above until their area migrates.
+            grants: companyGrants({
+              bundle: 'company_pricing_user',
+              version: 'v1',
+              assignmentId: 'pricing-657',
+            }),
           } satisfies NonNullable<ActorContext['activeCompany']>,
         }
       : {}),

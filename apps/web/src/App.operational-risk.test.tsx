@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { selectOption } from './test/select-option';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import {
@@ -183,9 +184,10 @@ describe('Operational Risk access through App', () => {
           activeCompany: {
             ...journalActor.activeCompany,
             ...current.activeCompany,
-            operationalRiskPermissions: ['risk.read'],
-            operationalRiskRecorderAssignmentId: undefined,
-            operationalRiskRecorderPermissionSetVersion: undefined,
+            grants: withoutCompanyGrants(
+              current.activeCompany?.grants,
+              'company_operational_risk_recorder',
+            ),
           },
         };
         fireEvent.click(

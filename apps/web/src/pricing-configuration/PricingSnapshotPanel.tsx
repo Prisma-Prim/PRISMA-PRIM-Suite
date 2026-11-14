@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import {
@@ -162,13 +163,21 @@ export function PricingSnapshotPanel({
   const detailRequest = useRef<AbortController | undefined>(undefined);
   const fieldId = useId();
   const companyId = actor.activeCompany?.id;
-  const permissions = actor.activeCompany?.pricingUserPermissions ?? [];
-  const mayRead = permissions.includes('commercial.pricing.snapshot.read');
-  const mayCalculate = permissions.includes('commercial.pricing.calculate');
-  const mayAdjust =
-    actor.activeCompany?.pricingAdjustmentPermissions?.includes(
-      'commercial.pricing.adjustment.apply',
-    ) ?? false;
+  const mayRead = holds(
+    actor.activeCompany,
+    'company_pricing_user',
+    'commercial.pricing.snapshot.read',
+  );
+  const mayCalculate = holds(
+    actor.activeCompany,
+    'company_pricing_user',
+    'commercial.pricing.calculate',
+  );
+  const mayAdjust = holds(
+    actor.activeCompany,
+    'company_pricing_adjustment',
+    'commercial.pricing.adjustment.apply',
+  );
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);

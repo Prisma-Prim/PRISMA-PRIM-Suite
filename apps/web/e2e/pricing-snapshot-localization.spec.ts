@@ -8,6 +8,7 @@ import {
   buildClientRequest,
   requestListItemFor,
 } from '../src/test/commercial-intake-responses';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 // Synthetic illustrative values only; this intercepts HTTP at the real App seam.
 const locales = [
@@ -199,19 +200,18 @@ async function installRoutes(page: Page) {
                     'commercial.opportunity.create',
                     'commercial.opportunity.next_action.update',
                   ],
-                  pricingUserPermissionAssignmentId: 'pricing-651',
-                  pricingUserPermissionSetVersion: 'v1',
-                  pricingUserPermissions: [
-                    'commercial.offering.read',
-                    'commercial.pricing.configuration.read',
-                    'commercial.pricing.calculate',
-                    'commercial.pricing.snapshot.read',
-                  ],
-                  pricingAdjustmentPermissionAssignmentId: 'adjustment-651',
-                  pricingAdjustmentPermissionSetVersion: 'v1',
-                  pricingAdjustmentPermissions: [
-                    'commercial.pricing.adjustment.apply',
-                  ],
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_pricing_user',
+                      version: 'v1',
+                      assignmentId: 'pricing-651',
+                    },
+                    {
+                      bundle: 'company_pricing_adjustment',
+                      version: 'v1',
+                      assignmentId: 'adjustment-651',
+                    },
+                  ),
                 },
               }
             : {}),

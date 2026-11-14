@@ -21,6 +21,10 @@ import {
   resolveMessage,
 } from '../localization/messages';
 import { pricingSnapshotMessages } from './pricing-snapshot.copy';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 // All amounts and labels are synthetic and illustrative.
 const OPPORTUNITY_A = '10000000-0000-4000-8000-000000000001';
@@ -40,13 +44,18 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    pricingUserPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.calculate',
-      'commercial.pricing.snapshot.read',
-    ],
-    pricingAdjustmentPermissions: ['commercial.pricing.adjustment.apply'],
+    grants: companyGrants(
+      {
+        bundle: 'company_pricing_user',
+        version: 'v1',
+        assignmentId: 'pricing-user-grant',
+      },
+      {
+        bundle: 'company_pricing_adjustment',
+        version: 'v1',
+        assignmentId: 'pricing-adjustment-grant',
+      },
+    ),
   },
 };
 
@@ -882,7 +891,10 @@ describe('PricingSnapshotPanel', () => {
           ...actor.activeCompany,
           id: 'company-1',
           displayName: 'PRISMA-PRIM',
-          pricingUserPermissions: [],
+          grants: withoutCompanyGrants(
+            actor.activeCompany?.grants,
+            'company_pricing_user',
+          ),
         },
       });
       fireEvent.click(
@@ -1022,7 +1034,10 @@ describe('PricingSnapshotPanel', () => {
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        pricingAdjustmentPermissions: [],
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_pricing_adjustment',
+        ),
       },
     };
     stubApi(baseRoutes());
@@ -1849,7 +1864,13 @@ describe('PricingSnapshotPanel', () => {
     if (!actor.activeCompany) throw new Error('Expected an active Company.');
     const deniedActor: ActorContext = {
       ...actor,
-      activeCompany: { ...actor.activeCompany, pricingUserPermissions: [] },
+      activeCompany: {
+        ...actor.activeCompany,
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_pricing_user',
+        ),
+      },
     };
     const { unmount } = renderPanel(OPPORTUNITY_A, deniedActor);
     expect(

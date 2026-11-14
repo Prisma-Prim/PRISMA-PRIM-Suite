@@ -8,6 +8,7 @@ import {
   within,
 } from '../test/render-with-interface-locale';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   journalActor,
@@ -518,9 +519,10 @@ describe('Risk journal correction through production controls', () => {
         ...journalActor,
         activeCompany: {
           ...journalActor.activeCompany,
-          operationalRiskPermissions: ['risk.read'],
-          operationalRiskRecorderAssignmentId: undefined,
-          operationalRiskRecorderPermissionSetVersion: undefined,
+          grants: withoutCompanyGrants(
+            journalActor.activeCompany.grants,
+            'company_operational_risk_recorder',
+          ),
         },
       },
     });

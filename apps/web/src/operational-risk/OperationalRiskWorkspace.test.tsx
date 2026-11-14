@@ -9,6 +9,10 @@ import {
 } from '../test/render-with-interface-locale';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { OperationalRiskWorkspace } from './OperationalRiskWorkspace';
 
@@ -57,11 +61,18 @@ const actor: ActorContext = {
   activeCompany: {
     id: companyId,
     displayName: 'Synthetic Risk Company',
-    operationalRiskPermissions: ['risk.read', 'risk.record'],
-    operationalRiskReaderAssignmentId: '00000000-0000-4000-8000-000000000769',
-    operationalRiskReaderPermissionSetVersion: 'v1',
-    operationalRiskRecorderAssignmentId: '00000000-0000-4000-8000-000000000770',
-    operationalRiskRecorderPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_operational_risk_reader',
+        version: 'v1',
+        assignmentId: '00000000-0000-4000-8000-000000000769',
+      },
+      {
+        bundle: 'company_operational_risk_recorder',
+        version: 'v1',
+        assignmentId: '00000000-0000-4000-8000-000000000770',
+      },
+    ),
   },
 };
 const noop = () => undefined;
@@ -479,9 +490,10 @@ describe('Operational Risk manual workspace', () => {
           ...actor.activeCompany,
           id: companyId,
           displayName: 'Synthetic Risk Company',
-          operationalRiskPermissions: ['risk.read'],
-          operationalRiskRecorderAssignmentId: undefined,
-          operationalRiskRecorderPermissionSetVersion: undefined,
+          grants: withoutCompanyGrants(
+            actor.activeCompany?.grants,
+            'company_operational_risk_recorder',
+          ),
         },
       },
     });

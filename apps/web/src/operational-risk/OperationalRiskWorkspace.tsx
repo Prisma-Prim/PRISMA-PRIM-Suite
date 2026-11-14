@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import {
   createAuthenticatedApiClient,
   conflictCode,
@@ -60,22 +61,20 @@ type Load<Value> =
   | { kind: 'ready'; value: Value; more: 'idle' | 'loading' | 'error' };
 
 export function canReadOperationalRisks(actor: ActorContext): boolean {
-  const company = actor.activeCompany;
-  return Boolean(
-    company?.operationalRiskReaderAssignmentId &&
-    company.operationalRiskReaderPermissionSetVersion === 'v1' &&
-    company.operationalRiskPermissions?.includes('risk.read'),
+  return holds(
+    actor.activeCompany,
+    'company_operational_risk_reader',
+    'risk.read',
   );
 }
 
 function canRecord(actor: ActorContext): boolean {
-  const company = actor.activeCompany;
   return (
     canReadOperationalRisks(actor) &&
-    Boolean(
-      company?.operationalRiskRecorderAssignmentId &&
-      company.operationalRiskRecorderPermissionSetVersion === 'v1' &&
-      company.operationalRiskPermissions?.includes('risk.record'),
+    holds(
+      actor.activeCompany,
+      'company_operational_risk_recorder',
+      'risk.record',
     )
   );
 }

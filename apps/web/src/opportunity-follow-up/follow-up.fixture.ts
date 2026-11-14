@@ -1,5 +1,6 @@
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type { OpportunityFollowUpPanelProps } from './OpportunityFollowUpPanel';
 
 export const actor = {
@@ -22,13 +23,18 @@ export const actor = {
     commercialIntakePermissionAssignmentId:
       '11111111-1111-4111-8111-111111111111',
     commercialIntakePermissionSetVersion: 'v2',
-    opportunityFollowUpPermissions: [
-      'commercial.opportunity.follow_up.read',
-      'commercial.opportunity.follow_up.manage',
-    ],
-    opportunityFollowUpCoordinatorAssignmentId:
-      '22222222-2222-4222-8222-222222222222',
-    opportunityFollowUpCoordinatorPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v2',
+        assignmentId: '11111111-1111-4111-8111-111111111111',
+      },
+      {
+        bundle: 'company_opportunity_follow_up_coordinator',
+        version: 'v1',
+        assignmentId: '22222222-2222-4222-8222-222222222222',
+      },
+    ),
     opportunityFollowUpReadCapture: `opportunity-follow-up-read.v1.${'a'.repeat(64)}`,
   },
 } satisfies ActorContext;

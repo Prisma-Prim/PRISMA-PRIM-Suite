@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPANY_GRANT_LABELS,
   COMPANY_GRANT_REGISTRY,
   grantOf,
   holds,
   isCompanyGrants,
   type CompanyGrant,
 } from './company-grants';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './company-grants.test-fixture';
 import { readCurrentActor } from './current-actor';
 import { completeActor } from './current-actor.test-fixture';
 
@@ -89,6 +95,31 @@ function registryMirrorDivergences(
   return problems;
 }
 
+/** Every bundle whose web label differs from the API registry, as a fix. */
+function labelDivergences(mirror: Readonly<Record<string, string>>): string[] {
+  const registryModule: unknown = Object.values(registryModules)[0];
+  const bundles = isRecord(registryModule)
+    ? registryModule.COMPANY_ROLE_BUNDLES
+    : undefined;
+  if (!isRecord(bundles))
+    throw new Error(`COMPANY_ROLE_BUNDLES is not exported by ${registryFile}.`);
+  const problems: string[] = [];
+  for (const [bundle, row] of Object.entries(bundles)) {
+    const label = isRecord(row) ? row.label : undefined;
+    const mirrored = Object.hasOwn(mirror, bundle) ? mirror[bundle] : undefined;
+    if (mirrored !== label)
+      problems.push(
+        `COMPANY_GRANT_LABELS.${bundle} is ${JSON.stringify(mirrored)} but the API registry labels it ${JSON.stringify(label)}: copy the API label.`,
+      );
+  }
+  for (const bundle of Object.keys(mirror))
+    if (!Object.hasOwn(bundles, bundle))
+      problems.push(
+        `COMPANY_GRANT_LABELS lists "${bundle}", which is not a COMPANY_ROLE_BUNDLES bundle: remove it.`,
+      );
+  return problems;
+}
+
 function grant(overrides: Record<string, unknown> = {}) {
   return {
     bundle: 'company_certification_reader',
@@ -111,6 +142,18 @@ describe('Company grants registry mirror', () => {
     expect(
       registryMirrorDivergences(apiRegistry(), COMPANY_GRANT_REGISTRY),
     ).toEqual([]);
+  });
+
+  it('labels every bundle as the API registry does', () => {
+    expect(labelDivergences(COMPANY_GRANT_LABELS)).toEqual([]);
+    expect(
+      labelDivergences({
+        ...COMPANY_GRANT_LABELS,
+        company_ideas_reader: 'Company Idea Reader',
+      }),
+    ).toEqual([
+      'COMPANY_GRANT_LABELS.company_ideas_reader is "Company Idea Reader" but the API registry labels it "Company Ideas Reader": copy the API label.',
+    ]);
   });
 
   it('names the row to add when a registry bundle is not mirrored', () => {
@@ -303,5 +346,89 @@ describe('Company grants accessor', () => {
       false,
     );
     expect(holds({}, 'company_project_access', 'project.read')).toBe(false);
+  });
+});
+
+describe('Fixture grants helper', () => {
+  it('gives each grant exactly the permissions of its captured version, in registry order', () => {
+    expect(
+      companyGrants(
+        {
+          bundle: 'company_pricing_user',
+          version: 'v1',
+          assignmentId: 'pricing-user-grant',
+        },
+        {
+          bundle: 'company_context_access',
+          version: null,
+          assignmentId: 'context-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: 'project-grant',
+        },
+      ),
+    ).toEqual([
+      {
+        bundle: 'company_context_access',
+        assignmentId: 'context-grant',
+        permissionSetVersion: null,
+        permissions: [],
+      },
+      {
+        bundle: 'company_project_access',
+        assignmentId: 'project-grant',
+        permissionSetVersion: 'v2',
+        permissions: [...COMPANY_GRANT_REGISTRY.company_project_access.v2],
+      },
+      {
+        bundle: 'company_pricing_user',
+        assignmentId: 'pricing-user-grant',
+        permissionSetVersion: 'v1',
+        permissions: [...COMPANY_GRANT_REGISTRY.company_pricing_user.v1],
+      },
+    ]);
+  });
+
+  it('replaces and removes grants of a bundle', () => {
+    const reader = {
+      bundle: 'company_ideas_reader',
+      version: 'v1',
+      assignmentId: 'reader-a',
+    } as const;
+    const recorder = {
+      bundle: 'company_ideas_recorder',
+      version: 'v1',
+      assignmentId: 'recorder-a',
+    } as const;
+    const grants = companyGrants(reader, recorder);
+    expect(
+      withCompanyGrants(grants, { ...reader, assignmentId: 'reader-b' }).map(
+        (grant) => grant.assignmentId,
+      ),
+    ).toEqual(['reader-b', 'recorder-a']);
+    expect(withoutCompanyGrants(grants, 'company_ideas_reader')).toEqual(
+      companyGrants(recorder),
+    );
+  });
+
+  it('refuses a list the current Actor parser would refuse', () => {
+    const reader = {
+      bundle: 'company_ideas_reader',
+      version: 'v1',
+      assignmentId: 'reader-a',
+    } as const;
+    expect(() => companyGrants(reader, reader)).toThrow(
+      /not a list the current Actor parser accepts/u,
+    );
+    expect(() => companyGrants({ ...reader, assignmentId: ' ' })).toThrow();
+    expect(() =>
+      withCompanyGrants(companyGrants(reader), {
+        bundle: 'company_ideas_recorder',
+        version: 'v1',
+        assignmentId: 'reader-a',
+      }),
+    ).toThrow(/makes a list the current Actor parser refuses/u);
   });
 });

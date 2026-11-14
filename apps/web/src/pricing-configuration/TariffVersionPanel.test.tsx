@@ -10,6 +10,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { TariffVersionPanel } from './TariffVersionPanel';
 
@@ -17,13 +18,11 @@ import { TariffVersionPanel } from './TariffVersionPanel';
 const OFFERING_A = '10000000-0000-4000-8000-00000000000a';
 const OFFERING_B = '10000000-0000-4000-8000-00000000000b';
 
-const managerPermissions: NonNullable<
-  NonNullable<ActorContext['activeCompany']>['pricingConfigurationPermissions']
-> = [
-  'commercial.offering.read',
-  'commercial.pricing.configuration.read',
-  'commercial.pricing.configuration.manage',
-];
+const managerGrants = companyGrants({
+  bundle: 'company_pricing_configuration',
+  version: 'v1',
+  assignmentId: 'pricing-configuration-grant',
+});
 
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -38,7 +37,7 @@ const actor: ActorContext = {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
     clientPermissions: [],
-    pricingConfigurationPermissions: managerPermissions,
+    grants: managerGrants,
   },
 };
 
@@ -48,7 +47,7 @@ const secondCompanyActor: ActorContext = {
     id: 'company-2',
     displayName: 'Second Company',
     clientPermissions: [],
-    pricingConfigurationPermissions: managerPermissions,
+    grants: managerGrants,
   },
 };
 
@@ -1165,10 +1164,12 @@ describe('TariffVersionPanel', () => {
           id: 'company-1',
           displayName: 'PRISMA-PRIM',
           clientPermissions: [],
-          pricingConfigurationPermissions: [
-            'commercial.offering.read',
-            'commercial.pricing.configuration.read',
-          ],
+          // Configuration read without management: a Pricing User grant.
+          grants: companyGrants({
+            bundle: 'company_pricing_user',
+            version: 'v1',
+            assignmentId: 'pricing-user-grant',
+          }),
         },
       },
     });

@@ -16,6 +16,7 @@ import {
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 
 const intakePermissions: NonNullable<
   NonNullable<ActorContext['activeCompany']>['commercialIntakePermissions']
@@ -1978,12 +1979,11 @@ describe('Commercial Intake projection boundary preserves unrelated work', () =>
       ...fullActor,
       activeCompany: {
         ...company,
-        pricingUserPermissions: [
-          'commercial.offering.read',
-          'commercial.pricing.configuration.read',
-          'commercial.pricing.calculate',
-          'commercial.pricing.snapshot.read',
-        ],
+        grants: withCompanyGrants(company.grants, {
+          bundle: 'company_pricing_user',
+          version: 'v1',
+          assignmentId: 'pricing-user-grant',
+        }),
         offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
       },
     };

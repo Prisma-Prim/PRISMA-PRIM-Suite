@@ -9,6 +9,7 @@ import {
 } from './internal-task-request';
 import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -36,6 +37,7 @@ export interface InternalTaskProps {
 }
 export function internalTaskAuthority(actor: ActorContext) {
   const company = actor.activeCompany;
+  const grant = grantOf(company, 'company_internal_task_manager');
   return JSON.stringify([
     actor.active,
     actor.internalUserId,
@@ -45,8 +47,8 @@ export function internalTaskAuthority(actor: ActorContext) {
     canReadInternalTasks(actor)
       ? ['internal_task.read', 'internal_task.manage']
       : null,
-    company?.internalTaskManagerAssignmentId,
-    company?.internalTaskManagerPermissionSetVersion,
+    grant?.assignmentId,
+    grant?.permissionSetVersion,
   ]);
 }
 export function canReadInternalTasks(actor: ActorContext) {
@@ -54,12 +56,11 @@ export function canReadInternalTasks(actor: ActorContext) {
   return (
     actor.active &&
     !!company &&
-    Array.isArray(company.internalTaskPermissions) &&
-    company.internalTaskPermissions.length === 2 &&
-    company.internalTaskPermissions.includes('internal_task.read') &&
-    company.internalTaskPermissions.includes('internal_task.manage') &&
-    company.internalTaskManagerPermissionSetVersion === 'v1' &&
-    isNativeUuid(company.internalTaskManagerAssignmentId)
+    holds(company, 'company_internal_task_manager', 'internal_task.read') &&
+    holds(company, 'company_internal_task_manager', 'internal_task.manage') &&
+    isNativeUuid(
+      grantOf(company, 'company_internal_task_manager')?.assignmentId,
+    )
   );
 }
 export function InternalTaskWorkspace(props: InternalTaskProps) {

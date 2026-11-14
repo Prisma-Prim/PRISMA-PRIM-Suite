@@ -12,6 +12,7 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { pricingConfigurationCopy as copy } from './pricing-configuration/pricing-configuration.copy';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 type ActiveCompany = NonNullable<ActorContext['activeCompany']>;
 type Grants = Omit<Partial<ActiveCompany>, 'id' | 'displayName'>;
@@ -25,38 +26,30 @@ const companyC = { id: 'company-c', displayName: 'Company C' };
 
 function pricingUser(assignmentId: string): Grants {
   return {
-    pricingUserPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.calculate',
-      'commercial.pricing.snapshot.read',
-    ],
-    pricingUserPermissionAssignmentId: assignmentId,
-    pricingUserPermissionSetVersion: 'v1',
+    grants: companyGrants({
+      bundle: 'company_pricing_user',
+      version: 'v1',
+      assignmentId: assignmentId,
+    }),
   };
 }
 
 function configuration(assignmentId: string): Grants {
   return {
-    pricingConfigurationPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.configuration.manage',
-    ],
-    pricingConfigurationPermissionAssignmentId: assignmentId,
-    pricingConfigurationPermissionSetVersion: 'v1',
+    grants: companyGrants({
+      bundle: 'company_pricing_configuration',
+      version: 'v1',
+      assignmentId: assignmentId,
+    }),
   };
 }
 
 const catalogue: Grants = {
-  serviceCataloguePermissions: [
-    'service.definition.read',
-    'service.definition.create',
-    'commercial.offering.read',
-    'commercial.offering.manage',
-  ],
-  serviceCataloguePermissionAssignmentId: 'catalogue-grant',
-  serviceCataloguePermissionSetVersion: 'v1',
+  grants: companyGrants({
+    bundle: 'company_service_catalogue',
+    version: 'v1',
+    assignmentId: 'catalogue-grant',
+  }),
 };
 
 function actorIn(
@@ -76,7 +69,11 @@ function actorIn(
       ...company,
       clientPermissions: [],
       ...grants.reduce<Grants>(
-        (merged, grant) => ({ ...merged, ...grant }),
+        (merged, grant) => ({
+          ...merged,
+          ...grant,
+          grants: [...(merged.grants ?? []), ...(grant.grants ?? [])],
+        }),
         {},
       ),
     },

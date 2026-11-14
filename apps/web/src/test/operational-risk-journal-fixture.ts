@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type {
   OperationalRiskJournalStatement,
   OperationalRiskRecord,
@@ -80,11 +81,18 @@ export const journalActor = {
   activeCompany: {
     id: riskCompanyId,
     displayName: 'Synthetic Risk Company',
-    operationalRiskPermissions: ['risk.read', 'risk.record'],
-    operationalRiskReaderAssignmentId: '00000000-0000-4000-8000-000000962010',
-    operationalRiskReaderPermissionSetVersion: 'v1',
-    operationalRiskRecorderAssignmentId: '00000000-0000-4000-8000-000000962011',
-    operationalRiskRecorderPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_operational_risk_reader',
+        version: 'v1',
+        assignmentId: '00000000-0000-4000-8000-000000962010',
+      },
+      {
+        bundle: 'company_operational_risk_recorder',
+        version: 'v1',
+        assignmentId: '00000000-0000-4000-8000-000000962011',
+      },
+    ),
   },
 } satisfies ActorContext;
 

@@ -8,6 +8,7 @@ import {
   within,
 } from './test/render-with-interface-locale';
 import { App } from './App';
+import { companyGrants } from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 import { preparatoryLifecycle } from './project/project-lifecycle.test-fixtures';
 import {
@@ -510,18 +511,19 @@ it.each(
               ...recorder.activeCompany,
               ...(grant === 'risk'
                 ? {
-                    operationalRiskPermissions: ['risk.read'],
-                    operationalRiskReaderAssignmentId: publishedAssignment.id,
-                    operationalRiskReaderPermissionSetVersion: 'v1',
+                    grants: companyGrants({
+                      bundle: 'company_operational_risk_reader',
+                      version: 'v1',
+                      assignmentId: publishedAssignment.id,
+                    }),
                   }
                 : grant === 'internal-task'
                   ? {
-                      internalTaskPermissions: [
-                        'internal_task.read',
-                        'internal_task.manage',
-                      ],
-                      internalTaskManagerAssignmentId: publishedAssignment.id,
-                      internalTaskManagerPermissionSetVersion: 'v1',
+                      grants: companyGrants({
+                        bundle: 'company_internal_task_manager',
+                        version: 'v1',
+                        assignmentId: publishedAssignment.id,
+                      }),
                     }
                   : {
                       projectNextActionPermissions: [

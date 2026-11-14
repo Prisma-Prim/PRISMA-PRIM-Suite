@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
+import { readCurrentActor } from './access/current-actor';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import {
   act,
@@ -298,36 +299,32 @@ it.each([404, 'unsupported', 'malformed'])(
   },
 );
 
+const internalTaskGrant = {
+  bundle: 'company_internal_task_manager',
+  assignmentId: '90000000-0000-4000-8000-000000001006',
+  permissionSetVersion: 'v1',
+  permissions: ['internal_task.read', 'internal_task.manage'],
+};
+
+// A grant the current Actor parser accepts but Internal Tasks cannot use (no
+// grant, a non-native assignment id) denies only Internal Tasks.
 it.each(
   ['prisme', 'classic'].flatMap((frame) =>
     [
-      ...[
-        undefined,
-        null,
-        5,
-        {},
-        [],
-        'internal_task.read',
-        ['internal_task.read'],
-        ['internal_task.read', 'future.permission'],
-      ].map((value) => ({ field: 'internalTaskPermissions', value })),
-      ...[undefined, null, 5, {}, [], '', '   ', 'not-a-uuid'].map((value) => ({
-        field: 'internalTaskManagerAssignmentId',
-        value,
-      })),
-      ...[undefined, null, 5, {}, [], 'v2'].map((value) => ({
-        field: 'internalTaskManagerPermissionSetVersion',
-        value,
-      })),
+      { capture: 'no Internal Task Manager grant', grants: [] },
+      {
+        capture: 'a non-native assignment id',
+        grants: [{ ...internalTaskGrant, assignmentId: 'not-a-uuid' }],
+      },
     ].map((capture) => ({ ...capture, frame })),
   ),
 )(
-  'keeps unrelated App owners usable in $frame while a malformed/future $field capture denies only Internal Tasks',
-  async ({ field, value, frame }) => {
+  'keeps unrelated App owners usable in $frame while $capture denies only Internal Tasks',
+  async ({ grants, frame }) => {
     window.history.replaceState(null, '', `/?frame=${frame}#projects`);
     const server = installInternalTaskApp(async () => undefined, {
       ...internalTaskActor,
-      activeCompany: { ...internalTaskActor.activeCompany, [field]: value },
+      activeCompany: { ...internalTaskActor.activeCompany, grants },
     });
     render(
       <StrictMode>
@@ -354,6 +351,54 @@ it.each(
         request.path.startsWith('/api/company-internal-tasks'),
       ),
     ).toEqual([]);
+  },
+);
+
+// Any other malformed or future Internal Task Manager grant fails closed for
+// the whole current Actor (#1332), so no screen offers authority from it.
+it.each([
+  ...[
+    undefined,
+    null,
+    5,
+    {},
+    [],
+    'internal_task.read',
+    ['internal_task.read'],
+    ['internal_task.read', 'future.permission'],
+  ].map((value) => ({ field: 'permissions', value })),
+  ...[undefined, null, 5, {}, [], '', '   '].map((value) => ({
+    field: 'assignmentId',
+    value,
+  })),
+  ...[undefined, null, 5, {}, [], 'v2'].map((value) => ({
+    field: 'permissionSetVersion',
+    value,
+  })),
+])(
+  'refuses the whole current Actor when the Internal Task Manager grant has $field $value',
+  async ({ field, value }) => {
+    const valid = {
+      ...internalTaskActor,
+      activeCompany: {
+        ...internalTaskActor.activeCompany,
+        grants: [internalTaskGrant],
+      },
+    };
+    const read = (actor: unknown) =>
+      readCurrentActor({
+        api: { request: async () => ({ status: 'ok', value: actor }) },
+      });
+    expect((await read(valid)).status).toBe('ok');
+    expect(
+      await read({
+        ...valid,
+        activeCompany: {
+          ...valid.activeCompany,
+          grants: [{ ...internalTaskGrant, [field]: value }],
+        },
+      }),
+    ).toEqual({ status: 'error' });
   },
 );
 

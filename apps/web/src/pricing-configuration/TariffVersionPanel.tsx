@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -230,10 +231,11 @@ export function TariffVersionPanel({
   rejectWorkspace.current = onWorkspaceAccessRejected;
   const companyId = actor.activeCompany?.id;
   const companyName = actor.activeCompany?.displayName ?? actor.workspaceName;
-  const canPublish =
-    actor.activeCompany?.pricingConfigurationPermissions?.includes(
-      'commercial.pricing.configuration.manage',
-    ) === true;
+  const canPublish = holds(
+    actor.activeCompany,
+    'company_pricing_configuration',
+    'commercial.pricing.configuration.manage',
+  );
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const request = useCallback(

@@ -11,6 +11,7 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { PricingConfigurationWorkspace } from './PricingConfigurationWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -25,11 +26,11 @@ const actor: ActorContext = {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
     clientPermissions: [],
-    pricingConfigurationPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.configuration.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_pricing_configuration',
+      version: 'v1',
+      assignmentId: 'pricing-configuration-grant',
+    }),
   },
 };
 
@@ -39,11 +40,11 @@ const secondCompanyActor: ActorContext = {
     id: 'company-2',
     displayName: 'Second Company',
     clientPermissions: [],
-    pricingConfigurationPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.configuration.manage',
-    ],
+    grants: companyGrants({
+      bundle: 'company_pricing_configuration',
+      version: 'v1',
+      assignmentId: 'pricing-configuration-grant',
+    }),
   },
 };
 
@@ -1089,10 +1090,12 @@ describe('PricingConfigurationWorkspace', () => {
           id: 'company-1',
           displayName: 'PRISMA-PRIM',
           clientPermissions: [],
-          pricingConfigurationPermissions: [
-            'commercial.offering.read',
-            'commercial.pricing.configuration.read',
-          ],
+          // Configuration read without management: a Pricing User grant.
+          grants: companyGrants({
+            bundle: 'company_pricing_user',
+            version: 'v1',
+            assignmentId: 'pricing-user-grant',
+          }),
         },
       },
     });
