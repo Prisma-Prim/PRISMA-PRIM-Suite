@@ -3,6 +3,7 @@ import { requireUuid } from '../access/access-command-validation.js';
 import { addDays, addMonths } from './certification-findings.js';
 import {
   optionalAttribution,
+  requireIndependenceAttestation,
   type ActAttribution,
 } from './certification-attribution.js';
 import { calendarDate, inputObject } from './certification.validation.js';
@@ -42,8 +43,8 @@ export interface DossierReview {
   /** The certification body's dossier reviewer and approver, when recorded on their behalf. */
   reviewedBy: ActAttribution | null;
   approvedBy: ActAttribution | null;
-  /** False only in reviews recorded before the attestation existed. */
-  independenceAttested: boolean;
+  /** The recording member attests the reviewer and approver are not on the audit team. */
+  independenceAttested: true;
 }
 
 export type CertificationDecision = {
@@ -137,7 +138,9 @@ export function dossierReview(value: unknown): DossierReview {
     conclusion: text(body.conclusion, 4000),
     reviewedBy: optionalAttribution(body.reviewedBy),
     approvedBy: optionalAttribution(body.approvedBy),
-    independenceAttested: body.independenceAttested === true,
+    independenceAttested: requireIndependenceAttestation(
+      body.independenceAttested,
+    ),
   };
 }
 

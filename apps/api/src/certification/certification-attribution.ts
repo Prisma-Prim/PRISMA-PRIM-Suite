@@ -14,7 +14,7 @@ export interface ActAttribution {
   formAttachmentId: string | null;
 }
 
-/** An optional attribution; absent in records made before it existed. */
+/** An attribution, or none: a command may omit it and a stored act holds null. */
 export function optionalAttribution(value: unknown): ActAttribution | null {
   if (value === undefined || value === null) return null;
   const body = inputObject(value, [

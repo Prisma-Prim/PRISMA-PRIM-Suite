@@ -209,15 +209,13 @@ export function ActingRow({
   );
 }
 
-/** Whether the recording member attested independence from the audit team. */
-export function IndependenceRow({ attested }: { attested: boolean }) {
+/** The recording member's attestation, which every act from outside the audit team carries. */
+export function IndependenceRow() {
   const copy = useCertificationCopy();
   return (
     <div>
       <dt>{copy('independenceLabel')}</dt>
-      <dd>
-        {copy(attested ? 'independenceAttested' : 'independenceUnattested')}
-      </dd>
+      <dd>{copy('independenceAttested')}</dd>
     </div>
   );
 }

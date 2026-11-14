@@ -232,7 +232,7 @@ export function DossierReviewView({
         act={review.approvedBy}
         register={register}
       />
-      <IndependenceRow attested={review.independenceAttested} />
+      <IndependenceRow />
     </dl>
   );
 }
@@ -436,7 +436,7 @@ export function CertificateView({
           <dt>{copy('certificateSignedByFunction')}</dt>
           <dd>{optional(certificate.signedByFunction)}</dd>
         </div>
-        <IndependenceRow attested={certificate.independenceAttested} />
+        <IndependenceRow />
         <div>
           <dt>{copy('certificateValidFrom')}</dt>
           <dd>{date(certificate.validFrom)}</dd>

@@ -193,7 +193,7 @@ The application is the source of truth for the Case facts it records; signed PDF
 
 ## 15. Migration and compatibility
 
-Additive schema with a reviewed Drizzle migration per implementation child. No existing record changes meaning. Historical dossiers are not imported; the private pilot is replayed through the public API (section 20.3).
+Additive schema with a reviewed Drizzle migration per implementation child. No existing record changes meaning. Nothing is deployed before launch, so a record of an earlier shape is refused, not read ([Dossier control PRD §15](release-4-certification-dossier-control-prd.md#15-migration-and-compatibility)). Historical dossiers are not imported; the private pilot is replayed through the public API (section 20.3).
 
 ## 16. Security, reliability and performance
 

@@ -49,8 +49,8 @@ export interface AuditTeam {
 export type TeamDecision = {
   teamVersion: number;
   onBehalf: ActAttribution | null;
-  /** False only in decisions recorded before the attestation existed. */
-  independenceAttested: boolean;
+  /** The recording member attests the approver is not on the audit team. */
+  independenceAttested: true;
 } & (
   | { decision: 'approved'; reason: null }
   | { decision: 'returned'; reason: string }
@@ -152,9 +152,7 @@ export function teamDecisionCommand(value: unknown): {
       decision: body.decision,
       reason: body.reason,
       onBehalf: body.onBehalf,
-      independenceAttested: requireIndependenceAttestation(
-        body.independenceAttested,
-      ),
+      independenceAttested: body.independenceAttested,
     }),
   };
 }
@@ -171,7 +169,9 @@ export function teamDecision(value: unknown): TeamDecision {
   const common = {
     teamVersion: revision(body.teamVersion),
     onBehalf: optionalAttribution(body.onBehalf),
-    independenceAttested: body.independenceAttested === true,
+    independenceAttested: requireIndependenceAttestation(
+      body.independenceAttested,
+    ),
   };
   if (body.decision === 'approved') {
     if (body.reason !== undefined && body.reason !== null) return invalid();
@@ -210,10 +210,12 @@ function member(value: unknown): TeamMember {
   if (!role || typeof body.holdsCategory !== 'boolean') return invalid();
   const declarationsBody = inputObject(body.declarations, DECLARATIONS);
   const declarations: ImpartialityDeclarations = {
-    noConsultancy: flag(declarationsBody.noConsultancy),
-    noEmployment: flag(declarationsBody.noEmployment),
-    noManagementInvolvement: flag(declarationsBody.noManagementInvolvement),
-    confidentiality: flag(declarationsBody.confidentiality),
+    noConsultancy: declarationState(declarationsBody.noConsultancy),
+    noEmployment: declarationState(declarationsBody.noEmployment),
+    noManagementInvolvement: declarationState(
+      declarationsBody.noManagementInvolvement,
+    ),
+    confidentiality: declarationState(declarationsBody.confidentiality),
   };
   const conflict = DECLARATIONS.some(
     (name) => declarations[name] !== 'confirmed',
@@ -239,11 +241,10 @@ function member(value: unknown): TeamMember {
   };
 }
 
-/** An explicit state: a declaration never defaults. Booleans are the first format. */
-function flag(value: unknown): DeclarationState {
-  if (value === true || value === 'confirmed') return 'confirmed';
-  if (value === false || value === 'conflict') return 'conflict';
-  if (value === 'to_verify') return 'to_verify';
+/** An explicit state: a declaration never defaults. */
+function declarationState(value: unknown): DeclarationState {
+  if (value === 'confirmed' || value === 'conflict' || value === 'to_verify')
+    return value;
   return invalid();
 }
 

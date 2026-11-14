@@ -774,7 +774,7 @@ describe('Certification audit team and its approval', () => {
     });
     server.proposeTeamAsColleague(conflicted, [
       teamMember({
-        declarations: { ...NO_CONFLICT, noConsultancy: false },
+        declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
         conflictNote: 'Delivered a training to the client last year.',
       }),
     ]);

@@ -88,8 +88,9 @@ describe('Certificate release response boundary', () => {
       revisionRequired: false,
     });
   });
-  it('rejects a release without its revision fields and incomplete or unknown revision states', () => {
+  it('rejects a release without its validity or revision fields and incomplete or unknown revision states', () => {
     for (const field of [
+      'validity',
       'revisions',
       'currentRevisionIndex',
       'revisionRequired',

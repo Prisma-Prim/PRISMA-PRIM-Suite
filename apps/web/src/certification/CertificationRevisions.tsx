@@ -261,7 +261,7 @@ export function CertificateRevisions(props: {
                 act={revision.onBehalf}
                 register={props.register}
               />
-              <IndependenceRow attested={revision.independenceAttested} />
+              <IndependenceRow />
             </dl>
             {!revision.revisionMarked && (
               <p className="certification-blocked">{t('unmarked')}</p>

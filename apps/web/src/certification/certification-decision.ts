@@ -69,8 +69,8 @@ export interface DossierReview {
   /** The certification body's dossier reviewer and approver, when recorded on their behalf. */
   reviewedBy: ActAttribution | null;
   approvedBy: ActAttribution | null;
-  /** False only in reviews recorded before the attestation existed. */
-  independenceAttested: boolean;
+  /** The recording member attests the reviewer and approver are not on the audit team. */
+  independenceAttested: true;
 }
 
 /** What one Certificate language states: holder, address and scope. */

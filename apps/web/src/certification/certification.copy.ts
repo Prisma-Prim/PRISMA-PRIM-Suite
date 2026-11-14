@@ -821,7 +821,6 @@ const keys = [
   'actInFuture',
   'independenceLabel',
   'independenceAttested',
-  'independenceUnattested',
   'teamDecisionAttestation',
   'teamDecisionAttestationRequired',
   'dossierReviewerLegend',
@@ -1930,8 +1929,6 @@ export const certificationMessages = defineMessages(keys, {
       'The act on behalf of the certification body cannot be dated after today. Check the date of the act.',
     independenceLabel: 'Independence from the audit team',
     independenceAttested: 'Attested by the member who recorded it',
-    independenceUnattested:
-      'Not attested: recorded before the attestation was stored',
     teamDecisionAttestation:
       'I attest that the person deciding on this team is not a member of the audit team.',
     teamDecisionAttestationRequired:
@@ -3086,8 +3083,6 @@ export const certificationMessages = defineMessages(keys, {
       'L’acte au nom de l’organisme de certification ne peut pas être daté après aujourd’hui. Vérifiez la date de l’acte.',
     independenceLabel: 'Indépendance vis-à-vis de l’équipe d’audit',
     independenceAttested: 'Attestée par le membre qui l’a enregistrée',
-    independenceUnattested:
-      'Non attestée : enregistrée avant que l’attestation soit conservée',
     teamDecisionAttestation:
       'J’atteste que la personne qui décide sur cette équipe n’est pas membre de l’équipe d’audit.',
     teamDecisionAttestationRequired:
@@ -4237,8 +4232,6 @@ export const certificationMessages = defineMessages(keys, {
       'Actul în numele organismului de certificare nu poate fi datat după ziua de azi. Verificați data actului.',
     independenceLabel: 'Independența față de echipa de audit',
     independenceAttested: 'Atestată de membrul care a înregistrat-o',
-    independenceUnattested:
-      'Neatestată: înregistrată înainte ca atestarea să fie păstrată',
     teamDecisionAttestation:
       'Atest că persoana care decide asupra acestei echipe nu este membru al echipei de audit.',
     teamDecisionAttestationRequired:
@@ -5359,8 +5352,6 @@ export const certificationMessages = defineMessages(keys, {
       'Действие от имени органа по сертификации не может быть датировано позже сегодняшнего дня. Проверьте дату действия.',
     independenceLabel: 'Независимость от аудиторской группы',
     independenceAttested: 'Подтверждено участником, внёсшим запись',
-    independenceUnattested:
-      'Не подтверждено: записано до того, как подтверждение стало сохраняться',
     teamDecisionAttestation:
       'Я подтверждаю, что лицо, принимающее решение по этой группе, не входит в аудиторскую группу.',
     teamDecisionAttestationRequired:

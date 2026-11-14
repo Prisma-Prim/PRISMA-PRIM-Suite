@@ -357,7 +357,7 @@ The Suite is the source of truth for the declarations it records. Signed PDFs re
 
 ## 15. Migration and compatibility
 
-Each ticket ships a reviewed Drizzle migration. Nothing is deployed before launch, so the web application reads only the current payload ([#1343](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1343)). Every Certificate carries its issue date, its approved draft and the independence attestation. The migration that requires them stops on a database still holding a Certificate without them and says the development database must be recreated ([#1344](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1344)). Cases recorded earlier are checked on read, and the gates apply only to commands after deployment. Certificate data recorded after a decision in an earlier Case stay valid. No existing Activity event changes.
+Each ticket ships a reviewed Drizzle migration. Nothing is deployed before launch, so the server and the web application read every step, receipt and payload in its current shape only ([#1343](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1343)). Every Certificate carries its issue date, its approved draft and the independence attestation. The migration that requires them stops on a database still holding a Certificate without them and says the development database must be recreated ([#1344](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1344)). Every team decision and dossier review carries the attestation, every impartiality declaration is a state, every application states its date or none, and every command receipt is a Case read with the paged exchange register and the release; the migration that requires them stops in the same way ([#1370](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1370)). Cases recorded earlier are checked on read, and the gates apply only to commands after deployment. Certificate data recorded after a decision in an earlier Case stay valid. No existing Activity event changes.
 
 ## 16. Security, reliability and performance
 
@@ -386,7 +386,7 @@ Implementers choose, reversibly, how open and corrected Discrepancies are comput
 - REST tests against PostgreSQL for every new command: success, Company isolation, hidden equals missing, missing bundle, separation of duties, stale revision, idempotent replay, refusals of section 10, the Activity event inside the transaction and nothing recorded on refusal. The decision REST tests are the prior art.
 - App tests for the three regions, their states, verdict labels and the reader's view.
 - The `certification-journey` acceptance journey extended per ticket at 1440 px and 390 px.
-- A migration test for each additive migration and a decoding test for earlier payloads.
+- A migration test for each migration, including its refusal of earlier rows; an earlier payload is refused, never decoded.
 
 ## 20. Acceptance journey and criteria
 

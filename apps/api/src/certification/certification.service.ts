@@ -1660,7 +1660,6 @@ export class CertificationService {
       action: 'certification_case.dossier_reviewed',
       check: async ({ steps, companyId, payload }) => {
         this.requireIndependent(input.actor, steps);
-        requireIndependenceAttestation(payload.independenceAttested);
         for (const act of [payload.reviewedBy, payload.approvedBy]) {
           this.requireNotNamedOnTeam(steps, act?.actedBy);
           await this.requireAct(

@@ -79,6 +79,7 @@ import {
   type StagePlan,
 } from './certification-stages';
 import {
+  DECLARATION_STATES,
   IMPARTIALITY_DECLARATIONS,
   TEAM_LIMITS,
   TEAM_ROLES,
@@ -456,25 +457,6 @@ export function parseCaseList(value: unknown, projectId: string): CaseList {
   )
     invalid();
   return { projectId, cases, total };
-}
-
-/** A command reply is acknowledged before a fresh authoritative Case read. */
-export function parseCaseCommandReceipt(
-  value: unknown,
-  scope: { companyId: string; projectId: string; caseId?: string },
-): Pick<CaseDetail, 'id' | 'revision'> {
-  // Receipts are immutable and can predate additions to the live read model.
-  // Acknowledgement needs only the scoped identity and recorded revision;
-  // the caller reloads the live Case instead of displaying the receipt.
-  const body = object(value);
-  const id = text(body.id);
-  if (
-    body.companyId !== scope.companyId ||
-    body.projectId !== scope.projectId ||
-    (scope.caseId !== undefined && id !== scope.caseId)
-  )
-    invalid();
-  return { id, revision: positive(body.revision) };
 }
 
 export function parseCaseDetail(
@@ -1726,9 +1708,9 @@ function auditTeam(value: unknown): AuditTeam {
   };
 }
 
-/** Absent in teams proposed before it existed; otherwise a note and its evidence. */
+/** None, or a note and its evidence. */
 function impartialityAnalysis(value: unknown): ImpartialityAnalysis | null {
-  if (value === undefined || value === null) return null;
+  if (value === null) return null;
   const body = object(value);
   const ids = list(
     body.evidenceAttachmentIds,
@@ -1798,45 +1780,35 @@ function flag(value: unknown): boolean {
   return typeof value === 'boolean' ? value : invalid();
 }
 
-/**
- * An explicit declaration state; it never defaults. The first format
- * recorded booleans, which the server still reads as confirmed or conflict.
- */
+/** An explicit declaration state; it never defaults. */
 function declarationState(value: unknown): DeclarationState {
-  if (value === true || value === 'confirmed') return 'confirmed';
-  if (value === false || value === 'conflict') return 'conflict';
-  if (value === 'to_verify') return 'to_verify';
-  return invalid();
+  return DECLARATION_STATES.find((state) => state === value) ?? invalid();
 }
 
 /**
- * An act on behalf of the certification body, absent in records made
- * before it existed: who acted, in which function, on which real date, and
- * the signed form when one is cited.
+ * An act on behalf of the certification body, or none: who acted, in which
+ * function, on which real date, and the signed form when one is cited.
  */
 function actAttribution(value: unknown): ActAttribution | null {
-  if (value === undefined || value === null) return null;
+  if (value === null) return null;
   const body = object(value);
   return {
     actedBy: text(body.actedBy, ATTRIBUTION_LIMITS.person),
     actedByFunction: text(body.actedByFunction, ATTRIBUTION_LIMITS.person),
     actedOn: calendarDate(body.actedOn),
     formAttachmentId:
-      body.formAttachmentId === undefined || body.formAttachmentId === null
-        ? null
-        : text(body.formAttachmentId),
+      body.formAttachmentId === null ? null : text(body.formAttachmentId),
   };
 }
 
-/** An explicit attestation; false only in records made before it existed. */
-function attestation(value: unknown): boolean {
-  if (value === undefined || value === false) return false;
+/** The recording member's attestation, stored with every act it covers. */
+function attestation(value: unknown): true {
   return value === true ? true : invalid();
 }
 
-/** An optional business date, absent in records made before it existed. */
+/** A business date, or none stated. */
 function optionalDate(value: unknown): string | null {
-  return value === undefined || value === null ? null : calendarDate(value);
+  return value === null ? null : calendarDate(value);
 }
 
 function agreementValue(value: unknown): CertificationAgreement {
