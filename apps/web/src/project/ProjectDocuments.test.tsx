@@ -11,6 +11,12 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ProjectDocuments as ProjectDocumentsComponent } from './ProjectDocuments';
 import type { ProjectStatus } from './project-lifecycle-response';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { projectDocumentGrants } from './project-document-grants.test-fixture';
 
 function ProjectDocuments({
   projectStatus = 'preparatory',
@@ -38,6 +44,18 @@ const actor: ActorContext = {
       'document.reference.read',
       'document.project.manage',
     ],
+    grants: withCompanyGrants(
+      companyGrants({
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      }),
+      ...projectDocumentGrants([
+        'document.read',
+        'document.reference.read',
+        'document.project.manage',
+      ]),
+    ),
   },
 };
 const document = {
@@ -321,6 +339,16 @@ it('keeps metadata readable without management or reference permission', async (
       id: 'company',
       displayName: 'PRISMA-PRIM',
       documentPermissions: ['document.read'],
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_document_registrar',
+          'company_document_project_organizer',
+          'company_document_content_reader',
+          'company_mission_deliverable_access',
+        ),
+        ...projectDocumentGrants(['document.read']),
+      ),
     },
   };
   const metadata = {
@@ -368,6 +396,16 @@ it('hides all linked metadata and counts when Document read is absent', async ()
       id: 'company',
       displayName: 'PRISMA-PRIM',
       documentPermissions: ['document.project.manage'],
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_document_registrar',
+          'company_document_project_organizer',
+          'company_document_content_reader',
+          'company_mission_deliverable_access',
+        ),
+        ...projectDocumentGrants(['document.project.manage']),
+      ),
     },
   };
   const fetcher = vi.fn();
@@ -824,6 +862,14 @@ it('offers no Open Document without a displayed linked row', async () => {
           displayName: 'PRISMA-PRIM',
           projectPermissions: ['project.read'],
           documentPermissions: ['document.project.manage'],
+          grants: withCompanyGrants(
+            companyGrants({
+              bundle: 'company_project_access',
+              version: 'v1',
+              assignmentId: 'project-grant',
+            }),
+            ...projectDocumentGrants(['document.project.manage']),
+          ),
         },
       }}
       identity={deterministicBrowserIdentity()}

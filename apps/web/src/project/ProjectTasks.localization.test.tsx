@@ -18,7 +18,9 @@ import { ProjectTasks } from './ProjectTasks';
 import {
   companyGrants,
   withoutCompanyGrants,
+  withCompanyGrants,
 } from '../access/company-grants.test-fixture';
+import { taskReaderCompany } from './task-reader.test-fixture';
 import { projectTaskMessages, taskCopy } from './task.copy';
 import {
   assertMessageCoverage,
@@ -39,14 +41,18 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Synthetic Company',
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
-    grants: companyGrants({
-      bundle: 'company_task_manager',
-      version: 'v1',
-      assignmentId: 'task-grant',
-    }),
+    grants: withCompanyGrants(
+      companyGrants({
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      }),
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 
@@ -726,12 +732,11 @@ it.each(languages)(
     localStorage.setItem('prisma-prim.interface-locale', language.code);
     mountTasks({
       ...actor,
-      activeCompany: {
+      activeCompany: taskReaderCompany({
         ...actor.activeCompany,
         id: 'company',
         displayName: 'Synthetic Company',
-        taskPermissions: ['task.read'],
-      },
+      }),
     });
     fireEvent.click(await screen.findByRole('button', { name: task.title }));
     expect(
@@ -869,9 +874,11 @@ it.each(languages)(
           ...actor.activeCompany,
           id: 'company',
           displayName: 'Synthetic Company',
-          taskPermissions: [],
           grants: withoutCompanyGrants(
-            actor.activeCompany?.grants,
+            withoutCompanyGrants(
+              actor.activeCompany?.grants,
+              'company_task_manager',
+            ),
             'company_task_manager',
           ),
         },

@@ -10,6 +10,8 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { TaskResults } from './TaskResults';
 import { projectTaskCompanyAuthority } from './project-authority';
+import { holds } from '../access/company-grants';
+import { canReadTasks } from './MyTasks';
 import {
   conflictCode,
   createAuthenticatedApiClient,
@@ -389,16 +391,10 @@ function TaskProject({
   const focusedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
   const scope = { companyId, projectId };
-  const canRead =
-    actor.active &&
-    actor.activeCompany?.taskPermissionSetVersion === 'v1' &&
-    !!actor.activeCompany.taskPermissionAssignmentId &&
-    actor.activeCompany.taskPermissions?.includes('task.read') &&
-    actor.activeCompany.projectPermissions?.includes('project.read') &&
-    (actor.workspacePermissions.includes('client.manage') ||
-      actor.activeCompany.clientPermissions?.includes('client.read'));
+  const canRead = canReadTasks(actor);
   const canManage =
-    canRead && actor.activeCompany?.taskPermissions?.includes('task.manage');
+    canRead &&
+    holds(actor.activeCompany, 'company_task_manager', 'task.manage');
   const projectClosed =
     projectStatus !== null && isClosedProjectStatus(projectStatus);
   const busy = mutation.kind === 'pending' || planningProtected;

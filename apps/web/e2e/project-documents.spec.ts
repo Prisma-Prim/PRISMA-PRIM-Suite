@@ -22,6 +22,8 @@ import {
   DOCUMENT_VERSIONS_PATH,
   draftVersionsOf,
 } from './document-versions.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
+import { projectDocumentGrants } from '../src/project/project-document-grants.test-fixture';
 
 const company = { id: 'company-project-documents', displayName: 'PRISMA-PRIM' };
 const client = {
@@ -111,6 +113,19 @@ async function installProjectDocumentsFixture(page: Page) {
                   clientPermissions: ['client.read'],
                   projectPermissions: ['project.read'],
                   documentPermissions: state.permissions,
+                  grants: companyGrants(
+                    ...projectDocumentGrants(state.permissions),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'client-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

@@ -18,6 +18,7 @@ import {
   refuseOverviewQueueRefresh,
   withOfferDecisionQueue,
 } from './test/overview-actor-revalidation';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'PRISMA-PRIM' };
 const companyB = { id: 'company-b', displayName: 'BIC' };
@@ -82,9 +83,23 @@ function actorFor(
       clientPermissionAssignmentId: 'client-grant',
       clientPermissionSetVersion,
       projectPermissions: ['project.read'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: clientPermissionSetVersion,
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+      ),
     },
   };
 }
@@ -760,7 +775,18 @@ describe('Operational home through App', () => {
           clientPermissionAssignmentId: 'client-grant',
           clientPermissionSetVersion: 'v1',
           projectPermissions: ['project.read'],
-          taskPermissions: [],
+          grants: companyGrants(
+            {
+              bundle: 'company_director_client_access',
+              version: 'v1',
+              assignmentId: 'client-grant',
+            },
+            {
+              bundle: 'company_project_access',
+              version: 'v1',
+              assignmentId: 'project-grant',
+            },
+          ),
         },
       });
     server.state.showTaskSummary = false;
@@ -1037,6 +1063,11 @@ describe('Operational home through App', () => {
         activeCompany: {
           ...companyA,
           clientPermissions: ['client.read'],
+          grants: companyGrants({
+            bundle: 'company_director_client_access',
+            version: 'v1',
+            assignmentId: 'client-grant',
+          }),
         },
       }),
     });

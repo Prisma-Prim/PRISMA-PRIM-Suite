@@ -31,20 +31,24 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company',
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read'],
-    taskPermissionAssignmentId: 'task',
-    taskPermissionSetVersion: 'v1',
-    grants: companyGrants(
-      { bundle: 'company_task_manager', version: 'v1', assignmentId: 'task' },
+    grants: withCompanyGrants(
+      companyGrants(
+        { bundle: 'company_task_manager', version: 'v1', assignmentId: 'task' },
+        {
+          bundle: 'company_project_template_user',
+          version: 'v1',
+          assignmentId: 'template',
+        },
+        {
+          bundle: 'company_project_stage_advancer',
+          version: 'v1',
+          assignmentId: 'stage',
+        },
+      ),
       {
-        bundle: 'company_project_template_user',
+        bundle: 'company_project_access',
         version: 'v1',
-        assignmentId: 'template',
-      },
-      {
-        bundle: 'company_project_stage_advancer',
-        version: 'v1',
-        assignmentId: 'stage',
+        assignmentId: 'project-grant',
       },
     ),
   },

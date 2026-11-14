@@ -12,6 +12,10 @@ import type { ActorContext } from '../access-types';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProjectResponsible as ProjectResponsibleComponent } from './ProjectResponsible';
 import type { ProjectStatus } from './project-lifecycle-response';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 function ProjectResponsible({
   projectStatus = 'preparatory',
@@ -29,6 +33,18 @@ const company = {
   displayName: 'PRISMA-PRIM',
   clientPermissions: ['client.read'],
   projectPermissions: ['project.read', 'project.create', 'project.update'],
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v2',
+      assignmentId: 'project-grant',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'ana',
@@ -544,6 +560,11 @@ it('shows the responsible member without change controls to a Project Access v1 
       activeCompany: {
         ...company,
         projectPermissions: ['project.read', 'project.create'],
+        grants: withCompanyGrants(company.grants, {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        }),
       },
     },
   });
@@ -593,6 +614,11 @@ it('drops a draft and every late reply when the Company, membership or permissio
         activeCompany: {
           ...company,
           projectPermissions: ['project.read', 'project.create'],
+          grants: withCompanyGrants(company.grants, {
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'project-grant',
+          }),
         },
       }}
       identity={identity}

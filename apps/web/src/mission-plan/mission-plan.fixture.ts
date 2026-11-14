@@ -52,7 +52,6 @@ export const actor: ActorContext = {
     ),
     clientPermissions: ['client.read'],
     projectPermissions: ['project.read', 'project.create'],
-    taskPermissions: ['task.read', 'task.manage'],
   },
 };
 export const scope = {

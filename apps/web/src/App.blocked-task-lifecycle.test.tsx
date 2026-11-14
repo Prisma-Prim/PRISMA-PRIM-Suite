@@ -13,6 +13,10 @@ import type { ActorContext } from './access-types';
 import type { TaskView } from './project/task-response';
 import { preparatoryLifecycle } from './project/project-lifecycle.test-fixtures';
 import { changeValue } from './test/select-option';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 
 const company = { id: 'queue-company', displayName: 'PRISMA-PRIM' };
 const otherCompany = { id: 'other-company', displayName: 'BIC' };
@@ -29,9 +33,23 @@ const actor: ActorContext = {
     ...company,
     clientPermissions: ['client.read'],
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read'],
-    taskPermissionAssignmentId: 'read-grant',
-    taskPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'read-grant',
+      },
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 const project = {
@@ -280,6 +298,10 @@ async function ready() {
 
 it('opens the exact current Task through fresh Project and Task reads, preserves focus and returns to a fresh queue', async () => {
   const api = installServer();
+  // No registry version grants task.read without task.manage (#1332), so this
+  // Task Manager sees a read-only listing, as the former reader did; the
+  // narrowed reader itself is proved in ProjectTasks.test.tsx.
+  api.state.mutable = false;
   render(<App identity={deterministicBrowserIdentity()} />);
   await ready();
   api.state.currentTask = { ...task, title: 'Fresh exact title', version: 2 };
@@ -334,11 +356,7 @@ it.each(['closed Project', 'historical original Client'] as const)(
     api.state.closed = kind === 'closed Project';
     api.state.actor = {
       ...actor,
-      activeCompany: {
-        ...actor.activeCompany,
-        ...company,
-        taskPermissions: ['task.read', 'task.manage'],
-      },
+      activeCompany: { ...actor.activeCompany, ...company },
     };
     render(<App identity={deterministicBrowserIdentity()} />);
     await ready();
@@ -493,7 +511,10 @@ it.each(
               activeCompany: {
                 ...actor.activeCompany,
                 ...company,
-                taskPermissions: [],
+                grants: withoutCompanyGrants(
+                  actor.activeCompany?.grants,
+                  'company_task_manager',
+                ),
               },
             };
       view.rerender(<App identity={replacement} />);
@@ -541,9 +562,32 @@ it.each(['task', 'project', 'client', 'captured version'])(
       activeCompany: {
         ...actor.activeCompany,
         ...company,
-        ...(kind === 'task' ? { taskPermissions: [] } : {}),
-        ...(kind === 'project' ? { projectPermissions: [] } : {}),
-        ...(kind === 'client' ? { clientPermissions: [] } : {}),
+        ...(kind === 'task'
+          ? {
+              grants: withoutCompanyGrants(
+                actor.activeCompany?.grants,
+                'company_task_manager',
+              ),
+            }
+          : {}),
+        ...(kind === 'project'
+          ? {
+              projectPermissions: [],
+              grants: withoutCompanyGrants(
+                actor.activeCompany?.grants,
+                'company_project_access',
+              ),
+            }
+          : {}),
+        ...(kind === 'client'
+          ? {
+              clientPermissions: [],
+              grants: withoutCompanyGrants(
+                actor.activeCompany?.grants,
+                'company_director_client_access',
+              ),
+            }
+          : {}),
       },
     };
     if (kind === 'captured version')
@@ -551,7 +595,11 @@ it.each(['task', 'project', 'client', 'captured version'])(
         ...value,
         activeCompany: {
           ...value.activeCompany,
-          taskPermissionSetVersion: 'unknown',
+          grants: value.activeCompany?.grants?.map((grant) =>
+            grant.bundle === 'company_task_manager'
+              ? { ...grant, permissionSetVersion: 'unknown' }
+              : grant,
+          ),
         },
       });
     render(<App identity={deterministicBrowserIdentity()} />);
@@ -586,11 +634,7 @@ it('preserves the exact pending and uncertain native creation across discovery/o
   const api = installServer();
   api.state.actor = {
     ...actor,
-    activeCompany: {
-      ...actor.activeCompany,
-      ...company,
-      taskPermissions: ['task.read', 'task.manage'],
-    },
+    activeCompany: { ...actor.activeCompany, ...company },
   };
   window.history.replaceState(null, '', '/#projects');
   const writes: Array<{ body: string | undefined; key: string | null }> = [];

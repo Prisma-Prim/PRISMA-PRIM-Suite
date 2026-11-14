@@ -9,6 +9,7 @@ import {
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskView } from '../src/project/task-response';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const company = { id: 'filter-company', displayName: 'PRISMA-PRIM' };
 const client = {
@@ -505,9 +506,18 @@ async function interceptApplication(
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-filter-grant',
-                  taskPermissionSetVersion: 'v1',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-filter-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

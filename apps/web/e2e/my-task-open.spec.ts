@@ -7,6 +7,7 @@ import {
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskEvent, TaskView } from '../src/project/task-response';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const company = { id: 'company-my-task-open', displayName: 'PRISMA-PRIM' };
 const atelier = {
@@ -130,9 +131,18 @@ async function installServer(page: Page) {
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-grant',
-                  taskPermissionSetVersion: 'v1',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

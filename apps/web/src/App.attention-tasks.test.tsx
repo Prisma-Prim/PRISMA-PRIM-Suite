@@ -10,6 +10,7 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { operationalHomeCopy as copy } from './operational-home/operational-home.copy';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const company = { id: 'company-attention', displayName: 'PRISMA-PRIM' };
 const today = '2026-09-27';
@@ -71,9 +72,23 @@ function actor(): ActorContext {
       clientPermissionAssignmentId: 'client-grant',
       clientPermissionSetVersion: 'v1',
       projectPermissions: ['project.read'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+      ),
     },
   };
 }

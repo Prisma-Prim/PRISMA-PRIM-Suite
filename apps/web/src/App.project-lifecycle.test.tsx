@@ -10,15 +10,30 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import type { ProjectLifecycle } from './project/project-lifecycle-response';
 import { preparatoryLifecycle } from './project/project-lifecycle.test-fixtures';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
   projectPermissions: ['project.read', 'project.create'],
   clientPermissions: ['client.read'],
-  projectApproverPermissions: ['project.lifecycle.transition', 'project.close'],
-  projectApproverPermissionAssignmentId: 'approver-assignment',
-  projectApproverPermissionSetVersion: 'v1',
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+    {
+      bundle: 'company_project_approver',
+      version: 'v1',
+      assignmentId: 'approver-assignment',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const approver: ActorContext = {
   internalUserId: 'user-1',

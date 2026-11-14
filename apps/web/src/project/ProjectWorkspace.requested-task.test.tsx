@@ -26,14 +26,18 @@ const company = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
   projectPermissions: ['project.read', 'project.create'],
-  taskPermissions: ['task.read', 'task.manage'],
-  taskPermissionAssignmentId: 'task-grant',
-  taskPermissionSetVersion: 'v1',
-  grants: companyGrants({
-    bundle: 'company_task_manager',
-    version: 'v1',
-    assignmentId: 'task-grant',
-  }),
+  grants: withCompanyGrants(
+    companyGrants({
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    }),
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -941,7 +945,6 @@ describe('Requested Task opens', () => {
       ...actor,
       activeCompany: {
         ...company,
-        taskPermissionAssignmentId: 'replacement',
         grants: withCompanyGrants(company.grants, {
           bundle: 'company_task_manager',
           version: 'v1',

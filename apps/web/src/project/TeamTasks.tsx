@@ -1,6 +1,7 @@
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { useContext, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import {
   handleAuthenticatedAccessRejection,
@@ -34,22 +35,25 @@ type Props = {
 /** Only authority consumed by this Company read. Unrelated grants preserve its live owner. */
 export function teamTaskAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
+  const task = grantOf(c, 'company_task_manager');
+  const project = grantOf(c, 'company_project_access');
+  const client = grantOf(c, 'company_director_client_access');
   return JSON.stringify([
     actor.active,
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
     c?.id,
-    c?.taskPermissionAssignmentId,
-    c?.taskPermissionSetVersion,
-    c?.taskPermissions?.includes('task.read'),
-    c?.projectPermissionAssignmentId,
-    c?.projectPermissionSetVersion,
-    c?.projectPermissions?.includes('project.read'),
+    task?.assignmentId,
+    task?.permissionSetVersion,
+    holds(c, 'company_task_manager', 'task.read'),
+    project?.assignmentId,
+    project?.permissionSetVersion,
+    holds(c, 'company_project_access', 'project.read'),
     actor.workspacePermissions.includes('client.manage'),
-    c?.clientPermissionAssignmentId,
-    c?.clientPermissionSetVersion,
-    c?.clientPermissions?.includes('client.read'),
+    client?.assignmentId,
+    client?.permissionSetVersion,
+    holds(c, 'company_director_client_access', 'client.read'),
   ]);
 }
 export function TeamTasks(props: Props) {

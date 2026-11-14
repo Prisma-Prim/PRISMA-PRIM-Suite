@@ -6,6 +6,7 @@ import {
   preparatoryLifecycle,
 } from './actor-context.fixture';
 import type { ProjectLifecycle } from '../src/project/project-lifecycle-response';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const member = {
   workspaceMembershipId: 'project-localization-member',
@@ -74,13 +75,18 @@ test('localizes the complete Project-owned journey and preserves exact retries',
                     'project.create',
                     'project.update',
                   ],
-                  projectApproverPermissions: [
-                    'project.lifecycle.transition',
-                    'project.close',
-                  ],
-                  projectApproverPermissionAssignmentId:
-                    'project-localization-approver',
-                  projectApproverPermissionSetVersion: 'v1',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v2',
+                      assignmentId: 'project-grant',
+                    },
+                    {
+                      bundle: 'company_project_approver',
+                      version: 'v1',
+                      assignmentId: 'project-localization-approver',
+                    },
+                  ),
                 },
               }
             : {}),

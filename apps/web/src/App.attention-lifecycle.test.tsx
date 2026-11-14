@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { holds } from './access/company-grants';
 import { changeValue } from './test/select-option';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import {
@@ -17,6 +18,11 @@ import {
   refuseOverviewQueueRefresh,
   withOfferDecisionQueue,
 } from './test/overview-actor-revalidation';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 
 const company = {
   id: 'company-attention-lifecycle',
@@ -83,9 +89,23 @@ function actor(companyId = company.id): ActorContext {
       clientPermissionAssignmentId: 'client-grant',
       clientPermissionSetVersion: 'v1',
       projectPermissions: ['project.read'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+      ),
     },
   };
 }
@@ -127,9 +147,11 @@ function server() {
         return Response.json({
           companyId,
           today: state.today,
-          summaries: state
-            .actor(companyId)
-            .activeCompany?.taskPermissions?.includes('task.read')
+          summaries: holds(
+            state.actor(companyId).activeCompany,
+            'company_task_manager',
+            'task.read',
+          )
             ? [
                 {
                   kind: 'overdue_tasks',
@@ -137,9 +159,11 @@ function server() {
                 },
               ]
             : [],
-          ...(state
-            .actor(companyId)
-            .activeCompany?.taskPermissions?.includes('task.read')
+          ...(holds(
+            state.actor(companyId).activeCompany,
+            'company_task_manager',
+            'task.read',
+          )
             ? {
                 attention: {
                   matchingCount: companyId === company.id ? state.total : 0,
@@ -466,7 +490,13 @@ describe('Complete attention lifecycle through App', () => {
       if (!current.activeCompany) throw new Error('Expected Company');
       return withOfferDecisionQueue({
         ...current,
-        activeCompany: { ...current.activeCompany, taskPermissions: [] },
+        activeCompany: {
+          ...current.activeCompany,
+          grants: withoutCompanyGrants(
+            current.activeCompany.grants,
+            'company_task_manager',
+          ),
+        },
       });
     };
     await refuseOverviewQueueRefresh({
@@ -517,7 +547,13 @@ describe('Complete attention lifecycle through App', () => {
       if (!current.activeCompany) throw new Error('Expected Company');
       return {
         ...current,
-        activeCompany: { ...current.activeCompany, taskPermissions: [] },
+        activeCompany: {
+          ...current.activeCompany,
+          grants: withoutCompanyGrants(
+            current.activeCompany.grants,
+            'company_task_manager',
+          ),
+        },
       };
     };
     fireEvent.click(
@@ -821,7 +857,11 @@ describe('Complete attention lifecycle through App', () => {
         ...current,
         activeCompany: {
           ...current.activeCompany,
-          taskPermissionAssignmentId: 'replacement-task-grant',
+          grants: withCompanyGrants(current.activeCompany.grants, {
+            bundle: 'company_task_manager',
+            version: 'v1',
+            assignmentId: 'replacement-task-grant',
+          }),
         },
       });
     };

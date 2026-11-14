@@ -7,6 +7,7 @@ import {
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskEvent, TaskView } from '../src/project/task-response';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const languages = [
   {
@@ -632,9 +633,18 @@ async function installTasks(page: Page) {
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-manager-grant',
-                  taskPermissionSetVersion: 'v1',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-manager-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

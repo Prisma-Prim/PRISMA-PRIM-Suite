@@ -15,6 +15,7 @@ import { multiCompanySummaryMessages } from './multi-company-summary.copy';
 import { deferred } from '../production-shell/production-shell-context.test-fixtures';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { changeValue } from '../test/select-option';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const a = { id: 'company-a', displayName: 'PRISMA-PRIM' };
 const b = { id: 'company-b', displayName: 'BIC' };
@@ -40,9 +41,26 @@ function actorFor(companyId: string): ActorContext {
       clientPermissionAssignmentId: 'client-assignment',
       clientPermissionSetVersion: 'v1',
       projectPermissions: companyId === c.id ? [] : ['project.read'],
-      taskPermissions: companyId === c.id ? [] : ['task.read'],
-      taskPermissionAssignmentId: 'task-assignment',
-      taskPermissionSetVersion: 'v1',
+      grants:
+        companyId === c.id
+          ? []
+          : companyGrants(
+              {
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'client-assignment',
+              },
+              {
+                bundle: 'company_task_manager',
+                version: 'v1',
+                assignmentId: 'task-assignment',
+              },
+              {
+                bundle: 'company_project_access',
+                version: 'v1',
+                assignmentId: 'project-assignment',
+              },
+            ),
     },
   };
 }
@@ -216,6 +234,11 @@ describe('multi-Company summaries through the HTTP boundary', () => {
                 clientPermissions: ['client.read'],
                 clientPermissionAssignmentId: 'client-only',
                 clientPermissionSetVersion: 'v1',
+                grants: companyGrants({
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'client-only',
+                }),
               },
             }
           : actorFor(id);
@@ -312,6 +335,11 @@ describe('multi-Company summaries through the HTTP boundary', () => {
               clientPermissions: ['client.read'],
               clientPermissionAssignmentId: 'client-only',
               clientPermissionSetVersion: 'v1',
+              grants: companyGrants({
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'client-only',
+              }),
             },
           }
         : actorFor(companyId);
@@ -398,7 +426,11 @@ describe('multi-Company summaries through the HTTP boundary', () => {
       change: {
         activeCompany: {
           ...actorFor(b.id).activeCompany,
-          taskPermissionSetVersion: 'future',
+          grants: actorFor(b.id).activeCompany?.grants?.map((grant) =>
+            grant.bundle === 'company_task_manager'
+              ? { ...grant, permissionSetVersion: 'future' }
+              : grant,
+          ),
         },
       },
     },
@@ -576,6 +608,11 @@ describe('multi-Company summaries through the HTTP boundary', () => {
                 clientPermissions: ['client.read'],
                 clientPermissionAssignmentId: 'client-only',
                 clientPermissionSetVersion: 'v1',
+                grants: companyGrants({
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'client-only',
+                }),
               },
             },
       );

@@ -33,9 +33,6 @@ const actor: ActorContext = {
     projectPermissions: ['project.read'],
     projectPermissionAssignmentId: 'projects',
     projectPermissionSetVersion: 'v2',
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'tasks',
-    taskPermissionSetVersion: 'v1',
     documentPermissions: [
       'document.read',
       'document.content.read',

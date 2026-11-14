@@ -9,6 +9,7 @@ import {
 import type { ClientMissionOverview } from './ClientMissionOverview';
 import type { ClientProjectPage } from './client-mission-response';
 import { canReadTasks } from './MyTasks';
+import { grantOf } from '../access/company-grants';
 import { readTaskList, type TaskView } from './task-response';
 import { TaskCalendarDate } from './TaskPresentation';
 import { useProjectTaskCopy } from './task.copy';
@@ -35,12 +36,12 @@ type View =
 /** Task capture changes retire only this selected preview, never its Project directory. */
 export function ClientMissionTasks(props: Props) {
   if (!canReadTasks(props.actor)) return null;
-  const company = props.actor.activeCompany;
+  const task = grantOf(props.actor.activeCompany, 'company_task_manager');
   const capture = [
     props.project.id,
-    company?.taskPermissionAssignmentId,
-    company?.taskPermissionSetVersion,
-    company?.taskPermissions,
+    task?.assignmentId,
+    task?.permissionSetVersion,
+    task?.permissions,
   ];
   return <TaskOwner key={JSON.stringify(capture)} {...props} />;
 }

@@ -12,6 +12,7 @@ import {
   type TaskPriority,
   type TaskView,
 } from '../src/project/task-response';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 test('manages manual Tasks through the production shell with retained retry and attributable read-only history', async ({
   page,
@@ -61,9 +62,18 @@ test('manages manual Tasks through the production shell with retained retry and 
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-manager-grant',
-                  taskPermissionSetVersion: 'v1',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-manager-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),
@@ -520,9 +530,18 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-manager-grant',
-                  taskPermissionSetVersion: 'v1',
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-manager-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

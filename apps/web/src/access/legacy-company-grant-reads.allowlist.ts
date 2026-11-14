@@ -6,13 +6,9 @@
  * ./company-grants, then lower or remove its entry.
  */
 export const LEGACY_COMPANY_GRANT_READS: Readonly<Record<string, number>> = {
-  'apps/web/src/App.attention-lifecycle.test.tsx': 2,
-  'apps/web/src/App.client-project-navigation.test.tsx': 4,
   'apps/web/src/App.commercial-pdf.test.tsx': 1,
   'apps/web/src/App.opportunity-follow-up.test.tsx': 1,
-  'apps/web/src/App.project-pdf-bundle.test.tsx': 1,
   'apps/web/src/App.tsx': 15,
-  'apps/web/src/App.upcoming-deadlines.test.tsx': 1,
   'apps/web/src/access/current-actor.test.ts': 1,
   'apps/web/src/access/invoice-record-authority.ts': 40,
   'apps/web/src/access/opportunity-follow-up-authority.test.ts': 1,
@@ -66,15 +62,5 @@ export const LEGACY_COMPANY_GRANT_READS: Readonly<Record<string, number>> = {
   'apps/web/src/profitability-estimate/ProfitabilityEstimatePanel.test.tsx': 1,
   'apps/web/src/profitability-estimate/profitability-contract.test.ts': 1,
   'apps/web/src/profitability-estimate/profitability-contract.ts': 19,
-  'apps/web/src/project/ClientMissionOverview.tsx': 12,
-  'apps/web/src/project/ClientMissionTasks.tsx': 3,
-  'apps/web/src/project/MyTasks.tsx': 5,
-  'apps/web/src/project/ProjectDocuments.tsx': 5,
-  'apps/web/src/project/ProjectLifecycle.tsx': 7,
-  'apps/web/src/project/ProjectPdfBundle.tsx': 21,
-  'apps/web/src/project/ProjectResponsible.tsx': 3,
-  'apps/web/src/project/ProjectTasks.tsx': 6,
-  'apps/web/src/project/ProjectWorkspace.tsx': 5,
-  'apps/web/src/project/TeamTasks.tsx': 9,
   'apps/web/src/working-evidence/working-evidence-access.ts': 15,
 };
