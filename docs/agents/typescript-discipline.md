@@ -33,11 +33,15 @@ default; they do not depend on a prompt naming a TypeScript skill.
   available, and recheck authorization, versions and mutable state at the
   operation or transaction that relies on them. Avoid repeating a check only
   while its invariant remains established for the unchanged value.
-- State compatibility deliberately. An HTTP reader may accept additive fields
-  while proving only the fields it consumes; this does not relax the publisher's
-  contract. Persisted receipts and historical snapshots need their own format
-  and evolution rules. Do not reuse a permissive HTTP reader where discarding
-  persisted information would change historical or replay semantics.
+- State compatibility deliberately. Until [Railway activation](railway-activation.md)
+  nothing is deployed: a changed shape moves every reader, row and fixture, and
+  no code keeps a branch for a shape only an earlier version of this application
+  produced ([#1343](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1343)).
+  An HTTP reader may accept additive fields while proving only the fields it
+  consumes; this does not relax the publisher's contract. From launch on,
+  persisted receipts and historical snapshots need their own format and evolution
+  rules. Do not reuse a permissive HTTP reader where discarding persisted
+  information would change historical or replay semantics.
 - Do not use `any` in domain contracts or allow unchecked values to spread from
   interop code. Keep a necessary library exception local, name its supported
   contract and verify the boundary; it must still satisfy the lint configuration.

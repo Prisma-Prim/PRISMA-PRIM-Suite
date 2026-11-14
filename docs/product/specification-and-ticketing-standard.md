@@ -104,7 +104,7 @@ Every Product Vision, cross-cutting or capability PRD includes the sections that
 12. Documents, evidence and Activity Log events;
 13. configuration, localization and accessibility;
 14. integrations, source of truth, synchronization and provider failure;
-15. migration and compatibility;
+15. migration and compatibility (until [Railway activation](../agents/railway-activation.md) nothing is deployed, so this covers moving development data and fixtures to the new shape; write no "legacy user" or "existing user keeps" stories and no "old payloads decode" contracts for pre-launch states, see [#1343](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1343));
 16. security, privacy, reliability, observability and performance;
 17. happy path, exceptions, empty/error/permission states;
 18. implementation decisions that are already durable;
