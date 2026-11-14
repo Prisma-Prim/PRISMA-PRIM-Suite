@@ -393,6 +393,16 @@ Then set `DATABASE_URL` and `TEST_DATABASE_URL` to the two `127.0.0.1` targets s
 
 Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses that discover neither file automatically must be explicitly prompted to read `AGENTS.md` and `docs/agents/issue-execution.md`.
 
+### Removing a finished worktree
+
+After the pull request merges, `cd` to another checkout of this repository and run:
+
+```bash
+node scripts/remove-worktree.mjs .worktrees/<name> --delete-branch
+```
+
+Node deletes the folder, including paths beyond the Windows path limit, and removes junctions without following them. The command then prunes the registration and deletes the local branch only when it is merged. It refuses the main checkout, a folder that is neither a registered worktree nor directly under `.worktrees/` or `.claude/worktrees/`, the worktree that holds the current directory, and uncommitted changes without `--force`. When a process still holds a file, it names that path; close the shell or server and rerun. A rerun is safe. Avoid `git worktree remove --force` on Windows: Git for Windows 2.45.1 follows a junction inside the worktree and deletes the files of its target.
+
 ## Capability matrix
 
 | Harness         | Local files and tests        | Git branch/commit            | Push/PR                         | CI visibility                | Merge                                                   |
