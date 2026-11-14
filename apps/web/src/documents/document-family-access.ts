@@ -5,6 +5,8 @@ import {
   externalInvoiceCaptureKey,
 } from './external-invoice-access';
 import type { ActorContext } from '../access-types';
+import { grantOf } from '../access/company-grants';
+import { captureOf } from './document-grants';
 import type { DocumentFamily } from './document-response';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { hasReceivedContractAccess } from './received-contract-access';
@@ -22,31 +24,27 @@ export function documentFamilyCaptureKey(
     case 'received-audit-source':
       return JSON.stringify([
         hasReceivedAuditSourceAccess(company),
-        company?.receivedAuditSourceAccessAssignmentId,
-        company?.receivedAuditSourceAccessPermissionSetVersion,
+        ...captureOf(grantOf(company, 'company_received_audit_source_access')),
         company?.workingEvidenceClientReadCapture,
         company?.workingEvidenceContextCapture,
       ]);
     case 'mission-deliverable':
       return JSON.stringify([
         hasMissionDeliverableAccess(company),
-        company?.missionDeliverableAccessAssignmentId,
-        company?.missionDeliverableAccessPermissionSetVersion,
+        ...captureOf(grantOf(company, 'company_mission_deliverable_access')),
       ]);
     case 'external-invoice':
       return externalInvoiceCaptureKey(company);
     case 'received-addendum':
       return JSON.stringify([
         hasReceivedAddendumAccess(company),
-        company?.receivedAddendumAccessAssignmentId,
-        company?.receivedAddendumAccessPermissionSetVersion,
+        ...captureOf(grantOf(company, 'company_received_addendum_access')),
         company?.receivedAddendumClientReadCapture,
       ]);
     case 'received-contract':
       return JSON.stringify([
         hasReceivedContractAccess(company),
-        company?.receivedContractAccessAssignmentId,
-        company?.receivedContractAccessPermissionSetVersion,
+        ...captureOf(grantOf(company, 'company_received_contract_access')),
       ]);
     default: {
       const exhaustive: never = family;

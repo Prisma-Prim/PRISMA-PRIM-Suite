@@ -9,6 +9,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { completeActor } from '../access/current-actor.test-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { ReceivedAddendumRelation } from './ReceivedAddendumRelation';
 
 const documentId = '10000000-0000-4000-8000-000000000009';
@@ -58,6 +62,28 @@ function actor(): ActorContext {
       commercialIntakePermissions: ['commercial.opportunity.read'],
       commercialIntakePermissionAssignmentId: 'native-intake',
       commercialIntakePermissionSetVersion: 'v4',
+      grants: companyGrants(
+        {
+          bundle: 'company_received_addendum_access',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000005',
+        },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v1',
+          assignmentId: 'native-document',
+        },
+        {
+          bundle: 'company_contract_preparer',
+          version: 'v2',
+          assignmentId: 'native-contract',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v4',
+          assignmentId: 'native-intake',
+        },
+      ),
     },
   };
 }
@@ -144,7 +170,10 @@ it('performs no relation request without a captured independently readable paren
   const currentActor = actor(),
     transport = vi.fn();
   if (!currentActor.activeCompany) throw new Error('Missing fixture Company');
-  currentActor.activeCompany.contractPermissionAssignmentId = undefined;
+  currentActor.activeCompany.grants = withoutCompanyGrants(
+    currentActor.activeCompany.grants,
+    'company_contract_preparer',
+  );
   vi.stubGlobal('fetch', transport);
   render(
     <ReceivedAddendumRelation

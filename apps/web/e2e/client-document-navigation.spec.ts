@@ -8,6 +8,10 @@ import {
   DOCUMENT_VERSIONS_PATH,
   draftVersionsOf,
 } from './document-versions.fixture';
+import {
+  documentGrants,
+  type DocumentPermission,
+} from '../src/documents/document-grants.test-fixture';
 
 const company = { id: 'company-navigation', displayName: 'PRISMA-PRIM' };
 const otherCompany = { id: 'company-second', displayName: 'BIC' };
@@ -82,7 +86,7 @@ const otherCompanyDocument = {
   title: 'Other Company questionnaire',
 };
 
-function routeApi(page: Page, documentPermissions: string[]) {
+function routeApi(page: Page, documentPermissions: DocumentPermission[]) {
   let documentListReads = 0;
   const handler = (route: Route) => {
     const request = route.request();
@@ -101,6 +105,7 @@ function routeApi(page: Page, documentPermissions: string[]) {
                     : company),
                   clientPermissions: ['client.read'],
                   documentPermissions,
+                  grants: documentGrants(documentPermissions),
                 },
               }
             : {}),

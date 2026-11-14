@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { DocumentVersions } from './DocumentVersions';
+import { documentGrants } from './document-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -23,12 +24,11 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
-    documentPermissions: [
+    grants: documentGrants([
       'document.read',
       'document.reference.read',
       'document.version.manage',
-    ],
-    documentPermissionSetVersion: 'v3',
+    ]),
   },
 };
 const identity: BrowserIdentity = {

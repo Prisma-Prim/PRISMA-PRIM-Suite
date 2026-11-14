@@ -8,6 +8,7 @@ import {
   preparatoryLifecycle,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
 const ana = {
   workspaceMembershipId: 'ana-membership',
@@ -226,6 +227,10 @@ test('creates and opens a Project, then switches local panels without reloading 
                     'document.read',
                     'document.project.manage',
                   ],
+                  grants: documentGrants([
+                    'document.read',
+                    'document.project.manage',
+                  ]),
                 },
               }
             : {}),

@@ -1,5 +1,7 @@
 import { useRef, useState, type ComponentType, type ReactNode } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf } from '../access/company-grants';
+import { captureOf } from './document-grants';
 import type { BrowserIdentity } from '../access-composition';
 import {
   documentFamilyCaptureKey,
@@ -345,8 +347,7 @@ export function useDocumentFamilyAuthority({
   const invoiceAuthority = JSON.stringify([
     canUseInvoice,
     externalInvoiceCaptureKey(company),
-    company?.clientPermissionAssignmentId,
-    company?.clientPermissionSetVersion,
+    ...captureOf(grantOf(company, 'company_director_client_access')),
     workspaceClientRead,
     actor.internalUserId,
   ]);

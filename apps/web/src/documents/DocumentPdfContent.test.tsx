@@ -10,6 +10,8 @@ import type { ActorContext } from '../access-types';
 import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { DocumentVersions } from './DocumentVersions';
+import { documentGrants } from './document-grants.test-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -24,20 +26,21 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company DEMO',
     clientPermissions: ['client.read'],
-    documentPermissionSetVersion: 'v3',
-    documentPermissions: [
-      'document.read',
-      'document.register',
-      'document.reference.read',
-      'document.correct',
-      'document.version.manage',
-      'document.content.read',
-      'document.content.upload',
-    ],
-    documentContentReaderAssignmentId: 'reader-assignment',
-    documentContentReaderPermissionSetVersion: 'v1',
-    documentContentUploaderAssignmentId: 'uploader-assignment',
-    documentContentUploaderPermissionSetVersion: 'v1',
+    grants: documentGrants(
+      [
+        'document.read',
+        'document.register',
+        'document.reference.read',
+        'document.correct',
+        'document.version.manage',
+        'document.content.read',
+        'document.content.upload',
+      ],
+      {
+        company_document_content_reader: 'reader-assignment',
+        company_document_content_uploader: 'uploader-assignment',
+      },
+    ),
   },
 };
 const AT = '2026-10-16T12:00:00.000Z';
@@ -456,7 +459,11 @@ describe('Stored questionnaire PDF through Document Versions', () => {
           ...actor.activeCompany,
           id: 'company',
           displayName: 'Company DEMO',
-          documentContentReaderAssignmentId: 'replacement-reader-assignment',
+          grants: withCompanyGrants(actor.activeCompany?.grants, {
+            bundle: 'company_document_content_reader',
+            version: 'v1',
+            assignmentId: 'replacement-reader-assignment',
+          }),
         },
       }),
     );
@@ -521,7 +528,11 @@ describe('Stored questionnaire PDF through Document Versions', () => {
       ...actor,
       activeCompany: {
         ...company,
-        documentContentReaderAssignmentId: 'new-reader-assignment',
+        grants: withCompanyGrants(company.grants, {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: 'new-reader-assignment',
+        }),
       },
     };
     view.rerender(

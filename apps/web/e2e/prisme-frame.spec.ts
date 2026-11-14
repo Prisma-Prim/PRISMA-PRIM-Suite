@@ -4,6 +4,7 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
 test('accepts legacy Prisme links and offers no Classic switch', async ({
   page,
@@ -73,6 +74,7 @@ test('keeps every authorized MVP section reachable from the default frame', asyn
                   clientPermissions: ['client.read'],
                   projectPermissions: ['project.read'],
                   documentPermissions: ['document.read'],
+                  grants: documentGrants(['document.read']),
                 },
               }
             : {}),

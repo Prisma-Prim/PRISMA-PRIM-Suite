@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 export const invoiceUiIds = {
   company: '10000000-0000-4000-8000-000000000001',
@@ -57,6 +58,45 @@ export const invoiceUiActor: ActorContext = {
     ],
     commercialIntakePermissionAssignmentId: 'intake-reader',
     commercialIntakePermissionSetVersion: 'v4',
+    // The Document area reads these grants; the legacy fields above stay for
+    // the External Invoice family until it reads its grants too.
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'client-reader',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'registrar',
+      },
+      {
+        bundle: 'company_document_approver',
+        version: 'v1',
+        assignmentId: 'approver',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'content-reader',
+      },
+      {
+        bundle: 'company_document_content_uploader',
+        version: 'v1',
+        assignmentId: 'uploader',
+      },
+      {
+        bundle: 'company_contract_preparer',
+        version: 'v2',
+        assignmentId: 'contract-reader',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v4',
+        assignmentId: 'intake-reader',
+      },
+    ),
     externalInvoiceGrants: [
       {
         bundle: 'company_invoice_recorder',

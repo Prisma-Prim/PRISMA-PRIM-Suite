@@ -8,6 +8,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { WorkingEvidenceWorkspace } from './WorkingEvidenceWorkspace';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   actor,
   identity,
@@ -210,6 +211,11 @@ it.each(['detail', 'historical'] as const)(
         id: ids.project,
         displayName: 'Fictional Company',
         receivedAuditSourceAccessAssignmentId: ids.evidence,
+        grants: withCompanyGrants(actor.activeCompany?.grants, {
+          bundle: 'company_received_audit_source_access',
+          version: 'v1',
+          assignmentId: ids.evidence,
+        }),
       },
     };
     view.rerender(

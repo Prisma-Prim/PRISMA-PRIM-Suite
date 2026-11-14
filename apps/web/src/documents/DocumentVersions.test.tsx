@@ -11,10 +11,11 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import {
+  documentGrants,
+  type DocumentPermission,
+} from './document-grants.test-fixture';
 
-type DocumentPermission = NonNullable<
-  NonNullable<ActorContext['activeCompany']>['documentPermissions']
->[number];
 const READER: DocumentPermission[] = [
   'document.read',
   'document.register',
@@ -46,13 +47,12 @@ function actorWith(
       id: company.id ?? 'company',
       displayName: 'PRISMA-PRIM',
       clientPermissions: ['client.read'],
-      documentPermissions,
-      ...(company.approverAssignmentId
-        ? {
-            documentApproverAssignmentId: company.approverAssignmentId,
-            documentApproverPermissionSetVersion: 'v1' as const,
-          }
-        : {}),
+      grants: documentGrants(
+        documentPermissions,
+        company.approverAssignmentId
+          ? { company_document_approver: company.approverAssignmentId }
+          : {},
+      ),
     },
   };
 }

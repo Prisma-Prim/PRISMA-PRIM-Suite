@@ -10,6 +10,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import { documentGrantRequests } from './document-grants.test-fixture';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -24,21 +29,28 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company',
     clientPermissions: ['client.read'],
-    documentPermissions: [
-      'document.read',
-      'document.register',
-      'document.reference.read',
-      'document.correct',
-      'document.received_contract.access',
-    ],
-    receivedContractAccessAssignmentId: 'family',
-    receivedContractAccessPermissionSetVersion: 'v1',
-    contractPermissions: ['commercial.contract.read'],
-    contractPermissionAssignmentId: 'contract',
-    contractPermissionSetVersion: 'v2',
-    commercialIntakePermissions: ['commercial.opportunity.read'],
-    commercialIntakePermissionAssignmentId: 'intake',
-    commercialIntakePermissionSetVersion: 'v4',
+    grants: companyGrants(
+      ...documentGrantRequests(
+        [
+          'document.read',
+          'document.register',
+          'document.reference.read',
+          'document.correct',
+          'document.received_contract.access',
+        ],
+        { company_received_contract_access: 'family' },
+      ),
+      {
+        bundle: 'company_contract_preparer',
+        version: 'v2',
+        assignmentId: 'contract',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v4',
+        assignmentId: 'intake',
+      },
+    ),
   },
 };
 const source = {
@@ -254,7 +266,15 @@ it('withholds stale Client dossier navigation after a late confirmation across a
 it('revalidates lost source access without rejecting an independently authorized Company', async () => {
   const refreshed = {
     ...actor,
-    activeCompany: { ...actor.activeCompany, contractPermissions: [] },
+    activeCompany: {
+      ...actor.activeCompany,
+      id: 'company',
+      displayName: 'Company',
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_contract_preparer',
+      ),
+    },
   };
   vi.stubGlobal('fetch', async (input: string) => {
     const path = new URL(input, 'http://localhost').pathname;

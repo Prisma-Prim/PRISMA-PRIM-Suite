@@ -26,6 +26,8 @@ import {
   type WorkspaceFamily,
 } from './document-family-registry';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
+import { captureOf } from './document-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import {
@@ -93,8 +95,7 @@ export function DocumentWorkspace(
         props.actor.workspaceId,
         props.actor.workspaceMembershipId,
         company?.id,
-        company?.documentPermissionAssignmentId,
-        company?.documentPermissionSetVersion,
+        ...captureOf(grantOf(company, 'company_document_registrar')),
       ])}
       {...props}
     />
@@ -300,9 +301,11 @@ function DocumentSession({
     onProtectedReceivedAddendumWorkChange?.(addendumProtected);
     return () => onProtectedReceivedAddendumWorkChange?.(false);
   }, [addendumProtected, onProtectedReceivedAddendumWorkChange]);
-  const canRead =
-    actor.activeCompany?.documentPermissions?.includes('document.read') ===
-    true;
+  const canRead = holds(
+    actor.activeCompany,
+    'company_document_registrar',
+    'document.read',
+  );
   const familyAuthority = useDocumentFamilyAuthority({
     actor,
     identity,
@@ -393,16 +396,28 @@ function DocumentSession({
     return withoutProtectedRelation(document);
   }
 
-  const canRegister =
-    actor.activeCompany?.documentPermissions?.includes('document.register') ===
-    true;
+  const canRegister = holds(
+    actor.activeCompany,
+    'company_document_registrar',
+    'document.register',
+  );
   const canCorrect =
-    actor.activeCompany?.documentPermissions?.includes('document.correct') ===
-      true &&
-    actor.activeCompany.documentPermissions.includes('document.reference.read');
+    holds(
+      actor.activeCompany,
+      'company_document_registrar',
+      'document.correct',
+    ) &&
+    holds(
+      actor.activeCompany,
+      'company_document_registrar',
+      'document.reference.read',
+    );
   /** A read association stays hidden while the current actor lacks Project read. */
-  const canReadProjects =
-    actor.activeCompany?.projectPermissions?.includes('project.read') === true;
+  const canReadProjects = holds(
+    actor.activeCompany,
+    'company_project_access',
+    'project.read',
+  );
   /**
    * Reserves the ordering slot of a publication that happens after an await.
    * The loaded rows have one owner and one monotonic order, so a delayed older

@@ -11,6 +11,8 @@ import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import { documentGrants } from './document-grants.test-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 
 const documentReader: ActorContext = {
   internalUserId: 'user',
@@ -25,7 +27,7 @@ const documentReader: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
-    documentPermissions: ['document.read', 'document.reference.read'],
+    grants: documentGrants(['document.read', 'document.reference.read']),
   },
 };
 const projectReader: ActorContext = {
@@ -34,8 +36,14 @@ const projectReader: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
-    documentPermissions: ['document.read', 'document.reference.read'],
-    projectPermissions: ['project.read'],
+    grants: withCompanyGrants(
+      documentGrants(['document.read', 'document.reference.read']),
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-assignment',
+      },
+    ),
   },
 };
 const identity: BrowserIdentity = {

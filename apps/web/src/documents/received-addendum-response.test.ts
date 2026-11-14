@@ -4,6 +4,7 @@ import {
   readProjectPdfVersions,
 } from '../project/project-pdf-bundle-read';
 import { completeActor } from '../access/current-actor.test-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { hasDocumentFamilyAccess } from './document-family-access';
 import { expect, it } from 'vitest';
 import { readDocumentDetail, readDocumentVersions } from './document-response';
@@ -355,6 +356,11 @@ it('rejects Addendum Project association projections even with the exact indepen
         'document.read',
         'document.received_addendum.access',
       ],
+      grants: withCompanyGrants(completeActor.activeCompany.grants, {
+        bundle: 'company_received_addendum_access',
+        version: 'v1',
+        assignmentId: registeredBy.workspaceMembershipId,
+      }),
     },
   };
   expect(

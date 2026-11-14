@@ -9,6 +9,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { completeActor } from '../access/current-actor.test-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import type { WorkingDocumentDetail } from './document-response';
 import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
@@ -89,6 +90,44 @@ function sourceActor() {
       commercialIntakePermissionAssignmentId:
         '10000000-0000-4000-8000-000000000019',
       commercialIntakePermissionSetVersion: 'v4',
+      grants: withCompanyGrants(
+        completeActor.activeCompany.grants,
+        {
+          bundle: 'company_received_addendum_access',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000005',
+        },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000014',
+        },
+        {
+          bundle: 'company_document_approver',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000015',
+        },
+        {
+          bundle: 'company_contract_preparer',
+          version: 'v2',
+          assignmentId: '10000000-0000-4000-8000-000000000016',
+        },
+        {
+          bundle: 'company_contract_approver',
+          version: 'v2',
+          assignmentId: '10000000-0000-4000-8000-000000000017',
+        },
+        {
+          bundle: 'company_contract_early_preparation',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000018',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v4',
+          assignmentId: '10000000-0000-4000-8000-000000000019',
+        },
+      ),
     },
   } satisfies ActorContext;
 }
@@ -102,7 +141,11 @@ function continuationActor(
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          documentApproverAssignmentId: '10000000-0000-4000-8000-000000000099',
+          grants: withCompanyGrants(actor.activeCompany.grants, {
+            bundle: 'company_document_approver',
+            version: 'v1',
+            assignmentId: '10000000-0000-4000-8000-000000000099',
+          }),
         },
       }
     : actor;

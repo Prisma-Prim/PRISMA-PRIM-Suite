@@ -4,6 +4,8 @@ import {
   type ReceivedAddendumNativeAuthority,
 } from './received-addendum-access';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import { grantOf, holds } from '../access/company-grants';
+import { holdsClientRead } from './document-grants';
 import { PaymentEvidenceVersions } from '../payment-evidence/PaymentEvidenceVersions';
 import type { PaymentEvidenceOperationKeys } from '../payment-evidence/payment-evidence-authority';
 import {
@@ -178,7 +180,32 @@ export function DocumentVersions({
     );
   }
   const company = actor.activeCompany;
-  const permissions = company?.documentPermissions ?? [];
+  const canRead = holds(company, 'company_document_registrar', 'document.read');
+  const canReadReference = holds(
+    company,
+    'company_document_registrar',
+    'document.reference.read',
+  );
+  const canManageVersions = holds(
+    company,
+    'company_document_registrar',
+    'document.version.manage',
+  );
+  const canDesignateOfficial = holds(
+    company,
+    'company_document_approver',
+    'document.version.designate_official',
+  );
+  const holdsContentRead = holds(
+    company,
+    'company_document_content_reader',
+    'document.content.read',
+  );
+  const holdsContentUpload = holds(
+    company,
+    'company_document_content_uploader',
+    'document.content.upload',
+  );
   const receivedAddendum =
     documentType === 'received-addendum'
       ? receivedAddendumNativeAuthority(actor)
@@ -193,7 +220,7 @@ export function DocumentVersions({
     return null;
   if (
     !company ||
-    !permissions.includes('document.read') ||
+    !canRead ||
     !hasDocumentFamilyAccess(company, documentType) ||
     (familyScreen(documentType).financial &&
       !hasExternalInvoiceNativeRead(
@@ -202,7 +229,10 @@ export function DocumentVersions({
       ))
   )
     return null;
-  const canReadReference = permissions.includes('document.reference.read');
+  const registrar = grantOf(company, 'company_document_registrar');
+  const approver = grantOf(company, 'company_document_approver');
+  const reader = grantOf(company, 'company_document_content_reader');
+  const uploader = grantOf(company, 'company_document_content_uploader');
   const canMutateFamily =
     !familyScreen(documentType).financial ||
     hasExternalInvoiceAccess(company, true);
@@ -218,25 +248,21 @@ export function DocumentVersions({
               documentId,
               documentType,
               documentFamilyCaptureKey(company, documentType),
-              permissions
-                .filter((permission) =>
-                  [
-                    'document.read',
-                    'document.reference.read',
-                    'document.version.manage',
-                    'document.version.designate_official',
-                    'document.content.read',
-                    'document.content.upload',
-                  ].includes(permission),
-                )
-                .sort(),
-              company.documentPermissionSetVersion ?? null,
-              company.documentApproverAssignmentId ?? null,
-              company.documentContentReaderAssignmentId ?? null,
-              company.documentContentReaderPermissionSetVersion ?? null,
-              company.documentContentUploaderAssignmentId ?? null,
-              company.documentContentUploaderPermissionSetVersion ?? null,
-              company.clientPermissions?.includes('client.read') === true,
+              [
+                canRead,
+                canReadReference,
+                canManageVersions,
+                canDesignateOfficial,
+                holdsContentRead,
+                holdsContentUpload,
+              ],
+              registrar?.permissionSetVersion ?? null,
+              approver?.assignmentId ?? null,
+              reader?.assignmentId ?? null,
+              reader?.permissionSetVersion ?? null,
+              uploader?.assignmentId ?? null,
+              uploader?.permissionSetVersion ?? null,
+              holdsClientRead(company),
               actor.workspacePermissions.includes('client.manage'),
             ])
       }
@@ -249,24 +275,20 @@ export function DocumentVersions({
       canDesignate={
         receivedAddendum
           ? receivedAddendum.designation !== null
-          : canMutateFamily &&
-            canReadReference &&
-            permissions.includes('document.version.designate_official')
+          : canMutateFamily && canReadReference && canDesignateOfficial
       }
       canStartDraft={
         receivedAddendum
           ? receivedAddendum.successor !== null
-          : canMutateFamily &&
-            canReadReference &&
-            permissions.includes('document.version.manage')
+          : canMutateFamily && canReadReference && canManageVersions
       }
       canUploadContent={
         receivedAddendum
           ? receivedAddendum.upload !== null
           : canMutateFamily &&
-            permissions.includes('document.content.read') &&
-            permissions.includes('document.content.upload') &&
-            permissions.includes('document.version.manage')
+            holdsContentRead &&
+            holdsContentUpload &&
+            canManageVersions
       }
       onRefresh={onRefresh}
       onProtectedWorkChange={onProtectedWorkChange}

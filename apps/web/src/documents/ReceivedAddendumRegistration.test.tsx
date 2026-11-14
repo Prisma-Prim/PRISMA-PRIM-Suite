@@ -9,6 +9,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { completeActor } from '../access/current-actor.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -58,6 +62,28 @@ function actor(): ActorContext {
       commercialIntakePermissions: ['commercial.opportunity.read'],
       commercialIntakePermissionAssignmentId: 'native-intake',
       commercialIntakePermissionSetVersion: 'v4',
+      grants: companyGrants(
+        {
+          bundle: 'company_received_addendum_access',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000005',
+        },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v1',
+          assignmentId: 'native-document',
+        },
+        {
+          bundle: 'company_contract_preparer',
+          version: 'v2',
+          assignmentId: 'native-contract',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v4',
+          assignmentId: 'native-intake',
+        },
+      ),
     },
   };
 }
@@ -360,7 +386,11 @@ it('permanently cancels a held POST parser after exact authority A → B → A r
           ...currentActor.activeCompany,
           id: companyId,
           displayName: 'Fictional Company',
-          contractPermissionAssignmentId: 'replacement-contract',
+          grants: withCompanyGrants(currentActor.activeCompany?.grants, {
+            bundle: 'company_contract_preparer',
+            version: 'v2',
+            assignmentId: 'replacement-contract',
+          }),
         },
       }}
     />,
@@ -419,8 +449,11 @@ it('cancels held token acquisition before dispatch after family replacement', as
           ...currentActor.activeCompany,
           id: companyId,
           displayName: 'Fictional Company',
-          receivedAddendumAccessAssignmentId:
-            '10000000-0000-4000-8000-000000000099',
+          grants: withCompanyGrants(currentActor.activeCompany?.grants, {
+            bundle: 'company_received_addendum_access',
+            version: 'v1',
+            assignmentId: '10000000-0000-4000-8000-000000000099',
+          }),
         },
       }}
     />,

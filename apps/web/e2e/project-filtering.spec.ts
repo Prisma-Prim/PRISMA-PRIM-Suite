@@ -6,6 +6,7 @@ import {
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
 test(`filters loaded Projects without losing detail or exact retry`, async ({
   page,
@@ -75,6 +76,10 @@ test(`filters loaded Projects without losing detail or exact retry`, async ({
                     'document.read',
                     'document.project.manage',
                   ],
+                  grants: documentGrants([
+                    'document.read',
+                    'document.project.manage',
+                  ]),
                 },
               }
             : {}),

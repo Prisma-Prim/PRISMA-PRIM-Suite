@@ -13,6 +13,9 @@ import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import { documentGrants } from './document-grants.test-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
+import { readCurrentActor } from '../access/current-actor';
 /**
  * Every opened detail mounts its Versions section. These tests prove other
  * behaviour, so that read is answered as safely unavailable before the test's
@@ -43,12 +46,12 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     clientPermissions: ['client.read'],
-    documentPermissions: [
+    grants: documentGrants([
       'document.read',
       'document.register',
       'document.reference.read',
       'document.correct',
-    ],
+    ]),
   },
 };
 const identity: BrowserIdentity = {
@@ -2764,16 +2767,21 @@ it('reports a failure instead of presenting a registered reference with a non-in
   );
   expect(screen.queryByRole('article')).not.toBeInTheDocument();
 });
-function withProjectPermissions(
-  projectPermissions: Array<'project.read' | 'project.create'>,
-): ActorContext {
+function withProjectAccess(): ActorContext {
   if (!actor.activeCompany) throw new Error('Expected an active Company.');
   return {
     ...actor,
-    activeCompany: { ...actor.activeCompany, projectPermissions },
+    activeCompany: {
+      ...actor.activeCompany,
+      grants: withCompanyGrants(actor.activeCompany.grants, {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-assignment',
+      }),
+    },
   };
 }
-const projectReader = withProjectPermissions(['project.read']);
+const projectReader = withProjectAccess();
 const linkedToProject = {
   ...document,
   projectAssociation: {
@@ -2818,11 +2826,6 @@ it('shows a current Project reader the linked Project or an explicit unlinked st
 it.each([
   ['the response omits the association', projectReader, document],
   ['the actor cannot read Projects', actor, linkedToProject],
-  [
-    'the actor may only create Projects',
-    withProjectPermissions(['project.create']),
-    notLinkedToProject,
-  ],
 ])('shows no Project row when %s', async (_case, reader, opened) => {
   stubFetch(
     vi.fn(async (url: string) =>
@@ -2841,6 +2844,28 @@ it.each([
   expect(projectRow()).toBeNull();
   expect(screen.queryByText('Not linked to a Project')).not.toBeInTheDocument();
   expect(screen.queryByText('ISO 9001 preparation')).not.toBeInTheDocument();
+});
+it('refuses the whole current Actor for a Project grant that may only create Projects', async () => {
+  const read = (value: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value }) },
+    });
+  expect((await read(projectReader)).status).toBe('ok');
+  const company = projectReader.activeCompany;
+  if (!company) throw new Error('Expected an active Company.');
+  expect(
+    await read({
+      ...projectReader,
+      activeCompany: {
+        ...company,
+        grants: (company.grants ?? []).map((grant) =>
+          grant.bundle === 'company_project_access'
+            ? { ...grant, permissions: ['project.create'] }
+            : grant,
+        ),
+      },
+    }),
+  ).toEqual({ status: 'error' });
 });
 it('hides a previously read Project as soon as the revalidated actor loses project.read', async () => {
   const fetcher = vi.fn(async (url: string) =>

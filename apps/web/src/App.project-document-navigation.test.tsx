@@ -14,6 +14,7 @@ import {
 } from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { documentGrants } from './documents/document-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -105,6 +106,7 @@ function actorFor(companyId: string, administrator: boolean): ActorContext {
       taskPermissionAssignmentId: 'task-assignment-1',
       taskPermissionSetVersion: 'v1',
       documentPermissions: ['document.read'],
+      grants: documentGrants(['document.read']),
     },
   };
 }

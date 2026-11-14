@@ -23,6 +23,7 @@ import {
   operationalHomeFixture,
 } from './actor-context.fixture';
 import { selectOption } from './select-option';
+import { documentGrants } from '../src/documents/document-grants.test-fixture';
 
 const company = {
   id: 'company-document-locale',
@@ -36,6 +37,17 @@ const company = {
     'document.version.manage',
     'document.version.designate_official',
   ],
+  grants: documentGrants(
+    [
+      'document.read',
+      'document.register',
+      'document.reference.read',
+      'document.correct',
+      'document.version.manage',
+      'document.version.designate_official',
+    ],
+    { company_document_approver: 'approver-document-locale' },
+  ),
   documentPermissionSetVersion: 'v3',
   documentApproverAssignmentId: 'approver-document-locale',
 } satisfies NonNullable<ActorContext['activeCompany']>;

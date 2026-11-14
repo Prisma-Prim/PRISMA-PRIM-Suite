@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
+import { documentGrants } from '../documents/document-grants.test-fixture';
 export const ids = {
   project: '10000000-0000-4000-8000-000000000001',
   client: '10000000-0000-4000-8000-000000000002',
@@ -51,6 +52,17 @@ export const actor: ActorContext = {
     ],
     documentContentReaderAssignmentId: ids.project,
     documentContentReaderPermissionSetVersion: 'v1',
+    // The Document area reads these grants; the legacy fields above stay for
+    // the Working Evidence screens until they read their grants too.
+    grants: documentGrants(
+      [
+        'document.read',
+        'document.reference.read',
+        'document.received_audit_source.access',
+        'document.content.read',
+      ],
+      { company_received_audit_source_access: ids.project },
+    ),
   },
 };
 export const identity: BrowserIdentity = {
