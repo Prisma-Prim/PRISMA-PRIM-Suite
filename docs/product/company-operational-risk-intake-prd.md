@@ -588,10 +588,14 @@ No old entry, event, receipt response/fingerprint, actor snapshot, assignment,
 permission version or intake-head pointer is rewritten or backfilled as a
 correction. Old uncorrected originals project as their own current entry; any
 new current index/pointer is derived without inventing historical corrections.
-Retain exact legacy `record`/`journal`/`correct` receipt schemas and replay results;
-do not attach new fields to stored JSON or rebuild historical results from current
-state. New receipt validation dispatches deliberately by supported command/entry
-shape and fails closed on corrupt/unknown stored versions. Existing public intake,
+The correction leaves `record`/`journal`/`correct` receipts and replay results as
+they are: no new field in stored JSON, no historical result rebuilt from current
+state. Nothing is deployed before launch, so receipts are read in their current
+schema only ([#1343](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1343)):
+validation dispatches by command kind and entry shape and fails closed on any
+other stored shape, and the migration that requires it stops on a database still
+holding one and says the development database must be recreated
+([#1371](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1371)). Existing public intake,
 append, intake-correction, list/detail and all history variants keep their meaning.
 
 Prove a genuine upgrade: migrate a disposable database only through the real
@@ -626,7 +630,7 @@ it, covers:
 
 1. Original → first correction → repeated correction → restore an earlier value, for observation and reassessment, with fresh current reads and complete aggregate-history pages across the page boundary. Preserve exact original text/date/kind/attribution; known/unknown dates and unchanged intake/assessment/responsibility are asserted.
 2. Empty/blank/excess narrative/reason, exact Unicode string-unit bounds, malformed dates/UUID/revisions, omitted required date, unknown/owner/kind/score/status fields and both identical facts with changed reason. Rejection consumes no state/event/receipt; a corrected uncommitted intent can reuse its key.
-3. Exact same-key concurrent success and historical replay after later target/unrelated revisions; changed text/date/reason/target/expected/predecessor same-key conflicts. Legacy receipt replays remain exact after new corrections and upgrade.
+3. Exact same-key concurrent success and historical replay after later target/unrelated revisions; changed text/date/reason/target/expected/predecessor same-key conflicts. `record`, `journal` and `correct` replays remain exact after new corrections.
 4. Deterministic database barriers prove two distinct-key corrections of the same predecessor, corrections to different originals at one expected aggregate, and correction racing append/intake correction: at most one transition succeeds; loser is stale. Prove both orderings of authority loss: command owns authority until commit and revocation waits, or revocation/deactivation owns the lock first and command/replay is denied. Include Reader, Recorder, context, Company, membership and Internal User loss and no authority from creator/admin/other-family/unknown versions.
 5. Direct foreign/missing Risk, original and predecessor identifiers, list/history/current read and continuation, plus generic Activity/Home/search/count/filter/export/target exclusion. Exercise Reader-only and Recorder-without-Reader/context independently; no real assignments or member directory.
 6. Real insertion/update failure at correction/current-index/head/event/receipt boundaries, invalid server clock, Accountability failure and response-construction/validation failure. Compare every affected row/revision before and after; remove only the synthetic failure and retry the same command successfully. Direct SQL cannot update/delete history, fork a predecessor, skip a head or cross scope. Execute the populated genuine upgrade in 24.7.

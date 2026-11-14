@@ -1408,6 +1408,138 @@ withPostgres('Company Operational Risk public REST', () => {
     expect(await rows('operational_risk_events')).toHaveLength(4);
   });
 
+  it('replays record, journal and correct receipts exactly as stored and refuses them in an earlier schema instead of defaulting it', async () => {
+    const fixture = await prepared();
+    const created = await command({
+      fixture,
+      path: '/operational-risks',
+      body: facts,
+      key: 'stored-record',
+    });
+    const riskId = string(object(created.risk).id);
+    const journalBody = {
+      expectedRevision: 1,
+      kind: 'observation',
+      narrative: 'Stored narrative',
+      occurredOn: '2026-10-20',
+    };
+    const journal = await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal`,
+      body: journalBody,
+      key: 'stored-journal',
+    });
+    const correctionBody = {
+      ...facts,
+      cause: 'Stored corrected cause',
+      expectedRevision: 2,
+      predecessorId: object(created.entry).id,
+      reason: 'Stored reason',
+    };
+    const correction = await command({
+      fixture,
+      path: `/operational-risks/${riskId}/intake-corrections`,
+      body: correctionBody,
+      key: 'stored-correct',
+    });
+    const commands = [
+      {
+        kind: 'record',
+        path: '/operational-risks',
+        body: facts,
+        key: 'stored-record',
+        saved: created,
+      },
+      {
+        kind: 'journal',
+        path: `/operational-risks/${riskId}/journal`,
+        body: journalBody,
+        key: 'stored-journal',
+        saved: journal,
+      },
+      {
+        kind: 'correct',
+        path: `/operational-risks/${riskId}/intake-corrections`,
+        body: correctionBody,
+        key: 'stored-correct',
+        saved: correction,
+      },
+    ] as const;
+    const stored = async (kind: string, key: string) => {
+      const [receipt] = (
+        await pool.query<{ response: unknown }>(
+          'SELECT response FROM operational_risk_receipts WHERE command_kind=$1 AND idempotency_key=$2',
+          [kind, key],
+        )
+      ).rows;
+      return receipt?.response;
+    };
+    const replace = async (kind: string, key: string, response: unknown) => {
+      await pool.query(
+        'ALTER TABLE operational_risk_receipts DISABLE TRIGGER operational_risk_receipts_immutable',
+      );
+      try {
+        await pool.query(
+          'UPDATE operational_risk_receipts SET response=$1 WHERE command_kind=$2 AND idempotency_key=$3',
+          [JSON.stringify(response), kind, key],
+        );
+      } finally {
+        await pool.query(
+          'ALTER TABLE operational_risk_receipts ENABLE TRIGGER operational_risk_receipts_immutable',
+        );
+      }
+    };
+    const earlierIntake = (value: unknown) => ({
+      ...object(value),
+      facts: without(object(object(value).facts), ['plannedDate']),
+    });
+    const earlierSchemas = {
+      record: [
+        // A Risk recorded before its planned date was stored.
+        {
+          risk: {
+            ...object(created.risk),
+            originalIntake: earlierIntake(object(created.risk).originalIntake),
+            currentIntake: earlierIntake(object(created.risk).currentIntake),
+          },
+          entry: earlierIntake(created.entry),
+        },
+        // A Risk recorded before its assessment and responsibility.
+        {
+          ...created,
+          risk: without(object(created.risk), ['assessment', 'responsibility']),
+        },
+      ],
+      journal: [
+        // A follow-up recorded before its date.
+        { ...journal, entry: without(object(journal.entry), ['occurredOn']) },
+      ],
+      correct: [
+        // An intake correction whose facts omit the planned date.
+        { ...correction, entry: earlierIntake(correction.entry) },
+      ],
+    };
+    for (const { kind, path, body, key, saved } of commands) {
+      expect(await stored(kind, key)).toEqual(saved);
+      expect(await command({ fixture, path, body, key })).toEqual(saved);
+      try {
+        for (const response of earlierSchemas[kind]) {
+          await replace(kind, key, response);
+          const before = await Promise.all(riskTables.map(rows));
+          const replay = await post({ fixture, path, body, key });
+          expect(replay.status).toBe(500);
+          expect(await replay.json()).toMatchObject({
+            code: 'RISK_OUTCOME_UNCONFIRMED',
+          });
+          expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+        }
+      } finally {
+        await replace(kind, key, saved);
+      }
+      expect(await command({ fixture, path, body, key })).toEqual(saved);
+    }
+  });
+
   it('refuses stale heads, stale displayed predecessors, unchanged corrections and unavailable targets without consuming keys', async () => {
     const fixture = await prepared();
     const created = await command({
@@ -2606,4 +2738,13 @@ function string(value: unknown): string {
 function array(value: unknown): unknown[] {
   if (!Array.isArray(value)) throw new Error('Expected a synthetic array.');
   return value;
+}
+/** The same stored JSON in an earlier schema, without later keys. */
+function without(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => !keys.includes(key)),
+  );
 }
