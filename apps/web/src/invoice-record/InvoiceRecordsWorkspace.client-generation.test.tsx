@@ -42,14 +42,10 @@ function LocaleControl() {
     </>
   );
 }
-function view(
-  browserIdentity: BrowserIdentity,
-  projection: string,
-  frame: 'prisme' | 'classic' = 'prisme',
-) {
+function view(browserIdentity: BrowserIdentity, projection: string) {
   return (
     <>
-      <ApplicationPresentation value={frame}>
+      <ApplicationPresentation value="prisme">
         <SectionVisibility value={true}>
           <InvoiceRecordsWorkspace
             actor={actor}
@@ -219,12 +215,9 @@ it.each(['CREATE', 'CORRECT'] satisfies Action[])(
     await screen.findByRole('button', { name: 'Retry identical command' });
     expect(posts).toHaveLength(1);
     const oldAttempt = posts[0];
-    const readsBeforePresentation = reads.length;
+    const readsBeforeLocale = reads.length;
     expect(oldAttempt?.key).toMatch(/^[0-9a-f-]{36}$/u);
     fireEvent.click(screen.getByRole('button', { name: 'Français' }));
-    rendered.rerender(
-      view(token.browserIdentity, 'client-generation-A', 'classic'),
-    );
     expect(
       screen.getByRole('button', { name: 'Réessayer la commande identique' }),
     ).toBeVisible();
@@ -236,19 +229,15 @@ it.each(['CREATE', 'CORRECT'] satisfies Action[])(
       ),
     ).toHaveValue(action === 'CREATE' ? oldNumber : oldReason);
     expect(posts).toHaveLength(1);
-    expect(reads).toHaveLength(readsBeforePresentation);
+    expect(reads).toHaveLength(readsBeforeLocale);
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     token.hold();
     fireEvent.click(
       screen.getByRole('button', { name: 'Retry identical command' }),
     );
     await waitFor(() => expect(token.held()).toBe(true));
-    rendered.rerender(
-      view(token.browserIdentity, 'client-generation-B', 'classic'),
-    );
-    rendered.rerender(
-      view(token.browserIdentity, 'client-generation-A', 'classic'),
-    );
+    rendered.rerender(view(token.browserIdentity, 'client-generation-B'));
+    rendered.rerender(view(token.browserIdentity, 'client-generation-A'));
     expect(
       screen.queryByLabelText('External invoice reference'),
     ).not.toBeInTheDocument();
@@ -324,12 +313,8 @@ it('preserves a financial withdrawal reason and exact retry through Client proje
     screen.getByRole('button', { name: 'Retry identical command' }),
   );
   await waitFor(() => expect(token.held()).toBe(true));
-  rendered.rerender(
-    view(token.browserIdentity, 'client-generation-C', 'classic'),
-  );
-  rendered.rerender(
-    view(token.browserIdentity, 'client-generation-B', 'classic'),
-  );
+  rendered.rerender(view(token.browserIdentity, 'client-generation-C'));
+  rendered.rerender(view(token.browserIdentity, 'client-generation-B'));
   expect(screen.getByLabelText('Literal reason')).toHaveValue(reason);
   await act(async () => {
     token.release();

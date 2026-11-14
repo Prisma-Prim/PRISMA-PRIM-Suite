@@ -132,43 +132,40 @@ async function openDocument() {
 const openProjectAction = () =>
   screen.queryByRole('button', { name: 'Open Project' });
 
-it.each(['classic', 'prisme'] as const)(
-  'offers Open Project beside a linked Project row in %s and hands over only its id',
-  async (presentation) => {
-    const fetcher = serve(linked);
-    const onOpenProject = vi.fn();
-    render(
-      <ApplicationPresentation value={presentation}>
-        <DocumentWorkspace
-          actor={projectReader}
-          identity={identity}
-          onOpenClientDossier={vi.fn()}
-          onOpenProject={onOpenProject}
-        />
-      </ApplicationPresentation>,
-    );
-    const detail = await openDocument();
-    const action = within(detail).getByRole('button', { name: 'Open Project' });
-    // The same plain detail-row action as Open Client dossier.
-    const dossierAction = within(detail).getByRole('button', {
-      name: 'Open Client dossier',
-    });
-    expect(action).toHaveAttribute('type', 'button');
-    expect(action.className).toBe(dossierAction.className);
-    expect(
-      within(detail).getByText('Project', { selector: 'dt' }).closest('dl')
-        ?.nextElementSibling,
-    ).toBe(action);
-    const reads = fetcher.mock.calls.length;
+it('offers Open Project beside a linked Project row and hands over only its id', async () => {
+  const fetcher = serve(linked);
+  const onOpenProject = vi.fn();
+  render(
+    <ApplicationPresentation value="prisme">
+      <DocumentWorkspace
+        actor={projectReader}
+        identity={identity}
+        onOpenClientDossier={vi.fn()}
+        onOpenProject={onOpenProject}
+      />
+    </ApplicationPresentation>,
+  );
+  const detail = await openDocument();
+  const action = within(detail).getByRole('button', { name: 'Open Project' });
+  // The same plain detail-row action as Open Client dossier.
+  const dossierAction = within(detail).getByRole('button', {
+    name: 'Open Client dossier',
+  });
+  expect(action).toHaveAttribute('type', 'button');
+  expect(action.className).toBe(dossierAction.className);
+  expect(
+    within(detail).getByText('Project', { selector: 'dt' }).closest('dl')
+      ?.nextElementSibling,
+  ).toBe(action);
+  const reads = fetcher.mock.calls.length;
 
-    fireEvent.click(action);
+  fireEvent.click(action);
 
-    expect(onOpenProject).toHaveBeenCalledTimes(1);
-    expect(onOpenProject).toHaveBeenCalledWith(linkedProject.id);
-    expect(fetcher).toHaveBeenCalledTimes(reads);
-    expect(detail.textContent).not.toContain(linkedProject.id);
-  },
-);
+  expect(onOpenProject).toHaveBeenCalledTimes(1);
+  expect(onOpenProject).toHaveBeenCalledWith(linkedProject.id);
+  expect(fetcher).toHaveBeenCalledTimes(reads);
+  expect(detail.textContent).not.toContain(linkedProject.id);
+});
 
 it.each([
   ['the Project is not linked', projectReader, unlinked, true],

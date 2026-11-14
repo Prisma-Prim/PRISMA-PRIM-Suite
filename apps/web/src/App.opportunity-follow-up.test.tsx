@@ -397,7 +397,7 @@ beforeEach(() => {
         }) satisfies MediaQueryList,
     ),
   );
-  window.history.replaceState(null, '', '/?frame=prisme#requests');
+  window.history.replaceState(null, '', '/#requests');
 });
 afterEach(() => {
   vi.restoreAllMocks();

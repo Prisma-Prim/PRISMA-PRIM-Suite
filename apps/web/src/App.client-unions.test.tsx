@@ -189,14 +189,14 @@ describe('persisted Client union through App', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    window.history.replaceState(null, '', '/?frame=prisme#clients');
+    window.history.replaceState(null, '', '/#clients');
   });
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     window.history.replaceState(null, '', '/');
   });
-  it('preserves an uncertain mixed-source command across navigation and frames and reports success in the second canonical dossier', async () => {
+  it('preserves an uncertain mixed-source command across navigation and reports success in the second canonical dossier', async () => {
     const state = installTransport();
     render(<App identity={deterministicBrowserIdentity()} />);
     const form = await openComparison();
@@ -210,13 +210,6 @@ describe('persisted Client union through App', () => {
     const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
     fireEvent.click(within(nav).getByRole('link', { name: 'Activity Log' }));
     fireEvent.click(within(nav).getByRole('link', { name: 'Clients' }));
-    act(() => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('frame', 'classic');
-      window.history.pushState(window.history.state, '', url);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Try Prisme' }));
     const retained = screen.getByRole('form', { name: 'Confirm union' });
     expect(
       within(retained).getByLabelText('Canonical Client dossier'),

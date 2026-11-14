@@ -89,7 +89,7 @@ const listedRegistrationTime = `Registration time${new Intl.DateTimeFormat(
   { dateStyle: 'medium', timeStyle: 'short' },
 ).format(new Date(document.createdAt))}`;
 afterEach(() => vi.unstubAllGlobals());
-it('presents real Working Documents in Prisme while preserving the Classic public markup', async () => {
+it('presents real Working Documents in Prisme', async () => {
   stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
@@ -99,21 +99,6 @@ it('presents real Working Documents in Prisme while preserving the Classic publi
       ),
     ),
   );
-  const classic = render(
-    <DocumentWorkspace actor={actor} identity={identity} />,
-  );
-  const classicWorkspace = await screen.findByRole('region', {
-    name: 'Working Documents',
-  });
-  expect(classicWorkspace).toHaveClass('working-documents');
-  expect(classicWorkspace).not.toHaveClass('working-documents--prisme');
-  expect(classicWorkspace.firstElementChild).toBe(
-    within(classicWorkspace).getByRole('heading', {
-      name: 'Working Documents',
-    }),
-  );
-  classic.unmount();
-
   render(
     <ApplicationPresentation value="prisme">
       <DocumentWorkspace actor={actor} identity={identity} />

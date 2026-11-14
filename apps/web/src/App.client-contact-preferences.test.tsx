@@ -45,7 +45,6 @@ const dossier = {
 const help =
   'Practical preferences only, such as language, preferred channel or suitable times. Saving them sends no message and records no consent or approval.';
 const tooLong = 'Communication preferences must be 1000 characters or fewer.';
-type Presentation = 'prisme' | 'classic';
 
 function directorActor({
   resolvesDuplicates = false,
@@ -83,11 +82,9 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function renderDossier({
-  presentation = 'prisme',
   initial = dossier,
   history = { corrections: [], nextCursor: null },
 }: {
-  presentation?: Presentation;
   initial?: Record<string, unknown>;
   history?: unknown;
 } = {}) {
@@ -118,7 +115,7 @@ function renderDossier({
     }),
   );
   render(
-    <ApplicationPresentation value={presentation}>
+    <ApplicationPresentation value="prisme">
       <ClientDossierPanel
         clientAccountId={dossier.id}
         companyContextId="company-a"
@@ -132,12 +129,11 @@ function renderDossier({
   );
   return corrections;
 }
-async function openCorrection(presentation: Presentation = 'prisme') {
+async function openCorrection() {
   await screen.findByRole('heading', { name: dossier.displayName });
-  if (presentation === 'prisme')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Correct Client dossier' }),
-    );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Correct Client dossier' }),
+  );
   const form = screen.getByRole('form', { name: 'Correct Client dossier' });
   await waitFor(() => expect(form).toBeVisible());
   return form;
@@ -257,28 +253,25 @@ describe('Client Contact communication preferences', () => {
     expect(plain).toHaveTextContent(/^Ana Demoana\.demo@example\.test$/u);
   });
 
-  it.each<Presentation>(['prisme', 'classic'])(
-    'pre-fills every Contact preference and resubmits it unchanged when another field changes (%s)',
-    async (presentation) => {
-      const corrections = renderDossier({ presentation });
-      const form = await openCorrection(presentation);
+  it('pre-fills every Contact preference and resubmits it unchanged when another field changes', async () => {
+    const corrections = renderDossier();
+    const form = await openCorrection();
 
-      expect(preferencesField(contactGroup(form, 1))).toHaveValue(preferences);
-      expect(
-        preferencesField(contactGroup(form, 1)),
-      ).toHaveAccessibleDescription(help);
-      expect(preferencesField(contactGroup(form, 2))).toHaveValue(
-        maria.communicationPreferences,
-      );
-      expect(preferencesField(contactGroup(form, 3))).toHaveValue('');
+    expect(preferencesField(contactGroup(form, 1))).toHaveValue(preferences);
+    expect(preferencesField(contactGroup(form, 1))).toHaveAccessibleDescription(
+      help,
+    );
+    expect(preferencesField(contactGroup(form, 2))).toHaveValue(
+      maria.communicationPreferences,
+    );
+    expect(preferencesField(contactGroup(form, 3))).toHaveValue('');
 
-      fireEvent.change(within(form).getByLabelText('Telephone'), {
-        target: { value: '+373 22 000 372' },
-      });
+    fireEvent.change(within(form).getByLabelText('Telephone'), {
+      target: { value: '+373 22 000 372' },
+    });
 
-      expect(await save(form, corrections)).toEqual([ion, maria, ana]);
-    },
-  );
+    expect(await save(form, corrections)).toEqual([ion, maria, ana]);
+  });
 
   it("keeps every Contact's preferences when another Contact's telephone changes or a Contact is removed", async () => {
     const corrections = renderDossier();
@@ -563,6 +556,7 @@ describe('Client Contact communication preferences', () => {
     );
 
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Preferences Demo SRL' },
     });
@@ -606,6 +600,7 @@ describe('Client Contact communication preferences', () => {
     );
 
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Preferences Demo SRL' },
     });

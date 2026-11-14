@@ -260,7 +260,7 @@ describe('opening the Request from its commercial Activity event', () => {
           }) satisfies MediaQueryList,
       ),
     );
-    window.history.replaceState(null, '', '/?frame=prisme#activity');
+    window.history.replaceState(null, '', '/#activity');
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -269,30 +269,27 @@ describe('opening the Request from its commercial Activity event', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it.each(['prisme', 'classic'])(
-    'opens the Request of a next-action event with exactly one detail read (%s)',
-    async (frame) => {
-      window.history.replaceState(null, '', `/?frame=${frame}#activity`);
-      const transport = installTransport();
-      render(<App identity={deterministicBrowserIdentity()} />);
+  it('opens the Request of a next-action event with exactly one detail read', async () => {
+    window.history.replaceState(null, '', '/#activity');
+    const transport = installTransport();
+    render(<App identity={deterministicBrowserIdentity()} />);
 
-      const row = await activityRow('updated an Opportunity next action');
-      expect(
-        within(row).getByRole('button', { name: 'Open Request' }),
-      ).toHaveTextContent(/^Open Request$/u);
-      openRequestIn(row);
+    const row = await activityRow('updated an Opportunity next action');
+    expect(
+      within(row).getByRole('button', { name: 'Open Request' }),
+    ).toHaveTextContent(/^Open Request$/u);
+    openRequestIn(row);
 
-      expect(
-        await within(requestsRegion()).findByText(
-          `Original source of ${subject}`,
-        ),
-      ).toBeVisible();
-      expect(window.location.hash).toBe('#requests');
-      await waitFor(() => expect(requestsRegion()).toHaveFocus());
-      expect(transport.detailReads).toEqual([companyA.id]);
-      expect(transport.mutations).toEqual([]);
-    },
-  );
+    expect(
+      await within(requestsRegion()).findByText(
+        `Original source of ${subject}`,
+      ),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#requests');
+    await waitFor(() => expect(requestsRegion()).toHaveFocus());
+    expect(transport.detailReads).toEqual([companyA.id]);
+    expect(transport.mutations).toEqual([]);
+  });
 
   it('opens the same Request from its creation events, reading it fresh each time', async () => {
     const transport = installTransport();
@@ -434,7 +431,7 @@ describe('opening the Request from its commercial Activity event', () => {
 
   it('holds the requested Request behind an open next-action edit and opens it on cancel', async () => {
     const transport = installTransport();
-    window.history.replaceState(null, '', '/?frame=prisme#requests');
+    window.history.replaceState(null, '', '/#requests');
     render(<App identity={deterministicBrowserIdentity()} />);
     await screen.findByRole('region', { name: 'Client Requests' });
     fireEvent.click(

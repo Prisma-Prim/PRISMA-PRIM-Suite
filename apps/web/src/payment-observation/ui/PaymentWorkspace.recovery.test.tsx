@@ -343,21 +343,17 @@ function view(options: {
   callbacks: ReturnType<typeof callbacks>;
   actor?: ActorContext;
   identity?: BrowserIdentity;
-  frame?: 'classic' | 'prisme';
   projection?: string;
   navigation?: Pick<
     Parameters<typeof PaymentWorkspace>[0],
     'onOpenClient' | 'onOpenDocument'
   >;
 }) {
-  const frame = options.frame ?? 'prisme';
   return (
     <>
-      <ApplicationPresentation value={frame}>
+      <ApplicationPresentation value="prisme">
         <SectionVisibility value={true}>
-          <div
-            className={frame === 'prisme' ? 'prisme-shell' : 'classic-shell'}
-          >
+          <div className="prisme-shell">
             <PaymentWorkspace
               actor={options.actor ?? actor}
               identity={options.identity ?? browserIdentity}
@@ -689,7 +685,7 @@ it.each(['source A → B → A', 'equal-permission Recorder replacement'])(
   },
 );
 
-it('preserves an invalid literal draft through unrelated Actor, locale and frame changes without duplicate reads', async () => {
+it('preserves an invalid literal draft through unrelated Actor and locale changes without duplicate reads', async () => {
   const transport = installTransport({
     post: () => {
       throw new Error('Invalid draft must not reach HTTP.');
@@ -708,9 +704,7 @@ it('preserves an invalid literal draft through unrelated Actor, locale and frame
   submit(panel, 'CORRECT_DRAFT');
   await screen.findByText(paymentCopy.en.invalid);
   const newer = { ...actor, displayName: 'Unrelated new Actor label' };
-  rendered.rerender(
-    view({ callbacks: observed, actor: newer, frame: 'classic' }),
-  );
+  rendered.rerender(view({ callbacks: observed, actor: newer }));
   const locales: PaymentLocale[] = ['ro', 'ru', 'fr', 'en'];
   for (const locale of locales) {
     fireEvent.click(
@@ -736,9 +730,6 @@ it('preserves an invalid literal draft through unrelated Actor, locale and frame
         ),
     ).toBe(true);
   }
-  rendered.rerender(
-    view({ callbacks: observed, actor: newer, frame: 'prisme' }),
-  );
   expect(screen.getByLabelText(paymentCopy.en.amount)).toHaveValue('1255.500');
   expect(transport.reads).toEqual([
     '/api/payments',

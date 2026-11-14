@@ -35,6 +35,11 @@ const validListedClient = {
   relatedToActiveCompany: true,
 };
 
+/** Prisme keeps the registration form behind its directory action. */
+function openRegistration() {
+  fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
+}
+
 describe('ClientWorkspace response contract', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -209,13 +214,14 @@ describe('ClientWorkspace response contract', () => {
       />,
     );
     await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: '  Literal Client SRL  ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'We could not load Clients. Please try again.',
+      'The Client creation could not be confirmed. Retry the same details safely.',
     );
     expect(screen.getByLabelText('Client display name')).toHaveValue(
       '  Literal Client SRL  ',
@@ -509,15 +515,22 @@ describe('ClientWorkspace response contract', () => {
       target: { value: 'Shared' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-    expect(
-      await screen.findByRole('heading', { name: 'Shared Client', level: 4 }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Add to PRISMA-PRIM' }));
+    // Prisme lists search results in the same directory as the Company list.
     expect(
       await screen.findByRole('heading', { name: 'Shared Client', level: 3 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Available in PRISMA-PRIM')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to PRISMA-PRIM' }));
+    expect(
+      await screen.findByText('Available in PRISMA-PRIM'),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to Company Clients' }),
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Shared Client', level: 3 }),
+    ).toBeInTheDocument();
 
+    openRegistration();
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Registered Client' },
     });

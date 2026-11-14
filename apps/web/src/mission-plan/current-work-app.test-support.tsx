@@ -304,10 +304,22 @@ export async function openCurrentWork() {
   return screen.findByRole('region', { name: 'Current mission work' });
 }
 
+/** Shows one Prisme section through the primary navigation. */
+export async function openSection(name: string) {
+  const nav = await screen.findByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  fireEvent.click(within(nav).getByRole('link', { name }));
+}
+/** Prisme shows the Company access administration under Team & access. */
+export async function openCompanyAccess() {
+  await openSection('Team & access');
+  return screen.findByRole('region', { name: 'Company access' });
+}
 export function resetCurrentWorkApp() {
   localStorage.clear();
   sessionStorage.clear();
-  window.history.replaceState(null, '', '/?frame=classic#projects');
+  window.history.replaceState(null, '', '/#projects');
   vi.stubGlobal(
     'matchMedia',
     vi.fn(

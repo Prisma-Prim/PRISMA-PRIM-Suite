@@ -124,13 +124,6 @@ async function presentationRoundtrip(protectedReads: () => number) {
     await Promise.resolve();
   });
   expect(protectedReads()).toBe(before);
-  await act(async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('frame', 'classic');
-    window.history.pushState(null, '', url);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  });
-  fireEvent.click(await screen.findByRole('button', { name: 'Try Prisme' }));
   const navigation = screen.getByRole('navigation', {
     name: 'Primary navigation',
   });
@@ -178,7 +171,7 @@ it.each(
     })),
   ),
 )(
-  'preserves actual native Task creation $phase and Project draft while $kind records independently, fails its refresh and changes all locales/frames',
+  'preserves actual native Task creation $phase and Project draft while $kind records independently, fails its refresh and changes all locales',
   async ({ phase, kind }) => {
     const tasks = nativeTasks(kind === 'next-action' ? nextActionActor : actor),
       base = tasks[0];
@@ -358,7 +351,7 @@ it.each(
     })),
   ),
 )(
-  'preserves actual native Project registration $phase and its open exclusions through all locales/frames and independent $kind continuation',
+  'preserves actual native Project registration $phase and its open exclusions through all locales and independent $kind continuation',
   async ({ phase, kind }) => {
     const createdProject = {
       ...project,

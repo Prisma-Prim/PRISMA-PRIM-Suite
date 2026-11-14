@@ -81,7 +81,7 @@ function serve(current: ActorContext) {
       paths.push(path);
       if (path === '/api/access/current-actor') return Response.json(current);
       if (path === '/api/activity-log') return Response.json({ events });
-      // The Company summary the Classic home mounts for this Project reader.
+      // The Company summary the overview mounts for this Project reader.
       if (path === '/api/operational-home')
         return Response.json({
           companyId: current.activeCompany?.id,
@@ -125,7 +125,7 @@ it.each([
   'shows the responsible member in Project detail to %s with change controls only for project.update',
   async (_, current, changeable) => {
     const paths = serve(current);
-    window.history.replaceState(null, '', '/?frame=classic#projects');
+    window.history.replaceState(null, '', '/#projects');
     render(<App identity={deterministicBrowserIdentity()} />);
     const navigation = await screen.findByRole('navigation', {
       name: 'Primary navigation',
@@ -164,7 +164,7 @@ it.each([
 
 it('renders responsible-member changes in the Activity Log with their before and after members', async () => {
   serve(actor);
-  window.history.replaceState(null, '', '/?frame=classic#activity');
+  window.history.replaceState(null, '', '/#activity');
   render(<App identity={deterministicBrowserIdentity()} />);
   const activity = await screen.findByRole('region', { name: 'Activity Log' });
   const [cleared, named] = await within(activity).findAllByRole('listitem');

@@ -445,7 +445,7 @@ describe('Client dossier and Client Request navigation through App', () => {
           }) satisfies MediaQueryList,
       ),
     );
-    window.history.replaceState(null, '', '/?frame=prisme#clients');
+    window.history.replaceState(null, '', '/#clients');
   });
   afterEach(() => {
     vi.restoreAllMocks();

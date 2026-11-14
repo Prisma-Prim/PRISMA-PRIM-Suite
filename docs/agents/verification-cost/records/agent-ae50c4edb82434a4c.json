@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "agent-ae50c4edb82434a4c",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1362,
+  "pullRequest": 1392,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T13:11:04.188Z",
+    "end": "2026-11-14T14:33:40.424Z",
+    "durationSeconds": 4956
+  },
+  "tokens": {
+    "input": 674,
+    "output": 170202,
+    "cacheCreation": 470652,
+    "cacheRead": 104768211
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 674,
+        "output": 170202,
+        "cacheCreation": 470652,
+        "cacheRead": 104768211
+      },
+      "estimatedPriceUsd": 26.713638
+    }
+  ],
+  "price": {
+    "estimatedUsd": 26.713638,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Web unit tests moved to Prisme; local proof before CI and review"
+  }
+}

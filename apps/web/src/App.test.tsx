@@ -18,7 +18,23 @@ import { InterfaceLocaleProvider } from './localization/interface-locale';
 
 describe('App', () => {
   beforeEach(() => {
-    window.history.replaceState(null, '', '/?frame=classic');
+    window.history.replaceState(null, '', '/');
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(
+        (query: string) =>
+          ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(() => false),
+          }) satisfies MediaQueryList,
+      ),
+    );
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((input: RequestInfo | URL) => {
@@ -75,9 +91,7 @@ describe('App', () => {
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
-      await screen.findByRole('heading', {
-        name: 'Welcome to PRISMA-PRIM Suite',
-      }),
+      await screen.findByRole('heading', { name: 'Hello, Ada Ionescu.' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: 'Primary navigation' }),
@@ -122,12 +136,14 @@ describe('App', () => {
       },
     );
 
+    window.history.replaceState(null, '', '/#clients');
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
       await screen.findByRole('region', { name: 'Clients' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Clients' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
     expect(
       screen.getByRole('button', { name: 'Create Client' }),
     ).toBeInTheDocument();
@@ -155,10 +171,11 @@ describe('App', () => {
   });
 
   it('shows the current Workspace Activity Log in canonical language', async () => {
+    window.history.replaceState(null, '', '/#activity');
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
-      await screen.findByRole('heading', { name: 'Activity Log' }),
+      await screen.findByRole('heading', { name: 'Activity Log', level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByText('Ada Ionescu was provisioned')).toBeInTheDocument();
     expect(screen.getByText('Target: Ada Ionescu')).toBeInTheDocument();
@@ -209,6 +226,7 @@ describe('App', () => {
       ),
     );
 
+    window.history.replaceState(null, '', '/#activity');
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
@@ -269,6 +287,7 @@ describe('App', () => {
         ),
       );
 
+      window.history.replaceState(null, '', '/#activity');
       render(<App identity={deterministicBrowserIdentity()} />);
 
       expect(
@@ -340,6 +359,7 @@ describe('App', () => {
         ),
       );
 
+      window.history.replaceState(null, '', '/#activity');
       render(<App identity={deterministicBrowserIdentity()} />);
 
       expect(
@@ -399,6 +419,7 @@ describe('App', () => {
       ),
     );
 
+    window.history.replaceState(null, '', '/#activity');
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
@@ -457,6 +478,7 @@ describe('App', () => {
         ),
       );
 
+      window.history.replaceState(null, '', '/#activity');
       render(<App identity={deterministicBrowserIdentity()} />);
 
       expect(
@@ -574,6 +596,7 @@ describe('App', () => {
       ),
     );
 
+    window.history.replaceState(null, '', '/#activity');
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
@@ -607,6 +630,7 @@ describe('App', () => {
             ),
     );
 
+    window.history.replaceState(null, '', '/#activity');
     render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
@@ -727,6 +751,7 @@ describe('App', () => {
     const newIdentity = deterministicBrowserIdentity({
       'x-test-workspace': 'new',
     });
+    window.history.replaceState(null, '', '/#companies');
     const { rerender } = render(<App identity={oldIdentity} />);
     await screen.findAllByText('Old Workspace');
     fireEvent.change(screen.getByLabelText('Company display name'), {

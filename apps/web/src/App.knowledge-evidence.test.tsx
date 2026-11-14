@@ -333,7 +333,7 @@ it.each([
     ).toBe(false);
   },
 );
-it('mounts only on selection, preserves frame-only continuity and reads fresh after departure', async () => {
+it('mounts only on selection and reads fresh after departure', async () => {
   window.history.replaceState(null, '', '/#overview');
   const reads: string[] = [];
   installParentServer(
@@ -361,15 +361,7 @@ it('mounts only on selection, preserves frame-only continuity and reads fresh af
   await screen.findByText(source.title);
   expect(reads).toHaveLength(1);
   act(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('frame', 'classic');
-    window.history.pushState(null, '', url);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  });
-  expect(screen.getByText(source.title)).toBeVisible();
-  expect(reads).toHaveLength(1);
-  act(() => {
-    window.history.replaceState(null, '', '/?frame=classic#overview');
+    window.history.replaceState(null, '', '/#overview');
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
   expect(screen.queryByText(source.title)).toBeNull();

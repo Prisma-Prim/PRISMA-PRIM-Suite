@@ -195,7 +195,6 @@ const logistic: Entity & { legalAddress: string } = {
   legalAddress: 'Str. Industrială 1, Chișinău',
   createdAt: '2026-09-26T08:05:00.000Z',
 };
-type Presentation = 'prisme' | 'classic';
 
 function directorActor(): ActorContext {
   return {
@@ -249,7 +248,6 @@ function renderDossier({
   entities = [],
   route = () => undefined,
   dossierRoute = () => undefined,
-  presentation = 'prisme',
   canUpdate = true,
   clientAccountId = dossier.id,
   locale = 'en',
@@ -258,7 +256,6 @@ function renderDossier({
   entities?: Entity[];
   route?: Route;
   dossierRoute?: Route;
-  presentation?: Presentation;
   canUpdate?: boolean;
   clientAccountId?: string;
   locale?: InterfaceLocale | null;
@@ -435,13 +432,12 @@ function renderDossier({
   }
   if (locale === null) localStorage.removeItem(interfaceLocaleStorageKey);
   else localStorage.setItem(interfaceLocaleStorageKey, locale);
-  if (application)
-    window.history.replaceState(null, '', '/?frame=prisme#clients');
+  if (application) window.history.replaceState(null, '', '/#clients');
   const view = render(
     application ? (
       <App identity={deterministicBrowserIdentity()} />
     ) : (
-      <ApplicationPresentation value={presentation}>
+      <ApplicationPresentation value="prisme">
         <ClientDossierPanel
           clientAccountId={clientAccountId}
           companyContextId={companyA.id}
@@ -530,29 +526,25 @@ describe('Client legal entities and branches', () => {
     ).toBeEnabled();
   });
 
-  it.each(['prisme', 'classic'] as const)(
-    'shows the empty state once, after the shared fields and apart from Contacts (%s)',
-    async (presentation) => {
-      renderDossier({ presentation });
-      const region = await section();
-      expect(
-        await within(region).findByText(
-          'No additional legal entities or branches recorded. The dossier identity above is the main organization.',
-        ),
-      ).toBeVisible();
-      expect(
-        screen.getAllByRole('region', { name: 'Legal entities and branches' }),
-      ).toHaveLength(1);
-      const shared = screen.getByRole('heading', { name: 'Shared details' });
-      const contacts = screen.getByRole('heading', { name: 'Contacts' });
-      expect(
-        shared.compareDocumentPosition(region) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(contacts.closest('section')?.contains(region)).toBe(false);
-      expect(within(region).queryByText('Ana Demo')).not.toBeInTheDocument();
-    },
-  );
+  it('shows the empty state once, after the shared fields and apart from Contacts', async () => {
+    renderDossier();
+    const region = await section();
+    expect(
+      await within(region).findByText(
+        'No additional legal entities or branches recorded. The dossier identity above is the main organization.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getAllByRole('region', { name: 'Legal entities and branches' }),
+    ).toHaveLength(1);
+    const shared = screen.getByRole('heading', { name: 'Shared details' });
+    const contacts = screen.getByRole('heading', { name: 'Contacts' });
+    expect(
+      shared.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(contacts.closest('section')?.contains(region)).toBe(false);
+    expect(within(region).queryByText('Ana Demo')).not.toBeInTheDocument();
+  });
 
   it('lists each entity with its IDNO and address or not recorded', async () => {
     const long = {

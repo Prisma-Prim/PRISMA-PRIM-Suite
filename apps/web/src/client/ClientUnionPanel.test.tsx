@@ -233,7 +233,7 @@ describe('Client union UI public journey', () => {
     expect(callbacks.onChanged).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps an uncertain reversal for an explicit unchanged retry across presentation changes', async () => {
+  it('keeps an uncertain reversal for an explicit unchanged retry', async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(
@@ -261,12 +261,11 @@ describe('Client union UI public journey', () => {
       );
     vi.stubGlobal('fetch', fetcher);
     const callbacks = props();
-    const panel = (presentation: 'classic' | 'prisme') => (
-      <ApplicationPresentation value={presentation}>
+    render(
+      <ApplicationPresentation value="prisme">
         <ClientUnionPanel {...callbacks} clientId={undefined} />
-      </ApplicationPresentation>
+      </ApplicationPresentation>,
     );
-    const rendered = render(panel('prisme'));
     fireEvent.click(
       screen.getByRole('button', { name: 'Superseded Client history' }),
     );
@@ -291,8 +290,6 @@ describe('Client union UI public journey', () => {
       'No confirmation has been received for this reversal.',
     );
     expect(fetcher).toHaveBeenCalledTimes(4);
-    rendered.rerender(panel('classic'));
-    rendered.rerender(panel('prisme'));
     expect(screen.getByRole('form', { name: 'Reverse union' })).toBe(reversal);
     expect(within(reversal).getByLabelText('Reason for reversal')).toHaveValue(
       'Restore the separate dossiers deliberately.',

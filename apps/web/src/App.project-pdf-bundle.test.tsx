@@ -287,6 +287,21 @@ async function open() {
   if (tab) fireEvent.click(tab);
   return screen.findByRole('region', { name: 'Selected Project PDFs' });
 }
+/** Prisme shows one Project detail tab at a time. */
+function showTab(name: 'Tasks' | 'Working Documents') {
+  fireEvent.click(
+    within(screen.getByRole('region', { name: 'Projects' })).getByRole('tab', {
+      name,
+    }),
+  );
+}
+function openSection(name: string) {
+  fireEvent.click(
+    within(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).getByRole('link', { name }),
+  );
+}
 async function choose(panel: HTMLElement) {
   fireEvent.click(within(panel).getByRole('button', { name: 'Choose PDFs' }));
   fireEvent.click(
@@ -304,7 +319,7 @@ describe('Selected Project PDFs through actual App HTTP', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    window.history.replaceState(null, '', '/?frame=classic#projects');
+    window.history.replaceState(null, '', '/#projects');
     scrolling.scrollIntoView = vi.fn();
     vi.stubGlobal(
       'matchMedia',
@@ -503,16 +518,19 @@ describe('Selected Project PDFs through actual App HTTP', () => {
       const state = install();
       render(<App identity={deterministicBrowserIdentity()} />);
       const panel = await open();
+      showTab('Tasks');
       const title = await screen.findByLabelText('Task title');
       changeValue(title, 'Independent exact Task DEMO');
       if (mode === 'pending') state.taskHold = deferred();
       fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
       await waitFor(() => expect(state.taskPosts).toHaveLength(1));
+      showTab('Working Documents');
       await choose(panel);
       expect(title).toHaveValue('Independent exact Task DEMO');
       expect(state.taskPosts).toHaveLength(1);
       if (mode === 'pending')
         await act(async () => state.taskHold?.resolve(response({}, 500)));
+      showTab('Tasks');
       const retry = await screen.findByRole('button', {
         name: 'Retry pending Task change',
       });
@@ -536,19 +554,20 @@ describe('Selected Project PDFs through actual App HTTP', () => {
         within(panel).getByRole('button', { name: 'Download selected PDFs' }),
       );
       await waitFor(() => expect(state.downloads).toHaveLength(1));
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
-      changeValue(within(access).getByLabelText('Workspace member'), id(9));
-      changeValue(
-        within(access).getByLabelText('Company', { exact: true }),
-        company.id,
-      );
-      changeValue(
-        within(access).getByLabelText('Access bundle'),
-        'document-content-reader',
-      );
       for (const readerId of [id(90), id(13)]) {
+        openSection('Team & access');
+        const access = await screen.findByRole('region', {
+          name: 'Company access',
+        });
+        changeValue(within(access).getByLabelText('Workspace member'), id(9));
+        changeValue(
+          within(access).getByLabelText('Company', { exact: true }),
+          company.id,
+        );
+        changeValue(
+          within(access).getByLabelText('Access bundle'),
+          'document-content-reader',
+        );
         state.readerId = readerId;
         fireEvent.click(
           within(access).getByRole('button', { name: 'Grant access' }),

@@ -175,7 +175,7 @@ async function bundlesOfferedByTheScreen(): Promise<OfferedBundle[]> {
   );
   render(
     <InterfaceLocaleProvider>
-      <ApplicationPresentation value="classic">
+      <ApplicationPresentation value="prisme">
         <CompanyContextAccess
           actor={assignmentAdministrator}
           identity={{

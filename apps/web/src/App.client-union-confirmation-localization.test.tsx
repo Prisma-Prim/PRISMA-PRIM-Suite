@@ -170,7 +170,7 @@ describe('Client union confirmation interface localization through App', () => {
     localStorage.clear();
     sessionStorage.clear();
     localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    window.history.replaceState(null, '', '/?frame=prisme#clients');
+    window.history.replaceState(null, '', '/#clients');
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -356,7 +356,7 @@ for (const copy of Object.values(confirmationLocaleCases)) {
     localStorage.clear();
     sessionStorage.clear();
     localStorage.setItem(interfaceLocaleStorageKey, 'en');
-    window.history.replaceState(null, '', '/?frame=prisme#clients');
+    window.history.replaceState(null, '', '/#clients');
     try {
       const state = installTransport();
       const reply = deferredResponse();

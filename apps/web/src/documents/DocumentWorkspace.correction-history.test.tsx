@@ -776,24 +776,15 @@ it('hides URL values a response carries for a reader without Representation read
   ).not.toBeInTheDocument();
 });
 
-it('presents the history inside the Prisme detail while Classic keeps plain markup', async () => {
+it('presents the history inside the Prisme detail', async () => {
   serve({ history: () => historyPage([purposeCorrection]) });
-  const classic = render(
-    <DocumentWorkspace actor={correctingActor} identity={identity} />,
-  );
-  await openDocument();
-  expect(historySection()).toHaveClass('working-document-correction-history');
-  expect(
-    historySection().closest('.working-document-detail'),
-  ).not.toBeInTheDocument();
-  classic.unmount();
-
   render(
     <ApplicationPresentation value="prisme">
       <DocumentWorkspace actor={correctingActor} identity={identity} />
     </ApplicationPresentation>,
   );
   await openDocument();
+  expect(historySection()).toHaveClass('working-document-correction-history');
   expect(historySection().closest('.working-document-detail')).not.toBeNull();
   fireEvent.click(historyToggle());
   expect(await historyEntries()).toHaveLength(1);

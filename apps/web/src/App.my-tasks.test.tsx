@@ -105,10 +105,10 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('offers My Tasks in both frames when the active Company satisfies the Task-read predicate', async () => {
+it('offers My Tasks when the active Company satisfies the Task-read predicate', async () => {
   const paths = serve(actor);
-  window.history.replaceState(null, '', '/?frame=prisme#my-tasks');
-  const view = render(<App identity={deterministicBrowserIdentity()} />);
+  window.history.replaceState(null, '', '/#my-tasks');
+  render(<App identity={deterministicBrowserIdentity()} />);
   const navigation = await screen.findByRole('navigation', {
     name: 'Primary navigation',
   });
@@ -123,16 +123,6 @@ it('offers My Tasks in both frames when the active Company satisfies the Task-re
   ).toBeInTheDocument();
   expect(within(prisme).getByText(project.clientDisplayName)).toBeVisible();
   expect(paths).toContain('/api/assigned-tasks');
-  view.unmount();
-
-  window.history.replaceState(null, '', '/?frame=classic');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const classic = await screen.findByRole('region', {
-    name: taskCopy.myTasks.title,
-  });
-  expect(
-    await within(classic).findByRole('heading', { name: assigned.title }),
-  ).toBeInTheDocument();
 });
 
 it.each([
@@ -169,7 +159,7 @@ it.each([
   'neither offers nor reads My Tasks with %s',
   async (_case, current) => {
     const paths = serve(current);
-    window.history.replaceState(null, '', '/?frame=prisme');
+    window.history.replaceState(null, '', '/');
     render(<App identity={deterministicBrowserIdentity()} />);
     expect(
       await screen.findByRole('heading', { name: 'Hello, Ada Ionescu.' }),

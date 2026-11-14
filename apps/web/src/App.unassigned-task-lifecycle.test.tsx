@@ -198,7 +198,7 @@ const scroll = Element.prototype.scrollIntoView;
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
-  window.history.replaceState(null, '', '/?frame=prisme#unassigned-tasks');
+  window.history.replaceState(null, '', '/#unassigned-tasks');
   Element.prototype.scrollIntoView = vi.fn();
 });
 afterEach(() => {

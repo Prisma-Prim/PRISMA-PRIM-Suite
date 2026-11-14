@@ -216,7 +216,7 @@ it('rechecks fresh copying after held token acquisition before the first dispatc
   );
   expect(writes).toHaveLength(0);
 });
-it('preserves literal drafts through locale and frame changes without repeated source reads', async () => {
+it('preserves literal drafts through locale changes without repeated source reads', async () => {
   const writes = transport(() =>
     Response.json(paymentEvidenceDocument(), { status: 201 }),
   );
@@ -229,7 +229,7 @@ it('preserves literal drafts through locale and frame changes without repeated s
     onProtectedWorkChange: vi.fn(),
     onRejected: vi.fn(),
   };
-  const view = render(
+  render(
     <ApplicationPresentation value="prisme">
       <InterfaceLocaleSelect />
       <PaymentEvidenceRegistration {...props} />
@@ -246,13 +246,6 @@ it('preserves literal drafts through locale and frame changes without repeated s
   changeValue(screen.getByLabelText('Interface language'), 'fr');
   expect(screen.getByLabelText('Titre')).toHaveValue('Literal  Титул é  ');
   expect(screen.getByLabelText('Reçu le')).toHaveValue('2026-02-30');
-  view.rerender(
-    <ApplicationPresentation value="classic">
-      <InterfaceLocaleSelect />
-      <PaymentEvidenceRegistration {...props} />
-    </ApplicationPresentation>,
-  );
-  expect(screen.getByLabelText('Titre')).toHaveValue('Literal  Титул é  ');
   expect(vi.mocked(fetch).mock.calls).toHaveLength(readCount);
   expect(writes).toHaveLength(0);
 });

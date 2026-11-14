@@ -174,7 +174,7 @@ it.each(
     expect(editor).toHaveFocus();
   },
 );
-it('preserves literal dirty text, control identity, focus and pending-free reads through all four locales and frame changes', async () => {
+it('preserves literal dirty text, control identity, focus and pending-free reads through all four locales', async () => {
   const server = installNextActionPublication(nextActionActor, async (path) =>
     path === nextActionPath ? Response.json(emptyNextAction()) : undefined,
   );
@@ -193,17 +193,6 @@ it('preserves literal dirty text, control identity, focus and pending-free reads
     // Locale selection is a deliberate focus move; the business control remains the same node.
     editor.focus();
     expect(editor).toHaveFocus();
-  }
-  for (const frame of ['classic', 'prisme']) {
-    act(() => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('frame', frame);
-      window.history.pushState(window.history.state, '', url);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    });
-    expect(editor.isConnected).toBe(true);
-    expect(editor).toHaveFocus();
-    expect(editor).toHaveValue('Literal Ж / 🌍\nunchanged draft');
   }
   expect(server.counts()).toEqual(before);
 });

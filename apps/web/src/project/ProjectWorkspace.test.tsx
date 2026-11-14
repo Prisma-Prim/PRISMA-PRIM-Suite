@@ -962,7 +962,8 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeInTheDocument();
-  expect(projectDetail.firstElementChild).toBe(
+  // Prisme leads the detail with an overview block holding its heading.
+  expect(projectDetail.firstElementChild).toContainElement(
     screen.getByRole('heading', { name: 'ISO preparation' }),
   );
   view.unmount();
@@ -1240,6 +1241,9 @@ it('passes Open Document unchanged to the opened Project’s linked Documents', 
     await within(workspace).findByRole('button', {
       name: `${validProject.title} Client: ${validProject.clientDisplayName}`,
     }),
+  );
+  fireEvent.click(
+    await within(workspace).findByRole('tab', { name: 'Working Documents' }),
   );
   const documents = await within(workspace).findByRole('region', {
     name: 'Working Documents',

@@ -45,35 +45,13 @@ const invitation = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Workspace invitation controls', () => {
-  it('presents invitation administration in Prisme while preserving the Classic public markup', async () => {
+  it('presents invitation administration in Prisme', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
         Response.json({ invitations: [invitation], nextCursor: null }),
       ),
     );
-
-    const classic = render(
-      <WorkspaceInvitations
-        actor={actor}
-        identity={identity}
-        onActivityRecorded={() => {}}
-        onWorkspaceAccessRejected={() => {}}
-      />,
-    );
-    const classicInvitations = await screen.findByRole('region', {
-      name: 'Workspace invitations',
-    });
-    expect(classicInvitations).toHaveClass('production-content-surface');
-    expect(classicInvitations).not.toHaveClass('workspace-invitations--prisme');
-    expect(classicInvitations.firstElementChild?.tagName).toBe('H2');
-    expect(classicInvitations.querySelector('form')).not.toHaveClass(
-      'workspace-invitations-form',
-    );
-    expect(classicInvitations.querySelector('ul')).not.toHaveClass(
-      'workspace-invitation-list',
-    );
-    classic.unmount();
 
     render(
       <ApplicationPresentation value="prisme">

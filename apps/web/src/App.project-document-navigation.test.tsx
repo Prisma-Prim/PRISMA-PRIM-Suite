@@ -236,6 +236,9 @@ async function openProjectWithTaskDraft() {
   changeValue(await waitFor(taskTitle), taskDraft);
 }
 async function openLinkedDocument() {
+  fireEvent.click(
+    within(projectsRegion()).getByRole('tab', { name: 'Working Documents' }),
+  );
   const panel = within(projectsRegion()).getByRole('region', {
     name: 'Working Documents',
   });
@@ -275,7 +278,7 @@ describe('Project detail and working Document navigation through App', () => {
           }) satisfies MediaQueryList,
       ),
     );
-    window.history.replaceState(null, '', '/?frame=classic#projects');
+    window.history.replaceState(null, '', '/#projects');
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -315,6 +318,9 @@ describe('Project detail and working Document navigation through App', () => {
     expect(documentsSection().textContent).not.toContain(linkedDocument.id);
 
     navigateTo('Projects');
+    fireEvent.click(
+      within(projectsRegion()).getByRole('tab', { name: 'Tasks' }),
+    );
     expect(taskTitle()).toHaveValue(taskDraft);
     expect(
       within(projectsRegion()).getByRole('article', { name: project.title }),
@@ -345,7 +351,9 @@ describe('Project detail and working Document navigation through App', () => {
         ),
       ).toBeInTheDocument(),
     );
+    navigateTo('Projects');
     expect(within(projectsRegion()).queryByRole('article')).toBeNull();
+    navigateTo('Working Documents');
     transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
     changeValue(company, companyA.id);
 
@@ -370,6 +378,7 @@ describe('Project detail and working Document navigation through App', () => {
     await openLinkedDocument();
     await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
 
+    navigateTo('Team & access');
     const access = screen.getByRole('region', { name: 'Company access' });
     changeValue(
       within(access).getByLabelText('Workspace member'),
@@ -388,6 +397,7 @@ describe('Project detail and working Document navigation through App', () => {
     );
     await screen.findByText('Access granted. Server state refreshed.');
     transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
+    navigateTo('Working Documents');
 
     await waitFor(() =>
       expect(

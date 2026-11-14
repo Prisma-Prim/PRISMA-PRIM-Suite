@@ -22,7 +22,7 @@ const approverTarget = {
 };
 
 beforeEach(() => {
-  window.history.replaceState(null, '', '/?frame=classic');
+  window.history.replaceState(null, '', '/#activity');
 });
 afterEach(() => vi.unstubAllGlobals());
 
