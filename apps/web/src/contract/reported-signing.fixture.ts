@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   modelContractActor,
   modelContractApprovalFixture,
@@ -34,6 +35,39 @@ export const signingActor: ActorContext = {
     receivedContractAccessPermissionSetVersion: 'v1',
     documentContentReaderAssignmentId: 'content-877',
     documentContentReaderPermissionSetVersion: 'v1',
+    grants: withCompanyGrants(
+      modelContractActor.activeCompany?.grants,
+      {
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'client-877',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v4',
+        assignmentId: 'intake-877',
+      },
+      {
+        bundle: 'company_contract_signature_declarer',
+        version: 'v1',
+        assignmentId: 'declarer-877',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'documents-877',
+      },
+      {
+        bundle: 'company_received_contract_access',
+        version: 'v1',
+        assignmentId: 'received-877',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'content-877',
+      },
+    ),
   },
 };
 export const signingPdf = {

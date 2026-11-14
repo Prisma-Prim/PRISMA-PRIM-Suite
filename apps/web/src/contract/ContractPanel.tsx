@@ -15,6 +15,8 @@ import {
   type ModelContractView,
 } from './model-contract-response';
 import { useContractCopy } from './contract.copy';
+import { grantOf, holds } from '../access/company-grants';
+import { holdsContractRead, holdsOfferRead } from './contract-grants';
 import './contract.css';
 
 /** A session/scope/captured-authority change retires the whole command owner. */
@@ -40,22 +42,13 @@ export function ContractPanel(props: PdfContractPanelProps) {
     props.currentClientId,
     props.opportunityId,
     props.requestedVersion,
-    c?.contractPermissionSetVersion,
-    c?.contractPermissionAssignmentId,
-    c?.contractApproverPermissionSetVersion,
-    c?.contractApproverAssignmentId,
-    c?.contractPermissions,
-    c?.commercialIntakePermissionSetVersion,
-    c?.commercialIntakePermissionAssignmentId,
-    c?.commercialIntakePermissions,
-    c?.offerPermissionSetVersion,
-    c?.offerPermissionAssignmentId,
-    c?.offerApproverPermissionSetVersion,
-    c?.offerApproverAssignmentId,
-    c?.offerPermissions,
-    c?.clientPermissionSetVersion,
-    c?.clientPermissionAssignmentId,
-    c?.clientPermissions,
+    grantOf(c, 'company_contract_preparer'),
+    grantOf(c, 'company_contract_approver'),
+    grantOf(c, 'company_contract_early_preparation')?.permissions,
+    grantOf(c, 'company_commercial_intake'),
+    grantOf(c, 'company_offer_preparer'),
+    grantOf(c, 'company_offer_approver'),
+    grantOf(c, 'company_director_client_access'),
   ]);
   const key = JSON.stringify([
     generation.current.value,
@@ -66,9 +59,9 @@ export function ContractPanel(props: PdfContractPanelProps) {
     c?.id,
     props.opportunityId,
     props.requestedVersion,
-    c?.contractPermissions?.includes('commercial.contract.read'),
-    c?.commercialIntakePermissions?.includes('commercial.opportunity.read'),
-    c?.clientPermissions?.includes('client.read') ||
+    holdsContractRead(c),
+    holds(c, 'company_commercial_intake', 'commercial.opportunity.read'),
+    holds(c, 'company_director_client_access', 'client.read') ||
       props.actor.workspacePermissions.includes('client.manage'),
   ]);
   return (
@@ -99,21 +92,10 @@ function ContractJourneyOwner(
   );
   const company = props.actor.activeCompany,
     companyId = company?.id;
-  const preparerRead =
-    (company?.contractPermissionSetVersion === 'v1' ||
-      company?.contractPermissionSetVersion === 'v2') &&
-    Boolean(company.contractPermissionAssignmentId);
-  const approverRead =
-    (company?.contractApproverPermissionSetVersion === 'v1' ||
-      company?.contractApproverPermissionSetVersion === 'v2') &&
-    Boolean(company.contractApproverAssignmentId);
   const mayRead =
     props.actor.active &&
-    (preparerRead || approverRead) &&
-    company?.contractPermissions?.includes('commercial.contract.read') &&
-    company.commercialIntakePermissions?.includes(
-      'commercial.opportunity.read',
-    );
+    holdsContractRead(company) &&
+    holds(company, 'company_commercial_intake', 'commercial.opportunity.read');
   const requested = props.requestedVersion;
   const path = `/contracts/opportunities/${encodeURIComponent(props.opportunityId)}${requested && requested.kind !== 'CONTRACT' ? '/agreements/' + encodeURIComponent(requested.contractId) : ''}${requested ? '/versions/' + encodeURIComponent(requested.contractVersionId) : ''}`;
   useEffect(() => {
@@ -169,10 +151,7 @@ function ContractJourneyOwner(
             });
           return;
         }
-        if (
-          company.offerPermissions?.includes('commercial.offer.read') &&
-          !requested
-        ) {
+        if (holdsOfferRead(company) && !requested) {
           const source = await api.request(
             `/offers/opportunities/${encodeURIComponent(props.opportunityId)}`,
             { companyContextId: companyId, signal },

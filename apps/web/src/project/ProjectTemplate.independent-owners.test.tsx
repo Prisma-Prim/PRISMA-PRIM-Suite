@@ -25,10 +25,6 @@ const company = {
   displayName: 'Company Demo',
   projectPermissions: ['project.read'],
   documentPermissions: ['document.read'],
-  commercialIntakePermissions: ['commercial.opportunity.read'],
-  contractPermissions: ['commercial.contract.read'],
-  contractPermissionAssignmentId: 'contract-grant',
-  contractPermissionSetVersion: 'v1',
   grants: withCompanyGrants(
     withCompanyGrants(
       companyGrants({
@@ -40,6 +36,16 @@ const company = {
         bundle: 'company_project_access',
         version: 'v1',
         assignmentId: 'project-grant',
+      },
+      {
+        bundle: 'company_contract_preparer',
+        version: 'v1',
+        assignmentId: 'contract-grant',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'intake-grant',
       },
     ),
     ...projectDocumentGrants(['document.read']),

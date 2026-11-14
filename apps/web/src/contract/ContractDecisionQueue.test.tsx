@@ -18,6 +18,11 @@ import {
 } from './model-contract.fixture';
 import { contractLocaleRecord } from '../test/contract-localization-fixture';
 import { ContractDecisionQueue } from './ContractDecisionQueue';
+import { readCurrentActor } from '../access/current-actor';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const company = modelContractActor.activeCompany;
 if (!company) throw new Error('Missing synthetic Company');
@@ -26,27 +31,25 @@ const actor: ActorContext = {
   workspacePermissions: [],
   activeCompany: {
     ...company,
-    clientPermissions: [],
-    contractPermissionAssignmentId: undefined,
-    contractPermissionSetVersion: undefined,
-    contractApproverAssignmentId: 'contract-approver-915',
-    contractApproverPermissionSetVersion: 'v2',
-    contractPermissions: [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-      'commercial.contract.model_based.approve',
-    ],
-    offerPermissionAssignmentId: 'source-offer-reader-915',
-    offerPermissionSetVersion: 'v1',
-    offerApproverAssignmentId: undefined,
-    offerApproverPermissionSetVersion: undefined,
-    offerPermissions: ['commercial.offer.read'],
-    commercialIntakePermissionAssignmentId: 'intake-915',
-    commercialIntakePermissionSetVersion: 'v4',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.opportunity.read',
-    ],
+    // A model-based Contract Approver with a source Offer read, and no
+    // Contract preparation or Client read.
+    grants: companyGrants(
+      {
+        bundle: 'company_contract_approver',
+        version: 'v2',
+        assignmentId: 'contract-approver-915',
+      },
+      {
+        bundle: 'company_offer_preparer',
+        version: 'v1',
+        assignmentId: 'source-offer-reader-915',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v4',
+        assignmentId: 'intake-915',
+      },
+    ),
   },
 };
 const contract = modelContractFixture();
@@ -287,34 +290,39 @@ it('keeps old captured approvers useful and fails closed on unknown captures wit
     ...actor,
     activeCompany: {
       ...base,
-      contractApproverPermissionSetVersion: 'v1',
-      contractPermissions: [
-        'commercial.contract.read',
-        'commercial.contract.approve',
-      ],
+      grants: withCompanyGrants(base.grants, {
+        bundle: 'company_contract_approver',
+        version: 'v1',
+        assignmentId: 'contract-approver-915',
+      }),
     },
   };
   const fetch = vi.fn(async () =>
     Response.json({ items: [{ ...item, provenance: 'ILLUSTRATIVE' }] }),
   );
   vi.stubGlobal('fetch', fetch);
-  const rendered = render(tree(legacy));
+  render(tree(legacy));
   await screen.findByText(item.opportunityTitle);
-  const unknown = {
-    ...legacy,
-    activeCompany: {
-      ...legacy.activeCompany,
-      id: company.id,
-      displayName: company.displayName,
-    },
-  };
-  Reflect.set(
-    unknown.activeCompany,
-    'contractApproverPermissionSetVersion',
-    'future',
-  );
-  rendered.rerender(tree(unknown));
-  expect(screen.queryByText(item.opportunityTitle)).not.toBeInTheDocument();
+  // An unknown captured version refuses the whole current Actor (#1332), so
+  // no Contract screen receives authority from it.
+  const read = (value: unknown) =>
+    readCurrentActor({
+      api: { request: async () => ({ status: 'ok', value }) },
+    });
+  expect((await read(legacy)).status).toBe('ok');
+  expect(
+    await read({
+      ...legacy,
+      activeCompany: {
+        ...legacy.activeCompany,
+        grants: legacy.activeCompany?.grants?.map((grant) =>
+          grant.bundle === 'company_contract_approver'
+            ? { ...grant, permissionSetVersion: 'future' }
+            : grant,
+        ),
+      },
+    }),
+  ).toEqual({ status: 'error' });
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
@@ -467,7 +475,11 @@ it.each([200, 403])(
         ...actor,
         activeCompany: {
           ...c,
-          contractApproverAssignmentId: 'replacement-915',
+          grants: withCompanyGrants(c.grants, {
+            bundle: 'company_contract_approver',
+            version: 'v2',
+            assignmentId: 'replacement-915',
+          }),
         },
       }),
     );

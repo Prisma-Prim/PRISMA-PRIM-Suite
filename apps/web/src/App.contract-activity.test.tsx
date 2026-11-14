@@ -1,3 +1,4 @@
+import { companyGrants } from './access/company-grants.test-fixture';
 import {
   fireEvent,
   render,
@@ -118,6 +119,18 @@ function reader(): ActorContext {
       ],
       contractApproverAssignmentId: 'approver-1',
       contractApproverPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'intake-1',
+        },
+        {
+          bundle: 'company_contract_approver',
+          version: 'v1',
+          assignmentId: 'approver-1',
+        },
+      ),
     },
   };
 }

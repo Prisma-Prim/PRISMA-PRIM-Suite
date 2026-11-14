@@ -1,39 +1,21 @@
 import type { ActorContext } from '../access-types';
+import {
+  grantOf,
+  holds,
+  type CompanyGrantBundle,
+} from '../access/company-grants';
+import { holdsOfferRead } from './contract-grants';
 
 /** Captures consumed by this owner, without presentation or unrelated grants. */
 export function reportedSigningAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
-  const declarer = capture(
-    c?.contractSignatureDeclarerAssignmentId,
-    c?.contractSignatureDeclarerPermissionSetVersion,
-    ['v1'],
-  );
-  const signature = capture(
-    c?.contractApproverAssignmentId,
-    c?.contractApproverPermissionSetVersion,
-    ['v1', 'v2'],
-  );
+  const declarer = capture(c, 'company_contract_signature_declarer');
+  const signature = capture(c, 'company_contract_approver');
   const offer =
-    capture(c?.offerPermissionAssignmentId, c?.offerPermissionSetVersion, [
-      'v1',
-      'v2',
-      'v3',
-    ]) ??
-    capture(
-      c?.offerApproverAssignmentId,
-      c?.offerApproverPermissionSetVersion,
-      ['v1', 'v2'],
-    );
-  const intake = capture(
-    c?.commercialIntakePermissionAssignmentId,
-    c?.commercialIntakePermissionSetVersion,
-    ['v1', 'v2', 'v3', 'v4'],
-  );
-  const client = capture(
-    c?.clientPermissionAssignmentId,
-    c?.clientPermissionSetVersion,
-    ['v1', 'v2'],
-  );
+    capture(c, 'company_offer_preparer') ??
+    capture(c, 'company_offer_approver');
+  const intake = capture(c, 'company_commercial_intake');
+  const client = capture(c, 'company_director_client_access');
   const pdf = reportedSigningPdfAuthority(actor);
   const allowed = Boolean(
     actor.active &&
@@ -44,12 +26,16 @@ export function reportedSigningAuthority(actor: ActorContext) {
     intake &&
     client &&
     pdf.allowed &&
-    c.contractPermissions?.includes('commercial.contract.read') &&
-    c.contractPermissions.includes('commercial.contract.signature.record') &&
-    c.offerPermissions?.includes('commercial.offer.read') &&
-    c.commercialIntakePermissions?.includes('commercial.request.read') &&
-    c.commercialIntakePermissions.includes('commercial.opportunity.read') &&
-    c.clientPermissions?.includes('client.read'),
+    holds(c, 'company_contract_approver', 'commercial.contract.read') &&
+    holds(
+      c,
+      'company_contract_approver',
+      'commercial.contract.signature.record',
+    ) &&
+    holdsOfferRead(c) &&
+    holds(c, 'company_commercial_intake', 'commercial.request.read') &&
+    holds(c, 'company_commercial_intake', 'commercial.opportunity.read') &&
+    holds(c, 'company_director_client_access', 'client.read'),
   );
   return {
     allowed,
@@ -67,33 +53,22 @@ export function reportedSigningAuthority(actor: ActorContext) {
 
 export function reportedSigningPdfAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
-  const metadata = capture(
-    c?.documentPermissionAssignmentId,
-    c?.documentPermissionSetVersion,
-    ['v1', 'v2', 'v3'],
-  );
-  const family = capture(
-    c?.receivedContractAccessAssignmentId,
-    c?.receivedContractAccessPermissionSetVersion,
-    ['v1'],
-  );
-  const content = capture(
-    c?.documentContentReaderAssignmentId,
-    c?.documentContentReaderPermissionSetVersion,
-    ['v1'],
-  );
-  const client = c?.clientPermissions?.includes('client.read')
-    ? capture(c.clientPermissionAssignmentId, c.clientPermissionSetVersion, [
-        'v1',
-        'v2',
-      ])
+  const metadata = capture(c, 'company_document_registrar');
+  const family = capture(c, 'company_received_contract_access');
+  const content = capture(c, 'company_document_content_reader');
+  const client = holds(c, 'company_director_client_access', 'client.read')
+    ? capture(c, 'company_director_client_access')
     : undefined;
   const workspaceClient = actor.workspacePermissions.includes('client.manage');
   const allowed = Boolean(
     actor.active &&
-    c?.documentPermissions?.includes('document.read') &&
-    c.documentPermissions.includes('document.content.read') &&
-    c.documentPermissions.includes('document.received_contract.access') &&
+    holds(c, 'company_document_registrar', 'document.read') &&
+    holds(c, 'company_document_content_reader', 'document.content.read') &&
+    holds(
+      c,
+      'company_received_contract_access',
+      'document.received_contract.access',
+    ) &&
     (client || workspaceClient) &&
     metadata &&
     family &&
@@ -110,12 +85,17 @@ export function reportedSigningPdfAuthority(actor: ActorContext) {
     ]),
   };
 }
+
+/** The captured assignment and version of a live grant, as the key carries it. */
 function capture(
-  id: string | undefined,
-  version: unknown,
-  versions: readonly string[],
+  company: ActorContext['activeCompany'],
+  bundle: CompanyGrantBundle,
 ) {
-  return id && typeof version === 'string' && versions.includes(version)
-    ? { assignmentId: id, permissionSetVersion: version }
+  const grant = grantOf(company, bundle);
+  return grant
+    ? {
+        assignmentId: grant.assignmentId,
+        permissionSetVersion: grant.permissionSetVersion,
+      }
     : undefined;
 }

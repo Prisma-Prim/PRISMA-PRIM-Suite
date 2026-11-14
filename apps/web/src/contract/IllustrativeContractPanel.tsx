@@ -26,6 +26,12 @@ import {
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useContractRecordedValues } from './contract-recorded-values';
 import { useContractCopy } from './contract.copy';
+import { grantOf, holds } from '../access/company-grants';
+import {
+  holdsContractRead,
+  holdsOfferRead,
+  holdsPricingSnapshotRead,
+} from './contract-grants';
 import {
   readAcceptedOfferSource,
   readContractPreparationSource,
@@ -132,68 +138,36 @@ export function IllustrativeContractPanel({
   >(null);
   const companyId = actor.activeCompany?.id;
   const context = actor.activeCompany;
-  const mayRead = Boolean(
-    (((context?.contractPermissionSetVersion === 'v1' ||
-      context?.contractPermissionSetVersion === 'v2') &&
-      Boolean(context.contractPermissionAssignmentId)) ||
-      ((context?.contractApproverPermissionSetVersion === 'v1' ||
-        context?.contractApproverPermissionSetVersion === 'v2') &&
-        Boolean(context.contractApproverAssignmentId))) &&
-    context.contractPermissions?.includes('commercial.contract.read') &&
-    context.commercialIntakePermissions?.includes(
-      'commercial.opportunity.read',
-    ),
+  const contractPrepare = holds(
+    context,
+    'company_contract_preparer',
+    'commercial.contract.prepare',
   );
-  const mayPrepare = Boolean(
-    mayRead &&
-    context?.contractPermissions?.includes('commercial.contract.prepare') &&
-    context?.offerPermissions?.includes('commercial.offer.read') &&
-    context?.clientPermissions?.includes('client.read'),
+  const clientRead = holds(
+    context,
+    'company_director_client_access',
+    'client.read',
   );
-  const mayPrepareEarly = Boolean(
+  const mayRead =
+    holdsContractRead(context) &&
+    holds(context, 'company_commercial_intake', 'commercial.opportunity.read');
+  const mayPrepare =
+    mayRead && contractPrepare && holdsOfferRead(context) && clientRead;
+  const mayPrepareEarly =
     mayRead &&
-    (context?.contractPermissionSetVersion === 'v1' ||
-      context?.contractPermissionSetVersion === 'v2') &&
-    context.contractPermissionAssignmentId &&
-    context.contractPermissions?.includes('commercial.contract.prepare') &&
-    context.contractPermissions.includes(
+    contractPrepare &&
+    holds(
+      context,
+      'company_contract_early_preparation',
       'commercial.contract.prepare_pending_offer',
     ) &&
-    context.contractEarlyPreparationPermissionSetVersion === 'v1' &&
-    context.contractEarlyPreparationAssignmentId &&
-    context.clientPermissions?.includes('client.read') &&
-    context.clientPermissionAssignmentId &&
-    (context.clientPermissionSetVersion === 'v1' ||
-      context.clientPermissionSetVersion === 'v2') &&
-    context.offerPermissions?.includes('commercial.offer.read') &&
-    (((context.offerPermissionSetVersion === 'v1' ||
-      context.offerPermissionSetVersion === 'v2' ||
-      context.offerPermissionSetVersion === 'v3') &&
-      context.offerPermissionAssignmentId) ||
-      ((context.offerApproverPermissionSetVersion === 'v1' ||
-        context.offerApproverPermissionSetVersion === 'v2') &&
-        context.offerApproverAssignmentId)),
-  );
-  const mayPrepareDirect = Boolean(
+    clientRead &&
+    holdsOfferRead(context);
+  const mayPrepareDirect =
     mayRead &&
-    (context?.contractPermissionSetVersion === 'v1' ||
-      context?.contractPermissionSetVersion === 'v2') &&
-    context.contractPermissionAssignmentId &&
-    context.contractPermissions?.includes('commercial.contract.prepare') &&
-    context.clientPermissions?.includes('client.read') &&
-    ((context.pricingUserPermissionSetVersion === 'v1' &&
-      context.pricingUserPermissionAssignmentId &&
-      context.pricingUserPermissions?.includes(
-        'commercial.pricing.snapshot.read',
-      )) ||
-      ((context.offerPermissionSetVersion === 'v1' ||
-        context.offerPermissionSetVersion === 'v2' ||
-        context.offerPermissionSetVersion === 'v3') &&
-        context.offerPermissionAssignmentId &&
-        context.offerPermissions?.includes(
-          'commercial.pricing.snapshot.read',
-        ))),
-  );
+    contractPrepare &&
+    clientRead &&
+    holdsPricingSnapshotRead(context);
   const stamp = JSON.stringify([
     currentClientId,
     opportunityId,
@@ -202,28 +176,15 @@ export function IllustrativeContractPanel({
     actor.workspaceId,
     actor.workspaceMembershipId,
     companyId,
-    context?.contractPermissionAssignmentId,
-    context?.contractPermissionSetVersion,
-    context?.contractEarlyPreparationAssignmentId,
-    context?.contractEarlyPreparationPermissionSetVersion,
-    context?.contractApproverAssignmentId,
-    context?.contractApproverPermissionSetVersion,
-    context?.contractPermissions,
-    context?.commercialIntakePermissionAssignmentId,
-    context?.commercialIntakePermissionSetVersion,
-    context?.commercialIntakePermissions,
-    context?.clientPermissionAssignmentId,
-    context?.clientPermissionSetVersion,
-    context?.clientPermissions,
-    context?.pricingUserPermissionAssignmentId,
-    context?.pricingUserPermissionSetVersion,
-    context?.pricingUserPermissions,
-    context?.offerPermissionAssignmentId,
-    context?.offerPermissionSetVersion,
-    context?.offerApproverAssignmentId,
-    context?.offerApproverPermissionSetVersion,
-    context?.offerPermissions,
-    context?.projectPermissions,
+    grantOf(context, 'company_contract_preparer'),
+    grantOf(context, 'company_contract_early_preparation'),
+    grantOf(context, 'company_contract_approver'),
+    grantOf(context, 'company_commercial_intake'),
+    grantOf(context, 'company_director_client_access'),
+    grantOf(context, 'company_pricing_user'),
+    grantOf(context, 'company_offer_preparer'),
+    grantOf(context, 'company_offer_approver'),
+    grantOf(context, 'company_project_access')?.permissions,
     actor.workspacePermissions,
   ]);
   const [savedEarlyRevision, setSavedEarlyRevision] = useState<{
@@ -701,15 +662,8 @@ export function IllustrativeContractPanel({
                   </ol>
                 </section>
               )}
-            {Boolean(
-              (context?.contractPermissionSetVersion === 'v1' ||
-                context?.contractPermissionSetVersion === 'v2') &&
-              context.contractPermissionAssignmentId &&
-              context.contractPermissions?.includes(
-                'commercial.contract.prepare',
-              ) &&
-              context.clientPermissions?.includes('client.read'),
-            ) &&
+            {contractPrepare &&
+              clientRead &&
               !view.contract.version.supersededByVersionId &&
               (view.contract.kind === 'ADDENDUM'
                 ? view.contract.version.executionState !== 'EXECUTED'
@@ -726,20 +680,7 @@ export function IllustrativeContractPanel({
                   companyId={companyId}
                   opportunityId={opportunityId}
                   contract={view.contract}
-                  maySelectSnapshot={Boolean(
-                    (context?.pricingUserPermissionSetVersion === 'v1' &&
-                      context.pricingUserPermissionAssignmentId &&
-                      context.pricingUserPermissions?.includes(
-                        'commercial.pricing.snapshot.read',
-                      )) ||
-                    ((context?.offerPermissionSetVersion === 'v1' ||
-                      context?.offerPermissionSetVersion === 'v2' ||
-                      context?.offerPermissionSetVersion === 'v3') &&
-                      context.offerPermissionAssignmentId &&
-                      context.offerPermissions?.includes(
-                        'commercial.pricing.snapshot.read',
-                      )),
-                  )}
+                  maySelectSnapshot={holdsPricingSnapshotRead(context)}
                   protectedCommand={
                     versionProtected ||
                     qualityProtected ||
@@ -790,18 +731,12 @@ export function IllustrativeContractPanel({
                 companyId={companyId}
                 opportunityId={opportunityId}
                 contract={view.contract}
-                mayRevise={Boolean(
+                mayRevise={
                   (view.contract.origin !== 'OFFER_PREPARATION' ||
                     mayPrepareEarly) &&
-                  (context?.contractPermissionSetVersion === 'v1' ||
-                    context?.contractPermissionSetVersion === 'v2') &&
-                  context.contractPermissionAssignmentId &&
-                  context.contractPermissions?.includes(
-                    'commercial.contract.prepare',
-                  ) &&
-                  (view.contract.origin === 'OFFER_PREPARATION' ||
-                    context.clientPermissions?.includes('client.read')),
-                )}
+                  contractPrepare &&
+                  (view.contract.origin === 'OFFER_PREPARATION' || clientRead)
+                }
                 protectedCommand={
                   qualityProtected ||
                   decisionProtected ||
@@ -874,12 +809,14 @@ export function IllustrativeContractPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               contract={view.contract}
-              mayDecide={Boolean(
+              mayDecide={
                 !view.contract.version.supersededByVersionId &&
-                context?.contractPermissions?.includes(
+                holds(
+                  context,
+                  'company_contract_approver',
                   'commercial.contract.approve',
-                ),
-              )}
+                )
+              }
               protectedChecks={
                 addendumProtected ||
                 versionProtected ||
@@ -921,15 +858,14 @@ export function IllustrativeContractPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               contract={view.contract}
-              mayRecord={Boolean(
+              mayRecord={
                 !view.contract.version.supersededByVersionId &&
-                (context?.contractApproverPermissionSetVersion === 'v1' ||
-                  context?.contractApproverPermissionSetVersion === 'v2') &&
-                context.contractApproverAssignmentId &&
-                context.contractPermissions?.includes(
+                holds(
+                  context,
+                  'company_contract_approver',
                   'commercial.contract.signature.record',
-                ),
-              )}
+                )
+              }
               protectedChecks={
                 addendumProtected ||
                 versionProtected ||
@@ -973,20 +909,21 @@ export function IllustrativeContractPanel({
                 opportunityId={opportunityId}
                 contract={view.contract}
                 opportunityTitle={opportunityTitle}
-                mayCreate={Boolean(
-                  context?.projectPermissions?.includes('project.create'),
+                mayCreate={holds(
+                  context,
+                  'company_project_access',
+                  'project.create',
                 )}
-                mayLink={Boolean(
-                  (context?.contractPermissionSetVersion === 'v1' ||
-                    context?.contractPermissionSetVersion === 'v2') &&
-                  context.contractPermissionAssignmentId &&
-                  context.contractPermissions?.includes(
+                mayLink={
+                  holds(
+                    context,
+                    'company_contract_preparer',
                     'commercial.contract.project.link',
                   ) &&
-                  context.projectPermissions?.includes('project.read') &&
-                  (context.clientPermissions?.includes('client.read') ||
-                    actor.workspacePermissions.includes('client.manage')),
-                )}
+                  holds(context, 'company_project_access', 'project.read') &&
+                  (clientRead ||
+                    actor.workspacePermissions.includes('client.manage'))
+                }
                 protectedCommand={
                   addendumProtected ||
                   versionProtected ||
@@ -1054,14 +991,12 @@ export function IllustrativeContractPanel({
                 !decisionProtected &&
                 !signatureProtected &&
                 !projectLinkProtected &&
-                Boolean(
-                  context?.contractPermissions?.includes(
-                    'commercial.contract.prepare',
-                  ) ||
-                  context?.contractPermissions?.includes(
+                (contractPrepare ||
+                  holds(
+                    context,
+                    'company_contract_approver',
                     'commercial.contract.approve',
-                  ),
-                )
+                  ))
               }
               protectedDecision={
                 addendumProtected ||

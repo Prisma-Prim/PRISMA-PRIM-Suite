@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { syntheticContent } from '../contract-model/contract-model.fixture';
 import {
   modelOfferActor,
@@ -28,6 +29,35 @@ export const modelContractActor: ActorContext = {
       'commercial.contract.model_based.prepare',
       'commercial.contract.model_based.approve',
     ],
+    // Contract screens read these grants; the per-bundle fields above stay
+    // for the Offer and commercial PDF screens that still read them.
+    grants: companyGrants(
+      {
+        bundle: 'company_contract_preparer',
+        version: 'v2',
+        assignmentId: 'contract-preparer-868',
+      },
+      {
+        bundle: 'company_contract_approver',
+        version: 'v2',
+        assignmentId: 'contract-approver-868',
+      },
+      {
+        bundle: 'company_offer_preparer',
+        version: 'v3',
+        assignmentId: 'preparer-852',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'intake-868',
+      },
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-868',
+      },
+    ),
   },
 };
 export const selectedContractModelFixture = {

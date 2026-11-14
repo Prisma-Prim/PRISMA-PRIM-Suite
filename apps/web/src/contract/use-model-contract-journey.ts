@@ -27,6 +27,8 @@ import {
   type ModelContractQuality,
 } from './model-contract-quality-response';
 import type { ContractPanelProps } from './IllustrativeContractPanel';
+import { grantOf, holds } from '../access/company-grants';
+import { holdsOfferRead } from './contract-grants';
 
 export type ModelContractDraft = {
   documentDate: string;
@@ -87,56 +89,65 @@ export function useModelContractJourney(
 ) {
   const company = props.actor.activeCompany,
     companyId = company?.id;
-  const permissions = company?.contractPermissions ?? [];
-  const offerRead =
-    company?.offerPermissions?.includes('commercial.offer.read') === true;
+  const contractPreparer = grantOf(company, 'company_contract_preparer'),
+    contractApprover = grantOf(company, 'company_contract_approver'),
+    client = grantOf(company, 'company_director_client_access'),
+    project = grantOf(company, 'company_project_access'),
+    offerPreparer = grantOf(company, 'company_offer_preparer'),
+    offerApprover = grantOf(company, 'company_offer_approver'),
+    intake = grantOf(company, 'company_commercial_intake');
+  const offerRead = holdsOfferRead(company);
   const preparation =
-    company?.contractPermissionSetVersion === 'v2' &&
-    Boolean(company.contractPermissionAssignmentId) &&
-    permissions.includes('commercial.contract.prepare') &&
-    permissions.includes('commercial.contract.model.select') &&
-    permissions.includes('commercial.contract.model_based.prepare');
-  const mayPrepare =
-    preparation &&
-    offerRead &&
-    (company?.clientPermissions?.includes('client.read') ||
-      props.actor.workspacePermissions.includes('client.manage'));
-  const mayApprove =
-    offerRead &&
-    company?.contractApproverPermissionSetVersion === 'v2' &&
-    Boolean(company.contractApproverAssignmentId) &&
-    permissions.includes('commercial.contract.approve') &&
-    permissions.includes('commercial.contract.model_based.approve');
-  const mayCheck = offerRead && (preparation || mayApprove);
-  const base = `/contracts/opportunities/${encodeURIComponent(props.opportunityId)}`;
+    holds(
+      company,
+      'company_contract_preparer',
+      'commercial.contract.prepare',
+    ) &&
+    holds(
+      company,
+      'company_contract_preparer',
+      'commercial.contract.model.select',
+    ) &&
+    holds(
+      company,
+      'company_contract_preparer',
+      'commercial.contract.model_based.prepare',
+    );
   const workspaceClientRead =
     props.actor.workspacePermissions.includes('client.manage');
-  const companyClientRead = Boolean(
-    company?.clientPermissionAssignmentId &&
-    (company.clientPermissionSetVersion === 'v1' ||
-      company.clientPermissionSetVersion === 'v2') &&
-    company.clientPermissions?.includes('client.read'),
+  const companyClientRead = holds(
+    company,
+    'company_director_client_access',
+    'client.read',
   );
-  const projectReadAllowed = Boolean(
+  const mayPrepare =
+    preparation && offerRead && (companyClientRead || workspaceClientRead);
+  const mayApprove =
+    offerRead &&
+    holds(
+      company,
+      'company_contract_approver',
+      'commercial.contract.approve',
+    ) &&
+    holds(
+      company,
+      'company_contract_approver',
+      'commercial.contract.model_based.approve',
+    );
+  const mayCheck = offerRead && (preparation || mayApprove);
+  const base = `/contracts/opportunities/${encodeURIComponent(props.opportunityId)}`;
+  const projectReadAllowed =
     props.actor.active &&
-    company?.projectPermissionAssignmentId &&
-    (company.projectPermissionSetVersion === 'v1' ||
-      company.projectPermissionSetVersion === 'v2') &&
-    company.projectPermissions?.includes('project.read') &&
-    (workspaceClientRead || companyClientRead),
-  );
+    holds(company, 'company_project_access', 'project.read') &&
+    (workspaceClientRead || companyClientRead);
   const projectReadAuthority = JSON.stringify([
     companyId,
-    company?.projectPermissionAssignmentId,
-    company?.projectPermissionSetVersion,
+    project?.assignmentId,
+    project?.permissionSetVersion,
     projectReadAllowed,
     workspaceClientRead
       ? 'workspace-client-read'
-      : [
-          company?.clientPermissionAssignmentId,
-          company?.clientPermissionSetVersion,
-          companyClientRead,
-        ],
+      : [client?.assignmentId, client?.permissionSetVersion, companyClientRead],
   ]);
   const projectGeneration = useRef({
     authority: projectReadAuthority,
@@ -188,18 +199,18 @@ export function useModelContractJourney(
   const activeWrite = useRef(false);
   const locked = running || feedback === 'uncertain' || siblingsProtected;
   const mutationAuthority = JSON.stringify([
-    company?.contractPermissionAssignmentId,
-    company?.contractPermissionSetVersion,
-    company?.contractApproverAssignmentId,
-    company?.contractApproverPermissionSetVersion,
-    company?.clientPermissionAssignmentId,
-    company?.clientPermissionSetVersion,
-    company?.offerPermissionAssignmentId,
-    company?.offerPermissionSetVersion,
-    company?.offerApproverAssignmentId,
-    company?.offerApproverPermissionSetVersion,
-    company?.commercialIntakePermissionAssignmentId,
-    company?.commercialIntakePermissionSetVersion,
+    contractPreparer?.assignmentId,
+    contractPreparer?.permissionSetVersion,
+    contractApprover?.assignmentId,
+    contractApprover?.permissionSetVersion,
+    client?.assignmentId,
+    client?.permissionSetVersion,
+    offerPreparer?.assignmentId,
+    offerPreparer?.permissionSetVersion,
+    offerApprover?.assignmentId,
+    offerApprover?.permissionSetVersion,
+    intake?.assignmentId,
+    intake?.permissionSetVersion,
     mayPrepare,
     mayApprove,
     mayCheck,
