@@ -73,7 +73,7 @@ Columns:
   AGE          time since the head commit's committer date
                (GitHub no longer reports push times)
   QUALITY      the required \`${REQUIRED_CHECK}\` check: success, failure, pending,
-               or missing when CI has not started
+               or missing until CI creates it, after the jobs it needs
   FAILED       failed or cancelled checks on the head commit
   PENDING      checks on the head commit still queued or running
   MERGE        clean, blocked, behind, conflict, draft, unstable or unknown
