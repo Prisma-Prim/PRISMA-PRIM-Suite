@@ -32,6 +32,8 @@ node scripts/prepare-worktree.mjs --path ../suite-123 --branch feat/123 --refres
 
 `--refresh` authorizes preparation; it never bypasses a live lock, cleanliness, frozen-lockfile validation or ownership checks. A lockfile incompatible with its manifests still fails. Input identities and source-directory observations detect changes during preparation, including edits restored before completion. Generated module directories are excluded from observation. Failed or interrupted work remains incomplete; it cannot inherit the prior ready state.
 
+When a changed or unknown existing installation needs refresh, its validated private root virtual store is first moved into a generated `node_modules/.pnpm-retired-<UUID>/store` directory. Normal frozen installation then imports a fresh active virtual store from the supported package cache. After the doctor and input checks pass, only this preparation's retired directory is removed before final qualification. A failed refresh preserves its retired data; a retry can recover through a new active graph. Earlier retired directories remain inactive and preserved until worktree cleanup. Their physical hardlink ownership is still checked, and active dependency links into retired data are refused. Stop consumers before refresh; existing dependency paths are temporarily unavailable during rebuilding.
+
 The lock coordinates preparations, not arbitrary commands run manually in the same target. Keep dependency inputs stable and stop consumers before a refresh; use separate worktrees for simultaneous implementation. Browser/API journeys retain their existing fixed-port coordination requirements.
 
 ## Contention and interruption

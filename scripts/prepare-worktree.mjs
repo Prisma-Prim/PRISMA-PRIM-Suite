@@ -6,6 +6,7 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -342,6 +343,18 @@ async function main(argv) {
     if (options.offline) install.push('--offline');
     if (options.store)
       install.push(`--store-dir=${canonicalPath(options.store)}`);
+    let retired;
+    const virtualStore = join(target, 'node_modules/.pnpm');
+    if (!created && options.refresh && existsSync(virtualStore)) {
+      const entry = lstatSync(virtualStore);
+      if (!entry.isDirectory() || entry.isSymbolicLink())
+        throw new PreparationError(
+          'The virtual store must be a private directory; existing files were preserved.',
+        );
+      retired = join(target, 'node_modules', `.pnpm-retired-${randomUUID()}`);
+      mkdirSync(retired, { mode: 0o700 });
+      renameSync(virtualStore, join(retired, 'store'));
+    }
     await run(target, install, environment);
     let installed = privateModules(target);
     if (!installed.present)
@@ -380,6 +393,7 @@ if (result.checks.some(check => check.status === 'FAIL')) process.exitCode = 1;`
       throw new PreparationError(
         'Inputs changed during preparation; qualification remains incomplete.',
       );
+    if (retired) rmSync(retired, { recursive: true });
     installed = privateModules(target);
     if (!installed.present)
       throw new PreparationError(

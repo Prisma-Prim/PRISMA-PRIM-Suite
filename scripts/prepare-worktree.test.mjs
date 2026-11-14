@@ -1048,7 +1048,7 @@ function packDependency(directory) {
   assert.equal(result.status, 0, result.stderr);
 }
 
-test('an effective pnpm override local archive cannot reuse stale installed contents', () => {
+function archiveFixture() {
   const f = fixture({ workspaceDependency: false });
   const manifest = JSON.parse(readFileSync(join(f.repo, 'package.json')));
   manifest.dependencies['synthetic-dependency'] = '1.0.0';
@@ -1082,6 +1082,11 @@ test('an effective pnpm override local archive cannot reuse stale installed cont
     '-m',
     'use effective local override',
   );
+  return f;
+}
+
+test('an effective pnpm override local archive cannot reuse stale installed contents', () => {
+  const f = archiveFixture();
   assert.equal(prepare(f).status, 0);
   const readInstalled = () =>
     spawnSync(
@@ -1113,6 +1118,138 @@ test('an effective pnpm override local archive cannot reuse stale installed cont
   assert.match(again.stderr, /--refresh/u);
   assert.equal(readInstalled().stdout, 'synthetic-v1');
   assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+});
+
+for (const damage of ['deletion', 'corruption']) {
+  test(`explicit refresh repairs archive package ${damage} before qualification`, () => {
+    const f = archiveFixture();
+    const first = prepare(f);
+    assert.equal(first.status, 0, first.stderr);
+    const installed = realpathSync(
+      join(f.target, 'node_modules/synthetic-dependency/index.cjs'),
+    );
+    unlinkSync(installed);
+    if (damage === 'corruption')
+      writeFileSync(installed, 'throw new Error("synthetic corruption");\n');
+    const importing = () =>
+      spawnSync(
+        process.execPath,
+        ['--eval', 'process.stdout.write(require("synthetic-dependency"))'],
+        { cwd: f.target, encoding: 'utf8' },
+      );
+    assert.notEqual(importing().status, 0);
+    assert.equal(git(f.target, 'status', '--porcelain'), '');
+    assert.equal(prepare(f).status, 2);
+    const refreshed = prepare(f, ['--refresh']);
+    assert.equal(refreshed.status, 0, refreshed.stderr);
+    assert.equal(JSON.parse(refreshed.stdout).status, 'prepared');
+    const repaired = importing();
+    assert.equal(repaired.status, 0, repaired.stderr);
+    assert.equal(repaired.stdout, 'synthetic-v1');
+    const ready = prepare(f);
+    assert.equal(ready.status, 0, ready.stderr);
+    assert.equal(JSON.parse(ready.stdout).status, 'ready');
+    assert.equal(readFileSync(f.counter, 'utf8'), 'installed\ninstalled\n');
+  });
+}
+
+test('explicit refresh retains frozen-lockfile validation before any repair', () => {
+  const f = fixture();
+  assert.equal(prepare(f).status, 0);
+  const path = join(f.target, 'package.json');
+  const manifest = JSON.parse(readFileSync(path));
+  manifest.dependencies['synthetic-added'] = 'file:packages/dependency';
+  writeFileSync(path, JSON.stringify(manifest));
+  git(f.target, 'add', 'package.json');
+  git(
+    f.target,
+    '-c',
+    'user.name=Synthetic Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'change manifest without lockfile',
+  );
+  const refused = prepare(f, ['--refresh']);
+  assert.equal(refused.status, 2, refused.stderr);
+  assert.match(refused.stderr, /pnpm-install/u);
+  assert.equal(readFileSync(f.counter, 'utf8'), 'installed\n');
+  // All payloads are available locally: removing only frozen validation lets
+  // the same real package manager install this otherwise valid graph.
+  const control = spawnSync(
+    'bash',
+    [
+      'scripts/agent-pnpm.sh',
+      'install',
+      '--offline',
+      '--package-import-method=copy',
+      `--store-dir=${f.store}`,
+    ],
+    { cwd: f.target, encoding: 'utf8', timeout: 30_000 },
+  );
+  assert.equal(control.status, 0, control.stderr);
+});
+
+test('failed archive refresh preserves retired data and retries with only the active graph', () => {
+  const f = archiveFixture();
+  assert.equal(prepare(f).status, 0);
+  const modules = join(f.target, 'node_modules');
+  const virtual = join(modules, '.pnpm');
+  const sentinel = join(virtual, 'synthetic-old-only');
+  mkdirSync(sentinel);
+  writeFileSync(join(sentinel, 'note'), 'synthetic retained bytes');
+  symlinkSync(
+    sentinel,
+    join(virtual, 'old-absolute-link'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  f.environment = { PREP_TEST_FAIL: '1' };
+  const failed = prepare(f, ['--refresh']);
+  assert.equal(failed.status, 2);
+  assert.match(failed.stderr, /pnpm-install/u);
+  const retired = readdirSync(modules).filter((name) =>
+    name.startsWith('.pnpm-retired-'),
+  );
+  assert.equal(retired.length, 1);
+  const retained = join(modules, retired[0], 'store/synthetic-old-only');
+  assert.equal(
+    readFileSync(join(retained, 'note'), 'utf8'),
+    'synthetic retained bytes',
+  );
+  assert.equal(prepare(f).status, 2);
+  f.environment = { PREP_TEST_FAIL: '0' };
+  const repaired = prepare(f, ['--refresh']);
+  assert.equal(repaired.status, 0, repaired.stderr);
+  assert.equal(JSON.parse(repaired.stdout).status, 'prepared');
+  assert.deepEqual(
+    readdirSync(modules).filter((name) => name.startsWith('.pnpm-retired-')),
+    retired,
+  );
+  const ready = prepare(f);
+  assert.equal(ready.status, 0, ready.stderr);
+  assert.equal(JSON.parse(ready.stdout).status, 'ready');
+  assert.equal(
+    readFileSync(f.counter, 'utf8'),
+    'installed\ninstalled\ninstalled\n',
+  );
+  symlinkSync(
+    retained,
+    join(modules, 'synthetic-retired-link'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  const refused = prepare(f, ['--refresh']);
+  assert.equal(refused.status, 2);
+  assert.match(refused.stderr, /retired/u);
+  assert.equal(
+    readFileSync(join(retained, 'note'), 'utf8'),
+    'synthetic retained bytes',
+  );
+  assert.equal(
+    readFileSync(f.counter, 'utf8'),
+    'installed\ninstalled\ninstalled\n',
+  );
 });
 
 test(

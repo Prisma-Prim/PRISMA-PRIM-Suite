@@ -346,10 +346,20 @@ function assertOwnedHardlinks(root) {
 
 export function privateModules(root) {
   assertOwnedHardlinks(root);
+  const retiredName =
+    /^\.pnpm-retired-[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/u;
+  const modulesRoot = join(root, 'node_modules');
   const metadata = [];
   const visit = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const path = join(directory, entry.name);
+      if (
+        directory === modulesRoot &&
+        entry.isDirectory() &&
+        !entry.isSymbolicLink() &&
+        retiredName.test(entry.name)
+      )
+        continue;
       if (entry.isSymbolicLink()) {
         let target;
         try {
@@ -362,6 +372,11 @@ export function privateModules(root) {
         if (!within(root, target))
           throw new PreparationError(
             'Dependency links into another installation are refused.',
+          );
+        const parts = relative(root, target).split(sep);
+        if (parts[0] === 'node_modules' && retiredName.test(parts[1] ?? ''))
+          throw new PreparationError(
+            'Dependency links into a retired installation are refused.',
           );
         metadata.push([relative(root, path), `link:${relative(root, target)}`]);
       } else if (entry.isDirectory()) visit(path);
