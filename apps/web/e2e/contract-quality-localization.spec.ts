@@ -66,7 +66,7 @@ async function chooseLanguage(page: Page, current: Locale, target: Locale) {
 }
 
 async function installRoutes(page: Page, readOnly = false) {
-  const old = contractQualityRun();
+  const old = contractQualityRun({ ruleSetVersion: 2 });
   const current = contractQualityRun({
     id: 'new-run-706',
     ruleSetVersion: 2,
@@ -377,7 +377,7 @@ for (const locale of contractQualityLocales) {
       observed.old.evaluatedAt,
     );
     await expect(
-      checks.getByText('CONTRACT_QUALITY_ILLUSTRATIVE v1', { exact: true }),
+      checks.getByText('CONTRACT_QUALITY_ILLUSTRATIVE v2', { exact: true }),
     ).toBeVisible();
     expect(observed.state.reopened).toEqual([
       `${qualityPath}/recorded-run-706`,
