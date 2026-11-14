@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseCaseDetail,
-  parseCaseCommandReceipt,
   parseCaseList,
   parseDocumentRegister,
   parseDurationResult,
@@ -54,6 +53,7 @@ const review = {
     criteria: reviewCriteria('yes'),
     outcome: 'accepted',
     rejectionReason: null,
+    onBehalf: null,
   },
 };
 function detail(overrides: Record<string, unknown> = {}) {
@@ -117,28 +117,21 @@ const noExchange = {
   reverification: { items: [], firstSurveillanceBy: null },
 };
 
-it('acknowledges an immutable pre-pagination command receipt while requiring the Case scope', () => {
-  const old = detail({
-    exchanges: {
-      records: [],
-      total: 0,
-      deadlines: { set: null, entries: [] },
-      reverification: { items: [], firstSurveillanceBy: null },
-    },
+it('refuses a command reply recorded before exchange pagination like any Case read', () => {
+  const current = detail();
+  expect(parseCaseDetail(current, { ...scope, caseId }).revision).toBe(3);
+  const prePagination = detail({
+    exchanges: without(noExchange, ['nextCursor', 'sendings']),
   });
-  expect(parseCaseCommandReceipt(old, { ...scope, caseId })).toEqual({
-    id: caseId,
-    revision: 3,
-  });
-  for (const invalidScope of [
-    { ...scope, companyId: 'other' },
-    { ...scope, projectId: 'other' },
-    { ...scope, caseId: 'other' },
-  ])
-    expect(() => parseCaseCommandReceipt(old, invalidScope)).toThrow();
-  // Only acknowledgement accepts old receipts. A live read must have the new complete page contract.
-  expect(() => parseCaseDetail(old, { ...scope, caseId })).toThrow();
+  expect(() => parseCaseDetail(prePagination, { ...scope, caseId })).toThrow();
 });
+
+/** The same read as an earlier application version answered it, without later keys. */
+function without(value: object, keys: readonly string[]) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => !keys.includes(key)),
+  );
+}
 
 const noDiscrepancy = {
   ruleSetVersion: 'dossier-consistency-2026-11',
@@ -185,6 +178,7 @@ const determination = {
     recertificationOnSite: '3.3',
   },
   justification: 'Interpreter needed; in-house laboratory; automated lines.',
+  onBehalf: null,
 };
 const duration = {
   id: 'step-3',
@@ -308,11 +302,7 @@ describe('Certification response parsers', () => {
   it('reads a confirmed duration with its exact amounts, and the agreement next', () => {
     const parsed = parseCaseDetail(durationDetail(), { ...scope, caseId });
     expect(parsed.nextStep).toBe('agreement');
-    // A record made before acts on behalf existed reads without one.
-    expect(parsed.duration?.value).toEqual({
-      ...determination,
-      onBehalf: null,
-    });
+    expect(parsed.duration?.value).toEqual(determination);
     expect(
       parseTimeline(
         { caseId, entries: [application, review, duration] },
@@ -802,7 +792,7 @@ const team = {
   reason: null,
   recordedBy: by,
   recordedAt: '2026-11-07T08:06:00.000Z',
-  value: { members: [teamMember(), auditor] },
+  value: { members: [teamMember(), auditor], impartialityAnalysis: null },
 };
 const returned = {
   id: 'step-6',
@@ -816,6 +806,8 @@ const returned = {
     teamVersion: 1,
     decision: 'returned',
     reason: 'Add an auditor for the second shift.',
+    onBehalf: null,
+    independenceAttested: true,
   },
 };
 const corrected = {
@@ -832,7 +824,13 @@ const approved = {
   version: 2,
   caseRevision: 10,
   recordedAt: '2026-11-07T08:09:00.000Z',
-  value: { teamVersion: 2, decision: 'approved', reason: null },
+  value: {
+    teamVersion: 2,
+    decision: 'approved',
+    reason: null,
+    onBehalf: null,
+    independenceAttested: true,
+  },
 };
 /** Agreement at revision 6, the team proposed at 7 and awaiting its decision. */
 function teamedDetail(overrides: Record<string, unknown> = {}) {
@@ -845,10 +843,12 @@ function teamedDetail(overrides: Record<string, unknown> = {}) {
   });
 }
 function withMembers(members: unknown[]) {
-  return teamedDetail({ team: { ...team, value: { members } } });
+  return teamedDetail({
+    team: { ...team, value: { members, impartialityAnalysis: null } },
+  });
 }
 const conflicted = teamMember({
-  declarations: { ...NO_CONFLICT, noConsultancy: false },
+  declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
   conflictNote: 'Delivered a training to the client last year.',
 });
 
@@ -860,7 +860,12 @@ describe('Certification audit team and decision parsers', () => {
     expect(parsed.teamDecision).toBeNull();
     expect(
       parseCaseDetail(
-        teamedDetail({ team: { ...team, value: { members: [conflicted] } } }),
+        teamedDetail({
+          team: {
+            ...team,
+            value: { members: [conflicted], impartialityAnalysis: null },
+          },
+        }),
         {
           ...scope,
           caseId,
@@ -879,9 +884,8 @@ describe('Certification audit team and decision parsers', () => {
       teamVersion: 1,
       decision: 'returned',
       reason: 'Add an auditor for the second shift.',
-      // Recorded before the attestation and acts on behalf existed.
       onBehalf: null,
-      independenceAttested: false,
+      independenceAttested: true,
     });
     const pending = parseCaseDetail(
       teamedDetail({ revision: 9, team: corrected, teamDecision: returned }),
@@ -907,7 +911,7 @@ describe('Certification audit team and decision parsers', () => {
       decision: 'approved',
       reason: null,
       onBehalf: null,
-      independenceAttested: false,
+      independenceAttested: true,
     });
     expect(
       parseTimeline(
@@ -1022,10 +1026,13 @@ describe('Certification audit team and decision parsers', () => {
       teamedDetail({
         revision: 8,
         nextStep: 'stage_1_plan',
-        team: { ...team, value: { members: [conflicted] } },
+        team: {
+          ...team,
+          value: { members: [conflicted], impartialityAnalysis: null },
+        },
         teamDecision: {
           ...returned,
-          value: { teamVersion: 1, decision: 'approved', reason: null },
+          value: { ...returned.value, decision: 'approved', reason: null },
         },
       }),
     ],
@@ -1063,7 +1070,7 @@ describe('Certification audit team and decision parsers', () => {
         nextStep: 'stage_1_plan',
         teamDecision: {
           ...returned,
-          value: { teamVersion: 1, decision: 'approved', reason: 'Fine.' },
+          value: { ...returned.value, decision: 'approved', reason: 'Fine.' },
         },
       }),
     ],
@@ -1099,9 +1106,9 @@ describe('Certification audit team and decision parsers', () => {
       withMembers([
         teamMember({
           declarations: {
-            noConsultancy: true,
-            noEmployment: true,
-            noManagementInvolvement: true,
+            noConsultancy: 'confirmed',
+            noEmployment: 'confirmed',
+            noManagementInvolvement: 'confirmed',
           },
         }),
       ]),
@@ -1150,7 +1157,7 @@ describe('Certification audit team and decision parsers', () => {
 
 const approvedFirst = {
   ...returned,
-  value: { teamVersion: 1, decision: 'approved', reason: null },
+  value: { ...returned.value, decision: 'approved', reason: null },
 };
 function stageVersion(
   step: string,
@@ -2467,6 +2474,7 @@ describe('Certification Finding parsers', () => {
 const recommended = stageVersion('recommendation', 18, {
   recommendation: 'grant',
   basis: 'No nonconformity; system effectively implemented.',
+  recommendedOn: null,
 });
 const reviewItems = dossierReview().items;
 const reviewed = stageVersion('dossier_review', 19, dossierReview());
@@ -2507,7 +2515,11 @@ const refusedDecision = stageVersion(
 );
 const negative = {
   ...recommended,
-  value: { recommendation: 'do_not_grant', basis: 'Major nonconformity.' },
+  value: {
+    recommendation: 'do_not_grant',
+    basis: 'Major nonconformity.',
+    recommendedOn: null,
+  },
 };
 /** Stage 2 reported (17), recommended (18), reviewed (19), decided (20), agreed (21). */
 function decidedDetail(overrides: Record<string, unknown> = {}) {
@@ -2755,7 +2767,11 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
     const corrected = stageVersion(
       'recommendation',
       22,
-      { recommendation: 'grant', basis: 'Basis completed.' },
+      {
+        recommendation: 'grant',
+        basis: 'Basis completed.',
+        recommendedOn: null,
+      },
       { version: 2, reason: 'Basis completed after the closing meeting.' },
     );
     const entries = parseTimeline(
@@ -3061,7 +3077,10 @@ const analysis = {
 const approvedToVerify = teamedDetail({
   revision: 8,
   nextStep: 'stage_1_plan',
-  team: { ...team, value: { members: [toVerify] } },
+  team: {
+    ...team,
+    value: { members: [toVerify], impartialityAnalysis: null },
+  },
   teamDecision: approvedFirst,
 });
 const correctedDecision = stageVersion(
@@ -3168,46 +3187,127 @@ describe('Certification acts on behalf and impartiality parsers', () => {
     });
   });
 
-  it('reads first-format boolean declarations and records made before the new fields', () => {
-    const parsed = parseCaseDetail(
+  it.each([
+    [
+      'a first-format boolean declaration',
       withMembers([
         teamMember({
-          declarations: {
-            noConsultancy: false,
-            noEmployment: true,
-            noManagementInvolvement: true,
-            confidentiality: true,
-          },
+          declarations: { ...NO_CONFLICT, noConsultancy: false },
           conflictNote: 'Delivered a training to the client last year.',
         }),
       ]),
-      { ...scope, caseId },
-    );
-    expect(parsed.team?.value).toEqual({
-      members: [
-        teamMember({
-          declarations: { ...NO_CONFLICT, noConsultancy: 'conflict' },
-          conflictNote: 'Delivered a training to the client last year.',
-        }),
-      ],
-      impartialityAnalysis: null,
-    });
-    const earlier = parseCaseDetail(
+    ],
+    [
+      'a team without its impartiality analysis',
+      teamedDetail({
+        team: { ...team, value: without(team.value, ['impartialityAnalysis']) },
+      }),
+    ],
+    [
+      'a team decision without the attestation',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: {
+          ...returned,
+          value: without(returned.value, ['independenceAttested']),
+        },
+      }),
+    ],
+    [
+      'a team decision attested false',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: {
+          ...returned,
+          value: { ...returned.value, independenceAttested: false },
+        },
+      }),
+    ],
+    [
+      'a team decision without its act on behalf',
+      teamedDetail({
+        revision: 8,
+        nextStep: 'team',
+        teamDecision: {
+          ...returned,
+          value: without(returned.value, ['onBehalf']),
+        },
+      }),
+    ],
+    [
+      'a dossier review without the attestation',
       decidedDetail({
         dossierReview: {
           ...reviewed,
-          value: { items: reviewItems, conclusion: 'Complete.' },
+          value: without(reviewed.value, ['independenceAttested']),
         },
       }),
-      { ...scope, caseId },
-    );
-    expect(earlier.dossierReview?.value).toMatchObject({
-      reviewedBy: null,
-      approvedBy: null,
-      independenceAttested: false,
-    });
-    expect(earlier.application?.value.submittedOn).toBeNull();
-    expect(earlier.applicationReview?.value.onBehalf).toBeNull();
+    ],
+    [
+      'a dossier review attested false',
+      decidedDetail({
+        dossierReview: {
+          ...reviewed,
+          value: { ...reviewed.value, independenceAttested: false },
+        },
+      }),
+    ],
+    [
+      'a dossier review without its reviewer and approver',
+      decidedDetail({
+        dossierReview: {
+          ...reviewed,
+          value: without(reviewed.value, ['reviewedBy', 'approvedBy']),
+        },
+      }),
+    ],
+    [
+      'an application without its date',
+      detail({
+        application: {
+          ...application,
+          value: without(lactisFacts(), ['submittedOn']),
+        },
+      }),
+    ],
+    [
+      'an application review without its act on behalf',
+      detail({
+        applicationReview: {
+          ...review,
+          value: without(review.value, ['onBehalf']),
+        },
+      }),
+    ],
+    [
+      'a duration without its act on behalf',
+      durationDetail(
+        {},
+        {
+          duration: {
+            ...duration,
+            value: without(determination, ['onBehalf']),
+          },
+        },
+      ),
+    ],
+    [
+      'a recommendation without its date',
+      decidedDetail({
+        recommendation: {
+          ...recommended,
+          value: without(recommended.value, ['recommendedOn']),
+        },
+      }),
+    ],
+    [
+      'an act without its form reference',
+      withAct(without(act, ['formAttachmentId'])),
+    ],
+  ])('refuses %s, an earlier shape', (_name, value) => {
+    expect(() => parseCaseDetail(value, { ...scope, caseId })).toThrow();
   });
 
   it('reads a decision correction that keeps the outcome, with its reason and its versions', () => {

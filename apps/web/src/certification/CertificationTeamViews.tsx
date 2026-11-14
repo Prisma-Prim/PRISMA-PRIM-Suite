@@ -208,7 +208,7 @@ export function DecisionView({
         act={decision.onBehalf}
         register={register}
       />
-      <IndependenceRow attested={decision.independenceAttested} />
+      <IndependenceRow />
     </dl>
   );
 }

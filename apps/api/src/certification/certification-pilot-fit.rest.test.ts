@@ -4,10 +4,10 @@ import {
   CERTIFICATION_AUDITOR,
   CERTIFICATION_OWNER,
   allCriteria,
-  applicationFacts,
   openCertificationFixture,
   record,
 } from './certification.test-support.js';
+import { certificateReleaseCommands } from './certification-release.test-support.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
@@ -48,6 +48,13 @@ function onBehalf(
     actedOn,
     formAttachmentId,
   };
+}
+
+/** A stored act as an earlier application version wrote it, before the attestation. */
+function withoutAttestation(payload: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key]) => key !== 'independenceAttested'),
+  );
 }
 
 /** The fixture clock reads 2026-11-07T08:00Z: today is already 2026-11-07 everywhere, 2026-11-08 nowhere. */
@@ -363,61 +370,63 @@ withPostgres(
       });
     });
 
-    it('refuses an identical correction of a version recorded before the newer fields existed', async () => {
-      const caseId = await fixture.caseWithApplication();
-      await fixture.storeAsEarlierRelease(caseId, 'application', (payload) => {
-        const earlier = { ...payload };
-        delete earlier.submittedOn;
-        return earlier;
-      });
-      const events = await fixture.eventCount(caseId);
-      const sameFacts = await post(
-        CERTIFICATION_OWNER,
-        `/certification-cases/${caseId}/application`,
-        {
-          expectedRevision: 2,
-          reason: 'Same facts',
-          facts: applicationFacts(),
+    it.each([
+      [
+        'an audit team with first-format boolean declarations',
+        'team',
+        async () => {
+          const caseId = await fixture.agreedCase();
+          await ok(CERTIFICATION_OWNER, `/certification-cases/${caseId}/team`, {
+            expectedRevision: 6,
+            members: [leader()],
+          });
+          return caseId;
         },
-      );
-      expect(record(await sameFacts.json()).code).toBe(
-        'CERTIFICATION_CORRECTION_UNCHANGED',
-      );
-      expect(await fixture.eventCount(caseId)).toBe(events);
-
-      const teamCase = await fixture.agreedCase();
-      const base = `/certification-cases/${teamCase}`;
-      await ok(CERTIFICATION_OWNER, `${base}/team`, {
-        expectedRevision: 6,
-        members: [leader()],
-      });
-      await fixture.storeAsEarlierRelease(teamCase, 'team', (payload) => {
-        const earlier = { ...payload };
-        delete earlier.impartialityAnalysis;
-        const members = Array.isArray(payload.members) ? payload.members : [];
-        return {
-          ...earlier,
-          members: members.map((member) => ({
-            ...record(member),
-            declarations: {
-              noConsultancy: true,
-              noEmployment: true,
-              noManagementInvolvement: true,
-              confidentiality: true,
-            },
-          })),
-        };
-      });
-      const teamEvents = await fixture.eventCount(teamCase);
-      const sameTeam = await post(CERTIFICATION_OWNER, `${base}/team`, {
-        expectedRevision: 7,
-        reason: 'Same team',
-        members: [leader()],
-      });
-      expect(record(await sameTeam.json()).code).toBe(
-        'CERTIFICATION_CORRECTION_UNCHANGED',
-      );
-      expect(await fixture.eventCount(teamCase)).toBe(teamEvents);
-    });
+        (payload: Record<string, unknown>) => ({
+          ...payload,
+          members: (Array.isArray(payload.members) ? payload.members : []).map(
+            (member) => ({
+              ...record(member),
+              declarations: {
+                noConsultancy: true,
+                noEmployment: true,
+                noManagementInvolvement: true,
+                confidentiality: true,
+              },
+            }),
+          ),
+        }),
+      ],
+      [
+        'a team decision without the independence attestation',
+        'team_decision',
+        () => fixture.approvedTeamCase(),
+        withoutAttestation,
+      ],
+      [
+        'a dossier review without the independence attestation',
+        'dossier_review',
+        () => certificateReleaseCommands(() => fixture).granted(),
+        withoutAttestation,
+      ],
+    ] satisfies [
+      string,
+      string,
+      () => Promise<string>,
+      (payload: Record<string, unknown>) => Record<string, unknown>,
+    ][])(
+      'refuses to read %s, an earlier shape, instead of defaulting it',
+      async (_name, step, recorded, earlier) => {
+        const caseId = await recorded();
+        const path = `/certification-cases/${caseId}`;
+        expect((await fixture.call(CERTIFICATION_OWNER, path)).status).toBe(
+          200,
+        );
+        await fixture.storeAsEarlierRelease(caseId, step, earlier);
+        expect((await fixture.call(CERTIFICATION_OWNER, path)).status).toBe(
+          500,
+        );
+      },
+    );
   },
 );

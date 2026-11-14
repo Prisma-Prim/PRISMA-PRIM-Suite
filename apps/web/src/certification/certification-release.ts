@@ -202,10 +202,7 @@ export function parseDraftApproval(
 /** Additive HTTP fields are accepted; every consumed release field is proved. */
 export function parseCertificateRelease(value: unknown): CertificateRelease {
   const body = object(value);
-  const validityBody =
-    body.validity === undefined || body.validity === null
-      ? null
-      : object(body.validity);
+  const validityBody = body.validity === null ? null : object(body.validity);
   const validity =
     validityBody === null
       ? null

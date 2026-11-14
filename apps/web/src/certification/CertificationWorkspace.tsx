@@ -138,7 +138,6 @@ import {
 import {
   CERTIFICATION_LIMITS,
   parseCaseDetail,
-  parseCaseCommandReceipt,
   parseCaseList,
   parseDocumentRegister,
   parseDurationResult,
@@ -1109,7 +1108,7 @@ function CertificationRegistry(
     mutating.current = true;
     const setFeedback = feedbackSetter(kind);
     setFeedback({ status: 'saving', intent });
-    let confirmed: Pick<CaseDetail, 'id' | 'revision'> | undefined;
+    let confirmed: CaseDetail | undefined;
     try {
       const result = await query(
         mutationOperation,
@@ -1121,7 +1120,9 @@ function CertificationRegistry(
       );
       if (signal.aborted) return;
       if (result.status === 'ok') {
-        confirmed = parseCaseCommandReceipt(result.value, {
+        // The reply is the Case as this command recorded it, in the
+        // current read shape; the live Case is then reloaded.
+        confirmed = parseCaseDetail(result.value, {
           companyId,
           projectId,
           caseId: intent.caseId ?? undefined,

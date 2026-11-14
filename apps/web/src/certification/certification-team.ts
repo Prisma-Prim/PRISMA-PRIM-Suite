@@ -66,8 +66,8 @@ export type TeamDecision = {
   teamVersion: number;
   /** The certification body's decision maker, when recorded on their behalf. */
   onBehalf: ActAttribution | null;
-  /** False only in decisions recorded before the attestation existed. */
-  independenceAttested: boolean;
+  /** The recording member attests the approver is not on the audit team. */
+  independenceAttested: true;
 } & (
   | { decision: 'approved'; reason: null }
   | { decision: 'returned'; reason: string }

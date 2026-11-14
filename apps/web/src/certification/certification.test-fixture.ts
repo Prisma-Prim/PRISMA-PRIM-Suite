@@ -710,6 +710,7 @@ export class FakeCertificationServer {
           criteria: reviewCriteria('yes'),
           outcome: 'accepted',
           rejectionReason: null,
+          onBehalf: null,
         },
         null,
         colleague,
@@ -768,7 +769,13 @@ export class FakeCertificationServer {
     this.append(
       stored,
       'team_decision',
-      { teamVersion: team.version, decision, reason },
+      {
+        teamVersion: team.version,
+        decision,
+        reason,
+        onBehalf: null,
+        independenceAttested: true,
+      },
       null,
       colleague,
     );
@@ -814,7 +821,8 @@ export class FakeCertificationServer {
 
   /**
    * A colleague records a recommendation, dossier review, decision or
-   * Certificate data version; a refusing decision closes the Case.
+   * Certificate data version; a refusing decision closes the Case. As on the
+   * server, a recommendation without its date stores none.
    */
   recordStepAsColleague(
     caseId: string,
@@ -824,7 +832,13 @@ export class FakeCertificationServer {
   ) {
     const stored = this.cases.get(caseId);
     if (!stored) throw new Error('Unknown Case');
-    this.append(stored, step, value, reason, colleague);
+    this.append(
+      stored,
+      step,
+      step === 'recommendation' ? { recommendedOn: null, ...value } : value,
+      reason,
+      colleague,
+    );
     if (step === 'decision' && value.decision === 'refused')
       stored.status = 'refused';
   }
@@ -3716,21 +3730,13 @@ const DECLARATION_NAMES = [
   'confidentiality',
 ];
 
-/** Some declaration is a conflict or to verify; booleans are the first format. */
+/** Some declaration is a conflict or to verify. */
 function declaresConflict(member: unknown): boolean {
   const declarations = record(record(member).declarations);
-  return DECLARATION_NAMES.some(
-    (name) => declarations[name] !== 'confirmed' && declarations[name] !== true,
-  );
+  return DECLARATION_NAMES.some((name) => declarations[name] !== 'confirmed');
 }
 
-const DECLARATION_VALUES: unknown[] = [
-  'confirmed',
-  'conflict',
-  'to_verify',
-  true,
-  false,
-];
+const DECLARATION_VALUES: unknown[] = ['confirmed', 'conflict', 'to_verify'];
 
 /** Absent, null, or an act with its person, function, date and optional form. */
 function actingInput(value: unknown): boolean {

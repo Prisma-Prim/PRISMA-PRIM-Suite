@@ -151,7 +151,7 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
     expect(await fixture.eventCount(caseId)).toBe(10);
   });
 
-  it('refuses compositions without one leader or without the category', async () => {
+  it('refuses compositions without one leader or without the category, and first-format boolean declarations', async () => {
     const caseId = await fixture.agreedCase();
     for (const [members, code] of [
       [[member({ role: 'auditor' })], 'CERTIFICATION_TEAM_LEADER'],
@@ -190,9 +190,20 @@ withPostgres('Certification Case audit team', { timeout: 60_000 }, () => {
     }
     const unanswered = await propose(caseId, {
       expectedRevision: 6,
-      members: [member({ declarations: { noConsultancy: true } })],
+      members: [member({ declarations: { noConsultancy: 'confirmed' } })],
     });
     expect(unanswered.status).toBe(400);
+    // Declarations are states; the first format's booleans are refused.
+    const firstFormat = await propose(caseId, {
+      expectedRevision: 6,
+      members: [
+        member({ declarations: { ...NO_CONFLICT, noConsultancy: true } }),
+      ],
+    });
+    expect(firstFormat.status).toBe(400);
+    expect(record(await firstFormat.json()).code).toBe(
+      'INVALID_CERTIFICATION_INPUT',
+    );
     expect(await fixture.eventCount(caseId)).toBe(6);
   });
 

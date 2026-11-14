@@ -200,6 +200,37 @@ function refuseNext(
   });
 }
 
+/**
+ * Answers the next matching command with the Case read an earlier version
+ * recorded as its receipt: without the exchange page keys.
+ */
+function answerWithPrePaginationReceipt(
+  server: FakeCertificationServer,
+  { suffix, caseId }: { suffix: string; caseId: string },
+) {
+  server.interceptions.push({
+    match: (request) =>
+      request.method === 'POST' && request.path.endsWith(suffix),
+    respond: async () => {
+      const live: unknown = await (
+        await server.fetch(`/api/certification-cases/${caseId}`)
+      ).json();
+      if (!isRecord(live) || !isRecord(live.exchanges))
+        throw new Error('Expected the Case read.');
+      const exchanges = Object.fromEntries(
+        Object.entries(live.exchanges).filter(
+          ([key]) => key !== 'nextCursor' && key !== 'sendings',
+        ),
+      );
+      return Response.json({ ...live, exchanges }, { status: 201 });
+    },
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 const entries = [
   {
     kind: 'stage_plan_sent',
@@ -888,6 +919,44 @@ describe('Exchanges and deadlines region', () => {
     expect(
       within(region()).getByRole('list', { name: 'Procedure deadlines' }),
     ).toBeVisible();
+  });
+
+  it('treats a command reply recorded before exchange pagination as unreadable and retries it unchanged', async () => {
+    const { server, actor } = serve({ manager: true });
+    const { caseId } = plannedCase(server, 'CERT-RECEIPT');
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-RECEIPT');
+    fireEvent.click(
+      within(region()).getByRole('button', {
+        name: 'Add an item to re-verify',
+      }),
+    );
+    const form = within(region()).getByRole('form', {
+      name: 'Item to re-verify',
+    });
+    change(
+      within(form).getByLabelText('What to verify'),
+      'Fictional: verify the allergen labels at dispatch.',
+    );
+    answerWithPrePaginationReceipt(server, {
+      suffix: '/reverification-items',
+      caseId,
+    });
+    fireEvent.click(within(form).getByRole('button', { name: 'Add the item' }));
+    const retry = await within(region()).findByRole('button', {
+      name: 'Retry unchanged save',
+    });
+    expect(within(form).getByLabelText('What to verify')).toHaveDisplayValue(
+      'Fictional: verify the allergen labels at dispatch.',
+    );
+    const firstKey = server.mutations().at(-1)?.key;
+    fireEvent.click(retry);
+    await within(region()).findByRole('listitem', {
+      name: /^Item 1: Fictional: verify the allergen labels at dispatch\./u,
+    });
+    expect(server.mutations()).toHaveLength(2);
+    expect(server.mutations().at(-1)?.key).toBe(firstKey);
   });
 
   it('lets the Company administrator set the procedure deadlines and read their history, with stale and uncertain saves', async () => {
