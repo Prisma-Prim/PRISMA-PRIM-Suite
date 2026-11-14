@@ -1,21 +1,22 @@
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
-  json,
   record,
   text,
   type MissionDocumentFixture,
 } from '../documents/mission-document.test-support.js';
-import { restoreFrozenTaskSetup } from './frozen-task-migration.test-support.js';
+import {
+  applyHistoricalTaskTarget,
+  restoreFrozenTaskSetup,
+} from './frozen-task-migration.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
-  'upgrades the exact0086 manual/copied/closed/grouped/result/PDF/source/grant facts without rewriting historical absence',
+  'adds the description to the exact0086 manual/copied/closed/grouped/result facts without rewriting them, then refuses to migrate their pre-description receipts further',
   async () => {
     const url = process.env.TEST_DATABASE_URL;
     if (!url) throw new Error('Disposable PostgreSQL is required.');
@@ -45,21 +46,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
       }
       fixture = await createMissionDocumentFixture(url, previous);
-      const frozen = await restoreFrozenTaskSetup(
-        fixture.pool,
-        'task-description',
-      );
-      const raw = record(frozen.context);
-      const context = {
-        companyId: text(raw.companyId),
-        membershipId: text(raw.membershipId),
-        clientId: text(raw.clientId),
-        projectId: text(raw.projectId),
-        taskId: text(raw.taskId),
-        documentId: text(raw.documentId),
-        versionId: text(raw.versionId),
-      };
-      await fixture.resumeFrozenContext(context);
+      await restoreFrozenTaskSetup(fixture.pool, 'task-description');
       const f = fixture;
       expect(
         (
@@ -92,16 +79,14 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(before.task_result_declarations).toHaveLength(1);
       expect(before.document_pdfs).toHaveLength(1);
       expect(before.mission_plan_task_copies).toHaveLength(1);
-      const pdf = `/documents/${context.documentId}/versions/${context.versionId}/content`;
-      const downloadBefore = await f.call(pdf);
-      expect(downloadBefore.status).toBe(200);
-      const pdfHash = createHash('sha256')
-        .update(Buffer.from(await downloadBefore.arrayBuffer()))
-        .digest('hex');
-      // GET synchronizes the external profile timestamp; migration comparison begins after that explicit read.
-      const prior = await snapshot();
-      await migrate(drizzle(f.pool), { migrationsFolder: resolve('drizzle') });
-      expect(await snapshot()).toEqual(prior);
+      await applyHistoricalTaskTarget({
+        pool: f.pool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
+      expect(await snapshot()).toEqual(before);
       expect(
         (
           await f.pool.query(
@@ -109,62 +94,15 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           )
         ).rows,
       ).toEqual([{ count: 0 }]);
-      expect(
-        (await json(await f.call(`/tasks/${context.taskId}`))).task,
-      ).toMatchObject({ description: null, version: 2 });
-      const history = await json(
-        await f.call(`/tasks/${context.taskId}/history`),
-      );
-      if (!Array.isArray(history.events))
-        throw new Error('Expected native history.');
-      expect(
-        record(record(record(history.events[0]).metadata).initial),
-      ).not.toHaveProperty('description');
-      const groupedPath = `/projects/${context.projectId}/tasks/planning`;
-      const replay = await f.call(groupedPath, {
-        method: 'POST',
-        key: 'old-group-command',
-        body: frozen.groupBody,
-      });
-      expect(replay.status).toBe(201);
-      expect(await replay.json()).toEqual(frozen.groupReceipt);
-      const changed = await f.call(`/tasks/${context.taskId}`, {
-        method: 'PATCH',
-        key: 'new-description',
-        body: {
-          expectedVersion: 2,
-          description: 'New instructions\r\n  Ș / Я / 😀',
-        },
-      });
-      expect(changed.status).toBe(200);
-      expect((await json(changed)).description).toBe(
-        'New instructions\r\n  Ș / Я / 😀',
-      );
-      const oldAgain = await f.call(groupedPath, {
-        method: 'POST',
-        key: 'old-group-command',
-        body: frozen.groupBody,
-      });
-      expect(await oldAgain.json()).toEqual(frozen.groupReceipt);
-      const resultReplay = await f.call(`/tasks/${context.taskId}/results`, {
-        method: 'POST',
-        key: 'preserved-result',
-        body: frozen.resultIntent,
-      });
-      expect(resultReplay.status).toBe(201);
-      expect(await resultReplay.json()).toEqual(frozen.resultReceipt);
-      const downloadAfter = await f.call(pdf);
-      expect(downloadAfter.status).toBe(200);
-      expect(
-        createHash('sha256')
-          .update(Buffer.from(await downloadAfter.arrayBuffer()))
-          .digest('hex'),
-      ).toBe(pdfHash);
-      const constraints = ['', ' ', '\ufeffX', 'X\u202f', '😀'.repeat(2001)];
+      const [task] = (
+        await f.pool.query<{ id: string }>('SELECT id FROM tasks LIMIT 1')
+      ).rows;
+      if (!task) throw new Error('A frozen Task is required.');
+      const constraints = ['', ' ', '﻿X', 'X ', '😀'.repeat(2001)];
       for (const value of constraints)
         await expect(
           f.pool.query('UPDATE tasks SET description=$2 WHERE id=$1', [
-            context.taskId,
+            task.id,
             value,
           ]),
         ).rejects.toMatchObject({ code: '23514' });
@@ -172,24 +110,33 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await expect(
           f.pool.query(
             "UPDATE tasks SET description=convert_from(decode($2,'hex'),'UTF8') WHERE id=$1",
-            [context.taskId, hex],
+            [task.id, hex],
           ),
         ).rejects.toMatchObject({ code: '22021' });
-      const current = await json(await f.call(`/tasks/${context.taskId}`));
-      await f.pool.query('UPDATE tasks SET title=title WHERE id=$1', [
-        context.taskId,
-      ]);
-      expect(await json(await f.call(`/tasks/${context.taskId}`))).toEqual(
-        current,
-      );
       const repeat = await snapshot();
-      await migrate(drizzle(f.pool), { migrationsFolder: resolve('drizzle') });
+      await migrate(drizzle(f.pool), { migrationsFolder: previous });
       expect(await snapshot()).toEqual(repeat);
       const migration = await readFile(
         'drizzle/0087_task_description.sql',
         'utf8',
       );
       expect(migration).not.toMatch(/\b(?:DROP|DELETE|UPDATE|INSERT)\b/iu);
+      // These genuine receipts and creations predate descriptions: migration
+      // 0116 refuses them (#1348) and the upgrade proof stops here (#1343 A6).
+      let refusal: unknown = await migrate(drizzle(f.pool), {
+        migrationsFolder: resolve('drizzle'),
+      }).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      while (refusal instanceof Error && !('code' in refusal))
+        refusal = refusal.cause;
+      expect(refusal).toMatchObject({
+        code: 'P0001',
+        message:
+          'task_commands holds a Task receipt recorded before Task descriptions; the development database must be recreated.',
+      });
+      expect(await snapshot()).toEqual(repeat);
     } finally {
       await fixture?.close();
       await rm(previous, { recursive: true, force: true });

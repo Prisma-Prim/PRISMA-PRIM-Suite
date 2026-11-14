@@ -4,20 +4,17 @@ import {
 } from '../task/frozen-task-migration.test-support.js';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
-  json,
   record,
   text,
   type MissionDocumentFixture,
 } from '../documents/mission-document.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
-  'upgrades genuine previous-schema source/Tasks/results and old roles without enrollment, then preserves review receipts across repeat upgrade and two API restarts',
+  'applies the mission result review migration to genuine previous-schema source, Tasks, results and old roles without enrollment',
   async () => {
     const url = process.env.TEST_DATABASE_URL;
     if (!url) throw new Error('TEST_DATABASE_URL required');
@@ -107,42 +104,8 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         index,
       });
       expect(await conserved()).toEqual(before);
-      await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
-      await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
-      expect(await conserved()).toEqual(before);
-      expect(
-        (
-          await fixture.call(context.path, {
-            method: 'POST',
-            body: context.body,
-          })
-        ).status,
-      ).toBe(403);
-      expect(
-        record((await json(await fixture.call(context.path))).review).revision,
-      ).toBe(0);
-      await fixture.grant('/company-mission-result-reviewer-assignments');
-      const first = await fixture.call(context.path, {
-        method: 'POST',
-        key: 'persistent-review-demo',
-        body: context.body,
-      });
-      expect(first.status).toBe(201);
-      const receipt = await first.json();
-      const review = await json(await fixture.call(context.path));
-      for (let restart = 0; restart < 2; restart++) {
-        await fixture.restart();
-        expect(await json(await fixture.call(context.path))).toEqual(review);
-        expect(
-          await json(
-            await fixture.call(context.path, {
-              method: 'POST',
-              key: 'persistent-review-demo',
-              body: context.body,
-            }),
-          ),
-        ).toEqual(receipt);
-      }
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
     } finally {
       await fixture?.close();
       await rm(previous, { recursive: true, force: true });

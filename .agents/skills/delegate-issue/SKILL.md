@@ -12,7 +12,7 @@ The repository is public. Machine-specific facts come from your local notes into
 
 ## Steps
 
-1. **Ready.** Run the checks of [issue execution steps 1 and 2](../../../docs/agents/issue-execution.md#before-changing-anything) on the issue, its comments included; the delegate posts the claim. Done when every check holds; otherwise delegate nothing and report the failing check.
+1. **Ready.** Run `node scripts/issue-readiness.mjs <issue>`. In one read it checks the issue's state, the claims in its comments, open pull requests and blockers ([issue execution steps 1 and 2](../../../docs/agents/issue-execution.md#before-changing-anything)), and its sub-issues. The delegate posts the claim. Done when it prints `verdict: ready` and exits 0; otherwise delegate nothing and report its reasons.
 
 2. **Prepare.** Before preparing several worktrees at once, compare free disk space with your notes. Run `git fetch origin`, then `git worktree add -b <type>/<issue>-<slug> .worktrees/<name> origin/main` from the main checkout, and install the dependencies from the lockfile with the new worktree's own `bash scripts/agent-pnpm.sh install --frozen-lockfile`, run inside it. Done when the worktree's `git status` is clean on its new branch at `origin/main` and the install succeeded.
 

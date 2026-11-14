@@ -2,12 +2,9 @@ import {
   restoreFrozenTaskSetup,
   applyHistoricalTaskTarget,
 } from '../task/frozen-task-migration.test-support.js';
-import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 import {
@@ -33,7 +30,7 @@ function records(value: unknown) {
 }
 
 it.skipIf(!databaseUrl)(
-  'preserves every 0069 row, receipt, copied plan and nonempty Task and stage history without creating successors or Configuration grants',
+  'preserves every 0069 row, receipt, copied plan and nonempty Task and stage history without creating successors or Configuration grants during its own migration',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -72,45 +69,10 @@ it.skipIf(!databaseUrl)(
           ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Successor upgrade',
         },
       });
-      const origin = harness.origin;
-      let companyId = '';
-      async function request(
-        path: string,
-        value?: unknown,
-        key: string = randomUUID(),
-      ) {
-        const response = await fetch(`${origin}/api${path}`, {
-          method: value === undefined ? 'GET' : 'POST',
-          headers: {
-            'x-test-external-provider': 'deterministic-test',
-            'x-test-external-subject': 'successor-upgrade-owner',
-            'x-test-display-name': 'Upgrade owner',
-            'x-test-email': 'upgrade@example.test',
-            'content-type': 'application/json',
-            'idempotency-key': key,
-            ...(companyId ? { 'x-company-context-id': companyId } : {}),
-          },
-          ...(value === undefined ? {} : { body: JSON.stringify(value) }),
-        });
-        expect(response.status).toBe(value === undefined ? 200 : 201);
-        const result: unknown = await response.json();
-        return record(result);
-      }
-      const frozen = await restoreFrozenTaskSetup(
+      await restoreFrozenTaskSetup(
         database.targetPool,
         'project-template-version',
       );
-      companyId = string(frozen.companyId);
-      const projectId = string(frozen.projectId),
-        creationKey = string(frozen.creationKey),
-        stageKey = string(frozen.stageKey);
-      const creation = frozen.creation,
-        stageIntent = frozen.stageIntent,
-        stageReceipt = frozen.stageReceipt,
-        source = frozen.source,
-        progress = frozen.progress,
-        tasks = record(frozen.tasks),
-        histories = frozen.histories;
       const tables = (
         await database.targetPool.query<{ name: string }>(
           `SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name`,
@@ -137,9 +99,8 @@ it.skipIf(!databaseUrl)(
         index,
       });
       expect(await snapshot()).toEqual(before);
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
       expect(
         (
           await database.targetPool.query(
@@ -147,49 +108,6 @@ it.skipIf(!databaseUrl)(
           )
         ).rows,
       ).toEqual([{ versions: 0, receipts: 0, grants: 0 }]);
-      expect(await request(`/projects/${projectId}/template`)).toEqual(source);
-      expect(await request(`/projects/${projectId}/stage-progress`)).toEqual(
-        progress,
-      );
-      expect(await request(`/projects/${projectId}/tasks`)).toEqual({
-        ...tasks,
-        tasks: records(tasks.tasks).map((task) => ({
-          ...task,
-          description: null,
-        })),
-      });
-      expect(
-        await Promise.all(
-          records(tasks.tasks).map((task) =>
-            request(`/tasks/${string(task.id)}/history`),
-          ),
-        ),
-      ).toEqual(histories);
-      expect(
-        string(
-          (await request('/projects/from-template', creation, creationKey)).id,
-        ),
-      ).toBe(projectId);
-      expect(
-        await request(
-          `/projects/${projectId}/stage-advance`,
-          stageIntent,
-          stageKey,
-        ),
-      ).toEqual(stageReceipt);
-      expect(await request('/project-templates')).toMatchObject({
-        headVersion: 1,
-        nextBeforeVersion: null,
-      });
-      expect(
-        record((await request('/access/current-actor')).activeCompany)
-          .projectTemplateConfigurationPermissions,
-      ).toBeUndefined();
-      const beforeRepeat = await snapshot();
-      await migrate(drizzle(database.targetPool), {
-        migrationsFolder: resolve('drizzle'),
-      });
-      expect(await snapshot()).toEqual(beforeRepeat);
     } finally {
       try {
         await harness?.close();

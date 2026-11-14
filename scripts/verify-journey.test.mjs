@@ -9,7 +9,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { plan as localBrowserPlan } from './verify-local-browser.mjs';
@@ -210,14 +210,23 @@ test('plans the shared acceptance prebuild once and one fresh run per repetition
     repeat: 1,
     cpuLoad: 2,
     output: null,
+    evidenceRoot: join(
+      dirname(root),
+      '.prisma-agent-evidence',
+      'synthetic-journeys',
+    ),
     parallelism: 4,
     playwrightCli: '/playwright/cli.js',
     startedAt,
   });
   assert.equal(defaults.cpuLoadThreads, 2);
   assert.equal(
-    defaults.evidenceDirectory,
-    join(root, 'apps/web/test-results/journeys/ideas-20261108T101112Z'),
+    dirname(defaults.evidenceDirectory),
+    join(dirname(root), '.prisma-agent-evidence', 'synthetic-journeys'),
+  );
+  assert.match(
+    basename(defaults.evidenceDirectory),
+    /^ideas-20261108T101112Z-[a-f\d-]{36}$/u,
   );
 
   const relative = planJourneyVerification({
@@ -233,6 +242,24 @@ test('plans the shared acceptance prebuild once and one fresh run per repetition
   });
   assert.equal(relative.cpuLoadThreads, 0);
   assert.equal(relative.evidenceDirectory, resolve('relative-evidence'));
+});
+
+test('the public journey runner rejects source-tree evidence output before any build', async () => {
+  const output = join(root, 'apps/web/test-results/SYNTHETIC_PRIVATE_OUTPUT');
+  const environment = { ...process.env };
+  delete environment.TEST_DATABASE_URL;
+  const result = spawnSync(
+    process.execPath,
+    [script, 'ideas', '--output', output],
+    { cwd: root, env: environment, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stdout + result.stderr, /outside.*worktree/iu);
+  assert.doesNotMatch(
+    result.stdout + result.stderr,
+    /SYNTHETIC_PRIVATE_OUTPUT/u,
+  );
+  await assert.rejects(access(output));
 });
 
 test('refuses an unknown journey and names the known ones', () => {
@@ -278,7 +305,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
     journeys: ['contract', 'ideas'],
     repeat: 2,
     cpuLoad: null,
-    output: null,
+    output: join(tmpdir(), 'journey-evidence'),
     parallelism: 1,
     playwrightCli: '/playwright/cli.js',
     startedAt,

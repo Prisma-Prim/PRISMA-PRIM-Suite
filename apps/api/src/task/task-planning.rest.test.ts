@@ -446,6 +446,18 @@ withPostgres('Grouped native Task planning through public REST', () => {
       receipts[0],
     );
     expect(await planningEffects(f)).toEqual(completed);
+    // Receipts are immutable: a grouped receipt recorded before Task
+    // descriptions is a copy under a fresh key without its first description.
+    await f.harness.pool.query(
+      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
+       SELECT workspace_id, company_id, task_id, actor_membership_id, 'group-before-descriptions', command, result #- '{tasks,0,description}'
+       FROM task_commands WHERE idempotency_key='group-once'`,
+    );
+    const preDescription = await planningEffects(f);
+    expect((await s.plan({ key: 'group-before-descriptions' })).status).toBe(
+      500,
+    );
+    expect(await planningEffects(f)).toEqual(preDescription);
   });
 
   it('refuses new work on closed Tasks and Projects but confirms the complete earlier group after ordinary closure', async () => {

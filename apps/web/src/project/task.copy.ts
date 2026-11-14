@@ -50,7 +50,6 @@ export const taskCopy = {
   descriptionValidation:
     'Enter valid plain text of at most 2000 Unicode code points.',
   noDescription: 'No description',
-  unrecordedDescription: 'Description not recorded in this historical version',
   clearDescription: 'Clear instructions',
   titleLabel: 'Task title',
   assignee: 'Responsible member',
@@ -182,7 +181,6 @@ const projectTaskKeys = [
   'descriptionHelp',
   'descriptionValidation',
   'noDescription',
-  'unrecordedDescription',
   'clearDescription',
   'titleLabel',
   'assignee',
@@ -285,8 +283,6 @@ export const projectTaskMessages = defineMessages(projectTaskKeys, {
     descriptionValidation:
       'Introduceți text simplu valid, de maximum 2000 de puncte de cod Unicode.',
     noDescription: 'Fără descriere',
-    unrecordedDescription:
-      'Descriere neînregistrată în această versiune istorică',
     clearDescription: 'Ștergeți instrucțiunile',
     titleLabel: 'Titlul Sarcinii',
     assignee: 'Responsabil',
@@ -395,7 +391,6 @@ export const projectTaskMessages = defineMessages(projectTaskKeys, {
     descriptionValidation:
       'Введите корректный обычный текст, не более 2000 кодовых точек Unicode.',
     noDescription: 'Нет описания',
-    unrecordedDescription: 'Описание не записано в этой исторической версии',
     clearDescription: 'Очистить инструкции',
     titleLabel: 'Название Задачи',
     assignee: 'Ответственный',
@@ -503,8 +498,6 @@ export const projectTaskMessages = defineMessages(projectTaskKeys, {
     descriptionValidation:
       'Saisissez un texte brut valide de 2000 points de code Unicode au maximum.',
     noDescription: 'Aucune description',
-    unrecordedDescription:
-      'Description non enregistrée dans cette version historique',
     clearDescription: 'Effacer les instructions',
     titleLabel: 'Titre de la Tâche',
     assignee: 'Responsable',
@@ -604,7 +597,6 @@ export const projectTaskMessages = defineMessages(projectTaskKeys, {
     descriptionHelp: taskCopy.descriptionHelp,
     descriptionValidation: taskCopy.descriptionValidation,
     noDescription: taskCopy.noDescription,
-    unrecordedDescription: taskCopy.unrecordedDescription,
     clearDescription: taskCopy.clearDescription,
     titleLabel: taskCopy.titleLabel,
     assignee: taskCopy.assignee,
@@ -701,7 +693,6 @@ export function useProjectTaskCopy() {
     descriptionHelp: message('descriptionHelp'),
     descriptionValidation: message('descriptionValidation'),
     noDescription: message('noDescription'),
-    unrecordedDescription: message('unrecordedDescription'),
     clearDescription: message('clearDescription'),
     titleLabel: message('titleLabel'),
     assignee: message('assignee'),

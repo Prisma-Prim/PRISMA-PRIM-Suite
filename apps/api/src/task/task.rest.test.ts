@@ -282,7 +282,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         typeof event.action === 'string' && event.action.startsWith('task.'),
     );
   }
-  /** Expected pre-description Activity facts; native history additionally owns private instructions. */
+  /** Expected generic Activity facts; native history additionally owns private instructions. */
   function genericFacts(events: Record<string, unknown>[]) {
     return events.map((event) => {
       if (event.action !== 'task.created') return event;
@@ -296,7 +296,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
             title: initial.title,
             assignee: initial.assignee,
             dueDate: initial.dueDate,
-            ...('priority' in initial ? { priority: initial.priority } : {}),
+            priority: initial.priority,
           },
         },
       };
@@ -328,6 +328,23 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       'SELECT count(*)::int AS count FROM task_commands',
     );
     return integer(result.rows[0]?.count);
+  }
+  /**
+   * Receipts are immutable, so an earlier receipt shape is a copy of a stored
+   * receipt under a fresh key, its result without one recorded field.
+   */
+  async function receiptWithout(
+    sourceKey: string,
+    field: 'priority' | 'description',
+  ) {
+    const key = randomUUID();
+    await harness.pool.query(
+      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
+       SELECT workspace_id, company_id, task_id, actor_membership_id, $2, command, result - $3::text
+       FROM task_commands WHERE idempotency_key=$1`,
+      [sourceKey, key, field],
+    );
+    return key;
   }
   async function withUnsupportedPermissionVersion(
     assignment: Record<string, unknown>,
@@ -652,35 +669,32 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     ).toBe(409);
   });
 
-  it('preserves legacy receipt bytes and absent description after later edits and closure, and permits exhausted-version no-op and replay', async () => {
+  it('replays the stored receipt with its recorded description after later edits and closure, refuses one recorded before descriptions, and permits exhausted-version no-op and replay', async () => {
     await grant('task');
-    const key = randomUUID(),
-      legacyKey = randomUUID();
-    const created = await create(
-      { title: 'Legacy instruction format' },
-      { key },
-    );
+    const key = randomUUID();
+    const created = await create({ title: 'Instruction format' }, { key });
     const id = string(created.id);
-    await harness.pool.query(
-      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result) SELECT workspace_id, company_id, task_id, actor_membership_id, $2, command, result - 'description' FROM task_commands WHERE idempotency_key=$1`,
-      [key, legacyKey],
-    );
     const snapshot = () =>
       harness.pool.query(
         'SELECT command, result::text FROM task_commands WHERE idempotency_key=$1',
-        [legacyKey],
+        [key],
       );
-    const legacyBefore = (await snapshot()).rows;
+    const storedBefore = (await snapshot()).rows;
     await edit(id, { expectedVersion: 1, description: 'Today’s instructions' });
     expect((await transition(id, 'complete', 2)).status).toBe(201);
-    const replay = await create(
-      { title: 'Legacy instruction format' },
-      { key: legacyKey },
-    );
-    expect(replay).not.toHaveProperty('description');
-    expect(replay).toMatchObject({ id, version: 1 });
+    const replay = await create({ title: 'Instruction format' }, { key });
+    expect(replay).toEqual(created);
+    expect(replay).toMatchObject({ id, version: 1, description: null });
     expect((await detail(id)).description).toBe('Today’s instructions');
-    expect((await snapshot()).rows).toEqual(legacyBefore);
+    expect((await snapshot()).rows).toEqual(storedBefore);
+    const preDescription = await receiptWithout(key, 'description');
+    const refused = await request(`/projects/${projectId}/tasks`, {
+      method: 'POST',
+      key: preDescription,
+      value: { title: 'Instruction format' },
+    });
+    expect(refused.status).toBe(500);
+    expect(await refused.text()).not.toContain('Instruction format');
     expect((await transition(id, 'reopen', 3)).status).toBe(201);
     await harness.pool.query(
       'UPDATE tasks SET version=2147483647 WHERE id=$1',
@@ -703,9 +717,9 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         })
       ).status,
     ).toBe(409);
-    expect(
-      await create({ title: 'Legacy instruction format' }, { key: legacyKey }),
-    ).toEqual(replay);
+    expect(await create({ title: 'Instruction format' }, { key })).toEqual(
+      replay,
+    );
     await assertUnchanged(id, current, events);
     expect(await clientVersion()).toBe(fence);
   });
@@ -3091,7 +3105,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     ]);
   });
 
-  it('replays command receipts stored before execution states existed', async () => {
+  it('replays stored complete, reopen and edit receipts as recorded and refuses them without priority or description', async () => {
     await grant('task');
     const created = await create({ title: 'Historical receipt' });
     const id = string(created.id);
@@ -3101,16 +3115,12 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       workspaceMembershipId: membershipId,
       displayName: 'Task Manager',
     };
-    // Receipts recorded before #365 hold exactly these fingerprints and result
-    // shapes; they also predate priority, so each replays as normal.
-    const { priority, ...legacy } = created;
-    expect(priority).toBe('normal');
     const receipts = [
       {
         key: randomUUID(),
         command: `{"companyId":"${companyId}","taskId":"${id}","action":"complete","input":{"expectedVersion":1}}`,
         result: {
-          ...legacy,
+          ...created,
           status: 'done',
           version: 2,
           completion: { actor, occurredAt: '2026-09-20T10:00:00.000Z' },
@@ -3120,13 +3130,13 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       {
         key: randomUUID(),
         command: `{"companyId":"${companyId}","taskId":"${id}","action":"reopen","input":{"expectedVersion":2}}`,
-        result: { ...legacy, version: 3 },
+        result: { ...created, version: 3 },
         replay: (key: string) => transition(id, 'reopen', 2, { key }),
       },
       {
         key: randomUUID(),
         command: `{"companyId":"${companyId}","taskId":"${id}","action":"edit","input":{"expectedVersion":3,"title":"Historical edit"}}`,
-        result: { ...legacy, title: 'Historical edit', version: 4 },
+        result: { ...created, title: 'Historical edit', version: 4 },
         replay: (key: string) =>
           request(`/tasks/${id}`, {
             method: 'PATCH',
@@ -3151,8 +3161,16 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     for (const receipt of receipts) {
       const response = await receipt.replay(receipt.key);
       expect([200, 201]).toContain(response.status);
-      expect(await body(response)).toEqual({ ...receipt.result, priority });
+      expect(await body(response)).toEqual(receipt.result);
     }
+    for (const receipt of receipts)
+      for (const field of ['priority', 'description'] as const) {
+        const response = await receipt.replay(
+          await receiptWithout(receipt.key, field),
+        );
+        expect(response.status).toBe(500);
+        expect(await response.text()).not.toContain('Historical');
+      }
     await assertUnchanged(id, created, events);
   });
 
@@ -3447,10 +3465,13 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     ).toHaveLength(2);
   });
 
-  it('replays pre-priority create and edit receipts under their original payload as normal and fails closed for an unknown stored priority', async () => {
+  it('replays create and edit receipts under their submitted payload and fails closed for a receipt without priority or description or with an unknown priority', async () => {
     await grant('task');
     const createKey = randomUUID();
-    const created = await create({ title: 'Legacy notes' }, { key: createKey });
+    const created = await create(
+      { title: 'Preparation notes' },
+      { key: createKey },
+    );
     const id = string(created.id);
     const editKey = randomUUID();
     const edited = await edit(
@@ -3467,13 +3488,13 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
           )
         ).rows[0]?.command,
       );
-    // An omitted priority keeps the fingerprint a pre-priority receipt recorded.
+    // The fingerprint is the submitted command: an omitted priority adds no key.
     expect(await storedCommand(createKey)).toBe(
       JSON.stringify({
         action: 'create',
         companyId,
         projectId,
-        title: 'Legacy notes',
+        title: 'Preparation notes',
         assigneeMembershipId: null,
         dueDate: null,
       }),
@@ -3486,33 +3507,36 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         input: { expectedVersion: 1, dueDate: '2026-10-01' },
       }),
     );
-    // Receipts are immutable, so each pre-priority receipt is a new row under a
-    // fresh key repeating the command and outcome recorded for the same
-    // command, without the priority field that did not exist yet.
-    const legacyCreateKey = randomUUID();
-    const legacyEditKey = randomUUID();
-    await harness.pool.query(
-      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
-       SELECT c.workspace_id, c.company_id, c.task_id, c.actor_membership_id, f.legacy_key, c.command, c.result - 'priority'
-       FROM (VALUES ($1::text, $2::text), ($3::text, $4::text)) AS f(source_key, legacy_key)
-       JOIN task_commands c ON c.idempotency_key = f.source_key`,
-      [createKey, legacyCreateKey, editKey, legacyEditKey],
-    );
     const current = await detail(id);
     const events = await history(id);
     const fence = await clientVersion();
-    const receipts = await commandCount();
-    expect(created.priority).toBe('normal');
+    expect(created).toMatchObject({ priority: 'normal', description: null });
     expect(
-      await create({ title: 'Legacy notes' }, { key: legacyCreateKey }),
+      await create({ title: 'Preparation notes' }, { key: createKey }),
     ).toEqual(created);
     expect(
       await edit(
         id,
         { expectedVersion: 1, dueDate: '2026-10-01' },
-        { key: legacyEditKey },
+        { key: editKey },
       ),
     ).toEqual(edited);
+    for (const field of ['priority', 'description'] as const) {
+      const refusedCreate = await request(`/projects/${projectId}/tasks`, {
+        method: 'POST',
+        key: await receiptWithout(createKey, field),
+        value: { title: 'Preparation notes' },
+      });
+      expect(refusedCreate.status).toBe(500);
+      expect(await refusedCreate.text()).not.toContain('Preparation notes');
+      const refusedEdit = await request(`/tasks/${id}`, {
+        method: 'PATCH',
+        key: await receiptWithout(editKey, field),
+        value: { expectedVersion: 1, dueDate: '2026-10-01' },
+      });
+      expect(refusedEdit.status).toBe(500);
+    }
+    const receipts = await commandCount();
     await assertUnchanged(id, current, events);
     expect(await clientVersion()).toBe(fence);
     expect(await commandCount()).toBe(receipts);
@@ -3530,10 +3554,10 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     const unknown = await request(`/projects/${projectId}/tasks`, {
       method: 'POST',
       key: unknownKey,
-      value: { title: 'Legacy notes' },
+      value: { title: 'Preparation notes' },
     });
     expect(unknown.status).toBe(500);
-    expect(await unknown.text()).not.toContain('Legacy notes');
+    expect(await unknown.text()).not.toContain('Preparation notes');
     await assertUnchanged(id, current, events);
     expect(await clientVersion()).toBe(fence);
   });
@@ -3653,14 +3677,15 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     },
   );
 
-  it('keeps a historical creation without priority valid and absent and fails closed for an unknown stored priority', async () => {
+  it('fails closed for a historical creation without priority or description, or with an unknown priority', async () => {
     await grant('task');
     const created = await create({ title: 'Historical creation' });
     // Task history is immutable, so each historical creation is a new Task
     // copying the scope, creator and creation event of the API-created Task,
-    // with its initial priority absent, or replaced when one is given. The
-    // omitted priority column receives the migration default.
-    const historical = async (initialPriority: string | null) =>
+    // with one initial field removed or its priority replaced.
+    const historical = async (
+      change: { removed: 'priority' | 'description' } | { priority: string },
+    ) =>
       string(
         (
           await harness.pool.query<{ id: unknown }>(
@@ -3672,38 +3697,29 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
              )
              INSERT INTO task_events (workspace_id, company_id, task_id, version, actor_internal_user_id, actor_membership_id, actor_display_name, occurred_at, meaning)
              SELECT e.workspace_id, e.company_id, i.id, 1, e.actor_internal_user_id, e.actor_membership_id, e.actor_display_name, e.occurred_at,
-               CASE WHEN $2::text IS NULL THEN e.meaning #- '{metadata,initial,priority}' #- '{metadata,initial,description}'
-                 ELSE jsonb_set(e.meaning #- '{metadata,initial,description}', '{metadata,initial,priority}', to_jsonb($2::text)) END
+               CASE WHEN $3::text IS NULL THEN e.meaning #- ARRAY['metadata', 'initial', $2::text]
+                 ELSE jsonb_set(e.meaning, '{metadata,initial,priority}', to_jsonb($3::text)) END
              FROM inserted i JOIN task_events e ON e.task_id = $1::uuid AND e.version = 1
              RETURNING task_id AS id`,
-            [string(created.id), initialPriority],
+            [
+              string(created.id),
+              'removed' in change ? change.removed : null,
+              'priority' in change ? change.priority : null,
+            ],
           )
         ).rows[0]?.id,
       );
-    const id = await historical(null);
-    const [creation] = await history(id);
-    expect(object(object(creation).metadata).initial).toEqual({
-      title: 'Historical creation',
-      assignee: null,
-      dueDate: null,
-    });
-    expect(
-      (await taskEvents()).filter(
-        (event) => object(event.target).taskId === id,
-      ),
-    ).toEqual([creation]);
-    expect(await detail(id)).toEqual({ ...created, id });
-    await edit(id, { expectedVersion: 1, priority: 'important' });
-    expect((await history(id))[1]).toMatchObject({
-      metadata: {
-        changes: { priority: { before: 'normal', after: 'important' } },
-      },
-    });
-    const unknown = await request(
-      `/tasks/${await historical('urgent')}/history`,
-    );
-    expect(unknown.status).toBe(500);
-    expect(await unknown.text()).not.toContain('Historical creation');
+    for (const change of [
+      { removed: 'priority' },
+      { removed: 'description' },
+      { priority: 'urgent' },
+    ] as const) {
+      const id = await historical(change);
+      expect(await detail(id)).toEqual({ ...created, id });
+      const refused = await request(`/tasks/${id}/history`);
+      expect(refused.status).toBe(500);
+      expect(await refused.text()).not.toContain('Historical creation');
+    }
   });
 
   it('permits only one of a priority edit, another edit or completion from one observed version', async () => {
@@ -3896,7 +3912,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     },
   );
 
-  it('replays blockage and cancellation receipts recorded before priority existed as normal with their Unicode reasons', async () => {
+  it('replays blockage and cancellation receipts with their Unicode reasons and refuses them without priority', async () => {
     await grant('task');
     const reason = 'Attente du questionnaire signé — Clientă 🙂';
     const blockedId = string((await create({ title: 'Blocked receipt' })).id);
@@ -3924,29 +3940,25 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       priority: 'normal',
       cancellation: { reason },
     });
-    // Receipts are immutable, so each pre-priority receipt is a new row under a
-    // fresh key repeating the recorded command and outcome without priority.
-    const legacyBlockKey = randomUUID();
-    const legacyCancelKey = randomUUID();
-    await harness.pool.query(
-      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
-       SELECT c.workspace_id, c.company_id, c.task_id, c.actor_membership_id, f.legacy_key, c.command, c.result - 'priority'
-       FROM (VALUES ($1::text, $2::text), ($3::text, $4::text)) AS f(source_key, legacy_key)
-       JOIN task_commands c ON c.idempotency_key = f.source_key`,
-      [blockKey, legacyBlockKey, cancelKey, legacyCancelKey],
-    );
+    const prePriorityBlockKey = await receiptWithout(blockKey, 'priority');
+    const prePriorityCancelKey = await receiptWithout(cancelKey, 'priority');
     const events = await taskEvents();
     const fence = await clientVersion();
     const receipts = await commandCount();
     const replayedBlock = await move(blockedId, 'blocked', 1, reason, {
-      key: legacyBlockKey,
+      key: blockKey,
     });
     const replayedCancel = await cancel(cancelledId, 1, reason, {
-      key: legacyCancelKey,
+      key: cancelKey,
     });
     expect([replayedBlock.status, replayedCancel.status]).toEqual([201, 201]);
     expect(await body(replayedBlock)).toEqual(blocked);
     expect(await body(replayedCancel)).toEqual(cancelled);
+    const refused = [
+      await move(blockedId, 'blocked', 1, reason, { key: prePriorityBlockKey }),
+      await cancel(cancelledId, 1, reason, { key: prePriorityCancelKey }),
+    ];
+    expect(refused.map((response) => response.status)).toEqual([500, 500]);
     expect(await taskEvents()).toEqual(genericFacts(events));
     expect(await clientVersion()).toBe(fence);
     expect(await commandCount()).toBe(receipts);

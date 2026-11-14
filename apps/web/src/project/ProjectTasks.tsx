@@ -23,7 +23,7 @@ import {
 import {
   isOpenTaskState,
   readAssignees,
-  readTaskOutcome,
+  readTask,
   readTaskDetail,
   readTaskHistory,
   readTaskList,
@@ -774,7 +774,7 @@ function TaskProject({
         return;
       }
       if (result.status !== 'ok') throw new Error('Unconfirmed Task command');
-      const receipt = readTaskOutcome(result.value, scope);
+      const receipt = readTask(result.value, scope);
       if (command.taskId !== null && receipt.id !== command.taskId)
         throw new Error('Invalid Task receipt');
       // A confirmed move between open states changes no field, so a draft kept at the move's

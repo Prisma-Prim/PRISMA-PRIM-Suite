@@ -57,6 +57,22 @@ function preflight({ text = body, facts = context, args = [] } = {}) {
   );
 }
 
+for (const file of [
+  '.prisma-agent-evidence/run.json',
+  'apps/web/test-results/SYNTHETIC_PRIVATE_SCREEN.png',
+  'apps/web/playwright-report/index.html',
+]) {
+  test('refuses a private evidence path before publication without echoing it', () => {
+    const result = preflight({ facts: { ...context, changedFiles: [file] } });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /private evidence/iu);
+    assert.doesNotMatch(
+      result.stdout + result.stderr,
+      /SYNTHETIC_PRIVATE_SCREEN/u,
+    );
+  });
+}
+
 test('validates a UI description without CI reports and identifies its limited scope', () => {
   const result = preflight();
   assert.equal(result.status, 0, result.stderr);

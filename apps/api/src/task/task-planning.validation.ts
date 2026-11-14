@@ -4,9 +4,9 @@ import {
   calendarDate,
   editInput,
   object,
-  readTaskOutcome,
+  readTaskView,
 } from './task.validation.js';
-import type { TaskOutcome } from './task.types.js';
+import type { TaskView } from './task.types.js';
 
 function exactKeys(row: Record<string, unknown>, keys: readonly string[]) {
   if (
@@ -57,7 +57,7 @@ export function planningInput(value: unknown) {
 export type TaskPlanningInput = ReturnType<typeof planningInput>;
 
 const receiptSchema = 'task-planning/v1';
-export function planningReceipt(projectId: string, tasks: TaskOutcome[]) {
+export function planningReceipt(projectId: string, tasks: TaskView[]) {
   return { schema: receiptSchema, projectId, tasks };
 }
 
@@ -81,7 +81,7 @@ export function readPlanningReceipt(
     throw new Error('Invalid stored Task planning receipt.');
   const values: unknown[] = row.tasks;
   const tasks = values.map((value, index) => {
-    const task = readTaskOutcome(value);
+    const task = readTaskView(value);
     if (
       task.id !== scope.taskIds[index] ||
       task.projectId !== scope.projectId ||

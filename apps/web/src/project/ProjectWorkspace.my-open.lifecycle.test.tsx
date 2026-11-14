@@ -241,6 +241,7 @@ function server() {
               version: outsideTask.version,
               initial: {
                 title: outsideTask.title,
+                description: outsideTask.description,
                 assignee: outsideTask.assignee,
                 dueDate: outsideTask.dueDate,
                 priority: outsideTask.priority,

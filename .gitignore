@@ -19,3 +19,6 @@ test-results/
 
 # Codex Cloud writes the selected UI runtime here; .node-version is canonical.
 .nvmrc
+
+# Private verification checkpoints and local evidence stay outside source.
+.prisma-agent-evidence/

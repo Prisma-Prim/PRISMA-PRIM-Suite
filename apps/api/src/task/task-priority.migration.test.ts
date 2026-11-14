@@ -300,17 +300,28 @@ it.skipIf(!databaseUrl)(
       });
       const before = await snapshot();
 
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
+      // Migration 0116 refuses these pre-description receipts (#1348), so the
+      // upgrade proof stops at its own migration (#1343 A6).
+      const priorityTag = tags[priorityIndex];
+      if (!priorityTag) throw new Error('Priority migration required.');
+      await cp(
+        join('drizzle', priorityTag + '.sql'),
+        join(previous, priorityTag + '.sql'),
+      );
+      await writeFile(
+        join(previous, 'meta/_journal.json'),
+        JSON.stringify({
+          ...journal,
+          entries: entries.slice(0, priorityIndex + 1),
+        }),
+      );
+      await migrate(connection, { migrationsFolder: previous });
 
       const after = await snapshot();
       expect(after.commands).toEqual(before.commands);
       expect(after.events).toEqual(before.events);
       expect(after.tasks).toEqual(
-        before.tasks.map((row) => ({
-          ...row,
-          priority: 'normal',
-          description: null,
-        })),
+        before.tasks.map((row) => ({ ...row, priority: 'normal' })),
       );
 
       for (const rejected of ['urgent', 'Critical', 'critic', ''])
@@ -378,7 +389,7 @@ it.skipIf(!databaseUrl)(
         },
       ]);
 
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
+      await migrate(connection, { migrationsFolder: previous });
     } finally {
       await database.close();
       if (

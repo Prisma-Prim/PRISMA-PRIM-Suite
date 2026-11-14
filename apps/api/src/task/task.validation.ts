@@ -1,7 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import {
-  DEFAULT_TASK_PRIORITY,
   OPEN_TASK_STATES,
   TASK_PRIORITIES,
   type OpenTaskState,
@@ -11,8 +10,6 @@ import {
   type TaskDeclaration,
   type TaskEventMeaning,
   type TaskFields,
-  type TaskInitialFields,
-  type TaskOutcome,
   type TaskPriority,
   type TaskView,
 } from './task.types.js';
@@ -20,7 +17,7 @@ export interface TaskInput {
   title: string;
   assigneeMembershipId: string | null;
   dueDate: string | null;
-  /** Present only when submitted, so a pre-priority receipt keeps its fingerprint. */
+  /** Present only when submitted: an omitted field adds no key to the command fingerprint. */
   priority?: TaskPriority;
   description?: string | null;
 }
@@ -153,7 +150,7 @@ function descriptionInput(value: unknown): string | null {
     );
   return text || null;
 }
-/** Strict current/present historical values are never repaired during decoding. */
+/** A stored description is never repaired during decoding. */
 export function storedTaskDescription(value: unknown): string | null {
   if (value === null) return null;
   if (
@@ -266,40 +263,22 @@ function assignee(value: unknown): TaskAssignee | null {
     displayLabel: string(row.displayLabel),
   };
 }
-/** Only a creation recorded before priority existed lacks one; it stays absent. */
-function initialFields(value: unknown): TaskInitialFields {
+/** Every stored Task field is required; a missing one fails closed. */
+function storedFields(value: unknown): TaskFields {
   const row = object(value);
   return {
     title: title(row.title),
+    description: storedTaskDescription(row.description),
     assignee: assignee(row.assignee),
     dueDate: calendarDate(row.dueDate),
-    ...('priority' in row ? { priority: storedPriority(row.priority) } : {}),
-    ...('description' in row
-      ? { description: storedTaskDescription(row.description) }
-      : {}),
+    priority: storedPriority(row.priority),
   };
 }
-/** A result recorded before priority existed describes a Task backfilled as normal. */
-function resultFields(
-  value: unknown,
-): Omit<TaskFields, 'description'> & { description?: string | null } {
-  const fields = initialFields(value);
-  return { ...fields, priority: fields.priority ?? DEFAULT_TASK_PRIORITY };
-}
-/** Stored JSON is an external boundary; reconstruct the checked public result. */
+/** Stored JSON is an external boundary, receipts included; reconstruct the checked public result. */
 export function readTaskView(value: unknown): TaskView {
   const row = object(value);
-  return {
-    ...readTaskOutcome(value),
-    priority: storedPriority(row.priority),
-    description: storedTaskDescription(row.description),
-  };
-}
-/** Compatible immutable reader: preserve unrecorded description, including nested receipts. */
-export function readTaskOutcome(value: unknown): TaskOutcome {
-  const row = object(value);
   const common = {
-    ...resultFields(row),
+    ...storedFields(row),
     id: string(row.id),
     companyId: string(row.companyId),
     projectId: string(row.projectId),
@@ -309,7 +288,6 @@ export function readTaskOutcome(value: unknown): TaskOutcome {
     updatedAt: string(row.updatedAt),
     createdBy: actor(row.createdBy),
   };
-  // Receipts recorded before blocked and cancelled states existed keep exactly this shape.
   switch (row.status) {
     case 'todo':
     case 'in_progress':
@@ -370,7 +348,7 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
         action: row.action,
         metadata: {
           version: resultVersion,
-          initial: initialFields(metadata.initial),
+          initial: storedFields(metadata.initial),
         },
       };
     case 'task.updated': {
@@ -440,7 +418,6 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
         };
       break;
     }
-    // Completions recorded before in-progress and blocked states existed start from `todo`.
     case 'task.completed':
       if (metadata.after === 'done')
         return {
