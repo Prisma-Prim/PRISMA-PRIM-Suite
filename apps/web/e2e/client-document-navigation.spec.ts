@@ -182,6 +182,14 @@ test(`restricts working Documents to one dossier identity and returns to it`, as
       exact: true,
     }),
   ).toBeVisible();
+  // The dossier's own Client Documents overview reads the list first; count
+  // only what opening the working Documents adds.
+  await expect(
+    dossierRegion
+      .getByRole('region', { name: 'Client Documents' })
+      .getByRole('listitem')
+      .first(),
+  ).toBeVisible();
   const readsBeforeNavigation = api.documentListReads();
   await dossierRegion
     .getByRole('button', { name: 'Open Client working Documents' })
