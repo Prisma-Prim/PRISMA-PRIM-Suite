@@ -10,6 +10,11 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { selectOption } from '../test/select-option';
 import { ProjectTasks } from './ProjectTasks';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import type { ProjectStatus } from './project-lifecycle-response';
 import type { TaskView } from './task-response';
 
@@ -31,9 +36,6 @@ const actor: ActorContext = {
     taskPermissions: ['task.read', 'task.manage'],
     taskPermissionAssignmentId: 'tasks',
     taskPermissionSetVersion: 'v1',
-    taskResultPermissions: ['task.result.record'],
-    taskResultRecorderAssignmentId: 'recorder',
-    taskResultRecorderPermissionSetVersion: 'v1',
     documentPermissions: [
       'document.read',
       'document.content.read',
@@ -45,6 +47,34 @@ const actor: ActorContext = {
     documentContentReaderPermissionSetVersion: 'v1',
     missionDeliverableAccessAssignmentId: 'mission',
     missionDeliverableAccessPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'projects',
+      },
+      { bundle: 'company_task_manager', version: 'v1', assignmentId: 'tasks' },
+      {
+        bundle: 'company_task_result_recorder',
+        version: 'v1',
+        assignmentId: 'recorder',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: 'documents',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'reader',
+      },
+      {
+        bundle: 'company_mission_deliverable_access',
+        version: 'v1',
+        assignmentId: 'mission',
+      },
+    ),
   },
 };
 const attribution = {
@@ -381,8 +411,13 @@ it('preserves ordinary Task work while an evidence-only capture change retires p
     activeCompany: {
       ...actor.activeCompany,
       documentContentReaderAssignmentId: undefined,
-      documentPermissions: actor.activeCompany.documentPermissions?.filter(
-        (permission) => permission !== 'document.content.read',
+      documentPermissions: [
+        'document.read',
+        'document.mission_deliverable.access',
+      ],
+      grants: withoutCompanyGrants(
+        actor.activeCompany.grants,
+        'company_document_content_reader',
       ),
     },
   };
@@ -416,9 +451,11 @@ it('preserves ordinary Task and declared-result drafts across independent Review
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      missionResultReviewPermissions: ['project.mission_result.review'],
-      missionResultReviewerAssignmentId: 'new-reviewer',
-      missionResultReviewerPermissionSetVersion: 'v1',
+      grants: withCompanyGrants(actor.activeCompany.grants, {
+        bundle: 'company_mission_result_reviewer',
+        version: 'v1',
+        assignmentId: 'new-reviewer',
+      }),
     },
   };
   const before = fixture.fetcher.mock.calls.length;

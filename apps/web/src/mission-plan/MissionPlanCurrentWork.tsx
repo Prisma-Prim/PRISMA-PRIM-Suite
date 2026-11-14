@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { grantOf } from '../access/company-grants';
 import {
   MissionPlanAccessLifetime,
   useMissionPlanRejection,
@@ -22,35 +23,18 @@ type Props = MissionPlanProps & {
 function resultAuthority(actor: Props['actor']) {
   const c = actor.activeCompany;
   return JSON.stringify([
-    c?.documentPermissionAssignmentId,
-    c?.documentPermissionSetVersion,
-    c?.documentPermissions
-      ?.filter((p) =>
-        [
-          'document.read',
-          'document.reference.read',
-          'document.content.read',
-          'document.mission_deliverable.access',
-        ].includes(p),
-      )
-      .sort(),
-    c?.documentContentReaderAssignmentId,
-    c?.documentContentReaderPermissionSetVersion,
-    c?.missionDeliverableAccessAssignmentId,
-    c?.missionDeliverableAccessPermissionSetVersion,
+    grantOf(c, 'company_document_registrar'),
+    grantOf(c, 'company_document_content_reader'),
+    grantOf(c, 'company_mission_deliverable_access'),
   ]);
 }
 function baseAuthority(actor: Props['actor']) {
   const c = actor.activeCompany;
   if (
-    !c ||
-    !uuid(c.taskPermissionAssignmentId) ||
-    c.taskPermissionSetVersion !== 'v1' ||
-    !uuid(c.projectPermissionAssignmentId) ||
-    !['v1', 'v2'].some((v) => v === c.projectPermissionSetVersion) ||
+    !uuid(grantOf(c, 'company_task_manager')?.assignmentId) ||
+    !uuid(grantOf(c, 'company_project_access')?.assignmentId) ||
     (!actor.workspacePermissions.includes('client.manage') &&
-      (!uuid(c.clientPermissionAssignmentId) ||
-        !['v1', 'v2'].some((v) => v === c.clientPermissionSetVersion)))
+      !uuid(grantOf(c, 'company_director_client_access')?.assignmentId))
   )
     return null;
   return missionPlanAuthority(actor, 'copy');

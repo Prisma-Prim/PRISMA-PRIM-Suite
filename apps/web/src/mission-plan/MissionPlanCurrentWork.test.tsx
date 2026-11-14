@@ -9,6 +9,10 @@ import {
 import { deterministicBrowserIdentity } from '../access-composition';
 import { MissionPlanCurrentWork } from './MissionPlanCurrentWork';
 import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import {
   currentActor,
   currentOverview,
   id,
@@ -66,15 +70,37 @@ it.each(
     await waitFor(() => expect(reads).toBe(1));
     const other = currentActor();
     if (!other.activeCompany) throw new Error('Missing Company');
-    if (kind === 'source') other.activeCompany.missionPlanGrants = [];
+    const grants = other.activeCompany.grants;
+    if (kind === 'source')
+      other.activeCompany.grants = withoutCompanyGrants(
+        grants,
+        'company_mission_plan_configuration',
+        'company_mission_plan_user',
+      );
     if (kind === 'task')
-      other.activeCompany.taskPermissionAssignmentId = id(90);
+      other.activeCompany.grants = withCompanyGrants(grants, {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: id(90),
+      });
     if (kind === 'project')
-      other.activeCompany.projectPermissionAssignmentId = id(90);
+      other.activeCompany.grants = withCompanyGrants(grants, {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: id(90),
+      });
     if (kind === 'client')
-      other.activeCompany.clientPermissionAssignmentId = id(90);
+      other.activeCompany.grants = withCompanyGrants(grants, {
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: id(90),
+      });
     if (kind === 'result')
-      other.activeCompany.documentContentReaderAssignmentId = id(90);
+      other.activeCompany.grants = withCompanyGrants(grants, {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: id(90),
+      });
     next = undefined;
     view.rerender(
       <MissionPlanCurrentWork
@@ -122,8 +148,11 @@ it('retires result-only fields immediately while keeping base Task/source/window
   pending = deferred.promise;
   const denied = currentActor();
   if (!denied.activeCompany) throw new Error('Missing Company');
-  denied.activeCompany.documentPermissions = ['document.read'];
-  denied.activeCompany.documentContentReaderAssignmentId = undefined;
+  denied.activeCompany.grants = withoutCompanyGrants(
+    denied.activeCompany.grants,
+    'company_document_content_reader',
+    'company_mission_deliverable_access',
+  );
   view.rerender(<MissionPlanCurrentWork {...props} actor={denied} />);
   expect(screen.queryByText('Current declaration 26 Ж / é')).toBeNull();
   expect(
@@ -168,10 +197,26 @@ it('does not restart a ready read for unconsumed publication/instantiation/Recor
   await screen.findByText('Current declaration 1 Ж / é');
   const next = currentActor();
   if (!next.activeCompany) throw new Error('Missing Company');
-  next.activeCompany.taskResultRecorderAssignmentId = id(90);
-  next.activeCompany.missionResultReviewerAssignmentId = id(91);
-  next.activeCompany.taskPermissions = ['task.read'];
-  next.activeCompany.projectPermissions = ['project.read'];
+  next.activeCompany.grants = withCompanyGrants(
+    next.activeCompany.grants,
+    {
+      bundle: 'company_task_result_recorder',
+      version: 'v1',
+      assignmentId: id(90),
+    },
+    {
+      bundle: 'company_mission_result_reviewer',
+      version: 'v1',
+      assignmentId: id(91),
+    },
+  );
+  // Ordinary management fields of the wire Actor change too; only the read
+  // captures of Project and Task are consumed here.
+  next.activeCompany = {
+    ...next.activeCompany,
+    taskPermissions: ['task.read'],
+    projectPermissions: ['project.read'],
+  };
   view.rerender(<MissionPlanCurrentWork {...props} actor={next} />);
   expect(fetch).toHaveBeenCalledTimes(1);
 });

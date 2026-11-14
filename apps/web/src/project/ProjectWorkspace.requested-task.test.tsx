@@ -17,6 +17,10 @@ import {
   preparatoryLifecycle,
 } from './project-lifecycle.test-fixtures';
 import { taskCopy } from './task.copy';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const company = {
   id: 'company',
@@ -25,6 +29,11 @@ const company = {
   taskPermissions: ['task.read', 'task.manage'],
   taskPermissionAssignmentId: 'task-grant',
   taskPermissionSetVersion: 'v1',
+  grants: companyGrants({
+    bundle: 'company_task_manager',
+    version: 'v1',
+    assignmentId: 'task-grant',
+  }),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -930,7 +939,15 @@ describe('Requested Task opens', () => {
 
     workspace.replaceActor({
       ...actor,
-      activeCompany: { ...company, taskPermissionAssignmentId: 'replacement' },
+      activeCompany: {
+        ...company,
+        taskPermissionAssignmentId: 'replacement',
+        grants: withCompanyGrants(company.grants, {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'replacement',
+        }),
+      },
     });
     await waitFor(() => expect(server.count(betaTasksRead)).toBe(2));
     await settle();

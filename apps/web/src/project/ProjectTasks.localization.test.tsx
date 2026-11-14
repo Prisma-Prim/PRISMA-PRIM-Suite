@@ -15,6 +15,10 @@ import type { ActorContext } from '../access-types';
 import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { ProjectTasks } from './ProjectTasks';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { projectTaskMessages, taskCopy } from './task.copy';
 import {
   assertMessageCoverage,
@@ -38,6 +42,11 @@ const actor: ActorContext = {
     taskPermissions: ['task.read', 'task.manage'],
     taskPermissionAssignmentId: 'task-grant',
     taskPermissionSetVersion: 'v1',
+    grants: companyGrants({
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-grant',
+    }),
   },
 };
 
@@ -861,6 +870,10 @@ it.each(languages)(
           id: 'company',
           displayName: 'Synthetic Company',
           taskPermissions: [],
+          grants: withoutCompanyGrants(
+            actor.activeCompany?.grants,
+            'company_task_manager',
+          ),
         },
       }),
     );

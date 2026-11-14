@@ -23,7 +23,7 @@ import {
   emptyNextAction,
 } from './project-next-action-app';
 import {
-  companyGrants,
+  withCompanyGrants,
   withoutCompanyGrants,
 } from '../access/company-grants.test-fixture';
 import { isCompanyGrants } from '../access/company-grants';
@@ -32,7 +32,7 @@ export const internalTaskActor = {
   ...nextActionActor,
   activeCompany: {
     ...nextActionActor.activeCompany,
-    grants: companyGrants({
+    grants: withCompanyGrants(nextActionActor.activeCompany.grants, {
       bundle: 'company_internal_task_manager',
       version: 'v1',
       assignmentId: '90000000-0000-4000-8000-000000001006',
@@ -103,7 +103,7 @@ export function installInternalTaskApp(
       displayName: 'Fresh internal Actor DEMO',
       activeCompany: {
         ...internalTaskActor.activeCompany,
-        grants: companyGrants({
+        grants: withCompanyGrants(internalTaskActor.activeCompany.grants, {
           bundle: 'company_internal_task_manager',
           version: 'v1',
           assignmentId: '90000000-0000-4000-8000-000000001007',

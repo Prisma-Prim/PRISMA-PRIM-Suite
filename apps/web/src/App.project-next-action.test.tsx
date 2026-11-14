@@ -17,6 +17,7 @@ import {
   projectId,
   installParentServer,
 } from './test/mission-applicability-app-fixture';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 
 const nextActionActor = {
   ...actor,
@@ -25,9 +26,11 @@ const nextActionActor = {
   workspaceId: '70000000-0000-4000-8000-000000000001',
   activeCompany: {
     ...actor.activeCompany,
-    projectNextActionPermissions: ['project.next_action.update'],
-    projectNextActionCoordinatorAssignmentId: 'next-action-coordinator',
-    projectNextActionCoordinatorPermissionSetVersion: 'v1',
+    grants: withCompanyGrants(actor.activeCompany.grants, {
+      bundle: 'company_project_next_action_coordinator',
+      version: 'v1',
+      assignmentId: 'next-action-coordinator',
+    }),
   },
 };
 beforeEach(() => {

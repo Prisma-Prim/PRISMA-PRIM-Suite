@@ -8,6 +8,7 @@ import {
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { taskResultAuthority } from './project-authority';
+import { holds } from '../access/company-grants';
 import type { ProjectStatus } from './project-lifecycle-response';
 import { useTaskResultCopy } from './task-results.copy';
 import {
@@ -94,40 +95,26 @@ function TaskResultOwner({
   const companyId = company?.id ?? '';
   const canReadClient =
     actor.workspacePermissions.includes('client.manage') ||
-    Boolean(
-      company?.clientPermissions?.includes('client.read') &&
-      company.clientPermissionAssignmentId &&
-      (company.clientPermissionSetVersion === 'v1' ||
-        company.clientPermissionSetVersion === 'v2'),
-    );
-  const canRead = Boolean(
-    company?.taskPermissions?.includes('task.read') &&
-    company.taskPermissionAssignmentId &&
-    company.taskPermissionSetVersion === 'v1' &&
-    company.projectPermissions?.includes('project.read') &&
-    company.projectPermissionAssignmentId &&
-    (company.projectPermissionSetVersion === 'v1' ||
-      company.projectPermissionSetVersion === 'v2') &&
+    holds(company, 'company_director_client_access', 'client.read');
+  const canRead =
+    holds(company, 'company_task_manager', 'task.read') &&
+    holds(company, 'company_project_access', 'project.read') &&
     canReadClient &&
-    company.documentPermissions?.includes('document.read') &&
-    company.documentPermissionSetVersion &&
-    company.documentPermissionAssignmentId &&
-    ['v1', 'v2', 'v3'].includes(company.documentPermissionSetVersion) &&
-    company.documentPermissions.includes('document.content.read') &&
-    company.documentContentReaderAssignmentId &&
-    company.documentContentReaderPermissionSetVersion === 'v1' &&
-    company.documentPermissions.includes(
-      'document.mission_deliverable.access',
+    holds(company, 'company_document_registrar', 'document.read') &&
+    holds(
+      company,
+      'company_document_content_reader',
+      'document.content.read',
     ) &&
-    company.missionDeliverableAccessAssignmentId &&
-    company.missionDeliverableAccessPermissionSetVersion === 'v1',
-  );
+    holds(
+      company,
+      'company_mission_deliverable_access',
+      'document.mission_deliverable.access',
+    );
   const canRecord =
     canRead &&
-    company?.taskPermissions?.includes('task.manage') &&
-    company.taskResultPermissions?.includes('task.result.record') &&
-    Boolean(company.taskResultRecorderAssignmentId) &&
-    company.taskResultRecorderPermissionSetVersion === 'v1';
+    holds(company, 'company_task_manager', 'task.manage') &&
+    holds(company, 'company_task_result_recorder', 'task.result.record');
   const [read, setRead] = useState<ReadState>({
     kind: canRead ? 'loading' : 'denied',
   });

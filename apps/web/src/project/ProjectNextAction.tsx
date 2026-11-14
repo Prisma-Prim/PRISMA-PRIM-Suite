@@ -8,6 +8,7 @@ import {
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { clientReadAuthority } from './project-authority';
+import { grantOf, holds } from '../access/company-grants';
 import {
   isClosedProjectStatus,
   type ProjectStatus,
@@ -45,29 +46,21 @@ export function nextActionReadAuthority(actor: ActorContext) {
     actor.workspaceMembershipId,
     c?.id,
     clientReadAuthority(actor),
-    c?.projectPermissions?.includes('project.read'),
-    c?.projectPermissionAssignmentId,
-    c?.projectPermissionSetVersion,
+    holds(c, 'company_project_access', 'project.read'),
+    grantOf(c, 'company_project_access')?.assignmentId,
+    grantOf(c, 'company_project_access')?.permissionSetVersion,
   ];
 }
 function writeAuthority(actor: ActorContext) {
-  const c = actor.activeCompany;
   return JSON.stringify([
-    c?.projectNextActionPermissions,
-    c?.projectNextActionCoordinatorAssignmentId,
-    c?.projectNextActionCoordinatorPermissionSetVersion,
+    grantOf(actor.activeCompany, 'company_project_next_action_coordinator'),
   ]);
 }
 export function canCoordinateNextAction(actor: ActorContext) {
-  const c = actor.activeCompany;
-  return Boolean(
-    c &&
-    typeof c.projectNextActionCoordinatorAssignmentId === 'string' &&
-    c.projectNextActionCoordinatorAssignmentId.length > 0 &&
-    c.projectNextActionCoordinatorPermissionSetVersion === 'v1' &&
-    Array.isArray(c.projectNextActionPermissions) &&
-    c.projectNextActionPermissions.length === 1 &&
-    c.projectNextActionPermissions[0] === 'project.next_action.update',
+  return holds(
+    actor.activeCompany,
+    'company_project_next_action_coordinator',
+    'project.next_action.update',
   );
 }
 export function ProjectNextAction(props: Props) {

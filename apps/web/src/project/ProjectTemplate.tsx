@@ -1,6 +1,7 @@
 import { MissionApplicability } from './MissionApplicability';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
@@ -22,42 +23,44 @@ import {
 
 type Props = { actor: ActorContext; identity: BrowserIdentity };
 export function canUseProjectTemplate(actor: ActorContext) {
-  const company = actor.activeCompany;
-  return (
-    company?.projectTemplatePermissionAssignmentId !== undefined &&
-    (company.projectTemplatePermissionSetVersion === 'v1' ||
-      company.projectTemplatePermissionSetVersion === 'v2') &&
-    company.projectTemplatePermissions?.includes('project.template.read') ===
-      true
+  return holds(
+    actor.activeCompany,
+    'company_project_template_user',
+    'project.template.read',
   );
 }
 export function canUsePilotTemplate(actor: ActorContext) {
   return (
     canUseProjectTemplate(actor) &&
-    actor.activeCompany?.projectTemplatePermissionSetVersion === 'v2' &&
-    actor.activeCompany.projectTemplatePermissions?.includes(
+    holds(
+      actor.activeCompany,
+      'company_project_template_user',
       'project.template.pilot.read',
-    ) === true
+    )
   );
 }
 function canInstantiatePilotTemplate(actor: ActorContext) {
   return (
     canUsePilotTemplate(actor) &&
-    actor.activeCompany?.projectTemplatePermissions?.includes(
+    holds(
+      actor.activeCompany,
+      'company_project_template_user',
       'project.template.pilot.instantiate',
-    ) === true
+    )
   );
 }
 export function canInstantiateProjectTemplate(actor: ActorContext) {
+  const company = actor.activeCompany;
   return (
     canUseProjectTemplate(actor) &&
-    actor.activeCompany?.projectTemplatePermissions?.includes(
+    holds(
+      company,
+      'company_project_template_user',
       'project.template.instantiate',
-    ) === true &&
-    actor.activeCompany.projectPermissions?.includes('project.create') ===
-      true &&
-    actor.activeCompany.taskPermissions?.includes('task.manage') === true &&
-    actor.activeCompany.taskPermissions.includes('task.read')
+    ) &&
+    holds(company, 'company_project_access', 'project.create') &&
+    holds(company, 'company_task_manager', 'task.manage') &&
+    holds(company, 'company_task_manager', 'task.read')
   );
 }
 
@@ -516,13 +519,9 @@ export function projectTemplateAuthority(actor: ActorContext): string {
     actor.workspaceId,
     actor.workspaceMembershipId,
     company?.id,
-    company?.projectTemplatePermissionAssignmentId,
-    company?.projectTemplatePermissionSetVersion,
-    company?.projectTemplatePermissions,
-    company?.projectPermissions,
-    company?.taskPermissionAssignmentId,
-    company?.taskPermissionSetVersion,
-    company?.taskPermissions,
+    grantOf(company, 'company_project_template_user'),
+    grantOf(company, 'company_project_access')?.permissions,
+    grantOf(company, 'company_task_manager'),
   ]);
 }
 

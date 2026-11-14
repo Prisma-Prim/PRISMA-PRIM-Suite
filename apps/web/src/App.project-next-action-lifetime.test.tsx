@@ -14,6 +14,7 @@ import {
   openNextActionApp,
   publishNextActionActor,
 } from './test/project-next-action-app';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 
 beforeEach(() => {
   localStorage.clear();
@@ -35,6 +36,11 @@ it.each([200, 403])(
         clientPermissions: ['client.read'],
         clientPermissionAssignmentId: 'exact-client-read',
         clientPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(nextActionActor.activeCompany.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'exact-client-read',
+        }),
       },
     };
     const fresh = {
@@ -43,6 +49,11 @@ it.each([200, 403])(
       activeCompany: {
         ...initial.activeCompany,
         clientPermissionAssignmentId: 'replacement-client-read',
+        grants: withCompanyGrants(initial.activeCompany.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'replacement-client-read',
+        }),
       },
     };
     let hold = false,
@@ -98,7 +109,23 @@ it.each(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...nextActionActor.activeCompany,
-        [field]: 'replacement-capture',
+        ...(field === 'projectPermissionAssignmentId'
+          ? { [field]: 'replacement-capture' }
+          : {}),
+        grants: withCompanyGrants(
+          nextActionActor.activeCompany.grants,
+          field === 'projectPermissionAssignmentId'
+            ? {
+                bundle: 'company_project_access',
+                version: 'v2',
+                assignmentId: 'replacement-capture',
+              }
+            : {
+                bundle: 'company_project_next_action_coordinator',
+                version: 'v1',
+                assignmentId: 'replacement-capture',
+              },
+        ),
       },
     };
     let hold = false,
@@ -211,7 +238,11 @@ it.each(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...nextActionActor.activeCompany,
-        missionResultReviewerAssignmentId: 'recovery-only-new-capture',
+        grants: withCompanyGrants(nextActionActor.activeCompany.grants, {
+          bundle: 'company_mission_result_reviewer',
+          version: 'v1',
+          assignmentId: 'recovery-only-new-capture',
+        }),
       },
     };
     let deny = false,

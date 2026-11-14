@@ -10,6 +10,11 @@ import {
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ProjectStage } from './ProjectStage';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { copiedPlanFixture } from './project-template.test-fixtures';
 
 const projectId = '30000000-0000-4000-8000-000000000001';
@@ -29,12 +34,19 @@ const actor: ActorContext = {
     taskPermissions: ['task.read'],
     taskPermissionAssignmentId: 'task',
     taskPermissionSetVersion: 'v1',
-    projectTemplatePermissions: ['project.template.read'],
-    projectTemplatePermissionAssignmentId: 'template',
-    projectTemplatePermissionSetVersion: 'v1',
-    projectStagePermissions: ['project.stage.advance'],
-    projectStagePermissionAssignmentId: 'stage',
-    projectStagePermissionSetVersion: 'v1',
+    grants: companyGrants(
+      { bundle: 'company_task_manager', version: 'v1', assignmentId: 'task' },
+      {
+        bundle: 'company_project_template_user',
+        version: 'v1',
+        assignmentId: 'template',
+      },
+      {
+        bundle: 'company_project_stage_advancer',
+        version: 'v1',
+        assignmentId: 'stage',
+      },
+    ),
   },
 };
 function progress(gate = 'ready') {
@@ -185,8 +197,12 @@ it.each(['company', 'session', 'dedicated'] as const)(
         ...actor.activeCompany,
         id: boundary === 'company' ? 'other-company' : 'company',
         displayName: 'Company',
-        projectStagePermissionAssignmentId:
-          boundary === 'dedicated' ? 'replacement-stage' : 'stage',
+        grants: withCompanyGrants(actor.activeCompany?.grants, {
+          bundle: 'company_project_stage_advancer',
+          version: 'v1',
+          assignmentId:
+            boundary === 'dedicated' ? 'replacement-stage' : 'stage',
+        }),
       },
     };
     view.rerender(
@@ -250,9 +266,10 @@ it('rejects malformed gate facts and preserves only a readonly progress read wit
       ...actor.activeCompany,
       id: 'company',
       displayName: 'Company',
-      projectStagePermissions: [],
-      projectStagePermissionAssignmentId: undefined,
-      projectStagePermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_project_stage_advancer',
+      ),
     },
   };
   render(

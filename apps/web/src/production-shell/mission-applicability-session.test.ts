@@ -9,6 +9,7 @@ import {
   selectedActor,
 } from './production-shell-context.test-fixtures';
 import { preferenceKey } from './company-context-preference';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
@@ -78,11 +79,11 @@ it.each(
         activeCompany: {
           id: 'company-a',
           displayName: 'Company A',
-          missionApplicabilityProposalPermissions: [
-            'project.mission_applicability.propose',
-          ],
-          missionApplicabilityCoordinatorAssignmentId: 'fresh-coordinator-demo',
-          missionApplicabilityCoordinatorPermissionSetVersion: 'v1',
+          grants: companyGrants({
+            bundle: 'company_mission_applicability_coordinator',
+            version: 'v1',
+            assignmentId: 'fresh-coordinator-demo',
+          }),
         },
       };
       current = fresh;

@@ -18,6 +18,7 @@ import {
   projectId,
   installParentServer,
 } from './mission-applicability-app-fixture';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 
 export const nextActionActor = {
   ...actor,
@@ -27,9 +28,11 @@ export const nextActionActor = {
   workspacePermissions: ['client.manage', 'company.assignment.manage'],
   activeCompany: {
     ...actor.activeCompany,
-    projectNextActionPermissions: ['project.next_action.update'],
-    projectNextActionCoordinatorAssignmentId: 'next-action-coordinator',
-    projectNextActionCoordinatorPermissionSetVersion: 'v1',
+    grants: withCompanyGrants(actor.activeCompany.grants, {
+      bundle: 'company_project_next_action_coordinator',
+      version: 'v1',
+      assignmentId: 'next-action-coordinator',
+    }),
   },
 };
 export const nextActionPath = `/api/projects/${projectId}/next-action`;
