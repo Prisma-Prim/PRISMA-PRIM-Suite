@@ -1,44 +1,35 @@
 import type { ActorContext } from '../access-types';
+import { grantOf, holds } from '../access/company-grants';
+import { holdsOfferRead } from './contract-grants';
 
 export function contractDecisionQueueAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
-  const knownApprover =
-    c?.contractApproverPermissionSetVersion === 'v1' ||
-    c?.contractApproverPermissionSetVersion === 'v2';
-  const knownIntake = ['v1', 'v2', 'v3', 'v4'].some(
-    (v) => v === c?.commercialIntakePermissionSetVersion,
-  );
+  const approver = grantOf(c, 'company_contract_approver');
+  const intake = grantOf(c, 'company_commercial_intake');
   const read = Boolean(
     actor.active &&
     c &&
-    knownApprover &&
-    knownIntake &&
-    c.contractApproverAssignmentId &&
-    c.commercialIntakePermissionAssignmentId &&
-    c.contractPermissions?.includes('commercial.contract.read') &&
-    c.contractPermissions.includes('commercial.contract.approve') &&
-    c.commercialIntakePermissions?.includes('commercial.request.read') &&
-    c.commercialIntakePermissions.includes('commercial.opportunity.read'),
+    holds(c, 'company_contract_approver', 'commercial.contract.read') &&
+    holds(c, 'company_contract_approver', 'commercial.contract.approve') &&
+    holds(c, 'company_commercial_intake', 'commercial.request.read') &&
+    holds(c, 'company_commercial_intake', 'commercial.opportunity.read'),
   );
-  const modelCandidate = Boolean(
+  const modelCandidate =
     read &&
-    c?.contractApproverPermissionSetVersion === 'v2' &&
-    c.contractPermissions?.includes('commercial.contract.model_based.approve'),
-  );
-  const sourcePreparer =
-    c?.offerPermissionAssignmentId &&
-    ['v1', 'v2', 'v3'].some((v) => v === c.offerPermissionSetVersion)
-      ? [c.offerPermissionAssignmentId, c.offerPermissionSetVersion]
-      : null;
-  const sourceApprover =
-    c?.offerApproverAssignmentId &&
-    ['v1', 'v2'].some((v) => v === c.offerApproverPermissionSetVersion)
-      ? [c.offerApproverAssignmentId, c.offerApproverPermissionSetVersion]
-      : null;
-  const sourceRead = Boolean(
-    c?.offerPermissions?.includes('commercial.offer.read') &&
-    (sourcePreparer || sourceApprover),
-  );
+    holds(
+      c,
+      'company_contract_approver',
+      'commercial.contract.model_based.approve',
+    );
+  const offerPreparer = grantOf(c, 'company_offer_preparer');
+  const offerApprover = grantOf(c, 'company_offer_approver');
+  const sourcePreparer = offerPreparer
+    ? [offerPreparer.assignmentId, offerPreparer.permissionSetVersion]
+    : null;
+  const sourceApprover = offerApprover
+    ? [offerApprover.assignmentId, offerApprover.permissionSetVersion]
+    : null;
+  const sourceRead = holdsOfferRead(c);
   const modelDecision = modelCandidate && sourceRead;
   return {
     read,
@@ -49,10 +40,10 @@ export function contractDecisionQueueAuthority(actor: ActorContext) {
       actor.internalUserId,
       actor.workspaceMembershipId,
       c?.id,
-      c?.contractApproverAssignmentId,
-      c?.contractApproverPermissionSetVersion,
-      c?.commercialIntakePermissionAssignmentId,
-      c?.commercialIntakePermissionSetVersion,
+      approver?.assignmentId,
+      approver?.permissionSetVersion,
+      intake?.assignmentId,
+      intake?.permissionSetVersion,
       read,
       modelDecision,
       // Illustrative discovery consumes no source Offer authority.

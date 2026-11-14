@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../src/access/company-grants.test-fixture';
 import { contractMessages } from '../src/contract/contract.copy';
 import { contractProjectsMessages } from '../src/contract/contract-projects.copy';
 import { contractProjectCreateMessages } from '../src/contract/contract-project-create.copy';
@@ -53,6 +57,20 @@ test('Prisme Contract Project controls keep keyboard choices and explicit creati
         'commercial.contract.project.link',
       ],
       projectPermissions: ['project.read', 'project.create'],
+      // The Contract screens read these grants: Contract preparation with
+      // Project linking, Project and Client reads, no Offer or Pricing read.
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          originalActor.activeCompany.grants,
+          'company_offer_preparer',
+          'company_pricing_user',
+        ),
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-756',
+        },
+      ),
     },
   } satisfies ActorContext;
   const evaluatedAt = '2026-10-07T09:00:00.000Z';

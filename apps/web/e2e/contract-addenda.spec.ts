@@ -10,6 +10,7 @@ import {
   interfaceLocaleStorageKey,
 } from '../src/localization/interface-locale';
 import type { ActorContext } from '../src/access-types';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import {
   buildClientRequest,
   requestListItemFor,
@@ -45,6 +46,30 @@ const actor = {
     ],
     commercialIntakePermissionAssignmentId: 'intake-grant',
     commercialIntakePermissionSetVersion: 'v1',
+    // The Contract screens read these grants; the screens of areas not
+    // migrated yet still read the per-bundle fields above.
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_pricing_user',
+        version: 'v1',
+        assignmentId: 'pricing-one',
+      },
+      {
+        bundle: 'company_contract_preparer',
+        version: 'v1',
+        assignmentId: 'contract-grant',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'intake-grant',
+      },
+    ),
   },
 } satisfies ActorContext;
 const requestSubject = 'Contract checks Request';

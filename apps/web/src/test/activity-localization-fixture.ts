@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type { ActivityLogEvent } from '../production-shell/company-context-transitions';
 import {
   buildClientRequest,
@@ -1441,6 +1442,25 @@ export function activityLocaleActor({
             ],
             contractApproverAssignmentId: 'contract-reader-703',
             contractApproverPermissionSetVersion: 'v1',
+            // The Contract screens read these grants; the Commercial intake
+            // and Offer screens still read the per-bundle fields above.
+            grants: companyGrants(
+              {
+                bundle: 'company_commercial_intake',
+                version: 'v2',
+                assignmentId: 'intake-703',
+              },
+              {
+                bundle: 'company_contract_approver',
+                version: 'v1',
+                assignmentId: 'contract-reader-703',
+              },
+              {
+                bundle: 'company_offer_approver',
+                version: 'v1',
+                assignmentId: 'offer-reader-703',
+              },
+            ),
           }
         : {}),
     },

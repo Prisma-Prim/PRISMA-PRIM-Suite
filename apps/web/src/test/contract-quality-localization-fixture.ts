@@ -1,4 +1,10 @@
 import type { ActorContext } from '../access-types';
+import { grantOf } from '../access/company-grants';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import type {
   ContractQualityCode,
   ContractQualityRunView,
@@ -333,11 +339,36 @@ export function pendingQualityContract({
   };
 }
 
+/**
+ * A Contract preparer, approver or reader without Client, Offer or Pricing
+ * reads. No registry version confers the Contract read alone, so the reader
+ * holds a Contract Preparer grant narrowed by hand to that read; the current
+ * Actor parser refuses such a grant (#1332), and the Quality panel still
+ * checks preparation and approval on their own.
+ */
 export function qualityActor(
   role: 'preparer' | 'approver' | 'reader' = 'preparer',
 ): ActorContext {
   const actor: ActorContext = contractLocaleActor();
   if (!actor.activeCompany) throw new Error('Missing synthetic Company');
+  const kept = withoutCompanyGrants(
+    actor.activeCompany.grants,
+    'company_director_client_access',
+    'company_offer_preparer',
+    'company_pricing_user',
+    'company_contract_preparer',
+  );
+  const preparer = grantOf(
+    {
+      grants: companyGrants({
+        bundle: 'company_contract_preparer',
+        version: 'v1',
+        assignmentId: 'quality-preparer-706',
+      }),
+    },
+    'company_contract_preparer',
+  );
+  if (!preparer) throw new Error('Missing Contract Preparer grant');
   return {
     ...actor,
     activeCompany: {
@@ -361,6 +392,19 @@ export function qualityActor(
                 ? 'commercial.contract.approve'
                 : 'commercial.contract.prepare',
             ],
+      grants:
+        role === 'approver'
+          ? withCompanyGrants(kept, {
+              bundle: 'company_contract_approver',
+              version: 'v1',
+              assignmentId: 'quality-approver-706',
+            })
+          : role === 'preparer'
+            ? [...kept, preparer]
+            : [
+                ...kept,
+                { ...preparer, permissions: ['commercial.contract.read'] },
+              ],
     },
   };
 }

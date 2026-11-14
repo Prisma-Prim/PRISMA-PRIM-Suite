@@ -11,6 +11,10 @@ import { selectOption } from '../test/select-option';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { ContractPanel } from './ContractPanel';
 import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import {
   approvedSigningContract,
   reportedSigningFixture,
   signingActor,
@@ -223,12 +227,10 @@ it('preserves the declaration draft on unrelated model and Mission grant loss bu
       ...signingActor,
       activeCompany: {
         ...c,
-        documentContentReaderAssignmentId: undefined,
-        documentContentReaderPermissionSetVersion: undefined,
-        documentPermissions: [
-          'document.read',
-          'document.received_contract.access',
-        ],
+        grants: withoutCompanyGrants(
+          c.grants,
+          'company_document_content_reader',
+        ),
       },
     }),
   );
@@ -261,8 +263,10 @@ it('suppresses a held selector reply after consumed declaration authority is ret
       ...signingActor,
       activeCompany: {
         ...c,
-        contractSignatureDeclarerAssignmentId: undefined,
-        contractSignatureDeclarerPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          c.grants,
+          'company_contract_signature_declarer',
+        ),
       },
     }),
   );
@@ -354,8 +358,10 @@ it('preserves an independent selected PDF request on Declarer loss and retires i
       ...signingActor,
       activeCompany: {
         ...c,
-        contractSignatureDeclarerAssignmentId: undefined,
-        contractSignatureDeclarerPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          c.grants,
+          'company_contract_signature_declarer',
+        ),
       },
     }),
   );
@@ -368,8 +374,10 @@ it('preserves an independent selected PDF request on Declarer loss and retires i
       ...signingActor,
       activeCompany: {
         ...c,
-        documentContentReaderAssignmentId: undefined,
-        documentContentReaderPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          c.grants,
+          'company_document_content_reader',
+        ),
       },
     }),
   );
@@ -426,9 +434,11 @@ it('withholds cached and held linked-Project metadata across Project capture los
     ...signingActor,
     activeCompany: {
       ...c,
-      projectPermissionAssignmentId: 'project-capture-1',
-      projectPermissionSetVersion: 'v2',
-      projectPermissions: ['project.read'],
+      grants: withCompanyGrants(c.grants, {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'project-capture-1',
+      }),
     },
   } satisfies typeof signingActor;
   let reads = 0,
@@ -464,9 +474,10 @@ it('withholds cached and held linked-Project metadata across Project capture los
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        projectPermissionAssignmentId: undefined,
-        projectPermissionSetVersion: undefined,
-        projectPermissions: [],
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_project_access',
+        ),
       },
     }),
   );
@@ -484,7 +495,11 @@ it('withholds cached and held linked-Project metadata across Project capture los
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        projectPermissionAssignmentId: 'project-capture-2',
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: 'project-capture-2',
+        }),
       },
     }),
   );
@@ -523,9 +538,11 @@ it('preserves an independently uncertain declaration key when only Project autho
     ...signingActor,
     activeCompany: {
       ...c,
-      projectPermissionAssignmentId: 'project-capture-1',
-      projectPermissionSetVersion: 'v2',
-      projectPermissions: ['project.read'],
+      grants: withCompanyGrants(c.grants, {
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'project-capture-1',
+      }),
     },
   } satisfies typeof signingActor;
   const view = render(panel(actor));
@@ -543,9 +560,10 @@ it('preserves an independently uncertain declaration key when only Project autho
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        projectPermissionAssignmentId: undefined,
-        projectPermissionSetVersion: undefined,
-        projectPermissions: [],
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_project_access',
+        ),
       },
     }),
   );

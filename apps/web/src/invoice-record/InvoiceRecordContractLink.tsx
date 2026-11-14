@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { invoiceRecordProjectionAuthority } from '../access/invoice-record-authority';
+import { grantOf, holds } from '../access/company-grants';
 import { useContractCopy } from '../contract/contract.copy';
+import { holdsContractRead } from '../contract/contract-grants';
 import { useInvoiceRecordCopy } from './invoice-record-copy';
 import {
   accessRejected,
@@ -25,8 +27,6 @@ type Props = InvoiceAccessProps & {
 };
 function nativeReadAvailable(props: Props) {
   const company = props.actor.activeCompany;
-  const capture = (id: unknown, version: unknown) =>
-    uuid(id) && (version === 'v1' || version === 'v2');
   return (
     props.actor.active &&
     company?.id === props.companyId &&
@@ -37,18 +37,14 @@ function nativeReadAvailable(props: Props) {
     uuid(props.contract.contractVersionId) &&
     props.identity.loaded &&
     props.identity.signedIn &&
-    company.contractPermissions?.includes('commercial.contract.read') &&
-    company.commercialIntakePermissions?.includes(
+    holdsContractRead(company) &&
+    holds(
+      company,
+      'company_commercial_intake',
       'commercial.opportunity.read',
     ) &&
-    (capture(
-      company.contractPermissionAssignmentId,
-      company.contractPermissionSetVersion,
-    ) ||
-      capture(
-        company.contractApproverAssignmentId,
-        company.contractApproverPermissionSetVersion,
-      ))
+    (uuid(grantOf(company, 'company_contract_preparer')?.assignmentId) ||
+      uuid(grantOf(company, 'company_contract_approver')?.assignmentId))
   );
 }
 function requestIdentity(payload: unknown, props: Props): string | undefined {

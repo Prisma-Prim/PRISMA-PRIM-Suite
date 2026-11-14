@@ -10,6 +10,10 @@ import {
 } from '../src/localization/interface-locale';
 import type { ActorContext } from '../src/access-types';
 import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../src/access/company-grants.test-fixture';
+import {
   buildClientRequest,
   requestListItemFor,
 } from '../src/test/commercial-intake-responses';
@@ -41,6 +45,25 @@ const actor = {
     ],
     commercialIntakePermissionAssignmentId: 'intake-grant',
     commercialIntakePermissionSetVersion: 'v1',
+    // The Contract screens read these grants; the screens of areas not
+    // migrated yet still read the per-bundle fields above.
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-grant',
+      },
+      {
+        bundle: 'company_contract_preparer',
+        version: 'v1',
+        assignmentId: 'contract-grant',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'intake-grant',
+      },
+    ),
   },
 } satisfies ActorContext;
 const requestSubject = 'Contract checks Request';
@@ -84,7 +107,14 @@ for (const locale of interfaceLocales)
       const ownerWithoutClientRead: ActorContext = {
         ...actor,
         workspacePermissions: ['client.manage'],
-        activeCompany: { ...actor.activeCompany, clientPermissions: [] },
+        activeCompany: {
+          ...actor.activeCompany,
+          clientPermissions: [],
+          grants: withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_director_client_access',
+          ),
+        },
       };
       let currentActor: ActorContext = ownerWithoutClientRead;
       const attempts: Array<{ body: string | null; key: string | undefined }> =
