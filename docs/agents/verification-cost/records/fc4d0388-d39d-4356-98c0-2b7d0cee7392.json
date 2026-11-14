@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "fc4d0388-d39d-4356-98c0-2b7d0cee7392",
+  "date": "2026-11-11",
+  "runType": "pull-request-proof",
+  "issue": 1286,
+  "pullRequest": 1299,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-11T18:12:17.976Z",
+    "end": "2026-11-11T18:22:41.114Z",
+    "durationSeconds": 623
+  },
+  "tokens": {
+    "input": 138,
+    "output": 36839,
+    "cacheCreation": 158273,
+    "cacheRead": 11193841
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 138,
+        "output": 36839,
+        "cacheCreation": 158273,
+        "cacheRead": 11193841
+      },
+      "estimatedPriceUsd": 4.242284
+    }
+  ],
+  "price": {
+    "estimatedUsd": 4.242284,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Copy fix: English attached-PDF list renamed; fr/ro/ru evidence hint aligned; UI and cross-locale copy regression tests; journey region screenshots."
+  }
+}

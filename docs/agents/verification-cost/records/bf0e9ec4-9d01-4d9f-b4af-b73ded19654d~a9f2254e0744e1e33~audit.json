@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "bf0e9ec4-9d01-4d9f-b4af-b73ded19654d:a9f2254e0744e1e33:audit",
+  "date": "2026-11-11",
+  "runType": "journey-audit",
+  "issue": 1288,
+  "pullRequest": 1289,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-11T14:22:14.005Z",
+    "end": "2026-11-11T14:34:46.691Z",
+    "durationSeconds": 753
+  },
+  "tokens": {
+    "input": 168,
+    "output": 72563,
+    "cacheCreation": 142970,
+    "cacheRead": 27960084
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 168,
+        "output": 72563,
+        "cacheCreation": 142970,
+        "cacheRead": 27960084
+      },
+      "estimatedPriceUsd": 7.758799
+    }
+  ],
+  "price": {
+    "estimatedUsd": 7.758799,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "fail",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 2
+    },
+    "notes": "Dry-run journey audit of certification-journey at desktop and narrow (public mode, fictional data), delegated Claude Code subagent; window of the audit only."
+  }
+}

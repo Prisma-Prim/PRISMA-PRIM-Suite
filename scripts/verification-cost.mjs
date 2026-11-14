@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-// Verification cost ledger (#1278): one record per verification run, appended
-// to docs/agents/verification-cost/ledger.jsonl, and a summary over it.
+// Verification cost ledger (#1278): one record per verification run, each in
+// its own file under docs/agents/verification-cost/records/ so that concurrent
+// pull requests never edit the same file (#1328), and a summary over them.
 // Guide: docs/agents/verification-cost.md.
 //
 // `record` reads the harness's own usage data (Claude Code transcripts or
@@ -9,12 +10,20 @@
 // tokens with a versioned price table, and prints one ledger line. A figure
 // the source does not give is written as "not reported", never guessed.
 // `check` validates the ledger and its price tables; the script tests run it
-// in CI. `summary` adds the recorded figures; it never prices again.
+// in CI. `summary` adds the recorded figures; it never prices again. `migrate`
+// moves the lines of the former single-file ledger into record files.
 //
 // Privacy: records hold numbers and identifiers only. The readers keep usage
 // counts, model names, timestamps and session identifiers, and drop the rest.
 
-import { appendFile, readdir, readFile, stat } from 'node:fs/promises';
+import {
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -56,14 +65,21 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 /** Claude Code writes its own notices as assistant messages of this model. */
 const CLAUDE_CODE_SYNTHETIC_MODEL = '<synthetic>';
 const PRICE_TABLES = 'price-tables';
+/** The former single-file ledger, next to the records directory. */
+const SINGLE_FILE_LEDGER = 'ledger.jsonl';
+const RECORD_EXTENSION = '.json';
 const DEFAULT_LEDGER = fileURLToPath(
-  new URL('../docs/agents/verification-cost/ledger.jsonl', import.meta.url),
+  new URL('../docs/agents/verification-cost/records', import.meta.url),
 );
 
 const USAGE = `Usage:
   node scripts/verification-cost.mjs record --run-type <type> --harness <harness> <source> [options]
-  node scripts/verification-cost.mjs summary [--ledger <path>] [--json]
-  node scripts/verification-cost.mjs check [--ledger <path>]
+  node scripts/verification-cost.mjs summary [--ledger <dir>] [--json]
+  node scripts/verification-cost.mjs check [--ledger <dir>]
+  node scripts/verification-cost.mjs migrate [--ledger <dir>] [--jsonl <file>]
+
+The ledger is a directory with one <run id>.json file per run (":" becomes "~"),
+default docs/agents/verification-cost/records; its price tables sit next to it.
 
 Run types: ${RUN_TYPES.join(', ')}.
 Harnesses: ${HARNESSES.join(', ')}.
@@ -80,7 +96,10 @@ Record options:
   --from <time>  --to <time>  keep only the source entries inside this window
   --result pass|fail  --findings none|P1=2,P2=1  --notes <text, no prompts or Client names>
   --price-table <file>      default: the newest table next to the default ledger
-  --append                  append the line to --ledger (default docs/agents/verification-cost/ledger.jsonl)
+  --append                  also write the record as a new file in --ledger
+
+Migrate options:
+  --jsonl <file>            the single-file ledger to move, default ledger.jsonl next to --ledger
 `;
 
 class UsageError extends Error {}
@@ -417,8 +436,10 @@ function selfReported(values) {
 
 // ---- Pricing ----------------------------------------------------------------
 
+const MICRO_DOLLARS = 1e6;
+
 function roundUsd(value) {
-  return Math.round(value * 1e6) / 1e6;
+  return Math.round(value * MICRO_DOLLARS) / MICRO_DOLLARS;
 }
 
 /** Price in USD per million tokens times tokens, or undefined if unknown. */
@@ -932,8 +953,73 @@ export function validateRecord(record, priceTables) {
   return errors;
 }
 
-/** Validates every line; records holds the valid ones. */
-export function validateLedger(text, priceTables) {
+/**
+ * The file that holds a run's record. Windows refuses ":" in a file name, and
+ * "~" is outside the run identifier alphabet, so the mapping stays one to one.
+ */
+function recordFileName(runId) {
+  return `${runId.replaceAll(':', '~')}${RECORD_EXTENSION}`;
+}
+
+function recordFileText(record) {
+  return `${JSON.stringify(record, null, 2)}\n`;
+}
+
+/** Lower case: Windows and macOS cannot hold two names that differ only in case. */
+function fileKey(name) {
+  return name.toLowerCase();
+}
+
+/**
+ * Validates the record files of a ledger, given as { name, text } in name
+ * order; records holds the valid ones. A file named after its run identifier
+ * makes a duplicate run impossible inside one directory.
+ */
+export function validateRecords(files, priceTables) {
+  const errors = [];
+  const records = [];
+  const names = new Map();
+  for (const { name, text } of files) {
+    const fail = (error) => errors.push(`${name}: ${error}`);
+    const key = fileKey(name);
+    if (names.has(key)) {
+      fail(
+        `differs from ${names.get(key)} only in case; Windows and macOS cannot hold both`,
+      );
+      continue;
+    }
+    names.set(key, name);
+    if (!name.endsWith(RECORD_EXTENSION) || text === undefined) {
+      fail(
+        `not a record file; each run is one <run id>${RECORD_EXTENSION} file`,
+      );
+      continue;
+    }
+    let record;
+    try {
+      record = JSON.parse(text);
+    } catch {
+      fail('not valid JSON');
+      continue;
+    }
+    const recordErrors = validateRecord(record, priceTables);
+    if (
+      typeof record?.runId === 'string' &&
+      RUN_ID.test(record.runId) &&
+      recordFileName(record.runId) !== name
+    ) {
+      recordErrors.push(
+        `runId: the record of run ${JSON.stringify(record.runId)} belongs in ${recordFileName(record.runId)}`,
+      );
+    }
+    errors.push(...recordErrors.map((error) => `${name}: ${error}`));
+    if (recordErrors.length === 0) records.push(record);
+  }
+  return { errors, records };
+}
+
+/** Validates every line of the single-file ledger; records holds the valid ones. */
+function validateJsonLines(text, priceTables) {
   const errors = [];
   const records = [];
   const runIds = new Map();
@@ -950,12 +1036,13 @@ export function validateLedger(text, priceTables) {
     }
     const recordErrors = validateRecord(record, priceTables);
     if (typeof record?.runId === 'string') {
-      if (runIds.has(record.runId)) {
+      const key = fileKey(recordFileName(record.runId));
+      if (runIds.has(key)) {
         recordErrors.push(
-          `runId: duplicate of line ${runIds.get(record.runId)}`,
+          `runId: same file name as line ${runIds.get(key)} (duplicate or differing only in case)`,
         );
       } else {
-        runIds.set(record.runId, number);
+        runIds.set(key, number);
       }
     }
     errors.push(...recordErrors.map((error) => `line ${number}: ${error}`));
@@ -964,12 +1051,65 @@ export function validateLedger(text, priceTables) {
   return { errors, records };
 }
 
+/** Every entry of the records directory as { name, text }; text only for files. */
+async function readRecordFiles(ledger) {
+  let entries;
+  try {
+    entries = await readdir(ledger, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+      throw new UsageError(`cannot read the ledger directory ${ledger}`);
+    }
+    throw error;
+  }
+  const files = [];
+  for (const entry of entries.sort((left, right) =>
+    left.name < right.name ? -1 : 1,
+  )) {
+    files.push({
+      name: entry.name,
+      text: entry.isFile()
+        ? await readFile(join(ledger, entry.name), 'utf8')
+        : undefined,
+    });
+  }
+  return files;
+}
+
+function singleFileLedgerNextTo(ledger) {
+  return join(dirname(ledger), SINGLE_FILE_LEDGER);
+}
+
+async function exists(path) {
+  try {
+    await stat(path);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 async function readLedger(ledger) {
   const { versions, errors: tableErrors } = await readPriceTables(
     priceTablesNextTo(ledger),
   );
-  const { errors, records } = validateLedger(await readText(ledger), versions);
-  return { versions, errors: [...tableErrors, ...errors], records };
+  const { errors, records } = validateRecords(
+    await readRecordFiles(ledger),
+    versions,
+  );
+  // A branch begun before #1328 may bring the single-file ledger back.
+  const leftover = (await exists(singleFileLedgerNextTo(ledger)))
+    ? [
+        `${SINGLE_FILE_LEDGER}: the single-file ledger is retired; ` +
+          'run "node scripts/verification-cost.mjs migrate" to move its lines into record files',
+      ]
+    : [];
+  return {
+    versions,
+    errors: [...tableErrors, ...leftover, ...errors],
+    records,
+  };
 }
 
 // ---- record -----------------------------------------------------------------
@@ -1147,25 +1287,105 @@ function buildRecord({
   };
 }
 
+/** Writes the record as its own new file, so no other record file changes. */
 async function appendRecord(ledger, record) {
-  const { versions, errors, records } = await readLedger(ledger);
-  if (errors.length > 0) {
-    throw new UsageError(`the ledger is invalid; run check: ${errors[0]}`);
-  }
+  const { versions } = await readPriceTables(priceTablesNextTo(ledger));
   if (!versions.has(record.price.priceTable)) {
     throw new UsageError(
       `price table "${record.price.priceTable}" is not in ${priceTablesNextTo(ledger)}; ` +
         'add it there first so the ledger keeps every table it was priced with',
     );
   }
-  if (records.some(({ runId }) => runId === record.runId)) {
+  await mkdir(ledger, { recursive: true });
+  const { errors, records } = await readLedger(ledger);
+  if (errors.length > 0) {
+    throw new UsageError(`the ledger is invalid; run check: ${errors[0]}`);
+  }
+  const name = recordFileName(record.runId);
+  if (
+    records.some(
+      ({ runId }) => fileKey(recordFileName(runId)) === fileKey(name),
+    )
+  ) {
     throw new UsageError(
       `run "${record.runId}" is already in the ledger; pass another --run-id`,
     );
   }
-  const text = await readText(ledger);
-  const separator = text === '' || text.endsWith('\n') ? '' : '\n';
-  await appendFile(ledger, `${separator}${JSON.stringify(record)}\n`);
+  try {
+    await writeFile(join(ledger, name), recordFileText(record), {
+      flag: 'wx',
+    });
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    throw new UsageError(
+      `run "${record.runId}" is already in the ledger; pass another --run-id`,
+    );
+  }
+}
+
+/**
+ * Moves the lines of the single-file ledger into record files. A record
+ * already present unchanged is skipped; one that differs stops the move
+ * before anything is written. Safe to rerun.
+ */
+async function migrateCommand(values, io, ledger, show) {
+  const jsonl = values.jsonl ?? singleFileLedgerNextTo(ledger);
+  if (!(await exists(jsonl))) {
+    io.stdout(`No single-file ledger at ${show(jsonl)}; nothing to migrate.\n`);
+    return 0;
+  }
+  const { versions, errors: tableErrors } = await readPriceTables(
+    priceTablesNextTo(ledger),
+  );
+  const { errors: lineErrors, records } = validateJsonLines(
+    await readText(jsonl),
+    versions,
+  );
+  await mkdir(ledger, { recursive: true });
+  const present = new Map(
+    (await readRecordFiles(ledger)).map((file) => [fileKey(file.name), file]),
+  );
+  const errors = [...tableErrors, ...lineErrors];
+  const added = [];
+  let unchanged = 0;
+  for (const record of records) {
+    const name = recordFileName(record.runId);
+    const file = present.get(fileKey(name));
+    if (file === undefined) {
+      added.push([name, record]);
+    } else if (file.name === name && sameRecord(file.text, record)) {
+      unchanged += 1;
+    } else {
+      errors.push(
+        `${file.name}: differs from the line of run ${JSON.stringify(record.runId)} in ${show(jsonl)}`,
+      );
+    }
+  }
+  if (errors.length > 0) {
+    io.stderr(
+      `Nothing migrated; ${show(jsonl)} cannot move:\n${errors.map((error) => `- ${error}\n`).join('')}`,
+    );
+    return 1;
+  }
+  for (const [name, record] of added) {
+    await writeFile(join(ledger, name), recordFileText(record), {
+      flag: 'wx',
+    });
+  }
+  await rm(jsonl);
+  io.stdout(
+    `Migrated ${added.length} record${added.length === 1 ? '' : 's'} ` +
+      `(${unchanged} already present) from ${show(jsonl)} to ${show(ledger)}.\n`,
+  );
+  return 0;
+}
+
+function sameRecord(text, record) {
+  try {
+    return JSON.stringify(JSON.parse(text)) === JSON.stringify(record);
+  } catch {
+    return false;
+  }
 }
 
 async function recordCommand(values, io) {
@@ -1197,20 +1417,41 @@ async function recordCommand(values, io) {
 
 // ---- summary ----------------------------------------------------------------
 
-function newMetric() {
-  return { total: 0, reported: 0 };
+/**
+ * A sum of reported figures. Prices add up as whole micro-dollars, the
+ * precision they are recorded at, so the summary is exact and does not depend
+ * on the order in which the record files are read.
+ */
+function newMetric(unitsPerValue = 1) {
+  return { total: 0, reported: 0, unitsPerValue };
+}
+
+function newPriceMetric() {
+  return newMetric(MICRO_DOLLARS);
 }
 
 function addMetric(metric, value) {
   if (typeof value !== 'number') return;
-  metric.total += value;
+  metric.total +=
+    metric.unitsPerValue === 1
+      ? value
+      : Math.round(value * metric.unitsPerValue);
   metric.reported += 1;
 }
 
-function finishMetric({ total, reported }) {
+/** A figure in units, as USD-precision decimals. */
+function fromUnits(units, unitsPerValue) {
+  return Math.round(units * (MICRO_DOLLARS / unitsPerValue)) / MICRO_DOLLARS;
+}
+
+function finishMetric({ total, reported, unitsPerValue }) {
   return reported === 0
     ? { total: null, average: null, reported: 0 }
-    : { total: roundUsd(total), average: roundUsd(total / reported), reported };
+    : {
+        total: fromUnits(total, unitsPerValue),
+        average: fromUnits(total / reported, unitsPerValue),
+        reported,
+      };
 }
 
 function findingsTotal(findings) {
@@ -1233,9 +1474,9 @@ function aggregate(records, contributions) {
           tokens: Object.fromEntries(
             TOKEN_KEYS.map((name) => [name, newMetric()]),
           ),
-          estimatedPriceUsd: newMetric(),
+          estimatedPriceUsd: newPriceMetric(),
           findings: newMetric(),
-          valued: { price: 0, findings: 0 },
+          valued: { price: newPriceMetric(), findings: 0 },
         });
       }
       const group = groups.get(key);
@@ -1247,7 +1488,7 @@ function aggregate(records, contributions) {
       addMetric(group.findings, findings);
       // Cost per finding compares only runs that reported both.
       if (typeof price === 'number' && typeof findings === 'number') {
-        group.valued.price += price;
+        addMetric(group.valued.price, price);
         group.valued.findings += findings;
       }
     }
@@ -1265,7 +1506,10 @@ function aggregate(records, contributions) {
       findings: finishMetric(group.findings),
       costPerFindingUsd:
         group.valued.findings > 0
-          ? roundUsd(group.valued.price / group.valued.findings)
+          ? fromUnits(
+              group.valued.price.total / group.valued.findings,
+              MICRO_DOLLARS,
+            )
           : null,
     }));
 }
@@ -1387,6 +1631,7 @@ const OPTIONS = {
   notes: { type: 'string' },
   'price-table': { type: 'string' },
   ledger: { type: 'string' },
+  jsonl: { type: 'string' },
   append: { type: 'boolean' },
   json: { type: 'boolean' },
   help: { type: 'boolean' },
@@ -1418,10 +1663,13 @@ export async function main(argv = process.argv.slice(2), io = defaultIo) {
     }
     if (rest.length > 0)
       throw new UsageError(`unexpected argument "${rest[0]}"`);
-    const ledger = values.ledger ?? DEFAULT_LEDGER;
+    const ledger = resolve(values.ledger ?? DEFAULT_LEDGER);
     // A relative path keeps the local user folder out of pasted output.
-    const shown = relative(process.cwd(), ledger) || ledger;
+    const show = (path) => relative(process.cwd(), path) || path;
+    const shown = show(ledger);
     if (command === 'record') return await recordCommand(values, io);
+    if (command === 'migrate')
+      return await migrateCommand(values, io, ledger, show);
     if (command === 'check' || command === 'summary') {
       const { versions, errors, records } = await readLedger(ledger);
       if (errors.length > 0) {

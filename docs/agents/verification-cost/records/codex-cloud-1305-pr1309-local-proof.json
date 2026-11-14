@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1305-pr1309-local-proof",
+  "date": "2026-11-12",
+  "runType": "pull-request-proof",
+  "issue": 1305,
+  "pullRequest": 1309,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-12T18:22:37.045Z",
+    "end": "2026-11-12T18:51:46.361Z",
+    "durationSeconds": 1749
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "482 certification web tests and desktop/narrow PostgreSQL journey passed. Date refusal and border red-green recorded. Both screenshot variants inspected. Standards/Spec reviews no findings. Input CSS scoped to record forms. Model/tokens/price unavailable; CI excluded."
+  }
+}

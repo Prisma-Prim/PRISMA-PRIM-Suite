@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "f0839590-12b2-469c-a730-14bd050cd6c1",
+  "date": "2026-11-11",
+  "runType": "pull-request-proof",
+  "issue": 1292,
+  "pullRequest": 1297,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-11T16:56:57.814Z",
+    "end": "2026-11-11T18:10:14.106Z",
+    "durationSeconds": 4396
+  },
+  "tokens": {
+    "input": 534,
+    "output": 363844,
+    "cacheCreation": 852830,
+    "cacheRead": 160912715
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 534,
+        "output": 363844,
+        "cacheCreation": 852830,
+        "cacheRead": 160912715
+      },
+      "estimatedPriceUsd": 46.284199
+    }
+  ],
+  "price": {
+    "estimatedUsd": 46.284199,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Local proof: the acceptance journey caught the web parser refusing an application corrected after its review."
+  }
+}

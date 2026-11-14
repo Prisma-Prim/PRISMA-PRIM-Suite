@@ -103,7 +103,7 @@ Stop only for missing authentication or permission, unavailable required externa
 
 Provide the issue and PR links; the outcome and demo instructions; public interfaces and migrations introduced; checks run with their results, including checks that could not run; desktop and narrow evidence paths for UI work; decisions and deferred follow-ups; publication and merge state with any capability or authorization boundary; and confirmation that no next issue was started.
 
-Report the verification run's [cost record](verification-cost.md); its ledger line ships in the pull request.
+Report the verification run's [cost record](verification-cost.md); its record file ships in the pull request.
 
 ## Frontier rule
 

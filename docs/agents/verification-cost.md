@@ -2,13 +2,13 @@
 
 **Status:** Local repository rule  
 **Owner:** Dan Popescu  
-**Issues:** [#1278](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1278), decision in [#1275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1275)
+**Issues:** [#1278](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1278), decision in [#1275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1275); one file per run since [#1328](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1328)
 
 Every verification run leaves one cost record, so the owner can compare what proof costs with what it catches. [Issue execution](issue-execution.md#final-report) asks for the record; `scripts/verification-cost.mjs` builds, checks and summarizes it. Its `--help` lists every option, and its `validateRecord` is the schema.
 
 ## When to record
 
-Record one line per run of these types:
+Record each run of these types:
 
 | Run type             | Run                                                      |
 | -------------------- | -------------------------------------------------------- |
@@ -17,11 +17,13 @@ Record one line per run of these types:
 | `pilot-replay`       | a private pilot replay                                   |
 | `verify-journey`     | a local `pnpm verify:journey` run outside a pull request |
 
-The line is appended to [`verification-cost/ledger.jsonl`](verification-cost/ledger.jsonl) by the same pull request, or by the audit report's pull request. Name the run with `--run-id` when the session holds several runs, and narrow the source with `--from` and `--to`.
+## The ledger
+
+The ledger is the directory [`verification-cost/records/`](verification-cost/records/), with one file per run: `<run id>.json`, where a `:` of the run identifier becomes `~` because Windows refuses it in a file name. The same pull request adds the file, or the audit report's pull request does. A new run only ever adds a new file, so pull requests open at the same time never conflict on their cost records. Name the run with `--run-id` when the session holds several runs, and narrow the source with `--from` and `--to`.
 
 ## Building the record
 
-The harness's own usage data comes first. `record` prints the line; `--append` also writes it to the ledger. Build it once the pull request exists, so the line carries its number.
+The harness's own usage data comes first. `record` prints the record on one line; `--append` also writes it as its new file in the ledger, and refuses a run identifier already there. Build it once the pull request exists, so the record carries its number. Commit the new file with the pull request.
 
 - **Claude Code, local** (`--harness claude-code-local`): pass the session transcript and its folder, which holds the subagent transcripts. Both sit in `~/.claude/projects/<project folder>/`, named after the session identifier.
 
@@ -48,17 +50,27 @@ Claude Code also keeps a running session cost. On long or resumed sessions it ca
 
 ## Price tables
 
-A table is a JSON file named after its version, the date its prices were read. A price change adds a new file; a table that a ledger line names is never edited or deleted. Each record stores its estimate and table version, and the summary adds recorded estimates without pricing again. A model whose price could not be verified keeps `null` prices and a note.
+A table is a JSON file named after its version, the date its prices were read. A price change adds a new file; a table that a record names is never edited or deleted. Each record stores its estimate and table version, and the summary adds recorded estimates without pricing again. A model whose price could not be verified keeps `null` prices and a note.
 
 ## Checking and analysing
 
-The script tests run `check`, so CI fails on a malformed ledger line, a duplicate run identifier, or a price table that is missing or invalid.
+The script tests run `check`, so CI fails on a malformed record, a file not named after its run identifier, two file names that differ only in case, a leftover `ledger.jsonl`, or a price table that is missing or invalid.
 
 ```text
 node scripts/verification-cost.mjs summary [--json]
 ```
 
-The summary prints, by run type, harness, model and month: runs, duration, each token category, estimated price and findings, as totals and averages, and the cost per finding.
+The summary prints, by run type, harness, model and month: runs, duration, each token category, estimated price and findings, as totals and averages, and the cost per finding. Prices add up as whole micro-dollars, so the figures do not depend on the order of the files.
+
+## Moving a branch's `ledger.jsonl`
+
+Until #1328 the ledger was the single file `verification-cost/ledger.jsonl`, and every pull request appended its line to it. A branch begun before then still appends there, and merging `main` into it reports a conflict on that file. Keep the branch's version of the file, then run:
+
+```text
+node scripts/verification-cost.mjs migrate
+```
+
+It writes each line as its record file, skips a record already present unchanged, refuses a line that differs from the record present and then writes nothing, and deletes `ledger.jsonl`. Commit the result; `check` passes again.
 
 ## Privacy
 
