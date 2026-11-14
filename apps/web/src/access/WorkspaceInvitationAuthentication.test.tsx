@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from '../ApplicationRoot';
+import { captureAcceptanceIntent } from './invitation-acceptance-intent';
 import { interfaceLocaleStorageKey } from '../localization/interface-locale';
 
 const auth = vi.hoisted(() => ({
@@ -400,66 +401,90 @@ it('renders embedded authentication with a hash-route-compatible exact continuat
   expect(fetch).not.toHaveBeenCalled();
 });
 
-it.each(['legacy', 'hash-route'])(
-  'recovers the exact %s continuation without session storage',
-  (format) => {
-    vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
-    const captured = {
-      invitationId,
-      key,
-      attempted: true,
-      ticket: 'opaque_ticket',
-    };
-    const fragment = new URLSearchParams({
-      'invitation-intent': JSON.stringify(captured),
-    }).toString();
-    window.history.replaceState(
-      null,
-      '',
-      '/accept-invitation?invitation=' +
-        invitationId +
-        '&mode=signin' +
-        (format === 'legacy' ? '#' : '#/?') +
-        fragment,
-    );
-    const originalGetItem = Storage.prototype.getItem;
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
-      this: Storage,
-      itemKey,
-    ) {
-      if (this === window.sessionStorage)
-        throw new DOMException('Unavailable', 'SecurityError');
-      return originalGetItem.call(this, itemKey);
-    });
-    const originalSetItem = Storage.prototype.setItem;
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
-      this: Storage,
-      itemKey,
-      value,
-    ) {
-      if (this === window.sessionStorage)
-        throw new DOMException('Full', 'QuotaExceededError');
-      originalSetItem.call(this, itemKey, value);
-    });
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
+it('recovers the exact hash-route continuation without session storage', () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  const captured = {
+    invitationId,
+    key,
+    attempted: true,
+    ticket: 'opaque_ticket',
+  };
+  const fragment = new URLSearchParams({
+    'invitation-intent': JSON.stringify(captured),
+  }).toString();
+  window.history.replaceState(
+    null,
+    '',
+    '/accept-invitation?invitation=' +
+      invitationId +
+      '&mode=signin' +
+      '#/?' +
+      fragment,
+  );
+  const originalGetItem = Storage.prototype.getItem;
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+    this: Storage,
+    itemKey,
+  ) {
+    if (this === window.sessionStorage)
+      throw new DOMException('Unavailable', 'SecurityError');
+    return originalGetItem.call(this, itemKey);
+  });
+  const originalSetItem = Storage.prototype.setItem;
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+    this: Storage,
+    itemKey,
+    value,
+  ) {
+    if (this === window.sessionStorage)
+      throw new DOMException('Full', 'QuotaExceededError');
+    originalSetItem.call(this, itemKey, value);
+  });
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
 
-    render(<ApplicationRoot pathname="/accept-invitation" />);
+  render(<ApplicationRoot pathname="/accept-invitation" />);
 
-    const destination = screen
-      .getByRole('link', { name: 'Complete authentication' })
-      .getAttribute('href');
-    if (!destination) throw new Error('Missing authentication continuation');
-    const target = new URL(destination, window.location.origin);
-    expect(
-      new URLSearchParams(target.hash.slice(3)).get('invitation-intent'),
-    ).toBe(JSON.stringify(captured));
-    expect(target.searchParams.has('__clerk_ticket')).toBe(false);
-    expect(window.location.hash).toBe('');
-    expect(window.location.href).not.toContain('opaque_ticket');
-    expect(fetch).not.toHaveBeenCalled();
-  },
-);
+  const destination = screen
+    .getByRole('link', { name: 'Complete authentication' })
+    .getAttribute('href');
+  if (!destination) throw new Error('Missing authentication continuation');
+  const target = new URL(destination, window.location.origin);
+  expect(
+    new URLSearchParams(target.hash.slice(3)).get('invitation-intent'),
+  ).toBe(JSON.stringify(captured));
+  expect(target.searchParams.has('__clerk_ticket')).toBe(false);
+  expect(window.location.hash).toBe('');
+  expect(window.location.href).not.toContain('opaque_ticket');
+  expect(fetch).not.toHaveBeenCalled();
+});
+it('does not read an intent from a fragment without the hash route', () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  const earlier = {
+    invitationId,
+    key,
+    attempted: true,
+    ticket: 'opaque_ticket',
+  };
+  window.history.replaceState(
+    null,
+    '',
+    '/accept-invitation?invitation=' +
+      invitationId +
+      '&mode=signin#' +
+      new URLSearchParams({
+        'invitation-intent': JSON.stringify(earlier),
+      }).toString(),
+  );
+  vi.stubGlobal('fetch', vi.fn());
+
+  const intent = captureAcceptanceIntent();
+
+  expect(intent?.invitationId).toBe(invitationId);
+  expect(intent?.key).not.toBe(key);
+  expect(intent?.attempted).toBe(false);
+  expect(intent?.ticket).toBeUndefined();
+});
 for (const entry of ['Sign in', 'Create your invited account']) {
   it(`retains the captured intent through ${entry} and the provider return without session storage`, async () => {
     vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
@@ -561,7 +586,7 @@ it.each([
   },
 );
 
-for (const format of ['legacy', 'hash-route']) {
+{
   for (const continuation of [
     '{invalid-json',
     'x'.repeat(100_001),
@@ -572,7 +597,7 @@ for (const format of ['legacy', 'hash-route']) {
       attempted: true,
     }),
   ]) {
-    it(`denies malformed or foreign ${format} authentication continuation without admission`, async () => {
+    it(`denies malformed or foreign authentication continuation without admission`, async () => {
       vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
       auth.signedIn = true;
       const fetch = vi.fn();
@@ -582,7 +607,7 @@ for (const format of ['legacy', 'hash-route']) {
         '',
         '/accept-invitation?invitation=' +
           invitationId +
-          (format === 'legacy' ? '#' : '#/?') +
+          '#/?' +
           new URLSearchParams({ 'invitation-intent': continuation }).toString(),
       );
       render(<ApplicationRoot pathname="/accept-invitation" />);

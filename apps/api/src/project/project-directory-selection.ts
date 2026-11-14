@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 
-/** New selection namespaces are strict; omitted selectors retain legacy behavior. */
+/** Every query key belongs to a strict selection; an empty query lists all Projects. */
 export function readProjectDirectorySelection(
   query: unknown,
 ):
@@ -31,8 +31,7 @@ export function readProjectDirectorySelection(
       throw invalidSelection();
     return { clientDossierId, offset: Number(value) };
   }
-  if (!entries.some(([key]) => key === 'view' || key.startsWith('view[')))
-    return undefined;
+  if (entries.length === 0) return undefined;
   if (
     entries.length !== 1 ||
     entries[0]?.[0] !== 'view' ||

@@ -760,7 +760,7 @@ The default remains **All Projects**, retaining its current API and callers.
 Only the new optional `view=mine_open` selector changes the list predicate. Its
 namespace accepts exactly one scalar `mine_open`; repeated, array/object and
 unknown view values, or additional query keys accompanying that selector, are
-invalid. Omitted `view` retains the existing legacy ignored-query behavior.
+invalid. Without `view`, any query key is invalid and answers 400.
 Workspace, Company and Membership authority are never supplied through a query.
 The Project owner filters stored rows; the browser does not issue one
 responsibility request per row or reinterpret cached detail as list authority.
