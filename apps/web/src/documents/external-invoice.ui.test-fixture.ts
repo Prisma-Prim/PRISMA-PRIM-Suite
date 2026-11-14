@@ -58,7 +58,7 @@ export const invoiceUiActor: ActorContext = {
     ],
     commercialIntakePermissionAssignmentId: 'intake-reader',
     commercialIntakePermissionSetVersion: 'v4',
-    // The Document area reads these grants; the legacy fields above stay for
+    // The Document area reads these grants; the per-bundle fields above stay for
     // the External Invoice family until it reads its grants too.
     grants: companyGrants(
       {

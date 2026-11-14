@@ -52,7 +52,7 @@ export const actor: ActorContext = {
     ],
     documentContentReaderAssignmentId: ids.project,
     documentContentReaderPermissionSetVersion: 'v1',
-    // The Document area reads these grants; the legacy fields above stay for
+    // The Document area reads these grants; the per-bundle fields above stay for
     // the Working Evidence screens until they read their grants too.
     grants: documentGrants(
       [

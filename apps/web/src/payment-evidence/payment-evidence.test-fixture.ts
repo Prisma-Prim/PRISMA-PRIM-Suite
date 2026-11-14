@@ -47,7 +47,7 @@ export function paymentEvidenceActor() {
       documentContentUploaderAssignmentId:
         '10000000-0000-4000-8000-000000000013',
       documentContentUploaderPermissionSetVersion: 'v1' as const,
-      // The Document area reads these grants; the legacy fields above stay
+      // The Document area reads these grants; the per-bundle fields above stay
       // for Payment Evidence until it reads its grants too.
       grants: companyGrants(
         {
