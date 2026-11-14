@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "agent-a760a8fec5ff45a20",
+  "date": "2026-11-14",
+  "runType": "pull-request-proof",
+  "issue": 1347,
+  "pullRequest": 1352,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-14T09:16:48.372Z",
+    "end": "2026-11-14T10:12:37.375Z",
+    "durationSeconds": 3349
+  },
+  "tokens": {
+    "input": 134,
+    "output": 19153,
+    "cacheCreation": 122321,
+    "cacheRead": 6170414
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 134,
+        "output": 19153,
+        "cacheCreation": 122321,
+        "cacheRead": 6170414
+      },
+      "estimatedPriceUsd": 1.114642
+    }
+  ],
+  "price": {
+    "estimatedUsd": 1.114642,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Replaces the figures first recorded for #1352 under the orchestrating session's run id; this is the delivering subagent's own transcript."
+  }
+}
