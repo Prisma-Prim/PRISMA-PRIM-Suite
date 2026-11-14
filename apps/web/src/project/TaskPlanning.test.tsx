@@ -35,14 +35,18 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company DEMO',
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
-    grants: companyGrants({
-      bundle: 'company_task_manager',
-      version: 'v1',
-      assignmentId: 'task-grant',
-    }),
+    grants: withCompanyGrants(
+      companyGrants({
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      }),
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 const attribution = {
@@ -444,7 +448,6 @@ it.each(['Company', 'session', 'grant'])(
                         ...(axis === 'Company'
                           ? { id: 'company-b' }
                           : {
-                              taskPermissionAssignmentId: 'replacement-grant',
                               grants: withCompanyGrants(
                                 actor.activeCompany.grants,
                                 {

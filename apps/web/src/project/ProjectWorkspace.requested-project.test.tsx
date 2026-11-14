@@ -19,6 +19,7 @@ import {
   isLifecycleRead,
   preparatoryLifecycle,
 } from './project-lifecycle.test-fixtures';
+import { companyGrants } from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -33,6 +34,11 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'PRISMA-PRIM',
     projectPermissions: ['project.read', 'project.create'],
+    grants: companyGrants({
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    }),
   },
 };
 const atelier = { id: 'client-atelier', displayName: 'Atelier Demo SRL' };

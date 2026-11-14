@@ -180,7 +180,11 @@ it.each([200, 403])(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...nextActionActor.activeCompany,
-        taskPermissionAssignmentId: 'fresh-task-only',
+        grants: withCompanyGrants(nextActionActor.activeCompany.grants, {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'fresh-task-only',
+        }),
       },
     };
     let hold = false,

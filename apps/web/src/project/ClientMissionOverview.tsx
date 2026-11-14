@@ -14,6 +14,7 @@ import { useProjectResponsibleCopy } from './project-responsible-localized.copy'
 import { useClientMissionCopy } from './client-mission.copy';
 import { ClientMissionTasks } from './ClientMissionTasks';
 import { canReadTasks } from './MyTasks';
+import { grantOf, holds } from '../access/company-grants';
 import './client-mission.css';
 
 type Props = {
@@ -38,17 +39,17 @@ export function ClientMissionOverview(props: Props) {
       generation: session.current.generation + 1,
     };
   const company = props.actor.activeCompany;
+  const client = grantOf(company, 'company_director_client_access');
+  const project = grantOf(company, 'company_project_access');
   if (
     !props.actor.active ||
     !props.identity.loaded ||
     !props.identity.signedIn ||
     !company ||
-    !company.clientPermissions?.includes('client.read') ||
-    !company.clientPermissionAssignmentId ||
-    !['v1', 'v2'].includes(company.clientPermissionSetVersion ?? '') ||
-    !company.projectPermissions?.includes('project.read') ||
-    !company.projectPermissionAssignmentId ||
-    !['v1', 'v2'].includes(company.projectPermissionSetVersion ?? '')
+    !client ||
+    !project ||
+    !holds(company, 'company_director_client_access', 'client.read') ||
+    !holds(company, 'company_project_access', 'project.read')
   )
     return null;
   const capture = [
@@ -57,12 +58,12 @@ export function ClientMissionOverview(props: Props) {
     props.actor.workspaceMembershipId,
     props.actor.workspaceId,
     company.id,
-    company.clientPermissionAssignmentId,
-    company.clientPermissionSetVersion,
-    [...company.clientPermissions].sort(),
-    company.projectPermissionAssignmentId,
-    company.projectPermissionSetVersion,
-    [...company.projectPermissions].sort(),
+    client.assignmentId,
+    client.permissionSetVersion,
+    [...client.permissions].sort(),
+    project.assignmentId,
+    project.permissionSetVersion,
+    [...project.permissions].sort(),
     props.clientDossierId,
     props.clientIdentityRevision,
   ];

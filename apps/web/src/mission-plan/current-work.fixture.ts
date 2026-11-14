@@ -67,9 +67,6 @@ export function currentActor(companyId = company.id): ActorContext {
       projectPermissions: ['project.read', 'project.create'],
       projectPermissionAssignmentId: id(12),
       projectPermissionSetVersion: 'v2',
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: id(13),
-      taskPermissionSetVersion: 'v1',
       documentPermissions: [
         'document.read',
         'document.reference.read',

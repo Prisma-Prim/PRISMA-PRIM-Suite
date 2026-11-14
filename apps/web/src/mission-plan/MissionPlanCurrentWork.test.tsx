@@ -214,7 +214,6 @@ it('does not restart a ready read for unconsumed publication/instantiation/Recor
   // captures of Project and Task are consumed here.
   next.activeCompany = {
     ...next.activeCompany,
-    taskPermissions: ['task.read'],
     projectPermissions: ['project.read'],
   };
   view.rerender(<MissionPlanCurrentWork {...props} actor={next} />);

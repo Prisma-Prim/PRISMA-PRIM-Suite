@@ -6,6 +6,8 @@ import {
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
+import { projectDocumentGrants } from '../src/project/project-document-grants.test-fixture';
 
 test(`filters loaded Projects without losing detail or exact retry`, async ({
   page,
@@ -68,13 +70,26 @@ test(`filters loaded Projects without losing detail or exact retry`, async ({
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read', 'project.create'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-grant',
-                  taskPermissionSetVersion: 'v1',
                   documentPermissions: [
                     'document.read',
                     'document.project.manage',
                   ],
+                  grants: companyGrants(
+                    ...projectDocumentGrants([
+                      'document.read',
+                      'document.project.manage',
+                    ]),
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

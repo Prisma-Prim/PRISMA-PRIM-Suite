@@ -33,9 +33,6 @@ const actor = {
     displayName: 'Company Demo',
     clientPermissions: [],
     projectPermissions: ['project.read', 'project.create'],
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
     grants: companyGrants(
       {
         bundle: 'company_project_access',
@@ -207,9 +204,6 @@ it('offers configuration with catalogue read without Client, Task or Project-cre
     activeCompany: {
       ...actor.activeCompany,
       projectPermissions: ['project.read'],
-      taskPermissions: undefined,
-      taskPermissionAssignmentId: undefined,
-      taskPermissionSetVersion: undefined,
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,
         'company_task_manager',
@@ -292,9 +286,6 @@ function configurationOnlyActor() {
     activeCompany: {
       ...actor.activeCompany,
       projectPermissions: ['project.read'],
-      taskPermissions: undefined,
-      taskPermissionAssignmentId: undefined,
-      taskPermissionSetVersion: undefined,
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,
         'company_task_manager',

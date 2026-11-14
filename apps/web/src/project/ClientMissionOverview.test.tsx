@@ -15,6 +15,11 @@ import type { ActorContext } from '../access-types';
 import type { TaskView } from './task-response';
 import type { ClientProjectPage } from './client-mission-response';
 import { ClientMissionOverview } from './ClientMissionOverview';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company',
@@ -25,9 +30,23 @@ const company: NonNullable<ActorContext['activeCompany']> = {
   projectPermissions: ['project.read'],
   projectPermissionAssignmentId: 'project-capture',
   projectPermissionSetVersion: 'v2',
-  taskPermissions: ['task.read'],
-  taskPermissionAssignmentId: 'task-capture',
-  taskPermissionSetVersion: 'v1',
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'client-capture',
+    },
+    {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-capture',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v2',
+      assignmentId: 'project-capture',
+    },
+  ),
 };
 const actor: ActorContext = {
   internalUserId: 'reader',
@@ -300,7 +319,16 @@ it('does not request or offer Task facts without independent Task access', async
   render(
     <ClientMissionOverview
       {...props({
-        actor: { ...actor, activeCompany: { ...company, taskPermissions: [] } },
+        actor: {
+          ...actor,
+          activeCompany: {
+            ...company,
+            grants: withoutCompanyGrants(
+              company.grants,
+              'company_task_manager',
+            ),
+          },
+        },
       })}
     />,
   );
@@ -425,6 +453,11 @@ it.each(
                       activeCompany: {
                         ...company,
                         projectPermissionAssignmentId: 'new-project-capture',
+                        grants: withCompanyGrants(company.grants, {
+                          bundle: 'company_project_access',
+                          version: 'v2',
+                          assignmentId: 'new-project-capture',
+                        }),
                       },
                     },
                   };
@@ -452,8 +485,20 @@ it.each(['Client only', 'Project only'])(
             activeCompany: {
               ...company,
               ...(kind === 'Client only'
-                ? { projectPermissions: [] }
-                : { clientPermissions: [] }),
+                ? {
+                    projectPermissions: [],
+                    grants: withoutCompanyGrants(
+                      company.grants,
+                      'company_project_access',
+                    ),
+                  }
+                : {
+                    clientPermissions: [],
+                    grants: withoutCompanyGrants(
+                      company.grants,
+                      'company_director_client_access',
+                    ),
+                  }),
             },
           },
         })}
@@ -559,7 +604,13 @@ it('retires Task capture data independently and never resurrects its old reply a
   view.rerender(
     <ClientMissionOverview
       {...input}
-      actor={{ ...actor, activeCompany: { ...company, taskPermissions: [] } }}
+      actor={{
+        ...actor,
+        activeCompany: {
+          ...company,
+          grants: withoutCompanyGrants(company.grants, 'company_task_manager'),
+        },
+      }}
     />,
   );
   expect(screen.getByRole('heading', { name: 'Mission 0' })).toBeVisible();
@@ -575,7 +626,11 @@ it('retires Task capture data independently and never resurrects its old reply a
         ...actor,
         activeCompany: {
           ...company,
-          taskPermissionAssignmentId: 'new-task-capture',
+          grants: withCompanyGrants(company.grants, {
+            bundle: 'company_task_manager',
+            version: 'v1',
+            assignmentId: 'new-task-capture',
+          }),
         },
       }}
     />,

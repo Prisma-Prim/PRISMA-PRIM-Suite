@@ -14,7 +14,16 @@ import {
 } from '../localization/interface-locale';
 import { ProjectDocuments } from './ProjectDocuments';
 import { deferred } from '../production-shell/production-shell-context.test-fixtures';
+import {
+  companyGrants,
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { projectDocumentGrants } from './project-document-grants.test-fixture';
 
+type DocumentPermissions = NonNullable<
+  NonNullable<ActorContext['activeCompany']>['documentPermissions']
+>;
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -33,6 +42,18 @@ const actor: ActorContext = {
       'document.reference.read',
       'document.project.manage',
     ],
+    grants: withCompanyGrants(
+      companyGrants({
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      }),
+      ...projectDocumentGrants([
+        'document.read',
+        'document.reference.read',
+        'document.project.manage',
+      ]),
+    ),
   },
 };
 const document = {
@@ -411,18 +432,27 @@ for (const state of ['metadata', 'historical', 'closed', 'denied'] as const) {
         }),
       );
       vi.stubGlobal('fetch', fetcher);
+      const documentPermissions: DocumentPermissions =
+        state === 'denied'
+          ? ['document.project.manage']
+          : state === 'metadata'
+            ? ['document.read']
+            : ['document.read', 'document.project.manage'];
       const scopedActor: ActorContext = {
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
           id: 'company',
           displayName: 'PRISMA-PRIM',
-          documentPermissions:
-            state === 'denied'
-              ? ['document.project.manage']
-              : state === 'metadata'
-                ? ['document.read']
-                : ['document.read', 'document.project.manage'],
+          documentPermissions,
+          grants: withCompanyGrants(
+            withoutCompanyGrants(
+              actor.activeCompany?.grants,
+              'company_document_registrar',
+              'company_document_project_organizer',
+            ),
+            ...projectDocumentGrants(documentPermissions),
+          ),
         },
       };
       renderPanel({

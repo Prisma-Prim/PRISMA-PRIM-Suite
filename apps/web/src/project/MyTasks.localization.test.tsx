@@ -14,6 +14,10 @@ import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import { MyTasks } from './MyTasks';
 import { deferred } from '../production-shell/production-shell-context.test-fixtures';
 import type { AssignedTask } from './task-response';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'reader',
@@ -28,9 +32,18 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Synthetic Company',
     projectPermissions: ['project.read'],
-    taskPermissions: ['task.read'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      },
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
   },
 };
 const task: AssignedTask = {
@@ -413,7 +426,10 @@ it('does not revive old rows after access loss and subsequent locale changes', a
         ...actor.activeCompany,
         id: 'company',
         displayName: 'Synthetic Company',
-        taskPermissions: [],
+        grants: withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_task_manager',
+        ),
       },
     }),
   );

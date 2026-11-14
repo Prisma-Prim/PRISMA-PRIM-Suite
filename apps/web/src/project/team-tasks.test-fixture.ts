@@ -4,6 +4,7 @@ import {
   type TeamTaskFilters,
 } from './team-tasks-response';
 import type { TaskDiscoveryRow } from './task-discovery-response';
+import { companyGrants } from '../access/company-grants.test-fixture';
 export function teamTasksQueryFixture() {
   const id = (suffix: string) =>
     `00000000-0000-4000-8000-${suffix.padStart(12, '0')}`;
@@ -25,9 +26,23 @@ export function teamTasksQueryFixture() {
       projectPermissions: ['project.read'],
       projectPermissionAssignmentId: id('6'),
       projectPermissionSetVersion: 'v2',
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: id('7'),
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: id('5'),
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: id('7'),
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: id('6'),
+        },
+      ),
     },
   };
   const task: TaskDiscoveryRow = {

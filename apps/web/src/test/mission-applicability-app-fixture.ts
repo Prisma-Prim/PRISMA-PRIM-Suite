@@ -40,9 +40,6 @@ export const actor = {
     projectPermissions: ['project.read', 'project.create'],
     projectPermissionAssignmentId: 'project-grant',
     projectPermissionSetVersion: 'v2',
-    taskPermissions: ['task.read', 'task.manage'],
-    taskPermissionAssignmentId: 'task-grant',
-    taskPermissionSetVersion: 'v1',
     documentPermissions: [
       'document.read',
       'document.content.read',

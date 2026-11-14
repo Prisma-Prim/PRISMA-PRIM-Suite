@@ -17,6 +17,7 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { taskCopy } from './project/task.copy';
 import { operationalHomeCopy as homeCopy } from './operational-home/operational-home.copy';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -106,9 +107,23 @@ function actorFor(companyId: string): ActorContext {
       clientPermissionAssignmentId: 'client-grant',
       clientPermissionSetVersion: 'v2',
       projectPermissions: ['project.read'],
-      taskPermissions: ['task.read', 'task.manage'],
-      taskPermissionAssignmentId: 'task-grant',
-      taskPermissionSetVersion: 'v1',
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'client-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+      ),
     },
   };
 }

@@ -16,6 +16,7 @@ import {
   companyGrants,
   withCompanyGrants,
 } from '../access/company-grants.test-fixture';
+import { projectDocumentGrants } from './project-document-grants.test-fixture';
 
 const companyId = 'company';
 const projectId = 'project';
@@ -28,11 +29,21 @@ const company = {
   contractPermissions: ['commercial.contract.read'],
   contractPermissionAssignmentId: 'contract-grant',
   contractPermissionSetVersion: 'v1',
-  grants: companyGrants({
-    bundle: 'company_project_template_user',
-    version: 'v1',
-    assignmentId: 'template-grant',
-  }),
+  grants: withCompanyGrants(
+    withCompanyGrants(
+      companyGrants({
+        bundle: 'company_project_template_user',
+        version: 'v1',
+        assignmentId: 'template-grant',
+      }),
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+    ),
+    ...projectDocumentGrants(['document.read']),
+  ),
 } satisfies NonNullable<ActorContext['activeCompany']>;
 const actor: ActorContext = {
   internalUserId: 'owner',

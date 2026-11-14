@@ -5,6 +5,7 @@ import {
   preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 test('registers and reopens a Company preparatory Project after reload', async ({
   page,
@@ -40,6 +41,11 @@ test('registers and reopens a Company preparatory Project after reload', async (
                   ...company,
                   clientPermissions: [],
                   projectPermissions: ['project.read', 'project.create'],
+                  grants: companyGrants({
+                    bundle: 'company_project_access',
+                    version: 'v1',
+                    assignmentId: 'project-grant',
+                  }),
                 },
               }
             : {}),

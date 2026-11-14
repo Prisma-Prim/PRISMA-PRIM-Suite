@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
+import { holds } from '../access/company-grants';
 import {
   conflictCode,
   createAuthenticatedApiClient,
@@ -158,21 +159,15 @@ function LifecycleSection({
   const companyId = company?.id ?? '';
   const canRead =
     actor.active &&
-    company?.projectPermissions?.includes('project.read') === true &&
+    holds(company, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
-      company.clientPermissions?.includes('client.read') === true);
+      holds(company, 'company_director_client_access', 'client.read'));
   const canTransition =
     canRead &&
-    company?.projectApproverPermissions?.includes(
-      'project.lifecycle.transition',
-    ) === true;
+    holds(company, 'company_project_approver', 'project.lifecycle.transition');
   const canClose =
-    canRead &&
-    company?.projectApproverPermissions?.includes('project.close') === true;
-  const canReadTasks =
-    company?.taskPermissionSetVersion === 'v1' &&
-    !!company.taskPermissionAssignmentId &&
-    company.taskPermissions?.includes('task.read') === true;
+    canRead && holds(company, 'company_project_approver', 'project.close');
+  const canReadTasks = holds(company, 'company_task_manager', 'task.read');
   const path = `/projects/${encodeURIComponent(projectId)}`;
 
   function stopReads() {

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 // Real App with HTTP boundary doubles; separate acceptance file owns live PG proof.
 test.use({ timezoneId: 'America/New_York' });
@@ -114,9 +115,23 @@ async function installServer(page: Page) {
           clientPermissionAssignmentId: 'client-grant',
           clientPermissionSetVersion: 'v1',
           projectPermissions: ['project.read'],
-          taskPermissions: ['task.read'],
-          taskPermissionAssignmentId: 'task-grant',
-          taskPermissionSetVersion: 'v1',
+          grants: companyGrants(
+            {
+              bundle: 'company_director_client_access',
+              version: 'v1',
+              assignmentId: 'client-grant',
+            },
+            {
+              bundle: 'company_task_manager',
+              version: 'v1',
+              assignmentId: 'task-grant',
+            },
+            {
+              bundle: 'company_project_access',
+              version: 'v1',
+              assignmentId: 'project-grant',
+            },
+          ),
         },
       };
     else if (url.pathname === '/api/companies') value = [company];

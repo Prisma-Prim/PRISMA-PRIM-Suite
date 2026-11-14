@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { readAssignedTasks, type AssignedTask } from './task-response';
@@ -17,17 +18,15 @@ type Load =
   | { kind: 'loading' | 'denied' | 'error' }
   | { kind: 'ready'; tasks: AssignedTask[] };
 
-/** The delivered Task-read predicate: captured Company Task Manager v1 plus Project and Client read. */
+/** The delivered Task-read predicate: a live Company Task Manager grant plus Project and Client read. */
 export function canReadTasks(actor: ActorContext): boolean {
   const company = actor.activeCompany;
   return (
     actor.active &&
-    company?.taskPermissionSetVersion === 'v1' &&
-    !!company.taskPermissionAssignmentId &&
-    company.taskPermissions?.includes('task.read') === true &&
-    company.projectPermissions?.includes('project.read') === true &&
+    holds(company, 'company_task_manager', 'task.read') &&
+    holds(company, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
-      company.clientPermissions?.includes('client.read') === true)
+      holds(company, 'company_director_client_access', 'client.read'))
   );
 }
 

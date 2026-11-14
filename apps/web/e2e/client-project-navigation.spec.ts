@@ -7,6 +7,7 @@ import {
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 test(`navigates between one Client dossier and its loaded Projects`, async ({
   page,
@@ -71,9 +72,21 @@ test(`navigates between one Client dossier and its loaded Projects`, async ({
                   ...company,
                   clientPermissions: ['client.read'],
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-navigation',
-                  taskPermissionSetVersion: 'v1',
+                  // Client read comes from Workspace client.manage; without a
+                  // Client grant the Client mission overview stays hidden, as
+                  // it was without captured Client and Project assignments.
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-navigation',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),
@@ -295,9 +308,21 @@ test(`lists a historical Project from the canonical and then the restored dossie
                   clientPermissionAssignmentId: 'client-identity-grant',
                   clientPermissionSetVersion: 'v2',
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-identity-grant',
-                  taskPermissionSetVersion: 'v1',
+                  // Client read comes from Workspace client.manage; without a
+                  // Client grant the Client mission overview stays hidden, as
+                  // it was without captured Client and Project assignments.
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-identity-grant',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),
@@ -686,9 +711,21 @@ test(`opens the records each Company summary counts from the home`, async ({
                   ...company,
                   clientPermissions: ['client.read'],
                   projectPermissions: ['project.read'],
-                  taskPermissions: ['task.read', 'task.manage'],
-                  taskPermissionAssignmentId: 'task-operational-home',
-                  taskPermissionSetVersion: 'v1',
+                  // Client read comes from Workspace client.manage; without a
+                  // Client grant the Client mission overview stays hidden, as
+                  // it was without captured Client and Project assignments.
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_task_manager',
+                      version: 'v1',
+                      assignmentId: 'task-operational-home',
+                    },
+                    {
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    },
+                  ),
                 },
               }
             : {}),

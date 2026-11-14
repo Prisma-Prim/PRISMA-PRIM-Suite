@@ -35,6 +35,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { holds } from '../access/company-grants';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
@@ -220,9 +221,13 @@ export function ProjectWorkspace({
   const retry = useRef<Registration | null>(null);
   const companyId = actor.activeCompany?.id;
   const authorized =
-    actor.activeCompany?.projectPermissions?.includes('project.read') &&
+    holds(actor.activeCompany, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
-      actor.activeCompany.clientPermissions?.includes('client.read'));
+      holds(
+        actor.activeCompany,
+        'company_director_client_access',
+        'client.read',
+      ));
   // The search follows its sources in the commit that delivers them, never a
   // passive effect later, so input on that first displayed frame cannot merge
   // with a late intent (#1158). A new scope clears it, a Client identity
@@ -876,7 +881,9 @@ export function ProjectWorkspace({
               </li>
             ))}
           </ul>
-          {actor.activeCompany?.projectPermissions?.includes(
+          {holds(
+            actor.activeCompany,
+            'company_project_access',
             'project.create',
           ) && (
             <form className="project-registration" onSubmit={submit}>
@@ -1151,7 +1158,7 @@ export function ProjectWorkspace({
             }}
           />
           {canUseProjectTemplate(actor) &&
-            actor.activeCompany?.taskPermissions?.includes('task.read') && (
+            holds(actor.activeCompany, 'company_task_manager', 'task.read') && (
               <ProjectTemplatePlan
                 originalClientGeneration={clientIdentityRevision}
                 onActorRevalidated={onActorRevalidated}
@@ -1178,7 +1185,7 @@ export function ProjectWorkspace({
               />
             )}
           {canUseProjectTemplate(actor) &&
-            actor.activeCompany?.taskPermissions?.includes('task.read') && (
+            holds(actor.activeCompany, 'company_task_manager', 'task.read') && (
               <ProjectStage
                 actor={actor}
                 identity={identity}

@@ -9,15 +9,30 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import type { TaskView } from './project/task-response';
+import { companyGrants } from './access/company-grants.test-fixture';
 
 const company = {
   id: 'company-unassigned',
   displayName: 'PRISMA-PRIM',
   projectPermissions: ['project.read'],
-  taskPermissions: ['task.read'],
-  taskPermissionAssignmentId: 'task-reader-grant',
-  taskPermissionSetVersion: 'v1',
   clientPermissions: ['client.read'],
+  grants: companyGrants(
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'client-grant',
+    },
+    {
+      bundle: 'company_task_manager',
+      version: 'v1',
+      assignmentId: 'task-reader-grant',
+    },
+    {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId: 'project-grant',
+    },
+  ),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'reader',

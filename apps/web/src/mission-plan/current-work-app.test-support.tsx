@@ -150,7 +150,6 @@ export function installCurrentWorkApp() {
           documentContentReaderAssignmentId: state.readerId,
           ...(state.clientRead ? {} : { clientPermissions: [] }),
           ...(state.projectRead ? {} : { projectPermissions: [] }),
-          ...(state.taskRead ? {} : { taskPermissions: [] }),
         };
       }
       if (path.endsWith('/access/current-actor')) {
