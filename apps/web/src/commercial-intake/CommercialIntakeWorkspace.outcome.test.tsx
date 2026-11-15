@@ -15,6 +15,10 @@ import {
   requestListItemFor,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import type {
   OpportunityOutcomeStatus,
@@ -25,16 +29,6 @@ const ada = {
   workspaceMembershipId: 'membership-ada',
   displayName: 'Ada Ionescu',
 };
-
-const intakePermissions: NonNullable<
-  ActorContext['activeCompany']
->['commercialIntakePermissions'] = [
-  'commercial.request.read',
-  'commercial.request.create',
-  'commercial.opportunity.read',
-  'commercial.opportunity.create',
-  'commercial.opportunity.next_action.update',
-];
 
 function actorWith(manager: 'v1' | 'v2' | null): ActorContext {
   return {
@@ -49,26 +43,22 @@ function actorWith(manager: 'v1' | 'v2' | null): ActorContext {
     activeCompany: {
       id: 'company-1',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: [],
-      commercialIntakePermissions: intakePermissions,
-      commercialIntakePermissionAssignmentId: 'intake-assignment',
-      commercialIntakePermissionSetVersion: 'v2',
-      ...(manager === 'v2'
-        ? {
-            opportunityManagerPermissions: [
-              'commercial.opportunity.assign',
-              'commercial.opportunity.outcome.change',
-            ],
-            opportunityManagerPermissionAssignmentId: 'manager-assignment',
-            opportunityManagerPermissionSetVersion: 'v2',
-          }
-        : manager === 'v1'
-          ? {
-              opportunityManagerPermissions: ['commercial.opportunity.assign'],
-              opportunityManagerPermissionAssignmentId: 'manager-assignment',
-              opportunityManagerPermissionSetVersion: 'v1',
-            }
-          : {}),
+      grants: companyGrants(
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v2',
+          assignmentId: 'intake-assignment',
+        },
+        ...(manager === null
+          ? []
+          : [
+              {
+                bundle: 'company_opportunity_manager',
+                version: manager,
+                assignmentId: 'manager-assignment',
+              } as const,
+            ]),
+      ),
     },
   };
 }
@@ -564,12 +554,19 @@ describe('CommercialIntakeWorkspace outcome status', () => {
       ...manager,
       activeCompany: manager.activeCompany && {
         ...manager.activeCompany,
-        clientPermissions: ['client.read'],
-        commercialIntakePermissions: [
-          ...intakePermissions,
-          'commercial.request.client.associate',
-        ],
-        commercialIntakePermissionSetVersion: 'v3',
+        grants: withCompanyGrants(
+          manager.activeCompany.grants,
+          {
+            bundle: 'company_director_client_access',
+            version: 'v1',
+            assignmentId: 'client-assignment',
+          },
+          {
+            bundle: 'company_commercial_intake',
+            version: 'v3',
+            assignmentId: 'intake-assignment',
+          },
+        ),
       },
     };
     renderWorkspace(associating);

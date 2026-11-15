@@ -2,6 +2,7 @@ import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 import { buildClientRequest } from '../src/test/commercial-intake-responses';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const events = [
   {
@@ -145,6 +146,13 @@ test('opens the Request of a commercial event from the Activity Log with the key
                     'commercial.opportunity.create',
                   ],
                   commercialActivityPermissions: ['commercial.activity.read'],
+                  // The commercial screens read these grants; App still reads the
+                  // per-bundle fields above.
+                  grants: companyGrants({
+                    bundle: 'company_commercial_intake',
+                    version: 'v1',
+                    assignmentId: 'intake-activity',
+                  }),
                 },
               }
             : {}),

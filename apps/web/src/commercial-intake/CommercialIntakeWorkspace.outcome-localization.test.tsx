@@ -9,6 +9,10 @@ import {
   requestListItemFor,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { selectOption } from '../test/select-option';
 import { buildOutcomeHistoryEntry } from '../test/commercial-intake-responses';
 
@@ -221,21 +225,18 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-      'commercial.opportunity.next_action.update',
-    ],
-    commercialIntakePermissionAssignmentId: 'intake-assignment',
-    commercialIntakePermissionSetVersion: 'v2',
-    opportunityManagerPermissions: [
-      'commercial.opportunity.assign',
-      'commercial.opportunity.outcome.change',
-    ],
-    opportunityManagerPermissionAssignmentId: 'manager-assignment',
-    opportunityManagerPermissionSetVersion: 'v2',
+    grants: companyGrants(
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v2',
+        assignmentId: 'intake-assignment',
+      },
+      {
+        bundle: 'company_opportunity_manager',
+        version: 'v2',
+        assignmentId: 'manager-assignment',
+      },
+    ),
   },
 };
 
@@ -546,9 +547,10 @@ describe('localized Opportunity outcome and history', () => {
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        opportunityManagerPermissions: [],
-        opportunityManagerPermissionAssignmentId: undefined,
-        opportunityManagerPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_opportunity_manager',
+        ),
       },
     });
     expect(await screen.findByText(locales[0].denied)).toBeVisible();

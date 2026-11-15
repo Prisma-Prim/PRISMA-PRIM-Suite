@@ -1581,8 +1581,16 @@ function clientAuthority(
   readable: boolean,
   assignmentId = 'client-grant-1',
 ): ActorContext {
-  const company = editor.activeCompany;
-  if (!company) throw new Error('Expected active Company');
+  const editorCompany = editor.activeCompany;
+  if (!editorCompany) throw new Error('Expected active Company');
+  const company = {
+    ...editorCompany,
+    grants: withCompanyGrants(editorCompany.grants, {
+      bundle: 'company_opportunity_manager',
+      version: 'v1',
+      assignmentId: 'manager-1',
+    }),
+  };
   return {
     ...editor,
     activeCompany: {
@@ -1590,9 +1598,6 @@ function clientAuthority(
       clientPermissions: readable ? ['client.read'] : [],
       clientPermissionAssignmentId: assignmentId,
       clientPermissionSetVersion: 'v2',
-      opportunityManagerPermissions: ['commercial.opportunity.assign'],
-      opportunityManagerPermissionAssignmentId: 'manager-1',
-      opportunityManagerPermissionSetVersion: 'v1',
       grants: readable
         ? withCompanyGrants(company.grants, {
             bundle: 'company_director_client_access',

@@ -8,6 +8,7 @@ import {
   useInterfaceLocale,
 } from '../localization/interface-locale';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { selectOption } from '../test/select-option';
 
 const actor: ActorContext = {
@@ -22,14 +23,19 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-      'commercial.request.client.associate',
-    ],
+    // v3 is the first Intake version with the Client association.
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-assignment',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v3',
+        assignmentId: 'intake-assignment',
+      },
+    ),
   },
 };
 

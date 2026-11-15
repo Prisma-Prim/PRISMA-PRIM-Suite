@@ -19,6 +19,7 @@ import {
 } from './commercial-pdf.test-fixture';
 import type { CommercialPdfTarget } from './commercial-pdf-response';
 import { modelOfferActor } from '../offer/model-offer.fixture';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from '../access-composition';
 import {
   InterfaceLocaleProvider,
@@ -179,7 +180,14 @@ describe('Independent exact PDF read lifetime', () => {
                 ...company,
                 ...(change === 'scope'
                   ? { id: 'other-company' }
-                  : { offerPermissions: [] }),
+                  : {
+                      offerPermissions: [],
+                      grants: withoutCompanyGrants(
+                        company.grants,
+                        'company_offer_preparer',
+                        'company_offer_approver',
+                      ),
+                    }),
               },
             }),
       );

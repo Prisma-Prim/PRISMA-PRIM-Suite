@@ -9,6 +9,7 @@ import {
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { companyGrants } from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import {
@@ -61,6 +62,13 @@ function actorFor(companyId: string, state: Transport): ActorContext {
             ],
             commercialIntakePermissionAssignmentId: state.intakeAssignment,
             commercialIntakePermissionSetVersion: 'v2',
+            // The Request screen reads this grant; App still reads the
+            // per-bundle fields above, including a narrowed Request creation.
+            grants: companyGrants({
+              bundle: 'company_commercial_intake',
+              version: 'v2',
+              assignmentId: state.intakeAssignment,
+            }),
           }
         : {}),
     },

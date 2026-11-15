@@ -11,6 +11,8 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { holds } from '../access/company-grants';
+import { holdsContractRead, holdsOfferRead } from '../contract/contract-grants';
 import type { CommercialPdfTarget } from './commercial-pdf-response';
 import { useCommercialPdfCopy } from './commercial-pdf.copy';
 
@@ -83,7 +85,7 @@ export function useCommercialPdfDownload(props: Props) {
   const company = props.actor.activeCompany;
   const clientReadable =
     props.actor.workspacePermissions.includes('client.manage') ||
-    company?.clientPermissions?.includes('client.read') === true;
+    holds(company, 'company_director_client_access', 'client.read');
   // The held exact read retains its consumed authority even when its reader disappears.
   const requiresClientRead =
     command?.requiresClientRead ?? displayed?.requiresClientRead ?? false;
@@ -91,13 +93,14 @@ export function useCommercialPdfDownload(props: Props) {
     (!requiresClientRead || clientReadable) &&
     props.actor.active &&
     Boolean(company) &&
-    company?.commercialIntakePermissions?.includes(
+    holds(
+      company,
+      'company_commercial_intake',
       'commercial.opportunity.read',
-    ) === true &&
+    ) &&
     (props.kind === 'offer'
-      ? company.offerPermissions?.includes('commercial.offer.read')
-      : company.contractPermissions?.includes('commercial.contract.read')) ===
-      true;
+      ? holdsOfferRead(company)
+      : holdsContractRead(company));
   const scope = JSON.stringify([
     generation.current.value,
     props.actor.active,

@@ -9,6 +9,7 @@ import {
   buildOutcomeHistoryEntry,
   requestListItemFor,
 } from '../src/test/commercial-intake-responses';
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 
 const locales = [
   {
@@ -201,12 +202,20 @@ async function installRoutes(page: Page) {
                     'commercial.opportunity.create',
                     'commercial.opportunity.next_action.update',
                   ],
-                  opportunityManagerPermissionAssignmentId: 'demo-manager',
-                  opportunityManagerPermissionSetVersion: 'v2',
-                  opportunityManagerPermissions: [
-                    'commercial.opportunity.assign',
-                    'commercial.opportunity.outcome.change',
-                  ],
+                  // The commercial screens read these grants; App still reads the
+                  // per-bundle fields above.
+                  grants: companyGrants(
+                    {
+                      bundle: 'company_commercial_intake',
+                      version: 'v2',
+                      assignmentId: 'demo-intake',
+                    },
+                    {
+                      bundle: 'company_opportunity_manager',
+                      version: 'v2',
+                      assignmentId: 'demo-manager',
+                    },
+                  ),
                 },
               }
             : {}),

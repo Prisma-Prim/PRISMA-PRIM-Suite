@@ -14,6 +14,7 @@ import {
   requestListItemFor,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 
 const ada = {
@@ -33,16 +34,6 @@ const ionCandidate = {
   displayLabel: 'Ion Popa · 2B',
 };
 
-const intakePermissions: NonNullable<
-  ActorContext['activeCompany']
->['commercialIntakePermissions'] = [
-  'commercial.request.read',
-  'commercial.request.create',
-  'commercial.opportunity.read',
-  'commercial.opportunity.create',
-  'commercial.opportunity.next_action.update',
-];
-
 function actorWith(
   manager: {
     assignmentId: string;
@@ -60,17 +51,22 @@ function actorWith(
     activeCompany: {
       id: 'company-1',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: [],
-      commercialIntakePermissions: intakePermissions,
-      commercialIntakePermissionAssignmentId: 'intake-assignment',
-      commercialIntakePermissionSetVersion: 'v2',
-      ...(manager
-        ? {
-            opportunityManagerPermissions: ['commercial.opportunity.assign'],
-            opportunityManagerPermissionAssignmentId: manager.assignmentId,
-            opportunityManagerPermissionSetVersion: 'v1',
-          }
-        : {}),
+      grants: companyGrants(
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v2',
+          assignmentId: 'intake-assignment',
+        },
+        ...(manager
+          ? [
+              {
+                bundle: 'company_opportunity_manager',
+                version: 'v1',
+                assignmentId: manager.assignmentId,
+              } as const,
+            ]
+          : []),
+      ),
     },
   };
 }
@@ -81,16 +77,23 @@ const associationManager: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    commercialIntakePermissions: [
-      ...intakePermissions,
-      'commercial.request.client.associate',
-    ],
-    commercialIntakePermissionAssignmentId: 'intake-assignment',
-    commercialIntakePermissionSetVersion: 'v3',
-    opportunityManagerPermissions: ['commercial.opportunity.assign'],
-    opportunityManagerPermissionAssignmentId: 'manager-assignment-1',
-    opportunityManagerPermissionSetVersion: 'v1',
+    grants: companyGrants(
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'client-assignment',
+      },
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v3',
+        assignmentId: 'intake-assignment',
+      },
+      {
+        bundle: 'company_opportunity_manager',
+        version: 'v1',
+        assignmentId: 'manager-assignment-1',
+      },
+    ),
   },
 };
 
