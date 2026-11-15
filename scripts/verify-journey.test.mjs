@@ -186,6 +186,7 @@ test('plans the shared acceptance prebuild once and one fresh run per repetition
   assert.equal(plan.runs.length, 2);
   assert.deepEqual(plan.runs[1], {
     run: 2,
+    sequenceCases: [],
     chaosSeed: null,
     replay: null,
     directory: join(output, 'run-2'),
@@ -297,6 +298,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
   assert.deepEqual(await listChaosJourneys(fixture), ['a']);
   assert.deepEqual(await listChaosJourneys(root), [
     'certification-journey',
+    'financial-action-sequences',
     'multi-company-home',
   ]);
 
@@ -386,6 +388,8 @@ async function runFixture(
   t,
   {
     repeat = 1,
+    journey = 'ideas',
+    sequenceSelection = null,
     cpuLoad = null,
     chaosSeed = null,
     budgetMinutes = null,
@@ -402,8 +406,9 @@ async function runFixture(
   const output = join(fixture, 'evidence');
   const plan = planJourneyVerification({
     root: fixture,
-    journeys: ['ideas'],
-    journey: 'ideas',
+    journeys: [journey],
+    journey,
+    sequenceSelection,
     repeat,
     cpuLoad,
     chaosSeed,
@@ -431,6 +436,11 @@ async function runFixture(
     await mkdir(evidence, { recursive: true });
     await writeFile(join(evidence, 'validation.png'), 'png');
     await writeFile(join(evidence, 'trace.zip'), 'zip');
+    for (const sequence of outcome.sequenceReports ?? [])
+      await writeFile(
+        join(evidence, `${sequence.caseId}-${sequence.width}-sequences.json`),
+        JSON.stringify(sequence),
+      );
     if (outcome.report)
       await writeFile(run.report, JSON.stringify(outcome.report));
     return { exitCode: outcome.exitCode, signal: null };
@@ -706,7 +716,10 @@ test('command line: chaos on a journey without the chaos fixture is a usage erro
   const child = cli(['ideas', '--chaos', 'random']);
   assert.equal(child.status, 2);
   assert.match(child.stderr, /"ideas" has not opted into UI chaos/u);
-  assert.match(child.stderr, /certification-journey, multi-company-home/u);
+  assert.match(
+    child.stderr,
+    /certification-journey, financial-action-sequences, multi-company-home/u,
+  );
   assert.equal(child.final.status, 'usage-error');
 });
 
@@ -740,4 +753,131 @@ test('command line: refuses to build without a local test database', async (t) =
     /secret|db\.example\.test/u,
   );
   await assert.rejects(access(output));
+});
+
+test('refuses an unknown generated case before requiring or touching a test database', () => {
+  const outcome = cli(['financial-action-sequences', '--chaos', '1422001'], {
+    TEST_DATABASE_URL: undefined,
+    UI_SEQUENCE_REPLAY: 'invented@desktop~10~0:1',
+  });
+  assert.equal(outcome.status, 2);
+  assert.match(outcome.final.message, /Unknown sequence case/u);
+});
+
+test('requires the original explicit seed and one repetition for an exact generated replay', () => {
+  for (const args of [
+    ['financial-action-sequences'],
+    ['financial-action-sequences', '--chaos', 'random'],
+    ['financial-action-sequences', '--chaos', '1422001', '--repeat', '2'],
+  ]) {
+    const outcome = cli(args, {
+      TEST_DATABASE_URL: undefined,
+      UI_SEQUENCE_REPLAY: 'payment-observation@desktop~10~0:1',
+    });
+    assert.equal(outcome.status, 2);
+    assert.match(
+      outcome.final.message,
+      /replay.*original.*numeric|replay.*one repetition/iu,
+    );
+  }
+});
+
+test('cannot report a generated journey passed when only its hand example ran', async (t) => {
+  const { summary } = await runFixture(t, {
+    journey: 'financial-action-sequences',
+    outcomes: {
+      runs: [{ exitCode: 0, report: playwrightReport({ expected: 2 }) }],
+    },
+  });
+  assert.equal(summary.status, 'error');
+  assert.match(summary.message, /Missing generated browser proof/u);
+});
+
+test('retains measured coverage from every real generated adapter and viewport', async (t) => {
+  const sequenceReports = ['payment-observation', 'invoice-record'].flatMap(
+    (caseId) =>
+      ['desktop', 'narrow'].map((width) => ({
+        schema: 'prisma-prim-browser-sequences/v1',
+        caseId,
+        journey: 'financial-action-sequences',
+        width,
+        seed: 1422001,
+        steps: 10,
+        status: 'passed',
+        runs: 2,
+        shrinks: 0,
+        durationMilliseconds: 1234,
+        path: null,
+        coverage: { 'locale:fr': 1 },
+      })),
+  );
+  const { summary } = await runFixture(t, {
+    journey: 'financial-action-sequences',
+    outcomes: {
+      runs: [
+        {
+          exitCode: 0,
+          report: playwrightReport({ expected: 6 }),
+          sequenceReports,
+        },
+      ],
+    },
+  });
+  assert.equal(summary.status, 'passed');
+  assert.equal(summary.runs[0].sequences.length, 4);
+  assert.equal(summary.runs[0].sequences[0].durationMilliseconds, 1234);
+  assert.deepEqual(summary.runs[0].sequences[0].coverage, { 'locale:fr': 1 });
+  const replay = await runFixture(t, {
+    journey: 'financial-action-sequences',
+    sequenceSelection: {
+      caseId: 'payment-observation',
+      width: 'desktop',
+      path: '0:1',
+    },
+    outcomes: {
+      runs: [
+        {
+          exitCode: 0,
+          report: playwrightReport({ expected: 3 }),
+          sequenceReports: sequenceReports.slice(0, 1),
+        },
+      ],
+    },
+  });
+  assert.equal(replay.summary.status, 'passed');
+  assert.equal(replay.summary.runs[0].sequences.length, 1);
+});
+
+test('an exact generated replay runs only its selected test and screen', () => {
+  const plan = planJourneyVerification({
+    root,
+    journeys: ['financial-action-sequences'],
+    journey: 'financial-action-sequences',
+    repeat: 1,
+    cpuLoad: null,
+    output: '/tmp/exact-sequence-replay',
+    parallelism: 1,
+    playwrightCli: '/playwright/cli.js',
+    startedAt,
+    sequenceSelection: {
+      caseId: 'payment-observation',
+      width: 'narrow',
+      path: '0:1',
+    },
+  });
+  const args = plan.runs[0].args;
+  assert.equal(
+    args[args.indexOf('--project') + 1],
+    'operational-acceptance-narrow',
+  );
+  assert.ok(
+    new RegExp(args[args.indexOf('--grep') + 1]).test(
+      'generated financial sequences explores generated native Payment action sequences',
+    ),
+  );
+  assert.ok(
+    !new RegExp(args[args.indexOf('--grep') + 1]).test(
+      'retains one native Payment outcome through lost reply',
+    ),
+  );
 });

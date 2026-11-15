@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1422-pr1424-ci-correction-20261115",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1422,
+  "pullRequest": 1424,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T18:18:31.726Z",
+    "end": "2026-11-15T18:39:21.000Z",
+    "durationSeconds": 1249
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "CI2083 identified a native cross-file synthetic Client identifier collision. Isolated both financial adapter fixtures with UUID namespaces. Exact CI repeat guard: both files together, three repetitions at each width, 24 tests passed. Strict E2E types, lint and format checked. Local correction window only; excludes prior proof window and CI runtime. Final CI confirmation remains pending."
+  }
+}

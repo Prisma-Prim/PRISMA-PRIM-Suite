@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1422-pr1424-weekly-report-correction-20261115",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1422,
+  "pullRequest": 1424,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T19:12:31.000Z",
+    "end": "2026-11-15T19:38:10.000Z",
+    "durationSeconds": 1539
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Post-CI automated review found weekly GitHub comment overflow. Reproduced 114068 characters; aggregate successes retain all seeds/coverage/time. Linked bounded parts preserve failures, reruns and updated triage; oversized single writes fail visibly without replacing evidence. Twenty targeted report/workflow tests, lint and format pass. Local correction window; new CI remains pending."
+  }
+}

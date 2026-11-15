@@ -5,8 +5,13 @@ import {
   type Page,
   type Request,
   type TestInfo,
+  type Frame,
+  type ConsoleMessage,
+  type Route,
+  type CDPSession,
 } from '@playwright/test';
 import { basename } from 'node:path';
+import { removeRoute } from './route-removal';
 import {
   CHAOS_SEED_VARIABLE,
   chaosReplayCommand,
@@ -27,10 +32,11 @@ export { expect };
  * replays it. The delays add up, so the journey's own time limit stretches
  * by CHAOS_TIMEOUT_FACTOR; the runner lengthens each assertion's wait.
  */
-const journeyTest = base.extend({
-  page: async ({ page }, use, testInfo) => {
+const journeyTest = base.extend<{ chaosOwner: 'journey' | 'sequence' }>({
+  chaosOwner: ['journey', { option: true }],
+  page: async ({ page, chaosOwner }, use, testInfo) => {
     const value = process.env[CHAOS_SEED_VARIABLE];
-    if (value === undefined) {
+    if (value === undefined || chaosOwner === 'sequence') {
       await use(page);
       return;
     }
@@ -42,10 +48,10 @@ const journeyTest = base.extend({
     const chaos = await startChaos(page, testInfo, seed);
     try {
       await use(page);
+      await chaos.finish();
     } finally {
-      chaos.restoreClicks();
+      await chaos.dispose();
     }
-    await chaos.finish();
   },
 });
 const CHAOS_TIMEOUT_FACTOR = 3;
@@ -65,22 +71,54 @@ export const test = journeyTest;
  * frame commits the new document.
  */
 export function pendingApiRequests(page: Page): ReadonlySet<Request> {
+  return observeApiRequests(page).pending;
+}
+
+function observeApiRequests(page: Page) {
   const pending = new Set<Request>();
   let navigating = false;
-  page.on('request', (request) => {
+  const requested = (request: Request) => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame())
       navigating = true;
     else if (new URL(request.url()).pathname.startsWith('/api/'))
       pending.add(request);
-  });
-  page.on('framenavigated', (frame) => {
+  };
+  const navigated = (frame: Frame) => {
     if (frame !== page.mainFrame() || !navigating) return;
     navigating = false;
     pending.clear();
-  });
-  page.on('requestfinished', (request) => pending.delete(request));
-  page.on('requestfailed', (request) => pending.delete(request));
-  return pending;
+  };
+  const finished = (request: Request) => {
+    pending.delete(request);
+  };
+  page.on('request', requested);
+  page.on('framenavigated', navigated);
+  page.on('requestfinished', finished);
+  page.on('requestfailed', finished);
+  return {
+    pending,
+    dispose() {
+      page.off('request', requested);
+      page.off('framenavigated', navigated);
+      page.off('requestfinished', finished);
+      page.off('requestfailed', finished);
+      pending.clear();
+    },
+  };
+}
+
+type ExpectedFailure = { request: Request; reason: string; observed?: string };
+const expectedFailures = new WeakMap<Page, ExpectedFailure[]>();
+
+/** Only the exact request deliberately failed by a native fixture is eligible. */
+export function expectApiFailure(input: {
+  page: Page;
+  request: Request;
+  reason: string;
+}) {
+  expectedFailures
+    .get(input.page)
+    ?.push({ request: input.request, reason: input.reason });
 }
 
 /** Chromium's resource line for an HTTP 4xx answer: a deliberate refusal. */
@@ -165,7 +203,12 @@ async function visibleLoadingStates(page: Page): Promise<string[]> {
   });
 }
 
-async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
+export async function startChaos(
+  page: Page,
+  testInfo: TestInfo,
+  seed: number,
+  options: { attachmentName?: string } = {},
+) {
   const journey = basename(testInfo.file).replace(
     /\.acceptance\.spec\.ts$/u,
     '',
@@ -181,23 +224,42 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
     `UI chaos seed ${seed} (${project}): ${plan.describe()}. Replay: ${replay}`,
   );
 
+  let session: CDPSession | undefined;
   if (plan.cpuThrottleRate > 1) {
-    const session = await page.context().newCDPSession(page);
+    session = await page.context().newCDPSession(page);
     await session.send('Emulation.setCPUThrottlingRate', {
       rate: plan.cpuThrottleRate,
     });
   }
 
   const errors: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !DELIBERATE_REFUSAL.test(message.text()))
-      errors.push(`console error: ${message.text()}`);
-  });
-  page.on('pageerror', (error) =>
-    errors.push(`uncaught page error: ${error.message}`),
-  );
+  const deliberate: ExpectedFailure[] = [];
+  expectedFailures.set(page, deliberate);
+  const consoleMessage = (message: ConsoleMessage) => {
+    if (message.type() !== 'error' || DELIBERATE_REFUSAL.test(message.text()))
+      return;
+    const controlledNetworkFailure =
+      /^Failed to load resource: (?:net::ERR_[A-Z_]+\b|the server responded with a status of 5\d\d\b)/u.test(
+        message.text(),
+      );
+    const expected = controlledNetworkFailure
+      ? deliberate.find(
+          (entry) =>
+            entry.observed === undefined &&
+            entry.request.url() === message.location().url,
+        )
+      : undefined;
+    if (expected) expected.observed = message.text();
+    else errors.push(`console error: ${message.text()}`);
+  };
+  const pageError = (error: Error) => {
+    errors.push(`uncaught page error: ${error.message}`);
+  };
+  page.on('console', consoleMessage);
+  page.on('pageerror', pageError);
 
-  const inFlight = pendingApiRequests(page);
+  const observer = observeApiRequests(page);
+  const inFlight = observer.pending;
   let lastActivity = Date.now();
   const touch = () => {
     lastActivity = Date.now();
@@ -210,7 +272,7 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
   // back here with their header overrides. The API handles each request when
   // the page sends it, so the server sees the page's own order; only the
   // answer comes back late.
-  await page.route('**/api/**', async (route) => {
+  const delayResponse = async (route: Route) => {
     const request = route.request();
     const delay = plan.responseDelay({
       method: request.method(),
@@ -229,13 +291,14 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
     // The page may have dropped the request meanwhile; the late answer then
     // reaches nobody.
     await route.fulfill({ response }).catch(() => undefined);
-  });
+  };
+  await page.route('**/api/**', delayResponse);
 
   const prototype: unknown = Object.getPrototypeOf(page.locator('body'));
   if (!isClickOwner(prototype))
     throw new Error('UI chaos needs the Playwright Locator click method.');
   const click = prototype.click;
-  prototype.click = async function chaosClick(
+  const chaosClick = async function (
     this: Locator,
     options?: Parameters<Click>[0],
   ) {
@@ -281,14 +344,36 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
     }
     return click.call(this, options);
   };
+  prototype.click = chaosClick;
 
   return {
-    restoreClicks() {
-      prototype.click = click;
+    async dispose() {
+      if (prototype.click === chaosClick) prototype.click = click;
+      page.off('console', consoleMessage);
+      page.off('pageerror', pageError);
+      page.off('request', touch);
+      page.off('requestfinished', touch);
+      page.off('requestfailed', touch);
+      observer.dispose();
+      if (expectedFailures.get(page) === deliberate)
+        expectedFailures.delete(page);
+      if (!page.isClosed()) {
+        await removeRoute(page, '**/api/**', delayResponse);
+        if (session)
+          await session.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      }
+      if (session) {
+        try {
+          await session.detach();
+        } catch (error) {
+          if (!page.isClosed()) throw error;
+        }
+      }
     },
-    async finish() {
+    async finish(result?: { check: boolean }) {
       // A journey that already failed keeps its own error first.
-      const checked = testInfo.status === testInfo.expectedStatus;
+      const checked =
+        result?.check ?? testInfo.status === testInfo.expectedStatus;
       const states: string[] = [];
       if (checked) {
         const deadline = Date.now() + IDLE_DEADLINE_MILLISECONDS;
@@ -319,7 +404,7 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
       }
       // Read after the waits: a late answer can still raise an error.
       const problems = checked ? [...errors, ...states] : [];
-      await testInfo.attach('ui-chaos.json', {
+      await testInfo.attach(options.attachmentName ?? 'ui-chaos.json', {
         contentType: 'application/json',
         body: JSON.stringify(
           {
@@ -328,6 +413,12 @@ async function startChaos(page: Page, testInfo: TestInfo, seed: number) {
             project,
             plan: plan.describe(),
             errors,
+            expectedFailures: deliberate.map((entry) => ({
+              method: entry.request.method(),
+              path: new URL(entry.request.url()).pathname,
+              reason: entry.reason,
+              observed: entry.observed ?? null,
+            })),
             pending: [...inFlight].map(
               (request) =>
                 `${request.method()} ${new URL(request.url()).pathname}`,
