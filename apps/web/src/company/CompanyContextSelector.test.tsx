@@ -36,7 +36,11 @@ describe('CompanyContextSelector', () => {
       <CompanyContextSelector
         actor={{
           ...memberActor,
-          activeCompany: { id: 'company-a', displayName: 'Company A' },
+          activeCompany: {
+            grants: [],
+            id: 'company-a',
+            displayName: 'Company A',
+          },
         }}
         state={{
           status: 'ready',

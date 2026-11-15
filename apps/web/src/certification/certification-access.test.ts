@@ -95,18 +95,11 @@ describe('Certification authority projection', () => {
     });
   });
 
-  it('ignores the legacy Certification fields without their grants', () => {
+  it('denies Certification authority without its grants', () => {
     const actor = certificationActor({ manager: false });
     expect(
       certificationAuthority(
-        withCompany(without(actor, 'company_certification_reader'), {
-          certificationReaderPermissions: ['certification.read'],
-          certificationReaderAssignmentId: 'certification-reader-grant',
-          certificationReaderPermissionSetVersion: 'v1',
-          certificationAuditorPermissions: ['certification.audit.record'],
-          certificationAuditorAssignmentId: 'certification-auditor-grant',
-          certificationAuditorPermissionSetVersion: 'v1',
-        }),
+        withCompany(without(actor, 'company_certification_reader'), {}),
       ),
     ).toEqual(NONE);
   });

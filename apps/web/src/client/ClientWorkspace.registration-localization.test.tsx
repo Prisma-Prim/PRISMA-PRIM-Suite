@@ -31,6 +31,7 @@ const actor: ActorContext = {
   active: true,
   workspacePermissions: ['client.manage'],
   activeCompany: {
+    grants: [],
     id: 'company-registration',
     displayName: 'Companie {company}',
   },
@@ -522,6 +523,7 @@ it.each(locales)(
     view.rerenderActor({
       ...enrichedActor,
       activeCompany: {
+        grants: [],
         ...enrichedActor.activeCompany,
         id: 'company-registration',
         displayName: 'Companie {company}',

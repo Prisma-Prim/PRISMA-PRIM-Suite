@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
+import { companyGrantsOf } from './public-company-grants.test-support';
 import {
   prepareExternalInvoiceSourceCase,
   modelContractIdentities,
@@ -34,7 +35,13 @@ for (const partyKind of ['PRIMARY', 'ADDITIONAL'] as const) {
       (await ready.read('/access/current-actor', ready.companyId))
         .activeCompany,
     );
-    expect(before.externalInvoiceGrants ?? []).toEqual([]);
+    expect(
+      companyGrantsOf(before, [
+        'company_invoice_reader',
+        'company_invoice_recorder',
+        'company_external_invoice_access',
+      ]) ?? [],
+    ).toEqual([]);
 
     async function administer(
       bundle: 'invoice-reader' | 'invoice-recorder' | 'external-invoice-access',
@@ -77,7 +84,13 @@ for (const partyKind of ['PRIMARY', 'ADDITIONAL'] as const) {
       (await ready.read('/access/current-actor', ready.companyId))
         .activeCompany,
     );
-    expect(granted.externalInvoiceGrants).toEqual(
+    expect(
+      companyGrantsOf(granted, [
+        'company_invoice_reader',
+        'company_invoice_recorder',
+        'company_external_invoice_access',
+      ]),
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           bundle: 'company_invoice_reader',

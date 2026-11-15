@@ -1,3 +1,7 @@
+import {
+  companyGrantOf,
+  companyPermissionsOf,
+} from '../access/company-grants.test-support.js';
 import { createServer } from 'node:http';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -1206,7 +1210,10 @@ withPostgres('First illustrative Contract REST', () => {
           ),
         );
         expect(
-          record(actor.activeCompany).contractEarlyPreparationAssignmentId,
+          companyGrantOf(
+            record(actor.activeCompany),
+            'company_contract_early_preparation',
+          )?.assignmentId,
         ).toBeUndefined();
         expect(
           (
@@ -8446,10 +8453,21 @@ withPostgres('First illustrative Contract REST', () => {
         ),
       ).activeCompany,
     );
-    expect(active.clientPermissions).toEqual([]);
-    expect(active.offerPermissions).toBeUndefined();
-    expect(active.pricingUserPermissions).toBeUndefined();
-    expect(active.projectPermissions).toBeUndefined();
+    expect(
+      companyPermissionsOf(active, ['company_director_client_access']) ?? [],
+    ).toEqual([]);
+    expect(
+      companyPermissionsOf(active, [
+        'company_offer_preparer',
+        'company_offer_approver',
+      ]),
+    ).toBeUndefined();
+    expect(
+      companyPermissionsOf(active, ['company_pricing_user']),
+    ).toBeUndefined();
+    expect(
+      companyPermissionsOf(active, ['company_project_access']),
+    ).toBeUndefined();
     const unknown = await signatureRequest(
       fixture,
       '00000000-0000-4000-8000-000000000999',
@@ -8656,21 +8674,34 @@ withPostgres('First illustrative Contract REST', () => {
         ),
       ).activeCompany,
     );
-    expect(active.contractPermissions).toEqual([
+    expect(
+      companyPermissionsOf(active, [
+        'company_contract_preparer',
+        'company_contract_early_preparation',
+        'company_contract_approver',
+      ]),
+    ).toEqual([
       'commercial.contract.read',
       'commercial.contract.approve',
       'commercial.contract.signature.record',
       'commercial.contract.model_based.approve',
     ]);
-    expect(active.contractApproverPermissionSetVersion).toBe('v2');
-    expect(active.contractPermissionAssignmentId).toBeUndefined();
-    expect(active.clientPermissions).toEqual([]);
-    for (const field of [
-      'offerPermissions',
-      'pricingUserPermissions',
-      'pricingConfigurationPermissions',
+    expect(
+      companyGrantOf(active, 'company_contract_approver')?.permissionSetVersion,
+    ).toBe('v2');
+    expect(
+      companyGrantOf(active, 'company_contract_preparer')?.assignmentId,
+    ).toBeUndefined();
+    expect(
+      companyPermissionsOf(active, ['company_director_client_access']) ?? [],
+    ).toEqual([]);
+    for (const bundle of [
+      'company_offer_preparer',
+      'company_offer_approver',
+      'company_pricing_user',
+      'company_pricing_configuration',
     ])
-      expect(active[field]).toBeUndefined();
+      expect(companyGrantOf(active, bundle)).toBeUndefined();
     expect(
       (
         await request({
@@ -10493,14 +10524,19 @@ withPostgres('First illustrative Contract REST', () => {
       ),
     );
     expect(record(actor.activeCompany)).toMatchObject({
-      contractPermissionSetVersion: 'v2',
-      contractPermissions: [
-        'commercial.contract.read',
-        'commercial.contract.prepare',
-        'commercial.contract.project.link',
-        'commercial.contract.model.select',
-        'commercial.contract.model_based.prepare',
-      ],
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_contract_preparer',
+          permissionSetVersion: 'v2',
+          permissions: [
+            'commercial.contract.read',
+            'commercial.contract.prepare',
+            'commercial.contract.project.link',
+            'commercial.contract.model.select',
+            'commercial.contract.model_based.prepare',
+          ],
+        }),
+      ]),
     });
     expect(
       (await send({ ...body, termStartsOn: '2026-02-30' }, 'bad-date')).status,

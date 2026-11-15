@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   json,
@@ -36,7 +37,8 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
         task: object(created.task),
         id: string(object(created.task).id),
         assignmentId: string(
-          object(c.actor.activeCompany).internalTaskManagerAssignmentId,
+          companyGrantOf(c.actor.activeCompany, 'company_internal_task_manager')
+            ?.assignmentId,
         ),
         internalUserId: string(c.actor.internalUserId),
       };

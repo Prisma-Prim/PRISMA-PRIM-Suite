@@ -78,15 +78,12 @@ export async function installReviewFixture(
 ) {
   const resolver = authority !== 'owner' && authority !== 'v1';
   const complete = authority === 'owner-resolver' || authority === 'director';
-  const clientPermissions: NonNullable<
-    NonNullable<ActorContext['activeCompany']>['clientPermissions']
-  > = ['client.read', 'client.create', 'client.update'];
-  if (resolver) clientPermissions.push('client.duplicate.resolve');
   const actor: ActorContext = {
     ...actorContextFixture,
     workspacePermissions:
       authority === 'director' || authority === 'v1' ? [] : ['client.manage'],
     activeCompany: {
+      grants: [],
       ...reviewCompany,
       ...(authority === 'owner'
         ? {}

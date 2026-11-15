@@ -45,9 +45,6 @@ const actor: ActorContext = {
     id: 'company-one',
     displayName: 'Synthetic Company',
 
-    offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
-    offerPermissionAssignmentId: 'offer-preparer-assignment',
-    offerPermissionSetVersion: 'v1',
     grants: companyGrants(
       {
         bundle: 'company_director_client_access',
@@ -621,9 +618,8 @@ function companyActor({
   mayPrepare?: boolean;
 }): ActorContext {
   if (!actor.activeCompany) throw new Error('Expected the synthetic Company.');
-  const offerPermissions: NonNullable<
-    ActorContext['activeCompany']
-  >['offerPermissions'] = [];
+  const offerPermissions: import('./offer-grants.test-fixture').OfferPermission[] =
+    [];
   if (mayRead) offerPermissions.push('commercial.offer.read');
   if (mayPrepare) offerPermissions.push('commercial.offer.prepare');
   return {
@@ -632,8 +628,7 @@ function companyActor({
       ...actor.activeCompany,
       id: companyId,
       displayName: companyId,
-      offerPermissionAssignmentId: `offer-assignment-${companyId}`,
-      offerPermissions,
+
       grants: [
         ...withoutCompanyGrants(
           actor.activeCompany.grants,

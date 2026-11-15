@@ -230,6 +230,7 @@ function mount({
           ...baseActor,
           workspacePermissions: [],
           activeCompany: {
+            grants: [],
             id: 'company-feedback',
             displayName: 'Synthetic Company',
           },

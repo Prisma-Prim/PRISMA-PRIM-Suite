@@ -606,7 +606,7 @@ test('never grants the minimal Workspace Owner enriched dossier access', async (
   state.actor = {
     ...actorContextFixture,
     workspacePermissions: ['client.manage'],
-    activeCompany: dossierCompany,
+    activeCompany: { grants: [], ...dossierCompany },
   };
   await page.goto('/#clients');
   await expect(
@@ -631,7 +631,7 @@ test('removes a correction and its data when Director authority is revoked', asy
   state.actor = {
     ...actorContextFixture,
     workspacePermissions: ['client.manage'],
-    activeCompany: dossierCompany,
+    activeCompany: { grants: [], ...dossierCompany },
   };
   state.patch = (route) => route.fulfill({ status: 403, json: {} });
   await correctionForm(page)

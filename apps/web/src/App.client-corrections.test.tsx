@@ -114,7 +114,11 @@ describe('Client correction ownership', () => {
             )
               actor = {
                 ...actor,
-                activeCompany: { ...actor.activeCompany, ...companyB },
+                activeCompany: {
+                  grants: [],
+                  ...actor.activeCompany,
+                  ...companyB,
+                },
               };
             return respond(actor);
           }
@@ -245,7 +249,11 @@ describe('Client correction ownership', () => {
             )
               actor = {
                 ...actor,
-                activeCompany: { ...actor.activeCompany, ...companyB },
+                activeCompany: {
+                  grants: [],
+                  ...actor.activeCompany,
+                  ...companyB,
+                },
               };
             return respond(actor);
           }

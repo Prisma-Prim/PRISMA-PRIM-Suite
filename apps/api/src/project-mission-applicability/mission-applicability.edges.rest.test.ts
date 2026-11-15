@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import {
   afterAll,
   afterEach,
@@ -190,7 +191,9 @@ describe.skipIf(!url)(
           (await json(await fixture.call('/access/current-actor')))
             .activeCompany,
         );
-        expect(company.missionResultReviewPermissions).toBeUndefined();
+        expect(
+          companyPermissionsOf(company, ['company_mission_result_reviewer']),
+        ).toBeUndefined();
       },
     );
     describe('an existing approved exclusion', () => {

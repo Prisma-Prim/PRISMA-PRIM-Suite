@@ -2016,7 +2016,6 @@ describe('Commercial Intake projection boundary preserves unrelated work', () =>
             assignmentId: 'offer-preparer-grant',
           },
         ),
-        offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
       },
     };
     const snapshots =

@@ -400,6 +400,7 @@ it.each([
   'missing Opportunity capture',
 ] as const)('makes no protected source request with %s', async (kind) => {
   const company = {
+    grants: [],
     ...actor.activeCompany,
     id: ids.company,
     displayName: 'Fictional Company',
@@ -454,7 +455,7 @@ it.each([
           : kind === 'missing Contract capture'
             ? {
                 ...company,
-                contractPermissionAssignmentId: undefined,
+
                 grants: withoutCompanyGrants(
                   company.grants,
                   'company_contract_preparer',
@@ -462,7 +463,7 @@ it.each([
               }
             : {
                 ...company,
-                commercialIntakePermissionAssignmentId: undefined,
+
                 grants: withoutCompanyGrants(
                   company.grants,
                   'company_commercial_intake',

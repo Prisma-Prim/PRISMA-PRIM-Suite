@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import {
   eligibleOfferActivityActions,
   readOfferActivity,
@@ -23,8 +23,8 @@ const VERSION_TARGET = {
 };
 
 function company(
-  overrides: Partial<ActiveCompanyContext> = {},
-): ActiveCompanyContext {
+  overrides: Partial<CompanyAuthorityContext> = {},
+): CompanyAuthorityContext {
   return {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
@@ -41,7 +41,7 @@ const completeReader = {
     'commercial.opportunity.read',
   ],
   offerPermissions: ['commercial.offer.read'],
-} satisfies Partial<ActiveCompanyContext>;
+} satisfies Partial<CompanyAuthorityContext>;
 
 /** A version event row joined to its own Offer Version. */
 function versionRow(action: string, metadata: Record<string, unknown>) {

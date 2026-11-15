@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ESTIMATE_OFFER_OWNER,
@@ -248,8 +249,16 @@ withPostgres('Consumed exact Offer message read authority public REST', () => {
     await fixture.grant({ path, companyId, membershipId });
     const after = await currentMessageCapture(fixture, companyId);
     expect(after.capture).not.toBe(before.capture);
-    expect(responseRecord(after.actor.activeCompany).offerPermissions).toEqual(
-      responseRecord(before.actor.activeCompany).offerPermissions,
+    expect(
+      companyPermissionsOf(responseRecord(after.actor.activeCompany), [
+        'company_offer_preparer',
+        'company_offer_approver',
+      ]),
+    ).toEqual(
+      companyPermissionsOf(responseRecord(before.actor.activeCompany), [
+        'company_offer_preparer',
+        'company_offer_approver',
+      ]),
     );
   });
 });

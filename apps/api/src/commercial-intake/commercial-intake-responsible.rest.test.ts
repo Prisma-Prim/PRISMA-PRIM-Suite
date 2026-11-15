@@ -1,3 +1,7 @@
+import {
+  companyPermissionsOf,
+  companyGrantOf,
+} from '../access/company-grants.test-support.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -625,22 +629,31 @@ describe.skipIf(!databaseUrl)(
       await grant('ada', ['context']);
       const actor = await read('/access/current-actor', { subject: 'ada' });
       const company = object(actor.activeCompany);
-      expect(company.opportunityManagerPermissions).toEqual([
+      expect(
+        companyPermissionsOf(company, ['company_opportunity_manager']),
+      ).toEqual([
         'commercial.opportunity.assign',
         'commercial.opportunity.outcome.change',
       ]);
-      expect(company.opportunityManagerPermissionSetVersion).toBe('v2');
-      expect(company.opportunityManagerPermissionAssignmentId).toBe(granted.id);
+      expect(
+        companyGrantOf(company, 'company_opportunity_manager')
+          ?.permissionSetVersion,
+      ).toBe('v2');
+      expect(
+        companyGrantOf(company, 'company_opportunity_manager')?.assignmentId,
+      ).toBe(granted.id);
       for (const absent of [
-        'commercialIntakePermissions',
-        'commercialActivityPermissions',
-        'projectPermissions',
-        'taskPermissions',
-        'pricingConfigurationPermissions',
-        'serviceCataloguePermissions',
+        'company_commercial_intake',
+        'company_commercial_activity_reader',
+        'company_project_access',
+        'company_task_manager',
+        'company_pricing_configuration',
+        'company_service_catalogue',
       ])
-        expect(company).not.toHaveProperty(absent);
-      expect(company.clientPermissions).toEqual([]);
+        expect(companyGrantOf(company, absent)).toBeUndefined();
+      expect(
+        companyPermissionsOf(company, ['company_director_client_access']) ?? [],
+      ).toEqual([]);
       expect(
         (await request('/commercial-intake/requests', { subject: 'ada' }))
           .status,

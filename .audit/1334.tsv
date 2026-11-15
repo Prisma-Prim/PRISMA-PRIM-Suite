@@ -1,0 +1,2 @@
+ts	phase	decision	why	evidence	result
+2026-11-15T11:46:15Z	public contract	Expose only Company identity, required registry grants and existing feature captures; keep server-only authority projections separate from the public API type	Remove redundant wire fields without changing server authorization or feature fences	#1334; #1364; access.types.ts; company-context-authorization.ts	Chosen

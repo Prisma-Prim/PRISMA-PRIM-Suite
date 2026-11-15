@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ActorContext } from '../access/access.types.js';
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -108,13 +109,17 @@ withPostgres('Activity-readable Documents through real PostgreSQL', () => {
     actor.activeCompany = {
       ...actor.activeCompany,
       missionDeliverableAccessAssignmentId: responseString(
-        captured,
-        'missionDeliverableAccessAssignmentId',
+        responseRecord(
+          companyGrantOf(captured, 'company_mission_deliverable_access'),
+        ),
+        'assignmentId',
       ),
       missionDeliverableAccessPermissionSetVersion: 'v1',
       receivedContractAccessAssignmentId: responseString(
-        captured,
-        'receivedContractAccessAssignmentId',
+        responseRecord(
+          companyGrantOf(captured, 'company_received_contract_access'),
+        ),
+        'assignmentId',
       ),
       receivedContractAccessPermissionSetVersion: 'v1',
     };

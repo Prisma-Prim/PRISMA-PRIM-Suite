@@ -143,7 +143,11 @@ function installServer() {
       if (path === '/api/access/current-actor') {
         const value = {
           ...state.actor,
-          activeCompany: { ...state.actor.activeCompany, ...currentCompany },
+          activeCompany: {
+            grants: [],
+            ...state.actor.activeCompany,
+            ...currentCompany,
+          },
         };
         return Response.json(
           state.actorResponse ? state.actorResponse(value) : value,
@@ -355,7 +359,11 @@ it.each(['closed Project', 'historical original Client'] as const)(
     api.state.closed = kind === 'closed Project';
     api.state.actor = {
       ...actor,
-      activeCompany: { ...actor.activeCompany, ...company },
+      activeCompany: {
+        ...actor.activeCompany,
+        grants: actor.activeCompany?.grants ?? [],
+        ...company,
+      },
     };
     render(<App identity={deterministicBrowserIdentity()} />);
     await ready();
@@ -509,6 +517,7 @@ it.each(
               ...actor,
               activeCompany: {
                 ...actor.activeCompany,
+
                 ...company,
                 grants: withoutCompanyGrants(
                   actor.activeCompany?.grants,
@@ -560,6 +569,7 @@ it.each(['task', 'project', 'client', 'captured version'])(
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
+        grants: actor.activeCompany?.grants ?? [],
         ...company,
         ...(kind === 'task'
           ? {
@@ -631,7 +641,11 @@ it('preserves the exact pending and uncertain native creation across discovery/o
   const api = installServer();
   api.state.actor = {
     ...actor,
-    activeCompany: { ...actor.activeCompany, ...company },
+    activeCompany: {
+      ...actor.activeCompany,
+      grants: actor.activeCompany?.grants ?? [],
+      ...company,
+    },
   };
   window.history.replaceState(null, '', '/#projects');
   const writes: Array<{ body: string | undefined; key: string | null }> = [];

@@ -20,14 +20,6 @@ const company: Company = {
   id: 'company',
   displayName: 'Fictional Company',
 
-  documentApproverAssignmentId: 'approver',
-  documentApproverPermissionSetVersion: 'v1',
-  documentContentReaderAssignmentId: 'reader',
-  documentContentReaderPermissionSetVersion: 'v1',
-  documentContentUploaderAssignmentId: 'uploader',
-  documentContentUploaderPermissionSetVersion: 'v1',
-  receivedAddendumAccessAssignmentId: '10000000-0000-4000-8000-000000000005',
-  receivedAddendumAccessPermissionSetVersion: 'v1',
   receivedAddendumClientReadCapture:
     'received-addendum-client-read.v1.' + 'a'.repeat(64),
   grants: withCompanyGrants(

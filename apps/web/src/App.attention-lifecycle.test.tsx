@@ -142,6 +142,7 @@ function server() {
         return Response.json({ events: [] });
       if (url.pathname === '/api/operational-home')
         return Response.json({
+          grants: [],
           companyId,
           today: state.today,
           summaries: holds(

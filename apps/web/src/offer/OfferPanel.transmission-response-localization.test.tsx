@@ -55,11 +55,6 @@ const actor: ActorContext = {
     id: 'company-one',
     displayName: 'Synthetic Company',
 
-    offerPermissions: [
-      'commercial.offer.read',
-      'commercial.offer.transmission.record',
-    ],
-    offerPermissionAssignmentId: 'preparer-assignment-one',
     grants: companyGrants(
       {
         bundle: 'company_commercial_intake',
@@ -255,16 +250,14 @@ function publicTree({
   );
 }
 function permissions(
-  values: NonNullable<
-    NonNullable<ActorContext['activeCompany']>['offerPermissions']
-  >,
+  values: import('./offer-grants.test-fixture').OfferPermission[],
 ): ActorContext {
   if (!actor.activeCompany) throw new Error('Expected synthetic Company.');
   return {
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      offerPermissions: values,
+
       grants: [
         ...withoutCompanyGrants(
           actor.activeCompany.grants,

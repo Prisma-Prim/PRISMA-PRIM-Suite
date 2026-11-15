@@ -232,7 +232,9 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
     return route.fulfill({
       json: {
         ...actorContextFixture,
-        ...(selected === companyA.id ? { activeCompany: companyA } : {}),
+        ...(selected === companyA.id
+          ? { activeCompany: { grants: [], ...companyA } }
+          : {}),
       },
     });
   });
@@ -321,7 +323,10 @@ test('discards a late previous-Company result and removes the frame on logout', 
     const selected = route.request().headers()['x-company-context-id'];
     const company = [companyA, companyB].find((item) => item.id === selected);
     return route.fulfill({
-      json: { ...actor, ...(company ? { activeCompany: company } : {}) },
+      json: {
+        ...actor,
+        ...(company ? { activeCompany: { grants: [], ...company } } : {}),
+      },
     });
   });
   await page.route('**/api/companies', (route) => {

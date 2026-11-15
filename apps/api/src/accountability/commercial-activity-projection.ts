@@ -1,4 +1,4 @@
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import {
   canReadCommercialTarget,
   type CommercialTargetKind,
@@ -128,7 +128,7 @@ export function commercialActivityTargetOf(
  * the active Company.
  */
 export function commercialActivityTarget(
-  company: ActiveCompanyContext,
+  company: CompanyAuthorityContext,
   action: CommercialIntakeActivityAction,
   recorded: {
     companyId: string;
@@ -159,7 +159,7 @@ export function commercialActivityTarget(
  * widening the page.
  */
 export function eligibleCommercialActions(
-  company: ActiveCompanyContext | undefined,
+  company: CompanyAuthorityContext | undefined,
 ): CommercialActivityAction[] {
   const permissions = company?.commercialActivityPermissions ?? [];
   if (!permissions.includes('commercial.activity.read')) return [];

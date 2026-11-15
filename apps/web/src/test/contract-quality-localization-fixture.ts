@@ -374,24 +374,6 @@ export function qualityActor(
     activeCompany: {
       ...actor.activeCompany,
 
-      offerPermissions: [],
-      pricingUserPermissions: [],
-      contractPermissionAssignmentId:
-        role === 'approver' ? undefined : 'quality-preparer-706',
-      contractPermissionSetVersion: role === 'approver' ? undefined : 'v1',
-      contractApproverAssignmentId:
-        role === 'approver' ? 'quality-approver-706' : undefined,
-      contractApproverPermissionSetVersion:
-        role === 'approver' ? 'v1' : undefined,
-      contractPermissions:
-        role === 'reader'
-          ? ['commercial.contract.read']
-          : [
-              'commercial.contract.read',
-              role === 'approver'
-                ? 'commercial.contract.approve'
-                : 'commercial.contract.prepare',
-            ],
       grants:
         role === 'approver'
           ? withCompanyGrants(kept, {

@@ -459,6 +459,7 @@ it('does not publish an older whole Actor after actual Company A→B→A and Rea
             ? {
                 ...freshA,
                 activeCompany: {
+                  grants: [],
                   ...freshA.activeCompany,
                   id: companyB,
                   displayName: 'Company B DEMO',
@@ -507,12 +508,11 @@ it.each([
   },
 ] as const)(
   'requires native UUID prerequisite $field before offering the section',
-  async ({ field, grant }) => {
+  async ({ grant }) => {
     const native: ActorContext = {
       ...knowledgeActor,
       activeCompany: {
         ...knowledgeActor.activeCompany,
-        [field]: 'not-a-native-uuid',
         grants: withCompanyGrants(readerGrants, {
           ...grant,
           assignmentId: 'not-a-native-uuid',

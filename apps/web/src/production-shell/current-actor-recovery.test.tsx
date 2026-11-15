@@ -60,7 +60,11 @@ it.each([
               internalUserId: 'unproved-user',
               ...(selected && scenario.selected === 'same-company'
                 ? {
-                    activeCompany: { id: 'company-a', displayName: 'Unproved' },
+                    activeCompany: {
+                      grants: [],
+                      id: 'company-a',
+                      displayName: 'Unproved',
+                    },
                   }
                 : {}),
             });

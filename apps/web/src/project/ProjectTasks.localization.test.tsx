@@ -733,6 +733,7 @@ it.each(languages)(
     mountTasks({
       ...actor,
       activeCompany: taskReaderCompany({
+        grants: [],
         ...actor.activeCompany,
         id: 'company',
         displayName: 'Synthetic Company',

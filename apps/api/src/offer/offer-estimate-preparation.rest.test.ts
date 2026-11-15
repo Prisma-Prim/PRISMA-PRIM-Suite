@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -442,9 +443,14 @@ withPostgres('Approved-estimate internal Offer preparation REST', () => {
       }),
     );
     expect(actor.activeCompany).toMatchObject({
-      offerPermissionSetVersion: 'v3',
-      offerPermissions: expect.arrayContaining([
-        'commercial.offer.estimate.prepare',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_offer_preparer',
+          permissionSetVersion: 'v3',
+          permissions: expect.arrayContaining([
+            'commercial.offer.estimate.prepare',
+          ]),
+        }),
       ]),
     });
     await fixture.command({
@@ -813,7 +819,10 @@ withPostgres('Approved-estimate internal Offer preparation REST', () => {
         }),
       );
       expect(
-        responseRecord(actor.activeCompany).offerPermissions ?? [],
+        companyPermissionsOf(responseRecord(actor.activeCompany), [
+          'company_offer_preparer',
+          'company_offer_approver',
+        ]) ?? [],
       ).not.toContain('commercial.offer.estimate.prepare');
     },
   );

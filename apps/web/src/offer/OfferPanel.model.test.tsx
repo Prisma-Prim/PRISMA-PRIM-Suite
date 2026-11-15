@@ -121,6 +121,7 @@ describe('Full approved-model Offer journey', () => {
                 ...modelOfferActor,
                 activeCompany: {
                   ...modelOfferActor.activeCompany,
+                  grants: modelOfferActor.activeCompany?.grants ?? [],
                   displayName: 'Replacement Company',
                   id:
                     change === 'company'
@@ -128,9 +129,6 @@ describe('Full approved-model Offer journey', () => {
                       : MODEL_OFFER_COMPANY,
                   ...(change === 'authority'
                     ? {
-                        offerPermissions: ['commercial.offer.read'],
-                        offerPermissionSetVersion: undefined,
-                        offerPermissionAssignmentId: undefined,
                         grants: withoutCompanyGrants(
                           modelOfferActor.activeCompany?.grants,
                           'company_offer_preparer',
@@ -276,9 +274,9 @@ describe('Full approved-model Offer journey', () => {
       ...modelOfferActor,
       activeCompany: {
         ...modelOfferActor.activeCompany,
+        grants: modelOfferActor.activeCompany?.grants ?? [],
         id: MODEL_OFFER_COMPANY,
         displayName: 'Reader Company',
-        offerPermissions: ['commercial.offer.read'] as const,
       },
     };
     // Build mutable permission arrays exactly as ActorContext requires.
@@ -286,9 +284,7 @@ describe('Full approved-model Offer journey', () => {
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        offerPermissions: ['commercial.offer.read'] satisfies NonNullable<
-          typeof modelOfferActor.activeCompany
-        >['offerPermissions'],
+
         grants: [
           ...withoutCompanyGrants(
             actor.activeCompany.grants,
@@ -316,7 +312,7 @@ describe('Full approved-model Offer journey', () => {
           ...reader,
           activeCompany: {
             ...reader.activeCompany,
-            offerPermissions: [],
+
             grants: withoutCompanyGrants(
               reader.activeCompany.grants,
               'company_offer_preparer',

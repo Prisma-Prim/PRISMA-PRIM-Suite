@@ -14,13 +14,6 @@ export const signingActor: ActorContext = {
     id: modelContractFixture().companyId,
     displayName: 'Reported signing DEMO',
 
-    contractSignatureDeclarerAssignmentId: 'declarer-877',
-    contractSignatureDeclarerPermissionSetVersion: 'v1',
-
-    receivedContractAccessAssignmentId: 'received-877',
-    receivedContractAccessPermissionSetVersion: 'v1',
-    documentContentReaderAssignmentId: 'content-877',
-    documentContentReaderPermissionSetVersion: 'v1',
     grants: withCompanyGrants(
       modelContractActor.activeCompany?.grants,
       {

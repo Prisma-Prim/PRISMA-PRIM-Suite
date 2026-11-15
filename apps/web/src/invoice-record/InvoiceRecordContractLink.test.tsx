@@ -163,7 +163,7 @@ it('retires a held token through equal-permission native Contract A → B → A 
       ...actor.activeCompany,
       id: ids.company,
       displayName: 'Fictional Company',
-      contractPermissionAssignmentId: '30000000-0000-4000-8000-000000000002',
+
       grants: withCompanyGrants(actor.activeCompany?.grants, {
         bundle: 'company_contract_preparer',
         version: 'v2',

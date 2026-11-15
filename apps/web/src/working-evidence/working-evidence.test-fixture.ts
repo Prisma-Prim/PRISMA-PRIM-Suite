@@ -30,13 +30,9 @@ export const actor: ActorContext = {
     id: ids.project,
     displayName: 'Fictional Company',
 
-    receivedAuditSourceAccessAssignmentId: ids.project,
-    receivedAuditSourceAccessPermissionSetVersion: 'v1',
     workingEvidenceContextCapture: `working-evidence-context.v1.${'a'.repeat(64)}`,
     workingEvidenceClientReadCapture: `working-evidence-client-read.v1.${'b'.repeat(64)}`,
 
-    documentContentReaderAssignmentId: ids.project,
-    documentContentReaderPermissionSetVersion: 'v1',
     // The screens read these registry-consistent live grants.
     grants: withCompanyGrants(
       documentGrants(

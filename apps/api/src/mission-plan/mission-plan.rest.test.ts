@@ -1,3 +1,4 @@
+import { companyGrantsOf } from '../access/company-grants.test-support.js';
 import { content } from './mission-plan.test-fixtures.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -51,8 +52,10 @@ withPostgres('Company mission plans through public REST', () => {
     await f.grant('/company-context-assignments', member);
     await f.grant('/company-mission-plan-configuration-assignments', member);
     expect(
-      object((await f.read('/access/current-actor', who)).activeCompany)
-        .missionPlanGrants,
+      companyGrantsOf(
+        object((await f.read('/access/current-actor', who)).activeCompany),
+        ['company_mission_plan_configuration', 'company_mission_plan_user'],
+      ),
     ).toMatchObject([
       {
         bundle: 'company_mission_plan_configuration',

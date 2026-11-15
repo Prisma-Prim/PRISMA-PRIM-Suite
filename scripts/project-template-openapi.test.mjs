@@ -191,26 +191,51 @@ test('Template User grants and actor projection reject unknown captured authorit
   const company = {
     id: uuid,
     displayName: 'Company',
-    clientPermissions: [],
-    projectTemplatePermissions: [
-      'project.template.read',
-      'project.template.instantiate',
+    grants: [
+      {
+        bundle: 'company_project_template_user',
+        assignmentId: uuid,
+        permissionSetVersion: 'v1',
+        permissions: ['project.template.read', 'project.template.instantiate'],
+      },
     ],
-    projectTemplatePermissionAssignmentId: uuid,
-    projectTemplatePermissionSetVersion: 'v1',
   };
   accepts(actor, company);
   assert.equal(
-    actor({ ...company, projectTemplatePermissionSetVersion: 'v2' }),
+    actor({
+      ...company,
+      grants: [
+        {
+          ...company.grants[0],
+          permissionSetVersion: 'v2',
+          permissions: [
+            'project.template.read',
+            'project.template.instantiate',
+            'project.template.pilot.read',
+            'project.template.pilot.instantiate',
+          ],
+        },
+      ],
+    }),
     true,
   );
   assert.equal(
     actor({
       ...company,
-      projectTemplatePermissions: ['project.stage.transition'],
+      grants: [
+        { ...company.grants[0], permissions: ['project.stage.transition'] },
+      ],
     }),
     false,
   );
+  for (const permissionSetVersion of [null, 'v3', 'unknown'])
+    assert.equal(
+      actor({
+        ...company,
+        grants: [{ ...company.grants[0], permissionSetVersion }],
+      }),
+      false,
+    );
 });
 
 test('Pilot HTTP schemas keep a closed fixed-Version thirteen-activity shape and require complete copied identities', () => {

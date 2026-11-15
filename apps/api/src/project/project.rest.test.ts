@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool } from 'pg';
 import {
   createIsolatedPostgresTestDatabase,
@@ -215,7 +216,10 @@ withPostgres('Preparatory Project REST', () => {
       company.id,
     );
     const actor = await (await request('/access/current-actor')).json();
-    expect(actor.activeCompany?.projectPermissions ?? []).toEqual([]);
+    expect(
+      companyPermissionsOf(actor.activeCompany, ['company_project_access']) ??
+        [],
+    ).toEqual([]);
     for (const companyId of [company.id, other.id])
       await command(
         '/company-project-assignments',

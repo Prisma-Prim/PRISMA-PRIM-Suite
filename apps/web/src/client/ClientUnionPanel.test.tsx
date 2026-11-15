@@ -1569,7 +1569,11 @@ describe('Client union UI public journey', () => {
           response({
             ...baseActor,
             workspacePermissions: [],
-            activeCompany: { id: 'company-a', displayName: 'PRISMA-PRIM' },
+            activeCompany: {
+              grants: [],
+              id: 'company-a',
+              displayName: 'PRISMA-PRIM',
+            },
           } satisfies ActorContext),
         );
       vi.stubGlobal('fetch', fetcher);

@@ -145,9 +145,6 @@ export function installCurrentWorkApp() {
         actor.activeCompany = {
           ...actor.activeCompany,
           grants,
-
-          missionDeliverableAccessAssignmentId: state.familyId,
-          documentContentReaderAssignmentId: state.readerId,
         };
       }
       if (path.endsWith('/access/current-actor')) {

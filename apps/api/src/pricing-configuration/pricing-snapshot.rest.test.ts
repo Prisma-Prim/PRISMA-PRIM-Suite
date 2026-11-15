@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
 import {
@@ -800,11 +801,18 @@ withPostgres('Pricing Snapshots REST', () => {
     );
     expect(adjustmentCompany).toMatchObject({
       id: fixture.companyId,
-      pricingAdjustmentPermissions: ['commercial.pricing.adjustment.apply'],
-      pricingAdjustmentPermissionAssignmentId: expect.any(String),
-      pricingAdjustmentPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_adjustment',
+          assignmentId: expect.any(String),
+          permissionSetVersion: 'v1',
+          permissions: ['commercial.pricing.adjustment.apply'],
+        }),
+      ]),
     });
-    expect(adjustmentCompany).not.toHaveProperty('pricingUserPermissions');
+    expect(
+      companyGrantOf(adjustmentCompany, 'company_pricing_user'),
+    ).toBeUndefined();
     expect(
       (
         await pool.query(

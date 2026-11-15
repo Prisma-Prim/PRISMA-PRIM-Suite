@@ -1,3 +1,4 @@
+import { readCurrentActor } from '../access/current-actor';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, waitFor } from '@testing-library/react';
 import { render, screen } from '../test/render-with-interface-locale';
@@ -795,15 +796,30 @@ for (const kind of modelKinds)
       },
     ])(
       'fails closed before reading protected content for an $label captured grant',
-      ({ grants }) => {
+      async ({ grants, label }) => {
         const fetch = vi.fn();
         vi.stubGlobal('fetch', fetch);
-        render(
-          <Workspace
-            actor={actorWith(kind, { actor, grants: grants() })}
-            identity={deterministicBrowserIdentity()}
-          />,
-        );
+        const result = await readCurrentActor({
+          api: {
+            request: async () => ({
+              status: 'ok',
+              value: {
+                ...actor,
+                activeCompany: { ...actor.activeCompany, grants: grants() },
+              },
+            }),
+          },
+        });
+        if (label === 'empty') {
+          if (result.status !== 'ok')
+            throw new Error('Expected an empty current grants list');
+          render(
+            <Workspace
+              actor={result.value}
+              identity={deterministicBrowserIdentity()}
+            />,
+          );
+        } else expect(result).toEqual({ status: 'error' });
         expect(
           screen.queryByRole('heading', {
             name: `Consulting ${kind.name} model`,

@@ -135,14 +135,10 @@ async function installRoutes(page: Page, readOnly = false) {
             ? {
                 ...base,
                 activeCompany: {
+                  grants: [],
                   ...activeCompany,
                   ...(state.retired
                     ? {
-                        contractPermissions: [],
-                        contractApproverAssignmentId: undefined,
-                        contractApproverPermissionSetVersion: undefined,
-                        contractPermissionAssignmentId: undefined,
-                        contractPermissionSetVersion: undefined,
                         grants: withoutCompanyGrants(
                           activeCompany?.grants,
                           'company_contract_preparer',

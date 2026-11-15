@@ -38,10 +38,6 @@ export const actor = {
     id: companyId,
     displayName: 'Company DEMO',
 
-    documentContentReaderAssignmentId: 'content-grant',
-    documentContentReaderPermissionSetVersion: 'v1',
-    missionDeliverableAccessAssignmentId: 'mission-grant',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
     grants: withoutCompanyGrants(
       companyGrants(
         {

@@ -50,14 +50,6 @@ test('Prisme Contract Project controls keep keyboard choices and explicit creati
     activeCompany: {
       ...originalActor.activeCompany,
 
-      offerPermissions: [],
-      pricingUserPermissions: [],
-      commercialActivityPermissions: [],
-      contractPermissions: [
-        'commercial.contract.read',
-        'commercial.contract.project.link',
-      ],
-
       // The Contract screens read these grants: Contract preparation with
       // Project linking, Project and Client reads, no Offer or Pricing read.
       grants: withCompanyGrants(

@@ -131,7 +131,11 @@ const actor: ActorContext = {
   email: 'ana@example.test',
   active: true,
   workspacePermissions: ['client.manage'],
-  activeCompany: { id: 'company-directory', displayName: 'Companie {company}' },
+  activeCompany: {
+    grants: [],
+    id: 'company-directory',
+    displayName: 'Companie {company}',
+  },
 };
 
 function renderWorkspace(workspaceActor: ActorContext = actor) {

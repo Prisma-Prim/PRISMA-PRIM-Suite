@@ -157,14 +157,6 @@ async function installRoutes(
             activeCompany: {
               ...company,
 
-              offerApproverAssignmentId:
-                readOnly || retired ? undefined : 'offer-approver-699',
-              offerApproverPermissionSetVersion:
-                readOnly || retired ? undefined : 'v1',
-              offerPermissions:
-                readOnly || retired
-                  ? ['commercial.offer.read']
-                  : ['commercial.offer.read', 'commercial.offer.approve'],
               grants: companyGrants(
                 {
                   bundle: 'company_director_client_access',

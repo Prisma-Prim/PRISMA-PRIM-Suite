@@ -294,6 +294,7 @@ function renderDossier({
           server.actor = {
             ...server.actor,
             activeCompany: {
+              grants: [],
               ...server.actor.activeCompany,
               id: 'company-b',
               displayName: 'Company B',

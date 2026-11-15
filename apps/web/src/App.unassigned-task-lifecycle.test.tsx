@@ -123,7 +123,11 @@ function installServer() {
       if (path === '/api/access/current-actor')
         return Response.json({
           ...state.actor,
-          activeCompany: { ...state.actor.activeCompany, ...currentCompany },
+          activeCompany: {
+            grants: [],
+            ...state.actor.activeCompany,
+            ...currentCompany,
+          },
         });
       if (path === '/api/companies')
         return Response.json([company, otherCompany]);
@@ -293,7 +297,11 @@ it.each(['closed Project', 'historical original Client'] as const)(
     api.state.closed = kind === 'closed Project';
     api.state.actor = {
       ...actor,
-      activeCompany: { ...actor.activeCompany, ...company },
+      activeCompany: {
+        grants: [],
+        ...actor.activeCompany,
+        ...company,
+      },
     };
     render(<App identity={deterministicBrowserIdentity()} />);
     await ready();

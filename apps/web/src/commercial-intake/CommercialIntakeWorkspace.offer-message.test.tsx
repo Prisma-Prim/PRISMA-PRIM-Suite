@@ -57,7 +57,6 @@ function reader(): ActorContext {
       id: first.companyId,
       displayName: 'Message Company',
 
-      offerPermissions: ['commercial.offer.read'],
       offerMessageReadCapture: capture,
 
       grants: companyGrants(

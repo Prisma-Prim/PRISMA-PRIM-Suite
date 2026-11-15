@@ -34,13 +34,6 @@ const actor: ActorContext = {
     id: 'company-1',
     displayName: 'Synthetic Company',
 
-    offerPermissionAssignmentId: 'preparer-2',
-    offerPermissionSetVersion: 'v2',
-    offerPermissions: [
-      'commercial.offer.read',
-      'commercial.offer.prepare',
-      'commercial.offer.estimate.prepare',
-    ],
     grants: withCompanyGrants(
       profitabilityActor.activeCompany?.grants,
       {
@@ -318,13 +311,11 @@ it.each(['identity', 'company', 'authority'])(
             ...actor,
             activeCompany: {
               ...actor.activeCompany,
+              grants: actor.activeCompany?.grants ?? [],
               id: change === 'company' ? 'company-2' : 'company-1',
               displayName: 'Replacement Company',
               ...(change === 'authority'
                 ? {
-                    offerPermissions: ['commercial.offer.read'],
-                    offerPermissionAssignmentId: undefined,
-                    offerPermissionSetVersion: undefined,
                     grants: withoutCompanyGrants(
                       actor.activeCompany?.grants,
                       'company_offer_preparer',
@@ -373,11 +364,10 @@ it('reopens price-only content without requesting economic history or source det
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
+
       id: 'company-1',
       displayName: 'Synthetic Company',
-      offerPermissions: ['commercial.offer.read'],
-      offerPermissionAssignmentId: undefined,
-      offerPermissionSetVersion: undefined,
+
       // Offer read without estimate preparation: the lowest Offer Preparer
       // version, without any Profitability grant.
       grants: withCompanyGrants(

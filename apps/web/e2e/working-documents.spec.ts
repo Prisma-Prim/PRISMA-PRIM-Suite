@@ -614,9 +614,6 @@ test('designates official Versions, starts and corrects a new draft and keeps th
                         )?.assignmentId ?? 'fixture-client-access',
                     },
                   ),
-
-                  documentApproverAssignmentId: 'approver-assignment',
-                  documentApproverPermissionSetVersion: 'v1',
                 },
               }
             : {}),

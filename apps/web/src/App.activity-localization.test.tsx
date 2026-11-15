@@ -48,7 +48,6 @@ const reader = {
     id: companyId,
     displayName: 'PRISMA-PRIM',
 
-    commercialActivityPermissions: ['commercial.activity.read'],
     grants: withoutCompanyGrants(
       companyGrants({
         bundle: 'company_commercial_intake',

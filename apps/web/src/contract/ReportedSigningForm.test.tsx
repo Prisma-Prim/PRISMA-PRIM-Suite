@@ -213,9 +213,6 @@ it('preserves the declaration draft on unrelated model and Mission grant loss bu
       ...signingActor,
       activeCompany: {
         ...c,
-        contractModelGrants: [],
-        missionDeliverableAccessAssignmentId: undefined,
-        missionDeliverableAccessPermissionSetVersion: undefined,
       },
     }),
   );

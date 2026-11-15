@@ -1,73 +1,80 @@
 import { describe, expect, it } from 'vitest';
-import { actorWithComparableDocumentPermissions } from './equivalent-actor';
+import { actorWithComparableCompanyGrants } from './equivalent-actor';
 
-const documentPermissions = [
-  'document.project.manage',
-  'document.read',
-  'document.register',
-  'document.reference.read',
-  'document.correct',
-  'document.version.manage',
-];
-
+const permissions = ['document.read', 'document.register'];
+const grant = {
+  bundle: 'company_document_registrar',
+  assignmentId: 'captured-registrar',
+  permissionSetVersion: 'v1',
+  permissions,
+};
 const actor = {
   internalUserId: 'user-1',
-  displayName: 'Ada Ionescu',
+  displayName: 'Fictional member',
   activeCompany: {
     id: 'company-1',
-    displayName: 'PRISMA-PRIM',
-    documentPermissionSetVersion: 'v3',
-    documentPermissions,
+    displayName: 'Fictional Company',
+    grants: [grant],
   },
 };
 
 describe('equivalent actor evidence', () => {
-  it('accepts the same document permissions in another order', () => {
+  it('accepts the same captured permissions in another order', () => {
     const reordered = {
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        documentPermissions: [
-          ...documentPermissions.slice(1),
-          documentPermissions[0],
-        ],
+        grants: [{ ...grant, permissions: [...permissions].reverse() }],
       },
     };
-
-    expect(actorWithComparableDocumentPermissions(reordered)).toEqual(
-      actorWithComparableDocumentPermissions(actor),
+    expect(actorWithComparableCompanyGrants(reordered)).toEqual(
+      actorWithComparableCompanyGrants(actor),
     );
   });
 
   it.each([
-    ['a missing permission', documentPermissions.slice(1)],
-    [
-      'an extra permission',
-      [...documentPermissions, 'document.version.designate_official'],
-    ],
-    [
-      'a duplicate permission',
-      [...documentPermissions, documentPermissions[0]],
-    ],
-  ])('rejects %s', (_case, changedPermissions) => {
-    const changed = {
+    ['a missing permission', permissions.slice(1)],
+    ['an extra permission', [...permissions, 'document.correct']],
+    ['a duplicate permission', [...permissions, permissions[0]]],
+  ])('rejects %s', (_name, changed) => {
+    const next = {
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        documentPermissions: changedPermissions,
+        grants: [{ ...grant, permissions: changed }],
       },
     };
-
-    expect(actorWithComparableDocumentPermissions(changed)).not.toEqual(
-      actorWithComparableDocumentPermissions(actor),
+    expect(actorWithComparableCompanyGrants(next)).not.toEqual(
+      actorWithComparableCompanyGrants(actor),
     );
   });
 
-  it('rejects an unrelated changed actor field', () => {
-    const changed = { ...actor, displayName: 'Changed actor' };
+  it.each([
+    { name: 'no grant', grants: [] },
+    {
+      name: 'a replaced assignment',
+      grants: [{ ...grant, assignmentId: 'replacement' }],
+    },
+    {
+      name: 'a changed version',
+      grants: [{ ...grant, permissionSetVersion: 'v2' }],
+    },
+    {
+      name: 'a changed bundle',
+      grants: [{ ...grant, bundle: 'company_document_approver' }],
+    },
+  ])('keeps $name visible', ({ grants }) => {
+    expect(
+      actorWithComparableCompanyGrants({
+        ...actor,
+        activeCompany: { ...actor.activeCompany, grants },
+      }),
+    ).not.toEqual(actorWithComparableCompanyGrants(actor));
+  });
 
-    expect(actorWithComparableDocumentPermissions(changed)).not.toEqual(
-      actorWithComparableDocumentPermissions(actor),
-    );
+  it('rejects an unrelated changed actor field', () => {
+    expect(
+      actorWithComparableCompanyGrants({ ...actor, displayName: 'Changed' }),
+    ).not.toEqual(actorWithComparableCompanyGrants(actor));
   });
 });

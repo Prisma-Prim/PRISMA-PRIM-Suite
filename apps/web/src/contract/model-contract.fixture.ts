@@ -15,20 +15,7 @@ export const modelContractActor: ActorContext = {
     ...modelOfferActor.activeCompany,
     id: modelOfferFixture().companyId,
     displayName: 'Synthetic Contract Company',
-    contractPermissionSetVersion: 'v2',
-    contractPermissionAssignmentId: 'contract-preparer-868',
-    contractApproverPermissionSetVersion: 'v2',
-    contractApproverAssignmentId: 'contract-approver-868',
-    contractPermissions: [
-      'commercial.contract.read',
-      'commercial.contract.prepare',
-      'commercial.contract.approve',
-      'commercial.contract.project.link',
-      'commercial.contract.signature.record',
-      'commercial.contract.model.select',
-      'commercial.contract.model_based.prepare',
-      'commercial.contract.model_based.approve',
-    ],
+
     // Contract screens read these grants; the per-bundle fields above stay
     // for the Offer and commercial PDF screens that still read them.
     grants: companyGrants(

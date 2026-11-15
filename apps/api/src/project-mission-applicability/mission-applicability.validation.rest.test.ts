@@ -1,3 +1,7 @@
+import {
+  companyPermissionsOf,
+  companyGrantOf,
+} from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
@@ -102,10 +106,16 @@ describe.skipIf(!url)(
       let company = record(
         (await json(await fixture.call('/access/current-actor'))).activeCompany,
       );
-      expect(company.missionApplicabilityProposalPermissions).toEqual([
-        'project.mission_applicability.propose',
-      ]);
-      expect(company.missionApplicabilityDecisionPermissions).toBeUndefined();
+      expect(
+        companyPermissionsOf(company, [
+          'company_mission_applicability_coordinator',
+        ]),
+      ).toEqual(['project.mission_applicability.propose']);
+      expect(
+        companyPermissionsOf(company, [
+          'company_mission_applicability_approver',
+        ]),
+      ).toBeUndefined();
       const proposal = await fixture.call(c.path, {
         method: 'POST',
         key: 'independent-proposal-demo',
@@ -129,13 +139,17 @@ describe.skipIf(!url)(
       company = record(
         (await json(await fixture.call('/access/current-actor'))).activeCompany,
       );
-      expect(company.missionApplicabilityDecisionPermissions).toEqual([
+      expect(
+        companyPermissionsOf(company, [
+          'company_mission_applicability_approver',
+        ]),
+      ).toEqual([
         'project.mission_applicability.decide',
         'project.mission_applicability.restore',
       ]);
-      expect(company.missionResultReviewPermissions).toEqual([
-        'project.mission_result.review',
-      ]);
+      expect(
+        companyPermissionsOf(company, ['company_mission_result_reviewer']),
+      ).toEqual(['project.mission_result.review']);
       const rejected = await fixture.call(c.path, {
         method: 'POST',
         key: 'independent-decision-demo',
@@ -177,8 +191,12 @@ describe.skipIf(!url)(
       const newCompany = record(
         (await json(await fixture.call('/access/current-actor'))).activeCompany,
       );
-      expect(newCompany.missionApplicabilityCoordinatorAssignmentId).not.toBe(
-        company.missionApplicabilityCoordinatorAssignmentId,
+      expect(
+        companyGrantOf(newCompany, 'company_mission_applicability_coordinator')
+          ?.assignmentId,
+      ).not.toBe(
+        companyGrantOf(company, 'company_mission_applicability_coordinator')
+          ?.assignmentId,
       );
       expect(
         await json(

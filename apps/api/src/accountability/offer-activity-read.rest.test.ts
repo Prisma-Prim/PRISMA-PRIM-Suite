@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
@@ -178,7 +179,12 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
       INTAKE,
       ACTIVITY_READER,
     ]);
-    expect(reader.activeCompany.offerPermissions).toBeUndefined();
+    expect(
+      companyPermissionsOf(reader.activeCompany, [
+        'company_offer_preparer',
+        'company_offer_approver',
+      ]),
+    ).toBeUndefined();
     const withoutOfferRead = await activityLog(READER, setup.companyId);
     expect(offerEvents(withoutOfferRead)).toEqual([]);
     expect(withoutOfferRead.events.map((event) => event.action)).toEqual(
@@ -196,9 +202,12 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
       OFFER_APPROVER,
       ACTIVITY_READER,
     ]);
-    expect(reader.activeCompany.offerPermissions).toContain(
-      'commercial.offer.read',
-    );
+    expect(
+      companyPermissionsOf(reader.activeCompany, [
+        'company_offer_preparer',
+        'company_offer_approver',
+      ]),
+    ).toContain('commercial.offer.read');
     const readerEvents = async () =>
       offerEvents(await activityLog(READER, setup.companyId));
     expect((await readerEvents()).map((event) => event.action)).toEqual([

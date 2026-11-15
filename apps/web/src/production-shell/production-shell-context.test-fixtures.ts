@@ -45,7 +45,14 @@ export function jsonResponse(value: unknown): Response {
 }
 
 export function selectedActor(id: string, displayName: string): ActorContext {
-  return { ...baseActor, activeCompany: { id, displayName } };
+  return {
+    ...baseActor,
+    activeCompany: {
+      grants: [],
+      id,
+      displayName,
+    },
+  };
 }
 
 export function activeCompanyId(

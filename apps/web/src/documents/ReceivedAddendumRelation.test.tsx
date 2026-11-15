@@ -45,15 +45,9 @@ function actor(): ActorContext {
     activeCompany: {
       id: companyId,
       displayName: 'Fictional Company',
-      receivedAddendumAccessAssignmentId:
-        '10000000-0000-4000-8000-000000000005',
-      receivedAddendumAccessPermissionSetVersion: 'v1',
+
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
-
-      contractPermissions: ['commercial.contract.read'],
-      contractPermissionAssignmentId: 'native-contract',
-      contractPermissionSetVersion: 'v2',
 
       grants: companyGrants(
         {
@@ -220,10 +214,10 @@ it('keeps a held full-Actor recovery from overwriting a newer unrelated Actor wi
       actor={{
         ...currentActor,
         activeCompany: {
+          grants: [],
           ...currentActor.activeCompany,
           id: companyId,
           displayName: 'Fictional Company',
-          contractModelGrants: { unrelatedReplacement: true },
         },
       }}
       identity={identity}

@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -1336,11 +1337,16 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
     const context = await read('/access/current-actor', {
       subject: 'maria',
     });
-    expect(object(context.activeCompany).projectPermissions).toBe(undefined);
-    expect(object(context.activeCompany).projectApproverPermissions).toEqual([
-      'project.lifecycle.transition',
-      'project.close',
-    ]);
+    expect(
+      companyPermissionsOf(object(context.activeCompany), [
+        'company_project_access',
+      ]),
+    ).toBe(undefined);
+    expect(
+      companyPermissionsOf(object(context.activeCompany), [
+        'company_project_approver',
+      ]),
+    ).toEqual(['project.lifecycle.transition', 'project.close']);
     // Unknown, other-Company and other-Workspace Projects.
     const bic = string(
       (await command('/companies', { displayName: 'BIC' })).id,
@@ -1378,16 +1384,21 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
         .activeCompany,
     );
     expect(holder).toMatchObject({
-      projectPermissions: ['project.read', 'project.create'],
-      projectApproverPermissions: [
-        'project.lifecycle.transition',
-        'project.close',
-      ],
-      projectApproverPermissionAssignmentId: await assignmentOf(
-        'company_project_approver',
-        approver,
-      ),
-      projectApproverPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_project_approver',
+          assignmentId: await assignmentOf(
+            'company_project_approver',
+            approver,
+          ),
+          permissionSetVersion: 'v1',
+          permissions: ['project.lifecycle.transition', 'project.close'],
+        }),
+        expect.objectContaining({
+          bundle: 'company_project_access',
+          permissions: ['project.read', 'project.create'],
+        }),
+      ]),
     });
     await committed(activation());
     expect(await projectState()).toMatchObject({ status: 'active' });
@@ -1414,9 +1425,11 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
         const actor = await read('/access/current-actor', {
           subject: 'aprobator',
         });
-        expect(object(actor.activeCompany).projectApproverPermissions).toBe(
-          undefined,
-        );
+        expect(
+          companyPermissionsOf(object(actor.activeCompany), [
+            'company_project_approver',
+          ]),
+        ).toBe(undefined);
         expect((await transition(activation())).status).toBe(403);
         expect(
           (

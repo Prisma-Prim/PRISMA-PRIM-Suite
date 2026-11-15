@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "01a1df02-f801-70f3-8341-3f1002c4c507",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1334,
+  "pullRequest": 1419,
+  "harness": "codex-local",
+  "figuresSource": "codex-rollout",
+  "time": {
+    "start": "2026-11-15T11:41:16.727Z",
+    "end": "2026-11-15T12:37:14.025Z",
+    "durationSeconds": 3357
+  },
+  "tokens": {
+    "input": 252534,
+    "output": 79175,
+    "cacheCreation": 0,
+    "cacheRead": 19330688
+  },
+  "models": [
+    {
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 252534,
+        "output": 79175,
+        "cacheCreation": 0,
+        "cacheRead": 19330688
+      },
+      "estimatedPriceUsd": "not reported"
+    }
+  ],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Own distinct Codex rollout only; local focused proof and desktop/narrow journey passed. Caught indirect model grant reader. Snapshot taken before final CI/review; missing usage or pricing stays not reported."
+  }
+}

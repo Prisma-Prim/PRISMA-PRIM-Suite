@@ -160,7 +160,7 @@ it('uses captured invoice authority independently and refuses duplicate, unknown
   // The current Actor parser accepts these lists; the invoice family refuses
   // them on its own.
   for (const grants of [
-    undefined,
+    [],
     withoutCompanyGrants(
       reader.grants,
       'company_invoice_reader',
@@ -194,6 +194,7 @@ it('uses captured invoice authority independently and refuses duplicate, unknown
   }
   // It refuses these for the whole current Actor (#1332).
   for (const grants of [
+    undefined,
     null,
     [...reader.grants, financial],
     [...reader.grants, { ...family, assignmentId: invoiceUiIds.replacement }],

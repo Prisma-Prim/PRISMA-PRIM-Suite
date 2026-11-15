@@ -140,6 +140,7 @@ test('registers, reads and server-activates the first Company after an exact unc
     json: {
       ...actorContextFixture,
       activeCompany: {
+        grants: [],
         id: company.id,
         displayName: company.displayName,
       },

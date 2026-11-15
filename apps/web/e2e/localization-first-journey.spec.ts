@@ -106,6 +106,7 @@ async function installJourneyRoutes(
         route.request().headers()['x-company-context-id'] === company.id
           ? {
               activeCompany: {
+                grants: [],
                 id: company.id,
                 displayName: company.displayName,
               },

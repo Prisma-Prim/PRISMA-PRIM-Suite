@@ -240,6 +240,7 @@ it('filters only loaded visible fields in server order and resets for a new Comp
       actor={{
         ...actor,
         activeCompany: {
+          grants: [],
           ...actor.activeCompany,
           id: 'company-other',
           displayName: 'Other Company',
@@ -493,6 +494,7 @@ it('restricts loaded working Documents to one dossier identity and returns to th
       actor={{
         ...actor,
         activeCompany: {
+          grants: [],
           ...actor.activeCompany,
           id: 'company-other',
           displayName: 'Other Company',

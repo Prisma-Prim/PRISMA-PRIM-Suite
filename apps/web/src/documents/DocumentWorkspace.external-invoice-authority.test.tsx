@@ -29,9 +29,6 @@ function withoutSource(): ActorContext {
       ...actor.activeCompany,
       id: ids.company,
       displayName: 'Fictional Company',
-      contractPermissions: [],
-
-      contractPermissionAssignmentId: 'replacement-contract',
 
       grants: withoutCompanyGrants(
         actor.activeCompany?.grants,
@@ -189,7 +186,7 @@ it('conserves an uncertain native upload through Contract and Opportunity captur
           ...actor.activeCompany,
           id: ids.company,
           displayName: 'Fictional Company',
-          contractPermissionAssignmentId: 'new-contract-capture',
+
           grants: withCompanyGrants(actor.activeCompany?.grants, {
             bundle: 'company_contract_preparer',
             version: 'v2',

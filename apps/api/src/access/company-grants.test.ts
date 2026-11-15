@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeCompanyGrants } from './company-grants.js';
+import type { ActiveCompanyContext } from './access.types.js';
 import {
   COMPANY_ROLE_BUNDLES,
   companyRolePermissionsFor,
@@ -19,15 +20,18 @@ describe('Company grants description', () => {
     (bundle) => {
       const versions = Object.keys(COMPANY_ROLE_BUNDLES[bundle].versions);
       for (const version of versions.length === 0 ? [null] : versions) {
-        expect(
-          describeCompanyGrants([
+        const company: ActiveCompanyContext = {
+          id: 'company',
+          displayName: 'Fictional Company',
+          grants: describeCompanyGrants([
             {
               bundle,
               assignmentId: 'assignment',
               permissionSetVersion: version,
             },
           ]),
-        ).toEqual([
+        };
+        expect(company.grants).toEqual([
           {
             bundle,
             assignmentId: 'assignment',

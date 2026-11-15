@@ -29,26 +29,6 @@ const actor = {
   activeCompany: {
     ...company,
 
-    pricingUserPermissionAssignmentId: 'pricing-one',
-    pricingUserPermissionSetVersion: 'v1',
-    pricingUserPermissions: [
-      'commercial.offering.read',
-      'commercial.pricing.configuration.read',
-      'commercial.pricing.calculate',
-      'commercial.pricing.snapshot.read',
-    ],
-    contractPermissions: [
-      'commercial.contract.read',
-      'commercial.contract.prepare',
-      'commercial.contract.project.link',
-      'commercial.contract.approve',
-      'commercial.contract.signature.record',
-    ],
-    contractApproverAssignmentId: 'approver-one',
-    contractApproverPermissionSetVersion: 'v1',
-    contractPermissionAssignmentId: 'contract-grant',
-    contractPermissionSetVersion: 'v1',
-
     // The Contract screens read these grants; the screens of areas not
     // migrated yet still read the per-bundle fields above.
     grants: companyGrants(

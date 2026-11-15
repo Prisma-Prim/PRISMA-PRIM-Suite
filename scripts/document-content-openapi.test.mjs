@@ -215,12 +215,20 @@ test('the actor contract admits explicit captured-v1 Document content grants and
   const activeCompany = {
     id: uuid,
     displayName: 'Company DEMO',
-    clientPermissions: [],
-    documentPermissions: ['document.content.read', 'document.content.upload'],
-    documentContentReaderAssignmentId: uuid,
-    documentContentReaderPermissionSetVersion: 'v1',
-    documentContentUploaderAssignmentId: uuid,
-    documentContentUploaderPermissionSetVersion: 'v1',
+    grants: [
+      {
+        bundle: 'company_document_content_reader',
+        assignmentId: uuid,
+        permissionSetVersion: 'v1',
+        permissions: ['document.content.read'],
+      },
+      {
+        bundle: 'company_document_content_uploader',
+        assignmentId: '22222222-2222-4222-8222-222222222222',
+        permissionSetVersion: 'v1',
+        permissions: ['document.content.upload'],
+      },
+    ],
   };
   const actor = {
     internalUserId: uuid,
@@ -234,12 +242,19 @@ test('the actor contract admits explicit captured-v1 Document content grants and
     activeCompany,
   };
   assert.equal(validate(actor), true, ajv.errorsText(validate.errors));
-  for (const key of [
-    'documentContentReaderPermissionSetVersion',
-    'documentContentUploaderPermissionSetVersion',
-  ]) {
+  for (const index of [0, 1]) {
     assert.equal(
-      validate({ ...actor, activeCompany: { ...activeCompany, [key]: 'v2' } }),
+      validate({
+        ...actor,
+        activeCompany: {
+          ...activeCompany,
+          grants: activeCompany.grants.map((grant, position) =>
+            position === index
+              ? { ...grant, permissionSetVersion: 'v2' }
+              : grant,
+          ),
+        },
+      }),
       false,
     );
   }
@@ -248,7 +263,11 @@ test('the actor contract admits explicit captured-v1 Document content grants and
       ...actor,
       activeCompany: {
         ...activeCompany,
-        documentPermissions: ['document.content.delete'],
+        grants: activeCompany.grants.map((grant, index) =>
+          index === 0
+            ? { ...grant, permissions: ['document.content.delete'] }
+            : grant,
+        ),
       },
     }),
     false,

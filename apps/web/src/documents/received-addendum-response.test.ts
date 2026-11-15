@@ -349,8 +349,7 @@ it('rejects Addendum Project association projections even with the exact indepen
     activeCompany: {
       ...completeActor.activeCompany,
       id: parentContractId,
-      receivedAddendumAccessAssignmentId: registeredBy.workspaceMembershipId,
-      receivedAddendumAccessPermissionSetVersion: 'v1',
+
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
 

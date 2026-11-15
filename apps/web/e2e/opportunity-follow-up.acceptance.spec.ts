@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import {
+  companyGrantOf,
+  companyPermissionsOf,
+} from './public-company-grants.test-support';
 import { expect, test, type Page } from '@playwright/test';
 import { selectOption } from './select-option';
 import { activate, openRequestCase } from './opportunity-follow-up-case';
@@ -264,8 +268,15 @@ test(`conserves manual Opportunity follow-up, private lifetimes and native admin
   const initialActor = object(
     (await read('/access/current-actor', companyId)).activeCompany,
   );
-  expect(initialActor.clientPermissions).toEqual([]);
-  expect(initialActor.opportunityFollowUpPermissions).toBeUndefined();
+  expect(
+    companyPermissionsOf(initialActor, ['company_director_client_access']) ??
+      [],
+  ).toEqual([]);
+  expect(
+    companyPermissionsOf(initialActor, [
+      'company_opportunity_follow_up_coordinator',
+    ]),
+  ).toBeUndefined();
   expect(initialActor.opportunityFollowUpReadCapture).toBeUndefined();
   const beforeGrant = await page.request.get(
     `${origin}/commercial-intake/opportunities/${alpha.opportunityId}/follow-up`,
@@ -368,18 +379,30 @@ test(`conserves manual Opportunity follow-up, private lifetimes and native admin
   const granted = object(
     (await read('/access/current-actor', companyId)).activeCompany,
   );
-  expect(granted.opportunityFollowUpPermissions).toEqual([
+  expect(
+    companyPermissionsOf(granted, [
+      'company_opportunity_follow_up_coordinator',
+    ]),
+  ).toEqual([
     'commercial.opportunity.follow_up.read',
     'commercial.opportunity.follow_up.manage',
   ]);
-  expect(granted.opportunityFollowUpCoordinatorPermissionSetVersion).toBe('v1');
-  expect(text(granted.opportunityFollowUpCoordinatorAssignmentId)).toMatch(
-    /^[0-9a-f-]{36}$/u,
-  );
+  expect(
+    companyGrantOf(granted, 'company_opportunity_follow_up_coordinator')
+      ?.permissionSetVersion,
+  ).toBe('v1');
+  expect(
+    text(
+      companyGrantOf(granted, 'company_opportunity_follow_up_coordinator')
+        ?.assignmentId,
+    ),
+  ).toMatch(/^[0-9a-f-]{36}$/u);
   expect(text(granted.opportunityFollowUpReadCapture)).toMatch(
     /^opportunity-follow-up-read\.v1\.[a-f0-9]{64}$/u,
   );
-  expect(granted.clientPermissions).toEqual([]);
+  expect(
+    companyPermissionsOf(granted, ['company_director_client_access']) ?? [],
+  ).toEqual([]);
 
   const intake = page.locator('.commercial-intake-workspace');
   async function openWorkspace() {
@@ -1257,7 +1280,10 @@ test(`conserves manual Opportunity follow-up, private lifetimes and native admin
     .fill(independentReason);
   try {
     const lostCapture = await administerOwnerClient('revoke');
-    expect(lostCapture.clientPermissions).toEqual([]);
+    expect(
+      companyPermissionsOf(lostCapture, ['company_director_client_access']) ??
+        [],
+    ).toEqual([]);
     await expect(
       ownerDiscovery.getByLabel(copy('through'), { exact: true }),
     ).toHaveValue('');
@@ -1277,11 +1303,19 @@ test(`conserves manual Opportunity follow-up, private lifetimes and native admin
     ownerDiscovery.locator('.opportunity-follow-up-results > li'),
   ).toHaveCount(0);
   const clientCaptureB = await administerOwnerClient('grant');
-  expect(clientCaptureB.clientPermissionAssignmentId).not.toBe(
-    clientCaptureA.clientPermissionAssignmentId,
+  expect(
+    companyGrantOf(clientCaptureB, 'company_director_client_access')
+      ?.assignmentId,
+  ).not.toBe(
+    companyGrantOf(clientCaptureA, 'company_director_client_access')
+      ?.assignmentId,
   );
-  expect(clientCaptureB.clientPermissions).toEqual(
-    clientCaptureA.clientPermissions,
+  expect(
+    companyPermissionsOf(clientCaptureB, ['company_director_client_access']) ??
+      [],
+  ).toEqual(
+    companyPermissionsOf(clientCaptureA, ['company_director_client_access']) ??
+      [],
   );
   await expect(
     ownerDiscovery.getByLabel(copy('through'), { exact: true }),
@@ -1395,11 +1429,21 @@ test(`conserves manual Opportunity follow-up, private lifetimes and native admin
   const replacement = object(
     (await read('/access/current-actor', companyId)).activeCompany,
   );
-  expect(replacement.opportunityFollowUpPermissions).toEqual(
-    granted.opportunityFollowUpPermissions,
+  expect(
+    companyPermissionsOf(replacement, [
+      'company_opportunity_follow_up_coordinator',
+    ]),
+  ).toEqual(
+    companyPermissionsOf(granted, [
+      'company_opportunity_follow_up_coordinator',
+    ]),
   );
-  expect(replacement.opportunityFollowUpCoordinatorAssignmentId).not.toBe(
-    granted.opportunityFollowUpCoordinatorAssignmentId,
+  expect(
+    companyGrantOf(replacement, 'company_opportunity_follow_up_coordinator')
+      ?.assignmentId,
+  ).not.toBe(
+    companyGrantOf(granted, 'company_opportunity_follow_up_coordinator')
+      ?.assignmentId,
   );
   expect(replacement.opportunityFollowUpReadCapture).not.toBe(
     granted.opportunityFollowUpReadCapture,

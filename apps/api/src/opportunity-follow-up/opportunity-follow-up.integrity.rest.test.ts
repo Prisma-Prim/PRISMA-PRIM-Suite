@@ -1,3 +1,4 @@
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import {
   afterAll,
@@ -53,7 +54,10 @@ describe.skipIf(!databaseUrl)(
       async function rejectNative(
         input: unknown,
         constraint: string,
-        assignmentId = company.opportunityFollowUpCoordinatorAssignmentId,
+        assignmentId = companyGrantOf(
+          company,
+          'company_opportunity_follow_up_coordinator',
+        )?.assignmentId,
       ) {
         const before = await counts();
         await expect(
@@ -66,7 +70,8 @@ describe.skipIf(!databaseUrl)(
               actor.workspaceMembershipId,
               actor.internalUserId,
               assignmentId,
-              company.commercialIntakePermissionAssignmentId,
+              companyGrantOf(company, 'company_commercial_intake')
+                ?.assignmentId,
               randomUUID(),
               JSON.stringify({
                 format: 'opportunity-follow-up.v1',
@@ -221,8 +226,9 @@ describe.skipIf(!databaseUrl)(
             commandId,
             actor.workspaceMembershipId,
             actor.internalUserId,
-            company.opportunityFollowUpCoordinatorAssignmentId,
-            company.commercialIntakePermissionAssignmentId,
+            companyGrantOf(company, 'company_opportunity_follow_up_coordinator')
+              ?.assignmentId,
+            companyGrantOf(company, 'company_commercial_intake')?.assignmentId,
             JSON.stringify(intent),
             JSON.stringify(receipt),
             recordedAt,

@@ -1,5 +1,5 @@
 import { selectOption } from './select-option';
-import { actorWithComparableDocumentPermissions } from '../src/test/equivalent-actor';
+import { actorWithComparableCompanyGrants } from '../src/test/equivalent-actor';
 import { test } from './client-registration-diagnostics';
 import {
   holdNextClientRegistration,
@@ -235,8 +235,8 @@ async function refreshActiveCompany({
     companyId,
   );
   const actualActor: unknown = await refreshedActor.json();
-  expect(actorWithComparableDocumentPermissions(actualActor)).toEqual(
-    actorWithComparableDocumentPermissions(expectedActor),
+  expect(actorWithComparableCompanyGrants(actualActor)).toEqual(
+    actorWithComparableCompanyGrants(expectedActor),
   );
   expect((await activity).status()).toBe(200);
   // The enabled Search action proves the recovery callback has finished before

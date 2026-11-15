@@ -413,7 +413,11 @@ describe('multi-Company summaries through the HTTP boundary', () => {
     {
       name: 'wrong Company',
       change: {
-        activeCompany: { id: 'guessed-company', displayName: 'Hidden' },
+        activeCompany: {
+          grants: [],
+          id: 'guessed-company',
+          displayName: 'Hidden',
+        },
       },
     },
     {
@@ -670,7 +674,11 @@ describe('multi-Company summaries through the HTTP boundary', () => {
     const api = server();
     api.state.actor = (id) => ({
       ...actorFor(id),
-      activeCompany: { id, displayName: 'Context only' },
+      activeCompany: {
+        grants: [],
+        id,
+        displayName: 'Context only',
+      },
     });
     mount();
     await open();

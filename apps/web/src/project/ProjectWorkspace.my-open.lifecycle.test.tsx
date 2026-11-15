@@ -841,6 +841,7 @@ it.each(['Company', 'Membership', 'Internal User', 'session'] as const)(
         ? {
             ...actor,
             activeCompany: {
+              grants: [],
               ...actor.activeCompany,
               id: 'other-company',
               displayName: 'Other Company',
@@ -1567,6 +1568,7 @@ it.each(
             activeCompany:
               retirement === 'Company'
                 ? {
+                    grants: [],
                     ...changingActor.activeCompany,
                     id: 'other-company',
                     displayName: 'Other Company',
@@ -1817,6 +1819,7 @@ it.each(['Company', 'session', 'unmount'] as const)(
             ? {
                 ...changingActor,
                 activeCompany: {
+                  grants: [],
                   ...changingActor.activeCompany,
                   id: 'other-company',
                   displayName: 'Other Company',

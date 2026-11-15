@@ -140,7 +140,6 @@ test('opens the Request of a commercial event from the Activity Log with the key
                 activeCompany: {
                   ...company,
 
-                  commercialActivityPermissions: ['commercial.activity.read'],
                   // The commercial screens read these grants; App still reads the
                   // per-bundle fields above.
                   grants: withoutCompanyGrants(

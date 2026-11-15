@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { companyPermissionsOf } from './public-company-grants.test-support';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
@@ -153,9 +154,20 @@ test('preserves and corrects a questionnaire draft PDF, reopens both uploads and
       { headers: identity },
     );
     expect(before.status()).toBe(200);
-    const initialPermissions = record(
-      record(await before.json()).activeCompany,
-    ).documentPermissions;
+    const initialPermissions = companyPermissionsOf(
+      record(record(await before.json()).activeCompany),
+      [
+        'company_document_project_organizer',
+        'company_document_registrar',
+        'company_document_approver',
+        'company_document_content_reader',
+        'company_document_content_uploader',
+        'company_mission_deliverable_access',
+        'company_received_contract_access',
+        'company_received_addendum_access',
+        'company_received_audit_source_access',
+      ],
+    );
     expect(Array.isArray(initialPermissions)).toBe(true);
     expect(initialPermissions).not.toContain('document.content.read');
     expect(initialPermissions).not.toContain('document.content.upload');

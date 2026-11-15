@@ -901,6 +901,7 @@ it('resets the local Project filter when the active Company changes', async () =
       actor={{
         ...actor,
         activeCompany: {
+          grants: [],
           ...actor.activeCompany,
           id: 'company-two',
           displayName: 'BIC',

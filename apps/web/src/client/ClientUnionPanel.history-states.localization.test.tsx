@@ -398,7 +398,7 @@ describe('localized Client union history public states', () => {
               value: {
                 ...baseActor,
                 workspacePermissions: [],
-                activeCompany: historyCompanies[0],
+                activeCompany: { ...historyCompanies[0], grants: [] },
               } satisfies ActorContext,
             }),
           );

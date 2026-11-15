@@ -1061,12 +1061,17 @@ describe.skipIf(!databaseUrl)(
         (await read('/access/current-actor', { subject: 'ada' })).activeCompany,
       );
       expect(actor).toMatchObject({
-        opportunityManagerPermissions: [
-          'commercial.opportunity.assign',
-          'commercial.opportunity.outcome.change',
-        ],
-        opportunityManagerPermissionAssignmentId: granted.id,
-        opportunityManagerPermissionSetVersion: 'v2',
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_opportunity_manager',
+            assignmentId: granted.id,
+            permissionSetVersion: 'v2',
+            permissions: [
+              'commercial.opportunity.assign',
+              'commercial.opportunity.outcome.change',
+            ],
+          }),
+        ]),
       });
 
       await captureLegacyManagerVersion(ada);
@@ -1074,8 +1079,13 @@ describe.skipIf(!databaseUrl)(
         (await read('/access/current-actor', { subject: 'ada' })).activeCompany,
       );
       expect(legacy).toMatchObject({
-        opportunityManagerPermissions: ['commercial.opportunity.assign'],
-        opportunityManagerPermissionSetVersion: 'v1',
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_opportunity_manager',
+            permissionSetVersion: 'v1',
+            permissions: ['commercial.opportunity.assign'],
+          }),
+        ]),
       });
       // A repeated grant keeps the live v1 assignment as captured.
       expect(

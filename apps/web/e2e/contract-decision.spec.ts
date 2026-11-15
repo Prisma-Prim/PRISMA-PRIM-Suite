@@ -21,13 +21,6 @@ const actor = {
   workspacePermissions: [],
   activeCompany: {
     ...company,
-    contractPermissions: [
-      'commercial.contract.read',
-      'commercial.contract.approve',
-      'commercial.contract.signature.record',
-    ],
-    contractApproverAssignmentId: 'approver-one',
-    contractApproverPermissionSetVersion: 'v1',
 
     // The Contract screens read these grants; the screens of areas not
     // migrated yet still read the per-bundle fields above.

@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -588,16 +589,25 @@ describe.skipIf(!databaseUrl)(
       await set(0, ion);
       await captureLegacyVersion(ion);
       const current = await read('/access/current-actor', { subject: 'ion' });
-      expect(object(current.activeCompany).projectPermissions).toEqual([
-        'project.read',
-        'project.create',
-      ]);
-      expect(object(current.activeCompany).taskPermissions ?? []).toEqual([]);
       expect(
-        object(current.activeCompany).projectTemplatePermissions ?? [],
+        companyPermissionsOf(object(current.activeCompany), [
+          'company_project_access',
+        ]),
+      ).toEqual(['project.read', 'project.create']);
+      expect(
+        companyPermissionsOf(object(current.activeCompany), [
+          'company_task_manager',
+        ]) ?? [],
       ).toEqual([]);
       expect(
-        object(current.activeCompany).projectApproverPermissions ?? [],
+        companyPermissionsOf(object(current.activeCompany), [
+          'company_project_template_user',
+        ]) ?? [],
+      ).toEqual([]);
+      expect(
+        companyPermissionsOf(object(current.activeCompany), [
+          'company_project_approver',
+        ]) ?? [],
       ).toEqual([]);
       expect(await directory({ subject: 'ion' })).toEqual([project]);
       const before = await directoryPersistence();
@@ -847,11 +857,11 @@ describe.skipIf(!databaseUrl)(
 
     it('captures Project Access v2 on a fresh grant and lets its holder name, reload and replace the responsible member', async () => {
       const actor = await read('/access/current-actor');
-      expect(object(actor.activeCompany).projectPermissions).toEqual([
-        'project.read',
-        'project.create',
-        'project.update',
-      ]);
+      expect(
+        companyPermissionsOf(object(actor.activeCompany), [
+          'company_project_access',
+        ]),
+      ).toEqual(['project.read', 'project.create', 'project.update']);
       expect(await responsibility()).toEqual({
         responsible: null,
         revision: 0,
@@ -937,10 +947,11 @@ describe.skipIf(!databaseUrl)(
       const legacyActor = await read('/access/current-actor', {
         subject: 'legacy',
       });
-      expect(object(legacyActor.activeCompany).projectPermissions).toEqual([
-        'project.read',
-        'project.create',
-      ]);
+      expect(
+        companyPermissionsOf(object(legacyActor.activeCompany), [
+          'company_project_access',
+        ]),
+      ).toEqual(['project.read', 'project.create']);
       // Every delivered read and create keeps accepting captured v1.
       expect(
         await read(`/projects/${projectId}`, { subject: 'legacy' }),
@@ -995,7 +1006,12 @@ describe.skipIf(!databaseUrl)(
         await read('/access/current-actor', { subject: 'legacy' }),
       ).toMatchObject({
         activeCompany: {
-          projectPermissions: ['project.read', 'project.create'],
+          grants: expect.arrayContaining([
+            expect.objectContaining({
+              bundle: 'company_project_access',
+              permissions: ['project.read', 'project.create'],
+            }),
+          ]),
         },
       });
       // Granting an already active v1 assignment again does not expand it.
@@ -1024,9 +1040,11 @@ describe.skipIf(!databaseUrl)(
             const current = await read('/access/current-actor', {
               subject: 'legacy',
             });
-            expect(object(current.activeCompany).projectPermissions).toBe(
-              undefined,
-            );
+            expect(
+              companyPermissionsOf(object(current.activeCompany), [
+                'company_project_access',
+              ]),
+            ).toBe(undefined);
             for (const path of [
               '/projects',
               `/projects/${projectId}`,
@@ -1057,7 +1075,11 @@ describe.skipIf(!databaseUrl)(
       ] satisfies Kind[])
         await grant(kind, maria);
       const actor = await read('/access/current-actor', { subject: 'maria' });
-      expect(object(actor.activeCompany).projectPermissions).toBe(undefined);
+      expect(
+        companyPermissionsOf(object(actor.activeCompany), [
+          'company_project_access',
+        ]),
+      ).toBe(undefined);
       expect((await change(0, null, { subject: 'maria' })).status).toBe(403);
       // The Workspace Owner holds Company, Client and assignment administration
       // but loses every Project path once its own Project Access is revoked.
@@ -1079,11 +1101,12 @@ describe.skipIf(!databaseUrl)(
       expect(
         (await read('/access/current-actor', { subject: 'ion' })).activeCompany,
       ).toMatchObject({
-        projectPermissions: [
-          'project.read',
-          'project.create',
-          'project.update',
-        ],
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_project_access',
+            permissions: ['project.read', 'project.create', 'project.update'],
+          }),
+        ]),
       });
       const second = await command('/projects', {
         title: 'Second preparation',

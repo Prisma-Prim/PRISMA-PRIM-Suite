@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool, PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
@@ -138,11 +139,14 @@ withPostgres('Tariff Versions REST', () => {
       companyId: company.id,
     });
     expect(
-      record(
+      companyPermissionsOf(
         record(
-          await (await request('/access/current-actor', company.id)).json(),
-        ).activeCompany,
-      ).pricingConfigurationPermissions,
+          record(
+            await (await request('/access/current-actor', company.id)).json(),
+          ).activeCompany,
+        ),
+        ['company_pricing_configuration'],
+      ),
     ).toEqual(CONFIGURATION_PERMISSIONS);
 
     const published = publication(

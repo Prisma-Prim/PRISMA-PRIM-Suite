@@ -1,3 +1,4 @@
+import { companyGrantOf } from './company-grants.test-support.js';
 import type { CompanyPermission } from './captured-company-permissions.js';
 import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { ForbiddenException } from '@nestjs/common';
@@ -143,10 +144,13 @@ withPostgres(
         const projection = record(
           await (await selected('member', companyId)).json(),
         );
-        expect(record(projection.activeCompany)).toMatchObject({
-          [`${bundle.prefix}Permissions`]: bundle.permissions,
-          [`${bundle.prefix}PermissionAssignmentId`]: assignment.id,
-          [`${bundle.prefix}PermissionSetVersion`]: 'v1',
+        expect(
+          companyGrantOf(projection.activeCompany, bundle.storage),
+        ).toEqual({
+          bundle: bundle.storage,
+          permissions: bundle.permissions,
+          assignmentId: assignment.id,
+          permissionSetVersion: 'v1',
         });
         const administration = await request(
           'company-context-assignments/administration',
@@ -195,7 +199,7 @@ withPostgres(
           record(await (await selected('member', companyId)).json())
             .activeCompany,
         );
-        expect(after[`${bundle.prefix}Permissions`]).toBeUndefined();
+        expect(companyGrantOf(after, bundle.storage)).toBeUndefined();
         const events = (await activity('owner')).filter(
           (event) =>
             typeof event.action === 'string' &&

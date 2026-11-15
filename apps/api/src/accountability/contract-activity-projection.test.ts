@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import {
   eligibleContractActivityActions,
   readContractActivity,
@@ -29,8 +29,8 @@ const ALL_ACTIONS = [
 ];
 
 function company(
-  overrides: Partial<ActiveCompanyContext> = {},
-): ActiveCompanyContext {
+  overrides: Partial<CompanyAuthorityContext> = {},
+): CompanyAuthorityContext {
   return {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
@@ -47,13 +47,13 @@ const contractReader = {
     'commercial.opportunity.read',
   ],
   contractPermissions: ['commercial.contract.read'],
-} satisfies Partial<ActiveCompanyContext>;
+} satisfies Partial<CompanyAuthorityContext>;
 
 const projectReader = {
   ...contractReader,
   projectPermissions: ['project.read'],
   clientPermissions: ['client.read'],
-} satisfies Partial<ActiveCompanyContext>;
+} satisfies Partial<CompanyAuthorityContext>;
 
 /** The recorded source metadata of each kind and origin (section 19.12). */
 const SOURCES = {

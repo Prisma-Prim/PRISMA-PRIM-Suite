@@ -1,3 +1,4 @@
+import { companyGrantsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
@@ -507,7 +508,12 @@ withPostgres('Company consulting Contract model public REST', () => {
       companyId,
       subject: 'model-editor',
     });
-    expect(record(editor.activeCompany).contractModelGrants).toEqual([
+    expect(
+      companyGrantsOf(record(editor.activeCompany), [
+        'company_contract_model_editor',
+        'company_contract_model_approver',
+      ]),
+    ).toEqual([
       {
         bundle: 'company_contract_model_editor',
         assignmentId: expect.any(String),
@@ -523,7 +529,12 @@ withPostgres('Company consulting Contract model public REST', () => {
       companyId,
       subject: 'model-reviewer',
     });
-    expect(record(reviewer.activeCompany).contractModelGrants).toEqual([
+    expect(
+      companyGrantsOf(record(reviewer.activeCompany), [
+        'company_contract_model_editor',
+        'company_contract_model_approver',
+      ]),
+    ).toEqual([
       {
         bundle: 'company_contract_model_approver',
         assignmentId: expect.any(String),
@@ -536,9 +547,12 @@ withPostgres('Company consulting Contract model public REST', () => {
       },
     ]);
     const owner = await success({ path: '/access/current-actor', companyId });
-    expect(record(owner.activeCompany)).not.toHaveProperty(
-      'contractModelGrants',
-    );
+    expect(
+      companyGrantsOf(owner.activeCompany, [
+        'company_contract_model_editor',
+        'company_contract_model_approver',
+      ]),
+    ).toBeUndefined();
     expect((await request({ path: modelPath, companyId })).status).toBe(403);
   });
 

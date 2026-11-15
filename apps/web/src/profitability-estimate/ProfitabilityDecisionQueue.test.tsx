@@ -189,6 +189,7 @@ it('drops a held old response after Company replacement', async () => {
       {
         ...director,
         activeCompany: {
+          grants: [],
           ...director.activeCompany,
           id: 'company-2',
           displayName: 'Second Company',

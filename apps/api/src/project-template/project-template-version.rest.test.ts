@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -553,8 +554,12 @@ describe.skipIf(!databaseUrl)(
       const current = object(
         (await read('/access/current-actor', { subject: 'ana' })).activeCompany,
       );
-      expect(current.clientPermissions).toEqual([]);
-      expect(current.taskPermissions).toBeUndefined();
+      expect(
+        companyPermissionsOf(current, ['company_director_client_access']) ?? [],
+      ).toEqual([]);
+      expect(
+        companyPermissionsOf(current, ['company_task_manager']),
+      ).toBeUndefined();
     });
 
     it.each(['revoke_first', 'publish_first'])(
@@ -620,13 +625,21 @@ describe.skipIf(!databaseUrl)(
               .activeCompany,
           ),
         ).toMatchObject({
-          projectPermissions: expect.arrayContaining(['project.read']),
-          projectTemplatePermissions: [
-            'project.template.read',
-            'project.template.instantiate',
-            'project.template.pilot.read',
-            'project.template.pilot.instantiate',
-          ],
+          grants: expect.arrayContaining([
+            expect.objectContaining({
+              bundle: 'company_project_access',
+              permissions: expect.arrayContaining(['project.read']),
+            }),
+            expect.objectContaining({
+              bundle: 'company_project_template_user',
+              permissions: [
+                'project.template.read',
+                'project.template.instantiate',
+                'project.template.pilot.read',
+                'project.template.pilot.instantiate',
+              ],
+            }),
+          ]),
         });
         const events = objects((await read('/activity-log')).events).filter(
           (event) => event.action === 'project.template.version.created',
@@ -1000,8 +1013,10 @@ describe.skipIf(!databaseUrl)(
             [version, membershipId],
           );
           expect(
-            object((await read('/access/current-actor')).activeCompany)
-              .projectTemplateConfigurationPermissions,
+            companyPermissionsOf(
+              object((await read('/access/current-actor')).activeCompany),
+              ['company_project_template_configuration'],
+            ),
           ).toBeUndefined();
           expect(
             (await request(path, { method: 'POST', value: intent })).status,
@@ -1248,11 +1263,18 @@ describe.skipIf(!databaseUrl)(
       const actorAna = object(
         (await read('/access/current-actor', { subject: 'ana' })).activeCompany,
       );
-      expect(actorAna.clientPermissions).toEqual([]);
-      expect(actorAna.taskPermissions).toBeUndefined();
-      expect(actorAna.projectTemplateConfigurationPermissions).toEqual([
-        'project.template.version.create',
-      ]);
+      expect(
+        companyPermissionsOf(actorAna, ['company_director_client_access']) ??
+          [],
+      ).toEqual([]);
+      expect(
+        companyPermissionsOf(actorAna, ['company_task_manager']),
+      ).toBeUndefined();
+      expect(
+        companyPermissionsOf(actorAna, [
+          'company_project_template_configuration',
+        ]),
+      ).toEqual(['project.template.version.create']);
       const before = await read(`/clients/${clientId}`);
       const path = `/project-templates/${templateKey}/versions`;
       const firstIntent = {

@@ -23,12 +23,6 @@ function actor() {
       id: uuid(4),
       displayName: 'Fictional Company',
 
-      documentApproverAssignmentId: uuid(7),
-      documentApproverPermissionSetVersion: 'v1',
-      documentContentReaderAssignmentId: uuid(8),
-      documentContentReaderPermissionSetVersion: 'v1',
-      documentContentUploaderAssignmentId: uuid(9),
-      documentContentUploaderPermissionSetVersion: 'v1',
       paymentEvidenceContextCapture:
         'payment-evidence-context.v1.' + 'a'.repeat(64),
       paymentEvidenceReferenceReadCapture:

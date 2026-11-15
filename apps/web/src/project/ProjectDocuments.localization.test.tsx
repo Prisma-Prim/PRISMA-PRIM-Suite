@@ -21,9 +21,7 @@ import {
 } from '../access/company-grants.test-fixture';
 import { projectDocumentGrants } from './project-document-grants.test-fixture';
 
-type DocumentPermissions = NonNullable<
-  NonNullable<ActorContext['activeCompany']>['documentPermissions']
->;
+type DocumentPermissions = string[];
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -566,7 +564,11 @@ it('retires a pending request on genuine Company/read-authority change while a l
     <Harness
       actor={{
         ...actor,
-        activeCompany: { id: 'other-company', displayName: 'Other Company' },
+        activeCompany: {
+          grants: [],
+          id: 'other-company',
+          displayName: 'Other Company',
+        },
       }}
     />,
   );

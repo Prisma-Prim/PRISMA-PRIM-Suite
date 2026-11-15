@@ -1,3 +1,4 @@
+import { companyGrantOf } from './company-grants.test-support.js';
 import { parseInternalUserId, parseWorkspaceId } from './access-identifiers.js';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -176,11 +177,18 @@ withPostgres(
           companyId: source.companyId,
         }),
       );
-      expect(responseRecord(wire.activeCompany)).toMatchObject({
-        opportunityFollowUpCoordinatorAssignmentId: assignment.id,
-        opportunityFollowUpCoordinatorPermissionSetVersion: 'v1',
-        opportunityFollowUpReadCapture: required.readCapture,
+      expect(
+        companyGrantOf(
+          wire.activeCompany,
+          'company_opportunity_follow_up_coordinator',
+        ),
+      ).toMatchObject({
+        assignmentId: assignment.id,
+        permissionSetVersion: 'v1',
       });
+      expect(
+        responseRecord(wire.activeCompany).opportunityFollowUpReadCapture,
+      ).toBe(required.readCapture);
     });
 
     it('conserves exact repeated grants and emits only two safe actual administration transitions', async () => {

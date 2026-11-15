@@ -1127,6 +1127,7 @@ function selectedActor(companyId: string): ActorContext {
   return {
     ...baseActor,
     activeCompany: {
+      grants: [],
       id: companyId,
       displayName: company?.displayName ?? companyId,
     },

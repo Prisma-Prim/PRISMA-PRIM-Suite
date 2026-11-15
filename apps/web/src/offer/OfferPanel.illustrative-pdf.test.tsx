@@ -28,7 +28,6 @@ const actor = {
   ...modelOfferActor,
   activeCompany: {
     ...company,
-    offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
   },
 } satisfies ActorContext;
 function Host({ versionId = 'version-one' }: { versionId?: string }) {

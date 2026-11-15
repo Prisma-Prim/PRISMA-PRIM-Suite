@@ -102,7 +102,7 @@ it('retires held exact PDF hashing across equal-permission content A → B → A
       ...actor.activeCompany,
       id: inventory.companyId,
       displayName: 'Fictional Company',
-      documentContentReaderAssignmentId: '20000000-0000-4000-8000-000000000099',
+
       grants: withCompanyGrants(actor.activeCompany?.grants, {
         bundle: 'company_document_content_reader',
         version: 'v1',

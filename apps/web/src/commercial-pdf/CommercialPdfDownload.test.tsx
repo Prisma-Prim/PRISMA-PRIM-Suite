@@ -181,7 +181,6 @@ describe('Independent exact PDF read lifetime', () => {
                 ...(change === 'scope'
                   ? { id: 'other-company' }
                   : {
-                      offerPermissions: [],
                       grants: withoutCompanyGrants(
                         company.grants,
                         'company_offer_preparer',
@@ -263,8 +262,6 @@ describe('Independent exact PDF read lifetime', () => {
         ...modelOfferActor,
         activeCompany: {
           ...company,
-          profitabilityContributorPermissionAssignmentId: undefined,
-          profitabilityContributorPermissions: [],
         },
       }),
     );

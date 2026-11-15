@@ -668,7 +668,14 @@ function requiredOrigin(context: ProductionShellContext) {
 }
 
 function selectedActor(id: string, displayName: string): ActorContext {
-  return { ...actor, activeCompany: { id, displayName } };
+  return {
+    ...actor,
+    activeCompany: {
+      grants: [],
+      id,
+      displayName,
+    },
+  };
 }
 
 function rejectCompanyAWhileSelectingCompanyB() {

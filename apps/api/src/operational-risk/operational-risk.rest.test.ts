@@ -1,3 +1,7 @@
+import {
+  companyPermissionsOf,
+  companyGrantOf,
+} from '../access/company-grants.test-support.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   afterAll,
@@ -1119,10 +1123,15 @@ withPostgres('Company Operational Risk public REST', () => {
         companyId: fixture.companyId,
       });
       expect(selected.status).toBe(200);
-      expect(object(await selected.json()).activeCompany).toMatchObject({
-        operationalRiskPermissions: [bundle.permission],
-        [`${bundle.prefix}AssignmentId`]: object(assignment).id,
-        [`${bundle.prefix}PermissionSetVersion`]: 'v1',
+      expect(
+        companyGrantOf(
+          object(await selected.json()).activeCompany,
+          bundle.storage,
+        ),
+      ).toMatchObject({
+        permissions: [bundle.permission],
+        assignmentId: object(assignment).id,
+        permissionSetVersion: 'v1',
       });
       const administration = await request({
         path: '/company-context-assignments/administration',
@@ -1209,13 +1218,13 @@ withPostgres('Company Operational Risk public REST', () => {
         expect(selected.status).toBe(200);
         const projection = object(object(await selected.json()).activeCompany);
         expect(
-          projection[
-            bundle === 'reader'
-              ? 'operationalRiskReaderAssignmentId'
-              : 'operationalRiskRecorderAssignmentId'
-          ],
+          companyGrantOf(projection, `company_operational_risk_${bundle}`),
         ).toBeUndefined();
-        expect(projection.clientPermissions).toContain('client.read');
+        expect(
+          companyPermissionsOf(projection, [
+            'company_director_client_access',
+          ]) ?? [],
+        ).toContain('client.read');
       } finally {
         await pool.query(
           "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle::text=$1",

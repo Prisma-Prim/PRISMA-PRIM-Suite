@@ -61,11 +61,6 @@ export function currentActor(companyId = company.id): ActorContext {
         configRequest,
         userRequest,
       ),
-
-      documentContentReaderAssignmentId: id(15),
-      documentContentReaderPermissionSetVersion: 'v1',
-      missionDeliverableAccessAssignmentId: id(16),
-      missionDeliverableAccessPermissionSetVersion: 'v1',
     },
   };
 }

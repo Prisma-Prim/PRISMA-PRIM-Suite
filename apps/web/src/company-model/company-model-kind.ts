@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { CompanyGrantBundle } from '../access/company-grants';
 import type { CompanyModelFieldsProps } from './CompanyModelForm';
 
 export type ModelSourceKind = 'ILLUSTRATIVE' | 'COMPANY_SUPPLIED';
@@ -73,12 +74,11 @@ export type CompanyModelCopyKey =
 export type CompanyModelCopy = (key: CompanyModelCopyKey) => string;
 
 type ModelBundle = Readonly<{
-  bundle: string;
+  bundle: CompanyGrantBundle;
   permissions: readonly string[];
 }>;
-/** The Actor projection field and the two bundles that admit a kind. */
+/** The two registry bundles that admit a kind. */
 export type CompanyModelGrants = Readonly<{
-  field: 'offerModelGrants' | 'contractModelGrants';
   editor: ModelBundle;
   approver: ModelBundle;
 }>;

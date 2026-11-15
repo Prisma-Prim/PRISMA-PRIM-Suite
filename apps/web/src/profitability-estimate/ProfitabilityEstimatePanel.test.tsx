@@ -29,6 +29,7 @@ const both: ActorContext = {
   ...actor,
   activeCompany: {
     ...actor.activeCompany,
+
     id: 'company-1',
     displayName: 'Synthetic Company',
     grants: withCompanyGrants(actor.activeCompany?.grants, {
@@ -479,6 +480,7 @@ describe('Profitability Estimate production public seam', () => {
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
+
         id: 'company-1',
         displayName: 'Synthetic Company',
 
@@ -677,6 +679,7 @@ describe('Profitability Estimate production public seam', () => {
             : actor.workspaceId,
         activeCompany: {
           ...actor.activeCompany,
+          grants: actor.activeCompany?.grants ?? [],
           id: replacement === 'Company' ? 'replacement-company' : 'company-1',
           displayName: 'Synthetic Company',
           ...(replacement === 'grant'

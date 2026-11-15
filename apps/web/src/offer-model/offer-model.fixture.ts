@@ -1,4 +1,4 @@
-import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type { ActorContext } from '../access-types';
 import type { OfferModelContent } from './offer-model-content';
 
@@ -45,19 +45,11 @@ export const syntheticActor: ActorContext = {
     id: '10000000-0000-4000-8000-000000000847',
     displayName: 'Synthetic Company',
 
-    offerModelGrants: [
-      {
-        bundle: 'company_offer_model_editor',
-        assignmentId: '40000000-0000-4000-8000-000000000847',
-        permissionSetVersion: 'v1',
-        permissions: [
-          'commercial.offer.model.read',
-          'commercial.offer.model.version.create',
-        ],
-      },
-    ],
-
-    grants: withoutCompanyGrants(undefined, 'company_director_client_access'),
+    grants: companyGrants({
+      bundle: 'company_offer_model_editor',
+      version: 'v1',
+      assignmentId: '40000000-0000-4000-8000-000000000847',
+    }),
   },
 };
 export const syntheticAttribution = {
@@ -89,19 +81,12 @@ export const syntheticModel = {
 export const syntheticApprover: ActorContext = {
   ...syntheticActor,
   activeCompany: {
+    grants: companyGrants({
+      bundle: 'company_offer_model_approver',
+      version: 'v1',
+      assignmentId: '41000000-0000-4000-8000-000000000847',
+    }),
     id: '10000000-0000-4000-8000-000000000847',
     displayName: 'Synthetic Company',
-    offerModelGrants: [
-      {
-        bundle: 'company_offer_model_approver',
-        assignmentId: '41000000-0000-4000-8000-000000000847',
-        permissionSetVersion: 'v1',
-        permissions: [
-          'commercial.offer.model.read',
-          'commercial.offer.model.decide',
-          'commercial.offer.model.withdraw',
-        ],
-      },
-    ],
   },
 };

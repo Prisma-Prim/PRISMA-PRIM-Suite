@@ -1,3 +1,4 @@
+import { isCompanyGrants } from '../access/company-grants';
 import { expect } from 'vitest';
 import {
   fireEvent,
@@ -35,7 +36,6 @@ export type ModelKindCase = {
   Workspace: (props: CompanyModelWorkspaceProps) => ReactNode;
   /** The model root route as the browser requests it. */
   root: string;
-  grantsField: 'offerModelGrants' | 'contractModelGrants';
   editor: Grant;
   approver: Grant;
   actor: ActorContext;
@@ -78,7 +78,6 @@ export const offerKind: ModelKindCase = {
   name: 'Offer',
   Workspace: OfferModelWorkspace,
   root: `/api${OFFER_MODEL.path}`,
-  grantsField: OFFER_MODEL.grants.field,
   editor: OFFER_MODEL.grants.editor,
   approver: OFFER_MODEL.grants.approver,
   actor: offer.syntheticActor,
@@ -156,7 +155,6 @@ export const contractKind: ModelKindCase = {
   name: 'Contract',
   Workspace: ContractModelWorkspace,
   root: `/api${CONTRACT_MODEL.path}`,
-  grantsField: CONTRACT_MODEL.grants.field,
   editor: CONTRACT_MODEL.grants.editor,
   approver: CONTRACT_MODEL.grants.approver,
   actor: contract.syntheticActor,
@@ -269,14 +267,9 @@ export function actorWith(
     grants: unknown;
   },
 ): ActorContext {
-  const company = { id: companyId, displayName };
-  return {
-    ...actor,
-    activeCompany:
-      kind.grantsField === 'offerModelGrants'
-        ? { ...company, offerModelGrants: grants }
-        : { ...company, contractModelGrants: grants },
-  };
+  if (!isCompanyGrants(grants))
+    throw new Error('Expected current fictional Company grants');
+  return { ...actor, activeCompany: { id: companyId, displayName, grants } };
 }
 
 /** The case's approver Actor in another Company, keeping its grants. */
@@ -289,7 +282,7 @@ export function approverInCompany(
   return actorWith(kind, {
     companyId,
     displayName,
-    grants: company?.[kind.grantsField],
+    grants: company?.grants ?? [],
   });
 }
 

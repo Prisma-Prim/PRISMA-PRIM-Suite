@@ -68,14 +68,7 @@ function actorIn(
     activeCompany: {
       ...company,
 
-      ...grants.reduce<Grants>(
-        (merged, grant) => ({
-          ...merged,
-          ...grant,
-          grants: [...(merged.grants ?? []), ...(grant.grants ?? [])],
-        }),
-        {},
-      ),
+      grants: grants.flatMap((grant) => grant.grants ?? []),
     },
   };
 }
