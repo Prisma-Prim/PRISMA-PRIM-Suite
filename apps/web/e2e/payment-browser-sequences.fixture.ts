@@ -1,4 +1,5 @@
 import * as fc from 'fast-check';
+import { randomUUID } from 'node:crypto';
 import type { Route } from '@playwright/test';
 import { expect, expectApiFailure } from './ui-chaos.fixture';
 import type {
@@ -80,7 +81,7 @@ export const paymentSequenceAdapter: BrowserSequenceAdapter<
   async open({ page, info, trial, initial }) {
     const ready = await preparePaymentObservationCase(
       page,
-      `Generated-${info.project.name}-${trial}`,
+      `Generated-${info.project.name}-${trial}-${randomUUID()}`,
     );
     let role: 'reader' | 'confirmer' | 'reverser' =
       initial === 'review'

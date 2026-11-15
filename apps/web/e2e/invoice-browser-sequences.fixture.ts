@@ -61,7 +61,7 @@ export const invoiceSequenceAdapter: BrowserSequenceAdapter<
   async open({ page, info, trial, initial }) {
     const ready = await prepareInvoiceSequenceSource(
       page,
-      `Generated-${info.project.name}-${trial}`,
+      `Generated-${info.project.name}-${trial}-${randomUUID()}`,
     );
     const initialAmount = { draft: '1255.00', minor: '125500' };
     const seeded: Root | null =
