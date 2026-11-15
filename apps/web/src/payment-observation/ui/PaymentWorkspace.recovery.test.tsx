@@ -16,6 +16,10 @@ import {
 } from '../../access-composition';
 import type { ActorContext } from '../../access-types';
 import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../../access/company-grants.test-fixture';
+import {
   paymentEvidenceActor,
   paymentEvidenceIds,
 } from '../../payment-evidence/payment-evidence.test-fixture';
@@ -50,19 +54,19 @@ const company = {
   paymentObservationReadCapture: capture,
   paymentObservationContextCapture:
     'payment-observation-context.v1.' + 'd'.repeat(64),
-  paymentGrants: [
-    ...nativeActor.activeCompany.paymentGrants,
+  grants: withCompanyGrants(
+    nativeActor.activeCompany.grants,
     {
       bundle: 'company_payment_confirmer',
+      version: 'v1',
       assignmentId: '10000000-0000-4000-8000-000000001053',
-      permissionSetVersion: 'v1',
     },
     {
       bundle: 'company_payment_reverser',
+      version: 'v1',
       assignmentId: '10000000-0000-4000-8000-000000001054',
-      permissionSetVersion: 'v1',
     },
-  ],
+  ),
 } satisfies NonNullable<ActorContext['activeCompany']>;
 // These are intercepted, server-authorized UI representations using the delivered
 // native capture shapes. Native enrollment and human-author exclusion are proved
@@ -470,11 +474,11 @@ function replaceRecorder(): ActorContext {
     ...actor,
     activeCompany: {
       ...company,
-      paymentGrants: company.paymentGrants.map((grant) =>
-        grant.bundle === 'company_payment_recorder'
-          ? { ...grant, assignmentId: '10000000-0000-4000-8000-000000001099' }
-          : grant,
-      ),
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_payment_recorder',
+        version: 'v1',
+        assignmentId: '10000000-0000-4000-8000-000000001099',
+      }),
     },
   };
 }
@@ -649,6 +653,11 @@ it.each(['source A → B → A', 'equal-permission Recorder replacement'])(
               ...company,
               documentContentReaderAssignmentId:
                 '10000000-0000-4000-8000-000000001098',
+              grants: withCompanyGrants(company.grants, {
+                bundle: 'company_document_content_reader',
+                version: 'v1',
+                assignmentId: '10000000-0000-4000-8000-000000001098',
+              }),
             },
           }
         : replaceRecorder();
@@ -845,12 +854,18 @@ it.each([
         ...company,
         clientPermissions:
           loss === 'original Client' ? [] : company.clientPermissions,
-        paymentGrants:
-          loss === 'evidence family'
-            ? company.paymentGrants.filter(
-                (grant) => grant.bundle !== 'company_payment_evidence_access',
-              )
-            : company.paymentGrants,
+        grants: withoutCompanyGrants(
+          company.grants,
+          ...(loss === 'original Client'
+            ? (['company_director_client_access'] as const)
+            : loss === 'evidence family'
+              ? (['company_payment_evidence_access'] as const)
+              : loss === 'native Document'
+                ? (['company_document_registrar'] as const)
+                : loss === 'native content'
+                  ? (['company_document_content_reader'] as const)
+                  : []),
+        ),
         documentPermissions: company.documentPermissions.filter((permission) =>
           loss === 'native Document'
             ? permission !== 'document.read'
@@ -1050,11 +1065,11 @@ it('keeps a pending CONFIRM token and its successful receipt when only the copie
     activeCompany: {
       ...company,
       paymentObservationReadCapture: replacementCapture,
-      paymentGrants: company.paymentGrants.map((grant) =>
-        grant.bundle === 'company_payment_reader'
-          ? { ...grant, assignmentId: '10000000-0000-4000-8000-000000001095' }
-          : grant,
-      ),
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_payment_reader',
+        version: 'v1',
+        assignmentId: '10000000-0000-4000-8000-000000001095',
+      }),
     },
   };
   let currentCapture = capture;
@@ -1145,11 +1160,11 @@ it('keeps an uncertain REVERSE intention and identical key through Reader replac
     activeCompany: {
       ...company,
       paymentObservationReadCapture: readCapture,
-      paymentGrants: company.paymentGrants.map((grant) =>
-        grant.bundle === 'company_payment_reader'
-          ? { ...grant, assignmentId }
-          : grant,
-      ),
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_payment_reader',
+        version: 'v1',
+        assignmentId,
+      }),
     },
   });
   let currentCapture = capture;
@@ -1702,11 +1717,21 @@ it.each([
             ...company,
             clientPermissionAssignmentId:
               '10000000-0000-4000-8000-000000001093',
+            grants: withCompanyGrants(company.grants, {
+              bundle: 'company_director_client_access',
+              version: 'v2',
+              assignmentId: '10000000-0000-4000-8000-000000001093',
+            }),
           }
         : {
             ...company,
             documentContentReaderAssignmentId:
               '10000000-0000-4000-8000-000000001094',
+            grants: withCompanyGrants(company.grants, {
+              bundle: 'company_document_content_reader',
+              version: 'v1',
+              assignmentId: '10000000-0000-4000-8000-000000001094',
+            }),
           },
     };
     // Workspace client.manage remains the original-reference route. The Company
@@ -1865,8 +1890,9 @@ it('keeps the target conflict protected after Source authority retires its edito
     ...actor,
     activeCompany: {
       ...company,
-      paymentGrants: company.paymentGrants.filter(
-        (grant) => grant.bundle !== 'company_payment_evidence_access',
+      grants: withoutCompanyGrants(
+        company.grants,
+        'company_payment_evidence_access',
       ),
     },
   };

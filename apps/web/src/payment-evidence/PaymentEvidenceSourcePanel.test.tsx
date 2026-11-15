@@ -6,6 +6,7 @@ import {
 } from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { PaymentEvidenceSourcePanel } from './PaymentEvidenceSourcePanel';
 import {
   paymentEvidenceActor,
@@ -56,7 +57,14 @@ it('withholds an old payer reply after identity-only loss while retaining native
       {...props}
       actor={{
         ...actor,
-        activeCompany: { ...actor.activeCompany, clientPermissions: [] },
+        activeCompany: {
+          ...actor.activeCompany,
+          clientPermissions: [],
+          grants: withoutCompanyGrants(
+            actor.activeCompany.grants,
+            'company_director_client_access',
+          ),
+        },
       }}
     />,
   );

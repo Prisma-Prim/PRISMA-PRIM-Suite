@@ -6,6 +6,7 @@ import {
 } from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { PaymentEvidenceVersions } from './PaymentEvidenceVersions';
 import { paymentEvidenceAuthority } from './payment-evidence-authority';
 import {
@@ -21,6 +22,11 @@ it('offers native designation without Content Reader or Uploader and retains con
         permission !== 'document.content.read' &&
         permission !== 'document.content.upload',
     );
+  actor.activeCompany.grants = withoutCompanyGrants(
+    actor.activeCompany.grants,
+    'company_document_content_reader',
+    'company_document_content_uploader',
+  );
   const keys = paymentEvidenceAuthority(actor);
   if (!keys) throw new Error('Expected independent native evidence authority');
   const writes: Array<RequestInit | undefined> = [];

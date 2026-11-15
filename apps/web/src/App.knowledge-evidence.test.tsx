@@ -18,6 +18,11 @@ import {
   source,
 } from './knowledge-evidence/knowledge.test-fixture';
 import type { ActorContext } from './access-types';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
+import { readCurrentActor } from './access/current-actor';
 import { changeValue } from './test/select-option';
 beforeEach(() => {
   localStorage.clear();
@@ -277,28 +282,59 @@ it.each(['query change', 'section departure'] as const)(
     expect(rejected).not.toHaveBeenCalled();
   },
 );
+const readerGrants = knowledgeActor.activeCompany.grants;
+it('refuses the whole current Actor for a duplicated or unknown Evidence Reader capture', async () => {
+  // The current Actor parser refuses such a list for the whole Actor
+  // (#1332), so the App never offers Knowledge evidence from it.
+  const read = (grants: unknown) =>
+    readCurrentActor({
+      api: {
+        request: async () => ({
+          status: 'ok',
+          value: {
+            ...knowledgeActor,
+            activeCompany: { ...knowledgeActor.activeCompany, grants },
+          },
+        }),
+      },
+    });
+  const reader = readerGrants.find(
+    (grant) => grant.bundle === 'company_knowledge_evidence_reader',
+  );
+  expect((await read(readerGrants)).status).toBe('ok');
+  for (const grants of [
+    {},
+    readerGrants.map((grant) =>
+      grant === reader ? { ...grant, permissionSetVersion: 'v2' } : grant,
+    ),
+    [...readerGrants, reader],
+  ])
+    expect(await read(grants)).toEqual({ status: 'error' });
+});
 it.each([
-  undefined,
-  {},
-  [],
-  [
-    {
-      ...knowledgeActor.activeCompany.knowledgeGrants[0],
-      permissionSetVersion: 'v2',
-    },
-  ],
-  [
-    ...knowledgeActor.activeCompany.knowledgeGrants,
-    ...knowledgeActor.activeCompany.knowledgeGrants,
-  ],
+  {
+    capture: 'no Evidence Reader grant',
+    grants: withoutCompanyGrants(
+      readerGrants,
+      'company_knowledge_evidence_reader',
+    ),
+  },
+  {
+    capture: 'a non-native Evidence Reader assignment',
+    grants: withCompanyGrants(readerGrants, {
+      bundle: 'company_knowledge_evidence_reader',
+      version: 'v1',
+      assignmentId: 'not-a-native-uuid',
+    }),
+  },
 ])(
-  'offers no navigation or evidence I/O for opaque %j through the actual App',
-  async (knowledgeGrants) => {
+  'offers no navigation or evidence I/O for $capture through the actual App',
+  async ({ grants }) => {
     const requests: string[] = [];
     installParentServer(
       () => ({
         ...knowledgeActor,
-        activeCompany: { ...knowledgeActor.activeCompany, knowledgeGrants },
+        activeCompany: { ...knowledgeActor.activeCompany, grants },
       }),
       async (path) => {
         requests.push(path);
@@ -390,12 +426,11 @@ it('does not publish an older whole Actor after actual Company A→B→A and Rea
     displayName: 'Fresh final A Reader',
     activeCompany: {
       ...knowledgeActor.activeCompany,
-      knowledgeGrants: [
-        {
-          ...knowledgeActor.activeCompany.knowledgeGrants[0],
-          assignmentId: '80000000-0000-4000-8000-000000001016',
-        },
-      ],
+      grants: withCompanyGrants(readerGrants, {
+        bundle: 'company_knowledge_evidence_reader',
+        version: 'v1',
+        assignmentId: '80000000-0000-4000-8000-000000001016',
+      }),
     },
   };
   installParentServer(
@@ -458,17 +493,30 @@ it('does not publish an older whole Actor after actual Company A→B→A and Rea
   expect(screen.getAllByText('Fresh final A Reader').length).toBeGreaterThan(0);
 });
 it.each([
-  'documentPermissionAssignmentId',
-  'documentContentReaderAssignmentId',
-  'clientPermissionAssignmentId',
-])(
-  'requires native UUID prerequisite %s before offering the section',
-  async (field) => {
+  {
+    field: 'documentPermissionAssignmentId',
+    grant: { bundle: 'company_document_registrar', version: 'v3' },
+  },
+  {
+    field: 'documentContentReaderAssignmentId',
+    grant: { bundle: 'company_document_content_reader', version: 'v1' },
+  },
+  {
+    field: 'clientPermissionAssignmentId',
+    grant: { bundle: 'company_director_client_access', version: 'v1' },
+  },
+] as const)(
+  'requires native UUID prerequisite $field before offering the section',
+  async ({ field, grant }) => {
     const native: ActorContext = {
       ...knowledgeActor,
       activeCompany: {
         ...knowledgeActor.activeCompany,
         [field]: 'not-a-native-uuid',
+        grants: withCompanyGrants(readerGrants, {
+          ...grant,
+          assignmentId: 'not-a-native-uuid',
+        }),
       },
     };
     const reads: string[] = [];

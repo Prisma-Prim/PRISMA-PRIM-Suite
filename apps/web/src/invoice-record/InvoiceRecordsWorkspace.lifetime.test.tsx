@@ -10,6 +10,7 @@ import {
 } from '../test/render-with-interface-locale';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import type { ActorContext } from '../access-types';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { InvoiceRecordsWorkspace } from './InvoiceRecordsWorkspace';
 import { actor, current, identity, inventory } from './invoice-record.fixture';
 
@@ -102,6 +103,11 @@ it('retires held exact PDF hashing across equal-permission content A → B → A
       id: inventory.companyId,
       displayName: 'Fictional Company',
       documentContentReaderAssignmentId: '20000000-0000-4000-8000-000000000099',
+      grants: withCompanyGrants(actor.activeCompany?.grants, {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: '20000000-0000-4000-8000-000000000099',
+      }),
     },
   };
   rendered.rerender(view(replacement, 'native-2'));

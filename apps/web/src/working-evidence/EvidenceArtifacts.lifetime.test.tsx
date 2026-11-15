@@ -8,6 +8,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { EvidenceArtifacts } from './EvidenceArtifacts';
 import { WorkingEvidenceResolver } from './WorkingEvidenceResolver';
 import {
@@ -242,8 +243,10 @@ it.each(['artifact', 'resolver'] as const)(
         ...actor.activeCompany,
         id: ids.project,
         displayName: 'Fictional Company',
-        workingEvidenceCaseReaderAssignmentId: undefined,
-        workingEvidenceCaseReaderPermissionSetVersion: undefined,
+        grants: withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_working_evidence_case_reader',
+        ),
       },
     };
     const response = deferred<Response>(),

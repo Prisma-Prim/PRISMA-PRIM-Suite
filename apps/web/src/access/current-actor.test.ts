@@ -18,6 +18,7 @@ import { completeActor } from './current-actor.test-fixture';
 import {
   companyGrants,
   withCompanyGrants,
+  withoutCompanyGrants,
 } from './company-grants.test-fixture';
 import {
   clearWorkspaceSelection,
@@ -353,9 +354,24 @@ describe('current Actor representation', () => {
         'payment-evidence.future',
         { version: 'future', arbitrary: null },
       ]) {
+        // Source reads its Payment grants from `grants` (#1388); the API
+        // sends no Payment grant when it sends no readable paymentGrants.
         const actor = {
           ...current,
-          activeCompany: { ...current.activeCompany, [field]: value },
+          activeCompany: {
+            ...current.activeCompany,
+            [field]: value,
+            ...(field === 'paymentGrants'
+              ? {
+                  grants: withoutCompanyGrants(
+                    current.activeCompany.grants,
+                    'company_payment_reader',
+                    'company_payment_recorder',
+                    'company_payment_evidence_access',
+                  ),
+                }
+              : {}),
+          },
         };
         const result = await read(actor);
         expect(result).toEqual({ status: 'ok', value: actor });
@@ -377,6 +393,14 @@ describe('current Actor representation', () => {
           assignmentId: '00000000-0000-4000-8000-000000001031',
           permissionSetVersion: 'v1',
         },
+      ],
+      grants: [
+        ...completeActor.activeCompany.grants,
+        ...companyGrants({
+          bundle: 'company_invoice_reader',
+          version: 'v1',
+          assignmentId: '00000000-0000-4000-8000-000000001031',
+        }),
       ],
     };
     const known = await read({

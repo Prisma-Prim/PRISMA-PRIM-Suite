@@ -47,8 +47,8 @@ export function paymentEvidenceActor() {
       documentContentUploaderAssignmentId:
         '10000000-0000-4000-8000-000000000013',
       documentContentUploaderPermissionSetVersion: 'v1' as const,
-      // The Document area reads these grants; the per-bundle fields above stay
-      // for Payment Evidence until it reads its grants too.
+      // Unmigrated screens still read the Client and Document per-bundle
+      // fields above beside these grants.
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -75,24 +75,22 @@ export function paymentEvidenceActor() {
           version: 'v1',
           assignmentId: '10000000-0000-4000-8000-000000000013',
         },
-      ),
-      paymentGrants: [
         {
           bundle: 'company_payment_reader',
+          version: 'v1',
           assignmentId: '10000000-0000-4000-8000-000000000014',
-          permissionSetVersion: 'v1',
         },
         {
           bundle: 'company_payment_recorder',
+          version: 'v1',
           assignmentId: '10000000-0000-4000-8000-000000000015',
-          permissionSetVersion: 'v1',
         },
         {
           bundle: 'company_payment_evidence_access',
+          version: 'v1',
           assignmentId: '10000000-0000-4000-8000-000000000016',
-          permissionSetVersion: 'v1',
         },
-      ],
+      ),
       paymentEvidenceContextCapture:
         'payment-evidence-context.v1.' + 'a'.repeat(64),
       paymentEvidenceReferenceReadCapture:

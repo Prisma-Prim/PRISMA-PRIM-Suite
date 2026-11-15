@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import {
   deterministicBrowserIdentity,
   type BrowserIdentity,
@@ -219,8 +220,9 @@ function installHttp(owner: Owner, holdVersions = false) {
         ...originalActor,
         activeCompany: {
           ...originalActor.activeCompany,
-          paymentGrants: originalActor.activeCompany.paymentGrants.filter(
-            (grant) => grant.bundle !== 'company_payment_recorder',
+          grants: withoutCompanyGrants(
+            originalActor.activeCompany.grants,
+            'company_payment_recorder',
           ),
         },
       };

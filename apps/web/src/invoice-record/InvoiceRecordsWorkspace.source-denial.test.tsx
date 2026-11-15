@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   act,
@@ -296,7 +300,12 @@ it('retires writing immediately on withdrawalPOST403 and clears copies only afte
       ...actor.activeCompany,
       id: ids.company,
       displayName: 'Fictional Company',
-      externalInvoiceGrants: [],
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_invoice_reader',
+        'company_invoice_recorder',
+        'company_external_invoice_access',
+      ),
       invoiceRecordReadCapture: undefined,
     },
   };
@@ -390,13 +399,19 @@ it('applies Reader-only recovery after withdrawalPOST403 and restores matching c
       id: ids.company,
       displayName: 'Fictional Company',
       invoiceRecordReadCapture: readerCapture,
-      externalInvoiceGrants: [
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          financeOnly.activeCompany?.grants,
+          'company_invoice_reader',
+          'company_invoice_recorder',
+          'company_external_invoice_access',
+        ),
         {
           bundle: 'company_invoice_reader',
+          version: 'v1',
           assignmentId: '40000000-0000-4000-8000-000000000001',
-          permissionSetVersion: 'v1',
         },
-      ],
+      ),
     },
   };
   const readerCurrent = {

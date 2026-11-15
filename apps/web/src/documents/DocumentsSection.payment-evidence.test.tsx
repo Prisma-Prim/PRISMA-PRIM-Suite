@@ -7,6 +7,7 @@ import {
 } from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { changeValue } from '../test/select-option';
 import {
@@ -498,7 +499,14 @@ it('routes a fresh Client working-Documents filter to native inventory while pay
   view.update({
     actor: {
       ...actor,
-      activeCompany: { ...actor.activeCompany, clientPermissions: [] },
+      activeCompany: {
+        ...actor.activeCompany,
+        clientPermissions: [],
+        grants: withoutCompanyGrants(
+          actor.activeCompany.grants,
+          'company_director_client_access',
+        ),
+      },
     },
     clientFilter: undefined,
     clientKey: 'client-B',

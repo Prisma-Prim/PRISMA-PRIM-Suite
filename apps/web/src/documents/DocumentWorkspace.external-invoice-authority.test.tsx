@@ -8,6 +8,10 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { DocumentWorkspace } from './DocumentWorkspace';
 import {
@@ -29,6 +33,11 @@ function withoutSource(): ActorContext {
       commercialIntakePermissions: [],
       contractPermissionAssignmentId: 'replacement-contract',
       commercialIntakePermissionAssignmentId: 'replacement-intake',
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_contract_preparer',
+        'company_commercial_intake',
+      ),
     },
   };
 }
@@ -181,6 +190,11 @@ it('conserves an uncertain native upload through Contract and Opportunity captur
           id: ids.company,
           displayName: 'Fictional Company',
           contractPermissionAssignmentId: 'new-contract-capture',
+          grants: withCompanyGrants(actor.activeCompany?.grants, {
+            bundle: 'company_contract_preparer',
+            version: 'v2',
+            assignmentId: 'new-contract-capture',
+          }),
         },
       },
       identity,

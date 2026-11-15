@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { companyGrants } from '../access/company-grants.test-fixture';
 export const source = {
   sourceId: '10000000-0000-4000-8000-000000001015',
   documentId: '20000000-0000-4000-8000-000000001015',
@@ -34,13 +35,6 @@ export const knowledgeActor = {
   activeCompany: {
     id: '10000000-0000-4000-8000-000000000001',
     displayName: 'Company DEMO',
-    knowledgeGrants: [
-      {
-        bundle: 'company_knowledge_evidence_reader',
-        assignmentId: '80000000-0000-4000-8000-000000001015',
-        permissionSetVersion: 'v1',
-      },
-    ],
     documentPermissions: [
       'document.read',
       'document.reference.read',
@@ -53,5 +47,29 @@ export const knowledgeActor = {
     clientPermissions: ['client.read'],
     clientPermissionAssignmentId: 'b0000000-0000-4000-8000-000000001015',
     clientPermissionSetVersion: 'v1',
+    // Unmigrated screens still read the Client and Document per-bundle fields
+    // above beside these grants.
+    grants: companyGrants(
+      {
+        bundle: 'company_knowledge_evidence_reader',
+        version: 'v1',
+        assignmentId: '80000000-0000-4000-8000-000000001015',
+      },
+      {
+        bundle: 'company_document_registrar',
+        version: 'v3',
+        assignmentId: '90000000-0000-4000-8000-000000001015',
+      },
+      {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'a0000000-0000-4000-8000-000000001015',
+      },
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'b0000000-0000-4000-8000-000000001015',
+      },
+    ),
   },
 } satisfies ActorContext;
