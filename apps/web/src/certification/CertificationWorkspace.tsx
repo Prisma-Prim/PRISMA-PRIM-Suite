@@ -210,7 +210,6 @@ import {
   certificateTextDifferences,
   decisionPreconditions,
   parseDecisionFailures,
-  type DecisionPrecondition,
 } from './certification-decision';
 import {
   attachmentsWithRole,
@@ -255,7 +254,6 @@ import {
   parseBlockingDiscrepancies,
   resolutionFromDraft,
   type ConsistencyRoles,
-  type ConsistencyRule,
   type ManualDraft,
   type ResolutionDraft,
 } from './certification-consistency';
@@ -264,26 +262,30 @@ import { ConsistencyRegion, ruleLabel } from './CertificationConsistency';
 import {
   deadlinesFromDraft,
   draftFromDeadlines,
-  draftFromExchange,
-  emptyExchangeDraft,
-  exchangeFromDraft,
   parseDeadlineHistory,
   parseDeadlineSet,
-  parseExchangePage,
-  reverificationFromDraft,
   type DeadlineDraft,
-  type ExchangeDraft,
-  type ReverificationDraft,
 } from './certification-exchanges';
 import {
   DeadlineAdministration,
-  ExchangesRegion,
-  type ExchangePaging,
-  type ExchangeFieldFeedback,
   StepSendings,
   type DeadlineAdministrationView,
   type DeadlineFeedback,
 } from './CertificationExchanges';
+
+import {
+  useCertificationExchangeRegister,
+  type ExchangeMutationKind,
+} from './CertificationExchangeRegister';
+import {
+  IDLE,
+  reuse,
+  blockedUntilReload,
+  refusedWith,
+  type Intent,
+  type Feedback,
+  type NamedDiscrepancy,
+} from './certification-command';
 
 export interface CertificationWorkspaceProps {
   actor: ActorContext;
@@ -303,31 +305,6 @@ type CaseView = {
   timeline: CaseTimeline;
   register: DocumentRegister;
 };
-/** One serialized command and its key, retried unchanged when uncertain. */
-type Intent = {
-  path: string;
-  body: string;
-  key: string;
-  caseId: string | null;
-};
-type Feedback =
-  | { status: 'idle' | 'saved' }
-  | { status: 'saving' | 'uncertain'; intent: Intent }
-  /** `reload`: the shown Case is outdated; saving waits for a reload. */
-  | { status: 'refused'; message: CertificationMessageKey; reload: boolean }
-  /**
-   * The decision's unmet preconditions, as the read Case shows them before
-   * sending or as the server listed them when it refused the decision.
-   */
-  | {
-      status: 'unmet';
-      source: 'case' | 'server';
-      failures: DecisionPrecondition[];
-      /** The blocking Discrepancies, from the read Case or as the server named them. */
-      discrepancies: NamedDiscrepancy[];
-    };
-/** A Discrepancy a decision is refused for, by identity and rule. */
-type NamedDiscrepancy = { id: string; rule: ConsistencyRule | 'manual' };
 type MutationKind =
   | 'open'
   | 'application'
@@ -345,6 +322,7 @@ type MutationKind =
   | 'withdrawal'
   | StageKind
   | ClosingKind;
+type WorkspaceMutationKind = Exclude<MutationKind, ExchangeMutationKind>;
 /** The closing steps, each with its own form and feedback. */
 type ClosingKind =
   | 'recommendation'
@@ -418,7 +396,6 @@ type Proposal =
   | { status: 'ready'; inputs: string; result: DurationResult }
   | { status: 'refused'; message: CertificationMessageKey };
 
-const IDLE: Feedback = { status: 'idle' };
 const STAGE_KINDS: readonly StageKind[] = [
   'stage1Plan',
   'stage2Plan',
@@ -485,7 +462,6 @@ function CertificationRegistry(
   const registerOperation = useScopedOperation(props.scope);
   const deadlineOperation = useScopedOperation(props.scope);
   const exchangePageOperation = useScopedOperation(props.scope);
-  const [exchangePaging, setExchangePaging] = useState<ExchangePaging>('idle');
   /**
    * The captured right to read received-source content, which reading,
    * listing and attaching the Client's PDFs need. Its change retires their
@@ -617,24 +593,6 @@ function CertificationRegistry(
   const [resolutionDraft, setResolutionDraft] =
     useState<ResolutionDraft | null>(null);
   const [resolutionFeedback, setResolutionFeedback] = useState<Feedback>(IDLE);
-  /** The Exchange Record form: closed, a new record or a correction. */
-  const [exchangeOpen, setExchangeOpen] = useState<{
-    correcting: number | null;
-  } | null>(null);
-  const [exchangeDraft, setExchangeDraft] =
-    useState<ExchangeDraft>(emptyExchangeDraft);
-  const [exchangeFeedback, setExchangeFeedback] = useState<Feedback>(IDLE);
-  const [itemOpen, setItemOpen] = useState(false);
-  const [itemDraft, setItemDraft] = useState<ReverificationDraft>({
-    text: '',
-    source: '',
-  });
-  const [itemFeedback, setItemFeedback] = useState<Feedback>(IDLE);
-  const [withdrawalDraft, setWithdrawalDraft] = useState<{
-    itemId: string;
-    reason: string;
-  } | null>(null);
-  const [withdrawalFeedback, setWithdrawalFeedback] = useState<Feedback>(IDLE);
   /** The Company's procedure deadline configuration, for its administrator. */
   const [deadlineView, setDeadlineView] = useState<DeadlineAdministrationView>({
     status: 'closed',
@@ -665,7 +623,31 @@ function CertificationRegistry(
   const mutating = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const openingTrigger = useRef<Element | null>(null);
+  const exchangeRegister = useCertificationExchangeRegister({
+    view: detail?.status === 'ready' ? detail.value : undefined,
+    pageOperation: exchangePageOperation,
+    queryPage: (signal, path) => query(exchangePageOperation, signal, path),
+    commit: (command) => performCommand(command.kind, command.intent, command),
+    updateCase: (update) =>
+      setDetail((latest) =>
+        latest?.status === 'ready'
+          ? {
+              status: 'ready',
+              value: {
+                ...latest.value,
+                caseDetail: update(latest.value.caseDetail),
+              },
+            }
+          : latest,
+      ),
+    reload: (caseId) => {
+      void openCase(caseId, { reload: true });
+    },
+    isBusy: () => busy,
+    renderFeedback,
+  });
   const busy =
+    exchangeRegister.saving ||
     proposal.status === 'computing' ||
     [
       openFeedback,
@@ -679,16 +661,13 @@ function CertificationRegistry(
       findingFeedback,
       manualFeedback,
       resolutionFeedback,
-      exchangeFeedback,
-      itemFeedback,
-      withdrawalFeedback,
       ...Object.values(stageFeedback),
       ...Object.values(closingFeedback),
     ].some((feedback) => feedback.status === 'saving') ||
     deadlineFeedback.status === 'saving';
   const projectPath = `/projects/${encodeURIComponent(projectId)}`;
 
-  function feedbackSetter(kind: MutationKind) {
+  function feedbackSetter(kind: WorkspaceMutationKind) {
     switch (kind) {
       case 'open':
         return setOpenFeedback;
@@ -712,12 +691,6 @@ function CertificationRegistry(
         return setManualFeedback;
       case 'discrepancyResolution':
         return setResolutionFeedback;
-      case 'exchange':
-        return setExchangeFeedback;
-      case 'reverification':
-        return setItemFeedback;
-      case 'withdrawal':
-        return setWithdrawalFeedback;
       case 'stage1Plan':
         return setStage1PlanFeedback;
       case 'stage2Plan':
@@ -836,15 +809,7 @@ function CertificationRegistry(
     setManualFeedback(IDLE);
     setResolutionDraft(null);
     setResolutionFeedback(IDLE);
-    setExchangePaging('idle');
-    setExchangeOpen(null);
-    setExchangeDraft(emptyExchangeDraft());
-    setExchangeFeedback(IDLE);
-    setItemOpen(false);
-    setItemDraft({ text: '', source: '' });
-    setItemFeedback(IDLE);
-    setWithdrawalDraft(null);
-    setWithdrawalFeedback(IDLE);
+    exchangeRegister.reset();
     for (const kind of CLOSING_KINDS) {
       resetClosingDraft(kind);
       feedbackSetter(kind)(IDLE);
@@ -992,7 +957,7 @@ function CertificationRegistry(
   ) {
     if (mutating.current) return;
     exchangePageOperation.retire();
-    setExchangePaging('idle');
+    exchangeRegister.prepareRead(options);
     const signal = detailOperation.begin();
     if (!signal) return;
     if (selected.current !== caseId) resetCaseDrafts();
@@ -1012,9 +977,6 @@ function CertificationRegistry(
       setFindingFeedback(clear);
       setManualFeedback(clear);
       setResolutionFeedback(clear);
-      setExchangeFeedback(clear);
-      setItemFeedback(clear);
-      setWithdrawalFeedback(clear);
       for (const kind of STAGE_KINDS) feedbackSetter(kind)(clear);
       for (const kind of CLOSING_KINDS) feedbackSetter(kind)(clear);
     }
@@ -1101,12 +1063,85 @@ function CertificationRegistry(
     }
   }
 
-  async function execute(kind: MutationKind, intent: Intent) {
+  function execute(kind: WorkspaceMutationKind, intent: Intent) {
+    return performCommand(kind, intent, {
+      setFeedback: feedbackSetter(kind),
+      confirmed: () => {
+        switch (kind) {
+          case 'open':
+            setOpening(false);
+            setEntityId('');
+            setOrderReference('');
+            break;
+          case 'application':
+            setApplicationDraft(emptyApplicationDraft());
+            setApplicationOpen(false);
+            break;
+          case 'review':
+            setReviewDraft(emptyReviewDraft());
+            break;
+          case 'duration':
+            resetDurationDraft();
+            break;
+          case 'attach':
+            resetAttachDraft();
+            break;
+          case 'agreement':
+            resetAgreementDraft();
+            break;
+          case 'team':
+            resetTeamDraft();
+            break;
+          case 'decision':
+            setDecisionDraft(emptyDecisionDraft());
+            break;
+          case 'finding':
+            setFindingForm(null);
+            break;
+          case 'discrepancy':
+            setManualDraft(emptyManualDraft());
+            setManualOpen(false);
+            break;
+          case 'discrepancyResolution':
+            setResolutionDraft(null);
+            break;
+          case 'stage1Plan':
+          case 'stage2Plan':
+          case 'stage1Report':
+          case 'stage2Report':
+            resetStageDraft(kind);
+            break;
+          case 'recommendation':
+          case 'dossierReview':
+          case 'certificationDecision':
+          case 'certificateData':
+          case 'certificate':
+          case 'certificateDraft':
+          case 'clientOpinion':
+          case 'draftApproval':
+          case 'certificateRevision':
+            resetClosingDraft(kind);
+            break;
+          default:
+            unexpected(kind);
+        }
+      },
+    });
+  }
+
+  async function performCommand(
+    kind: MutationKind,
+    intent: Intent,
+    owner: {
+      setFeedback: (next: Feedback) => void;
+      confirmed: () => void;
+    },
+  ) {
     if (mutating.current) return;
     const signal = mutationOperation.begin();
     if (!signal) return;
     mutating.current = true;
-    const setFeedback = feedbackSetter(kind);
+    const setFeedback = owner.setFeedback;
     setFeedback({ status: 'saving', intent });
     let confirmed: CaseDetail | undefined;
     try {
@@ -1136,75 +1171,7 @@ function CertificationRegistry(
       mutating.current = false;
     }
     if (!confirmed || signal.aborted) return;
-    switch (kind) {
-      case 'open':
-        setOpening(false);
-        setEntityId('');
-        setOrderReference('');
-        break;
-      case 'application':
-        setApplicationDraft(emptyApplicationDraft());
-        setApplicationOpen(false);
-        break;
-      case 'review':
-        setReviewDraft(emptyReviewDraft());
-        break;
-      case 'duration':
-        resetDurationDraft();
-        break;
-      case 'attach':
-        resetAttachDraft();
-        break;
-      case 'agreement':
-        resetAgreementDraft();
-        break;
-      case 'team':
-        resetTeamDraft();
-        break;
-      case 'decision':
-        setDecisionDraft(emptyDecisionDraft());
-        break;
-      case 'finding':
-        setFindingForm(null);
-        break;
-      case 'discrepancy':
-        setManualDraft(emptyManualDraft());
-        setManualOpen(false);
-        break;
-      case 'discrepancyResolution':
-        setResolutionDraft(null);
-        break;
-      case 'exchange':
-        setExchangeDraft(emptyExchangeDraft());
-        setExchangeOpen(null);
-        break;
-      case 'reverification':
-        setItemDraft({ text: '', source: '' });
-        setItemOpen(false);
-        break;
-      case 'withdrawal':
-        setWithdrawalDraft(null);
-        break;
-      case 'stage1Plan':
-      case 'stage2Plan':
-      case 'stage1Report':
-      case 'stage2Report':
-        resetStageDraft(kind);
-        break;
-      case 'recommendation':
-      case 'dossierReview':
-      case 'certificationDecision':
-      case 'certificateData':
-      case 'certificate':
-      case 'certificateDraft':
-      case 'clientOpinion':
-      case 'draftApproval':
-      case 'certificateRevision':
-        resetClosingDraft(kind);
-        break;
-      default:
-        unexpected(kind);
-    }
+    owner.confirmed();
     void loadList();
     void openCase(confirmed.id, { reload: true });
   }
@@ -2490,100 +2457,6 @@ function CertificationRegistry(
     );
   }
 
-  /** Records an Exchange Record, or corrects one with a reason. */
-  function submitExchange(event: FormEvent) {
-    event.preventDefault();
-    if (
-      busy ||
-      detail?.status !== 'ready' ||
-      exchangeOpen === null ||
-      blockedUntilReload(exchangeFeedback)
-    )
-      return;
-    const { caseDetail: current, register } = detail.value;
-    const correcting = exchangeOpen.correcting;
-    const check = exchangeFromDraft(exchangeDraft, {
-      attachments: register.items,
-      correcting: correcting !== null,
-    });
-    if (check.status !== 'valid') {
-      setExchangeFeedback(
-        refusedWith(
-          check.status === 'noteRequired'
-            ? 'exchangeNoteRequired'
-            : check.status === 'reasonRequired'
-              ? 'exchangeReasonRequired'
-              : 'exchangeValidation',
-        ),
-      );
-      return;
-    }
-    const base = `/certification-cases/${encodeURIComponent(current.id)}/exchanges`;
-    void execute(
-      'exchange',
-      reuse(exchangeFeedback, {
-        path: correcting === null ? base : `${base}/${String(correcting)}`,
-        body: JSON.stringify({
-          expectedRevision: current.revision,
-          ...check.body,
-        }),
-        caseId: current.id,
-      }),
-    );
-  }
-
-  /** Adds a manual Re-verification Item. */
-  function submitItem(event: FormEvent) {
-    event.preventDefault();
-    if (busy || detail?.status !== 'ready' || blockedUntilReload(itemFeedback))
-      return;
-    const current = detail.value.caseDetail;
-    const check = reverificationFromDraft(itemDraft);
-    if (check.status !== 'valid') {
-      setItemFeedback(refusedWith('reverificationValidation'));
-      return;
-    }
-    void execute(
-      'reverification',
-      reuse(itemFeedback, {
-        path: `/certification-cases/${encodeURIComponent(current.id)}/reverification-items`,
-        body: JSON.stringify({
-          expectedRevision: current.revision,
-          ...check.body,
-        }),
-        caseId: current.id,
-      }),
-    );
-  }
-
-  /** Withdraws a manual Re-verification Item with its reason. */
-  function submitWithdrawal(event: FormEvent) {
-    event.preventDefault();
-    if (
-      busy ||
-      detail?.status !== 'ready' ||
-      withdrawalDraft === null ||
-      blockedUntilReload(withdrawalFeedback)
-    )
-      return;
-    const current = detail.value.caseDetail;
-    if (!withdrawalDraft.reason.trim()) {
-      setWithdrawalFeedback(refusedWith('withdrawalReasonRequired'));
-      return;
-    }
-    void execute(
-      'withdrawal',
-      reuse(withdrawalFeedback, {
-        path: `/certification-cases/${encodeURIComponent(current.id)}/reverification-items/${encodeURIComponent(withdrawalDraft.itemId)}/withdrawal`,
-        body: JSON.stringify({
-          expectedRevision: current.revision,
-          reason: withdrawalDraft.reason,
-        }),
-        caseId: current.id,
-      }),
-    );
-  }
-
   /** Reads the Company's procedure deadline set and its history. */
   async function loadDeadlines() {
     const signal = deadlineOperation.begin();
@@ -2689,199 +2562,50 @@ function CertificationRegistry(
     }
   }
 
-  async function loadMoreExchanges() {
-    if (detail?.status !== 'ready' || exchangePaging === 'loading' || busy)
-      return;
-    const view = detail.value,
-      current = view.caseDetail;
-    const cursor = current.exchanges.nextCursor;
-    if (cursor === null) return;
-    const signal = exchangePageOperation.begin();
-    if (!signal) return;
-    setExchangePaging('loading');
-    try {
-      const result = await query(
-        exchangePageOperation,
-        signal,
-        `/certification-cases/${encodeURIComponent(current.id)}/exchanges?cursor=${encodeURIComponent(cursor)}`,
-      );
-      if (signal.aborted) return;
-      if (result.status === 'ok') {
-        const page = parseExchangePage(result.value);
-        const previous = current.exchanges.records;
-        if (
-          page.total !== current.exchanges.total ||
-          page.records.some((entry) =>
-            previous.some((old) => old.sequence === entry.sequence),
-          ) ||
-          page.nextCursor === cursor ||
-          previous.length + page.records.length > page.total ||
-          (page.nextCursor === null &&
-            previous.length + page.records.length !== page.total)
-        )
-          throw new Error('Inconsistent exchange page.');
-        setDetail((latest) =>
-          latest?.status === 'ready' &&
-          latest.value.caseDetail.id === current.id &&
-          latest.value.caseDetail.revision === current.revision &&
-          latest.value.caseDetail.exchanges.nextCursor === cursor
-            ? {
-                status: 'ready',
-                value: {
-                  ...latest.value,
-                  caseDetail: {
-                    ...latest.value.caseDetail,
-                    exchanges: {
-                      ...latest.value.caseDetail.exchanges,
-                      records: [...previous, ...page.records],
-                      nextCursor: page.nextCursor,
-                    },
-                  },
-                },
-              }
-            : latest,
-        );
-        setExchangePaging('idle');
-      } else if (result.status === 'conflict') setExchangePaging('stale');
-      else if (
-        result.status !== 'forbidden' &&
-        result.status !== 'unauthorized'
-      )
-        setExchangePaging('error');
-    } catch {
-      if (!signal.aborted) setExchangePaging('error');
-    }
-  }
-
-  /** The Exchanges and deadlines region of the read Case. */
   function exchangesSection(view: CaseView) {
     const roles = consistencyRoles(view);
-    const formState = <Draft,>(
-      kind: 'exchange' | 'reverification' | 'withdrawal',
-      feedback: Feedback,
-      draft: Draft,
-    ) => ({
-      draft,
-      feedback: feedbackMessage(kind, feedback),
-      saving: feedback.status === 'saving',
-      fieldFeedback: exchangeFieldFeedback({
-        kind,
-        feedback,
-        id: feedbackIds[kind],
-      }),
-      describedBy: describedFeedback(kind, feedback),
+    return exchangeRegister.render({
+      prefix,
+      busy,
+      roles: {
+        manager: authority.manage,
+        contributor:
+          roles.manager || roles.auditorOnTeam || roles.independentApprover,
+      },
+      administration: administersDeadlines ? (
+        <DeadlineAdministration
+          prefix={prefix}
+          view={deadlineView}
+          feedback={deadlineFeedback}
+          draft={deadlineDraft}
+          busy={busy}
+          onOpen={() => void loadDeadlines()}
+          onClose={() => {
+            deadlineOperation.retire();
+            setDeadlineView({ status: 'closed' });
+            setDeadlineFeedback({ status: 'idle' });
+          }}
+          onReload={() => void loadDeadlines()}
+          onDraft={(draft) => {
+            setDeadlineDraft(draft);
+            if (
+              deadlineFeedback.status === 'invalid' ||
+              deadlineFeedback.status === 'unchanged' ||
+              deadlineFeedback.status === 'saved'
+            )
+              setDeadlineFeedback({ status: 'idle' });
+          }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveDeadlines(false);
+          }}
+          onRetry={() => void saveDeadlines(true)}
+        />
+      ) : null,
     });
-    const clearRefusal = (
-      feedback: Feedback,
-      set: (next: Feedback) => void,
-    ) => {
-      if (
-        feedback.status === 'saved' ||
-        (feedback.status === 'refused' && !feedback.reload)
-      )
-        set(IDLE);
-    };
-    const records = view.caseDetail.exchanges.records;
-    return (
-      <ExchangesRegion
-        paging={exchangePaging}
-        onLoadMore={() => void loadMoreExchanges()}
-        onReload={() => void openCase(view.caseDetail.id, { reload: true })}
-        prefix={prefix}
-        detail={view.caseDetail}
-        register={view.register}
-        roles={{
-          manager: authority.manage,
-          contributor:
-            roles.manager || roles.auditorOnTeam || roles.independentApprover,
-        }}
-        busy={busy}
-        exchange={{
-          ...formState('exchange', exchangeFeedback, exchangeDraft),
-          open: exchangeOpen,
-        }}
-        onExchangeOpen={(open) => {
-          setExchangeOpen(open);
-          const corrected =
-            open?.correcting === null || open === null
-              ? undefined
-              : records.find((entry) => entry.sequence === open.correcting);
-          setExchangeDraft(
-            corrected
-              ? draftFromExchange(corrected.current)
-              : emptyExchangeDraft(),
-          );
-          setExchangeFeedback(IDLE);
-        }}
-        onExchangeDraft={(draft) => {
-          setExchangeDraft(draft);
-          clearRefusal(exchangeFeedback, setExchangeFeedback);
-        }}
-        onExchangeSubmit={submitExchange}
-        item={{
-          ...formState('reverification', itemFeedback, itemDraft),
-          open: itemOpen,
-        }}
-        onItemOpen={(open) => {
-          setItemOpen(open);
-          if (!open) setItemDraft({ text: '', source: '' });
-          setItemFeedback(IDLE);
-        }}
-        onItemDraft={(draft) => {
-          setItemDraft(draft);
-          clearRefusal(itemFeedback, setItemFeedback);
-        }}
-        onItemSubmit={submitItem}
-        withdrawal={formState(
-          'withdrawal',
-          withdrawalFeedback,
-          withdrawalDraft,
-        )}
-        onWithdrawalDraft={(draft) => {
-          const reopened =
-            draft === null || draft.itemId !== withdrawalDraft?.itemId;
-          setWithdrawalDraft(draft);
-          if (reopened) setWithdrawalFeedback(IDLE);
-          else clearRefusal(withdrawalFeedback, setWithdrawalFeedback);
-        }}
-        onWithdrawalSubmit={submitWithdrawal}
-        administration={
-          administersDeadlines ? (
-            <DeadlineAdministration
-              prefix={prefix}
-              view={deadlineView}
-              feedback={deadlineFeedback}
-              draft={deadlineDraft}
-              busy={busy}
-              onOpen={() => void loadDeadlines()}
-              onClose={() => {
-                deadlineOperation.retire();
-                setDeadlineView({ status: 'closed' });
-                setDeadlineFeedback({ status: 'idle' });
-              }}
-              onReload={() => void loadDeadlines()}
-              onDraft={(draft) => {
-                setDeadlineDraft(draft);
-                if (
-                  deadlineFeedback.status === 'invalid' ||
-                  deadlineFeedback.status === 'unchanged' ||
-                  deadlineFeedback.status === 'saved'
-                )
-                  setDeadlineFeedback({ status: 'idle' });
-              }}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void saveDeadlines(false);
-              }}
-              onRetry={() => void saveDeadlines(true)}
-            />
-          ) : null
-        }
-      />
-    );
   }
 
-  function retry(kind: MutationKind, feedback: Feedback) {
+  function retry(kind: WorkspaceMutationKind, feedback: Feedback) {
     if (feedback.status === 'uncertain') void execute(kind, feedback.intent);
   }
 
@@ -2897,9 +2621,6 @@ function CertificationRegistry(
     finding: `${prefix}-finding-feedback`,
     discrepancy: `${prefix}-discrepancy-feedback`,
     discrepancyResolution: `${prefix}-discrepancy-resolution-feedback`,
-    exchange: `${prefix}-exchange-feedback`,
-    reverification: `${prefix}-reverification-feedback`,
-    withdrawal: `${prefix}-withdrawal-feedback`,
     stage1Plan: `${prefix}-stage-1-plan-feedback`,
     stage2Plan: `${prefix}-stage-2-plan-feedback`,
     stage1Report: `${prefix}-stage-1-report-feedback`,
@@ -2913,10 +2634,29 @@ function CertificationRegistry(
     clientOpinion: `${prefix}-client-opinion-feedback`,
     draftApproval: `${prefix}-draft-approval-feedback`,
     certificateRevision: `${prefix}-certificate-revision-feedback`,
-  } satisfies Record<MutationKind, string>;
+  } satisfies Record<WorkspaceMutationKind, string>;
 
   /** A step's confirmation is shown above the Case and survives its reload. */
-  function feedbackMessage(kind: MutationKind, feedback: Feedback) {
+  function feedbackMessage(kind: WorkspaceMutationKind, feedback: Feedback) {
+    return renderFeedback({
+      kind,
+      feedback,
+      id: feedbackIds[kind],
+      retry: () => retry(kind, feedback),
+    });
+  }
+
+  function renderFeedback({
+    kind,
+    feedback,
+    id,
+    retry,
+  }: {
+    kind: MutationKind;
+    feedback: Feedback;
+    id: string;
+    retry: () => void;
+  }) {
     switch (feedback.status) {
       case 'idle':
       case 'saving':
@@ -2927,26 +2667,22 @@ function CertificationRegistry(
         ) : null;
       case 'uncertain':
         return (
-          <div role="alert" id={feedbackIds[kind]}>
+          <div role="alert" id={id}>
             <p>{copy('uncertain')}</p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => retry(kind, feedback)}
-            >
+            <button type="button" disabled={busy} onClick={retry}>
               {copy('retry')}
             </button>
           </div>
         );
       case 'refused':
         return (
-          <p role="alert" id={feedbackIds[kind]}>
+          <p role="alert" id={id}>
             {copy(feedback.message)}
           </p>
         );
       case 'unmet':
         return (
-          <div role="alert" id={feedbackIds[kind]}>
+          <div role="alert" id={id}>
             <p>
               {copy(
                 feedback.source === 'server'
@@ -2962,7 +2698,7 @@ function CertificationRegistry(
     return unexpected(feedback);
   }
 
-  function describedFeedback(kind: MutationKind, feedback: Feedback) {
+  function describedFeedback(kind: WorkspaceMutationKind, feedback: Feedback) {
     return feedback.status === 'refused' ||
       feedback.status === 'uncertain' ||
       feedback.status === 'unmet'
@@ -3156,23 +2892,21 @@ function CertificationRegistry(
               {copy('back')}
             </button>
           </div>
-          {[
-            applicationFeedback,
-            reviewFeedback,
-            durationFeedback,
-            attachFeedback,
-            agreementFeedback,
-            teamFeedback,
-            decisionFeedback,
-            findingFeedback,
-            manualFeedback,
-            resolutionFeedback,
-            exchangeFeedback,
-            itemFeedback,
-            withdrawalFeedback,
-            ...Object.values(stageFeedback),
-            ...Object.values(closingFeedback),
-          ].some((feedback) => feedback.status === 'saved') && (
+          {(exchangeRegister.saved ||
+            [
+              applicationFeedback,
+              reviewFeedback,
+              durationFeedback,
+              attachFeedback,
+              agreementFeedback,
+              teamFeedback,
+              decisionFeedback,
+              findingFeedback,
+              manualFeedback,
+              resolutionFeedback,
+              ...Object.values(stageFeedback),
+              ...Object.values(closingFeedback),
+            ].some((feedback) => feedback.status === 'saved')) && (
             <p role="status">{copy('saveConfirmed')}</p>
           )}
           {detail?.status === 'loading' && (
@@ -5763,55 +5497,6 @@ function stageAttachmentsOf(entry: CaseTimeline['entries'][number]) {
       return [];
   }
   return unexpected(entry);
-}
-
-function reuse(feedback: Feedback, next: Omit<Intent, 'key'>): Intent {
-  return feedback.status === 'uncertain' &&
-    feedback.intent.path === next.path &&
-    feedback.intent.body === next.body
-    ? feedback.intent
-    : { ...next, key: crypto.randomUUID() };
-}
-
-function blockedUntilReload(feedback: Feedback): boolean {
-  return feedback.status === 'refused' && feedback.reload;
-}
-
-function refusedWith(
-  message: CertificationMessageKey,
-  reload = false,
-): Feedback {
-  return { status: 'refused', message, reload };
-}
-
-/** Only input refusals name fields; stale, denied and other state alerts do not. */
-function exchangeFieldFeedback({
-  kind,
-  feedback,
-  id,
-}: {
-  kind: 'exchange' | 'reverification' | 'withdrawal';
-  feedback: Feedback;
-  id: string;
-}): ExchangeFieldFeedback {
-  if (feedback.status !== 'refused') return null;
-  switch (feedback.message) {
-    case 'exchangeInFuture':
-      return { id, field: 'businessDate' };
-    case 'exchangeNoteRequired':
-      return { id, field: 'note' };
-    case 'exchangeReasonRequired':
-    case 'withdrawalReasonRequired':
-      return { id, field: 'reason' };
-    case 'discrepancyDocumentUnavailable':
-      return kind === 'exchange' ? { id, field: 'attachmentIds' } : null;
-    case 'exchangeValidation':
-    case 'reverificationValidation':
-    case 'invalid':
-      return { id, field: 'draft' };
-    default:
-      return null;
-  }
 }
 
 /** A refused or failed command, in the plain language of its reason. */
