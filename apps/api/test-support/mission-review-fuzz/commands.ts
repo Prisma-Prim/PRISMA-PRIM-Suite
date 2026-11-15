@@ -363,7 +363,7 @@ class ReuseKey extends Step {
     }
     if (
       reply.status !== 409 ||
-      !messageOf(reply)?.includes('another review intent')
+      object(reply.body, 'key reuse response').code !== 'IDEMPOTENCY_CONFLICT'
     )
       throw new InvariantViolation(
         'replay-receipt',
