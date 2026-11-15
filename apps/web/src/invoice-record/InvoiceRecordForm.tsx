@@ -5,10 +5,10 @@ import { useInvoiceRecordCopy } from './invoice-record-copy';
 import { readReceipt, type InvoiceReceipt } from './invoice-record-history';
 import {
   accessRejected,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-  type InvoiceAccessRecovery,
-} from './invoice-record-owner';
+  useActorRequests,
+  type ActorRequestProps,
+  type AccessRecovery,
+} from '../api/use-actor-requests';
 import { literal, sameValues } from './invoice-record-values';
 import {
   draftValues,
@@ -28,7 +28,7 @@ type SubmitState =
   | { kind: 'sending' | 'uncertain'; attempt: Attempt }
   | { kind: 'conflict'; message: 'conflict' | 'stale' };
 export function InvoiceRecordForm(
-  props: InvoiceAccessProps & {
+  props: ActorRequestProps & {
     edit: InvoiceEdit;
     companyId: string;
     readCapture: string;
@@ -38,7 +38,7 @@ export function InvoiceRecordForm(
     onDenied: () => void;
     onSaved: (receipt: InvoiceReceipt) => void;
     onReload: () => void;
-    recoverAccess?: InvoiceAccessRecovery;
+    recoverAccess?: AccessRecovery;
   },
 ) {
   const copy = useInvoiceRecordCopy();
@@ -51,12 +51,12 @@ export function InvoiceRecordForm(
       ? props.edit.replaces
       : props.edit.current.record.id,
   ]);
-  const owner = useInvoiceOwner(
-    props,
-    props.companyId,
-    commandScope,
-    props.recoverAccess,
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: commandScope,
+    recoverThrough: props.recoverAccess,
+  });
   const [draft, setDraft] = useState(() =>
     invoiceDraft(
       props.edit.kind === 'CREATE'

@@ -4,19 +4,19 @@ import { useInterfaceLocale } from '../localization/interface-locale';
 import { paymentCopy } from './ui';
 import {
   accessRejected,
-  usePaymentOwner,
-  type PaymentAccessProps,
-  type PaymentAccessRecovery,
-} from './payment-owner';
+  useActorRequests,
+  type ActorRequestProps,
+  type AccessRecovery,
+} from '../api/use-actor-requests';
 
 export function PaymentDownload(
-  props: PaymentAccessProps & {
+  props: ActorRequestProps & {
     companyId: string;
     recordId: string;
     authority: string;
     source: Extract<PaymentLiveSource, { kind: 'AVAILABLE' }>;
     onDenied: () => void;
-    recoverAccess?: PaymentAccessRecovery;
+    recoverAccess?: AccessRecovery;
   },
 ) {
   const { locale } = useInterfaceLocale();
@@ -29,12 +29,12 @@ export function PaymentDownload(
     props.source.documentVersionId,
     content.kind === 'AVAILABLE' ? content.representationId : null,
   ]);
-  const owner = usePaymentOwner(
-    props,
-    props.companyId,
-    scope,
-    props.recoverAccess,
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: scope,
+    recoverThrough: props.recoverAccess,
+  });
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const pending = useRef(false);
   const urls = useRef(new Set<string>());

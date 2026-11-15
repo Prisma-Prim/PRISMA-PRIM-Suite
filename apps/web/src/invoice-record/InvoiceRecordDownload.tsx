@@ -3,19 +3,19 @@ import type { LiveSource } from './invoice-record-contract';
 import { useInvoiceRecordCopy } from './invoice-record-copy';
 import {
   accessRejected,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-  type InvoiceAccessRecovery,
-} from './invoice-record-owner';
+  useActorRequests,
+  type ActorRequestProps,
+  type AccessRecovery,
+} from '../api/use-actor-requests';
 
 export function InvoiceRecordDownload(
-  props: InvoiceAccessProps & {
+  props: ActorRequestProps & {
     companyId: string;
     recordId: string;
     authority: string;
     source: Extract<LiveSource, { kind: 'AVAILABLE' }>;
     onDenied: () => void;
-    recoverAccess?: InvoiceAccessRecovery;
+    recoverAccess?: AccessRecovery;
   },
 ) {
   const copy = useInvoiceRecordCopy();
@@ -27,12 +27,12 @@ export function InvoiceRecordDownload(
     props.source.documentVersionId,
     content.kind === 'AVAILABLE' ? content.representationId : null,
   ]);
-  const owner = useInvoiceOwner(
-    props,
-    props.companyId,
-    scope,
-    props.recoverAccess,
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: scope,
+    recoverThrough: props.recoverAccess,
+  });
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const pending = useRef(false);
   const urls = useRef(new Set<string>());

@@ -6,7 +6,10 @@ import {
   paymentLiteral,
 } from './payment-draft';
 import { readPaymentReceipt } from './payment-contract';
-import { usePaymentOwner, type PaymentAccessProps } from './payment-owner';
+import {
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import type {
   PaymentAction,
   PaymentCurrent,
@@ -21,7 +24,7 @@ import {
   paymentCopy,
 } from './ui';
 
-type CommandProps = PaymentAccessProps & {
+type CommandProps = ActorRequestProps & {
   companyId: string;
   authority: string;
   action: PaymentAction;
@@ -42,7 +45,11 @@ export function PaymentCommandPanel(props: CommandProps) {
   const { locale } = useInterfaceLocale(),
     copy = paymentCopy[locale],
     id = useId();
-  const owner = usePaymentOwner(props, props.companyId, props.authority);
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: props.authority,
+  });
   const latest = useRef(props);
   latest.current = props;
   const [shown, setShown] = useState(props.current);

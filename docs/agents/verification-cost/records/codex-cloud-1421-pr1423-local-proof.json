@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1421-pr1423-local-proof",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1421,
+  "pullRequest": 1423,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T13:11:00.999Z",
+    "end": "2026-11-15T14:03:23.367Z",
+    "durationSeconds": 3142
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 4,
+      "P3": 0
+    },
+    "notes": "Four reproduced request-lifetime problem classes; unchanged financial assertions and12native journey cases pass; paired reviews0findings. Wall time includes controlled baseline comparisons and concurrent read-only continuation planning. Tokens/model/price not reported."
+  }
+}
