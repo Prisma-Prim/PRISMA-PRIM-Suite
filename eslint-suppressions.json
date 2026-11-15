@@ -100,31 +100,6 @@
       "count": 1
     }
   },
-  "apps/web/src/access/CompanyContextAccess.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/access/WorkspaceInvitationAcceptance.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/access/WorkspaceInvitations.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/access/WorkspaceMembershipSuspension.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/access/WorkspaceSessionRevocations.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/web/src/api/latest-authenticated-request.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
@@ -135,11 +110,6 @@
       "count": 1
     },
     "no-warning-comments": {
-      "count": 1
-    }
-  },
-  "apps/web/src/api/use-access-recovery.ts": {
-    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -477,11 +447,6 @@
     },
     "@typescript-eslint/no-non-null-assertion": {
       "count": 12
-    }
-  },
-  "apps/web/src/production-shell/production-shell-session.ts": {
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "apps/web/src/production-shell/useProductionShellContext.test.tsx": {

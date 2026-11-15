@@ -18,35 +18,56 @@ export type ScopedOperationGroup = {
   isPending: () => boolean;
 };
 
-function createOperationGroup() {
-  const pending = new Set<AbortController>();
+/** One imperative lifetime owns admission, completion and cancellation. */
+export function createOperationScope() {
+  const pending = new Set<PendingOperation>();
+  let live = true;
+  let latest: PendingOperation | null = null;
+  function begin(): PendingOperation | null {
+    if (!live) return null;
+    const controller = new AbortController();
+    const operation: PendingOperation = {
+      signal: controller.signal,
+      release: () => {
+        pending.delete(operation);
+      },
+      retire: () => {
+        pending.delete(operation);
+        controller.abort();
+      },
+    };
+    pending.add(operation);
+    return operation;
+  }
+  function retire() {
+    const retiring = new Set(pending);
+    if (latest) retiring.add(latest);
+    latest = null;
+    pending.clear();
+    for (const operation of retiring) operation.retire();
+  }
   return {
-    begin(): PendingOperation {
-      const controller = new AbortController();
-      pending.add(controller);
-      return {
-        signal: controller.signal,
-        release: () => {
-          pending.delete(controller);
-        },
-        retire: () => {
-          pending.delete(controller);
-          controller.abort();
-        },
-      };
+    begin,
+    beginLatest() {
+      const next = begin();
+      if (!next) return null;
+      const previous = latest;
+      latest = next;
+      previous?.retire();
+      return next;
     },
-    retire() {
-      const retiring = [...pending];
-      pending.clear();
-      for (const controller of retiring) controller.abort();
+    retire,
+    close() {
+      live = false;
+      retire();
     },
+    isLive: () => live,
     isPending: () => pending.size > 0,
   };
 }
 type Owner = {
   scope: { value: string };
-  group: ReturnType<typeof createOperationGroup>;
-  latest: PendingOperation | null;
+  operations: ReturnType<typeof createOperationScope>;
 };
 
 /** Speculative renders cannot retire the committed owner or its callbacks. */
@@ -56,13 +77,12 @@ function useOperationOwner(scope: string) {
   useLayoutEffect(() => {
     const current: Owner = {
       scope: rendered,
-      group: createOperationGroup(),
-      latest: null,
+      operations: createOperationScope(),
     };
     owner.current = current;
     return () => {
       if (owner.current === current) owner.current = null;
-      current.group.retire();
+      current.operations.close();
     };
   }, [rendered]);
   return useCallback(() => {
@@ -78,32 +98,25 @@ function useOperationOwner(scope: string) {
  */
 export function useScopedOperation(scope: string): ScopedOperation {
   const capture = useOperationOwner(scope);
-  const begin = useCallback(() => {
-    const current = capture();
-    if (!current) return null;
-    const previous = current.latest;
-    const next = current.group.begin();
-    current.latest = next;
-    previous?.retire();
-    return next.signal;
-  }, [capture]);
-  const retire = useCallback(() => {
-    const current = capture();
-    if (!current) return;
-    current.latest = null;
-    current.group.retire();
-  }, [capture]);
+  const begin = useCallback(
+    () => capture()?.operations.beginLatest()?.signal ?? null,
+    [capture],
+  );
+  const retire = useCallback(() => capture()?.operations.retire(), [capture]);
   return useMemo(() => ({ begin, retire }), [begin, retire]);
 }
 
 /** Parallel members share a scope; completion releases only that member. */
 export function useScopedOperationGroup(scope: string): ScopedOperationGroup {
   const capture = useOperationOwner(scope);
-  const begin = useCallback(() => capture()?.group.begin() ?? null, [capture]);
-  const retire = useCallback(() => capture()?.group.retire(), [capture]);
+  const begin = useCallback(
+    () => capture()?.operations.begin() ?? null,
+    [capture],
+  );
+  const retire = useCallback(() => capture()?.operations.retire(), [capture]);
   const isLive = useCallback(() => capture() !== null, [capture]);
   const isPending = useCallback(
-    () => capture()?.group.isPending() ?? false,
+    () => capture()?.operations.isPending() ?? false,
     [capture],
   );
   return useMemo(

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useWorkspaceRequestScope } from './use-workspace-request-scope';
 import {
   sessionRevocationCopy,
   useSessionRevocationCopy,
@@ -31,41 +33,46 @@ export function WorkspaceSessionRevocations({
 }) {
   const copy = useSessionRevocationCopy();
   const [state, setState] = useState<State>({ kind: 'idle' });
-  const pending = useRef<AbortController | undefined>(undefined);
-  const canManage = actor.workspacePermissions.includes(
-    'company.assignment.manage',
-  );
+  const {
+    allowed: canManage,
+    scope,
+    captureRecovery,
+  } = useWorkspaceRequestScope({
+    actor,
+    identity,
+    permission: 'company.assignment.manage',
+  });
+  const requests = useScopedOperationGroup(scope);
+  const callbacks = useRef({ onActivityRecorded, onWorkspaceAccessRejected });
+  useLayoutEffect(() => {
+    callbacks.current = { onActivityRecorded, onWorkspaceAccessRejected };
+  });
   useEffect(() => {
     setState({ kind: 'idle' });
-    return () => {
-      pending.current?.abort();
-      pending.current = undefined;
-    };
-  }, [
-    actor.internalUserId,
-    actor.workspaceId,
-    actor.workspaceMembershipId,
-    identity,
-    canManage,
-  ]);
+  }, [scope]);
 
   async function load(after?: string, retryMembershipId?: string) {
-    if (pending.current || !canManage) return;
-    const request = new AbortController();
-    pending.current = request;
+    if (requests.isPending() || !canManage) return;
+    const request = requests.begin();
+    if (!request) return;
+    const current = () => requests.isLive() && !request.signal.aborted;
+    const recoveryLive = captureRecovery();
     setState({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted) return;
+      if (!current()) return;
       if (retryMembershipId) {
         const result = await api.request(
           `/workspace-session-revocations/${retryMembershipId}/retry`,
           { method: 'POST', signal: request.signal },
         );
-        if (request.signal.aborted) return;
+        if (!current()) return;
         if (result.status === 'unauthorized' || result.status === 'forbidden') {
-          if (result.status === 'unauthorized') await identity.rejectSession();
-          else await onWorkspaceAccessRejected();
+          if (recoveryLive()) {
+            if (result.status === 'unauthorized')
+              await identity.rejectSession();
+            else await callbacks.current.onWorkspaceAccessRejected();
+          }
           throw new Error('Access denied');
         }
         if (
@@ -74,17 +81,19 @@ export function WorkspaceSessionRevocations({
           result.value.status !== 'checked'
         )
           throw new Error('Unverified outcome');
-        await onActivityRecorded();
-        if (request.signal.aborted) return;
+        await callbacks.current.onActivityRecorded();
+        if (!current()) return;
       }
       const result = await api.request(
         `/workspace-session-revocations${after ? `?after=${encodeURIComponent(after)}` : ''}`,
         { signal: request.signal },
       );
-      if (request.signal.aborted) return;
+      if (!current()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        if (result.status === 'unauthorized') await identity.rejectSession();
-        else await onWorkspaceAccessRejected();
+        if (recoveryLive()) {
+          if (result.status === 'unauthorized') await identity.rejectSession();
+          else await callbacks.current.onWorkspaceAccessRejected();
+        }
         throw new Error('Access denied');
       }
       if (result.status !== 'ok') throw new Error('Status unavailable');
@@ -92,9 +101,9 @@ export function WorkspaceSessionRevocations({
       if (!page) throw new Error('Invalid status');
       setState({ kind: 'ready', page });
     } catch {
-      if (!request.signal.aborted) setState({ kind: 'error' });
+      if (current()) setState({ kind: 'error' });
     } finally {
-      if (pending.current === request) pending.current = undefined;
+      request.release();
     }
   }
 

@@ -1,13 +1,18 @@
 import { App } from '../App';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   saveAcceptanceIntent,
   type AcceptanceIntent,
 } from './invitation-acceptance-intent';
 import { useInvitationAcceptanceCopy } from './invitation-acceptance.copy';
 import { isUuid, selectWorkspace } from './workspace-selection';
+
+type AcceptanceState =
+  'ready' | 'loading' | 'error' | 'denied' | 'unauthorized' | 'accepted';
 
 export function WorkspaceInvitationAcceptance({
   identity,
@@ -17,36 +22,49 @@ export function WorkspaceInvitationAcceptance({
   intent: AcceptanceIntent;
 }) {
   const copy = useInvitationAcceptanceCopy();
-  const [state, setState] = useState<
-    'ready' | 'loading' | 'error' | 'denied' | 'unauthorized' | 'accepted'
-  >(intent.attempted ? 'error' : 'ready');
-  const request = useRef<AbortController | undefined>(undefined);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      request.current?.abort();
-    };
-  }, []);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      intent.invitationId,
+      intent.key,
+      intent.ticket ?? null,
+    ]),
+  );
+  const requests = useScopedOperationGroup(String(lifetime));
+  const [attempt, setAttempt] = useState<{
+    lifetime: number;
+    status: AcceptanceState;
+  }>({ lifetime, status: intent.attempted ? 'error' : 'ready' });
+  const state =
+    attempt.lifetime === lifetime
+      ? attempt.status
+      : intent.attempted
+        ? 'error'
+        : 'ready';
+  function setState(status: AcceptanceState) {
+    setAttempt({ lifetime, status });
+  }
 
   async function accept() {
-    if (request.current) return;
-    const controller = new AbortController();
-    request.current = controller;
+    if (!identity.loaded || !identity.signedIn || requests.isPending()) return;
+    const operation = requests.begin();
+    if (!operation) return;
+    const current = () => requests.isLive() && !operation.signal.aborted;
     const timer = window.setTimeout(() => {
-      controller.abort();
-      request.current = undefined;
-      if (mounted.current) setState('error');
+      if (!current()) return;
+      setState('error');
+      operation.retire();
     }, 35_000);
     setState('loading');
     try {
       saveAcceptanceIntent({ ...intent, attempted: true });
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (!current()) return;
       const result = await api.request('/access/invitations/accept', {
         method: 'POST',
-        signal: controller.signal,
+        signal: operation.signal,
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': intent.key,
@@ -56,7 +74,7 @@ export function WorkspaceInvitationAcceptance({
           ...(intent.ticket ? { ticket: intent.ticket } : {}),
         }),
       });
-      if (controller.signal.aborted) return;
+      if (!current()) return;
       if (result.status === 'unauthorized') {
         setState('unauthorized');
         await identity.rejectSession();
@@ -69,10 +87,10 @@ export function WorkspaceInvitationAcceptance({
       if (result.status !== 'ok') throw new Error('Acceptance unconfirmed.');
       const receipt = acceptanceResult(result.value, intent.invitationId);
       const context = await api.request('/access/current-actor', {
-        signal: controller.signal,
+        signal: operation.signal,
         headers: { 'x-workspace-context-id': receipt.workspaceId },
       });
-      if (controller.signal.aborted) return;
+      if (!current()) return;
       if (context.status === 'unauthorized') {
         setState('unauthorized');
         await identity.rejectSession();
@@ -97,10 +115,10 @@ export function WorkspaceInvitationAcceptance({
       );
       setState('accepted');
     } catch {
-      if (mounted.current && request.current === controller) setState('error');
+      if (current()) setState('error');
     } finally {
       clearTimeout(timer);
-      if (request.current === controller) request.current = undefined;
+      operation.release();
     }
   }
 

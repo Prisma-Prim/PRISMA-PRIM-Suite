@@ -41,6 +41,29 @@ const companies = [
 describe('production shell session', () => {
   beforeEach(() => localStorage.clear());
 
+  it('never dispatches selected-Company discovery after its subscriber disconnects', async () => {
+    const discovery = deferred<ApiResult<typeof companies>>();
+    const loadActor = vi.fn<ProductionShellTransport['loadActor']>(
+      async ({ companyId }) => ({
+        status: 'ok',
+        value: companyId ? selectedActor(companyId) : baseActor,
+      }),
+    );
+    const loadCompanies = vi.fn(async () => discovery.promise);
+    const observed = observeSession({
+      transport: transportWith({ loadActor, loadCompanies }),
+    });
+    await vi.waitFor(() => expect(loadCompanies).toHaveBeenCalledOnce());
+    observed.unsubscribe();
+    discovery.resolve({
+      status: 'ok',
+      value: [{ id: 'company-a', displayName: 'Company A' }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(loadActor).toHaveBeenCalledOnce();
+    expect(loadActor).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
+  });
+
   it('continues only after exact Company selection and its current Activity recovery complete', async () => {
     const activity = deferred<ApiResult<{ events: [] }>>();
     const observed = observeSession({

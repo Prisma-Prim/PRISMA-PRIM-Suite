@@ -18,7 +18,7 @@ One row per `ApplicationSection` id of `apps/web/src/production-shell/Applicatio
 
 | Section | Navigation label | Shows | Journeys |
 | --- | --- | --- | --- |
-| `#overview` | Overview | Home after sign-in: My attention, upcoming deadlines, overdue Tasks, the queues of Offers, Contracts and profitability estimates awaiting a decision, recent changes and, with several Companies, their summaries | `company-overdue`, `contract-decision-queue`, `multi-company-home`, `offer-decision-queue`, `operational-foundation`, `personal-attention`, `personal-upcoming`, `profitability-queue` |
+| `#overview` | Overview | Home after sign-in: My attention, upcoming deadlines, overdue Tasks, the queues of Offers, Contracts and profitability estimates awaiting a decision, recent changes and, with several Companies, their summaries | `access-action-sequences`, `company-overdue`, `contract-decision-queue`, `multi-company-home`, `offer-decision-queue`, `operational-foundation`, `personal-attention`, `personal-upcoming`, `profitability-queue` |
 | `#payments` | Manual incoming Payment observations | Manually recorded incoming Payments and the evidence they cite | `browser-sequence-lifetime`, `financial-action-sequences`, `payment-observation` |
 | `#invoice-records` | Invoice Records | Invoice Records copied from registered external invoice PDFs | `financial-action-sequences`, `invoice-record` |
 | `#knowledge-evidence` | Knowledge evidence | Passage search over approved knowledge sources and their cited versions | `knowledge-evidence` |
@@ -37,15 +37,16 @@ One row per `ApplicationSection` id of `apps/web/src/production-shell/Applicatio
 | `#unassigned-tasks` | Unassigned Tasks | Company Tasks without an assignee | `company-unassigned-tasks` |
 | `#blocked-tasks` | Blocked Tasks | Company Tasks marked blocked | `company-blocked-tasks` |
 | `#team-tasks` | Team Tasks | Tasks of the member's team, filtered by criteria | `company-team-tasks`, `task-instructions` |
-| `#access` | Team & access | Company members and the role bundles granted to them | `contract-model`, `external-invoice-source`, `invoice-record`, `model-contract`, `offer-model`, `opportunity-follow-up`, `payment-evidence-source`, `received-contract`, `reported-signing` |
+| `#access` | Team & access | Company members and the role bundles granted to them | `access-action-sequences`, `contract-model`, `external-invoice-source`, `invoice-record`, `model-contract`, `offer-model`, `opportunity-follow-up`, `payment-evidence-source`, `received-contract`, `reported-signing` |
 | `#companies` | Companies | Companies of the Workspace | none |
-| `#activity` | Activity Log | Activity Log of the active Company | `client-registration-refresh`, `commercial-intake`, `commercial-journey`, `contract-activity`, `contract-model`, `offer-activity`, `operational-foundation` |
+| `#activity` | Activity Log | Activity Log of the active Company | `access-action-sequences`, `client-registration-refresh`, `commercial-intake`, `commercial-journey`, `contract-activity`, `contract-model`, `offer-activity`, `operational-foundation` |
 | `#invitations` | Invitations | Workspace invitations | none |
 
 ## Journeys
 
 | Journey | Owning PRD | Roles | Access |
 | --- | --- | --- | --- |
+| `access-action-sequences` | [Access and Accountability](../../../docs/product/access-and-accountability-prd.md), [Tenant and Company authorization](../../../docs/product/tenant-company-client-authorization-prd.md) | Workspace administrator (Workspace Owner); Company-context member without administration (Ada Ionescu) | Generated order across `#access` → Workspace member → Company → Access bundle → Grant access → Revoke access → exact retry; `#activity` → Active Company A → B → A while a native Activity success or denial is held; `#overview`; Interface language in either role |
 | `browser-sequence-lifetime` | [Manual payment observation](../../../docs/product/release-5-manual-payment-observation-prd.md) | payment confirmer (Ion Popa), then payment reader (Ada Ionescu); native Workspace administrator (Workspace Owner) | `#payments` → browser reload after an expected budget interruption (transport cleanup probe) |
 | `certification-journey` | [Certification Case](../../../docs/product/release-4-certification-case-prd.md) | programme manager (Ada Ionescu); auditor and team leader, also holding the approver bundle (Ion Popa); certification approver outside the team (Workspace Owner); certification reader (Commercial Reader); member of another Company, who sees nothing (Other Company Member) | `#projects` → Projects → Certification Case → Certificate release |
 | `client-commercial` | [Shared Client](../../../docs/product/release-1-shared-client-prd.md) | Client director and opportunity manager (Ada Ionescu); Workspace administrator granting economics access (Workspace Owner) | `#clients` → Open dossier → Commercial affairs → Older affairs → Profitability Estimate |
