@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1422-pr1424-20261115",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1422,
+  "pullRequest": 1424,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T14:53:45.677Z",
+    "end": "2026-11-15T18:01:54.000Z",
+    "durationSeconds": 11288
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Local proof and one paired review through publication; excludes earlier preparation. Native financial, exact reduction/replay sensitivity, interruption cleanup, legacy chaos and script suites checked. One reference-invariant review gap fixed. Injected faults and construction diagnostics excluded from finding count. CI recorded separately in PR; model, usage and price not exposed."
+  }
+}
