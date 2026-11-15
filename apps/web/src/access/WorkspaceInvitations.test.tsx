@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -44,6 +45,39 @@ const invitation = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Workspace invitation controls', () => {
+  it('never dispatches a held invitation read after its consumed permission is removed', async () => {
+    let complete: ((value: string) => void) | undefined;
+    const token = new Promise<string>((resolve) => {
+      complete = resolve;
+    });
+    const currentIdentity = { ...identity, getToken: vi.fn(() => token) };
+    const fetcher = vi.fn(async () => new Response(null, { status: 403 }));
+    vi.stubGlobal('fetch', fetcher);
+    const onWorkspaceAccessRejected = vi.fn();
+    const props = {
+      actor,
+      identity: currentIdentity,
+      onActivityRecorded: vi.fn(),
+      onWorkspaceAccessRejected,
+    };
+    const view = render(<WorkspaceInvitations {...props} />);
+    await waitFor(() =>
+      expect(currentIdentity.getToken).toHaveBeenCalledOnce(),
+    );
+    view.rerender(
+      <WorkspaceInvitations
+        {...props}
+        actor={{ ...actor, workspacePermissions: [] }}
+      />,
+    );
+    await act(async () => {
+      if (!complete) throw new Error('The initial token was not requested.');
+      complete('retired-session');
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+  });
+
   it('presents invitation administration in Prisme', async () => {
     vi.stubGlobal(
       'fetch',
@@ -63,6 +97,7 @@ describe('Workspace invitation controls', () => {
     const prismeInvitations = await screen.findByRole('region', {
       name: 'Workspace invitations',
     });
+    await screen.findByLabelText('Recipient email');
     expect(prismeInvitations).toHaveClass('workspace-invitations--prisme');
     expect(prismeInvitations.querySelector('form')).toHaveClass(
       'workspace-invitations-form',

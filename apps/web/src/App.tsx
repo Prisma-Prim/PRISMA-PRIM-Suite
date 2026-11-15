@@ -1241,7 +1241,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.access,
       content: (
         <CompanyContextAccess
-          key={`access:${access.sessionGeneration}:${companySelectionGeneration}`}
+          key={`access:${access.sessionGeneration}`}
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MAXIMUM_CHAOS_SEED, chaosReplayCommand } from './ui-chaos.mjs';
 import {
+  BROWSER_SEQUENCE_CASES,
   parseBrowserSequenceEvidence,
   browserSequenceReplayCommand,
 } from './browser-sequences.mjs';
@@ -19,6 +20,7 @@ export const CHAOS_JOURNEYS = [
   'certification-journey',
   'multi-company-home',
   'financial-action-sequences',
+  'access-action-sequences',
 ];
 const INSPECTION_LABEL = 'weekly-inspection';
 const BUG_LABEL = 'fuzz-found';
@@ -144,7 +146,7 @@ function sequencesInRun(run, journey) {
   );
   if (
     sequences.some((value) => !value || value.seed !== run.chaosSeed) ||
-    (journey === 'financial-action-sequences' &&
+    (BROWSER_SEQUENCE_CASES.some((entry) => entry.journey === journey) &&
       run.status === 'passed' &&
       !sequences.length)
   )

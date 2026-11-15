@@ -1,7 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
+import { useWorkspaceRequestScope } from './use-workspace-request-scope';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   invitationPageResponse,
@@ -48,38 +59,43 @@ export function WorkspaceInvitations({
   const [failed, setFailed] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const retry = useRef<Command | undefined>(undefined);
-  const request = useRef<AbortController | undefined>(undefined);
+  const { allowed, scope, captureRecovery } = useWorkspaceRequestScope({
+    actor,
+    identity,
+    permission: 'member.invite',
+  });
+  const listing = useScopedOperation(scope);
+  const commands = useScopedOperationGroup(scope);
   const emailInput = useRef<HTMLInputElement>(null);
   const expiryInput = useRef<HTMLInputElement>(null);
   const callbacks = useRef({ onActivityRecorded, onWorkspaceAccessRejected });
-  callbacks.current = { onActivityRecorded, onWorkspaceAccessRejected };
-
-  async function reject(status: 'unauthorized' | 'forbidden') {
-    setState({ status: 'forbidden' });
-    retry.current = undefined;
-    if (status === 'unauthorized') await identity.rejectSession();
-    else await callbacks.current.onWorkspaceAccessRejected();
-  }
+  useLayoutEffect(() => {
+    callbacks.current = { onActivityRecorded, onWorkspaceAccessRejected };
+  });
 
   const load = useCallback(
     async (after?: string) => {
-      request.current?.abort();
-      const controller = new AbortController();
-      request.current = controller;
+      if (!allowed || commands.isPending()) return;
+      const signal = listing.begin();
+      if (!signal) return;
+      const recoveryLive = captureRecovery();
       setState({ status: 'loading' });
       try {
         const api = await createAuthenticatedApiClient(identity);
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         const result = await api.request(
           `/workspace-invitations${after ? `?after=${encodeURIComponent(after)}` : ''}`,
-          { signal: controller.signal },
+          { signal },
         );
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         if (result.status === 'unauthorized' || result.status === 'forbidden') {
           setState({ status: 'forbidden' });
           retry.current = undefined;
-          if (result.status === 'unauthorized') await identity.rejectSession();
-          else await callbacks.current.onWorkspaceAccessRejected();
+          if (recoveryLive()) {
+            if (result.status === 'unauthorized')
+              await identity.rejectSession();
+            else await callbacks.current.onWorkspaceAccessRejected();
+          }
           return;
         }
         if (result.status !== 'ok')
@@ -89,10 +105,10 @@ export function WorkspaceInvitations({
           page: invitationPageResponse(result.value),
         });
       } catch {
-        if (!controller.signal.aborted) setState({ status: 'error' });
+        if (!signal.aborted) setState({ status: 'error' });
       }
     },
-    [identity],
+    [identity, allowed, commands, listing, captureRecovery],
   );
 
   useEffect(() => {
@@ -102,32 +118,32 @@ export function WorkspaceInvitations({
     setReviewing(null);
     setFailed(false);
     setBusy(false);
-    void load();
-    return () => request.current?.abort();
-  }, [
-    actor.internalUserId,
-    actor.workspaceId,
-    actor.workspaceMembershipId,
-    identity,
-    load,
-  ]);
+    if (allowed) void load();
+    return () => {
+      listing.retire();
+      commands.retire();
+    };
+  }, [scope, allowed, load, listing, commands]);
 
   async function submit(path: string, body: object) {
-    if (busy || state.status !== 'ready') return;
+    if (!allowed || busy || state.status !== 'ready' || commands.isPending())
+      return;
+    const operation = commands.begin();
+    if (!operation) return;
+    const current = () => commands.isLive() && !operation.signal.aborted;
+    const recoveryLive = captureRecovery();
     const serialized = JSON.stringify(body);
     const command =
       retry.current?.path === path && retry.current.body === serialized
         ? retry.current
         : { path, body: serialized, key: crypto.randomUUID() };
     retry.current = command;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    listing.retire();
     setBusy(true);
     setFailed(false);
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (!current()) return;
       const result = await api.request(`/workspace-invitations${path}`, {
         method: 'POST',
         body: command.body,
@@ -135,11 +151,16 @@ export function WorkspaceInvitations({
           'content-type': 'application/json',
           'idempotency-key': command.key,
         },
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
+      if (!current()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        await reject(result.status);
+        setState({ status: 'forbidden' });
+        retry.current = undefined;
+        if (recoveryLive()) {
+          if (result.status === 'unauthorized') await identity.rejectSession();
+          else await callbacks.current.onWorkspaceAccessRejected();
+        }
         return;
       }
       if (result.status !== 'ok')
@@ -166,13 +187,14 @@ export function WorkspaceInvitations({
       if (path === '') setEmail('');
       await callbacks.current.onActivityRecorded();
     } catch {
-      if (!controller.signal.aborted) setFailed(true);
+      if (current()) setFailed(true);
     } finally {
-      if (!controller.signal.aborted) setBusy(false);
+      if (current()) setBusy(false);
+      operation.release();
     }
   }
 
-  if (!actor.workspacePermissions.includes('member.invite')) return null;
+  if (!allowed) return null;
   return (
     <section
       className="production-content-surface workspace-invitations workspace-invitations--prisme"

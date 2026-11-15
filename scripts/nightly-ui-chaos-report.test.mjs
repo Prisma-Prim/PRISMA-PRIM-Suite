@@ -80,6 +80,26 @@ const passingFinancial = summary('financial-action-sequences', [
     ),
   },
 ]);
+const passingAccess = summary('access-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1425001,
+    sequences: ['workspace-access', 'company-context'].flatMap((caseId) =>
+      ['desktop', 'narrow'].map((width) => ({
+        caseId,
+        width,
+        seed: 1425001,
+        steps: 10,
+        status: 'passed',
+        runs: 2,
+        shrinks: 0,
+        durationMilliseconds: 1000,
+        path: null,
+        coverage: { 'company:aba': 1 },
+      })),
+    ),
+  },
+]);
 
 function workflowRun({
   id = 501,
@@ -114,6 +134,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (access-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
   { name: 'report', conclusion: null, started_at: null, completed_at: null },
 ];
 const summaries = () =>
@@ -126,6 +152,10 @@ const summaries = () =>
     [
       'financial-action-sequences',
       parseChaosSummary(JSON.stringify(passingFinancial)),
+    ],
+    [
+      'access-action-sequences',
+      parseChaosSummary(JSON.stringify(passingAccess)),
     ],
   ]);
 
@@ -235,6 +265,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-financial-action-sequences',
       JSON.stringify(passingFinancial),
     ],
+    [
+      'nightly-ui-chaos-summary-access-action-sequences',
+      JSON.stringify(passingAccess),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -264,6 +298,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['certification-journey', 'success', 18.5, 2, 2, true],
       ['multi-company-home', 'failure', 12, 2, 1, false],
       ['financial-action-sequences', 'success', 4, 1, 1, false],
+      ['access-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -350,7 +385,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary).',
     ),
   );
 
@@ -549,49 +584,57 @@ test('a manual replay reports only the selected job and retains old two-journey 
   assert.deepEqual(nightsInComment(body, '2026-11-09'), [historical]);
 });
 
-test('a complete week keeps bounded financial repetitions within one GitHub comment', (t) => {
+function financialWeekSample(day, repetitions) {
+  const raw = summary(
+    'financial-action-sequences',
+    Array.from({ length: repetitions }, (_, index) => {
+      const seed = 1422001 + day * 100 + index;
+      return {
+        status: 'passed',
+        chaosSeed: seed,
+        sequences: ['payment-observation', 'invoice-record'].flatMap((caseId) =>
+          ['desktop', 'narrow'].map((width) => ({
+            caseId,
+            width,
+            seed,
+            steps: 10,
+            status: 'passed',
+            runs: 2,
+            shrinks: 0,
+            durationMilliseconds: 1000,
+            path: null,
+            coverage: {
+              'locale:fr': 2,
+              'open-recorded-observation': 1,
+              'return-to-inventory': 1,
+              'start-literal-draft': 1,
+              'submit-and-lose-committed-reply': 1,
+              'retry-identically-with-double-click': 1,
+            },
+          })),
+        ),
+      };
+    }),
+  );
+  return raw;
+}
+
+test('the financial-only repetition week remains bounded within one GitHub comment', (t) => {
   for (const repetitions of [6, 20]) {
     const nights = Array.from({ length: 7 }, (_, day) => {
-      const raw = summary(
-        'financial-action-sequences',
-        Array.from({ length: repetitions }, (_, index) => {
-          const seed = 1422001 + day * 100 + index;
-          return {
-            status: 'passed',
-            chaosSeed: seed,
-            sequences: ['payment-observation', 'invoice-record'].flatMap(
-              (caseId) =>
-                ['desktop', 'narrow'].map((width) => ({
-                  caseId,
-                  width,
-                  seed,
-                  steps: 10,
-                  status: 'passed',
-                  runs: 2,
-                  shrinks: 0,
-                  durationMilliseconds: 1000,
-                  path: null,
-                  coverage: {
-                    'locale:fr': 2,
-                    'open-recorded-observation': 1,
-                    'return-to-inventory': 1,
-                    'start-literal-draft': 1,
-                    'submit-and-lose-committed-reply': 1,
-                    'retry-identically-with-double-click': 1,
-                  },
-                })),
-            ),
-          };
-        }),
-      );
+      const raw = financialWeekSample(day, repetitions);
       return nightOf({
         run: workflowRun({
           id: 501 + day,
           startedAt: `2026-11-${String(9 + day).padStart(2, '0')}T02:20:00Z`,
         }),
-        jobs,
+        jobs: jobs.filter(
+          (job) => job.name !== 'chaos (access-action-sequences)',
+        ),
         summaries: new Map([
-          ...summaries(),
+          ...[...summaries()].filter(
+            ([journey]) => journey !== 'access-action-sequences',
+          ),
           [
             'financial-action-sequences',
             parseChaosSummary(JSON.stringify(raw)),
@@ -627,11 +670,91 @@ test('a complete week keeps bounded financial repetitions within one GitHub comm
     assert.equal(
       retained
         .flatMap((night) => night.journeys)
+        .filter((entry) => entry.journey === 'financial-action-sequences')
         .flatMap((entry) => entry.sequences ?? [])
         .reduce((total, sequence) => total + sequence.runs, 0),
       7 * repetitions * 4 * 2,
     );
   }
+});
+
+test('a larger multi-family week keeps every actual case in bounded linked comments', async () => {
+  const comments = [];
+  for (let day = 0; day < 7; day++) {
+    const run = workflowRun({
+      id: 501 + day,
+      startedAt: `2026-11-${String(9 + day).padStart(2, '0')}T02:20:00Z`,
+    });
+    const target = github({
+      comments: comments.map((comment) => ({ ...comment })),
+      run,
+    });
+    await reportNightlyUiChaos({
+      ref: 'refs/heads/main',
+      runId: run.id,
+      server,
+      repository,
+      api: target.api,
+      log: quiet,
+      summaries: new Map([
+        ...summaries(),
+        [
+          'financial-action-sequences',
+          parseChaosSummary(JSON.stringify(financialWeekSample(day, 20))),
+        ],
+      ]),
+    });
+    for (const write of target.writes()) {
+      assert.ok(
+        write.body.body.length <= 65536,
+        'Every emitted body stays within the provider limit.',
+      );
+      if (write.method === 'POST')
+        comments.push({ id: 1000 + comments.length, body: write.body.body });
+      else {
+        const id = Number(write.path.split('/').at(-1));
+        const existing = comments.find((comment) => comment.id === id);
+        assert.ok(existing, 'A rerender must update an existing owned part.');
+        existing.body = write.body.body;
+      }
+    }
+  }
+  assert.ok(
+    comments.length > 1,
+    'The measured four-family week needs a continuation.',
+  );
+  const retained = comments.flatMap(
+    (comment) => nightsInComment(comment.body, '2026-11-09') ?? [],
+  );
+  assert.deepEqual(
+    retained.map((night) => night.runId).sort(),
+    [501, 502, 503, 504, 505, 506, 507],
+  );
+  for (const night of retained) {
+    const access = night.journeys.find(
+      (journey) => journey.journey === 'access-action-sequences',
+    );
+    assert.ok(access);
+    assert.deepEqual(
+      access.sequences
+        .map((sequence) => sequence.caseId + '@' + sequence.width)
+        .sort(),
+      [
+        'company-context@desktop',
+        'company-context@narrow',
+        'workspace-access@desktop',
+        'workspace-access@narrow',
+      ],
+    );
+  }
+  assert.equal(
+    retained
+      .flatMap((night) => night.journeys)
+      .filter((entry) => entry.journey === 'financial-action-sequences')
+      .flatMap((entry) => entry.sequences)
+      .reduce((total, sequence) => total + sequence.runs, 0),
+    7 * 20 * 4 * 2,
+  );
 });
 
 test('keeps pathless interruption evidence separate from successful aggregates', () => {

@@ -1,6 +1,6 @@
 name: Nightly UI chaos
 
-# Seeded UI chaos (#1376) and generated financial action sequences (#1422):
+# Seeded UI chaos (#1376) and generated native action sequences (#1422, #1425):
 # certification, Company switches/access loss and financial commands run on
 # a throwaway PostgreSQL database under seeded response delays, out-of-order
 # responses, a slowed CPU, double submits and back navigation
@@ -24,12 +24,13 @@ on:
           - certification-journey
           - multi-company-home
           - financial-action-sequences
+          - access-action-sequences
       seed:
         description: Numeric seed copied from a failure, or random for exploration
         type: string
         default: random
       sequence_replay:
-        description: Exact financial case@screen~steps~path copied from a failure (select financial-action-sequences)
+        description: Exact case@screen~steps~path copied from a failure (select its matching journey)
         type: string
         required: false
 
@@ -45,7 +46,7 @@ jobs:
       # One journey's failure never cancels another journey's night.
       fail-fast: false
       matrix:
-        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences"]') }}
+        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
@@ -76,10 +77,7 @@ jobs:
           SEQUENCE_REPLAY: ${{ inputs.sequence_replay }}
         run: |
           if [ -n "$SEQUENCE_REPLAY" ]; then
-            if [ "$JOURNEY" != 'financial-action-sequences' ]; then
-              printf '%s\n' 'Exact sequence replay requires the financial-action-sequences journey.' >&2
-              exit 2
-            fi
+            UI_SEQUENCE_REPLAY="$SEQUENCE_REPLAY" UI_CHAOS_SEED="$CHAOS_SEED" node scripts/browser-sequences.mjs validate-replay "$JOURNEY"
             UI_SEQUENCE_REPLAY="$SEQUENCE_REPLAY" pnpm verify:journey "$JOURNEY" --chaos "$CHAOS_SEED" --output "$CHAOS_EVIDENCE"
           else
             pnpm verify:journey "$JOURNEY" --chaos "$CHAOS_SEED" --repeat 20 --budget-minutes 15 --output "$CHAOS_EVIDENCE"

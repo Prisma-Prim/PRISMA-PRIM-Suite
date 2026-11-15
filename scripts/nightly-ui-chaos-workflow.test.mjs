@@ -184,6 +184,7 @@ test(
     delete env.UI_SEQUENCE_REPLAY;
     const replay = spawnSync('bash', ['-e', '-c', script], {
       env,
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
       encoding: 'utf8',
     });
     assert.equal(replay.status, 0, replay.stderr);
@@ -198,8 +199,30 @@ test(
       ],
       replay: env.SEQUENCE_REPLAY,
     });
+    const contextReplay = spawnSync('bash', ['-e', '-c', script], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      env: {
+        ...env,
+        JOURNEY: 'access-action-sequences',
+        SEQUENCE_REPLAY: 'company-context@desktop~10~0:1',
+      },
+      encoding: 'utf8',
+    });
+    assert.equal(contextReplay.status, 0, contextReplay.stderr);
+    assert.deepEqual(JSON.parse(contextReplay.stdout), {
+      args: [
+        'verify:journey',
+        'access-action-sequences',
+        '--chaos',
+        env.CHAOS_SEED,
+        '--output',
+        env.CHAOS_EVIDENCE,
+      ],
+      replay: 'company-context@desktop~10~0:1',
+    });
     const exploration = spawnSync('bash', ['-e', '-c', script], {
       env: { ...env, SEQUENCE_REPLAY: '', CHAOS_SEED: 'random' },
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
       encoding: 'utf8',
     });
     assert.equal(exploration.status, 0, exploration.stderr);
@@ -220,13 +243,11 @@ test(
     });
     const wrongJourney = spawnSync('bash', ['-e', '-c', script], {
       env: { ...env, JOURNEY: 'certification-journey' },
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
       encoding: 'utf8',
     });
     assert.equal(wrongJourney.status, 2);
-    assert.match(
-      wrongJourney.stderr,
-      /requires the financial-action-sequences journey/u,
-    );
+    assert.match(wrongJourney.stderr, /no generated browser sequence case/u);
     assert.equal(wrongJourney.stdout, '');
   },
 );

@@ -46,6 +46,38 @@ function confirm() {
   fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
 }
 
+it('concludes a confirmed suspension when canonical reload removes its target before returning', async () => {
+  let complete: ((value: boolean) => void) | undefined;
+  const reload = new Promise<boolean>((resolve) => {
+    complete = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      Response.json({
+        workspaceMembershipId: memberId,
+        status: 'inactive',
+      }),
+    ),
+  );
+  const view = mount();
+  view.props.reloadAdministration.mockReturnValueOnce(reload);
+  confirm();
+  await waitFor(() =>
+    expect(view.props.reloadAdministration).toHaveBeenCalledOnce(),
+  );
+  view.rerender(<WorkspaceMembershipSuspension {...view.props} members={[]} />);
+  await act(async () => {
+    if (!complete) throw new Error('Canonical reload was not initialized.');
+    complete(true);
+  });
+  expect(
+    await screen.findByText('Member suspended. Server state refreshed.'),
+  ).toBeVisible();
+  expect(view.props.onActivityRecorded).toHaveBeenCalledOnce();
+  expect(view.props.onPendingChange).toHaveBeenLastCalledWith(false);
+});
+
 it('does not confirm an unreadable suspension acknowledgement even after a successful canonical reload', async () => {
   vi.stubGlobal(
     'fetch',

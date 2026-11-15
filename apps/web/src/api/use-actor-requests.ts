@@ -31,7 +31,7 @@ export function useRequestLifetime(identity: BrowserIdentity, scope: string) {
   return owner.generation;
 }
 
-function useActorObservation(actor: ActorContext) {
+export function useActorObservation(actor: ActorContext) {
   const [observation, setObservation] = useState({ actor, generation: 0 });
   if (observation.actor !== actor) {
     const next = { actor, generation: observation.generation + 1 };

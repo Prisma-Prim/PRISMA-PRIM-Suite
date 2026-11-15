@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from './latest-authenticated-request';
+import { useActorObservation, useRequestLifetime } from './use-actor-requests';
+import { useScopedOperationGroup } from './use-scoped-operation';
 
 type Recovery = Parameters<typeof handleAuthenticatedAccessRejection>[0];
 type Inputs = Pick<Recovery, 'identity'> &
@@ -16,100 +18,83 @@ type Inputs = Pick<Recovery, 'identity'> &
     authority: { key: string; companyId: string };
   };
 
-/** Recovery outlives protected children, but never its consumed scope or Actor. */
+/** Recovery outlives protected children, but never its committed scope or Actor. */
 export function useAccessRecovery(inputs: Inputs) {
-  const [denied, setDenied] = useState(false);
-  const rejected = useRef(false);
-  const pending = useRef<AbortController | null>(null);
-  const mounted = useRef(true);
+  const lifetime = useRequestLifetime(
+    inputs.identity,
+    JSON.stringify([
+      inputs.authority.key,
+      inputs.authority.companyId,
+      inputs.identity.loaded,
+      inputs.identity.signedIn,
+      inputs.actor.active,
+      inputs.actor.workspaceId,
+      inputs.actor.internalUserId,
+      inputs.actor.workspaceMembershipId,
+    ]),
+  );
+  const observation = useActorObservation(inputs.actor);
+  const recovery = useScopedOperationGroup(
+    JSON.stringify([lifetime, observation]),
+  );
+  const latch = useMemo(() => ({ rejected: false }), [lifetime]);
+  const [denial, setDenial] = useState<{
+    lifetime: number;
+    denied: boolean;
+  } | null>(null);
   const latest = useRef(inputs);
-  const owner = useRef({
-    identity: inputs.identity,
-    actor: inputs.actor,
-    key: inputs.authority.key,
-    companyId: inputs.authority.companyId,
-    generation: 0,
+  useLayoutEffect(() => {
+    latest.current = inputs;
   });
+  const { identity, actor, authority } = inputs;
+  const available = identity.loaded && identity.signedIn && actor.active;
 
-  const retire = useCallback(() => {
-    owner.current.generation += 1;
-    const controller = pending.current;
-    pending.current = null;
-    controller?.abort();
-  }, []);
-
-  const scopeChanged =
-    owner.current.identity !== inputs.identity ||
-    owner.current.key !== inputs.authority.key ||
-    owner.current.companyId !== inputs.authority.companyId;
-  // Recovery publishes a complete Actor; equal feature authority does not make
-  // an older snapshot current. Actor-only replacement keeps the denial latch.
-  if (scopeChanged || owner.current.actor !== inputs.actor) {
-    retire();
-    owner.current = {
-      identity: inputs.identity,
-      actor: inputs.actor,
-      key: inputs.authority.key,
-      companyId: inputs.authority.companyId,
-      generation: owner.current.generation,
-    };
-    if (scopeChanged) {
-      rejected.current = false;
-      if (denied) setDenied(false);
-    }
-  }
-  latest.current = inputs;
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      retire();
-    };
-  }, [retire]);
-
-  const reject = useCallback((result: Recovery['result']) => {
-    if (
-      !mounted.current ||
-      rejected.current ||
-      (result.status !== 'forbidden' && result.status !== 'unauthorized')
-    )
-      return;
-    rejected.current = true;
-    const controller = new AbortController();
-    pending.current = controller;
-    const generation = owner.current.generation;
-    const live = () =>
-      mounted.current &&
-      owner.current.generation === generation &&
-      pending.current === controller &&
-      !controller.signal.aborted;
-    const current = latest.current;
-    setDenied(true);
-    void handleAuthenticatedAccessRejection({
-      result,
-      identity: current.identity,
-      companyContextId: current.authority.companyId,
-      signal: controller.signal,
-      onActorRevalidated: (actor) =>
-        live() ? latest.current.onActorRevalidated?.(actor) : undefined,
-      onCompanyContextRejected: (companyId) => {
-        if (live()) latest.current.onCompanyContextRejected?.(companyId);
-      },
-      onWorkspaceAccessRejected: () =>
-        live() ? latest.current.onWorkspaceAccessRejected?.() : undefined,
-    })
-      .catch(() => undefined)
-      .finally(() => {
-        if (pending.current === controller) pending.current = null;
-      });
-  }, []);
+  const reject = useCallback(
+    (result: Recovery['result']) => {
+      if (
+        !available ||
+        !recovery.isLive() ||
+        latch.rejected ||
+        (result.status !== 'forbidden' && result.status !== 'unauthorized')
+      )
+        return;
+      const operation = recovery.begin();
+      if (!operation) return;
+      const current = () => recovery.isLive() && !operation.signal.aborted;
+      latch.rejected = true;
+      setDenial({ lifetime, denied: true });
+      void handleAuthenticatedAccessRejection({
+        result,
+        identity,
+        companyContextId: authority.companyId,
+        signal: operation.signal,
+        isCurrent: current,
+        onActorRevalidated: (revalidated) =>
+          current()
+            ? latest.current.onActorRevalidated?.(revalidated)
+            : undefined,
+        onCompanyContextRejected: (companyId) => {
+          if (current()) latest.current.onCompanyContextRejected?.(companyId);
+        },
+        onWorkspaceAccessRejected: () =>
+          current() ? latest.current.onWorkspaceAccessRejected?.() : undefined,
+      })
+        .catch(() => undefined)
+        .finally(operation.release);
+    },
+    [available, recovery, latch, lifetime, identity, authority.companyId],
+  );
 
   const retry = useCallback(() => {
-    retire();
-    rejected.current = false;
-    setDenied(false);
-  }, [retire]);
+    if (!recovery.isLive()) return;
+    recovery.retire();
+    latch.rejected = false;
+    setDenial({ lifetime, denied: false });
+  }, [recovery, latch, lifetime]);
 
-  return { denied, reject, retry };
+  return {
+    denied: denial?.lifetime === lifetime && denial.denied,
+    reject,
+    retry,
+  };
 }

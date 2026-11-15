@@ -1,5 +1,9 @@
 import type { ActorContext } from '../access-types';
 import type { ApiResult } from '../api/authenticated-api-client';
+import {
+  createOperationScope,
+  type PendingOperation,
+} from '../api/use-scoped-operation';
 import { createCompanyContextPreferenceStore } from './company-context-preference';
 import {
   captureCompanyContextOrigin,
@@ -68,7 +72,7 @@ interface CreateProductionShellSessionOptions {
 
 interface RequestOperation {
   readonly generation: number;
-  readonly controller: AbortController;
+  readonly pending: PendingOperation;
 }
 
 type InitialCompanyContextResult =
@@ -77,7 +81,8 @@ type InitialCompanyContextResult =
       actor: ActorContext;
       companyContext: LoadedCompanyContext;
     }
-  | { status: 'unauthorized' };
+  | { status: 'unauthorized' }
+  | { status: 'retired' };
 
 export function createProductionShellSession({
   createTransport,
@@ -92,8 +97,8 @@ export function createProductionShellSession({
   let companyRejectionLifetime:
     { signature: string; retired: boolean } | undefined;
   let snapshot = createSnapshot(shellContext);
-  let operation: RequestOperation | undefined;
-  let activityOperation: RequestOperation | undefined;
+  let actorOperations = createOperationScope();
+  let activityOperations = createOperationScope();
   let generation = 0;
   let connected = false;
 
@@ -196,41 +201,31 @@ export function createProductionShellSession({
     for (const listener of listeners) listener();
   }
 
-  function beginOperation(): RequestOperation {
-    operation?.controller.abort();
-    activityOperation?.controller.abort();
-    activityOperation = undefined;
-    operation = {
-      generation: ++generation,
-      controller: new AbortController(),
-    };
-    return operation;
+  function beginOperation(): RequestOperation | null {
+    const pending = actorOperations.beginLatest();
+    if (!pending) return null;
+    activityOperations.retire();
+    return { generation: ++generation, pending };
   }
 
   function disconnect(): void {
-    operation?.controller.abort();
-    activityOperation?.controller.abort();
-    operation = undefined;
-    activityOperation = undefined;
-    generation += 1;
     connected = false;
+    actorOperations.close();
+    activityOperations.close();
+    generation += 1;
   }
 
   function isCurrent(candidate: RequestOperation): boolean {
     return (
       connected &&
-      !candidate.controller.signal.aborted &&
+      !candidate.pending.signal.aborted &&
       candidate.generation === generation
     );
   }
 
-  function beginActivityOperation(): RequestOperation {
-    activityOperation?.controller.abort();
-    activityOperation = {
-      generation,
-      controller: new AbortController(),
-    };
-    return activityOperation;
+  function beginActivityOperation(): RequestOperation | null {
+    const pending = activityOperations.beginLatest();
+    return pending ? { generation, pending } : null;
   }
 
   function matchesCurrentOrigin(origin: CompanyContextOrigin): boolean {
@@ -263,7 +258,7 @@ export function createProductionShellSession({
     if (!isCurrent(candidate) || isCaptureCurrent?.() === false)
       return 'handled';
     const workspaceActor = await transport.loadActor({
-      signal: candidate.controller.signal,
+      signal: candidate.pending.signal,
     });
     if (!isCurrent(candidate) || isCaptureCurrent?.() === false)
       return 'handled';
@@ -283,57 +278,61 @@ export function createProductionShellSession({
     candidate: RequestOperation,
     isCaptureCurrent?: () => boolean,
   ): Promise<void> {
-    if (!isCurrent(candidate) || isCaptureCurrent?.() === false) return;
-    const result = await transport.loadActivityLog({
-      companyId: actor.activeCompany?.id,
-      signal: candidate.controller.signal,
-    });
-    if (!isCurrent(candidate) || isCaptureCurrent?.() === false) return;
-    if (await rejectUnauthorized(result, candidate)) return;
-    if (!isCurrent(candidate)) return;
-    if (result.status === 'forbidden') {
-      const workspaceAccess = await revalidateWorkspaceAccess(
-        transport,
-        candidate,
-        isCaptureCurrent,
-      );
-      if (workspaceAccess === 'handled') return;
+    try {
+      if (!isCurrent(candidate) || isCaptureCurrent?.() === false) return;
+      const result = await transport.loadActivityLog({
+        companyId: actor.activeCompany?.id,
+        signal: candidate.pending.signal,
+      });
+      if (!isCurrent(candidate) || isCaptureCurrent?.() === false) return;
+      if (await rejectUnauthorized(result, candidate)) return;
       if (!isCurrent(candidate)) return;
-      if (workspaceAccess === 'unreadable') {
-        dispatch({
-          type: 'activity-resolved',
-          origin,
-          activityLog: { status: 'error' },
-        });
+      if (result.status === 'forbidden') {
+        const workspaceAccess = await revalidateWorkspaceAccess(
+          transport,
+          candidate,
+          isCaptureCurrent,
+        );
+        if (workspaceAccess === 'handled') return;
+        if (!isCurrent(candidate)) return;
+        if (workspaceAccess === 'unreadable') {
+          dispatch({
+            type: 'activity-resolved',
+            origin,
+            activityLog: { status: 'error' },
+          });
+          return;
+        }
+        if (actor.activeCompany) {
+          dispatch({
+            type: 'company-rejected',
+            origin,
+            companyId: actor.activeCompany.id,
+            activityLog: 'error',
+          });
+        } else {
+          dispatch({ type: 'access-forbidden' });
+        }
         return;
       }
-      if (actor.activeCompany) {
-        dispatch({
-          type: 'company-rejected',
-          origin,
-          companyId: actor.activeCompany.id,
-          activityLog: 'error',
-        });
-      } else {
-        dispatch({ type: 'access-forbidden' });
-      }
-      return;
+      dispatch({
+        type: 'activity-resolved',
+        origin,
+        activityLog:
+          result.status === 'ok'
+            ? { status: 'ready', events: result.value.events }
+            : { status: 'error' },
+      });
+    } finally {
+      candidate.pending.release();
     }
-    dispatch({
-      type: 'activity-resolved',
-      origin,
-      activityLog:
-        result.status === 'ok'
-          ? { status: 'ready', events: result.value.events }
-          : { status: 'error' },
-    });
   }
 
   async function initialize(candidate: RequestOperation): Promise<void> {
     const transport = await createTransport();
     if (!isCurrent(candidate)) return;
     const actorResult = await transport.loadActor({
-      signal: candidate.controller.signal,
+      signal: candidate.pending.signal,
     });
     if (!isCurrent(candidate)) return;
     if (await rejectUnauthorized(actorResult, candidate)) return;
@@ -350,9 +349,9 @@ export function createProductionShellSession({
     const loaded = await loadInitialCompanyContext(
       transport,
       actorResult.value,
-      candidate.controller.signal,
+      candidate,
     );
-    if (!isCurrent(candidate)) return;
+    if (!isCurrent(candidate) || loaded.status === 'retired') return;
     if (loaded.status === 'unauthorized') {
       await rejectUnauthorized(loaded, candidate);
       return;
@@ -363,11 +362,13 @@ export function createProductionShellSession({
       companyContext: loaded.companyContext,
       sessionGeneration: candidate.generation,
     });
+    const activity = beginActivityOperation();
+    if (!activity) return;
     await loadActivityLog(
       transport,
       loaded.actor,
       originFor(loaded.actor, candidate.generation),
-      beginActivityOperation(),
+      activity,
     );
   }
 
@@ -392,6 +393,7 @@ export function createProductionShellSession({
       return false;
     companySelectionGeneration += 1;
     const candidate = beginOperation();
+    if (!candidate) return false;
     dispatch({ type: 'selection-started', origin, companyId });
 
     try {
@@ -399,7 +401,7 @@ export function createProductionShellSession({
       if (!isCurrent(candidate)) return false;
       const selectedResult = await transport.loadActor({
         companyId,
-        signal: candidate.controller.signal,
+        signal: candidate.pending.signal,
       });
       if (!isCurrent(candidate)) return false;
       // An independently replaced capture retires this navigation consumer.
@@ -475,11 +477,13 @@ export function createProductionShellSession({
         companyId,
         actor,
       });
+      const activity = beginActivityOperation();
+      if (!activity) return false;
       await loadActivityLog(
         transport,
         actor,
         originFor(actor, origin.sessionGeneration),
-        beginActivityOperation(),
+        activity,
         continuation ? () => hasCurrentActor(actor) : undefined,
       );
       if (!continuation) return true;
@@ -496,6 +500,8 @@ export function createProductionShellSession({
       if (!isCurrent(candidate) || isAbortError(error)) return false;
       dispatch({ type: 'selection-failed', origin, companyId });
       return false;
+    } finally {
+      candidate.pending.release();
     }
   }
 
@@ -515,6 +521,7 @@ export function createProductionShellSession({
     )
       return;
     const candidate = beginActivityOperation();
+    if (!candidate) return;
     try {
       const transport = await createTransport();
       if (!isCurrent(candidate) || !matchesCurrentOrigin(origin)) return;
@@ -537,7 +544,7 @@ export function createProductionShellSession({
         activityLog: { status: 'error' },
       });
     } finally {
-      if (activityOperation === candidate) activityOperation = undefined;
+      candidate.pending.release();
     }
   }
 
@@ -561,6 +568,7 @@ export function createProductionShellSession({
     )
       return;
     const candidate = beginActivityOperation();
+    if (!candidate) return;
     try {
       const transport = await createTransport();
       if (!isCurrent(candidate) || !matchesCurrentOrigin(origin)) return;
@@ -578,20 +586,27 @@ export function createProductionShellSession({
         activityLog: { status: 'error' },
       });
     } finally {
-      if (activityOperation === candidate) activityOperation = undefined;
+      candidate.pending.release();
     }
   }
 
   function connect(): void {
     if (connected) return;
     connected = true;
+    if (!actorOperations.isLive()) {
+      actorOperations = createOperationScope();
+      activityOperations = createOperationScope();
+    }
     dispatch({ type: 'identity-changed' });
     if (!shouldInitialize) return;
     const candidate = beginOperation();
-    void initialize(candidate).catch((error: unknown) => {
-      if (!isCurrent(candidate) || isAbortError(error)) return;
-      dispatch({ type: 'access-failed' });
-    });
+    if (!candidate) return;
+    void initialize(candidate)
+      .catch((error: unknown) => {
+        if (!isCurrent(candidate) || isAbortError(error)) return;
+        dispatch({ type: 'access-failed' });
+      })
+      .finally(candidate.pending.release);
   }
 
   return {
@@ -609,9 +624,11 @@ export function createProductionShellSession({
   async function loadInitialCompanyContext(
     transport: ProductionShellTransport,
     baseActor: ActorContext,
-    signal: AbortSignal,
+    candidate: RequestOperation,
   ): Promise<InitialCompanyContextResult> {
+    const signal = candidate.pending.signal;
     const companiesResult = await transport.loadCompanies({ signal });
+    if (!isCurrent(candidate)) return { status: 'retired' };
     if (companiesResult.status === 'unauthorized')
       return { status: 'unauthorized' };
     if (companiesResult.status === 'forbidden') {
@@ -646,6 +663,7 @@ export function createProductionShellSession({
       companyId: requestedCompanyId,
       signal,
     });
+    if (!isCurrent(candidate)) return { status: 'retired' };
     if (selectedResult.status === 'unauthorized')
       return { status: 'unauthorized' };
     if (selectedResult.status === 'forbidden') {

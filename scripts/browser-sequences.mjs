@@ -1,4 +1,5 @@
 import { parseChaosSeed } from './ui-chaos.mjs';
+import { pathToFileURL } from 'node:url';
 
 export const BROWSER_SEQUENCE_CASES = [
   {
@@ -11,6 +12,16 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'financial-action-sequences',
     title: 'explores generated native Invoice Record action sequences',
   },
+  {
+    id: 'workspace-access',
+    journey: 'access-action-sequences',
+    title: 'explores generated native Workspace Access action sequences',
+  },
+  {
+    id: 'company-context',
+    journey: 'access-action-sequences',
+    title: 'explores generated native Company context action sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {
@@ -19,6 +30,10 @@ export function readBrowserSequenceOptions({ journey, environment }) {
     (entry) => entry.journey === journey,
   );
   const id = requestedReplay?.split('@')[0];
+  if (requestedReplay && available.length === 0)
+    throw new Error(
+      'This journey has no generated browser sequence case. Select the journey named by the retained replay command.',
+    );
   if (requestedReplay && !available.some((entry) => entry.id === id))
     throw new Error(
       `Unknown sequence case. Available: ${available.map((entry) => entry.id).join(', ')}.`,
@@ -41,7 +56,7 @@ export function readBrowserSequenceOptions({ journey, environment }) {
   if (requestedReplay !== undefined) {
     if (environment.UI_CHAOS_SEED === undefined)
       throw new Error(
-        'UI_SEQUENCE_REPLAY requires the original seed: pnpm verify:journey financial-action-sequences --chaos 1422001',
+        `UI_SEQUENCE_REPLAY requires the original seed: pnpm verify:journey ${journey} --chaos 1422001`,
       );
     const parts = requestedReplay.split('~');
     const [selection, bound, path] = parts;
@@ -177,4 +192,34 @@ export function parseBrowserSequenceEvidence(value) {
             path: value.path,
           }),
   };
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  const [action, journey, ...extra] = process.argv.slice(2);
+  const usage =
+    'Usage: node scripts/browser-sequences.mjs validate-replay <journey>\nRequires UI_CHAOS_SEED and UI_SEQUENCE_REPLAY copied from a failure. Valid configuration exits 0 without output; invalid configuration exits 2 before any browser/database work.\nExample: UI_CHAOS_SEED=1422001 UI_SEQUENCE_REPLAY=workspace-access@desktop~10~0:1 node scripts/browser-sequences.mjs validate-replay access-action-sequences';
+  if (action === '--help' && journey === undefined)
+    process.stdout.write(usage + '\n');
+  else {
+    try {
+      if (
+        action !== 'validate-replay' ||
+        !journey ||
+        extra.length ||
+        !process.env.UI_SEQUENCE_REPLAY
+      )
+        throw new Error(usage);
+      readBrowserSequenceOptions({ journey, environment: process.env });
+    } catch (error) {
+      process.stderr.write(
+        (error instanceof Error
+          ? error.message
+          : 'Invalid browser-sequence replay.') + '\n',
+      );
+      process.exitCode = 2;
+    }
+  }
 }

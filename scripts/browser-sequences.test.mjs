@@ -1,9 +1,48 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
   browserSequenceReplayCommand,
   readBrowserSequenceOptions,
 } from './browser-sequences.mjs';
+
+test('validates a replay against its actual journey before invoking any harness', () => {
+  const script = fileURLToPath(
+    new URL('./browser-sequences.mjs', import.meta.url),
+  );
+  const selection = 'workspace-access@desktop~10~0:1';
+  const check = (journey) =>
+    spawnSync(process.execPath, [script, 'validate-replay', journey], {
+      env: {
+        ...process.env,
+        UI_CHAOS_SEED: '1422001',
+        UI_SEQUENCE_REPLAY: selection,
+      },
+      encoding: 'utf8',
+    });
+  const actual = check('access-action-sequences');
+  assert.equal(actual.status, 0, actual.stderr);
+  assert.equal(actual.stdout, '');
+  const wrong = check('financial-action-sequences');
+  assert.equal(wrong.status, 2);
+  assert.match(wrong.stderr, /Unknown sequence case/u);
+  assert.equal(wrong.stdout, '');
+  const ungenerated = check('certification-journey');
+  assert.equal(ungenerated.status, 2);
+  assert.match(ungenerated.stderr, /no generated browser sequence case/u);
+  assert.equal(ungenerated.stdout, '');
+  assert.equal(
+    browserSequenceReplayCommand({
+      caseId: 'workspace-access',
+      width: 'desktop',
+      seed: 1422001,
+      steps: 10,
+      path: '0:1',
+    }),
+    "UI_SEQUENCE_REPLAY='workspace-access@desktop~10~0:1' pnpm verify:journey access-action-sequences --chaos 1422001",
+  );
+});
 
 test('refuses a replay for an unknown adapter before running a browser', () => {
   assert.throws(

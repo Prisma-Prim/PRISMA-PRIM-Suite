@@ -639,7 +639,7 @@ async function main(argv, environment) {
     }
     if (options.action === 'help') {
       console.log(
-        `${usage}\nJourneys: ${journeys.join(', ')}\n\nGenerated browser sequences: financial-action-sequences\n  UI_SEQUENCE_RUNS=2 (1–20), UI_SEQUENCE_STEPS=10 (1–24), UI_SEQUENCE_BUDGET_MS=60000 (1–120000).\n  Each adapter runs real App/API interactions on desktop and narrow screens.\n  Run: pnpm verify:journey financial-action-sequences --chaos 1422001\n  Exact replay: copy UI_SEQUENCE_REPLAY='<case>@<width>~<steps>~<path>' and --chaos <seed> from the failure.\n  Exact replay requires its original numeric seed and one repetition. Interrupted proof fails.\n  Nightly exploration: pnpm verify:journey financial-action-sequences --chaos random --repeat 20 --budget-minutes 15`,
+        `${usage}\nJourneys: ${journeys.join(', ')}\n\nGenerated browser sequences: ${[...new Set(BROWSER_SEQUENCE_CASES.map((entry) => entry.journey))].join(', ')}\n  UI_SEQUENCE_RUNS=2 (1–20), UI_SEQUENCE_STEPS=10 (1–24), UI_SEQUENCE_BUDGET_MS=60000 (1–120000).\n  Each adapter runs real App/API interactions on desktop and narrow screens.\n  Run: pnpm verify:journey financial-action-sequences --chaos 1422001\n  Exact replay: copy UI_SEQUENCE_REPLAY='<case>@<width>~<steps>~<path>' and --chaos <seed> from the failure.\n  Exact replay requires its original numeric seed and one repetition. Interrupted proof fails.\n  Nightly exploration: pnpm verify:journey financial-action-sequences --chaos random --repeat 20 --budget-minutes 15`,
       );
       return 0;
     }

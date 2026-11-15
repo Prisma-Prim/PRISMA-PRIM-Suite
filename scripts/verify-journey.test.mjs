@@ -297,6 +297,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
   );
   assert.deepEqual(await listChaosJourneys(fixture), ['a']);
   assert.deepEqual(await listChaosJourneys(root), [
+    'access-action-sequences',
     'certification-journey',
     'financial-action-sequences',
     'multi-company-home',
@@ -846,6 +847,62 @@ test('retains measured coverage from every real generated adapter and viewport',
   });
   assert.equal(replay.summary.status, 'passed');
   assert.equal(replay.summary.runs[0].sequences.length, 1);
+});
+
+test('Access proof requires its own generated case on both screens, independently of financial proof', async (t) => {
+  const reports = ['workspace-access', 'company-context'].flatMap((caseId) =>
+    ['desktop', 'narrow'].map((width) => ({
+      schema: 'prisma-prim-browser-sequences/v1',
+      caseId,
+      journey: 'access-action-sequences',
+      width,
+      seed: 1422001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1234,
+      path: null,
+      coverage: { 'company:aba': 1 },
+    })),
+  );
+  const run = (sequenceReports) =>
+    runFixture(t, {
+      journey: 'access-action-sequences',
+      outcomes: {
+        runs: [
+          {
+            exitCode: 0,
+            report: playwrightReport({ expected: 4 }),
+            sequenceReports,
+          },
+        ],
+      },
+    });
+  const complete = await run(reports);
+  assert.equal(complete.summary.status, 'passed');
+  assert.deepEqual(
+    complete.summary.runs[0].sequences
+      .map((entry) => entry.caseId + '@' + entry.width)
+      .sort(),
+    [
+      'company-context@desktop',
+      'company-context@narrow',
+      'workspace-access@desktop',
+      'workspace-access@narrow',
+    ],
+  );
+  const partial = await run(reports.slice(0, 1));
+  assert.equal(partial.summary.status, 'error');
+  assert.match(partial.summary.message, /Missing generated browser proof/u);
+  const unrelated = await run(
+    reports.map((entry) => ({
+      ...entry,
+      caseId: 'payment-observation',
+      journey: 'financial-action-sequences',
+    })),
+  );
+  assert.equal(unrelated.summary.status, 'error');
 });
 
 test('an exact generated replay runs only its selected test and screen', () => {

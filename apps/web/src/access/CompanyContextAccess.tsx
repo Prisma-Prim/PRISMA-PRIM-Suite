@@ -4,7 +4,11 @@ import { useExternalInvoiceAssignmentCopy } from './external-invoice-assignment.
 import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
 import { useProjectNextActionCopy } from '../project/project-next-action.copy';
-import { useAuthorityLifetime } from './use-authority-lifetime';
+import { useWorkspaceRequestScope } from './use-workspace-request-scope';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
@@ -25,6 +29,7 @@ import {
   type FormEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -263,33 +268,31 @@ export function CompanyContextAccess({
       }
     | undefined
   >(undefined);
-  const pendingRequest = useRef<AbortController | undefined>(undefined);
-  const acceptRevalidatedActor = useRef(onActorRevalidated);
-  acceptRevalidatedActor.current = onActorRevalidated;
-  const rejectCompanyContext = useRef(onCompanyContextRejected);
-  rejectCompanyContext.current = onCompanyContextRejected;
-  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
-  const canManageAssignments = actor.workspacePermissions.includes(
-    'company.assignment.manage',
-  );
-  const captureAdministration = useAuthorityLifetime(
-    JSON.stringify([
-      actor.internalUserId,
-      actor.workspaceId,
-      actor.workspaceMembershipId,
-      actor.active,
-      canManageAssignments,
-    ]),
+  const {
+    allowed: canManageAssignments,
+    scope,
+    captureRecovery,
+  } = useWorkspaceRequestScope({
+    actor,
     identity,
-  );
-  const captureRecovery = useAuthorityLifetime(JSON.stringify(actor), identity);
+    permission: 'company.assignment.manage',
+  });
+  const listing = useScopedOperation(scope);
+  const commands = useScopedOperationGroup(scope);
+  const acceptRevalidatedActor = useRef(onActorRevalidated);
+  const rejectCompanyContext = useRef(onCompanyContextRejected);
+  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
+  useLayoutEffect(() => {
+    acceptRevalidatedActor.current = onActorRevalidated;
+    rejectCompanyContext.current = onCompanyContextRejected;
+    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  });
 
   const reloadAdministration = useCallback(
-    async (request: AbortController, showLoading = false): Promise<boolean> => {
-      const administrationLive = captureAdministration(),
-        recoveryLive = captureRecovery();
-      const current = () => administrationLive() && !request.signal.aborted;
+    async (signal: AbortSignal, showLoading = false): Promise<boolean> => {
+      const recoveryLive = captureRecovery();
+      const current = () =>
+        canManageAssignments && commands.isLive() && !signal.aborted;
       if (!current()) return false;
       if (showLoading) setAdministration({ status: 'loading' });
       try {
@@ -297,7 +300,7 @@ export function CompanyContextAccess({
         if (!current()) return false;
         const result = await api.request(
           '/company-context-assignments/administration',
-          { signal: request.signal },
+          { signal },
         );
         if (!current()) return false;
         const rejection = await handleAuthenticatedAccessRejection({
@@ -309,13 +312,12 @@ export function CompanyContextAccess({
           onActorRevalidated: (revalidatedActor) =>
             acceptRevalidatedActor.current(revalidatedActor),
           onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
-          signal: request.signal,
+          signal,
           isCurrent: () => current() && recoveryLive(),
         });
         if (!current()) return false;
         if (rejection) {
           if (!current()) return false;
-          if (!recoveryLive()) return false;
           if (rejection === 'forbidden') setAdministration({ status: 'error' });
           return false;
         }
@@ -346,29 +348,22 @@ export function CompanyContextAccess({
         return false;
       }
     },
-    [identity, captureAdministration, captureRecovery],
+    [identity, canManageAssignments, commands, captureRecovery],
   );
 
   useEffect(() => {
-    pendingRequest.current?.abort();
     retryCommand.current = undefined;
     setWorkspaceMembershipId('');
     setCompanyId('');
     setMutation({ status: 'idle' });
     setSuspensionPending(false);
     if (!canManageAssignments) return;
-    const request = new AbortController();
-    pendingRequest.current = request;
+    const signal = listing.begin();
+    if (!signal) return;
     setAdministration({ status: 'loading' });
-    void reloadAdministration(request);
-    return () => pendingRequest.current?.abort();
-  }, [
-    actor.internalUserId,
-    actor.workspaceId,
-    actor.workspaceMembershipId,
-    canManageAssignments,
-    reloadAdministration,
-  ]);
+    void reloadAdministration(signal);
+    return () => listing.retire();
+  }, [scope, canManageAssignments, listing, reloadAdministration]);
 
   const pdfCopy = useDocumentPdfCopy();
   const missionCopy = useMissionDeliverableCopy();
@@ -383,10 +378,13 @@ export function CompanyContextAccess({
 
   async function submit(event: FormEvent, submission: Submission) {
     event.preventDefault();
-    const administrationLive = captureAdministration(),
-      recoveryLive = captureRecovery();
-    if (!administrationLive()) return;
+    if (!canManageAssignments || commands.isPending() || suspensionPending)
+      return;
     if (!workspaceMembershipId || !companyId) return;
+    const request = commands.begin();
+    if (!request) return;
+    const current = () => commands.isLive() && !request.signal.aborted;
+    const recoveryLive = captureRecovery();
     setMutation({ status: 'submitting', submission });
     const command =
       retryCommand.current?.submission === submission &&
@@ -402,10 +400,7 @@ export function CompanyContextAccess({
             idempotencyKey: crypto.randomUUID(),
           };
     retryCommand.current = command;
-    pendingRequest.current?.abort();
-    const request = new AbortController();
-    const current = () => administrationLive() && !request.signal.aborted;
-    pendingRequest.current = request;
+    listing.retire();
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!current()) return;
@@ -432,6 +427,7 @@ export function CompanyContextAccess({
       );
       if (!current()) return;
       if (result.status === 'unauthorized') {
+        setMutation({ status: 'error' });
         if (recoveryLive()) await identity.rejectSession();
         return;
       }
@@ -482,7 +478,6 @@ export function CompanyContextAccess({
 
       if (
         result.status === 'ok' &&
-        recoveryLive() &&
         // Only this bundle carries Client read. Other consumers retire their own captured authority.
         command.bundle === 'director-client' &&
         command.workspaceMembershipId.toLowerCase() ===
@@ -493,7 +488,7 @@ export function CompanyContextAccess({
       }
 
       if (!current()) return;
-      const refreshed = await reloadAdministration(request);
+      const refreshed = await reloadAdministration(request.signal);
       if (!current()) return;
       if (result.status === 'ok' && refreshed && !actorRevalidationFailed) {
         retryCommand.current = undefined;
@@ -508,8 +503,7 @@ export function CompanyContextAccess({
       if (error instanceof DOMException && error.name === 'AbortError') return;
       setMutation({ status: 'error' });
     } finally {
-      if (pendingRequest.current === request)
-        pendingRequest.current = undefined;
+      request.release();
     }
   }
 
@@ -519,11 +513,13 @@ export function CompanyContextAccess({
   }
 
   async function retryAdministration() {
-    pendingRequest.current?.abort();
-    const request = new AbortController();
-    pendingRequest.current = request;
-    const refreshed = await reloadAdministration(request, true);
-    if (!refreshed || mutation.status !== 'unrefreshed') return;
+    if (!canManageAssignments || commands.isPending() || suspensionPending)
+      return;
+    const signal = listing.begin();
+    if (!signal) return;
+    const refreshed = await reloadAdministration(signal, true);
+    if (signal.aborted || !refreshed || mutation.status !== 'unrefreshed')
+      return;
     retryCommand.current = undefined;
     setMutation({ status: 'ready', submission: mutation.submission });
   }
