@@ -1,57 +1,68 @@
+import { grantHolding } from '../documents/document-grants';
+import { grantOf, holds, type CompanyGrant } from './company-grants';
 import type { ActorContext } from './current-actor';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-interface Grant {
-  bundle:
-    | 'company_invoice_reader'
-    | 'company_invoice_recorder'
-    | 'company_external_invoice_access';
-  assignmentId: string;
-  permissionSetVersion: 'v1';
+type Company = ActorContext['activeCompany'];
+type InvoiceBundle =
+  | 'company_invoice_reader'
+  | 'company_invoice_recorder'
+  | 'company_external_invoice_access';
+/**
+ * The live grants of `bundles`, refused together when one of them does not
+ * carry a native UUID assignment or two of them carry the same one in another
+ * letter case.
+ */
+function grants(company: Company, bundles: readonly InvoiceBundle[]) {
+  const captured = bundles.flatMap((bundle) => {
+    const grant = grantOf(company, bundle);
+    return grant
+      ? [
+          {
+            bundle,
+            assignmentId: grant.assignmentId,
+            permissionSetVersion: grant.permissionSetVersion,
+          },
+        ]
+      : [];
+  });
+  return captured.every((grant) => UUID.test(grant.assignmentId)) &&
+    new Set(captured.map((grant) => grant.assignmentId.toLowerCase())).size ===
+      captured.length
+    ? captured
+    : undefined;
 }
-function grants(value: unknown): Grant[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const result: Grant[] = [],
-    bundles = new Set<string>(),
-    ids = new Set<string>();
-  for (const valueItem of value) {
-    if (!valueItem || typeof valueItem !== 'object' || Array.isArray(valueItem))
-      return undefined;
-    const g = Object.fromEntries(Object.entries(valueItem));
-    if (
-      Object.keys(g).length !== 3 ||
-      Object.keys(g).some(
-        (k) => !['bundle', 'assignmentId', 'permissionSetVersion'].includes(k),
-      ) ||
-      (g.bundle !== 'company_invoice_reader' &&
-        g.bundle !== 'company_invoice_recorder' &&
-        g.bundle !== 'company_external_invoice_access') ||
-      typeof g.assignmentId !== 'string' ||
-      !UUID.test(g.assignmentId) ||
-      g.permissionSetVersion !== 'v1' ||
-      bundles.has(g.bundle) ||
-      ids.has(g.assignmentId.toLowerCase())
+function nativeCapture(grant: CompanyGrant | undefined) {
+  return grant && UUID.test(grant.assignmentId)
+    ? [grant.assignmentId, grant.permissionSetVersion]
+    : undefined;
+}
+function contractCapture(company: Company) {
+  return (
+    nativeCapture(
+      grantHolding(
+        company,
+        'company_contract_preparer',
+        'commercial.contract.read',
+      ),
+    ) ??
+    nativeCapture(
+      grantHolding(
+        company,
+        'company_contract_approver',
+        'commercial.contract.read',
+      ),
     )
-      return undefined;
-    bundles.add(g.bundle);
-    ids.add(g.assignmentId.toLowerCase());
-    result.push({
-      bundle: g.bundle,
-      assignmentId: g.assignmentId,
-      permissionSetVersion: g.permissionSetVersion,
-    });
-  }
-  return result;
+  );
 }
-function nativeCapture(
-  id: unknown,
-  version: unknown,
-  versions: readonly string[],
-) {
-  return typeof id === 'string' &&
-    UUID.test(id) &&
-    typeof version === 'string' &&
-    versions.includes(version)
-    ? [id, version]
+/** Every Commercial Intake version confers both Request and Opportunity read. */
+function intakeCapture(company: Company) {
+  return holds(
+    company,
+    'company_commercial_intake',
+    'commercial.request.read',
+  ) &&
+    holds(company, 'company_commercial_intake', 'commercial.opportunity.read')
+    ? nativeCapture(grantOf(company, 'company_commercial_intake'))
     : undefined;
 }
 /** Financial copy, source use and content each consume their own authority. */
@@ -67,19 +78,10 @@ export function invoiceRecordAuthority(actor: ActorContext):
   | undefined {
   const c = actor.activeCompany;
   if (!actor.active || !c || !UUID.test(c.id)) return undefined;
-  const financial = Array.isArray(c.externalInvoiceGrants)
-    ? c.externalInvoiceGrants.filter(
-        (item: unknown) =>
-          !(
-            item &&
-            typeof item === 'object' &&
-            'bundle' in item &&
-            item.bundle === 'company_external_invoice_access'
-          ),
-      )
-    : undefined;
-  const captured = grants(c.externalInvoiceGrants),
-    financialGrants = grants(financial),
+  const financialGrants = grants(c, [
+      'company_invoice_reader',
+      'company_invoice_recorder',
+    ]),
     finance =
       financialGrants?.find((g) => g.bundle === 'company_invoice_recorder') ??
       financialGrants?.find((g) => g.bundle === 'company_invoice_reader');
@@ -99,63 +101,31 @@ export function invoiceRecordAuthority(actor: ActorContext):
   ]);
   const manage = finance.bundle === 'company_invoice_recorder',
     manageKey = manage ? key : null;
-  const family = captured?.find(
-    (g) => g.bundle === 'company_external_invoice_access',
-  );
+  const family = grants(c, [
+    'company_invoice_reader',
+    'company_invoice_recorder',
+    'company_external_invoice_access',
+  ])?.find((g) => g.bundle === 'company_external_invoice_access');
   const registrar = nativeCapture(
-    c.documentPermissionAssignmentId,
-    c.documentPermissionSetVersion,
-    ['v1', 'v2', 'v3'],
+    grantHolding(c, 'company_document_registrar', 'document.read'),
   );
   const content = nativeCapture(
-    c.documentContentReaderAssignmentId,
-    c.documentContentReaderPermissionSetVersion,
-    ['v1'],
+    grantHolding(c, 'company_document_content_reader', 'document.content.read'),
   );
   const client = actor.workspacePermissions.includes('client.manage')
     ? ['client.manage']
-    : c.clientPermissions?.includes('client.read')
-      ? nativeCapture(
-          c.clientPermissionAssignmentId,
-          c.clientPermissionSetVersion,
-          ['v1', 'v2'],
-        )
-      : undefined;
-  const metadata =
-    family &&
-    registrar &&
-    client &&
-    c.documentPermissions?.includes('document.read');
+    : nativeCapture(
+        grantHolding(c, 'company_director_client_access', 'client.read'),
+      );
+  const metadata = family && registrar && client;
   const contentKey =
-    metadata &&
-    content &&
-    c.documentPermissions?.includes('document.content.read')
+    metadata && content
       ? JSON.stringify([key, family, registrar, client, content])
       : null;
-  const contract =
-    nativeCapture(
-      c.contractPermissionAssignmentId,
-      c.contractPermissionSetVersion,
-      ['v1', 'v2'],
-    ) ??
-    nativeCapture(
-      c.contractApproverAssignmentId,
-      c.contractApproverPermissionSetVersion,
-      ['v1', 'v2'],
-    );
-  const intake = nativeCapture(
-    c.commercialIntakePermissionAssignmentId,
-    c.commercialIntakePermissionSetVersion,
-    ['v1', 'v2', 'v3', 'v4'],
-  );
+  const contract = contractCapture(c);
+  const intake = intakeCapture(c);
   const sourceKey =
-    manage &&
-    contentKey &&
-    contract &&
-    intake &&
-    c.contractPermissions?.includes('commercial.contract.read') &&
-    c.commercialIntakePermissions?.includes('commercial.request.read') &&
-    c.commercialIntakePermissions.includes('commercial.opportunity.read')
+    manage && contentKey && contract && intake
       ? JSON.stringify([manageKey, contentKey, contract, intake])
       : null;
   return { companyId: c.id, key, manage, manageKey, sourceKey, contentKey };
@@ -163,20 +133,11 @@ export function invoiceRecordAuthority(actor: ActorContext):
 /** A related projection cannot outlive a replaced native capture with equal permissions. */
 export function invoiceRecordProjectionAuthority(actor: ActorContext): string {
   const c = actor.activeCompany;
-  const contract =
-    nativeCapture(
-      c?.contractPermissionAssignmentId,
-      c?.contractPermissionSetVersion,
-      ['v1', 'v2'],
-    ) ??
-    nativeCapture(
-      c?.contractApproverAssignmentId,
-      c?.contractApproverPermissionSetVersion,
-      ['v1', 'v2'],
-    );
-  const family = grants(c?.externalInvoiceGrants)?.find(
-    (grant) => grant.bundle === 'company_external_invoice_access',
-  );
+  const family = grants(c, [
+    'company_invoice_reader',
+    'company_invoice_recorder',
+    'company_external_invoice_access',
+  ])?.find((grant) => grant.bundle === 'company_external_invoice_access');
   return JSON.stringify([
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -184,35 +145,18 @@ export function invoiceRecordProjectionAuthority(actor: ActorContext): string {
     c?.id,
     actor.workspacePermissions.includes('client.manage')
       ? ['client.manage']
-      : nativeCapture(
-          c?.clientPermissionAssignmentId,
-          c?.clientPermissionSetVersion,
-          ['v1', 'v2'],
-        ),
-    c?.clientPermissions?.includes('client.read') === true,
-    contract,
-    c?.contractPermissions?.includes('commercial.contract.read') === true,
-    nativeCapture(
-      c?.commercialIntakePermissionAssignmentId,
-      c?.commercialIntakePermissionSetVersion,
-      ['v1', 'v2', 'v3', 'v4'],
-    ),
-    c?.commercialIntakePermissions?.includes('commercial.request.read') ===
-      true,
-    c?.commercialIntakePermissions?.includes('commercial.opportunity.read') ===
-      true,
-    nativeCapture(
-      c?.documentPermissionAssignmentId,
-      c?.documentPermissionSetVersion,
-      ['v1', 'v2', 'v3'],
-    ),
-    c?.documentPermissions?.includes('document.read') === true,
-    nativeCapture(
-      c?.documentContentReaderAssignmentId,
-      c?.documentContentReaderPermissionSetVersion,
-      ['v1'],
-    ),
-    c?.documentPermissions?.includes('document.content.read') === true,
+      : nativeCapture(grantOf(c, 'company_director_client_access')),
+    holds(c, 'company_director_client_access', 'client.read'),
+    contractCapture(c),
+    holds(c, 'company_contract_preparer', 'commercial.contract.read') ||
+      holds(c, 'company_contract_approver', 'commercial.contract.read'),
+    nativeCapture(grantOf(c, 'company_commercial_intake')),
+    holds(c, 'company_commercial_intake', 'commercial.request.read'),
+    holds(c, 'company_commercial_intake', 'commercial.opportunity.read'),
+    nativeCapture(grantOf(c, 'company_document_registrar')),
+    holds(c, 'company_document_registrar', 'document.read'),
+    nativeCapture(grantOf(c, 'company_document_content_reader')),
+    holds(c, 'company_document_content_reader', 'document.content.read'),
     family,
   ]);
 }

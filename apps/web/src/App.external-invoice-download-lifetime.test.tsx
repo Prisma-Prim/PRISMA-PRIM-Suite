@@ -29,7 +29,10 @@ import {
   invoiceUiDocument,
   invoiceUiVersions,
 } from './documents/external-invoice.ui.test-fixture';
-import { withCompanyGrants } from './access/company-grants.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 
 // Negative external HTTP/token/crypto/effect fixtures exercise the actual App and native client.
 // The separately registered acceptance journey owns the actual positive Nest/PostgreSQL/browser proof.
@@ -398,24 +401,30 @@ it.each(cases)(
           displayName: 'Financial capture B',
           activeCompany: {
             ...financialActor.activeCompany,
-            externalInvoiceGrants: [
+            grants: withCompanyGrants(
+              withoutCompanyGrants(
+                financialActor.activeCompany.grants,
+                'company_invoice_reader',
+                'company_invoice_recorder',
+                'company_external_invoice_access',
+              ),
               {
                 bundle: 'company_invoice_recorder',
+                version: 'v1',
                 assignmentId:
                   bundle === 'company_invoice_recorder'
                     ? ids.replacement
                     : ids.recorder,
-                permissionSetVersion: 'v1',
               },
               {
                 bundle: 'company_external_invoice_access',
+                version: 'v1',
                 assignmentId:
                   bundle === 'company_external_invoice_access'
                     ? ids.replacement
                     : ids.family,
-                permissionSetVersion: 'v1',
               },
-            ],
+            ),
           },
         };
         relatedDenied = true;
@@ -536,7 +545,12 @@ it('preserves the ordinary questionnaire PDF file/key attempt through unrelated 
     displayName: 'Financially changed Actor',
     activeCompany: {
       ...financialActor.activeCompany,
-      externalInvoiceGrants: [],
+      grants: withoutCompanyGrants(
+        financialActor.activeCompany.grants,
+        'company_invoice_reader',
+        'company_invoice_recorder',
+        'company_external_invoice_access',
+      ),
     },
   });
   render(<App identity={deterministicBrowserIdentity()} />);

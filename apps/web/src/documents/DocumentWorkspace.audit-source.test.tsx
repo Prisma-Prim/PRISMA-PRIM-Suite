@@ -204,10 +204,11 @@ it.each(['registration', 'correction'] as const)(
         ...nativeActor.activeCompany,
         id: 'company',
         displayName: 'Fictional company',
-        workingEvidenceCasePermissions: ['working_evidence_case.read'],
-        workingEvidenceCaseReaderAssignmentId:
-          '10000000-0000-4000-8000-000000000002',
-        workingEvidenceCaseReaderPermissionSetVersion: 'v1',
+        grants: withCompanyGrants(nativeActor.activeCompany?.grants, {
+          bundle: 'company_working_evidence_case_reader',
+          version: 'v1',
+          assignmentId: '10000000-0000-4000-8000-000000000002',
+        }),
       },
     };
     view.rerender(

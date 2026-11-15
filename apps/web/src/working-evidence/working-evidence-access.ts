@@ -1,13 +1,11 @@
 import type { ActorContext } from '../access-types';
+import type { CompanyGrant } from '../access/company-grants';
+import { grantHolding } from '../documents/document-grants';
 import { receivedAuditSourceNativeAuthority } from '../documents/received-audit-source-access';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
-function captured(id: unknown, version: unknown, versions: readonly string[]) {
-  return (
-    typeof id === 'string' &&
-    uuid.test(id) &&
-    typeof version === 'string' &&
-    versions.includes(version)
-  );
+/** A live grant whose assignment is a native lowercase UUID. */
+function captured<Grant extends CompanyGrant>(grant: Grant | undefined) {
+  return grant && uuid.test(grant.assignmentId) ? grant : undefined;
 }
 export function workingEvidenceAuthority(
   actor: ActorContext,
@@ -30,50 +28,40 @@ export function workingEvidenceAuthority(
     ) ||
     !(
       actor.workspacePermissions.includes('client.manage') ||
-      (company.clientPermissions?.includes('client.read') &&
-        captured(
-          company.clientPermissionAssignmentId,
-          company.clientPermissionSetVersion,
-          ['v1', 'v2'],
-        ))
-    ) ||
-    !company.projectPermissions?.includes('project.read') ||
-    !captured(
-      company.projectPermissionAssignmentId,
-      company.projectPermissionSetVersion,
-      ['v1', 'v2'],
+      captured(
+        grantHolding(company, 'company_director_client_access', 'client.read'),
+      )
     )
   )
     return undefined;
-  const rawPermissions = company.workingEvidenceCasePermissions;
-  const permissions =
-    Array.isArray(rawPermissions) &&
-    rawPermissions.every(
-      (value: unknown) =>
-        value === 'working_evidence_case.read' ||
-        value === 'working_evidence_case.record',
-    )
-      ? rawPermissions
-      : [];
-  const recorder =
-    permissions.includes('working_evidence_case.record') &&
-    permissions.includes('working_evidence_case.read') &&
-    captured(
-      company.workingEvidenceCaseRecorderAssignmentId,
-      company.workingEvidenceCaseRecorderPermissionSetVersion,
-      ['v1'],
-    )
-      ? ['Recorder', company.workingEvidenceCaseRecorderAssignmentId, 'v1']
-      : null;
-  const reader =
-    permissions.includes('working_evidence_case.read') &&
-    captured(
-      company.workingEvidenceCaseReaderAssignmentId,
-      company.workingEvidenceCaseReaderPermissionSetVersion,
-      ['v1'],
-    )
-      ? ['Reader', company.workingEvidenceCaseReaderAssignmentId, 'v1']
-      : recorder;
+  const project = captured(
+    grantHolding(company, 'company_project_access', 'project.read'),
+  );
+  if (!project) return undefined;
+  const recordingGrant = captured(
+    grantHolding(
+      company,
+      'company_working_evidence_case_recorder',
+      'working_evidence_case.record',
+    ),
+  );
+  const recorder = recordingGrant
+    ? [
+        'Recorder',
+        recordingGrant.assignmentId,
+        recordingGrant.permissionSetVersion,
+      ]
+    : null;
+  const readingGrant = captured(
+    grantHolding(
+      company,
+      'company_working_evidence_case_reader',
+      'working_evidence_case.read',
+    ),
+  );
+  const reader = readingGrant
+    ? ['Reader', readingGrant.assignmentId, readingGrant.permissionSetVersion]
+    : recorder;
   if (!reader) return undefined;
   const context = [
     actor.internalUserId,
@@ -82,8 +70,8 @@ export function workingEvidenceAuthority(
     company.id,
     company.workingEvidenceContextCapture,
     company.workingEvidenceClientReadCapture,
-    company.projectPermissionAssignmentId,
-    company.projectPermissionSetVersion,
+    project.assignmentId,
+    project.permissionSetVersion,
   ];
   const readerCapture = JSON.stringify([...context, reader]);
   const recorderCapture = recorder

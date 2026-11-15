@@ -7,7 +7,10 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { WorkingEvidenceWorkspace } from './WorkingEvidenceWorkspace';
-import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import {
   readEvidenceReceipt,
   readEvidenceSources,
@@ -171,9 +174,10 @@ it('permanently retires an in-flight Recorder across A to B to A without a false
       ...actor.activeCompany,
       id: ids.project,
       displayName: 'Fictional Company',
-      workingEvidenceCasePermissions: ['working_evidence_case.read'],
-      workingEvidenceCaseRecorderAssignmentId: undefined,
-      workingEvidenceCaseRecorderPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_working_evidence_case_recorder',
+      ),
     },
   };
   view.rerender(
@@ -331,7 +335,11 @@ it('preserves a Recorder intent when an unrelated Reader is replaced and retires
       ...actor.activeCompany,
       id: ids.project,
       displayName: 'Fictional Company',
-      workingEvidenceCaseReaderAssignmentId: ids.evidence,
+      grants: withCompanyGrants(actor.activeCompany?.grants, {
+        bundle: 'company_working_evidence_case_reader',
+        version: 'v1',
+        assignmentId: ids.evidence,
+      }),
     },
   };
   view.rerender(
@@ -351,7 +359,11 @@ it('preserves a Recorder intent when an unrelated Reader is replaced and retires
       ...readerReplacement.activeCompany,
       id: ids.project,
       displayName: 'Fictional Company',
-      workingEvidenceCaseRecorderAssignmentId: ids.document,
+      grants: withCompanyGrants(readerReplacement.activeCompany?.grants, {
+        bundle: 'company_working_evidence_case_recorder',
+        version: 'v1',
+        assignmentId: ids.document,
+      }),
     },
   };
   view.rerender(
@@ -583,8 +595,10 @@ it('retains a pending Case read consumed through Recorder when a newly granted R
       ...actor.activeCompany,
       id: ids.project,
       displayName: 'Fictional Company',
-      workingEvidenceCaseReaderAssignmentId: undefined,
-      workingEvidenceCaseReaderPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_working_evidence_case_reader',
+      ),
     },
   };
   let resolvePage: ((response: Response) => void) | undefined;
@@ -637,8 +651,10 @@ it('retains the Recorder-owned source selector and draft when a Reader is grante
       ...actor.activeCompany,
       id: ids.project,
       displayName: 'Fictional Company',
-      workingEvidenceCaseReaderAssignmentId: undefined,
-      workingEvidenceCaseReaderPermissionSetVersion: undefined,
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_working_evidence_case_reader',
+      ),
     },
   };
   let resolveSources: ((response: Response) => void) | undefined;

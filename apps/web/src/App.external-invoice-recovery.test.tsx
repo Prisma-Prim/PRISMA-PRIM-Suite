@@ -21,7 +21,10 @@ import {
   invoiceUiIds,
   invoiceUiSource,
 } from './documents/external-invoice.ui.test-fixture';
-import { withCompanyGrants } from './access/company-grants.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 import { clientId, companyId } from './test/mission-applicability-app-fixture';
 
 const financialActor = {
@@ -64,18 +67,24 @@ it.each(
       displayName: 'New financial Actor',
       activeCompany: {
         ...financialActor.activeCompany,
-        externalInvoiceGrants: [
+        grants: withCompanyGrants(
+          withoutCompanyGrants(
+            financialActor.activeCompany.grants,
+            'company_invoice_reader',
+            'company_invoice_recorder',
+            'company_external_invoice_access',
+          ),
           {
             bundle: 'company_invoice_recorder',
+            version: 'v1',
             assignmentId: '10000000-0000-4000-8000-000000009999',
-            permissionSetVersion: 'v1',
           },
           {
             bundle: 'company_external_invoice_access',
+            version: 'v1',
             assignmentId: invoiceUiIds.family,
-            permissionSetVersion: 'v1',
           },
-        ],
+        ),
       },
     };
     const server = installInternalTaskApp(async (path, init) => {

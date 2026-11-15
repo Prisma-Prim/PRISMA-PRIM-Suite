@@ -1,4 +1,6 @@
 import type { ActorContext } from '../access-types';
+import { grantOf, holds, type CompanyGrant } from '../access/company-grants';
+import { grantHolding } from '../documents/document-grants';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const READ_BUNDLES = [
@@ -7,13 +9,9 @@ const READ_BUNDLES = [
   'company_payment_reverser',
   'company_payment_recorder',
 ] as const;
-type PaymentBundle =
+export type PaymentBundle =
   (typeof READ_BUNDLES)[number] | 'company_payment_evidence_access';
-type Grant = {
-  bundle: PaymentBundle;
-  assignmentId: string;
-  permissionSetVersion: 'v1';
-};
+type Company = ActorContext['activeCompany'];
 
 export interface PaymentEvidenceOperationKeys {
   readKey: string;
@@ -27,48 +25,40 @@ export interface PaymentEvidenceOperationKeys {
   uploadKey: string | null;
 }
 
-function record(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? Object.fromEntries(Object.entries(value))
+const PAYMENT_BUNDLES = [
+  ...READ_BUNDLES,
+  'company_payment_evidence_access',
+] as const;
+/**
+ * The live Payment grant of `bundle` when its assignment is a native UUID
+ * that no other Payment grant carries, in any letter case.
+ */
+export function livePaymentGrant(company: Company, bundle: PaymentBundle) {
+  const grant = grantOf(company, bundle);
+  const assignment = grant?.assignmentId.toLowerCase();
+  return grant &&
+    UUID.test(grant.assignmentId) &&
+    PAYMENT_BUNDLES.filter(
+      (other) =>
+        grantOf(company, other)?.assignmentId.toLowerCase() === assignment,
+    ).length === 1
+    ? grant
     : undefined;
 }
-function grant(value: unknown, bundle: PaymentBundle): Grant | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const rows: unknown[] = value;
-  const matching = rows.map(record).filter((row) => row?.bundle === bundle);
-  if (matching.length !== 1) return undefined;
-  const row = matching[0];
-  if (
-    !row ||
-    Object.keys(row).length !== 3 ||
-    Object.keys(row).some(
-      (key) =>
-        !['bundle', 'assignmentId', 'permissionSetVersion'].includes(key),
-    ) ||
-    typeof row.assignmentId !== 'string' ||
-    !UUID.test(row.assignmentId) ||
-    row.permissionSetVersion !== 'v1'
-  )
-    return undefined;
-  const assignmentId = row.assignmentId.toLowerCase();
-  if (
-    rows
-      .map(record)
-      .filter(
-        (other) =>
-          typeof other?.assignmentId === 'string' &&
-          other.assignmentId.toLowerCase() === assignmentId,
-      ).length !== 1
-  )
-    return undefined;
-  return { bundle, assignmentId, permissionSetVersion: 'v1' };
+function paymentGrant(company: Company, bundle: PaymentBundle) {
+  const grant = livePaymentGrant(company, bundle);
+  return grant
+    ? {
+        bundle,
+        assignmentId: grant.assignmentId.toLowerCase(),
+        permissionSetVersion: grant.permissionSetVersion,
+      }
+    : undefined;
 }
-function native(id: unknown, version: unknown, versions: readonly string[]) {
-  return typeof id === 'string' &&
-    UUID.test(id) &&
-    typeof version === 'string' &&
-    versions.includes(version)
-    ? [id.toLowerCase(), version]
+/** A grant's native capture: its UUID assignment and captured version. */
+function native(grant: CompanyGrant | undefined) {
+  return grant && UUID.test(grant.assignmentId)
+    ? [grant.assignmentId.toLowerCase(), grant.permissionSetVersion]
     : undefined;
 }
 
@@ -88,8 +78,6 @@ export function paymentEvidenceAuthority(
     ].every((id) => UUID.test(id))
   )
     return undefined;
-  const grants: unknown =
-    'paymentGrants' in company ? company.paymentGrants : undefined;
   const context: unknown =
     'paymentEvidenceContextCapture' in company
       ? company.paymentEvidenceContextCapture
@@ -105,28 +93,20 @@ export function paymentEvidenceAuthority(
     !/^payment-evidence-reference-read\.v1\.[a-f0-9]{64}$/u.test(reference)
   )
     return undefined;
-  const family = grant(grants, 'company_payment_evidence_access');
-  const reader = READ_BUNDLES.map((bundle) => grant(grants, bundle)).find(
-    (entry) => entry !== undefined,
-  );
+  const family = paymentGrant(company, 'company_payment_evidence_access');
+  const reader = READ_BUNDLES.map((bundle) =>
+    paymentGrant(company, bundle),
+  ).find((entry) => entry !== undefined);
   const registrar = native(
-    company.documentPermissionAssignmentId,
-    company.documentPermissionSetVersion,
-    ['v1', 'v2', 'v3'],
+    grantHolding(company, 'company_document_registrar', 'document.read'),
   );
-  const identity = company.clientPermissions?.includes('client.read')
-    ? native(
-        company.clientPermissionAssignmentId,
-        company.clientPermissionSetVersion,
-        ['v1', 'v2'],
-      )
-    : undefined;
-  const permissions = company.documentPermissions ?? [];
+  const identity = native(
+    grantHolding(company, 'company_director_client_access', 'client.read'),
+  );
   if (
     !family ||
     !reader ||
     !registrar ||
-    !permissions.includes('document.read') ||
     (!actor.workspacePermissions.includes('client.manage') && !identity)
   )
     return undefined;
@@ -138,56 +118,53 @@ export function paymentEvidenceAuthority(
   ];
   const base = [scope, context, reference, family, registrar];
   const readKey = JSON.stringify([...base, reader]);
-  const recorder = grant(grants, 'company_payment_recorder');
+  const recorder = paymentGrant(company, 'company_payment_recorder');
   const write = recorder ? JSON.stringify([...base, recorder]) : null;
-  const registerKey =
-    write && permissions.includes('document.register') ? write : null;
-  const correctKey =
-    write &&
-    ['v2', 'v3'].includes(company.documentPermissionSetVersion ?? '') &&
-    permissions.includes('document.correct')
-      ? write
-      : null;
-  const referenceRead = permissions.includes('document.reference.read');
+  const registers = (
+    permission:
+      | 'document.register'
+      | 'document.correct'
+      | 'document.reference.read'
+      | 'document.version.manage',
+  ) => holds(company, 'company_document_registrar', permission);
+  const registerKey = write && registers('document.register') ? write : null;
+  // Correction exists from Registrar v2 and version management from v3.
+  const correctKey = write && registers('document.correct') ? write : null;
+  const referenceRead = registers('document.reference.read');
   const successorKey =
-    write &&
-    company.documentPermissionSetVersion === 'v3' &&
-    referenceRead &&
-    permissions.includes('document.version.manage')
+    write && referenceRead && registers('document.version.manage')
       ? write
       : null;
   const approver = native(
-    company.documentApproverAssignmentId,
-    company.documentApproverPermissionSetVersion,
-    ['v1'],
+    grantHolding(
+      company,
+      'company_document_approver',
+      'document.version.designate_official',
+    ),
   );
   const designateKey =
-    write &&
-    referenceRead &&
-    permissions.includes('document.version.designate_official') &&
-    approver
+    write && referenceRead && approver
       ? JSON.stringify([write, approver])
       : null;
   const contentReader = native(
-    company.documentContentReaderAssignmentId,
-    company.documentContentReaderPermissionSetVersion,
-    ['v1'],
+    grantHolding(
+      company,
+      'company_document_content_reader',
+      'document.content.read',
+    ),
   );
-  const contentReadKey =
-    permissions.includes('document.content.read') && contentReader
-      ? JSON.stringify([readKey, contentReader])
-      : null;
+  const contentReadKey = contentReader
+    ? JSON.stringify([readKey, contentReader])
+    : null;
   const uploader = native(
-    company.documentContentUploaderAssignmentId,
-    company.documentContentUploaderPermissionSetVersion,
-    ['v1'],
+    grantHolding(
+      company,
+      'company_document_content_uploader',
+      'document.content.upload',
+    ),
   );
   const uploadKey =
-    successorKey &&
-    permissions.includes('document.content.read') &&
-    contentReader &&
-    permissions.includes('document.content.upload') &&
-    uploader
+    successorKey && contentReader && uploader
       ? JSON.stringify([successorKey, contentReader, uploader])
       : null;
   return {

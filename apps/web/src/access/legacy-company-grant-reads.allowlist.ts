@@ -10,7 +10,6 @@ export const LEGACY_COMPANY_GRANT_READS: Readonly<Record<string, number>> = {
   'apps/web/src/App.opportunity-follow-up.test.tsx': 1,
   'apps/web/src/App.tsx': 15,
   'apps/web/src/access/current-actor.test.ts': 1,
-  'apps/web/src/access/invoice-record-authority.ts': 40,
   'apps/web/src/access/opportunity-follow-up-authority.test.ts': 1,
   'apps/web/src/client/ClientDuplicateReviewPanel.feedback-localization.test.tsx': 5,
   'apps/web/src/client/ClientWorkspace.tsx': 3,
@@ -20,10 +19,5 @@ export const LEGACY_COMPANY_GRANT_READS: Readonly<Record<string, number>> = {
   'apps/web/src/commercial-intake/CommercialIntakeWorkspace.test.tsx': 1,
   'apps/web/src/commercial-intake/CommercialIntakeWorkspace.tsx': 24,
   'apps/web/src/commercial-pdf/CommercialPdfDownload.tsx': 4,
-  'apps/web/src/documents/external-invoice-access.ts': 29,
-  'apps/web/src/knowledge-evidence/knowledge-authority.ts': 24,
   'apps/web/src/operational-home/multi-company-summary-contract.ts': 2,
-  'apps/web/src/payment-evidence/payment-evidence-authority.ts': 15,
-  'apps/web/src/payment-observation/payment-authority.ts': 10,
-  'apps/web/src/working-evidence/working-evidence-access.ts': 15,
 };

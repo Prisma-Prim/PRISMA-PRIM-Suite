@@ -15,6 +15,12 @@ import {
   source,
 } from './knowledge.test-fixture';
 import type { BrowserIdentity } from '../access-composition';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import { readCurrentActor } from '../access/current-actor';
+import { acceptsRegistrarWithout } from '../documents/document-grants.test-fixture';
 
 const identity = {
   loaded: true,
@@ -206,52 +212,86 @@ it('retires a deferred PDF preflight before native dispatch', async () => {
   await act(async () => pending.resolve(Response.json(passage())));
   expect(requests.some((path) => path.includes('/content/'))).toBe(false);
 });
+const readerGrants = knowledgeActor.activeCompany.grants;
 it.each([
-  null,
-  {},
-  [],
-  [
-    {
+  // The current Actor parser accepts these lists: no Evidence Reader grant,
+  // or one whose assignment is not a native UUID.
+  {
+    capture: 'no Evidence Reader grant',
+    grants: withoutCompanyGrants(
+      readerGrants,
+      'company_knowledge_evidence_reader',
+    ),
+  },
+  {
+    capture: 'a non-native Evidence Reader assignment',
+    grants: withCompanyGrants(readerGrants, {
       bundle: 'company_knowledge_evidence_reader',
+      version: 'v1',
       assignmentId: 'bad',
-      permissionSetVersion: 'v1',
-    },
-  ],
-  [
-    ...knowledgeActor.activeCompany.knowledgeGrants,
-    ...knowledgeActor.activeCompany.knowledgeGrants,
-  ],
-  [
-    {
-      ...knowledgeActor.activeCompany.knowledgeGrants[0],
-      permissionSetVersion: 'v2',
-    },
-  ],
-  [
-    {
-      bundle: 'company_knowledge_source_administrator',
-      assignmentId: 'a',
-      permissionSetVersion: 'v1',
-    },
-  ],
-])('rejects opaque capture %j before token or I/O', async (knowledgeGrants) => {
-  const getToken = vi.fn(async () => null),
-    fetcher = vi.fn();
-  vi.stubGlobal('fetch', fetcher);
-  render(
-    <KnowledgeEvidenceWorkspace
-      {...props()}
-      identity={{ ...identity, getToken }}
-      actor={{
-        ...knowledgeActor,
-        activeCompany: { ...knowledgeActor.activeCompany, knowledgeGrants },
-      }}
-    />,
+    }),
+  },
+  {
+    capture: 'a Source Administrator grant alone',
+    grants: withCompanyGrants(
+      withoutCompanyGrants(readerGrants, 'company_knowledge_evidence_reader'),
+      {
+        bundle: 'company_knowledge_source_administrator',
+        version: 'v1',
+        assignmentId: 'a',
+      },
+    ),
+  },
+])(
+  'rejects opaque capture $capture before token or I/O',
+  async ({ grants }) => {
+    const getToken = vi.fn(async () => null),
+      fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    render(
+      <KnowledgeEvidenceWorkspace
+        {...props()}
+        identity={{ ...identity, getToken }}
+        actor={{
+          ...knowledgeActor,
+          activeCompany: { ...knowledgeActor.activeCompany, grants },
+        }}
+      />,
+    );
+    await act(async () => undefined);
+    expect(getToken).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  },
+);
+it('refuses the whole current Actor for a malformed, duplicated or unknown Evidence Reader capture', async () => {
+  // The current Actor parser refuses such a list for the whole Actor
+  // (#1332), so the workspace never receives it.
+  const read = (grants: unknown) =>
+    readCurrentActor({
+      api: {
+        request: async () => ({
+          status: 'ok',
+          value: {
+            ...knowledgeActor,
+            activeCompany: { ...knowledgeActor.activeCompany, grants },
+          },
+        }),
+      },
+    });
+  const reader = readerGrants.find(
+    (grant) => grant.bundle === 'company_knowledge_evidence_reader',
   );
-  await act(async () => undefined);
-  expect(getToken).not.toHaveBeenCalled();
-  expect(fetcher).not.toHaveBeenCalled();
-  expect(screen.queryByRole('textbox')).toBeNull();
+  expect((await read(readerGrants)).status).toBe('ok');
+  for (const grants of [
+    null,
+    {},
+    [...readerGrants, reader],
+    readerGrants.map((grant) =>
+      grant === reader ? { ...grant, permissionSetVersion: 'v2' } : grant,
+    ),
+  ])
+    expect(await read(grants)).toEqual({ status: 'error' });
 });
 it.each(['bad mime', 'bad signature', 'bad hash'])(
   'withholds %s without file release',
@@ -353,12 +393,11 @@ it('fences deferred PDF hashing after equal-permission Reader regrant and Aâ†’Bâ
         ...knowledgeActor,
         activeCompany: {
           ...knowledgeActor.activeCompany,
-          knowledgeGrants: [
-            {
-              ...knowledgeActor.activeCompany.knowledgeGrants[0],
-              assignmentId: '80000000-0000-4000-8000-000000001016',
-            },
-          ],
+          grants: withCompanyGrants(readerGrants, {
+            bundle: 'company_knowledge_evidence_reader',
+            version: 'v1',
+            assignmentId: '80000000-0000-4000-8000-000000001016',
+          }),
         },
       }}
     />,
@@ -498,14 +537,11 @@ it('keeps valid read ownership through an unrelated source-administrator replace
           documentPermissions: [
             ...knowledgeActor.activeCompany.documentPermissions,
           ].reverse(),
-          knowledgeGrants: [
-            ...knowledgeActor.activeCompany.knowledgeGrants,
-            {
-              bundle: 'company_knowledge_source_administrator',
-              assignmentId: '80000000-0000-4000-8000-000000001099',
-              permissionSetVersion: 'v1',
-            },
-          ],
+          grants: withCompanyGrants(readerGrants, {
+            bundle: 'company_knowledge_source_administrator',
+            version: 'v1',
+            assignmentId: '80000000-0000-4000-8000-000000001099',
+          }),
         },
       }}
     />,
@@ -529,6 +565,12 @@ it('submits valid multiline literal text without changing its UTF-16 content', a
   ).toBe(literalText);
 });
 it('requires the native reference-read prerequisite before token lookup or evidence I/O', async () => {
+  // Every Registrar version confers Reference read with Document read, so the
+  // current Actor parser refuses this reader for the whole Actor; the screen
+  // keeps its own check on a Registrar grant narrowed by hand.
+  expect(
+    await acceptsRegistrarWithout(knowledgeActor, 'document.reference.read'),
+  ).toBe(false);
   const getToken = vi.fn(async () => null),
     fetcher = vi.fn();
   vi.stubGlobal('fetch', fetcher);
@@ -541,6 +583,20 @@ it('requires the native reference-read prerequisite before token lookup or evide
         activeCompany: {
           ...knowledgeActor.activeCompany,
           documentPermissions: ['document.read', 'document.content.read'],
+          grants: [
+            ...withoutCompanyGrants(readerGrants, 'company_document_registrar'),
+            {
+              bundle: 'company_document_registrar',
+              assignmentId: '90000000-0000-4000-8000-000000001015',
+              permissionSetVersion: 'v3',
+              permissions: [
+                'document.read',
+                'document.register',
+                'document.correct',
+                'document.version.manage',
+              ],
+            },
+          ],
         },
       }}
     />,

@@ -63,25 +63,33 @@ const company = {
   commercialIntakePermissionAssignmentId:
     '20000000-0000-4000-8000-000000000007',
   commercialIntakePermissionSetVersion: 'v4',
-  externalInvoiceGrants: [
-    {
-      bundle: 'company_invoice_recorder',
-      assignmentId: ids.recorder,
-      permissionSetVersion: 'v1',
-    },
-    {
-      bundle: 'company_external_invoice_access',
-      assignmentId: ids.family,
-      permissionSetVersion: 'v1',
-    },
-  ],
-  // The Contract link reads these grants; the invoice record and document
-  // screens still read the per-bundle fields above.
+  // Unmigrated screens still read the Client, Document, Contract and
+  // Commercial Intake per-bundle fields above beside these grants.
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',
       version: 'v2',
       assignmentId: '20000000-0000-4000-8000-000000000001',
+    },
+    {
+      bundle: 'company_document_registrar',
+      version: 'v3',
+      assignmentId: '20000000-0000-4000-8000-000000000002',
+    },
+    {
+      bundle: 'company_document_content_reader',
+      version: 'v1',
+      assignmentId: '20000000-0000-4000-8000-000000000003',
+    },
+    {
+      bundle: 'company_document_content_uploader',
+      version: 'v1',
+      assignmentId: '20000000-0000-4000-8000-000000000004',
+    },
+    {
+      bundle: 'company_document_approver',
+      version: 'v1',
+      assignmentId: '20000000-0000-4000-8000-000000000005',
     },
     {
       bundle: 'company_contract_preparer',
@@ -92,6 +100,16 @@ const company = {
       bundle: 'company_commercial_intake',
       version: 'v4',
       assignmentId: '20000000-0000-4000-8000-000000000007',
+    },
+    {
+      bundle: 'company_invoice_recorder',
+      version: 'v1',
+      assignmentId: ids.recorder,
+    },
+    {
+      bundle: 'company_external_invoice_access',
+      version: 'v1',
+      assignmentId: ids.family,
     },
   ),
 } satisfies NonNullable<ActorContext['activeCompany']> & {
@@ -116,14 +134,11 @@ export const financeOnly: ActorContext = {
     documentPermissions: [],
     contractPermissions: [],
     commercialIntakePermissions: [],
-    grants: [],
-    externalInvoiceGrants: [
-      {
-        bundle: 'company_invoice_recorder',
-        assignmentId: ids.recorder,
-        permissionSetVersion: 'v1',
-      },
-    ],
+    grants: companyGrants({
+      bundle: 'company_invoice_recorder',
+      version: 'v1',
+      assignmentId: ids.recorder,
+    }),
   },
 };
 export const identity = deterministicBrowserIdentity();

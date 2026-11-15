@@ -56,6 +56,16 @@ export const invoiceUiGrantRequests: readonly CompanyGrantRequest[] = [
     version: 'v4',
     assignmentId: 'intake-reader',
   },
+  {
+    bundle: 'company_invoice_recorder',
+    version: 'v1',
+    assignmentId: invoiceUiIds.recorder,
+  },
+  {
+    bundle: 'company_external_invoice_access',
+    version: 'v1',
+    assignmentId: invoiceUiIds.family,
+  },
 ];
 export const invoiceUiActor: ActorContext = {
   internalUserId: invoiceUiIds.user,
@@ -99,21 +109,9 @@ export const invoiceUiActor: ActorContext = {
     ],
     commercialIntakePermissionAssignmentId: 'intake-reader',
     commercialIntakePermissionSetVersion: 'v4',
-    // The Document area reads these grants; the per-bundle fields above stay for
-    // the External Invoice family until it reads its grants too.
+    // Unmigrated screens still read the Client, Document, Contract and
+    // Commercial Intake per-bundle fields above beside these grants.
     grants: companyGrants(...invoiceUiGrantRequests),
-    externalInvoiceGrants: [
-      {
-        bundle: 'company_invoice_recorder',
-        assignmentId: invoiceUiIds.recorder,
-        permissionSetVersion: 'v1',
-      },
-      {
-        bundle: 'company_external_invoice_access',
-        assignmentId: invoiceUiIds.family,
-        permissionSetVersion: 'v1',
-      },
-    ],
   },
 };
 export const invoiceUiParty = {

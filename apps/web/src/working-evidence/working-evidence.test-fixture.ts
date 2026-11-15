@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { documentGrants } from '../documents/document-grants.test-fixture';
 export const ids = {
   project: '10000000-0000-4000-8000-000000000001',
@@ -14,6 +15,7 @@ export const ids = {
   member: '10000000-0000-4000-8000-000000000009',
   reader: '10000000-0000-4000-8000-000000000010',
   recorder: '10000000-0000-4000-8000-000000000011',
+  projectAccess: '10000000-0000-4000-8000-000000000012',
 };
 export const actor: ActorContext = {
   internalUserId: ids.member,
@@ -28,16 +30,8 @@ export const actor: ActorContext = {
     id: ids.project,
     displayName: 'Fictional Company',
     projectPermissions: ['project.read'],
-    projectPermissionAssignmentId: ids.project,
+    projectPermissionAssignmentId: ids.projectAccess,
     projectPermissionSetVersion: 'v1',
-    workingEvidenceCasePermissions: [
-      'working_evidence_case.read',
-      'working_evidence_case.record',
-    ],
-    workingEvidenceCaseReaderAssignmentId: ids.reader,
-    workingEvidenceCaseReaderPermissionSetVersion: 'v1',
-    workingEvidenceCaseRecorderAssignmentId: ids.recorder,
-    workingEvidenceCaseRecorderPermissionSetVersion: 'v1',
     receivedAuditSourceAccessAssignmentId: ids.project,
     receivedAuditSourceAccessPermissionSetVersion: 'v1',
     workingEvidenceContextCapture: `working-evidence-context.v1.${'a'.repeat(64)}`,
@@ -52,16 +46,33 @@ export const actor: ActorContext = {
     ],
     documentContentReaderAssignmentId: ids.project,
     documentContentReaderPermissionSetVersion: 'v1',
-    // The Document area reads these grants; the per-bundle fields above stay for
-    // the Working Evidence screens until they read their grants too.
-    grants: documentGrants(
-      [
-        'document.read',
-        'document.reference.read',
-        'document.received_audit_source.access',
-        'document.content.read',
-      ],
-      { company_received_audit_source_access: ids.project },
+    // Unmigrated screens still read the Project and Document per-bundle
+    // fields above beside these grants.
+    grants: withCompanyGrants(
+      documentGrants(
+        [
+          'document.read',
+          'document.reference.read',
+          'document.received_audit_source.access',
+          'document.content.read',
+        ],
+        { company_received_audit_source_access: ids.project },
+      ),
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: ids.projectAccess,
+      },
+      {
+        bundle: 'company_working_evidence_case_reader',
+        version: 'v1',
+        assignmentId: ids.reader,
+      },
+      {
+        bundle: 'company_working_evidence_case_recorder',
+        version: 'v1',
+        assignmentId: ids.recorder,
+      },
     ),
   },
 };

@@ -6,6 +6,10 @@ import {
   waitFor,
   within,
 } from '../test/render-with-interface-locale';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   deterministicBrowserIdentity,
@@ -235,24 +239,30 @@ it.each([
         ...actor.activeCompany,
         id: ids.company,
         displayName: 'Fictional Company',
-        externalInvoiceGrants: [
+        grants: withCompanyGrants(
+          withoutCompanyGrants(
+            actor.activeCompany?.grants,
+            'company_invoice_reader',
+            'company_invoice_recorder',
+            'company_external_invoice_access',
+          ),
           {
             bundle: 'company_invoice_recorder',
+            version: 'v1',
             assignmentId:
               bundle === 'company_invoice_recorder'
                 ? ids.replacement
                 : ids.recorder,
-            permissionSetVersion: 'v1',
           },
           {
             bundle: 'company_external_invoice_access',
+            version: 'v1',
             assignmentId:
               bundle === 'company_external_invoice_access'
                 ? ids.replacement
                 : ids.family,
-            permissionSetVersion: 'v1',
           },
-        ],
+        ),
       },
     };
     rendered.rerender(view(identity, true, replaced));
@@ -277,18 +287,24 @@ it('allows an independently captured Invoice Reader to reopen metadata and Versi
       ...actor.activeCompany,
       id: ids.company,
       displayName: 'Fictional Company',
-      externalInvoiceGrants: [
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_invoice_reader',
+          'company_invoice_recorder',
+          'company_external_invoice_access',
+        ),
         {
           bundle: 'company_invoice_reader',
+          version: 'v1',
           assignmentId: ids.recorder,
-          permissionSetVersion: 'v1',
         },
         {
           bundle: 'company_external_invoice_access',
+          version: 'v1',
           assignmentId: ids.family,
-          permissionSetVersion: 'v1',
         },
-      ],
+      ),
     },
   };
   http({ saved: true });
@@ -357,7 +373,12 @@ it('preserves an unrelated questionnaire draft when financial captures are remov
       ...actor.activeCompany,
       id: ids.company,
       displayName: 'Fictional Company',
-      externalInvoiceGrants: [],
+      grants: withoutCompanyGrants(
+        actor.activeCompany?.grants,
+        'company_invoice_reader',
+        'company_invoice_recorder',
+        'company_external_invoice_access',
+      ),
     },
   };
   rendered.rerender(view(identity, true, removed));
@@ -373,7 +394,7 @@ it('preserves an unrelated questionnaire draft when financial captures are remov
 });
 
 it.each([
-  'unknown financial row keys',
+  'non-native financial assignment',
   'case-insensitive duplicate identity',
   'missing Contract capture',
   'missing Opportunity capture',
@@ -386,42 +407,67 @@ it.each([
   const malformed: ActorContext = {
     ...actor,
     activeCompany:
-      kind === 'unknown financial row keys'
+      kind === 'non-native financial assignment'
         ? {
             ...company,
-            externalInvoiceGrants: [
+            grants: withCompanyGrants(
+              withoutCompanyGrants(
+                company.grants,
+                'company_invoice_reader',
+                'company_invoice_recorder',
+                'company_external_invoice_access',
+              ),
               {
                 bundle: 'company_invoice_recorder',
-                assignmentId: ids.recorder,
-                permissionSetVersion: 'v1',
-                extra: 'not authority',
+                version: 'v1',
+                assignmentId: 'malformed',
               },
               {
                 bundle: 'company_external_invoice_access',
+                version: 'v1',
                 assignmentId: ids.family,
-                permissionSetVersion: 'v1',
               },
-            ],
+            ),
           }
         : kind === 'case-insensitive duplicate identity'
           ? {
               ...company,
-              externalInvoiceGrants: [
+              grants: withCompanyGrants(
+                withoutCompanyGrants(
+                  company.grants,
+                  'company_invoice_reader',
+                  'company_invoice_recorder',
+                  'company_external_invoice_access',
+                ),
                 {
                   bundle: 'company_invoice_recorder',
+                  version: 'v1',
                   assignmentId: 'aaaaaaaa-0000-4000-8000-000000000001',
-                  permissionSetVersion: 'v1',
                 },
                 {
                   bundle: 'company_external_invoice_access',
+                  version: 'v1',
                   assignmentId: 'AAAAAAAA-0000-4000-8000-000000000001',
-                  permissionSetVersion: 'v1',
                 },
-              ],
+              ),
             }
           : kind === 'missing Contract capture'
-            ? { ...company, contractPermissionAssignmentId: undefined }
-            : { ...company, commercialIntakePermissionAssignmentId: undefined },
+            ? {
+                ...company,
+                contractPermissionAssignmentId: undefined,
+                grants: withoutCompanyGrants(
+                  company.grants,
+                  'company_contract_preparer',
+                ),
+              }
+            : {
+                ...company,
+                commercialIntakePermissionAssignmentId: undefined,
+                grants: withoutCompanyGrants(
+                  company.grants,
+                  'company_commercial_intake',
+                ),
+              },
   };
   const { reads, writes } = http();
   render(view(deterministicBrowserIdentity(), true, malformed));

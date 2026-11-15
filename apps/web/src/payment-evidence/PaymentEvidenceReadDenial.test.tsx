@@ -13,6 +13,7 @@ import {
 } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { readCurrentActor } from '../access/current-actor';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import { PaymentEvidenceSourcePanel } from './PaymentEvidenceSourcePanel';
 import { paymentEvidenceAuthority } from './payment-evidence-authority';
@@ -44,11 +45,16 @@ type Call = {
 };
 type HeldRead = { call: Call; resolve: (response: Response) => void };
 
-function replaceGrant(bundle: string, assignmentId: string) {
+function replaceGrant(
+  bundle: 'company_payment_reader' | 'company_payment_recorder',
+  assignmentId: string,
+) {
   const actor = paymentEvidenceActor();
-  actor.activeCompany.paymentGrants = actor.activeCompany.paymentGrants.map(
-    (grant) => (grant.bundle === bundle ? { ...grant, assignmentId } : grant),
-  );
+  actor.activeCompany.grants = withCompanyGrants(actor.activeCompany.grants, {
+    bundle,
+    version: 'v1',
+    assignmentId,
+  });
   return actor;
 }
 const actorA = paymentEvidenceActor();
