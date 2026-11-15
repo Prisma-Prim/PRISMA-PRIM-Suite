@@ -60,6 +60,27 @@ const failingHome = summary('multi-company-home', [
   },
 ]);
 
+const passingFinancial = summary('financial-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1422001,
+    sequences: ['payment-observation', 'invoice-record'].flatMap((caseId) =>
+      ['desktop', 'narrow'].map((width) => ({
+        caseId,
+        width,
+        seed: 1422001,
+        steps: 10,
+        status: 'passed',
+        runs: 2,
+        shrinks: 0,
+        durationMilliseconds: 1000,
+        path: null,
+        coverage: { 'locale:fr': 1 },
+      })),
+    ),
+  },
+]);
+
 function workflowRun({
   id = 501,
   attempt = 1,
@@ -87,6 +108,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:33:31Z',
   },
+  {
+    name: 'chaos (financial-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
   { name: 'report', conclusion: null, started_at: null, completed_at: null },
 ];
 const summaries = () =>
@@ -96,6 +123,10 @@ const summaries = () =>
       parseChaosSummary(JSON.stringify(passingCertification)),
     ],
     ['multi-company-home', parseChaosSummary(JSON.stringify(failingHome))],
+    [
+      'financial-action-sequences',
+      parseChaosSummary(JSON.stringify(passingFinancial)),
+    ],
   ]);
 
 /** An in-memory GitHub REST API that records every write. */
@@ -200,13 +231,17 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-multi-company-home',
       JSON.stringify(failingHome),
     ],
+    [
+      'nightly-ui-chaos-summary-financial-action-sequences',
+      JSON.stringify(passingFinancial),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
     await writeFile(join(directory, folder, 'summary.json'), content);
   }
   const found = readChaosSummaries(directory);
-  assert.deepEqual([...found.keys()].sort(), CHAOS_JOURNEYS);
+  assert.deepEqual([...found.keys()].sort(), [...CHAOS_JOURNEYS].sort());
   assert.equal(readChaosSummaries(join(directory, 'missing')).size, 0);
 });
 
@@ -228,6 +263,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
     [
       ['certification-journey', 'success', 18.5, 2, 2, true],
       ['multi-company-home', 'failure', 12, 2, 1, false],
+      ['financial-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -314,7 +350,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary).',
     ),
   );
 
@@ -414,4 +450,101 @@ test('the data block survives any run text', () => {
     repository,
   });
   assert.deepEqual(nightsInComment(body, '2026-11-09'), [night]);
+});
+
+test('keeps financial sequence coverage, reductions and exact replay in the weekly inspection', () => {
+  const raw = summary('financial-action-sequences', [
+    {
+      status: 'failed',
+      chaosSeed: 1422001,
+      failures: [
+        {
+          title: 'Generated Payment action sequences',
+          project: 'operational-acceptance-narrow',
+          error: 'A conserved amount changed.',
+        },
+      ],
+      sequences: [
+        {
+          caseId: 'payment-observation',
+          width: 'narrow',
+          seed: 1422001,
+          steps: 10,
+          status: 'failed',
+          runs: 1,
+          shrinks: 3,
+          durationMilliseconds: 1500,
+          path: '0:2:1',
+          coverage: { 'locale:fr': 2 },
+          replay: 'untrusted command',
+        },
+      ],
+    },
+  ]);
+  const parsed = parseChaosSummary(JSON.stringify(raw));
+  assert.ok(parsed);
+  assert.equal(parsed.sequences[0].shrinks, 3);
+  const night = nightOf({
+    run: workflowRun(),
+    jobs: [
+      {
+        name: 'chaos (financial-action-sequences)',
+        conclusion: 'failure',
+        started_at: '2026-11-14T02:21:00Z',
+        completed_at: '2026-11-14T02:25:00Z',
+      },
+    ],
+    summaries: new Map([['financial-action-sequences', parsed]]),
+  });
+  const body = renderWeek({
+    week: '2026-11-09',
+    nights: [night],
+    bugs: new Map(),
+    server,
+    repository,
+  });
+  assert.ok(body.includes('payment-observation / narrow'));
+  assert.ok(body.includes('locale:fr=2'));
+  assert.ok(
+    body.includes(
+      "UI_SEQUENCE_REPLAY='payment-observation@narrow~10~0:2:1' pnpm verify:journey financial-action-sequences --chaos 1422001",
+    ),
+  );
+  assert.ok(!body.includes('untrusted command'));
+  assert.deepEqual(nightsInComment(body, '2026-11-09'), [night]);
+});
+
+test('a manual replay reports only the selected job and retains old two-journey comments', () => {
+  const night = nightOf({
+    run: workflowRun({ event: 'workflow_dispatch' }),
+    jobs: jobs.filter(
+      (entry) => entry.name === 'chaos (financial-action-sequences)',
+    ),
+    summaries: new Map([
+      [
+        'financial-action-sequences',
+        parseChaosSummary(JSON.stringify(passingFinancial)),
+      ],
+    ]),
+  });
+  assert.deepEqual(
+    night.journeys.map((entry) => entry.journey),
+    ['financial-action-sequences'],
+  );
+  const historical = nightOf({
+    run: workflowRun(),
+    jobs,
+    summaries: summaries(),
+  });
+  historical.journeys = historical.journeys.filter(
+    (entry) => entry.journey !== 'financial-action-sequences',
+  );
+  const body = renderWeek({
+    week: '2026-11-09',
+    nights: [historical],
+    bugs: new Map(),
+    server,
+    repository,
+  });
+  assert.deepEqual(nightsInComment(body, '2026-11-09'), [historical]);
 });

@@ -3,6 +3,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MAXIMUM_CHAOS_SEED, chaosReplayCommand } from './ui-chaos.mjs';
+import {
+  parseBrowserSequenceEvidence,
+  browserSequenceReplayCommand,
+} from './browser-sequences.mjs';
 
 // Seeded UI chaos (#1376, stage 2 of #1155) lands in the weekly inspection:
 // each finished night on main updates one comment per week (Monday, UTC) on
@@ -11,7 +15,11 @@ import { MAXIMUM_CHAOS_SEED, chaosReplayCommand } from './ui-chaos.mjs';
 // keeps its nights in a data block, so a rerun of the same night replaces it.
 
 /** The journeys of the nightly matrix (`.github/workflows/nightly-ui-chaos.yml`). */
-export const CHAOS_JOURNEYS = ['certification-journey', 'multi-company-home'];
+export const CHAOS_JOURNEYS = [
+  'certification-journey',
+  'multi-company-home',
+  'financial-action-sequences',
+];
 const INSPECTION_LABEL = 'weekly-inspection';
 const BUG_LABEL = 'fuzz-found';
 const DATA_VERSION = 1;
@@ -50,6 +58,28 @@ function validFailure(failure) {
   );
 }
 
+function sequenceEvidence(value, journey) {
+  return parseBrowserSequenceEvidence({
+    ...value,
+    schema: 'prisma-prim-browser-sequences/v1',
+    journey,
+  });
+}
+function sequencesInRun(run, journey) {
+  if (run.sequences !== undefined && !Array.isArray(run.sequences)) return null;
+  const sequences = (run.sequences ?? []).map((value) =>
+    sequenceEvidence(value, journey),
+  );
+  if (
+    sequences.some((value) => !value || value.seed !== run.chaosSeed) ||
+    (journey === 'financial-action-sequences' &&
+      run.status === 'passed' &&
+      !sequences.length)
+  )
+    return null;
+  return sequences.map((value) => ({ run: run.run, ...value }));
+}
+
 /**
  * The summary `pnpm verify:journey --chaos` writes, reduced to what the
  * report shows, or null when it is malformed or names no nightly journey:
@@ -78,11 +108,16 @@ export function parseChaosSummary(text) {
         STATUSES.includes(run.status) &&
         isSeed(run.chaosSeed) &&
         Array.isArray(run.failures) &&
-        run.failures.every(validFailure),
+        run.failures.every(validFailure) &&
+        sequencesInRun(run, summary.journey) !== null,
     )
   )
     return null;
+  const sequences = summary.runs.flatMap((run) =>
+    sequencesInRun(run, summary.journey),
+  );
   return {
+    ...(sequences.length ? { sequences } : {}),
     journey: summary.journey,
     status: summary.status,
     stoppedByBudget: summary.stoppedByBudget,
@@ -145,10 +180,16 @@ export function nightOf({ run, jobs, summaries }) {
     event: run.event,
     sha: run.head_sha,
     startedAt: run.run_started_at,
-    journeys: CHAOS_JOURNEYS.map((journey) => {
+    journeys: CHAOS_JOURNEYS.filter(
+      (journey) =>
+        run.event !== 'workflow_dispatch' ||
+        jobs.some((entry) => entry.name === `chaos (${journey})`) ||
+        summaries.has(journey),
+    ).map((journey) => {
       const job = jobs.find((entry) => entry.name === `chaos (${journey})`);
       const summary = summaries.get(journey) ?? null;
       return {
+        ...(summary?.sequences?.length ? { sequences: summary.sequences } : {}),
         journey,
         conclusion: job?.conclusion ?? null,
         jobMinutes: job
@@ -190,6 +231,13 @@ function validNight(night) {
         isCount(entry.passed) &&
         (entry.status === null || STATUSES.includes(entry.status)) &&
         typeof entry.stoppedByBudget === 'boolean' &&
+        (entry.sequences === undefined ||
+          (Array.isArray(entry.sequences) &&
+            entry.sequences.every(
+              (sequence) =>
+                isCount(sequence.run) &&
+                sequenceEvidence(sequence, entry.journey),
+            ))) &&
         Array.isArray(entry.failures) &&
         entry.failures.every(
           (failure) =>
@@ -241,7 +289,9 @@ function result(entry) {
   if (entry.status !== null) return `could not run (${entry.status})`;
   if (entry.conclusion === 'failure' || entry.conclusion === 'timed_out')
     return 'failed without a summary';
-  return entry.conclusion ?? 'no job';
+  return entry.conclusion === 'success'
+    ? 'success without a summary'
+    : (entry.conclusion ?? 'no job');
 }
 
 /**
@@ -271,6 +321,22 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
       return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}](${base}/actions/runs/${night.runId}) | [\`${night.sha.slice(0, 7)}\`](${base}/commit/${night.sha}) | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
     }),
   );
+  const sequenceRows = nights.flatMap((night) =>
+    night.journeys.flatMap((entry) =>
+      (entry.sequences ?? []).map((sequence) => {
+        const evidence = sequenceEvidence(sequence, entry.journey);
+        const replay =
+          evidence.path === null
+            ? '—'
+            : `\`${browserSequenceReplayCommand(evidence)}\``;
+        const coverage =
+          Object.entries(evidence.coverage)
+            .map(([label, total]) => `${label}=${total}`)
+            .join(', ') || 'none';
+        return `| ${night.startedAt.slice(0, 10)} / ${sequence.run} | ${evidence.caseId} / ${evidence.width} | ${evidence.status} | ${evidence.runs} | ${evidence.shrinks} | ${(evidence.durationMilliseconds / 1000).toFixed(1)} s | ${coverage} | ${replay} |`;
+      }),
+    ),
+  );
   const failures = nights.flatMap((night) =>
     night.journeys.flatMap((entry) =>
       entry.failures.map((failure) => ({ night, entry, failure })),
@@ -290,11 +356,21 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
     marker(week),
     `## Nightly UI chaos, week of ${week}`,
     '',
-    'Seeded UI chaos (#1376, stage 2 of #1155) replays acceptance journeys on a throwaway database under response delays, out-of-order responses, a slowed CPU, double submits and back navigation, with the Company switch and access loss of `multi-company-home`. It never blocks a pull request. It is measured for two weeks before any extension, and every failure stays counted here.',
+    'Seeded UI chaos (#1376, stage 2 of #1155) replays acceptance journeys on a throwaway database under response delays, out-of-order responses, a slowed CPU, double submits and back navigation, with the Company switch and access loss of `multi-company-home`. It never blocks a pull request. Generated financial action sequences (#1422) vary native actions and values, retain reductions and exact replay, and report only measured coverage. Every failure stays counted here.',
     '',
     '| Night (UTC) | Run | Commit | Journey | Runs passed | Result | Job time |',
     '| --- | --- | --- | --- | ---: | --- | ---: |',
     ...rows,
+    ...(sequenceRows.length
+      ? [
+          '',
+          'Generated browser sequence evidence:',
+          '',
+          '| Night / repetition | Case / screen | Result | Model runs | Reductions | Duration | Verified actions | Exact replay |',
+          '| --- | --- | --- | ---: | ---: | ---: | --- | --- |',
+          ...sequenceRows,
+        ]
+      : []),
     '',
     failures.length === 0
       ? '**Failures:** none this week.'

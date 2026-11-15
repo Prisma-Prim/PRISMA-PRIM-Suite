@@ -19,6 +19,11 @@ import {
 } from './ui-chaos.mjs';
 import { plan as localBrowserPlan } from './verify-local-browser.mjs';
 import {
+  BROWSER_SEQUENCE_CASES,
+  readBrowserSequenceOptions,
+  parseBrowserSequenceEvidence,
+} from './browser-sequences.mjs';
+import {
   EvidenceError,
   openPrivateEvidence,
   preparePrivateOutput,
@@ -156,6 +161,7 @@ export function planJourneyVerification({
   cpuLoad,
   chaosSeed = null,
   chaosJourneys = [],
+  sequenceSelection = null,
   budgetMinutes = null,
   output,
   evidenceRoot,
@@ -170,6 +176,19 @@ export function planJourneyVerification({
   if (chaosSeed !== null && !chaosJourneys.includes(journey))
     throw new JourneyUsageError(
       `Journey "${journey}" has not opted into UI chaos. Chaos journeys: ${chaosJourneys.join(', ') || 'none'}.`,
+    );
+  const replayEntry = sequenceSelection
+    ? BROWSER_SEQUENCE_CASES.find(
+        (entry) =>
+          entry.id === sequenceSelection.caseId && entry.journey === journey,
+      )
+    : null;
+  if (
+    sequenceSelection &&
+    (!replayEntry || !['desktop', 'narrow'].includes(sequenceSelection.width))
+  )
+    throw new JourneyUsageError(
+      'An exact replay must select a registered case and screen.',
     );
   const web = join(root, 'apps/web');
   // Absolute, because Playwright resolves outputDir against the wrapper config.
@@ -214,6 +233,18 @@ export function planJourneyVerification({
         chaosSeed === null ? null : chaosRunSeed(chaosSeed, index + 1);
       return {
         run: index + 1,
+        sequenceCases: BROWSER_SEQUENCE_CASES.filter(
+          (entry) => entry.journey === journey,
+        ).flatMap((entry) =>
+          ['desktop', 'narrow']
+            .filter(
+              (width) =>
+                !sequenceSelection ||
+                (sequenceSelection.caseId === entry.id &&
+                  sequenceSelection.width === width),
+            )
+            .map((width) => `${entry.id}@${width}`),
+        ),
         chaosSeed: seed,
         replay: seed === null ? null : chaosReplayCommand(journey, seed),
         directory,
@@ -222,7 +253,20 @@ export function planJourneyVerification({
         report: join(directory, 'report.json'),
         log: join(directory, 'playwright.log'),
         command: process.execPath,
-        args: [playwrightCli, 'test', '--config', config],
+        args: [
+          playwrightCli,
+          'test',
+          '--config',
+          config,
+          ...(replayEntry
+            ? [
+                '--project',
+                `operational-acceptance-${sequenceSelection.width}`,
+                '--grep',
+                replayEntry.title.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&') + '$',
+              ]
+            : []),
+        ],
         cwd: web,
       };
     }),
@@ -302,11 +346,29 @@ async function evidenceFiles(directory) {
   try {
     entries = await readdir(directory, { recursive: true });
   } catch (error) {
-    if (error.code === 'ENOENT') return { screenshots: [], traces: [] };
+    if (error.code === 'ENOENT')
+      return { screenshots: [], traces: [], sequences: [], sequenceErrors: [] };
     throw error;
   }
   const paths = entries.map((entry) => join(directory, entry)).sort();
+  const sequences = [];
+  const sequenceErrors = [];
+  for (const path of paths.filter((path) => path.endsWith('-sequences.json'))) {
+    try {
+      const sequence = parseBrowserSequenceEvidence(
+        JSON.parse(await readFile(path, 'utf8')),
+      );
+      if (!sequence) throw new Error('Invalid generated sequence evidence');
+      sequences.push(sequence);
+    } catch {
+      sequenceErrors.push(
+        `Invalid generated browser proof: ${basename(path)}.`,
+      );
+    }
+  }
   return {
+    ...(sequences.length ? { sequences } : {}),
+    ...(sequenceErrors.length ? { sequenceErrors } : {}),
     screenshots: paths.filter((path) => path.endsWith('.png')),
     traces: paths.filter(
       (path) => basename(path).startsWith('trace') && path.endsWith('.zip'),
@@ -328,8 +390,29 @@ async function runOutcome(run, result, signal) {
     flaky: stats.flaky ?? 0,
     skipped: stats.skipped ?? 0,
   };
+  const evidence = await evidenceFiles(run.results);
+  const sequences = evidence.sequences ?? [];
+  const expected = run.sequenceCases ?? [];
+  const actual = sequences
+    .map((entry) => `${entry.caseId}@${entry.width}`)
+    .sort();
+  const sequenceProblem =
+    (evidence.sequenceErrors ?? [])[0] ??
+    (expected.length &&
+    JSON.stringify([...expected].sort()) !== JSON.stringify(actual)
+      ? `Missing generated browser proof. Expected ${expected.join(', ')}; received ${actual.join(', ') || 'none'}.`
+      : sequences.some(
+            (entry) =>
+              entry.status !== 'passed' ||
+              (run.chaosSeed !== null && entry.seed !== run.chaosSeed),
+          )
+        ? 'Generated browser proof did not complete successfully under its requested seed.'
+        : null);
   const passed =
-    result.exitCode === 0 && result.signal === null && tests.passed > 0;
+    !sequenceProblem &&
+    result.exitCode === 0 &&
+    result.signal === null &&
+    tests.passed > 0;
   const status = signal.aborted
     ? 'interrupted'
     : passed
@@ -348,14 +431,15 @@ async function runOutcome(run, result, signal) {
     message:
       status !== 'error'
         ? null
-        : result.exitCode === 0 && result.signal === null
-          ? 'No test ran.'
-          : report?.errors?.length
-            ? sanitize(report.errors[0].message)
-            : `Playwright exited with code ${result.exitCode}${result.signal ? ` (${result.signal})` : ''}; see ${run.log}.`,
+        : (sequenceProblem ??
+          (result.exitCode === 0 && result.signal === null
+            ? 'No test ran.'
+            : report?.errors?.length
+              ? sanitize(report.errors[0].message)
+              : `Playwright exited with code ${result.exitCode}${result.signal ? ` (${result.signal})` : ''}; see ${run.log}.`)),
     log: run.log,
     report: run.report,
-    ...(await evidenceFiles(run.results)),
+    ...evidence,
   };
 }
 
@@ -554,15 +638,46 @@ async function main(argv, environment) {
       return 0;
     }
     if (options.action === 'help') {
-      console.log(`${usage}\nJourneys: ${journeys.join(', ')}`);
+      console.log(
+        `${usage}\nJourneys: ${journeys.join(', ')}\n\nGenerated browser sequences: financial-action-sequences\n  UI_SEQUENCE_RUNS=2 (1–20), UI_SEQUENCE_STEPS=10 (1–24), UI_SEQUENCE_BUDGET_MS=60000 (1–120000).\n  Each adapter runs real App/API interactions on desktop and narrow screens.\n  Run: pnpm verify:journey financial-action-sequences --chaos 1422001\n  Exact replay: copy UI_SEQUENCE_REPLAY='<case>@<width>~<steps>~<path>' and --chaos <seed> from the failure.\n  Exact replay requires its original numeric seed and one repetition. Interrupted proof fails.\n  Nightly exploration: pnpm verify:journey financial-action-sequences --chaos random --repeat 20 --budget-minutes 15`,
+      );
       return 0;
     }
     const { chaos, ...rest } = options;
+    const chaosSeed = chaos === 'random' ? randomChaosSeed() : chaos;
+    let sequenceSelection = null;
+    if (
+      BROWSER_SEQUENCE_CASES.some((entry) => entry.journey === rest.journey) ||
+      environment.UI_SEQUENCE_REPLAY !== undefined
+    ) {
+      if (environment.UI_SEQUENCE_REPLAY !== undefined) {
+        if (chaos === null || chaos === 'random')
+          throw new JourneyUsageError(
+            'An exact replay requires its original explicit numeric --chaos seed.',
+          );
+        if (rest.repeat !== 1)
+          throw new JourneyUsageError(
+            'An exact replay requires one repetition.',
+          );
+      }
+      try {
+        sequenceSelection = readBrowserSequenceOptions({
+          journey: rest.journey,
+          environment: {
+            ...environment,
+            UI_CHAOS_SEED: chaosSeed === null ? undefined : String(chaosSeed),
+          },
+        }).replay;
+      } catch (error) {
+        throw new JourneyUsageError(error.message);
+      }
+    }
     plan = planJourneyVerification({
       root,
       journeys,
       ...rest,
-      chaosSeed: chaos === 'random' ? randomChaosSeed() : chaos,
+      chaosSeed,
+      sequenceSelection,
       chaosJourneys: chaos === null ? [] : await listChaosJourneys(root),
       output: rest.output
         ? preparePrivateOutput({ cwd: root, output: rest.output })

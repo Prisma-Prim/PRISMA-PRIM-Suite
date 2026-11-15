@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, chmod, rm } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { CHAOS_JOURNEYS } from './nightly-ui-chaos-report.mjs';
@@ -37,7 +40,7 @@ test('the nightly UI chaos starts after the nightly fuzz or by hand, and never o
   // The nightly fuzz starts at 01:30 UTC (nightly-fuzz.yml).
   assert.match(
     workflow,
-    /\non:\n {2}schedule:\n {4}- cron: '20 2 \* \* \*'\n {2}workflow_dispatch:\n\n/,
+    /\non:\n {2}schedule:\n {4}- cron: '20 2 \* \* \*'\n {2}workflow_dispatch:\n {4}inputs:\n/,
   );
   // Nothing it finds can gate a pull request or a merge.
   assert.doesNotMatch(
@@ -59,14 +62,18 @@ test('the nightly UI chaos starts after the nightly fuzz or by hand, and never o
 test('each journey that opts into chaos is its own matrix job, none cancelling another', async () => {
   const { chaos } = jobsIn(await readWorkflow());
   assert.match(chaos, /\n {4}strategy:\n(?: {6}#.*\n)* {6}fail-fast: false\n/);
-  const journeys = [...chaos.matchAll(/^ {10}- ([a-z-]+)$/gm)].map(
-    (match) => match[1],
+  const selection = /\|\| '(\[[^']+\])'\) \}\}/u.exec(chaos);
+  assert.ok(
+    selection,
+    'The nightly default matrix must declare its actual journeys.',
   );
+  const journeys = JSON.parse(selection[1]);
   assert.deepEqual(journeys, CHAOS_JOURNEYS);
   assert.deepEqual(
-    journeys,
+    [...journeys].sort(),
     await listChaosJourneys(fileURLToPath(new URL('..', import.meta.url))),
   );
+  assert.ok(chaos.includes(`format('["{0}"]', inputs.journey)`));
   assert.match(chaos, /^ {4}name: chaos \(\$\{\{ matrix\.journey \}\}\)$/m);
 });
 
@@ -96,8 +103,17 @@ test('the chaos job replays its journey with a random seed on PostgreSQL within 
   assert.match(step, /\n {10}JOURNEY: \$\{\{ matrix\.journey \}\}\n/);
   assert.match(
     step.trimEnd(),
-    /\n {8}run: pnpm verify:journey "\$JOURNEY" --chaos random --repeat [1-9][0-9]* --budget-minutes 15 --output "\$CHAOS_EVIDENCE"$/,
+    /pnpm verify:journey "\$JOURNEY" --chaos "\$CHAOS_SEED" --repeat [1-9][0-9]* --budget-minutes 15 --output "\$CHAOS_EVIDENCE"/,
   );
+  assert.ok(step.includes("CHAOS_SEED: ${{ inputs.seed || 'random' }}"));
+  const script = step.split('run: |\n')[1];
+  assert.ok(script);
+  assert.doesNotMatch(
+    script,
+    /\$\{\{/u,
+    'Dispatch inputs reach the shell only through quoted environment values.',
+  );
+  assert.ok(step.includes("UI_SEQUENCE_BUDGET_MS: '120000'"));
   const summary = stepBody(chaos, 'Upload the chaos summary');
   assert.match(summary, /if: \$\{\{ !cancelled\(\) \}\}/);
   assert.match(
@@ -141,3 +157,76 @@ test('only the report job writes, after every finished night, one at a time', as
     /\n {8}run: node scripts\/nightly-ui-chaos-report\.mjs$/,
   );
 });
+
+test(
+  'the dispatch shell runs an exact replay once, keeps exploration bounded and refuses the wrong journey',
+  { skip: process.platform === 'win32' },
+  async (t) => {
+    const directory = await mkdtemp(join(tmpdir(), 'nightly-sequence-shell-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const shim = join(directory, 'pnpm');
+    await writeFile(
+      shim,
+      `#!${process.execPath}\nconsole.log(JSON.stringify({ args: process.argv.slice(2), replay: process.env.UI_SEQUENCE_REPLAY ?? null }));\n`,
+    );
+    await chmod(shim, 0o700);
+    const { chaos } = jobsIn(await readWorkflow());
+    const step = stepBody(chaos, 'Replay the journey under seeded UI chaos');
+    const script = step.split('run: |\n')[1];
+    const env = {
+      ...process.env,
+      PATH: directory + ':' + process.env.PATH,
+      JOURNEY: 'financial-action-sequences',
+      CHAOS_SEED: '1422001',
+      CHAOS_EVIDENCE: join(directory, 'private evidence'),
+      SEQUENCE_REPLAY: 'payment-observation@narrow~10~0:2:1',
+    };
+    delete env.UI_SEQUENCE_REPLAY;
+    const replay = spawnSync('bash', ['-e', '-c', script], {
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(replay.status, 0, replay.stderr);
+    assert.deepEqual(JSON.parse(replay.stdout), {
+      args: [
+        'verify:journey',
+        env.JOURNEY,
+        '--chaos',
+        env.CHAOS_SEED,
+        '--output',
+        env.CHAOS_EVIDENCE,
+      ],
+      replay: env.SEQUENCE_REPLAY,
+    });
+    const exploration = spawnSync('bash', ['-e', '-c', script], {
+      env: { ...env, SEQUENCE_REPLAY: '', CHAOS_SEED: 'random' },
+      encoding: 'utf8',
+    });
+    assert.equal(exploration.status, 0, exploration.stderr);
+    assert.deepEqual(JSON.parse(exploration.stdout), {
+      args: [
+        'verify:journey',
+        env.JOURNEY,
+        '--chaos',
+        'random',
+        '--repeat',
+        '20',
+        '--budget-minutes',
+        '15',
+        '--output',
+        env.CHAOS_EVIDENCE,
+      ],
+      replay: null,
+    });
+    const wrongJourney = spawnSync('bash', ['-e', '-c', script], {
+      env: { ...env, JOURNEY: 'certification-journey' },
+      encoding: 'utf8',
+    });
+    assert.equal(wrongJourney.status, 2);
+    assert.match(
+      wrongJourney.stderr,
+      /requires the financial-action-sequences journey/u,
+    );
+    assert.equal(wrongJourney.stdout, '');
+  },
+);
