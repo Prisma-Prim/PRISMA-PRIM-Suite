@@ -30,6 +30,36 @@ const settings = readFuzzSettings(process.env, { seed: 1257 });
     afterAll(async () => {
       if (world) await closeReviewWorld(world);
     });
+    it.each([
+      {
+        seed: 1720017777,
+        path: '40~11:5:4:4:3:3~AAEABbR:VB',
+      },
+      {
+        seed: 1198500709,
+        path: '40~2:8:7:7:9:7:7:6:5:5:7~BAACCBAABCDAAACI/J:VV1',
+      },
+    ])(
+      'rejects changed-intent key reuse in the nightly regression $seed',
+      async ({ seed, path }) => {
+        await runModelFuzz({
+          settings: readFuzzSettings(
+            { FUZZ_SEED: String(seed), FUZZ_PATH: path },
+            { seed: 1257 },
+          ),
+          testFile:
+            'src/project-mission-review/project-mission-review.fuzz.rest.test.ts',
+          invariants: INVARIANTS,
+          commands: fuzzCommands,
+          open: async () => {
+            const opened = await openRun(world);
+            return { model: opened.model, real: opened.api };
+          },
+          end: checkEnd,
+        });
+      },
+      60_000,
+    );
     it(
       'keeps Company isolation, review state, history and replay invariants',
       async () => {
