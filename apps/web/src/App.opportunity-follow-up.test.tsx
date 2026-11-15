@@ -5,6 +5,7 @@ import type { ActorContext } from './access-types';
 import {
   companyGrants,
   withCompanyGrants,
+  withoutCompanyGrants,
 } from './access/company-grants.test-fixture';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import type { FollowUpCurrent } from './opportunity-follow-up/follow-up-contract';
@@ -97,6 +98,11 @@ const current = {
 // current Actor parser refuses the whole Actor for it (#1332), as
 // access/opportunity-follow-up-authority.test.ts shows.
 type Capture = 'complete' | 'absent' | 'missing-native' | 'missing-token';
+const clientGrant = {
+  bundle: 'company_director_client_access',
+  version: 'v2',
+  assignmentId: '60000000-0000-4000-8000-000000000001',
+} as const;
 const intakeGrant = {
   bundle: 'company_commercial_intake',
   version: 'v2',
@@ -121,7 +127,7 @@ function actor(
     commercialIntakePermissionAssignmentId:
       '70000000-0000-4000-8000-000000000001',
     commercialIntakePermissionSetVersion: 'v2',
-    grants: companyGrants(intakeGrant),
+    grants: companyGrants(clientGrant, intakeGrant),
   } satisfies NonNullable<ActorContext['activeCompany']>;
   return {
     internalUserId: '80000000-0000-4000-8000-000000000001',
@@ -142,6 +148,7 @@ function actor(
                 ? undefined
                 : nativeCompany.commercialIntakePermissionAssignmentId,
             grants: companyGrants(
+              clientGrant,
               ...(capture === 'missing-native' ? [] : [intakeGrant]),
               {
                 bundle: 'company_opportunity_follow_up_coordinator',
@@ -446,6 +453,10 @@ describe('Opportunity follow-up through the actual App', () => {
         activeCompany: {
           ...replacement.activeCompany,
           clientPermissionAssignmentId: '60000000-0000-4000-8000-000000000002',
+          grants: withCompanyGrants(replacement.activeCompany.grants, {
+            ...clientGrant,
+            assignmentId: '60000000-0000-4000-8000-000000000002',
+          }),
         },
       };
       // An external Client capture change is observed by the current member's
@@ -473,6 +484,10 @@ describe('Opportunity follow-up through the actual App', () => {
           clientPermissions: [],
           clientPermissionAssignmentId: undefined,
           clientPermissionSetVersion: undefined,
+          grants: withoutCompanyGrants(
+            clientReplacement.activeCompany.grants,
+            'company_director_client_access',
+          ),
         },
       });
       await publishAssignment('revoke', membershipId, 'ideas-reader');

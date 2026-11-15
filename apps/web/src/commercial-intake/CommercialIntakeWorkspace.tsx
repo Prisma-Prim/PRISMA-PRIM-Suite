@@ -18,7 +18,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { grantOf } from '../access/company-grants';
+import { grantOf, holds } from '../access/company-grants';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -522,19 +522,26 @@ export function CommercialIntakeWorkspace({
   rejectCompany.current = onCompanyContextRejected;
   acceptActor.current = onActorRevalidated;
   rejectWorkspace.current = onWorkspaceAccessRejected;
-  const companyId = actor.activeCompany?.id;
+  const company = actor.activeCompany;
+  const companyId = company?.id;
+  const clientGrant = grantOf(company, 'company_director_client_access');
+  const intakeGrant = grantOf(company, 'company_commercial_intake');
+  const managerGrant = grantOf(company, 'company_opportunity_manager');
   const canSearchClients =
     actor.workspacePermissions.includes('client.manage') ||
-    actor.activeCompany?.clientPermissions?.includes('client.read') === true;
-  const canEditNextAction =
-    actor.activeCompany?.commercialIntakePermissions?.includes(
-      'commercial.opportunity.next_action.update',
-    ) === true;
+    holds(company, 'company_director_client_access', 'client.read');
+  const canEditNextAction = holds(
+    company,
+    'company_commercial_intake',
+    'commercial.opportunity.next_action.update',
+  );
   const canAssociateClient =
     canSearchClients &&
-    actor.activeCompany?.commercialIntakePermissions?.includes(
+    holds(
+      company,
+      'company_commercial_intake',
       'commercial.request.client.associate',
-    ) === true;
+    );
   // Association drafts belong to this captured Client read authority.
   // A replacement grant remains readable, but retires selection, retry and
   // pending replies without discarding this Request or its Opportunity edits.
@@ -544,10 +551,10 @@ export function CommercialIntakeWorkspace({
     actor.workspaceMembershipId,
     companyId,
     clientAuthorityRevision,
-    actor.activeCompany?.clientPermissionAssignmentId,
-    actor.activeCompany?.clientPermissionSetVersion,
-    actor.activeCompany?.commercialIntakePermissionAssignmentId,
-    actor.activeCompany?.commercialIntakePermissionSetVersion,
+    clientGrant?.assignmentId,
+    clientGrant?.permissionSetVersion,
+    intakeGrant?.assignmentId,
+    intakeGrant?.permissionSetVersion,
     canSearchClients,
     canAssociateClient,
   ]);
@@ -557,8 +564,8 @@ export function CommercialIntakeWorkspace({
     actor.workspaceMembershipId,
     companyId,
     clientAuthorityRevision,
-    actor.activeCompany?.clientPermissionAssignmentId,
-    actor.activeCompany?.clientPermissionSetVersion,
+    clientGrant?.assignmentId,
+    clientGrant?.permissionSetVersion,
     canSearchClients,
   ]);
   // Loaded projections and reads also belong to the observed authority and
@@ -585,57 +592,60 @@ export function CommercialIntakeWorkspace({
 
   // Reassignment needs the manager bundle and both Intake reads; the server
   // also requires live Company context.
-  const intakePermissions =
-    actor.activeCompany?.commercialIntakePermissions ?? [];
+  const intakeReads =
+    holds(company, 'company_commercial_intake', 'commercial.request.read') &&
+    holds(company, 'company_commercial_intake', 'commercial.opportunity.read');
   const canChangeResponsible =
-    actor.activeCompany?.opportunityManagerPermissions?.includes(
+    holds(
+      company,
+      'company_opportunity_manager',
       'commercial.opportunity.assign',
-    ) === true &&
-    intakePermissions.includes('commercial.request.read') &&
-    intakePermissions.includes('commercial.opportunity.read');
+    ) && intakeReads;
   // The captured manager assignment the editor belongs to, like a remount key.
   const responsibleAuthority = JSON.stringify([
     actor.workspaceMembershipId,
     companyId,
-    actor.activeCompany?.opportunityManagerPermissionAssignmentId,
-    actor.activeCompany?.opportunityManagerPermissionSetVersion,
+    managerGrant?.assignmentId,
+    managerGrant?.permissionSetVersion,
     canChangeResponsible,
   ]);
   // The outcome status change needs captured manager v2 and both Intake
   // reads; the server also requires live Company context.
   const canChangeOutcome =
-    actor.activeCompany?.opportunityManagerPermissions?.includes(
+    holds(
+      company,
+      'company_opportunity_manager',
       'commercial.opportunity.outcome.change',
-    ) === true &&
-    intakePermissions.includes('commercial.request.read') &&
-    intakePermissions.includes('commercial.opportunity.read');
+    ) && intakeReads;
   const outcomeAuthority = JSON.stringify([
     actor.workspaceMembershipId,
     companyId,
-    actor.activeCompany?.opportunityManagerPermissionAssignmentId,
-    actor.activeCompany?.opportunityManagerPermissionSetVersion,
+    managerGrant?.assignmentId,
+    managerGrant?.permissionSetVersion,
     canChangeOutcome,
   ]);
   // The Sales Stage assignment needs captured Commercial Intake v4, which
   // carries both reads; the server also requires live Company context.
   const canSetStage =
-    intakePermissions.includes('commercial.opportunity.stage.set') &&
-    intakePermissions.includes('commercial.request.read') &&
-    intakePermissions.includes('commercial.opportunity.read');
+    holds(
+      company,
+      'company_commercial_intake',
+      'commercial.opportunity.stage.set',
+    ) && intakeReads;
   const stageAuthority = JSON.stringify([
     actor.workspaceMembershipId,
     companyId,
-    actor.activeCompany?.commercialIntakePermissionAssignmentId,
-    actor.activeCompany?.commercialIntakePermissionSetVersion,
+    intakeGrant?.assignmentId,
+    intakeGrant?.permissionSetVersion,
     canSetStage,
   ]);
   // Configuring stages needs the opt-in configuration bundle and both reads.
   const canConfigureStages =
-    actor.activeCompany?.salesStageConfigurationPermissions?.includes(
+    holds(
+      company,
+      'company_sales_stage_configuration',
       'commercial.sales_stage.configure',
-    ) === true &&
-    intakePermissions.includes('commercial.request.read') &&
-    intakePermissions.includes('commercial.opportunity.read');
+    ) && intakeReads;
 
   const request = useCallback(
     async ({
@@ -725,14 +735,18 @@ export function CommercialIntakeWorkspace({
           onCompanyContextRejected: (rejectedCompanyId) =>
             rejectCompany.current(rejectedCompanyId),
           onActorRevalidated: (revalidatedActor) => {
-            const company = revalidatedActor.activeCompany;
+            const revalidated = revalidatedActor.activeCompany;
             retainAuthorizedIntake =
               resource !== 'intake' &&
-              company?.id === companyContextId &&
-              company.commercialIntakePermissions?.includes(
+              revalidated?.id === companyContextId &&
+              holds(
+                revalidated,
+                'company_commercial_intake',
                 'commercial.request.read',
-              ) === true &&
-              company.commercialIntakePermissions.includes(
+              ) &&
+              holds(
+                revalidated,
+                'company_commercial_intake',
                 'commercial.opportunity.read',
               );
             return acceptActor.current(revalidatedActor);
@@ -2987,6 +3001,14 @@ function RequestDetail({
   }, [requestedFocusId]);
   const stageCopy = useSalesStageCopy();
   const { formatDateTime } = useInterfaceLocale();
+  // The Offer panel remounts when the captured Offer Preparer assignment or
+  // version, or the Offer permissions of either Offer bundle, change.
+  const offerPreparer = grantOf(actor.activeCompany, 'company_offer_preparer');
+  const offerPermissions = [
+    ...(offerPreparer?.permissions ?? []),
+    ...(grantOf(actor.activeCompany, 'company_offer_approver')?.permissions ??
+      []),
+  ];
   // Each panel receives only the version it owns, numbered by its request.
   const requestedOffer =
     requestedVersion?.version.type === 'offer_version'
@@ -3211,7 +3233,7 @@ function RequestDetail({
       />
       {offerPdf.controls}
       <OfferPanel
-        key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+        key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${offerPreparer?.assignmentId ?? 'no-assignment'}:${offerPreparer?.permissionSetVersion ?? 'no-version'}:${offerPermissions.join(',')}:${request.clientReference?.currentClientId ?? 'no-client'}`}
         pdf={offerPdf.callbacks}
         onPrepareMessage={prepareMessage}
         onMessageNavigate={retireMessage}

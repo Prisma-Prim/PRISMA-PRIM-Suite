@@ -8,6 +8,10 @@ import {
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import {
@@ -83,6 +87,20 @@ function actor(assignmentId: string): ActorContext {
       ],
       commercialIntakePermissionAssignmentId: 'intake-1',
       commercialIntakePermissionSetVersion: 'v3',
+      // The commercial screens read these grants; App and the Client screens
+      // still read the per-bundle fields above.
+      grants: companyGrants(
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId,
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v3',
+          assignmentId: 'intake-1',
+        },
+      ),
     },
   };
 }
@@ -193,7 +211,14 @@ function transport() {
       if (!activeCompany) throw new Error('Expected active Company');
       currentActor = {
         ...currentActor,
-        activeCompany: { ...activeCompany, clientPermissions: [] },
+        activeCompany: {
+          ...activeCompany,
+          clientPermissions: [],
+          grants: withoutCompanyGrants(
+            activeCompany.grants,
+            'company_director_client_access',
+          ),
+        },
       };
     },
     replaceAssignment() {

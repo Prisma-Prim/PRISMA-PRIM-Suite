@@ -9,6 +9,7 @@ import {
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { companyGrants } from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import {
@@ -91,6 +92,28 @@ function actorFor(companyId: string, state: Transport): ActorContext {
             commercialIntakePermissionSetVersion: 'v1',
           }
         : {}),
+      // The commercial screens read these grants; App and the Client screens
+      // still read the per-bundle fields above.
+      grants: companyGrants(
+        ...(state.companyClientRead
+          ? [
+              {
+                bundle: 'company_director_client_access',
+                version: 'v2',
+                assignmentId: 'assignment-1',
+              } as const,
+            ]
+          : []),
+        ...(state.intakeAssignment
+          ? [
+              {
+                bundle: 'company_commercial_intake',
+                version: 'v1',
+                assignmentId: state.intakeAssignment,
+              } as const,
+            ]
+          : []),
+      ),
     },
   };
 }

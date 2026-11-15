@@ -26,6 +26,7 @@ import {
   requestListItemFor,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import {
   salesStageMessages,
@@ -42,17 +43,6 @@ const ion = {
   workspaceMembershipId: 'membership-ion',
   displayName: 'Ion Popa',
 };
-
-const v3Permissions: NonNullable<
-  NonNullable<ActorContext['activeCompany']>['commercialIntakePermissions']
-> = [
-  'commercial.request.read',
-  'commercial.request.create',
-  'commercial.opportunity.read',
-  'commercial.opportunity.create',
-  'commercial.opportunity.next_action.update',
-  'commercial.request.client.associate',
-];
 
 function actorWith({
   intake,
@@ -73,23 +63,22 @@ function actorWith({
     activeCompany: {
       id: 'company-1',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: [],
-      commercialIntakePermissions:
-        intake === 'v4'
-          ? [...v3Permissions, 'commercial.opportunity.stage.set']
-          : v3Permissions,
-      commercialIntakePermissionAssignmentId: 'intake-assignment',
-      commercialIntakePermissionSetVersion: intake,
-      ...(configuration
-        ? {
-            salesStageConfigurationPermissions: [
-              'commercial.sales_stage.configure',
-            ],
-            salesStageConfigurationPermissionAssignmentId:
-              'configuration-assignment',
-            salesStageConfigurationPermissionSetVersion: 'v1',
-          }
-        : {}),
+      grants: companyGrants(
+        {
+          bundle: 'company_commercial_intake',
+          version: intake,
+          assignmentId: 'intake-assignment',
+        },
+        ...(configuration
+          ? [
+              {
+                bundle: 'company_sales_stage_configuration',
+                version: 'v1',
+                assignmentId: 'configuration-assignment',
+              } as const,
+            ]
+          : []),
+      ),
     },
   };
 }
