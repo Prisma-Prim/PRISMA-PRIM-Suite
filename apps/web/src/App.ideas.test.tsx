@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { selectOption } from './test/select-option';
 import {
   act,
@@ -61,8 +62,11 @@ function actor(...grants: CompanyGrantRequest[]): ActorContext {
     activeCompany: {
       id: COMPANY,
       displayName: 'Synthetic Company',
-      clientPermissions: [],
-      grants: companyGrants(READER, ...grants),
+
+      grants: withoutCompanyGrants(
+        companyGrants(READER, ...grants),
+        'company_director_client_access',
+      ),
     },
   };
 }

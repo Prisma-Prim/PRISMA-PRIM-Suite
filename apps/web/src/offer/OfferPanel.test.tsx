@@ -233,7 +233,7 @@ describe('OfferPanel', () => {
       ...authorized,
       activeCompany: {
         ...authorized.activeCompany,
-        clientPermissions: [],
+
         grants: withoutCompanyGrants(
           authorized.activeCompany.grants,
           'company_director_client_access',
@@ -2043,8 +2043,7 @@ function actor(companyId: string): ActorContext {
     activeCompany: {
       id: companyId,
       displayName: companyId,
-      commercialIntakePermissions: ['commercial.opportunity.read'],
-      clientPermissions: ['client.read'],
+
       offerPermissions: [
         'commercial.offer.read',
         'commercial.offer.prepare',

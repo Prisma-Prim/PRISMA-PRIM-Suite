@@ -1,4 +1,3 @@
-import type { ActorContext } from '../access-types';
 import { companyGrants } from '../access/company-grants.test-fixture';
 export const paymentEvidenceIds = {
   company: '10000000-0000-4000-8000-000000000001',
@@ -23,23 +22,7 @@ export function paymentEvidenceActor() {
     activeCompany: {
       id: paymentEvidenceIds.company,
       displayName: 'Fictional Company',
-      clientPermissions: ['client.read' as const],
-      clientPermissionAssignmentId: '10000000-0000-4000-8000-000000000009',
-      clientPermissionSetVersion: 'v2' as const,
-      documentPermissionAssignmentId: '10000000-0000-4000-8000-000000000010',
-      documentPermissionSetVersion: 'v3' as const,
-      documentPermissions: [
-        'document.read',
-        'document.register',
-        'document.reference.read',
-        'document.correct',
-        'document.version.manage',
-        'document.version.designate_official',
-        'document.content.read',
-        'document.content.upload',
-      ] satisfies NonNullable<
-        ActorContext['activeCompany']
-      >['documentPermissions'],
+
       documentApproverAssignmentId: '10000000-0000-4000-8000-000000000011',
       documentApproverPermissionSetVersion: 'v1' as const,
       documentContentReaderAssignmentId: '10000000-0000-4000-8000-000000000012',
@@ -47,8 +30,7 @@ export function paymentEvidenceActor() {
       documentContentUploaderAssignmentId:
         '10000000-0000-4000-8000-000000000013',
       documentContentUploaderPermissionSetVersion: 'v1' as const,
-      // Unmigrated screens still read the Client and Document per-bundle
-      // fields above beside these grants.
+      // The screens read these registry-consistent live grants.
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',

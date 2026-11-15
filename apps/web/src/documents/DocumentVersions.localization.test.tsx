@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -30,13 +32,31 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Literal Company',
-    clientPermissions: ['client.read'],
-    grants: documentGrants([
-      'document.read',
-      'document.reference.read',
-      'document.version.manage',
-      'document.version.designate_official',
-    ]),
+
+    grants: withCompanyGrants(
+      documentGrants([
+        'document.read',
+        'document.reference.read',
+        'document.version.manage',
+        'document.version.designate_official',
+      ]),
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: documentGrants([
+                'document.read',
+                'document.reference.read',
+                'document.version.manage',
+                'document.version.designate_official',
+              ]),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
+      },
+    ),
   },
 };
 const identity: BrowserIdentity = {

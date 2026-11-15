@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { companyGrants } from './access/company-grants.test-fixture';
 import {
   fireEvent,
@@ -102,16 +103,9 @@ function reader(): ActorContext {
     activeCompany: {
       id: companyId,
       displayName: 'Company A',
-      clientPermissions: [],
+
       commercialActivityPermissions: ['commercial.activity.read'],
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-      ],
-      commercialIntakePermissionAssignmentId: 'intake-1',
-      commercialIntakePermissionSetVersion: 'v1',
+
       contractPermissions: [
         'commercial.contract.read',
         'commercial.contract.approve',
@@ -119,17 +113,20 @@ function reader(): ActorContext {
       ],
       contractApproverAssignmentId: 'approver-1',
       contractApproverPermissionSetVersion: 'v1',
-      grants: companyGrants(
-        {
-          bundle: 'company_commercial_intake',
-          version: 'v1',
-          assignmentId: 'intake-1',
-        },
-        {
-          bundle: 'company_contract_approver',
-          version: 'v1',
-          assignmentId: 'approver-1',
-        },
+      grants: withoutCompanyGrants(
+        companyGrants(
+          {
+            bundle: 'company_commercial_intake',
+            version: 'v1',
+            assignmentId: 'intake-1',
+          },
+          {
+            bundle: 'company_contract_approver',
+            version: 'v1',
+            assignmentId: 'approver-1',
+          },
+        ),
+        'company_director_client_access',
       ),
     },
   };

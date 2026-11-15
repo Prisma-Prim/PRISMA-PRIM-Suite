@@ -1,3 +1,4 @@
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import type { Page, Route } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import type { UnionDetail } from '../src/client/client-union-contract';
@@ -50,9 +51,12 @@ export async function installHistoryLocalizationFixture({
       workspacePermissions: ['client.manage'],
       activeCompany: {
         ...historyCompanies[0],
-        clientPermissions: ['client.read', 'client.duplicate.resolve'],
-        clientPermissionAssignmentId: 'resolver-assignment-712',
-        clientPermissionSetVersion: 'v2',
+
+        grants: withCompanyGrants(historyCompanies[0]?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'resolver-assignment-712',
+        }),
       },
     },
     detail: historyDetail,

@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import { companyGrants } from '../src/access/company-grants.test-fixture';
@@ -17,7 +18,7 @@ const actor = {
   workspacePermissions: [],
   activeCompany: {
     ...company,
-    clientPermissions: [],
+
     contractPermissions: [
       'commercial.contract.read',
       'commercial.contract.prepare',
@@ -25,27 +26,23 @@ const actor = {
     ],
     contractPermissionAssignmentId: 'contract-grant',
     contractPermissionSetVersion: 'v1',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-    ],
-    commercialIntakePermissionAssignmentId: 'intake-grant',
-    commercialIntakePermissionSetVersion: 'v1',
+
     // The Contract screens read these grants; the screens of areas not
     // migrated yet still read the per-bundle fields above.
-    grants: companyGrants(
-      {
-        bundle: 'company_contract_preparer',
-        version: 'v1',
-        assignmentId: 'contract-grant',
-      },
-      {
-        bundle: 'company_commercial_intake',
-        version: 'v1',
-        assignmentId: 'intake-grant',
-      },
+    grants: withoutCompanyGrants(
+      companyGrants(
+        {
+          bundle: 'company_contract_preparer',
+          version: 'v1',
+          assignmentId: 'contract-grant',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v1',
+          assignmentId: 'intake-grant',
+        },
+      ),
+      'company_director_client_access',
     ),
   },
 } satisfies ActorContext;

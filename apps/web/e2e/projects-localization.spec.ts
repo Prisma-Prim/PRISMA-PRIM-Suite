@@ -70,11 +70,7 @@ test('localizes the complete Project-owned journey and preserves exact retries',
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: [
-                    'project.read',
-                    'project.create',
-                    'project.update',
-                  ],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_project_access',

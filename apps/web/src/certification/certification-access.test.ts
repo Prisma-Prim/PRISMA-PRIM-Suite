@@ -87,15 +87,12 @@ describe('Certification authority projection', () => {
     expect(
       certificationAuthority(without(actor, 'company_project_access')),
     ).toEqual(NONE);
-    expect(
-      certificationAuthority(
-        withCompany(actor, {
-          projectPermissions: undefined,
-          projectPermissionAssignmentId: undefined,
-          projectPermissionSetVersion: undefined,
-        }),
-      ),
-    ).toEqual({ read: true, manage: true, approve: false, audit: false });
+    expect(certificationAuthority(actor)).toEqual({
+      read: true,
+      manage: true,
+      approve: false,
+      audit: false,
+    });
   });
 
   it('ignores the legacy Certification fields without their grants', () => {

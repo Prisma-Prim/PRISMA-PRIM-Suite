@@ -27,7 +27,7 @@ const actor = {
   workspacePermissions: [],
   activeCompany: {
     ...company,
-    clientPermissions: ['client.read'],
+
     pricingUserPermissionAssignmentId: 'pricing-one',
     pricingUserPermissionSetVersion: 'v1',
     pricingUserPermissions: ['commercial.pricing.snapshot.read'],
@@ -38,14 +38,7 @@ const actor = {
     ],
     contractPermissionAssignmentId: 'contract-grant',
     contractPermissionSetVersion: 'v1',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-    ],
-    commercialIntakePermissionAssignmentId: 'intake-grant',
-    commercialIntakePermissionSetVersion: 'v1',
+
     // The Contract screens read these grants; the screens of areas not
     // migrated yet still read the per-bundle fields above.
     grants: companyGrants(

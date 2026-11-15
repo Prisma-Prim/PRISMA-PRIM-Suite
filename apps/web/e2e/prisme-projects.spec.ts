@@ -214,11 +214,7 @@ test('creates and opens a Project, then switches local panels without reloading 
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read', 'project.create'],
-                  documentPermissions: [
-                    'document.read',
-                    'document.project.manage',
-                  ],
+
                   grants: companyGrants(
                     ...projectDocumentGrants([
                       'document.read',

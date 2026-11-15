@@ -193,15 +193,7 @@ async function installRoutes(page: Page) {
                 activeCompany: {
                   id: company.id,
                   displayName: company.displayName,
-                  commercialIntakePermissionAssignmentId: 'demo-intake',
-                  commercialIntakePermissionSetVersion: 'v2',
-                  commercialIntakePermissions: [
-                    'commercial.request.read',
-                    'commercial.request.create',
-                    'commercial.opportunity.read',
-                    'commercial.opportunity.create',
-                    'commercial.opportunity.next_action.update',
-                  ],
+
                   // The commercial screens read these grants; App still reads the
                   // per-bundle fields above.
                   grants: companyGrants(

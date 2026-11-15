@@ -608,14 +608,10 @@ for (const locale of locales) {
   });
 }
 
-test('keeps the real App dossier and Company history read-only through a language switch', async ({
+test('preserves translated Company history and hides correction after Client access is removed', async ({
   page,
 }, testInfo) => {
   const state = await installDossierFixture(page);
-  state.actor = {
-    ...state.actor,
-    activeCompany: { ...dossierCompany, clientPermissions: ['client.read'] },
-  };
   state.history = {
     corrections: [
       {
@@ -628,13 +624,6 @@ test('keeps the real App dossier and Company history read-only through a languag
     nextCursor: null,
   };
   await openLocalizedDossier(page, localeCase('fr'), state.dossier.displayName);
-  await expect(
-    page.getByRole('button', {
-      name: 'Corriger le dossier du Client',
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  await expect(page.locator('#client-correction')).toHaveCount(0);
   await page
     .getByRole('button', {
       name: 'Afficher l’historique des corrections',
@@ -649,6 +638,24 @@ test('keeps the real App dossier and Company history read-only through a languag
   await expect(
     page.getByText('Corectat de Actor {literal}', { exact: true }),
   ).toBeVisible();
+  // No registry bundle confers Client read without update. A valid missing
+  // grant retires the entire dossier, including its correction controls.
+  state.actor = {
+    ...state.actor,
+    workspacePermissions: ['client.manage'],
+    activeCompany: { ...dossierCompany, grants: [] },
+  };
+  await page.reload();
+  await expect(page.locator('#clients')).toBeVisible();
+  await chooseLocale(page, 'fr');
+  await expect(
+    page.getByRole('button', {
+      name: 'Corriger le dossier du Client',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(page.locator('#client-correction')).toHaveCount(0);
+  await chooseLocale(page, 'ro');
   await expect(
     page.getByRole('button', {
       name: 'Corectează dosarul Clientului',

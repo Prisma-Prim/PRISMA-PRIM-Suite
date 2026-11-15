@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -46,12 +48,32 @@ function actorWith(
     activeCompany: {
       id: company.id ?? 'company',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: ['client.read'],
-      grants: documentGrants(
-        documentPermissions,
-        company.approverAssignmentId
-          ? { company_document_approver: company.approverAssignmentId }
-          : {},
+
+      grants: withCompanyGrants(
+        documentGrants(
+          documentPermissions,
+          company.approverAssignmentId
+            ? { company_document_approver: company.approverAssignmentId }
+            : {},
+        ),
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId:
+            grantOf(
+              {
+                grants: documentGrants(
+                  documentPermissions,
+                  company.approverAssignmentId
+                    ? {
+                        company_document_approver: company.approverAssignmentId,
+                      }
+                    : {},
+                ),
+              },
+              'company_director_client_access',
+            )?.assignmentId ?? 'fixture-client-access',
+        },
       ),
     },
   };

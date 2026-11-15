@@ -111,10 +111,7 @@ async function installServer(page: Page) {
         workspacePermissions: [],
         activeCompany: {
           ...company,
-          clientPermissions: ['client.read'],
-          clientPermissionAssignmentId: 'client-grant',
-          clientPermissionSetVersion: 'v1',
-          projectPermissions: ['project.read'],
+
           grants: companyGrants(
             {
               bundle: 'company_director_client_access',

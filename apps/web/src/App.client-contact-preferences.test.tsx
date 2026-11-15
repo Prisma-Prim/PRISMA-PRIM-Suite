@@ -1,3 +1,4 @@
+import { companyGrants } from './access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -60,14 +61,12 @@ function directorActor({
     activeCompany: {
       id: 'company-a',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        ...(resolvesDuplicates ? (['client.duplicate.resolve'] as const) : []),
-      ],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: resolvesDuplicates ? 'v2' : 'v1',
+        assignmentId: 'assignment-1',
+      }),
     },
   };
 }

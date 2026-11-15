@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -33,8 +35,24 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Literal Company',
-    clientPermissions: ['client.read'],
-    grants: documentGrants(['document.read', 'document.reference.read']),
+
+    grants: withCompanyGrants(
+      documentGrants(['document.read', 'document.reference.read']),
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: documentGrants([
+                'document.read',
+                'document.reference.read',
+              ]),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
+      },
+    ),
   },
 };
 const identity: BrowserIdentity = {
@@ -215,10 +233,26 @@ it('retires prior URLs on Registrar revocation and never reveals withheld change
     activeCompany: {
       id: 'company',
       displayName: 'Literal Company',
-      clientPermissions: ['client.read'],
-      grants: withoutCompanyGrants(
-        actor.activeCompany?.grants,
-        'company_document_registrar',
+
+      grants: withCompanyGrants(
+        withoutCompanyGrants(
+          actor.activeCompany?.grants,
+          'company_document_registrar',
+        ),
+        {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId:
+            grantOf(
+              {
+                grants: withoutCompanyGrants(
+                  actor.activeCompany?.grants,
+                  'company_document_registrar',
+                ),
+              },
+              'company_director_client_access',
+            )?.assignmentId ?? 'fixture-client-access',
+        },
       ),
     },
   };

@@ -23,12 +23,7 @@ export function withOfferDecisionQueue(actor: ActorContext): ActorContext {
     ...actor,
     activeCompany: {
       ...company,
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.opportunity.read',
-      ],
-      commercialIntakePermissionAssignmentId: 'overview-queue-intake',
-      commercialIntakePermissionSetVersion: 'v1',
+
       offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
       offerApproverAssignmentId: 'overview-queue-approver',
       offerApproverPermissionSetVersion: 'v1',

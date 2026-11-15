@@ -50,18 +50,11 @@ function actor(): ActorContext {
       receivedAddendumAccessPermissionSetVersion: 'v1',
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
-      documentPermissions: [
-        'document.read',
-        'document.received_addendum.access',
-      ],
-      documentPermissionAssignmentId: 'native-document',
-      documentPermissionSetVersion: 'v3',
+
       contractPermissions: ['commercial.contract.read'],
       contractPermissionAssignmentId: 'native-contract',
       contractPermissionSetVersion: 'v2',
-      commercialIntakePermissions: ['commercial.opportunity.read'],
-      commercialIntakePermissionAssignmentId: 'native-intake',
-      commercialIntakePermissionSetVersion: 'v4',
+
       grants: companyGrants(
         {
           bundle: 'company_received_addendum_access',

@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   act,
@@ -35,7 +36,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    projectPermissions: ['project.read', 'project.create'],
+
     grants: companyGrants({
       bundle: 'company_project_access',
       version: 'v1',
@@ -402,11 +403,7 @@ it('retains real Task, Document and registration drafts through a pending and un
       ...actor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      documentPermissions: [
-        'document.read',
-        'document.reference.read',
-        'document.project.manage',
-      ],
+
       grants: withCompanyGrants(
         withCompanyGrants(actor.activeCompany?.grants, {
           bundle: 'company_task_manager',
@@ -895,7 +892,8 @@ it('retires the old Mine rows and draft before late success after current Projec
       activeCompany: {
         id: 'company',
         displayName: 'PRISMA-PRIM',
-        projectPermissions: [],
+
+        grants: withoutCompanyGrants(undefined, 'company_project_access'),
       },
     }),
   );
@@ -1036,7 +1034,7 @@ it('refreshes current Mine membership after the real responsible editor clears t
     activeCompany: {
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      projectPermissions: ['project.read', 'project.create', 'project.update'],
+
       grants: companyGrants(
         {
           bundle: 'company_task_manager',
@@ -1115,11 +1113,7 @@ it.each(['clear', 'reassign'] as const)(
         ...changingActor.activeCompany,
         id: 'company',
         displayName: 'PRISMA-PRIM',
-        documentPermissions: [
-          'document.read',
-          'document.reference.read',
-          'document.project.manage',
-        ],
+
         grants: withCompanyGrants(
           changingActor.activeCompany?.grants,
           {
@@ -1417,7 +1411,7 @@ const changingActor: ActorContext = {
     ...actor.activeCompany,
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    projectPermissions: ['project.read', 'project.create', 'project.update'],
+
     grants: withCompanyGrants(
       actor.activeCompany?.grants,
       {

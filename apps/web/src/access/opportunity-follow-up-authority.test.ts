@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CompanyGrant } from './company-grants';
+import { grantOf, type CompanyGrant } from './company-grants';
 import {
   companyGrants,
   withCompanyGrants,
@@ -57,7 +57,16 @@ async function read(change: Record<string, unknown>) {
           activeCompany: {
             ...company,
             ...change,
-            clientPermissions: ['client.read'],
+            grants: [
+              ...(Array.isArray(change.grants)
+                ? change.grants
+                : company.grants),
+              ...companyGrants({
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId: 'fixture-client-access',
+              }),
+            ],
           },
         },
       }),
@@ -96,9 +105,10 @@ describe('Opportunity follow-up browser authority', () => {
       expect(result.status).toBe('ok');
       if (result.status !== 'ok')
         throw new Error('Expected additive Actor representation');
-      expect(result.value.activeCompany?.clientPermissions).toEqual([
-        'client.read',
-      ]);
+      expect(
+        grantOf(result.value.activeCompany, 'company_director_client_access')
+          ?.permissions,
+      ).toEqual(['client.read', 'client.create', 'client.update']);
       expect(opportunityFollowUpAuthority(result.value)).toBeUndefined();
     }
   });

@@ -1,3 +1,4 @@
+import { companyGrants } from '../access/company-grants.test-fixture';
 import type { ActorContext } from '../access-types';
 import type { UnionComparison } from '../client/client-union-contract';
 import type { InterfaceLocale } from '../localization/interface-locale';
@@ -92,14 +93,12 @@ export const confirmationActor: ActorContext = {
   workspacePermissions: ['client.manage'],
   activeCompany: {
     ...confirmationCompanies[0],
-    clientPermissions: [
-      'client.read',
-      'client.create',
-      'client.update',
-      'client.duplicate.resolve',
-    ],
-    clientPermissionAssignmentId: 'assignment-716',
-    clientPermissionSetVersion: 'v2',
+
+    grants: companyGrants({
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'assignment-716',
+    }),
   },
 };
 

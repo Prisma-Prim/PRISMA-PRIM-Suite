@@ -1,4 +1,9 @@
 import {
+  companyGrants,
+  withoutCompanyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
+import {
   act,
   fireEvent,
   render,
@@ -27,7 +32,12 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-a',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+    grants: companyGrants({
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'fixture-client-access',
+    }),
   },
 };
 
@@ -587,7 +597,11 @@ describe('ClientWorkspace', () => {
           ...actor,
           activeCompany: {
             ...actor.activeCompany!,
-            clientPermissions: [],
+
+            grants: withoutCompanyGrants(
+              actor.activeCompany?.grants,
+              'company_director_client_access',
+            ),
           },
         }}
         identity={deterministicBrowserIdentity()}
@@ -1013,7 +1027,11 @@ describe('ClientWorkspace', () => {
               ...actor,
               activeCompany: {
                 ...actor.activeCompany,
-                clientPermissions: [],
+
+                grants: withoutCompanyGrants(
+                  actor.activeCompany?.grants,
+                  'company_director_client_access',
+                ),
               },
             }),
             { status: 200 },
@@ -1041,7 +1059,11 @@ describe('ClientWorkspace', () => {
       expect.objectContaining({
         activeCompany: expect.objectContaining({
           id: 'company-a',
-          clientPermissions: [],
+
+          grants: withoutCompanyGrants(
+            undefined,
+            'company_director_client_access',
+          ),
         }),
       }),
     );
@@ -1375,16 +1397,28 @@ describe('ClientWorkspace', () => {
     },
     {
       boundary: 'Client assignment',
-      actor: assignedActor({ clientPermissionAssignmentId: 'assignment-2' }),
+      actor: assignedActor({
+        grants: companyGrants({
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'assignment-2',
+        }),
+      }),
     },
     {
       boundary: 'Client permission set version',
-      actor: assignedActor({ clientPermissionSetVersion: 'v1' }),
+      actor: assignedActor({
+        grants: companyGrants({
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'assignment-1',
+        }),
+      }),
     },
     {
       boundary: 'Company Client permission',
       actor: assignedActor({
-        clientPermissions: ['client.read', 'client.create'],
+        grants: companyGrants(),
       }),
     },
     {
@@ -1527,11 +1561,14 @@ describe('ClientWorkspace', () => {
           throw new Error(`Unexpected request: ${path}`);
         }),
       );
-      const resolver = (
-        clientPermissions: NonNullable<
-          ActorContext['activeCompany']
-        >['clientPermissions'],
-      ) => assignedActor({ clientPermissions });
+      const resolver = (canResolve: boolean) =>
+        assignedActor({
+          grants: companyGrants({
+            bundle: 'company_director_client_access',
+            version: canResolve ? 'v2' : 'v1',
+            assignmentId: 'assignment-1',
+          }),
+        });
       const identity = deterministicBrowserIdentity();
       const workspace = (current: ActorContext) => (
         <ClientWorkspace
@@ -1541,16 +1578,7 @@ describe('ClientWorkspace', () => {
           onActivityRecorded={vi.fn(async () => undefined)}
         />
       );
-      const { rerender } = render(
-        workspace(
-          resolver([
-            'client.read',
-            'client.create',
-            'client.update',
-            'client.duplicate.resolve',
-          ]),
-        ),
-      );
+      const { rerender } = render(workspace(resolver(true)));
       await screen.findByRole('button', {
         name: 'Review possible duplicate 1',
       });
@@ -1571,20 +1599,7 @@ describe('ClientWorkspace', () => {
       }
       await waitFor(() => expect(heldSignal).toBeDefined());
 
-      rerender(
-        workspace(
-          resolver(
-            kept
-              ? [
-                  'client.read',
-                  'client.create',
-                  'client.update',
-                  'client.duplicate.resolve',
-                ]
-              : ['client.read', 'client.create', 'client.duplicate.resolve'],
-          ),
-        ),
-      );
+      rerender(workspace(resolver(kept)));
       expect(heldSignal?.aborted).toBe(!kept);
       await act(async () => {
         heldResponse.resolve(
@@ -2189,14 +2204,12 @@ function resolverActor(assignmentId: string): ActorContext {
     ...actor,
     activeCompany: {
       ...activeCompany,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: assignmentId,
-      clientPermissionSetVersion: 'v2',
+
+      grants: withCompanyGrants(activeCompany?.grants, {
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: assignmentId,
+      }),
     },
   };
 }
@@ -2210,9 +2223,12 @@ function assignedActor(
     activeCompany: {
       id: 'company-a',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: ['client.read', 'client.create', 'client.update'],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'assignment-1',
+      }),
       ...company,
     },
   };

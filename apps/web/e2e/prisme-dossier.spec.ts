@@ -1,3 +1,4 @@
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 import {
@@ -461,14 +462,12 @@ test('retains invalid Contacts, an unchanged validation outcome and opaque dupli
     ...state.actor,
     activeCompany: {
       ...dossierCompany,
-      clientPermissionAssignmentId: 'director-v2',
-      clientPermissionSetVersion: 'v2',
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
+
+      grants: withCompanyGrants(dossierCompany?.grants, {
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'director-v2',
+      }),
     },
   };
   state.patch = (route) =>

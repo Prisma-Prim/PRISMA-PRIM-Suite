@@ -481,7 +481,7 @@ describe('Profitability Estimate production public seam', () => {
         ...actor.activeCompany,
         id: 'company-1',
         displayName: 'Synthetic Company',
-        commercialIntakePermissions: [],
+
         grants: withoutCompanyGrants(
           actor.activeCompany?.grants,
           'company_commercial_intake',

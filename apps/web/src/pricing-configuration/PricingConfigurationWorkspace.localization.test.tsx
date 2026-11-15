@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -30,12 +31,15 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-649',
     displayName: 'Companie {originală} / Компания',
-    clientPermissions: [],
-    grants: companyGrants({
-      bundle: 'company_pricing_configuration',
-      version: 'v1',
-      assignmentId: 'pricing-configuration-grant',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_pricing_configuration',
+        version: 'v1',
+        assignmentId: 'pricing-configuration-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 const version = {
@@ -705,13 +709,16 @@ it('keeps publication unavailable for a read-only actor when the interface langu
     activeCompany: {
       id: 'company-649',
       displayName: 'Companie {originală} / Компания',
-      clientPermissions: [],
+
       // Configuration read without management: a Pricing User grant.
-      grants: companyGrants({
-        bundle: 'company_pricing_user',
-        version: 'v1',
-        assignmentId: 'pricing-user-grant',
-      }),
+      grants: withoutCompanyGrants(
+        companyGrants({
+          bundle: 'company_pricing_user',
+          version: 'v1',
+          assignmentId: 'pricing-user-grant',
+        }),
+        'company_director_client_access',
+      ),
     },
   });
   await screen.findByText('No Pricing Rule Version has been published yet.');

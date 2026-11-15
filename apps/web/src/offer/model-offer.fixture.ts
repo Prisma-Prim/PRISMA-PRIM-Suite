@@ -19,7 +19,7 @@ export const modelOfferActor: ActorContext = {
     ...profitabilityActor.activeCompany,
     id: MODEL_OFFER_COMPANY,
     displayName: 'Synthetic model Offer Company',
-    clientPermissions: ['client.read'],
+
     offerPermissionAssignmentId: 'preparer-852',
     offerPermissionSetVersion: 'v3',
     offerPermissions: [

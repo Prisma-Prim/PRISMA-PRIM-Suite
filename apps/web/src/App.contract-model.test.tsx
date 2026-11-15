@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { render, screen } from './test/render-with-interface-locale';
 import { App } from './App';
@@ -17,7 +18,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: companyId,
     displayName: 'Synthetic consulting Company',
-    clientPermissions: [],
+
     contractModelGrants: [
       {
         bundle: 'company_contract_model_editor',
@@ -29,6 +30,8 @@ const actor: ActorContext = {
         ],
       },
     ],
+
+    grants: withoutCompanyGrants(undefined, 'company_director_client_access'),
   },
 };
 

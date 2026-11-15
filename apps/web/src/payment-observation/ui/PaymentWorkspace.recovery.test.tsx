@@ -852,8 +852,7 @@ it.each([
         loss === 'original Client' ? [] : actor.workspacePermissions,
       activeCompany: {
         ...company,
-        clientPermissions:
-          loss === 'original Client' ? [] : company.clientPermissions,
+
         grants: withoutCompanyGrants(
           company.grants,
           ...(loss === 'original Client'
@@ -865,13 +864,6 @@ it.each([
                 : loss === 'native content'
                   ? (['company_document_content_reader'] as const)
                   : []),
-        ),
-        documentPermissions: company.documentPermissions.filter((permission) =>
-          loss === 'native Document'
-            ? permission !== 'document.read'
-            : loss === 'native content'
-              ? permission !== 'document.content.read'
-              : true,
         ),
       },
     };
@@ -1715,8 +1707,7 @@ it.each([
       activeCompany: identityOnly
         ? {
             ...company,
-            clientPermissionAssignmentId:
-              '10000000-0000-4000-8000-000000001093',
+
             grants: withCompanyGrants(company.grants, {
               bundle: 'company_director_client_access',
               version: 'v2',

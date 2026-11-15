@@ -13,24 +13,10 @@ export const signingActor: ActorContext = {
     ...modelContractActor.activeCompany,
     id: modelContractFixture().companyId,
     displayName: 'Reported signing DEMO',
-    clientPermissions: ['client.read'],
-    clientPermissionAssignmentId: 'client-877',
-    clientPermissionSetVersion: 'v2',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.opportunity.read',
-    ],
-    commercialIntakePermissionAssignmentId: 'intake-877',
-    commercialIntakePermissionSetVersion: 'v4',
+
     contractSignatureDeclarerAssignmentId: 'declarer-877',
     contractSignatureDeclarerPermissionSetVersion: 'v1',
-    documentPermissionAssignmentId: 'documents-877',
-    documentPermissionSetVersion: 'v3',
-    documentPermissions: [
-      'document.read',
-      'document.content.read',
-      'document.received_contract.access',
-    ],
+
     receivedContractAccessAssignmentId: 'received-877',
     receivedContractAccessPermissionSetVersion: 'v1',
     documentContentReaderAssignmentId: 'content-877',

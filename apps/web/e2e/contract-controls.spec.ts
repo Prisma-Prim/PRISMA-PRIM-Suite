@@ -1,3 +1,4 @@
+import { grantOf } from '../src/access/company-grants';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -48,7 +49,7 @@ test('Prisme Contract Project controls keep keyboard choices and explicit creati
     ...originalActor,
     activeCompany: {
       ...originalActor.activeCompany,
-      clientPermissions: ['client.read'],
+
       offerPermissions: [],
       pricingUserPermissions: [],
       commercialActivityPermissions: [],
@@ -56,19 +57,43 @@ test('Prisme Contract Project controls keep keyboard choices and explicit creati
         'commercial.contract.read',
         'commercial.contract.project.link',
       ],
-      projectPermissions: ['project.read', 'project.create'],
+
       // The Contract screens read these grants: Contract preparation with
       // Project linking, Project and Client reads, no Offer or Pricing read.
       grants: withCompanyGrants(
-        withoutCompanyGrants(
-          originalActor.activeCompany.grants,
-          'company_offer_preparer',
-          'company_pricing_user',
+        withCompanyGrants(
+          withoutCompanyGrants(
+            originalActor.activeCompany.grants,
+            'company_offer_preparer',
+            'company_pricing_user',
+          ),
+          {
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'project-756',
+          },
         ),
         {
-          bundle: 'company_project_access',
+          bundle: 'company_director_client_access',
           version: 'v1',
-          assignmentId: 'project-756',
+          assignmentId:
+            grantOf(
+              {
+                grants: withCompanyGrants(
+                  withoutCompanyGrants(
+                    originalActor.activeCompany.grants,
+                    'company_offer_preparer',
+                    'company_pricing_user',
+                  ),
+                  {
+                    bundle: 'company_project_access',
+                    version: 'v1',
+                    assignmentId: 'project-756',
+                  },
+                ),
+              },
+              'company_director_client_access',
+            )?.assignmentId ?? 'fixture-client-access',
         },
       ),
     },

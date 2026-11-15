@@ -61,7 +61,7 @@ test('manages manual Tasks through the production shell with retained retry and 
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read'],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_task_manager',
@@ -529,7 +529,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read'],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_task_manager',

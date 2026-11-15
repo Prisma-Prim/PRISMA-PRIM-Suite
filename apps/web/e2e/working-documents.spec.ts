@@ -1,3 +1,5 @@
+import { grantOf } from '../src/access/company-grants';
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expectSelectAppearance } from './select-appearance';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
@@ -90,19 +92,31 @@ test('registers and reopens a Company-confidential working reference', async ({
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  documentPermissions: [
-                    'document.read',
-                    'document.register',
-                    'document.reference.read',
-                    'document.correct',
-                  ],
-                  grants: documentGrants([
-                    'document.read',
-                    'document.register',
-                    'document.reference.read',
-                    'document.correct',
-                  ]),
+
+                  grants: withCompanyGrants(
+                    documentGrants([
+                      'document.read',
+                      'document.register',
+                      'document.reference.read',
+                      'document.correct',
+                    ]),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId:
+                        grantOf(
+                          {
+                            grants: documentGrants([
+                              'document.read',
+                              'document.register',
+                              'document.reference.read',
+                              'document.correct',
+                            ]),
+                          },
+                          'company_director_client_access',
+                        )?.assignmentId ?? 'fixture-client-access',
+                    },
+                  ),
                 },
               }
             : {}),
@@ -562,27 +576,45 @@ test('designates official Versions, starts and corrects a new draft and keeps th
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  documentPermissions: [
-                    'document.read',
-                    'document.register',
-                    'document.reference.read',
-                    'document.correct',
-                    'document.version.manage',
-                    'document.version.designate_official',
-                  ],
-                  grants: documentGrants(
-                    [
-                      'document.read',
-                      'document.register',
-                      'document.reference.read',
-                      'document.correct',
-                      'document.version.manage',
-                      'document.version.designate_official',
-                    ],
-                    { company_document_approver: 'approver-assignment' },
+
+                  grants: withCompanyGrants(
+                    documentGrants(
+                      [
+                        'document.read',
+                        'document.register',
+                        'document.reference.read',
+                        'document.correct',
+                        'document.version.manage',
+                        'document.version.designate_official',
+                      ],
+                      { company_document_approver: 'approver-assignment' },
+                    ),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId:
+                        grantOf(
+                          {
+                            grants: documentGrants(
+                              [
+                                'document.read',
+                                'document.register',
+                                'document.reference.read',
+                                'document.correct',
+                                'document.version.manage',
+                                'document.version.designate_official',
+                              ],
+                              {
+                                company_document_approver:
+                                  'approver-assignment',
+                              },
+                            ),
+                          },
+                          'company_director_client_access',
+                        )?.assignmentId ?? 'fixture-client-access',
+                    },
                   ),
-                  documentPermissionSetVersion: 'v3',
+
                   documentApproverAssignmentId: 'approver-assignment',
                   documentApproverPermissionSetVersion: 'v1',
                 },

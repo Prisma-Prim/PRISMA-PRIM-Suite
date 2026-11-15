@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -33,12 +34,15 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-660',
     displayName: 'Companie {originală} / Компания',
-    clientPermissions: [],
-    grants: companyGrants({
-      bundle: 'company_pricing_configuration',
-      version: 'v1',
-      assignmentId: 'pricing-configuration-grant',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_pricing_configuration',
+        version: 'v1',
+        assignmentId: 'pricing-configuration-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 

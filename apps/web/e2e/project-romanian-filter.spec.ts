@@ -59,7 +59,7 @@ test('finds literal Romanian Projects locally across all interface languages', a
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read', 'project.create'],
+
                   grants: companyGrants({
                     bundle: 'company_project_access',
                     version: 'v1',

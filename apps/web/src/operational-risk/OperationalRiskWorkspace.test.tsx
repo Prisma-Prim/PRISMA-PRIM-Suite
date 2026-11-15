@@ -384,8 +384,14 @@ describe('Operational Risk manual workspace', () => {
       activeCompany: {
         id: companyId,
         displayName: 'Synthetic Risk Company',
-        projectPermissions: ['project.read'],
+
         taskPermissions: ['task.read'],
+
+        grants: companyGrants({
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'fixture-project-access',
+        }),
       },
     };
     vi.stubGlobal(

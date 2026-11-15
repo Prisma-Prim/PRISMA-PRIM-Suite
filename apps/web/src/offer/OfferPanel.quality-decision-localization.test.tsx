@@ -46,7 +46,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-one',
     displayName: 'Synthetic Company',
-    commercialIntakePermissions: ['commercial.opportunity.read'],
+
     offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
     offerApproverAssignmentId: 'approver-assignment-one',
     grants: companyGrants(

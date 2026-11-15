@@ -1,3 +1,5 @@
+import { grantOf } from '../src/access/company-grants';
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -175,15 +177,27 @@ async function interceptApplication(page: Page, mutationRequests: string[]) {
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  documentPermissions: [
-                    'document.read',
-                    'document.reference.read',
-                  ],
-                  grants: documentGrants([
-                    'document.read',
-                    'document.reference.read',
-                  ]),
+
+                  grants: withCompanyGrants(
+                    documentGrants([
+                      'document.read',
+                      'document.reference.read',
+                    ]),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId:
+                        grantOf(
+                          {
+                            grants: documentGrants([
+                              'document.read',
+                              'document.reference.read',
+                            ]),
+                          },
+                          'company_director_client_access',
+                        )?.assignmentId ?? 'fixture-client-access',
+                    },
+                  ),
                 },
               }
             : {}),

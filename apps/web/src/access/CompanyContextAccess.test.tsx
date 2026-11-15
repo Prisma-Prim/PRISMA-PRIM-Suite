@@ -1,3 +1,9 @@
+import { grantOf } from './company-grants';
+import {
+  withoutCompanyGrants,
+  withCompanyGrants,
+  companyGrants,
+} from './company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -2259,14 +2265,27 @@ describe('CompanyContextAccess', () => {
       activeCompany: {
         id: companyId,
         displayName: 'PRISMA-PRIM',
-        clientPermissions: [],
+
+        grants: withoutCompanyGrants(
+          undefined,
+          'company_director_client_access',
+        ),
       },
     };
     const revalidatedActor: ActorContext = {
       ...selfActor,
       activeCompany: {
         ...selfActor.activeCompany!,
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+        grants: withCompanyGrants(selfActor.activeCompany?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId:
+            grantOf(
+              { grants: selfActor.activeCompany?.grants },
+              'company_director_client_access',
+            )?.assignmentId ?? 'fixture-client-access',
+        }),
       },
     };
     const state = {
@@ -2356,12 +2375,12 @@ describe('CompanyContextAccess', () => {
       activeCompany: {
         id: companyId,
         displayName: 'Active Company B',
-        clientPermissions: [
-          'client.read',
-          'client.create',
-          'client.update',
-          'client.duplicate.resolve',
-        ],
+
+        grants: companyGrants({
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'fixture-client-access',
+        }),
       },
     };
     const state = {
@@ -2436,7 +2455,12 @@ describe('CompanyContextAccess', () => {
       activeCompany: {
         id: companyId,
         displayName: 'PRISMA-PRIM',
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+        grants: companyGrants({
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'fixture-client-access',
+        }),
       },
     };
     const state = {
@@ -2517,7 +2541,11 @@ describe('CompanyContextAccess', () => {
         activeCompany: {
           id: companyId,
           displayName: 'PRISMA-PRIM',
-          clientPermissions: [],
+
+          grants: withoutCompanyGrants(
+            undefined,
+            'company_director_client_access',
+          ),
         },
       };
       const revalidatedActor: ActorContext = {
@@ -2525,7 +2553,12 @@ describe('CompanyContextAccess', () => {
         activeCompany: {
           id: companyId,
           displayName: 'PRISMA-PRIM',
-          clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+          grants: companyGrants({
+            bundle: 'company_director_client_access',
+            version: 'v1',
+            assignmentId: 'fixture-client-access',
+          }),
         },
       };
       const state = {
@@ -2571,9 +2604,22 @@ describe('CompanyContextAccess', () => {
                     ...selfActor,
                     activeCompany: {
                       ...selfActor.activeCompany,
-                      ...(failure === 'invalid permission'
-                        ? { clientPermissions: ['client.delete'] }
-                        : { clientPermissionSetVersion: 'v99' }),
+                      grants: [
+                        {
+                          bundle: 'company_director_client_access',
+                          assignmentId: 'fixture-client-access',
+                          permissionSetVersion:
+                            failure === 'unsupported version' ? 'v99' : 'v1',
+                          permissions:
+                            failure === 'invalid permission'
+                              ? ['client.read', 'client.escalate']
+                              : [
+                                  'client.read',
+                                  'client.create',
+                                  'client.update',
+                                ],
+                        },
+                      ],
                     },
                   },
             ),

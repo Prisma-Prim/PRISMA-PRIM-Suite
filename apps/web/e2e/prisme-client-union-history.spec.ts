@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -25,14 +26,12 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...companyA,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: '24800000-0000-4000-8000-000000000002',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: '24800000-0000-4000-8000-000000000002',
+      }),
     },
   };
   const reversalCommands: {

@@ -102,11 +102,7 @@ function actorFor(companyId: string, administrator: boolean): ActorContext {
       : ['client.manage'],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
-      projectPermissions: ['project.read'],
-      documentPermissions: ['document.read'],
+
       grants: withCompanyGrants(
         companyGrants(
           {

@@ -1,3 +1,7 @@
+import {
+  companyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { describe, expect, it } from 'vitest';
 import type { ActorContext } from '../access-types';
 import {
@@ -118,7 +122,12 @@ describe('Company context transitions', () => {
       activeCompany: {
         id: 'company-a',
         displayName: 'Company A',
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+        grants: companyGrants({
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'fixture-client-access',
+        }),
       },
     };
     const active = activate(
@@ -130,7 +139,11 @@ describe('Company context transitions', () => {
       ...activeActor,
       activeCompany: {
         ...activeActor.activeCompany!,
-        clientPermissions: [],
+
+        grants: withoutCompanyGrants(
+          activeActor.activeCompany?.grants,
+          'company_director_client_access',
+        ),
       },
     };
 
@@ -143,7 +156,13 @@ describe('Company context transitions', () => {
     expect(refreshed).toMatchObject({
       status: 'active',
       actor: {
-        activeCompany: { id: 'company-a', clientPermissions: [] },
+        activeCompany: {
+          id: 'company-a',
+          grants: withoutCompanyGrants(
+            undefined,
+            'company_director_client_access',
+          ),
+        },
       },
       activityLog: { status: 'loading' },
     });

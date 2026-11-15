@@ -203,8 +203,7 @@ async function installRoutes(page: Page) {
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  projectPermissions: ['project.read'],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_director_client_access',

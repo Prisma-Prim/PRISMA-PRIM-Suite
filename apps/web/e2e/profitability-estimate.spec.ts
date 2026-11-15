@@ -88,13 +88,7 @@ function actor(contributor: boolean, director: boolean): ActorContext {
     workspacePermissions: ['company.assignment.manage'],
     activeCompany: {
       ...company,
-      clientPermissions: ['client.read'],
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-      ],
+
       grants: companyGrants(...requests),
     },
   };

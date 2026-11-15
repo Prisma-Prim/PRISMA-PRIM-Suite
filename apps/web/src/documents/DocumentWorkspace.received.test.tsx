@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -28,27 +30,61 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Company',
-    clientPermissions: ['client.read'],
-    grants: companyGrants(
-      ...documentGrantRequests(
-        [
-          'document.read',
-          'document.register',
-          'document.reference.read',
-          'document.correct',
-          'document.received_contract.access',
-        ],
-        { company_received_contract_access: 'family' },
+
+    grants: withCompanyGrants(
+      companyGrants(
+        ...documentGrantRequests(
+          [
+            'document.read',
+            'document.register',
+            'document.reference.read',
+            'document.correct',
+            'document.received_contract.access',
+          ],
+          { company_received_contract_access: 'family' },
+        ),
+        {
+          bundle: 'company_contract_preparer',
+          version: 'v2',
+          assignmentId: 'contract',
+        },
+        {
+          bundle: 'company_commercial_intake',
+          version: 'v4',
+          assignmentId: 'intake',
+        },
       ),
       {
-        bundle: 'company_contract_preparer',
-        version: 'v2',
-        assignmentId: 'contract',
-      },
-      {
-        bundle: 'company_commercial_intake',
-        version: 'v4',
-        assignmentId: 'intake',
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: companyGrants(
+                ...documentGrantRequests(
+                  [
+                    'document.read',
+                    'document.register',
+                    'document.reference.read',
+                    'document.correct',
+                    'document.received_contract.access',
+                  ],
+                  { company_received_contract_access: 'family' },
+                ),
+                {
+                  bundle: 'company_contract_preparer',
+                  version: 'v2',
+                  assignmentId: 'contract',
+                },
+                {
+                  bundle: 'company_commercial_intake',
+                  version: 'v4',
+                  assignmentId: 'intake',
+                },
+              ),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
       },
     ),
   },

@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './company-grants.test-fixture';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -226,7 +227,11 @@ it('revalidates self Template authority without retiring independent Client or P
       activeCompany: {
         id: companyId,
         displayName: 'Company',
-        clientPermissions: [],
+
+        grants: withoutCompanyGrants(
+          undefined,
+          'company_director_client_access',
+        ),
       },
     },
     refresh = vi.fn(),

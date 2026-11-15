@@ -70,26 +70,14 @@ function actorFor(companyId: string, state: Transport): ActorContext {
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: state.companyClientRead
-        ? [
-            'client.read',
-            'client.create',
-            'client.update',
-            'client.duplicate.resolve',
-          ]
-        : [],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
+
       ...(state.intakeAssignment
         ? {
-            commercialIntakePermissions: [
-              'commercial.request.read',
-              'commercial.request.create',
-              'commercial.opportunity.read',
-              'commercial.opportunity.create',
-            ],
-            commercialIntakePermissionAssignmentId: state.intakeAssignment,
-            commercialIntakePermissionSetVersion: 'v1',
+            grants: companyGrants({
+              bundle: 'company_commercial_intake',
+              version: 'v1',
+              assignmentId: state.intakeAssignment,
+            }),
           }
         : {}),
       // The commercial screens read these grants; App and the Client screens

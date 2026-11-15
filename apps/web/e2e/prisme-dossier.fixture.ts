@@ -1,3 +1,4 @@
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import type { ClientContact } from '../src/client/ClientContactEditor';
@@ -69,9 +70,12 @@ export async function installDossierFixture(page: Page) {
     workspacePermissions: [],
     activeCompany: {
       ...dossierCompany,
-      clientPermissions: ['client.read', 'client.create', 'client.update'],
-      clientPermissionAssignmentId: 'director-233',
-      clientPermissionSetVersion: 'v1',
+
+      grants: withCompanyGrants(dossierCompany?.grants, {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'director-233',
+      }),
     },
   };
   const commands: { body: string | null; key: string | undefined }[] = [];

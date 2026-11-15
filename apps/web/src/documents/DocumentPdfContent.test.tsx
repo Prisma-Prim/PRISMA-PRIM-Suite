@@ -1,3 +1,4 @@
+import { grantOf } from '../access/company-grants';
 import {
   act,
   fireEvent,
@@ -25,20 +26,47 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Company DEMO',
-    clientPermissions: ['client.read'],
-    grants: documentGrants(
-      [
-        'document.read',
-        'document.register',
-        'document.reference.read',
-        'document.correct',
-        'document.version.manage',
-        'document.content.read',
-        'document.content.upload',
-      ],
+
+    grants: withCompanyGrants(
+      documentGrants(
+        [
+          'document.read',
+          'document.register',
+          'document.reference.read',
+          'document.correct',
+          'document.version.manage',
+          'document.content.read',
+          'document.content.upload',
+        ],
+        {
+          company_document_content_reader: 'reader-assignment',
+          company_document_content_uploader: 'uploader-assignment',
+        },
+      ),
       {
-        company_document_content_reader: 'reader-assignment',
-        company_document_content_uploader: 'uploader-assignment',
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: documentGrants(
+                [
+                  'document.read',
+                  'document.register',
+                  'document.reference.read',
+                  'document.correct',
+                  'document.version.manage',
+                  'document.content.read',
+                  'document.content.upload',
+                ],
+                {
+                  company_document_content_reader: 'reader-assignment',
+                  company_document_content_uploader: 'uploader-assignment',
+                },
+              ),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
       },
     ),
   },

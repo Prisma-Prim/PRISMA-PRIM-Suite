@@ -191,15 +191,7 @@ async function installRoutes(page: Page) {
                 activeCompany: {
                   id: company.id,
                   displayName: company.displayName,
-                  commercialIntakePermissionAssignmentId: 'intake-651',
-                  commercialIntakePermissionSetVersion: 'v2',
-                  commercialIntakePermissions: [
-                    'commercial.request.read',
-                    'commercial.request.create',
-                    'commercial.opportunity.read',
-                    'commercial.opportunity.create',
-                    'commercial.opportunity.next_action.update',
-                  ],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_pricing_user',

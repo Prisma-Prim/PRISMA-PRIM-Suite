@@ -76,10 +76,7 @@ function actor(companyId = company.id): ActorContext {
     workspacePermissions: [],
     activeCompany: {
       ...(companyId === company.id ? company : otherCompany),
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: 'client-grant',
-      clientPermissionSetVersion: 'v1',
-      projectPermissions: ['project.read'],
+
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',

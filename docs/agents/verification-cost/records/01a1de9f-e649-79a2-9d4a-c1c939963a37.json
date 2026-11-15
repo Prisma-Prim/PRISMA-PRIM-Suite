@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "01a1de9f-e649-79a2-9d4a-c1c939963a37",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1389,
+  "pullRequest": 1417,
+  "harness": "codex-local",
+  "figuresSource": "codex-rollout",
+  "time": {
+    "start": "2026-11-15T09:53:04.197Z",
+    "end": "2026-11-15T10:54:56.342Z",
+    "durationSeconds": 3712
+  },
+  "tokens": {
+    "input": 289191,
+    "output": 83115,
+    "cacheCreation": 0,
+    "cacheRead": 27031808
+  },
+  "models": [
+    {
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 289191,
+        "output": 83115,
+        "cacheCreation": 0,
+        "cacheRead": 27031808
+      },
+      "estimatedPriceUsd": "not reported"
+    }
+  ],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "fail",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Own delegate rollout only. Local full web fixture failures corrected by focused passing reruns; 20 PostgreSQL acceptance checks passed. Windows native calendar control still fails locally with unchanged assertions; required Linux CI is separate."
+  }
+}

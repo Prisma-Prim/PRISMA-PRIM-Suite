@@ -31,8 +31,7 @@ function ProjectResponsible({
 const company = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
-  clientPermissions: ['client.read'],
-  projectPermissions: ['project.read', 'project.create', 'project.update'],
+
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',
@@ -559,7 +558,7 @@ it('shows the responsible member without change controls to a Project Access v1 
       ...actor,
       activeCompany: {
         ...company,
-        projectPermissions: ['project.read', 'project.create'],
+
         grants: withCompanyGrants(company.grants, {
           bundle: 'company_project_access',
           version: 'v1',
@@ -613,7 +612,7 @@ it('drops a draft and every late reply when the Company, membership or permissio
         ...actor,
         activeCompany: {
           ...company,
-          projectPermissions: ['project.read', 'project.create'],
+
           grants: withCompanyGrants(company.grants, {
             bundle: 'company_project_access',
             version: 'v1',

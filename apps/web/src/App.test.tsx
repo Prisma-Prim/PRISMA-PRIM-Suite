@@ -1,3 +1,4 @@
+import { companyGrants } from './access/company-grants.test-fixture';
 import type { ActorContext } from './access-types';
 import { baseActor } from './production-shell/production-shell-context.test-fixtures';
 import {
@@ -115,11 +116,12 @@ describe('App', () => {
               activeCompany: {
                 id: 'company-1',
                 displayName: 'PRISMA-PRIM',
-                clientPermissions: [
-                  'client.read',
-                  'client.create',
-                  'client.update',
-                ],
+
+                grants: companyGrants({
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'fixture-client-access',
+                }),
               },
             }
           : url.endsWith('/activity-log')

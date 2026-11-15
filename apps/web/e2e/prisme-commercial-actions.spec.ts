@@ -35,14 +35,7 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
           workspacePermissions: [],
           activeCompany: {
             ...company,
-            clientPermissions: ['client.read'],
-            commercialIntakePermissions: [
-              'commercial.request.read',
-              'commercial.request.create',
-              'commercial.opportunity.read',
-              'commercial.opportunity.create',
-              'commercial.opportunity.next_action.update',
-            ],
+
             // The commercial screens read these grants; App still reads the
             // per-bundle fields above.
             grants: companyGrants(

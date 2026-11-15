@@ -28,14 +28,7 @@ const actor = {
     ],
     contractApproverAssignmentId: 'approver-one',
     contractApproverPermissionSetVersion: 'v1',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-    ],
-    commercialIntakePermissionAssignmentId: 'intake-one',
-    commercialIntakePermissionSetVersion: 'v1',
+
     // The Contract screens read these grants; the screens of areas not
     // migrated yet still read the per-bundle fields above.
     grants: companyGrants(

@@ -24,12 +24,7 @@ import {
 const company: NonNullable<ActorContext['activeCompany']> = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
-  clientPermissions: ['client.read'],
-  clientPermissionAssignmentId: 'client-capture',
-  clientPermissionSetVersion: 'v2',
-  projectPermissions: ['project.read'],
-  projectPermissionAssignmentId: 'project-capture',
-  projectPermissionSetVersion: 'v2',
+
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',
@@ -452,7 +447,7 @@ it.each(
                       ...actor,
                       activeCompany: {
                         ...company,
-                        projectPermissionAssignmentId: 'new-project-capture',
+
                         grants: withCompanyGrants(company.grants, {
                           bundle: 'company_project_access',
                           version: 'v2',
@@ -486,14 +481,12 @@ it.each(['Client only', 'Project only'])(
               ...company,
               ...(kind === 'Client only'
                 ? {
-                    projectPermissions: [],
                     grants: withoutCompanyGrants(
                       company.grants,
                       'company_project_access',
                     ),
                   }
                 : {
-                    clientPermissions: [],
                     grants: withoutCompanyGrants(
                       company.grants,
                       'company_director_client_access',

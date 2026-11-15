@@ -1,3 +1,5 @@
+import { grantOf } from '../src/access/company-grants';
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import {
@@ -103,9 +105,19 @@ function routeApi(page: Page, documentPermissions: DocumentPermission[]) {
                   ...(companyContext === otherCompany.id
                     ? otherCompany
                     : company),
-                  clientPermissions: ['client.read'],
-                  documentPermissions,
-                  grants: documentGrants(documentPermissions),
+
+                  grants: withCompanyGrants(
+                    documentGrants(documentPermissions),
+                    {
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId:
+                        grantOf(
+                          { grants: documentGrants(documentPermissions) },
+                          'company_director_client_access',
+                        )?.assignmentId ?? 'fixture-client-access',
+                    },
+                  ),
                 },
               }
             : {}),

@@ -38,12 +38,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    projectPermissions: ['project.read'],
-    documentPermissions: [
-      'document.read',
-      'document.reference.read',
-      'document.project.manage',
-    ],
+
     grants: withCompanyGrants(
       companyGrants({
         bundle: 'company_project_access',
@@ -338,7 +333,7 @@ it('keeps metadata readable without management or reference permission', async (
       ...actor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      documentPermissions: ['document.read'],
+
       grants: withCompanyGrants(
         withoutCompanyGrants(
           actor.activeCompany?.grants,
@@ -395,7 +390,7 @@ it('hides all linked metadata and counts when Document read is absent', async ()
       ...actor.activeCompany,
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      documentPermissions: ['document.project.manage'],
+
       grants: withCompanyGrants(
         withoutCompanyGrants(
           actor.activeCompany?.grants,
@@ -860,8 +855,7 @@ it('offers no Open Document without a displayed linked row', async () => {
         activeCompany: {
           id: 'company',
           displayName: 'PRISMA-PRIM',
-          projectPermissions: ['project.read'],
-          documentPermissions: ['document.project.manage'],
+
           grants: withCompanyGrants(
             companyGrants({
               bundle: 'company_project_access',

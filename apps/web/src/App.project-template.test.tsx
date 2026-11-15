@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   act,
@@ -31,19 +32,21 @@ const projectId = '30000000-0000-4000-8000-000000000001';
 const company = {
   id: companyId,
   displayName: 'Company Demo',
-  clientPermissions: [],
-  projectPermissions: ['project.read', 'project.create'],
-  grants: companyGrants(
-    {
-      bundle: 'company_project_access',
-      version: 'v1',
-      assignmentId: 'project-grant',
-    },
-    {
-      bundle: 'company_task_manager',
-      version: 'v1',
-      assignmentId: 'task-grant',
-    },
+
+  grants: withoutCompanyGrants(
+    companyGrants(
+      {
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project-grant',
+      },
+      {
+        bundle: 'company_task_manager',
+        version: 'v1',
+        assignmentId: 'task-grant',
+      },
+    ),
+    'company_director_client_access',
   ),
 } satisfies NonNullable<ActorContext['activeCompany']>;
 const ordinaryActor: ActorContext = {
@@ -360,12 +363,15 @@ it.each(['Template', 'Stage', 'Configuration'] as const)(
               ...templateActor.activeCompany,
               id: companyId,
               displayName: company.displayName,
-              clientPermissions: [],
-              grants: withCompanyGrants(templateActor.activeCompany?.grants, {
-                bundle: 'company_project_template_configuration',
-                version: 'v1',
-                assignmentId: 'configuration-grant',
-              }),
+
+              grants: withoutCompanyGrants(
+                withCompanyGrants(templateActor.activeCompany?.grants, {
+                  bundle: 'company_project_template_configuration',
+                  version: 'v1',
+                  assignmentId: 'configuration-grant',
+                }),
+                'company_director_client_access',
+              ),
             },
           }
         : templateActor;

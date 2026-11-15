@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 import { selectOption } from './select-option';
@@ -125,12 +126,15 @@ async function installRoutes(page: Page) {
                 activeCompany: {
                   id: company.id,
                   displayName: company.displayName,
-                  clientPermissions: [],
-                  grants: companyGrants({
-                    bundle: 'company_pricing_configuration',
-                    version: 'v1',
-                    assignmentId: 'grant-649',
-                  }),
+
+                  grants: withoutCompanyGrants(
+                    companyGrants({
+                      bundle: 'company_pricing_configuration',
+                      version: 'v1',
+                      assignmentId: 'grant-649',
+                    }),
+                    'company_director_client_access',
+                  ),
                 },
               }
             : {}),

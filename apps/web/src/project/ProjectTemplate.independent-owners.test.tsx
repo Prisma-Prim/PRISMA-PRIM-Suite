@@ -23,8 +23,7 @@ const projectId = 'project';
 const company = {
   id: companyId,
   displayName: 'Company Demo',
-  projectPermissions: ['project.read'],
-  documentPermissions: ['document.read'],
+
   grants: withCompanyGrants(
     withCompanyGrants(
       companyGrants({

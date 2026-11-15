@@ -1,3 +1,9 @@
+import { grantOf } from '../src/access/company-grants';
+
+import {
+  withCompanyGrants,
+  companyGrants,
+} from '../src/access/company-grants.test-fixture';
 import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
@@ -915,11 +921,16 @@ test('creates and reuses one shared Client identity across two Company contexts'
           ? {
               activeCompany: {
                 ...activeCompany,
-                clientPermissions: [
-                  'client.read',
-                  'client.create',
-                  'client.update',
-                ],
+
+                grants: withCompanyGrants(activeCompany?.grants, {
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId:
+                    grantOf(
+                      { grants: activeCompany?.grants },
+                      'company_director_client_access',
+                    )?.assignmentId ?? 'fixture-client-access',
+                }),
               },
             }
           : {}),
@@ -1277,11 +1288,16 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
           ? {
               activeCompany: {
                 ...director.company,
-                clientPermissions: [
-                  'client.read',
-                  'client.create',
-                  'client.update',
-                ],
+
+                grants: withCompanyGrants(director.company?.grants, {
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId:
+                    grantOf(
+                      { grants: director.company?.grants },
+                      'company_director_client_access',
+                    )?.assignmentId ?? 'fixture-client-access',
+                }),
               },
             }
           : {}),
@@ -1600,14 +1616,12 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     activeCompany: {
       id: attemptedCompany.id,
       displayName: attemptedCompany.displayName,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: '00000000-0000-4000-8000-000000002158',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: '00000000-0000-4000-8000-000000002158',
+      }),
     },
   } satisfies ActorContext;
 
@@ -1638,7 +1652,10 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
             },
           ]),
       {
-        id: resolverActor.activeCompany.clientPermissionAssignmentId,
+        id: grantOf(
+          resolverActor.activeCompany,
+          'company_director_client_access',
+        )?.assignmentId,
         workspaceMembershipId: resolverActor.workspaceMembershipId,
         companyId: attemptedCompany.id,
         bundle: 'Company Director Client Access',

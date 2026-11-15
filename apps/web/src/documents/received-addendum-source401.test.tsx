@@ -67,15 +67,7 @@ function sourceActor() {
       receivedAddendumAccessPermissionSetVersion: 'v1',
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
-      documentPermissions: [
-        'document.read',
-        'document.register',
-        'document.reference.read',
-        'document.version.designate_official',
-        'document.received_addendum.access',
-      ],
-      documentPermissionAssignmentId: '10000000-0000-4000-8000-000000000014',
-      documentPermissionSetVersion: 'v3',
+
       documentApproverAssignmentId: '10000000-0000-4000-8000-000000000015',
       documentApproverPermissionSetVersion: 'v1',
       contractPermissions: ['commercial.contract.read'],
@@ -86,10 +78,7 @@ function sourceActor() {
       contractEarlyPreparationAssignmentId:
         '10000000-0000-4000-8000-000000000018',
       contractEarlyPreparationPermissionSetVersion: 'v1',
-      commercialIntakePermissions: ['commercial.opportunity.read'],
-      commercialIntakePermissionAssignmentId:
-        '10000000-0000-4000-8000-000000000019',
-      commercialIntakePermissionSetVersion: 'v4',
+
       grants: withCompanyGrants(
         completeActor.activeCompany.grants,
         {

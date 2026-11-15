@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   fireEvent,
   render,
@@ -23,12 +25,29 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    grants: documentGrants([
-      'document.read',
-      'document.reference.read',
-      'document.version.manage',
-    ]),
+
+    grants: withCompanyGrants(
+      documentGrants([
+        'document.read',
+        'document.reference.read',
+        'document.version.manage',
+      ]),
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: documentGrants([
+                'document.read',
+                'document.reference.read',
+                'document.version.manage',
+              ]),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
+      },
+    ),
   },
 };
 const identity: BrowserIdentity = {

@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   fireEvent,
   render,
@@ -26,12 +27,15 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-catalogue',
     displayName: 'Companie {originală}',
-    clientPermissions: [],
-    grants: companyGrants({
-      bundle: 'company_service_catalogue',
-      version: 'v1',
-      assignmentId: 'service-catalogue-grant',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_service_catalogue',
+        version: 'v1',
+        assignmentId: 'service-catalogue-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 

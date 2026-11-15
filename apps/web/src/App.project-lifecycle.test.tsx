@@ -15,8 +15,7 @@ import { companyGrants } from './access/company-grants.test-fixture';
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
-  projectPermissions: ['project.read', 'project.create'],
-  clientPermissions: ['client.read'],
+
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',

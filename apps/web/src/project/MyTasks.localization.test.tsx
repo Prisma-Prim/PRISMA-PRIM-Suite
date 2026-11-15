@@ -31,7 +31,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Synthetic Company',
-    projectPermissions: ['project.read'],
+
     grants: companyGrants(
       {
         bundle: 'company_task_manager',

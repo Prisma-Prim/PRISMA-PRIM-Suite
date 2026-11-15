@@ -1,3 +1,4 @@
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -83,11 +84,7 @@ const otherCompanyDocument = {
   title: 'Other Company questionnaire',
 };
 
-function actorFor(
-  companyId: string,
-  administrator: boolean,
-  overview = false,
-): ActorContext {
+function actorFor(companyId: string, administrator: boolean): ActorContext {
   return {
     internalUserId: 'resolver',
     workspaceMembershipId: membershipId,
@@ -101,20 +98,17 @@ function actorFor(
       : ['client.manage'],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
-      documentPermissions: ['document.read'],
-      grants: documentGrants(['document.read'], {
-        company_document_registrar: 'document-capture',
-      }),
-      documentPermissionAssignmentId: overview ? 'document-capture' : undefined,
-      documentPermissionSetVersion: overview ? 'v1' : undefined,
+
+      grants: withCompanyGrants(
+        documentGrants(['document.read'], {
+          company_document_registrar: 'document-capture',
+        }),
+        {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'assignment-1',
+        },
+      ),
     },
   };
 }
@@ -127,7 +121,6 @@ function installTransport(
   options: {
     united?: boolean;
     administrator?: boolean;
-    overview?: boolean;
   } = {},
 ) {
   const state = {
@@ -156,11 +149,7 @@ function installTransport(
       );
       if (path.endsWith('/access/current-actor'))
         return respond(
-          actorFor(
-            companyContextId ?? companyA.id,
-            state.administrator,
-            options.overview,
-          ),
+          actorFor(companyContextId ?? companyA.id, state.administrator),
         );
       if (path.endsWith('/companies')) return respond([companyA, companyB]);
       if (path.endsWith('/activity-log')) return respond({ events: [] });
@@ -391,7 +380,7 @@ describe('Client dossier and working Document navigation through App', () => {
   });
 
   it('continues an inline exact Client Document into its focused existing detail', async () => {
-    installTransport({ overview: true });
+    installTransport();
     render(<App identity={deterministicBrowserIdentity()} />);
     await screen.findByRole('navigation', { name: 'Primary navigation' });
     const dossier = await openDossier(firstClient.displayName);

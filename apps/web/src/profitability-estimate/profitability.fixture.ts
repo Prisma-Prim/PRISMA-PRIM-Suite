@@ -15,7 +15,7 @@ export const profitabilityActor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'Synthetic Company',
-    commercialIntakePermissions: ['commercial.opportunity.read'],
+
     grants: companyGrants(
       {
         bundle: 'company_commercial_intake',

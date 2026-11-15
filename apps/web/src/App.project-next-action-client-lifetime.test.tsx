@@ -1,3 +1,4 @@
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, screen, within } from './test/render-with-interface-locale';
 import { changeValue } from './test/select-option';
@@ -31,9 +32,12 @@ it.each(['draft', 'uncertain'])(
       ...nextActionActor,
       activeCompany: {
         ...nextActionActor.activeCompany,
-        clientPermissions: ['client.read', 'client.duplicate.resolve'],
-        clientPermissionAssignmentId: 'client-live',
-        clientPermissionSetVersion: 'v2',
+
+        grants: withCompanyGrants(nextActionActor.activeCompany?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'client-live',
+        }),
       },
     };
     const original = {

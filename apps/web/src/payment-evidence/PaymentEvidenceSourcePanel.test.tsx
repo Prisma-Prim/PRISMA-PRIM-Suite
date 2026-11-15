@@ -59,7 +59,7 @@ it('withholds an old payer reply after identity-only loss while retaining native
         ...actor,
         activeCompany: {
           ...actor.activeCompany,
-          clientPermissions: [],
+
           grants: withoutCompanyGrants(
             actor.activeCompany.grants,
             'company_director_client_access',

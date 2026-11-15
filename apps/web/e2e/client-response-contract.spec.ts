@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -33,9 +34,12 @@ test('rejects the whole malformed Client list and recovers on a deliberate reloa
           workspacePermissions: ['client.manage'],
           activeCompany: {
             ...company,
-            clientPermissions: ['client.read', 'client.create'],
-            clientPermissionAssignmentId: 'client-reader-response-contract',
-            clientPermissionSetVersion: 'v1',
+
+            grants: companyGrants({
+              bundle: 'company_director_client_access',
+              version: 'v1',
+              assignmentId: 'client-reader-response-contract',
+            }),
           },
         },
       });

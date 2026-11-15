@@ -1,3 +1,8 @@
+import { grantOf } from '../access/company-grants';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { ApiResult } from '../api/authenticated-api-client';
@@ -722,7 +727,19 @@ describe('production shell session', () => {
       ...selectedActor('company-a'),
       activeCompany: {
         ...selectedActor('company-a').activeCompany!,
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+        grants: withCompanyGrants(
+          selectedActor('company-a').activeCompany?.grants,
+          {
+            bundle: 'company_director_client_access',
+            version: 'v1',
+            assignmentId:
+              grantOf(
+                { grants: selectedActor('company-a').activeCompany?.grants },
+                'company_director_client_access',
+              )?.assignmentId ?? 'fixture-client-access',
+          },
+        ),
       },
     };
     const observed = observeSession({
@@ -748,14 +765,24 @@ describe('production shell session', () => {
       ...initiallyAuthorizedActor,
       activeCompany: {
         ...initiallyAuthorizedActor.activeCompany!,
-        clientPermissions: [],
+
+        grants: withoutCompanyGrants(
+          initiallyAuthorizedActor.activeCompany?.grants,
+          'company_director_client_access',
+        ),
       },
     });
 
     expect(observed.current().shellContext).toMatchObject({
       status: 'active',
       actor: {
-        activeCompany: { id: 'company-a', clientPermissions: [] },
+        activeCompany: {
+          id: 'company-a',
+          grants: withoutCompanyGrants(
+            undefined,
+            'company_director_client_access',
+          ),
+        },
       },
       activityLog: { status: 'ready' },
     });

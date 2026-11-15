@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -46,19 +47,16 @@ const reader = {
   activeCompany: {
     id: companyId,
     displayName: 'PRISMA-PRIM',
-    clientPermissions: [],
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-    ],
+
     commercialActivityPermissions: ['commercial.activity.read'],
-    grants: companyGrants({
-      bundle: 'company_commercial_intake',
-      version: 'v1',
-      assignmentId: 'commercial-intake-grant',
-    }),
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'commercial-intake-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 

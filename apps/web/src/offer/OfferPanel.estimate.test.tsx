@@ -33,7 +33,7 @@ const actor: ActorContext = {
     ...profitabilityActor.activeCompany,
     id: 'company-1',
     displayName: 'Synthetic Company',
-    clientPermissions: ['client.read'],
+
     offerPermissionAssignmentId: 'preparer-2',
     offerPermissionSetVersion: 'v2',
     offerPermissions: [

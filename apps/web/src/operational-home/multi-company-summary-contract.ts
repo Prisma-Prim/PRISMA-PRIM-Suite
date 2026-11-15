@@ -1,3 +1,4 @@
+import { holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { readCurrentActor } from '../access/current-actor';
@@ -40,11 +41,11 @@ function readableSummaries(
   const company = actor.activeCompany;
   const clients =
     actor.workspacePermissions.includes('client.manage') ||
-    company?.clientPermissions?.includes('client.read') === true;
+    holds(company, 'company_director_client_access', 'client.read');
   return {
     active_clients: clients,
     open_projects:
-      clients && company?.projectPermissions?.includes('project.read') === true,
+      clients && holds(company, 'company_project_access', 'project.read'),
     overdue_tasks: canReadTasks(actor),
   };
 }

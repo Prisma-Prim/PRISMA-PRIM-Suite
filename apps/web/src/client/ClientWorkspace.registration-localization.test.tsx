@@ -1,4 +1,8 @@
 import {
+  withCompanyGrants,
+  companyGrants,
+} from '../access/company-grants.test-fixture';
+import {
   act,
   fireEvent,
   render,
@@ -263,9 +267,12 @@ const enrichedActor: ActorContext = {
     ...actor.activeCompany,
     id: 'company-registration',
     displayName: 'Companie {company}',
-    clientPermissions: ['client.read', 'client.create', 'client.update'],
-    clientPermissionAssignmentId: 'registration-assignment',
-    clientPermissionSetVersion: 'v1',
+
+    grants: withCompanyGrants(actor.activeCompany?.grants, {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'registration-assignment',
+    }),
   },
 };
 
@@ -1093,7 +1100,8 @@ it('abandons a pending registration on authority loss after a locale switch and 
     activeCompany: {
       id: 'company-registration',
       displayName: 'Companie {company}',
-      clientPermissions: ['client.read'],
+
+      grants: companyGrants(),
     },
   });
   expect(signal?.aborted).toBe(true);

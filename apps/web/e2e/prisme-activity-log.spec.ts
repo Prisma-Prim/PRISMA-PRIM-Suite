@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
@@ -138,21 +139,18 @@ test('opens the Request of a commercial event from the Activity Log with the key
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: [],
-                  commercialIntakePermissions: [
-                    'commercial.request.read',
-                    'commercial.request.create',
-                    'commercial.opportunity.read',
-                    'commercial.opportunity.create',
-                  ],
+
                   commercialActivityPermissions: ['commercial.activity.read'],
                   // The commercial screens read these grants; App still reads the
                   // per-bundle fields above.
-                  grants: companyGrants({
-                    bundle: 'company_commercial_intake',
-                    version: 'v1',
-                    assignmentId: 'intake-activity',
-                  }),
+                  grants: withoutCompanyGrants(
+                    companyGrants({
+                      bundle: 'company_commercial_intake',
+                      version: 'v1',
+                      assignmentId: 'intake-activity',
+                    }),
+                    'company_director_client_access',
+                  ),
                 },
               }
             : {}),

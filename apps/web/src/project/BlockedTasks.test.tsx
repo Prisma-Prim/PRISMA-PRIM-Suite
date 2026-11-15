@@ -32,8 +32,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    projectPermissions: ['project.read'],
+
     grants: companyGrants(
       {
         bundle: 'company_director_client_access',

@@ -1,3 +1,8 @@
+import { grantOf } from '../access/company-grants';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -586,19 +591,17 @@ it.each(['Owner only', 'legacy v1', 'partial scope'] as const)(
     const activeCompany: NonNullable<ActorContext['activeCompany']> = {
       ...resolver.activeCompany,
     };
-    if (authority === 'Owner only') {
-      activeCompany.clientPermissions = [];
-      activeCompany.clientPermissionAssignmentId = undefined;
-      activeCompany.clientPermissionSetVersion = undefined;
-    }
-    if (authority === 'legacy v1') {
-      activeCompany.clientPermissions = [
-        'client.read',
-        'client.create',
-        'client.update',
-      ];
-      activeCompany.clientPermissionSetVersion = 'v1';
-    }
+    if (authority === 'Owner only')
+      activeCompany.grants = withoutCompanyGrants(
+        activeCompany.grants,
+        'company_director_client_access',
+      );
+    if (authority === 'legacy v1')
+      activeCompany.grants = withCompanyGrants(activeCompany.grants, {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'resolver-assignment-709',
+      });
     const { fetcher } = renderReview({
       actor: { ...resolver, activeCompany },
       list: () => Response.json({ items: [], next_cursor: null }),
@@ -690,7 +693,16 @@ it.each(['detail', 'attachment', 'continuation'] as const)(
         ...resolver,
         activeCompany: {
           ...resolver.activeCompany,
-          clientPermissionAssignmentId: 'assignment-with-cursor',
+
+          grants: withCompanyGrants(resolver.activeCompany?.grants, {
+            bundle: 'company_director_client_access',
+            version:
+              grantOf(
+                { grants: resolver.activeCompany?.grants },
+                'company_director_client_access',
+              )?.permissionSetVersion ?? 'v1',
+            assignmentId: 'assignment-with-cursor',
+          }),
         },
       };
       rerender();
@@ -720,7 +732,16 @@ it.each(['detail', 'attachment', 'continuation'] as const)(
       ...resolver,
       activeCompany: {
         ...resolver.activeCompany,
-        clientPermissionAssignmentId: 'replacement-assignment',
+
+        grants: withCompanyGrants(resolver.activeCompany?.grants, {
+          bundle: 'company_director_client_access',
+          version:
+            grantOf(
+              { grants: resolver.activeCompany?.grants },
+              'company_director_client_access',
+            )?.permissionSetVersion ?? 'v1',
+          assignmentId: 'replacement-assignment',
+        }),
       },
     };
     rerender();

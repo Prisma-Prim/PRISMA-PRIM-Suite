@@ -1,3 +1,4 @@
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -25,7 +26,12 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-a',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read', 'client.create', 'client.update'],
+
+    grants: companyGrants({
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'fixture-client-access',
+    }),
   },
 };
 

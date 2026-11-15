@@ -1,3 +1,4 @@
+import { companyGrants } from './access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -207,9 +208,12 @@ function directorActor(): ActorContext {
     workspacePermissions: [],
     activeCompany: {
       ...companyA,
-      clientPermissions: ['client.read', 'client.create', 'client.update'],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'assignment-1',
+      }),
     },
   };
 }
@@ -497,6 +501,23 @@ function save(form: HTMLElement) {
 
 describe('Client legal entities and branches', () => {
   beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(
+        (query: string) =>
+          ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(() => false),
+          }) satisfies MediaQueryList,
+      ),
+    );
+
     localStorage.clear();
     sessionStorage.clear();
   });
@@ -1614,12 +1635,17 @@ describe('Client legal entities and branches', () => {
           activeCompany: {
             ...server.actor.activeCompany,
             ...companyA,
-            ...(boundary === 'assignment'
-              ? { clientPermissionAssignmentId: 'assignment-2' }
-              : { clientPermissionSetVersion: 'v1' }),
-            ...(boundary === 'permission'
-              ? { clientPermissions: ['client.read'] }
-              : {}),
+            grants:
+              boundary === 'permission'
+                ? companyGrants()
+                : companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: boundary === 'assignment' ? 'v2' : 'v1',
+                    assignmentId:
+                      boundary === 'assignment'
+                        ? 'assignment-2'
+                        : 'assignment-1',
+                  }),
           },
         };
         fireEvent.change(screen.getByLabelText('Find a shared Client'), {
@@ -1650,13 +1676,13 @@ describe('Client legal entities and branches', () => {
         screen.queryByText('Legal entity or branch recorded.'),
       ).not.toBeInTheDocument();
       expect(server.activityReads).toBe(readsAfterRetirement);
-      await openClient();
       if (boundary === 'permission') {
         expect(
           screen.queryByRole('button', { name: 'Add legal entity or branch' }),
         ).not.toBeInTheDocument();
         return;
       }
+      await openClient();
       const fresh = await openAdd();
       expect(within(fresh).getByLabelText('Exact legal name')).toHaveValue('');
       expect(within(fresh).getByLabelText('Legal address')).toHaveValue('');

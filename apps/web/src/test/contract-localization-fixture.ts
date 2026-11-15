@@ -58,21 +58,7 @@ export function contractLocaleActor(hasCompany = true) {
           activeCompany: {
             id: contractLocaleCompany.id,
             displayName: contractLocaleCompany.displayName,
-            commercialIntakePermissionAssignmentId: 'intake-657',
-            commercialIntakePermissionSetVersion: 'v1',
-            commercialIntakePermissions: [
-              'commercial.request.read',
-              'commercial.request.create',
-              'commercial.opportunity.read',
-              'commercial.opportunity.create',
-            ],
-            clientPermissionAssignmentId: 'client-657',
-            clientPermissionSetVersion: 'v1',
-            clientPermissions: [
-              'client.read',
-              'client.create',
-              'client.update',
-            ],
+
             contractPermissionAssignmentId: 'contract-657',
             contractPermissionSetVersion: 'v1',
             contractPermissions: [
@@ -98,9 +84,7 @@ export function contractLocaleActor(hasCompany = true) {
             ],
             commercialActivityPermissionSetVersion: 'v1',
             commercialActivityPermissions: ['commercial.activity.read'],
-            // The Pricing, Contract and Offer screens read these grants; the
-            // Commercial intake and Client screens still read the per-bundle
-            // fields above until their areas migrate.
+            // The screens read these registry-consistent live grants.
             grants: companyGrants(
               {
                 bundle: 'company_commercial_intake',

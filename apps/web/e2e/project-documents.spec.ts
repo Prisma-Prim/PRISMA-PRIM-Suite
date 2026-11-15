@@ -110,9 +110,7 @@ async function installProjectDocumentsFixture(page: Page) {
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  projectPermissions: ['project.read'],
-                  documentPermissions: state.permissions,
+
                   grants: companyGrants(
                     ...projectDocumentGrants(state.permissions),
                     {

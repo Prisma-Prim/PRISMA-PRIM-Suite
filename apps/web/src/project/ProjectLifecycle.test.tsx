@@ -25,8 +25,7 @@ import {
 const reader = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
-  clientPermissions: ['client.read'],
-  projectPermissions: ['project.read', 'project.create'],
+
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',

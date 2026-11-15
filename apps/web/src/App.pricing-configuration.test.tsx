@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { render, screen, within } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -11,12 +12,15 @@ import { companyGrants } from './access/company-grants.test-fixture';
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
-  clientPermissions: [],
-  grants: companyGrants({
-    bundle: 'company_pricing_configuration',
-    version: 'v1',
-    assignmentId: 'configuration-grant',
-  }),
+
+  grants: withoutCompanyGrants(
+    companyGrants({
+      bundle: 'company_pricing_configuration',
+      version: 'v1',
+      assignmentId: 'configuration-grant',
+    }),
+    'company_director_client_access',
+  ),
 } satisfies ActorContext['activeCompany'];
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -35,12 +39,15 @@ const catalogueOnly: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: [],
-    grants: companyGrants({
-      bundle: 'company_service_catalogue',
-      version: 'v1',
-      assignmentId: 'catalogue-grant',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_service_catalogue',
+        version: 'v1',
+        assignmentId: 'catalogue-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 
