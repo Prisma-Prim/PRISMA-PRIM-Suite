@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1414-pr1416-local-proof",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1414,
+  "pullRequest": 1416,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T10:10:40.000Z",
+    "end": "2026-11-15T10:46:45.707Z",
+    "durationSeconds": 2166
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Local proof:38 baseline/treatment;5832 web;2 real journey widths;types/lint/format and managed doctor pass. Paired review:Spec0,Standards1P2 never guard fixed. CI pending;model/token/price figures unavailable."
+  }
+}
