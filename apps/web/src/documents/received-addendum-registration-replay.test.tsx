@@ -12,7 +12,8 @@ import { completeActor } from '../access/current-actor.test-fixture';
 import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import type { WorkingDocumentDetail } from './document-response';
-import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
+import { SourceRegistrationForm } from './SourceRegistrationForm';
+import { RECEIVED_ADDENDUM_SOURCE_ADAPTER } from './source-registration-adapters';
 import type { ReceivedAddendumSourcePage } from './received-addendum-response';
 
 const companyId = '10000000-0000-4000-8000-000000000004';
@@ -232,7 +233,12 @@ async function beginIdenticalRetry() {
     onStarted: vi.fn(),
     onAccessRejected: vi.fn(),
   };
-  const view = render(<ReceivedAddendumRegistration {...props} />);
+  const view = render(
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+      {...props}
+    />,
+  );
   const parent = screen.getByLabelText(
     'Exact executed parent Contract Version',
   );
@@ -316,7 +322,10 @@ it.each(metadataCorrections)(
     ).not.toBeInTheDocument();
     await act(async () => {
       attempt.view.rerender(
-        <ReceivedAddendumRegistration {...attempt.props} />,
+        <SourceRegistrationForm
+          adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+          {...attempt.props}
+        />,
       );
     });
     expect(screen.getByRole('status').textContent).toBe(confirmed);

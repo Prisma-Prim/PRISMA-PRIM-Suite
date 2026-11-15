@@ -12,7 +12,8 @@ import { completeActor } from '../access/current-actor.test-fixture';
 import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import type { WorkingDocumentDetail } from './document-response';
-import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
+import { SourceRegistrationForm } from './SourceRegistrationForm';
+import { RECEIVED_ADDENDUM_SOURCE_ADAPTER } from './source-registration-adapters';
 import { ReceivedAddendumRelation } from './ReceivedAddendumRelation';
 import type { ReceivedAddendumSourcePage } from './received-addendum-response';
 
@@ -243,7 +244,8 @@ it.each(actorCases)(
     });
     vi.stubGlobal('fetch', transport);
     const view = render(
-      <ReceivedAddendumRegistration
+      <SourceRegistrationForm
+        adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
         {...callbacks}
         actor={actor}
         identity={identity}
@@ -260,7 +262,8 @@ it.each(actorCases)(
     expect(rejectSession).not.toHaveBeenCalled();
 
     view.rerender(
-      <ReceivedAddendumRegistration
+      <SourceRegistrationForm
+        adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
         {...callbacks}
         actor={continuationActor(actor, replaceApprover)}
         identity={identity}
@@ -311,7 +314,8 @@ it.each(actorCases)(
     });
     vi.stubGlobal('fetch', transport);
     const view = render(
-      <ReceivedAddendumRegistration
+      <SourceRegistrationForm
+        adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
         {...callbacks}
         actor={actor}
         identity={identity}
@@ -340,7 +344,8 @@ it.each(actorCases)(
     expect(rejectSession).not.toHaveBeenCalled();
 
     view.rerender(
-      <ReceivedAddendumRegistration
+      <SourceRegistrationForm
+        adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
         {...callbacks}
         actor={continuationActor(actor, replaceApprover)}
         identity={identity}

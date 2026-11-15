@@ -15,7 +15,8 @@ import {
 } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
-import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
+import { SourceRegistrationForm } from './SourceRegistrationForm';
+import { RECEIVED_ADDENDUM_SOURCE_ADAPTER } from './source-registration-adapters';
 
 const companyId = '10000000-0000-4000-8000-000000000004';
 const source = {
@@ -115,7 +116,8 @@ it('locks an uncertain exact parent, literal body and registration key for ident
     }),
   );
   render(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       actor={actor()}
       identity={deterministicBrowserIdentity()}
       companyId={companyId}
@@ -201,7 +203,8 @@ it('keeps confirmed registration confirmed when its independent callback/read re
     ),
   );
   render(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       actor={currentActor}
       identity={deterministicBrowserIdentity()}
       companyId={companyId}
@@ -250,7 +253,8 @@ it('treats a well-formed response for a different immutable party as uncertain',
     ),
   );
   render(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       actor={currentActor}
       identity={deterministicBrowserIdentity()}
       companyId={companyId}
@@ -287,7 +291,10 @@ it('preserves literal fields through all locales without duplicate source reads'
   render(
     <>
       <InterfaceLocaleSelect />
-      <ReceivedAddendumRegistration {...props} />
+      <SourceRegistrationForm
+        adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+        {...props}
+      />
     </>,
   );
   await fill();
@@ -361,7 +368,11 @@ it('permanently cancels a held POST parser after exact authority A → B → A r
     onAccessRejected: vi.fn(),
   };
   const view = render(
-    <ReceivedAddendumRegistration {...props} actor={currentActor} />,
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+      {...props}
+      actor={currentActor}
+    />,
   );
   await fill();
   fireEvent.click(
@@ -369,7 +380,8 @@ it('permanently cancels a held POST parser after exact authority A → B → A r
   );
   await waitFor(() => expect(postSignal).toBeDefined());
   view.rerender(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       {...props}
       actor={{
         ...currentActor,
@@ -387,7 +399,11 @@ it('permanently cancels a held POST parser after exact authority A → B → A r
     />,
   );
   view.rerender(
-    <ReceivedAddendumRegistration {...props} actor={currentActor} />,
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+      {...props}
+      actor={currentActor}
+    />,
   );
   await act(async () => {
     release?.(savedDocument(currentActor));
@@ -417,7 +433,11 @@ it('cancels held token acquisition before dispatch after family replacement', as
     onAccessRejected: vi.fn(),
   };
   const view = render(
-    <ReceivedAddendumRegistration {...props} actor={currentActor} />,
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+      {...props}
+      actor={currentActor}
+    />,
   );
   await fill();
   let release: ((token: string) => void) | undefined;
@@ -432,7 +452,8 @@ it('cancels held token acquisition before dispatch after family replacement', as
   );
   await screen.findByRole('button', { name: 'Registering received Addendum…' });
   view.rerender(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       {...props}
       actor={{
         ...currentActor,
@@ -464,7 +485,8 @@ it('supports keyboard parent selection and associates a real Gregorian date erro
   );
   vi.stubGlobal('fetch', transport);
   render(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       actor={actor()}
       identity={deterministicBrowserIdentity()}
       companyId={companyId}
@@ -532,14 +554,19 @@ it('passes a retiring full-Actor guard to access recovery and preserves explicit
     onAccessRejected: rejected,
   };
   const view = render(
-    <ReceivedAddendumRegistration {...props} actor={currentActor} />,
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+      {...props}
+      actor={currentActor}
+    />,
   );
   await screen.findByText(
     'Source selection is unavailable under your current access.',
   );
   await waitFor(() => expect(rejected).toHaveBeenCalledTimes(1));
   view.rerender(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       {...props}
       actor={{
         ...currentActor,
@@ -574,7 +601,8 @@ it('exposes safe loading retry and empty state without inventing an alternate fa
     .mockResolvedValueOnce(Response.json({ sources: [], nextCursor: null }));
   vi.stubGlobal('fetch', transport);
   render(
-    <ReceivedAddendumRegistration
+    <SourceRegistrationForm
+      adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
       actor={actor()}
       identity={deterministicBrowserIdentity()}
       companyId={companyId}

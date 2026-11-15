@@ -21,7 +21,6 @@ import {
   hasExternalInvoiceNativeRead,
 } from './external-invoice-access';
 import { useExternalInvoiceCopy } from './external-invoice.copy';
-import { ExternalInvoiceRegistration } from './ExternalInvoiceRegistration';
 import { ExternalInvoiceRelation } from './ExternalInvoiceRelation';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
@@ -31,7 +30,6 @@ import {
   receivedAddendumSourceAuthority,
 } from './received-addendum-access';
 import { useReceivedAddendumCopy } from './received-addendum.copy';
-import { ReceivedAddendumRegistration } from './ReceivedAddendumRegistration';
 import { ReceivedAddendumRelation } from './ReceivedAddendumRelation';
 import { hasReceivedAuditSourceAccess } from './received-audit-source-access';
 import { useReceivedAuditSourceCopy } from './received-audit-source.copy';
@@ -41,7 +39,15 @@ import {
   receivedContractSourceAuthority,
 } from './received-contract-access';
 import { useReceivedContractCopy } from './received-contract.copy';
-import { ReceivedContractRegistration } from './ReceivedContractRegistration';
+import {
+  SourceRegistrationForm,
+  type SourceRegistrationProps,
+} from './SourceRegistrationForm';
+import {
+  RECEIVED_CONTRACT_SOURCE_ADAPTER,
+  EXTERNAL_INVOICE_SOURCE_ADAPTER,
+  RECEIVED_ADDENDUM_SOURCE_ADAPTER,
+} from './source-registration-adapters';
 import { ReceivedContractRelation } from './ReceivedContractRelation';
 
 /** Payment evidence has its own section; every other family opens here. */
@@ -79,18 +85,7 @@ type RelationProps = {
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 };
 
-export type SourceRegistrationProps = {
-  actor: ActorContext;
-  identity: BrowserIdentity;
-  companyId: string;
-  onBusyChange: (busy: boolean) => void;
-  onAccessRejected: (
-    signal: AbortSignal,
-    isCurrent?: () => boolean,
-  ) => Promise<void> | void;
-  onStarted: () => void;
-  onRegistered: (document: WorkingDocumentDetail) => void;
-};
+export type { SourceRegistrationProps } from './SourceRegistrationForm';
 
 /** A family registered from a selected source rather than the native form. */
 interface SourceRegistration {
@@ -190,13 +185,9 @@ export const DOCUMENT_FAMILY_SCREENS = {
         ),
       denied: (copies) => copies.invoice.t('sourceDenied'),
       render: (props) => (
-        <ExternalInvoiceRegistration
-          identity={props.identity}
-          companyId={props.companyId}
-          onBusyChange={props.onBusyChange}
-          onAccessRejected={props.onAccessRejected}
-          onStarted={props.onStarted}
-          onRegistered={props.onRegistered}
+        <SourceRegistrationForm
+          {...props}
+          adapter={EXTERNAL_INVOICE_SOURCE_ADAPTER}
         />
       ),
     },
@@ -213,7 +204,12 @@ export const DOCUMENT_FAMILY_SCREENS = {
     source: {
       authority: (actor) => receivedAddendumSourceAuthority(actor),
       denied: (copies) => copies.addendum.t('sourceDenied'),
-      render: (props) => <ReceivedAddendumRegistration {...props} />,
+      render: (props) => (
+        <SourceRegistrationForm
+          {...props}
+          adapter={RECEIVED_ADDENDUM_SOURCE_ADAPTER}
+        />
+      ),
     },
   },
   'received-contract': {
@@ -228,13 +224,9 @@ export const DOCUMENT_FAMILY_SCREENS = {
         receivedContractSourceAuthority(actor.activeCompany),
       denied: (copies) => copies.received.t('sourceDenied'),
       render: (props) => (
-        <ReceivedContractRegistration
-          identity={props.identity}
-          companyId={props.companyId}
-          onBusyChange={props.onBusyChange}
-          onAccessRejected={props.onAccessRejected}
-          onStarted={props.onStarted}
-          onRegistered={props.onRegistered}
+        <SourceRegistrationForm
+          {...props}
+          adapter={RECEIVED_CONTRACT_SOURCE_ADAPTER}
         />
       ),
     },
