@@ -135,6 +135,7 @@ async function installRoutes(page: Page, readOnly = false) {
             ? {
                 ...base,
                 activeCompany: {
+                  grants: [],
                   ...activeCompany,
                   ...(state.retired
                     ? {

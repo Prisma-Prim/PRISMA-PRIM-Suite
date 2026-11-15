@@ -284,7 +284,7 @@ describe('ApplicationRoot', () => {
           email: 'ada@example.test',
           active: true,
           workspacePermissions: ['company.manage'],
-          activeCompany: company,
+          activeCompany: { grants: [], ...company },
         });
       if (url.endsWith('/activity-log')) return jsonResponse({ events: [] });
       if (url.endsWith('/companies')) return jsonResponse([company]);

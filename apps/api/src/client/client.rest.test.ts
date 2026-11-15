@@ -568,12 +568,7 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: expect.arrayContaining(['client.manage']),
       activeCompany: {
         id: company.id,
-        grants: expect.arrayContaining([
-          expect.objectContaining({
-            bundle: 'company_director_client_access',
-            permissions: [],
-          }),
-        ]),
+        grants: [],
       },
     });
     await expect(listClients(company.id)).resolves.toEqual([client]);

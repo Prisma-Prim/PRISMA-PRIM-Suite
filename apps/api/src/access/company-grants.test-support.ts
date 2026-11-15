@@ -4,6 +4,7 @@ export function companyGrantOf(company: unknown, bundle: string) {
 }
 
 export function companyGrantsOf(company: unknown, bundles: readonly string[]) {
+  if (company === undefined) return undefined;
   if (!company || typeof company !== 'object' || Array.isArray(company))
     throw new Error('Expected a public Company object');
   const grants: unknown = Reflect.get(company, 'grants');

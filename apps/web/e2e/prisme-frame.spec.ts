@@ -196,7 +196,7 @@ test('opens authenticated members in Prisme, switches authorized Company and ope
         json: {
           ...actorContextFixture,
           workspacePermissions: ['company.manage', 'client.manage'],
-          ...(company ? { activeCompany: company } : {}),
+          ...(company ? { activeCompany: { grants: [], ...company } } : {}),
         },
       });
     }

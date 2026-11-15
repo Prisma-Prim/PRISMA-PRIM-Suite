@@ -453,7 +453,10 @@ test('does not clear a newer Company when an older registration is rejected', as
     const selectedCompany = companies.find(({ id }) => id === selectedId);
     return route.fulfill({
       json: selectedCompany
-        ? { ...actorContextFixture, activeCompany: selectedCompany }
+        ? {
+            ...actorContextFixture,
+            activeCompany: { grants: [], ...selectedCompany },
+          }
         : actorContextFixture,
     });
   });
@@ -577,7 +580,7 @@ test('does not share a saved Company context between Workspace members', async (
     return route.fulfill({
       json:
         selectedId === company.id
-          ? { ...actor, activeCompany: company }
+          ? { ...actor, activeCompany: { grants: [], ...company } }
           : actor,
     });
   });
@@ -811,7 +814,9 @@ test('grants, selects, and revokes narrow Company context access', async ({
                 displayName: member.displayName,
                 email: member.email,
                 workspacePermissions: [],
-                ...(selected && assigned ? { activeCompany: company } : {}),
+                ...(selected && assigned
+                  ? { activeCompany: { grants: [], ...company } }
+                  : {}),
               },
       });
     }
@@ -1272,7 +1277,9 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
             'company.assignment.manage',
             'client.manage',
           ],
-          ...(activeCompany ? { activeCompany } : {}),
+          ...(activeCompany
+            ? { activeCompany: { ...activeCompany, grants: [] } }
+            : {}),
         },
       });
     }

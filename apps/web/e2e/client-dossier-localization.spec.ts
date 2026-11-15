@@ -718,7 +718,7 @@ test('retires the real App draft and late correction after history revalidation 
   state.actor = {
     ...actorContextFixture,
     workspacePermissions: ['client.manage'],
-    activeCompany: dossierCompany,
+    activeCompany: { grants: [], ...dossierCompany },
   };
   if (!releaseHistory) throw new Error('Expected the pending history request.');
   await releaseHistory();

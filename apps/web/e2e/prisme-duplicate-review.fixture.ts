@@ -87,6 +87,7 @@ export async function installReviewFixture(
     workspacePermissions:
       authority === 'director' || authority === 'v1' ? [] : ['client.manage'],
     activeCompany: {
+      grants: [],
       ...reviewCompany,
       ...(authority === 'owner'
         ? {}

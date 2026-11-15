@@ -208,7 +208,7 @@ test('keeps a Client retry and pending command through disclosure and navigation
         json: {
           ...actorContextFixture,
           workspacePermissions: ['client.manage'],
-          activeCompany: company,
+          activeCompany: { grants: [], ...company },
         },
       });
     if (path.endsWith('/companies')) return route.fulfill({ json: [company] });
@@ -600,7 +600,7 @@ test('keeps failures real and attachment pending independent from edited search'
         json: {
           ...actorContextFixture,
           workspacePermissions: permitted ? ['client.manage'] : [],
-          activeCompany: company,
+          activeCompany: { grants: [], ...company },
         },
       });
     if (path.endsWith('/companies')) return route.fulfill({ json: [company] });

@@ -85,7 +85,7 @@ async function installRoutes(page: Page) {
         json: {
           ...actorContextFixture,
           workspacePermissions: ['company.manage', 'client.manage'],
-          ...(companyId ? { activeCompany: company } : {}),
+          ...(companyId ? { activeCompany: { grants: [], ...company } } : {}),
         },
       });
     if (url.pathname === '/api/companies')
