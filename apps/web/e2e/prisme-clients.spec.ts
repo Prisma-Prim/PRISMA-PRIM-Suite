@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
@@ -31,12 +32,15 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions:
+
+                  grants:
                     company.id === companyB.id
-                      ? ['client.read', 'client.create', 'client.update']
-                      : [],
-                  clientPermissionAssignmentId: `director-${company.id}`,
-                  clientPermissionSetVersion: 'v1',
+                      ? companyGrants({
+                          bundle: 'company_director_client_access',
+                          version: 'v1',
+                          assignmentId: `director-${company.id}`,
+                        })
+                      : companyGrants(),
                 },
               }
             : {}),
@@ -321,13 +325,12 @@ test('keeps Director fields and ordered Contacts through validation and an opaqu
           workspacePermissions: [],
           activeCompany: {
             ...company,
-            clientPermissions: [
-              'client.read',
-              'client.create',
-              'client.update',
-            ],
-            clientPermissionAssignmentId: 'director-231',
-            clientPermissionSetVersion: 'v1',
+
+            grants: companyGrants({
+              bundle: 'company_director_client_access',
+              version: 'v1',
+              assignmentId: 'director-231',
+            }),
           },
         },
       });

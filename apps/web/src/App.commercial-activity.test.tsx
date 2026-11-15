@@ -1,3 +1,7 @@
+import {
+  withoutCompanyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
 import { render, screen, within } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -19,14 +23,17 @@ const reader = {
   activeCompany: {
     id: COMPANY_ID,
     displayName: 'PRISMA-PRIM',
-    clientPermissions: [],
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-    ],
+
     commercialActivityPermissions: ['commercial.activity.read'],
+
+    grants: withCompanyGrants(
+      withoutCompanyGrants(undefined, 'company_director_client_access'),
+      {
+        bundle: 'company_commercial_intake',
+        version: 'v1',
+        assignmentId: 'fixture-intake-access',
+      },
+    ),
   },
 };
 

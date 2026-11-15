@@ -91,18 +91,7 @@ function actorFor(companyId = company.id): ActorContext {
     workspacePermissions: ['client.manage', 'company.assignment.manage'],
     activeCompany: {
       ...(companyId === company.id ? company : companyB),
-      clientPermissions: ['client.read'],
-      projectPermissions: ['project.read'],
-      projectPermissionAssignmentId: id(11),
-      projectPermissionSetVersion: 'v2',
-      documentPermissions: [
-        'document.read',
-        'document.reference.read',
-        'document.content.read',
-        'document.mission_deliverable.access',
-      ],
-      documentPermissionAssignmentId: id(12),
-      documentPermissionSetVersion: 'v3',
+
       documentContentReaderAssignmentId: id(13),
       documentContentReaderPermissionSetVersion: 'v1',
       missionDeliverableAccessAssignmentId: id(14),

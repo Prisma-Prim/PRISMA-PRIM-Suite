@@ -1,3 +1,4 @@
+import { grantOf } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import {
   readProjectPdfAssociations,
@@ -352,15 +353,29 @@ it('rejects Addendum Project association projections even with the exact indepen
       receivedAddendumAccessPermissionSetVersion: 'v1',
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
-      documentPermissions: [
-        'document.read',
-        'document.received_addendum.access',
-      ],
-      grants: withCompanyGrants(completeActor.activeCompany.grants, {
-        bundle: 'company_received_addendum_access',
-        version: 'v1',
-        assignmentId: registeredBy.workspaceMembershipId,
-      }),
+
+      grants: withCompanyGrants(
+        withCompanyGrants(completeActor.activeCompany.grants, {
+          bundle: 'company_received_addendum_access',
+          version: 'v1',
+          assignmentId: registeredBy.workspaceMembershipId,
+        }),
+        {
+          bundle: 'company_document_registrar',
+          version: 'v1',
+          assignmentId:
+            grantOf(
+              {
+                grants: withCompanyGrants(completeActor.activeCompany.grants, {
+                  bundle: 'company_received_addendum_access',
+                  version: 'v1',
+                  assignmentId: registeredBy.workspaceMembershipId,
+                }),
+              },
+              'company_document_registrar',
+            )?.assignmentId ?? 'fixture-document-access',
+        },
+      ),
     },
   };
   expect(

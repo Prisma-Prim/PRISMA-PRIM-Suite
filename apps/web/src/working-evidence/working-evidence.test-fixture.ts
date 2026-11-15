@@ -29,25 +29,15 @@ export const actor: ActorContext = {
   activeCompany: {
     id: ids.project,
     displayName: 'Fictional Company',
-    projectPermissions: ['project.read'],
-    projectPermissionAssignmentId: ids.projectAccess,
-    projectPermissionSetVersion: 'v1',
+
     receivedAuditSourceAccessAssignmentId: ids.project,
     receivedAuditSourceAccessPermissionSetVersion: 'v1',
     workingEvidenceContextCapture: `working-evidence-context.v1.${'a'.repeat(64)}`,
     workingEvidenceClientReadCapture: `working-evidence-client-read.v1.${'b'.repeat(64)}`,
-    documentPermissionAssignmentId: ids.project,
-    documentPermissionSetVersion: 'v3',
-    documentPermissions: [
-      'document.read',
-      'document.reference.read',
-      'document.received_audit_source.access',
-      'document.content.read',
-    ],
+
     documentContentReaderAssignmentId: ids.project,
     documentContentReaderPermissionSetVersion: 'v1',
-    // Unmigrated screens still read the Project and Document per-bundle
-    // fields above beside these grants.
+    // The screens read these registry-consistent live grants.
     grants: withCompanyGrants(
       documentGrants(
         [

@@ -31,29 +31,31 @@ const actor = {
   activeCompany: {
     id: companyId,
     displayName: 'Company Demo',
-    clientPermissions: [],
-    projectPermissions: ['project.read', 'project.create'],
-    grants: companyGrants(
-      {
-        bundle: 'company_project_access',
-        version: 'v1',
-        assignmentId: 'project-grant',
-      },
-      {
-        bundle: 'company_task_manager',
-        version: 'v1',
-        assignmentId: 'task-grant',
-      },
-      {
-        bundle: 'company_project_template_user',
-        version: 'v1',
-        assignmentId: 'template-grant',
-      },
-      {
-        bundle: 'company_project_template_configuration',
-        version: 'v1',
-        assignmentId: 'configuration-grant',
-      },
+
+    grants: withoutCompanyGrants(
+      companyGrants(
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_template_user',
+          version: 'v1',
+          assignmentId: 'template-grant',
+        },
+        {
+          bundle: 'company_project_template_configuration',
+          version: 'v1',
+          assignmentId: 'configuration-grant',
+        },
+      ),
+      'company_director_client_access',
     ),
   },
 };
@@ -203,7 +205,7 @@ it('offers configuration with catalogue read without Client, Task or Project-cre
     workspacePermissions: [],
     activeCompany: {
       ...actor.activeCompany,
-      projectPermissions: ['project.read'],
+
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,
         'company_task_manager',
@@ -285,7 +287,7 @@ function configurationOnlyActor() {
     workspacePermissions: [],
     activeCompany: {
       ...actor.activeCompany,
-      projectPermissions: ['project.read'],
+
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,
         'company_task_manager',

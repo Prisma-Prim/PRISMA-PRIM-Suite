@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -29,12 +30,15 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: [],
-    grants: companyGrants({
-      bundle: 'company_service_catalogue',
-      version: 'v1',
-      assignmentId: 'service-catalogue-grant',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_service_catalogue',
+        version: 'v1',
+        assignmentId: 'service-catalogue-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 
@@ -43,12 +47,15 @@ const secondCompanyActor: ActorContext = {
   activeCompany: {
     id: 'company-2',
     displayName: 'Second Company',
-    clientPermissions: [],
-    grants: companyGrants({
-      bundle: 'company_service_catalogue',
-      version: 'v1',
-      assignmentId: 'service-catalogue-grant',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_service_catalogue',
+        version: 'v1',
+        assignmentId: 'service-catalogue-grant',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 

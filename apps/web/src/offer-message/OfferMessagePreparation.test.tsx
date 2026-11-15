@@ -97,7 +97,7 @@ describe('exact Offer manual message preparation', () => {
           workspacePermissions: ['company.manage'],
           activeCompany: {
             ...actor.activeCompany,
-            clientPermissions: [],
+
             grants: withoutCompanyGrants(
               actor.activeCompany.grants,
               'company_director_client_access',

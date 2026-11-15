@@ -505,7 +505,7 @@ async function interceptApplication(
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read'],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_task_manager',

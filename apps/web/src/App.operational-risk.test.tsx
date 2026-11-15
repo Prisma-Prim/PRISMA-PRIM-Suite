@@ -1,3 +1,4 @@
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import {
   fireEvent,
   act,
@@ -112,10 +113,12 @@ describe('Operational Risk access through App', () => {
               ...journalActor,
               activeCompany: {
                 ...journalActor.activeCompany,
-                clientPermissions: ['client.read'],
-                clientPermissionAssignmentId:
-                  '00000000-0000-4000-8000-000000962015',
-                clientPermissionSetVersion: 'v1',
+
+                grants: withCompanyGrants(journalActor.activeCompany?.grants, {
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: '00000000-0000-4000-8000-000000962015',
+                }),
               },
             }
           : journalActor;

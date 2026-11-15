@@ -50,8 +50,6 @@ export const actor: ActorContext = {
         assignmentId: 'synthetic-client-access',
       },
     ),
-    clientPermissions: ['client.read'],
-    projectPermissions: ['project.read', 'project.create'],
   },
 };
 export const scope = {

@@ -501,7 +501,7 @@ it('routes a fresh Client working-Documents filter to native inventory while pay
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        clientPermissions: [],
+
         grants: withoutCompanyGrants(
           actor.activeCompany.grants,
           'company_director_client_access',

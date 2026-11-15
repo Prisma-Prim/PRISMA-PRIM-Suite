@@ -252,9 +252,7 @@ it.each(
             workspacePermissions: ['company.assignment.manage'],
             activeCompany: {
               ...actor.activeCompany,
-              clientPermissions: ['client.read'],
-              clientPermissionAssignmentId: 'client-capture-demo',
-              clientPermissionSetVersion: 'v1',
+
               grants: withCompanyGrants(actor.activeCompany.grants, {
                 bundle: 'company_director_client_access',
                 version: 'v1',

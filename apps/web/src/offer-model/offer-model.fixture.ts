@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import type { ActorContext } from '../access-types';
 import type { OfferModelContent } from './offer-model-content';
 
@@ -43,7 +44,7 @@ export const syntheticActor: ActorContext = {
   activeCompany: {
     id: '10000000-0000-4000-8000-000000000847',
     displayName: 'Synthetic Company',
-    clientPermissions: [],
+
     offerModelGrants: [
       {
         bundle: 'company_offer_model_editor',
@@ -55,6 +56,8 @@ export const syntheticActor: ActorContext = {
         ],
       },
     ],
+
+    grants: withoutCompanyGrants(undefined, 'company_director_client_access'),
   },
 };
 export const syntheticAttribution = {

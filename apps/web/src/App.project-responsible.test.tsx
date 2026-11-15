@@ -20,8 +20,7 @@ import {
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
-  projectPermissions: ['project.read', 'project.create'],
-  clientPermissions: ['client.read'],
+
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',
@@ -50,7 +49,7 @@ const updater: ActorContext = {
   ...actor,
   activeCompany: {
     ...company,
-    projectPermissions: ['project.read', 'project.create', 'project.update'],
+
     grants: withCompanyGrants(company.grants, {
       bundle: 'company_project_access',
       version: 'v2',

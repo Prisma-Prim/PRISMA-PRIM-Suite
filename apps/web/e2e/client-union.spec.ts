@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
@@ -41,12 +42,12 @@ test('compares existing Clients, confirms their union and reverses it', async ({
     ...actorContextFixture,
     activeCompany: {
       ...companyA,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'fixture-client-access',
+      }),
     },
   } satisfies ActorContext;
   let united = false;

@@ -47,30 +47,16 @@ function actorFor(companyId: string, state: Transport): ActorContext {
     workspacePermissions: [],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: [],
+
       commercialActivityPermissions: ['commercial.activity.read'],
-      ...(state.intakeAssignment
-        ? {
-            commercialIntakePermissions: [
-              'commercial.request.read',
-              ...(state.requestCreate
-                ? (['commercial.request.create'] as const)
-                : []),
-              'commercial.opportunity.read',
-              'commercial.opportunity.create',
-              'commercial.opportunity.next_action.update',
-            ],
-            commercialIntakePermissionAssignmentId: state.intakeAssignment,
-            commercialIntakePermissionSetVersion: 'v2',
-            // The Request screen reads this grant; App still reads the
-            // per-bundle fields above, including a narrowed Request creation.
-            grants: companyGrants({
+      grants:
+        state.intakeAssignment && state.requestCreate
+          ? companyGrants({
               bundle: 'company_commercial_intake',
               version: 'v2',
               assignmentId: state.intakeAssignment,
-            }),
-          }
-        : {}),
+            })
+          : companyGrants(),
     },
   };
 }

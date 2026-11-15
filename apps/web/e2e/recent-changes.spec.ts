@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 // Public App composition with HTTP boundary doubles; not live Clerk/PG evidence.
@@ -147,7 +148,14 @@ for (const locale of locales) {
               email: 'ada@example.test',
               active: true,
               workspacePermissions: ['company.manage'],
-              activeCompany: { ...company, clientPermissions: ['client.read'] },
+              activeCompany: {
+                ...company,
+                grants: companyGrants({
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'fixture-client-access',
+                }),
+              },
             }
           : path === '/api/companies'
             ? [company]

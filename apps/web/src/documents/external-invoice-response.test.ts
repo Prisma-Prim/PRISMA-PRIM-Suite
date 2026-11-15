@@ -263,7 +263,11 @@ it('requires captured native source authority and retains the Workspace Client-r
     canSelectExternalInvoiceSource(
       {
         ...without('company_director_client_access'),
-        clientPermissions: [],
+
+        grants: withoutCompanyGrants(
+          without('company_director_client_access')?.grants,
+          'company_director_client_access',
+        ),
       },
       true,
     ),

@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { companyGrants } from '../access/company-grants.test-fixture';
 import { act, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -28,14 +30,12 @@ export const resolver = {
   activeCompany: {
     id: 'company-709',
     displayName: 'Companie {Я}',
-    clientPermissions: [
-      'client.read',
-      'client.create',
-      'client.update',
-      'client.duplicate.resolve',
-    ],
-    clientPermissionAssignmentId: 'resolver-assignment-709',
-    clientPermissionSetVersion: 'v2',
+
+    grants: companyGrants({
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'resolver-assignment-709',
+    }),
   },
 } satisfies ActorContext;
 
@@ -206,8 +206,10 @@ export function renderReview({
           <ClientDuplicateReviewPanel
             companyContextId={state.actor.activeCompany?.id ?? 'company-709'}
             authorityGeneration={
-              state.actor.activeCompany?.clientPermissionAssignmentId ??
-              'no-assignment'
+              grantOf(
+                state.actor.activeCompany,
+                'company_director_client_access',
+              )?.assignmentId ?? 'no-assignment'
             }
             identity={identity}
             canAttach={state.canAttach}

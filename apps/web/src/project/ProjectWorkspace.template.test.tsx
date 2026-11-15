@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -44,24 +45,26 @@ const actor: ActorContext = {
   activeCompany: {
     id: companyId,
     displayName: 'Company Demo',
-    clientPermissions: [],
-    projectPermissions: ['project.read', 'project.create'],
-    grants: companyGrants(
-      {
-        bundle: 'company_project_access',
-        version: 'v1',
-        assignmentId: 'project-grant',
-      },
-      {
-        bundle: 'company_task_manager',
-        version: 'v1',
-        assignmentId: 'task-grant',
-      },
-      {
-        bundle: 'company_project_template_user',
-        version: 'v1',
-        assignmentId: 'template-grant',
-      },
+
+    grants: withoutCompanyGrants(
+      companyGrants(
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_template_user',
+          version: 'v1',
+          assignmentId: 'template-grant',
+        },
+      ),
+      'company_director_client_access',
     ),
   },
 };
@@ -714,19 +717,21 @@ function withoutTemplateGrant(): ActorContext {
     activeCompany: {
       id: companyId,
       displayName: 'Company Demo',
-      clientPermissions: [],
-      projectPermissions: ['project.read', 'project.create'],
-      grants: companyGrants(
-        {
-          bundle: 'company_project_access',
-          version: 'v1',
-          assignmentId: 'project-grant',
-        },
-        {
-          bundle: 'company_task_manager',
-          version: 'v1',
-          assignmentId: 'task-grant',
-        },
+
+      grants: withoutCompanyGrants(
+        companyGrants(
+          {
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'project-grant',
+          },
+          {
+            bundle: 'company_task_manager',
+            version: 'v1',
+            assignmentId: 'task-grant',
+          },
+        ),
+        'company_director_client_access',
       ),
     },
   };

@@ -35,18 +35,10 @@ export const knowledgeActor = {
   activeCompany: {
     id: '10000000-0000-4000-8000-000000000001',
     displayName: 'Company DEMO',
-    documentPermissions: [
-      'document.read',
-      'document.reference.read',
-      'document.content.read',
-    ],
-    documentPermissionAssignmentId: '90000000-0000-4000-8000-000000001015',
-    documentPermissionSetVersion: 'v3',
+
     documentContentReaderAssignmentId: 'a0000000-0000-4000-8000-000000001015',
     documentContentReaderPermissionSetVersion: 'v1',
-    clientPermissions: ['client.read'],
-    clientPermissionAssignmentId: 'b0000000-0000-4000-8000-000000001015',
-    clientPermissionSetVersion: 'v1',
+
     // Unmigrated screens still read the Client and Document per-bundle fields
     // above beside these grants.
     grants: companyGrants(

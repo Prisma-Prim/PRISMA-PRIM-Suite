@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import type { UnionComparison } from '../src/client/client-union-contract';
@@ -59,14 +60,12 @@ export async function installUnionFixture(page: Page) {
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...companyA,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: '24100000-0000-4000-8000-000000000006',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: '24100000-0000-4000-8000-000000000006',
+      }),
     },
   };
   const state: {

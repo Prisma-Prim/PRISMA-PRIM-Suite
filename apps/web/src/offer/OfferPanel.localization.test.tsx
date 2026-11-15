@@ -44,8 +44,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-one',
     displayName: 'Synthetic Company',
-    commercialIntakePermissions: ['commercial.opportunity.read'],
-    clientPermissions: ['client.read'],
+
     offerPermissions: ['commercial.offer.read', 'commercial.offer.prepare'],
     offerPermissionAssignmentId: 'offer-preparer-assignment',
     offerPermissionSetVersion: 'v1',
@@ -1822,9 +1821,7 @@ it.each(['client', 'opportunity'] as const)(
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        clientPermissions: prerequisite === 'client' ? [] : ['client.read'],
-        commercialIntakePermissions:
-          prerequisite === 'opportunity' ? [] : ['commercial.opportunity.read'],
+
         grants: withoutCompanyGrants(
           actor.activeCompany.grants,
           prerequisite === 'client'

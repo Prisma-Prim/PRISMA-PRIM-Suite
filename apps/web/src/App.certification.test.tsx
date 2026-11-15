@@ -1,3 +1,4 @@
+import { grantOf } from './access/company-grants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   fireEvent,
@@ -20,7 +21,8 @@ import { FakeCertificationServer } from './certification/certification.test-fixt
 // The Certification screens read only the grants list.
 const projectGrant = {
   bundle: 'company_project_access',
-  assignmentId: actor.activeCompany.projectPermissionAssignmentId,
+  assignmentId: grantOf(actor.activeCompany, 'company_project_access')
+    ?.assignmentId,
   permissionSetVersion: 'v2',
   permissions: ['project.read', 'project.create', 'project.update'],
 };

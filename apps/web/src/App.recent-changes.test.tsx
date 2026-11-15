@@ -1,3 +1,8 @@
+import { grantOf } from './access/company-grants';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -112,7 +117,14 @@ it('shows the latest five publicly dated changes in server order and opens full 
           email: 'ana@example.test',
           active: true,
           workspacePermissions: ['company.manage'],
-          activeCompany: { ...company, clientPermissions: ['client.read'] },
+          activeCompany: {
+            ...company,
+            grants: companyGrants({
+              bundle: 'company_director_client_access',
+              version: 'v1',
+              assignmentId: 'fixture-client-access',
+            }),
+          },
         });
       if (path === '/api/companies') return Response.json([company]);
       if (path === '/api/activity-log')
@@ -225,7 +237,14 @@ function installServer(initialCompany = company) {
           workspacePermissions: ['company.manage'],
           activeCompany: {
             ...selected,
-            clientPermissions: state.summaryRead ? ['client.read'] : [],
+
+            grants: state.summaryRead
+              ? companyGrants({
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'fixture-client-access',
+                })
+              : companyGrants(),
           },
         };
         return Response.json(state.extendActor(actor));
@@ -564,7 +583,16 @@ function installCommercialServer(requests = true) {
         ...actor.activeCompany,
         id: activityLocaleIds.company,
         displayName: activityLiteral,
-        clientPermissions: ['client.read'],
+
+        grants: withCompanyGrants(actor.activeCompany?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId:
+            grantOf(
+              { grants: actor.activeCompany?.grants },
+              'company_director_client_access',
+            )?.assignmentId ?? 'fixture-client-access',
+        }),
       },
     };
   };

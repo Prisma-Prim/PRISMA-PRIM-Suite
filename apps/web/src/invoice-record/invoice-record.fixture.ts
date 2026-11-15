@@ -32,21 +32,7 @@ const company = {
   id: ids.company,
   displayName: 'Fictional Company',
   invoiceRecordReadCapture: capture,
-  clientPermissions: ['client.read'],
-  clientPermissionAssignmentId: '20000000-0000-4000-8000-000000000001',
-  clientPermissionSetVersion: 'v2',
-  documentPermissions: [
-    'document.read',
-    'document.register',
-    'document.reference.read',
-    'document.correct',
-    'document.version.manage',
-    'document.version.designate_official',
-    'document.content.read',
-    'document.content.upload',
-  ],
-  documentPermissionAssignmentId: '20000000-0000-4000-8000-000000000002',
-  documentPermissionSetVersion: 'v3',
+
   documentContentReaderAssignmentId: '20000000-0000-4000-8000-000000000003',
   documentContentReaderPermissionSetVersion: 'v1',
   documentContentUploaderAssignmentId: '20000000-0000-4000-8000-000000000004',
@@ -56,13 +42,7 @@ const company = {
   contractPermissions: ['commercial.contract.read'],
   contractPermissionAssignmentId: '20000000-0000-4000-8000-000000000006',
   contractPermissionSetVersion: 'v2',
-  commercialIntakePermissions: [
-    'commercial.request.read',
-    'commercial.opportunity.read',
-  ],
-  commercialIntakePermissionAssignmentId:
-    '20000000-0000-4000-8000-000000000007',
-  commercialIntakePermissionSetVersion: 'v4',
+
   // Unmigrated screens still read the Client, Document, Contract and
   // Commercial Intake per-bundle fields above beside these grants.
   grants: companyGrants(
@@ -130,10 +110,9 @@ export const financeOnly: ActorContext = {
   ...actor,
   activeCompany: {
     ...company,
-    clientPermissions: [],
-    documentPermissions: [],
+
     contractPermissions: [],
-    commercialIntakePermissions: [],
+
     grants: companyGrants({
       bundle: 'company_invoice_recorder',
       version: 'v1',

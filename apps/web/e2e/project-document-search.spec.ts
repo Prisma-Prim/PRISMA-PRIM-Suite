@@ -96,13 +96,7 @@ async function installDocumentSearchFixture(page: Page) {
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  projectPermissions: ['project.read'],
-                  documentPermissions: [
-                    'document.read',
-                    'document.reference.read',
-                    'document.project.manage',
-                  ],
+
                   grants: companyGrants(
                     ...projectDocumentGrants([
                       'document.read',

@@ -74,19 +74,7 @@ function actor(assignmentId: string): ActorContext {
     workspacePermissions: ['company.assignment.manage'],
     activeCompany: {
       ...company,
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: assignmentId,
-      clientPermissionSetVersion: 'v2',
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-        'commercial.opportunity.next_action.update',
-        'commercial.request.client.associate',
-      ],
-      commercialIntakePermissionAssignmentId: 'intake-1',
-      commercialIntakePermissionSetVersion: 'v3',
+
       // The commercial screens read these grants; App and the Client screens
       // still read the per-bundle fields above.
       grants: companyGrants(
@@ -158,6 +146,8 @@ function transport() {
       if (path.endsWith('/company-director-client-assignments'))
         return Response.json({ id: 'other-client-grant' }, { status: 201 });
       if (path.endsWith('/clients')) return Response.json([]);
+      if (path.startsWith('/api/client-duplicate-reviews?'))
+        return Response.json({ items: [], next_cursor: null });
       if (path.includes('/clients/search?query=Revalidate'))
         return Response.json({}, { status: 403 });
       if (path.includes('/clients/search?')) {
@@ -213,7 +203,7 @@ function transport() {
         ...currentActor,
         activeCompany: {
           ...activeCompany,
-          clientPermissions: [],
+
           grants: withoutCompanyGrants(
             activeCompany.grants,
             'company_director_client_access',

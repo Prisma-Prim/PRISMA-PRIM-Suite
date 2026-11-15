@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import {
   act,
@@ -47,13 +49,31 @@ const correctingActor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    grants: documentGrants([
-      'document.read',
-      'document.register',
-      'document.reference.read',
-      'document.correct',
-    ]),
+
+    grants: withCompanyGrants(
+      documentGrants([
+        'document.read',
+        'document.register',
+        'document.reference.read',
+        'document.correct',
+      ]),
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: documentGrants([
+                'document.read',
+                'document.register',
+                'document.reference.read',
+                'document.correct',
+              ]),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
+      },
+    ),
   },
 };
 function readerWith(documentPermissions: DocumentPermission[]): ActorContext {
@@ -62,8 +82,16 @@ function readerWith(documentPermissions: DocumentPermission[]): ActorContext {
     activeCompany: {
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: ['client.read'],
-      grants: documentGrants(documentPermissions),
+
+      grants: withCompanyGrants(documentGrants(documentPermissions), {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            { grants: documentGrants(documentPermissions) },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
+      }),
     },
   };
 }

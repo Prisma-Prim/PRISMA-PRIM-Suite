@@ -1415,19 +1415,10 @@ export function activityLocaleActor({
     activeCompany: {
       id: companyId,
       displayName: activityLiteral,
-      clientPermissions: [],
+
       commercialActivityPermissions: ['commercial.activity.read'],
       ...(requests
         ? {
-            commercialIntakePermissions: [
-              'commercial.request.read',
-              'commercial.request.create',
-              'commercial.opportunity.read',
-              'commercial.opportunity.create',
-              'commercial.opportunity.next_action.update',
-            ],
-            commercialIntakePermissionAssignmentId: 'intake-703',
-            commercialIntakePermissionSetVersion: 'v2',
             offerPermissions: [
               'commercial.offer.read',
               'commercial.offer.approve',
@@ -1442,8 +1433,7 @@ export function activityLocaleActor({
             ],
             contractApproverAssignmentId: 'contract-reader-703',
             contractApproverPermissionSetVersion: 'v1',
-            // The Contract and Offer screens read these grants; the
-            // Commercial intake screens still read the per-bundle fields above.
+            // The screens read these registry-consistent live grants.
             grants: companyGrants(
               {
                 bundle: 'company_commercial_intake',

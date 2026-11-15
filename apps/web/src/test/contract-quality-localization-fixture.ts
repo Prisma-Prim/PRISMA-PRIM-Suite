@@ -373,7 +373,7 @@ export function qualityActor(
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      clientPermissions: [],
+
       offerPermissions: [],
       pricingUserPermissions: [],
       contractPermissionAssignmentId:

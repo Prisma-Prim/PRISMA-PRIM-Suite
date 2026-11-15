@@ -141,15 +141,13 @@ export function installCurrentWorkApp() {
             'company_mission_plan_configuration',
             'company_mission_plan_user',
           );
-        // The wire Actor repeats the same facts in its legacy fields.
+        // Keep the feature captures alongside the computed live grants.
         actor.activeCompany = {
           ...actor.activeCompany,
           grants,
-          documentPermissionAssignmentId: state.metadataId,
+
           missionDeliverableAccessAssignmentId: state.familyId,
           documentContentReaderAssignmentId: state.readerId,
-          ...(state.clientRead ? {} : { clientPermissions: [] }),
-          ...(state.projectRead ? {} : { projectPermissions: [] }),
         };
       }
       if (path.endsWith('/access/current-actor')) {

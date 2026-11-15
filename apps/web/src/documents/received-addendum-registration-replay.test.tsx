@@ -59,20 +59,11 @@ function actorFixture() {
       receivedAddendumAccessPermissionSetVersion: 'v1',
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
-      documentPermissions: [
-        'document.read',
-        'document.register',
-        'document.received_addendum.access',
-      ],
-      documentPermissionAssignmentId: '10000000-0000-4000-8000-000000000014',
-      documentPermissionSetVersion: 'v3',
+
       contractPermissions: ['commercial.contract.read'],
       contractPermissionAssignmentId: '10000000-0000-4000-8000-000000000016',
       contractPermissionSetVersion: 'v2',
-      commercialIntakePermissions: ['commercial.opportunity.read'],
-      commercialIntakePermissionAssignmentId:
-        '10000000-0000-4000-8000-000000000019',
-      commercialIntakePermissionSetVersion: 'v4',
+
       grants: withCompanyGrants(
         completeActor.activeCompany.grants,
         {

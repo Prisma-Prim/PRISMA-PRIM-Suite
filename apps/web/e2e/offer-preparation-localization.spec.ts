@@ -237,21 +237,7 @@ async function installRoutes(page: Page) {
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissionAssignmentId: 'client-reader-654',
-                  clientPermissionSetVersion: 'v1',
-                  clientPermissions: [
-                    'client.read',
-                    'client.create',
-                    'client.update',
-                  ],
-                  commercialIntakePermissionAssignmentId: 'intake-reader-654',
-                  commercialIntakePermissionSetVersion: 'v1',
-                  commercialIntakePermissions: [
-                    'commercial.request.read',
-                    'commercial.request.create',
-                    'commercial.opportunity.read',
-                    'commercial.opportunity.create',
-                  ],
+
                   offerPermissionAssignmentId: 'offer-preparer-654',
                   offerPermissionSetVersion: 'v1',
                   offerPermissions: [

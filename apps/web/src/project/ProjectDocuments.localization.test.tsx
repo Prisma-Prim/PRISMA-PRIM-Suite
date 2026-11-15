@@ -36,12 +36,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    projectPermissions: ['project.read'],
-    documentPermissions: [
-      'document.read',
-      'document.reference.read',
-      'document.project.manage',
-    ],
+
     grants: withCompanyGrants(
       companyGrants({
         bundle: 'company_project_access',
@@ -444,7 +439,7 @@ for (const state of ['metadata', 'historical', 'closed', 'denied'] as const) {
           ...actor.activeCompany,
           id: 'company',
           displayName: 'PRISMA-PRIM',
-          documentPermissions,
+
           grants: withCompanyGrants(
             withoutCompanyGrants(
               actor.activeCompany?.grants,

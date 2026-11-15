@@ -33,9 +33,7 @@ it.each([200, 403])(
       workspacePermissions: ['company.assignment.manage'],
       activeCompany: {
         ...nextActionActor.activeCompany,
-        clientPermissions: ['client.read'],
-        clientPermissionAssignmentId: 'exact-client-read',
-        clientPermissionSetVersion: 'v1',
+
         grants: withCompanyGrants(nextActionActor.activeCompany.grants, {
           bundle: 'company_director_client_access',
           version: 'v1',
@@ -48,7 +46,7 @@ it.each([200, 403])(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...initial.activeCompany,
-        clientPermissionAssignmentId: 'replacement-client-read',
+
         grants: withCompanyGrants(initial.activeCompany.grants, {
           bundle: 'company_director_client_access',
           version: 'v1',

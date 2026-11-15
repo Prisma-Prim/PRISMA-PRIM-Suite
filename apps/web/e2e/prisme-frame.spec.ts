@@ -72,9 +72,7 @@ test('keeps every authorized MVP section reachable from the default frame', asyn
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  projectPermissions: ['project.read'],
-                  documentPermissions: ['document.read'],
+
                   grants: companyGrants(
                     ...projectDocumentGrants(['document.read']),
                     {

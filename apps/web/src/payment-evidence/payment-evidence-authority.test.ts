@@ -22,21 +22,7 @@ function actor() {
     activeCompany: {
       id: uuid(4),
       displayName: 'Fictional Company',
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: uuid(5),
-      clientPermissionSetVersion: 'v2',
-      documentPermissionAssignmentId: uuid(6),
-      documentPermissionSetVersion: 'v3',
-      documentPermissions: [
-        'document.read',
-        'document.register',
-        'document.reference.read',
-        'document.correct',
-        'document.version.manage',
-        'document.version.designate_official',
-        'document.content.read',
-        'document.content.upload',
-      ],
+
       documentApproverAssignmentId: uuid(7),
       documentApproverPermissionSetVersion: 'v1',
       documentContentReaderAssignmentId: uuid(8),
@@ -136,7 +122,6 @@ it('keeps independent Reader authority when a nonconsumed Recorder is replaced b
 it('keeps replay and independent native operations after identity-only loss while withholding fresh copying and payer', () => {
   const current = actor();
   const before = paymentEvidenceAuthority(current);
-  current.activeCompany.clientPermissions = [];
   current.activeCompany.grants = withoutCompanyGrants(
     current.activeCompany.grants,
     'company_director_client_access',
@@ -151,10 +136,6 @@ it('keeps replay and independent native operations after identity-only loss whil
 });
 it('does not require content reader or uploader for designation', () => {
   const current = actor();
-  current.activeCompany.documentPermissions =
-    current.activeCompany.documentPermissions.filter(
-      (p) => p !== 'document.content.read' && p !== 'document.content.upload',
-    );
   current.activeCompany.grants = withoutCompanyGrants(
     current.activeCompany.grants,
     'company_document_content_reader',

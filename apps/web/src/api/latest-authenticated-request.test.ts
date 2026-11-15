@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -175,7 +176,11 @@ describe('latest authenticated request', () => {
       activeCompany: {
         id: 'company-a',
         displayName: 'Company A',
-        clientPermissions: [],
+
+        grants: withoutCompanyGrants(
+          undefined,
+          'company_director_client_access',
+        ),
       },
     };
     vi.stubGlobal(

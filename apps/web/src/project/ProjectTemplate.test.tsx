@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -38,13 +39,15 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-one',
     displayName: 'Company',
-    clientPermissions: [],
-    projectPermissions: ['project.read'],
-    grants: companyGrants({
-      bundle: 'company_project_access',
-      version: 'v1',
-      assignmentId: 'project',
-    }),
+
+    grants: withoutCompanyGrants(
+      companyGrants({
+        bundle: 'company_project_access',
+        version: 'v1',
+        assignmentId: 'project',
+      }),
+      'company_director_client_access',
+    ),
   },
 };
 const identity = deterministicBrowserIdentity();
@@ -194,13 +197,15 @@ it('discards the old Company’s late catalogue reply after moving to a Company 
     activeCompany: {
       id: 'company-two',
       displayName: 'Other Company',
-      clientPermissions: [],
-      projectPermissions: ['project.read'],
-      grants: companyGrants({
-        bundle: 'company_project_access',
-        version: 'v1',
-        assignmentId: 'project',
-      }),
+
+      grants: withoutCompanyGrants(
+        companyGrants({
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project',
+        }),
+        'company_director_client_access',
+      ),
     },
   };
   view.rerender(
@@ -231,19 +236,21 @@ it('offers the explicitly captured pilot model and renders thirteen preserved ac
       ...actor.activeCompany,
       id: 'company-one',
       displayName: 'Company',
-      clientPermissions: [],
-      projectPermissions: ['project.read'],
-      grants: companyGrants(
-        {
-          bundle: 'company_project_access',
-          version: 'v1',
-          assignmentId: 'project',
-        },
-        {
-          bundle: 'company_project_template_user',
-          version: 'v2',
-          assignmentId: 'grant-v2',
-        },
+
+      grants: withoutCompanyGrants(
+        companyGrants(
+          {
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'project',
+          },
+          {
+            bundle: 'company_project_template_user',
+            version: 'v2',
+            assignmentId: 'grant-v2',
+          },
+        ),
+        'company_director_client_access',
       ),
     },
   };
@@ -308,19 +315,21 @@ it('lets a source-only v2 reader inspect the pilot before creation and preserves
     activeCompany: {
       id: 'company-one',
       displayName: 'Company',
-      clientPermissions: [],
-      projectPermissions: ['project.read'],
-      grants: companyGrants(
-        {
-          bundle: 'company_project_access',
-          version: 'v1',
-          assignmentId: 'project',
-        },
-        {
-          bundle: 'company_project_template_user',
-          version: 'v2',
-          assignmentId: 'source-v2',
-        },
+
+      grants: withoutCompanyGrants(
+        companyGrants(
+          {
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'project',
+          },
+          {
+            bundle: 'company_project_template_user',
+            version: 'v2',
+            assignmentId: 'source-v2',
+          },
+        ),
+        'company_director_client_access',
       ),
     },
   };

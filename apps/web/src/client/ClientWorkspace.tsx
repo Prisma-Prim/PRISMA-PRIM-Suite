@@ -1,3 +1,4 @@
+import { grantOf } from '../access/company-grants';
 import {
   type FormEvent,
   type ReactNode,
@@ -169,7 +170,8 @@ export function ClientWorkspace({
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
   rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
   const activeCompany = actor.activeCompany;
-  const clientPermissions = activeCompany?.clientPermissions ?? [];
+  const clientGrant = grantOf(activeCompany, 'company_director_client_access');
+  const clientPermissions: readonly string[] = clientGrant?.permissions ?? [];
   const canReadClients =
     actor.workspacePermissions.includes('client.manage') ||
     clientPermissions.includes('client.read');
@@ -190,8 +192,8 @@ export function ClientWorkspace({
   const clientAuthority = JSON.stringify({
     workspaceClientManagement: canAttachClients,
     clientPermissions,
-    assignmentId: activeCompany?.clientPermissionAssignmentId,
-    permissionSetVersion: activeCompany?.clientPermissionSetVersion,
+    assignmentId: clientGrant?.assignmentId,
+    permissionSetVersion: clientGrant?.permissionSetVersion,
   });
 
   useEffect(() => {

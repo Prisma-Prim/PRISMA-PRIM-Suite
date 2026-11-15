@@ -30,9 +30,9 @@ function withoutSource(): ActorContext {
       id: ids.company,
       displayName: 'Fictional Company',
       contractPermissions: [],
-      commercialIntakePermissions: [],
+
       contractPermissionAssignmentId: 'replacement-contract',
-      commercialIntakePermissionAssignmentId: 'replacement-intake',
+
       grants: withoutCompanyGrants(
         actor.activeCompany?.grants,
         'company_contract_preparer',

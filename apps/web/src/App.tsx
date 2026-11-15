@@ -409,7 +409,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       case 'active_clients':
         if (
           access.actor.workspacePermissions.includes('client.manage') ||
-          access.actor.activeCompany?.clientPermissions?.includes('client.read')
+          holds(
+            access.actor.activeCompany,
+            'company_director_client_access',
+            'client.read',
+          )
         )
           navigateToSection('clients');
         return;
@@ -468,17 +472,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   }
 
   const canReadCompanyClients =
-    access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
-    true;
+    holds(
+      access.actor.activeCompany,
+      'company_director_client_access',
+      'client.read',
+    ) === true;
   const canAccessClients =
     access.actor.workspacePermissions.includes('client.manage') ||
     canReadCompanyClients;
   const activeCompanyId = access.actor.activeCompany?.id;
   const canAccessProjects = canAccessProjectsSection(access.actor);
-  const canReadDocuments =
-    access.actor.activeCompany?.documentPermissions?.includes(
-      'document.read',
-    ) === true;
+  const canReadDocuments = holds(
+    access.actor.activeCompany,
+    'company_document_registrar',
+    'document.read',
+  );
   const canAccessCommercial = requestsMount !== undefined;
   const currentCompany = access.actor.activeCompany;
   const canAccessCatalogue =
@@ -714,8 +722,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           projectionAuthority={JSON.stringify([
             clientAuthorityGeneration,
             clientIdentityGeneration,
-            access.actor.activeCompany?.clientPermissionAssignmentId,
-            access.actor.activeCompany?.clientPermissionSetVersion,
+            grantOf(
+              access.actor.activeCompany,
+              'company_director_client_access',
+            )?.assignmentId,
+            grantOf(
+              access.actor.activeCompany,
+              'company_director_client_access',
+            )?.permissionSetVersion,
           ])}
           onActorRevalidated={acceptRevalidatedActor}
           onCompanyContextRejected={rejectCompanyContext}
@@ -982,7 +996,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.clients,
       content: (
         <ClientWorkspace
-          key={`client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${access.actor.activeCompany?.clientPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany?.clientPermissionSetVersion ?? 'no-version'}`}
+          key={`client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${grantOf(access.actor.activeCompany, 'company_director_client_access')?.assignmentId ?? 'no-assignment'}:${grantOf(access.actor.activeCompany, 'company_director_client_access')?.permissionSetVersion ?? 'no-version'}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
@@ -1341,9 +1355,9 @@ function operationalHomeAuthority(actor: ActorContext): string {
 function canAccessProjectsSection(actor: ActorContext): boolean {
   const company = actor.activeCompany;
   return (
-    company?.projectPermissions?.includes('project.read') === true &&
+    holds(company, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
-      company.clientPermissions?.includes('client.read') === true)
+      holds(company, 'company_director_client_access', 'client.read'))
   );
 }
 /**
@@ -1354,9 +1368,11 @@ function canAccessProjectsSection(actor: ActorContext): boolean {
 function requestNavigationAuthority(actor: ActorContext): string {
   const company = actor.activeCompany;
   return [
-    company?.commercialIntakePermissionAssignmentId ?? 'no-assignment',
-    company?.commercialIntakePermissionSetVersion ?? 'no-version',
-    company?.clientPermissions?.includes('client.read') === true
+    grantOf(company, 'company_commercial_intake')?.assignmentId ??
+      'no-assignment',
+    grantOf(company, 'company_commercial_intake')?.permissionSetVersion ??
+      'no-version',
+    holds(company, 'company_director_client_access', 'client.read')
       ? 'client-read'
       : 'no-client-read',
   ].join(':');
@@ -1364,7 +1380,9 @@ function requestNavigationAuthority(actor: ActorContext): string {
 
 /** The delivered Requests section predicate in the active Company. */
 function canAccessCommercialIntake(actor: ActorContext): boolean {
-  const permissions = actor.activeCompany?.commercialIntakePermissions ?? [];
+  const permissions: readonly string[] =
+    grantOf(actor.activeCompany, 'company_commercial_intake')?.permissions ??
+    [];
   return (
     actor.activeCompany !== undefined &&
     permissions.includes('commercial.request.read') &&
@@ -1379,7 +1397,9 @@ function requestsMountOf(sessionGeneration: number, actor: ActorContext) {
   return [
     sessionGeneration,
     company?.id ?? 'no-company',
-    company?.commercialIntakePermissionAssignmentId ?? 'no-assignment',
-    company?.commercialIntakePermissionSetVersion ?? 'no-version',
+    grantOf(company, 'company_commercial_intake')?.assignmentId ??
+      'no-assignment',
+    grantOf(company, 'company_commercial_intake')?.permissionSetVersion ??
+      'no-version',
   ].join(':');
 }

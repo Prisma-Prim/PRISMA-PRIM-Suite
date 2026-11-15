@@ -1,3 +1,4 @@
+import { grantOf } from '../access/company-grants';
 import {
   act,
   fireEvent,
@@ -25,8 +26,24 @@ const documentReader: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
-    grants: documentGrants(['document.read', 'document.reference.read']),
+
+    grants: withCompanyGrants(
+      documentGrants(['document.read', 'document.reference.read']),
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            {
+              grants: documentGrants([
+                'document.read',
+                'document.reference.read',
+              ]),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
+      },
+    ),
   },
 };
 const projectReader: ActorContext = {
@@ -34,13 +51,33 @@ const projectReader: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: ['client.read'],
+
     grants: withCompanyGrants(
-      documentGrants(['document.read', 'document.reference.read']),
+      withCompanyGrants(
+        documentGrants(['document.read', 'document.reference.read']),
+        {
+          bundle: 'company_project_access',
+          version: 'v1',
+          assignmentId: 'project-assignment',
+        },
+      ),
       {
-        bundle: 'company_project_access',
+        bundle: 'company_director_client_access',
         version: 'v1',
-        assignmentId: 'project-assignment',
+        assignmentId:
+          grantOf(
+            {
+              grants: withCompanyGrants(
+                documentGrants(['document.read', 'document.reference.read']),
+                {
+                  bundle: 'company_project_access',
+                  version: 'v1',
+                  assignmentId: 'project-assignment',
+                },
+              ),
+            },
+            'company_director_client_access',
+          )?.assignmentId ?? 'fixture-client-access',
       },
     ),
   },

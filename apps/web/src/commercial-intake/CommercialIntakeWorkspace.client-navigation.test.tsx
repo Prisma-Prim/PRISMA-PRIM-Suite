@@ -22,15 +22,6 @@ import {
   withoutCompanyGrants,
 } from '../access/company-grants.test-fixture';
 
-const intakePermissions: NonNullable<
-  NonNullable<ActorContext['activeCompany']>['commercialIntakePermissions']
-> = [
-  'commercial.request.read',
-  'commercial.request.create',
-  'commercial.opportunity.read',
-  'commercial.opportunity.create',
-];
-
 function actorFor(
   company: { id: string; displayName: string },
   canUpdateNextAction = false,
@@ -46,11 +37,7 @@ function actorFor(
     workspacePermissions: [],
     activeCompany: {
       ...company,
-      clientPermissions: ['client.read'],
-      commercialIntakePermissions: canUpdateNextAction
-        ? [...intakePermissions, 'commercial.opportunity.next_action.update']
-        : intakePermissions,
-      commercialIntakePermissionSetVersion: canUpdateNextAction ? 'v2' : 'v1',
+
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -74,13 +61,7 @@ const associationEditor: ActorContext = {
   ...editor,
   activeCompany: {
     ...companyA,
-    clientPermissions: ['client.read'],
-    commercialIntakePermissions: [
-      ...intakePermissions,
-      'commercial.opportunity.next_action.update',
-      'commercial.request.client.associate',
-    ],
-    commercialIntakePermissionSetVersion: 'v3',
+
     grants: companyGrants(
       {
         bundle: 'company_director_client_access',
@@ -1595,9 +1576,7 @@ function clientAuthority(
     ...editor,
     activeCompany: {
       ...company,
-      clientPermissions: readable ? ['client.read'] : [],
-      clientPermissionAssignmentId: assignmentId,
-      clientPermissionSetVersion: 'v2',
+
       grants: readable
         ? withCompanyGrants(company.grants, {
             bundle: 'company_director_client_access',
@@ -2090,7 +2069,7 @@ describe('Commercial Intake projection boundary preserves unrelated work', () =>
         ...panelsActor.activeCompany,
         id: company.id,
         displayName: company.displayName,
-        clientPermissions: [],
+
         grants: withoutCompanyGrants(
           panelsActor.activeCompany?.grants,
           'company_director_client_access',

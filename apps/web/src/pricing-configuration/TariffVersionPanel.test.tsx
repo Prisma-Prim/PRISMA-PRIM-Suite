@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import { render } from '../test/render-with-interface-locale';
 import {
@@ -36,8 +37,11 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-1',
     displayName: 'PRISMA-PRIM',
-    clientPermissions: [],
-    grants: managerGrants,
+
+    grants: withoutCompanyGrants(
+      managerGrants,
+      'company_director_client_access',
+    ),
   },
 };
 
@@ -46,8 +50,11 @@ const secondCompanyActor: ActorContext = {
   activeCompany: {
     id: 'company-2',
     displayName: 'Second Company',
-    clientPermissions: [],
-    grants: managerGrants,
+
+    grants: withoutCompanyGrants(
+      managerGrants,
+      'company_director_client_access',
+    ),
   },
 };
 
@@ -1163,13 +1170,16 @@ describe('TariffVersionPanel', () => {
         activeCompany: {
           id: 'company-1',
           displayName: 'PRISMA-PRIM',
-          clientPermissions: [],
+
           // Configuration read without management: a Pricing User grant.
-          grants: companyGrants({
-            bundle: 'company_pricing_user',
-            version: 'v1',
-            assignmentId: 'pricing-user-grant',
-          }),
+          grants: withoutCompanyGrants(
+            companyGrants({
+              bundle: 'company_pricing_user',
+              version: 'v1',
+              assignmentId: 'pricing-user-grant',
+            }),
+            'company_director_client_access',
+          ),
         },
       },
     });

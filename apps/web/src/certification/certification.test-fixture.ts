@@ -64,8 +64,7 @@ export function certificationActor({
     activeCompany: {
       id: certificationIds.company,
       displayName: 'Synthetic Certification Body',
-      // Certification screens read only these grants; the legacy Client and
-      // Project fields below serve the other screens until #1148 step b.
+      // Certification and App navigation consume these live grants.
       grants: [
         {
           bundle: 'company_director_client_access',
@@ -144,22 +143,9 @@ export function certificationActor({
             ] satisfies CompanyGrant[])
           : []),
       ],
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: 'client-grant',
-      clientPermissionSetVersion: 'v1',
-      projectPermissions: ['project.read'],
-      projectPermissionAssignmentId: 'project-grant',
-      projectPermissionSetVersion: 'v1',
+
       ...(documents
         ? {
-            documentPermissions: [
-              'document.read',
-              'document.reference.read',
-              'document.content.read',
-              'document.received_audit_source.access',
-            ],
-            documentPermissionAssignmentId: 'document-grant',
-            documentPermissionSetVersion: 'v3',
             documentContentReaderAssignmentId: 'document-content-grant',
             documentContentReaderPermissionSetVersion: 'v1',
             receivedAuditSourceAccessAssignmentId:

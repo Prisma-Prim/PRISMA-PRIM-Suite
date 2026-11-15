@@ -1,3 +1,5 @@
+import { grantOf } from '../src/access/company-grants';
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import {
   expect,
   test,
@@ -28,27 +30,42 @@ import { documentGrants } from '../src/documents/document-grants.test-fixture';
 const company = {
   id: 'company-document-locale',
   displayName: 'Companie {company} Ș Я é',
-  clientPermissions: ['client.read'],
-  documentPermissions: [
-    'document.read',
-    'document.register',
-    'document.reference.read',
-    'document.correct',
-    'document.version.manage',
-    'document.version.designate_official',
-  ],
-  grants: documentGrants(
-    [
-      'document.read',
-      'document.register',
-      'document.reference.read',
-      'document.correct',
-      'document.version.manage',
-      'document.version.designate_official',
-    ],
-    { company_document_approver: 'approver-document-locale' },
+
+  grants: withCompanyGrants(
+    documentGrants(
+      [
+        'document.read',
+        'document.register',
+        'document.reference.read',
+        'document.correct',
+        'document.version.manage',
+        'document.version.designate_official',
+      ],
+      { company_document_approver: 'approver-document-locale' },
+    ),
+    {
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId:
+        grantOf(
+          {
+            grants: documentGrants(
+              [
+                'document.read',
+                'document.register',
+                'document.reference.read',
+                'document.correct',
+                'document.version.manage',
+                'document.version.designate_official',
+              ],
+              { company_document_approver: 'approver-document-locale' },
+            ),
+          },
+          'company_director_client_access',
+        )?.assignmentId ?? 'fixture-client-access',
+    },
   ),
-  documentPermissionSetVersion: 'v3',
+
   documentApproverAssignmentId: 'approver-document-locale',
 } satisfies NonNullable<ActorContext['activeCompany']>;
 const client = {

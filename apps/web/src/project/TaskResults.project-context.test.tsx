@@ -30,16 +30,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'Company DEMO',
-    projectPermissions: ['project.read'],
-    projectPermissionAssignmentId: 'projects',
-    projectPermissionSetVersion: 'v2',
-    documentPermissions: [
-      'document.read',
-      'document.content.read',
-      'document.mission_deliverable.access',
-    ],
-    documentPermissionSetVersion: 'v3',
-    documentPermissionAssignmentId: 'documents',
+
     documentContentReaderAssignmentId: 'reader',
     documentContentReaderPermissionSetVersion: 'v1',
     missionDeliverableAccessAssignmentId: 'mission',
@@ -408,10 +399,7 @@ it('preserves ordinary Task work while an evidence-only capture change retires p
     activeCompany: {
       ...actor.activeCompany,
       documentContentReaderAssignmentId: undefined,
-      documentPermissions: [
-        'document.read',
-        'document.mission_deliverable.access',
-      ],
+
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,
         'company_document_content_reader',

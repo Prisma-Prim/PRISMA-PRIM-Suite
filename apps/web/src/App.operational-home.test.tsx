@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -79,10 +80,7 @@ function actorFor(
     workspacePermissions: [],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: 'client-grant',
-      clientPermissionSetVersion,
-      projectPermissions: ['project.read'],
+
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -771,10 +769,7 @@ describe('Operational home through App', () => {
         ...actorFor(companyId),
         activeCompany: {
           ...(companyId === companyB.id ? companyB : companyA),
-          clientPermissions: ['client.read'],
-          clientPermissionAssignmentId: 'client-grant',
-          clientPermissionSetVersion: 'v1',
-          projectPermissions: ['project.read'],
+
           grants: companyGrants(
             {
               bundle: 'company_director_client_access',
@@ -1062,7 +1057,7 @@ describe('Operational home through App', () => {
         ...actorFor(companyA.id),
         activeCompany: {
           ...companyA,
-          clientPermissions: ['client.read'],
+
           grants: companyGrants({
             bundle: 'company_director_client_access',
             version: 'v1',
@@ -1130,7 +1125,13 @@ describe('Operational home through App', () => {
       'none of the three reads',
       {
         ...actorFor(companyA.id),
-        activeCompany: { ...companyA, clientPermissions: [] },
+        activeCompany: {
+          ...companyA,
+          grants: withoutCompanyGrants(
+            undefined,
+            'company_director_client_access',
+          ),
+        },
       },
     ],
   ] satisfies Array<[string, ActorContext]>)(

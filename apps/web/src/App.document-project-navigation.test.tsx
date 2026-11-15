@@ -1,3 +1,5 @@
+import { grantOf } from './access/company-grants';
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -122,15 +124,26 @@ function actorFor(
     workspacePermissions: [],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: 'client-grant',
-      clientPermissionSetVersion: 'v2',
-      projectPermissions,
-      documentPermissions: ['document.read'],
-      grants:
+
+      grants: withCompanyGrants(
         projectPermissions.length === 0
           ? withoutCompanyGrants(grants, 'company_project_access')
           : grants,
+        {
+          bundle: 'company_document_registrar',
+          version: 'v1',
+          assignmentId:
+            grantOf(
+              {
+                grants:
+                  projectPermissions.length === 0
+                    ? withoutCompanyGrants(grants, 'company_project_access')
+                    : grants,
+              },
+              'company_document_registrar',
+            )?.assignmentId ?? 'fixture-document-access',
+        },
+      ),
     },
   };
 }

@@ -1,3 +1,5 @@
+import { grantOf } from '../access/company-grants';
+import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import {
   act,
   fireEvent,
@@ -37,10 +39,7 @@ function actorFor(companyId: string): ActorContext {
     activeCompany: {
       id: companyId,
       displayName: company?.displayName ?? 'Unknown',
-      clientPermissions: companyId === c.id ? [] : ['client.read'],
-      clientPermissionAssignmentId: 'client-assignment',
-      clientPermissionSetVersion: 'v1',
-      projectPermissions: companyId === c.id ? [] : ['project.read'],
+
       grants:
         companyId === c.id
           ? []
@@ -231,9 +230,7 @@ describe('multi-Company summaries through the HTTP boundary', () => {
               activeCompany: {
                 id,
                 displayName: b.displayName,
-                clientPermissions: ['client.read'],
-                clientPermissionAssignmentId: 'client-only',
-                clientPermissionSetVersion: 'v1',
+
                 grants: companyGrants({
                   bundle: 'company_director_client_access',
                   version: 'v1',
@@ -332,9 +329,7 @@ describe('multi-Company summaries through the HTTP boundary', () => {
             activeCompany: {
               id: b.id,
               displayName: b.displayName,
-              clientPermissions: ['client.read'],
-              clientPermissionAssignmentId: 'client-only',
-              clientPermissionSetVersion: 'v1',
+
               grants: companyGrants({
                 bundle: 'company_director_client_access',
                 version: 'v1',
@@ -605,9 +600,7 @@ describe('multi-Company summaries through the HTTP boundary', () => {
               activeCompany: {
                 id: b.id,
                 displayName: b.displayName,
-                clientPermissions: ['client.read'],
-                clientPermissionAssignmentId: 'client-only',
-                clientPermissionSetVersion: 'v1',
+
                 grants: companyGrants({
                   bundle: 'company_director_client_access',
                   version: 'v1',
@@ -853,7 +846,16 @@ describe('multi-Company summaries through the HTTP boundary', () => {
             ...original.activeCompany,
             id: a.id,
             displayName: a.displayName,
-            clientPermissionAssignmentId: 'replacement-same-permissions',
+
+            grants: withCompanyGrants(original.activeCompany?.grants, {
+              bundle: 'company_director_client_access',
+              version:
+                grantOf(
+                  { grants: original.activeCompany?.grants },
+                  'company_director_client_access',
+                )?.permissionSetVersion ?? 'v1',
+              assignmentId: 'replacement-same-permissions',
+            }),
           },
         }}
         identity={view.auth}

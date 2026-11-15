@@ -1,3 +1,4 @@
+import { companyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -52,14 +53,12 @@ function resolverActor(): ActorContext {
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...companyA,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'assignment-1',
+      }),
     },
   };
 }
@@ -311,17 +310,28 @@ describe('persisted Client union through App', () => {
             ...state.actor.activeCompany,
             ...companyA,
             ...(boundary === 'assignment'
-              ? { clientPermissionAssignmentId: 'assignment-2' }
+              ? {
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v1',
+                    assignmentId: 'assignment-2',
+                  }),
+                }
               : boundary === 'version'
                 ? {
-                    clientPermissionSetVersion: 'v1',
-                    clientPermissions: [
-                      'client.read',
-                      'client.create',
-                      'client.update',
-                    ],
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'fixture-client-access',
+                    }),
                   }
-                : { clientPermissions: ['client.read'] }),
+                : {
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'fixture-client-access',
+                    }),
+                  }),
           },
         };
         changeValue(
@@ -403,17 +413,28 @@ describe('persisted Client union through App', () => {
             ...state.actor.activeCompany,
             ...companyA,
             ...(boundary === 'assignment'
-              ? { clientPermissionAssignmentId: 'assignment-2' }
+              ? {
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v1',
+                    assignmentId: 'assignment-2',
+                  }),
+                }
               : boundary === 'version'
                 ? {
-                    clientPermissionSetVersion: 'v1',
-                    clientPermissions: [
-                      'client.read',
-                      'client.create',
-                      'client.update',
-                    ],
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'fixture-client-access',
+                    }),
                   }
-                : { clientPermissions: ['client.read'] }),
+                : {
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'fixture-client-access',
+                    }),
+                  }),
           },
         };
         changeValue(

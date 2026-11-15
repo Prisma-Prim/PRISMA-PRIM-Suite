@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -90,10 +91,11 @@ export async function installReviewFixture(
       ...(authority === 'owner'
         ? {}
         : {
-            clientPermissions,
-            clientPermissionAssignmentId:
-              '23600000-0000-4000-8000-000000000006',
-            clientPermissionSetVersion: resolver ? 'v2' : 'v1',
+            grants: companyGrants({
+              bundle: 'company_director_client_access',
+              version: resolver ? 'v2' : 'v1',
+              assignmentId: '23600000-0000-4000-8000-000000000006',
+            }),
           }),
     },
   };

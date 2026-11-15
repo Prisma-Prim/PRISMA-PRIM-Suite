@@ -1,3 +1,4 @@
+import { grantOf } from '../access/company-grants';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   act,
@@ -214,7 +215,16 @@ it('does not restart a ready read for unconsumed publication/instantiation/Recor
   // captures of Project and Task are consumed here.
   next.activeCompany = {
     ...next.activeCompany,
-    projectPermissions: ['project.read'],
+
+    grants: withCompanyGrants(next.activeCompany?.grants, {
+      bundle: 'company_project_access',
+      version: 'v1',
+      assignmentId:
+        grantOf(
+          { grants: next.activeCompany?.grants },
+          'company_project_access',
+        )?.assignmentId ?? 'fixture-project-access',
+    }),
   };
   view.rerender(<MissionPlanCurrentWork {...props} actor={next} />);
   expect(fetch).toHaveBeenCalledTimes(1);

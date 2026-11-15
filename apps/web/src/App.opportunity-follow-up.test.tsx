@@ -1,3 +1,4 @@
+import { holds } from './access/company-grants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -114,19 +115,7 @@ function actor(
 ): ActorContext {
   const nativeCompany = {
     ...company,
-    clientPermissions: ['client.read'],
-    clientPermissionAssignmentId: '60000000-0000-4000-8000-000000000001',
-    clientPermissionSetVersion: 'v2',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.request.create',
-      'commercial.opportunity.read',
-      'commercial.opportunity.create',
-      'commercial.opportunity.next_action.update',
-    ],
-    commercialIntakePermissionAssignmentId:
-      '70000000-0000-4000-8000-000000000001',
-    commercialIntakePermissionSetVersion: 'v2',
+
     grants: companyGrants(clientGrant, intakeGrant),
   } satisfies NonNullable<ActorContext['activeCompany']>;
   return {
@@ -143,13 +132,16 @@ function actor(
         ? nativeCompany
         : {
             ...nativeCompany,
-            commercialIntakePermissionAssignmentId:
-              capture === 'missing-native'
-                ? undefined
-                : nativeCompany.commercialIntakePermissionAssignmentId,
+
             grants: companyGrants(
               clientGrant,
-              ...(capture === 'missing-native' ? [] : [intakeGrant]),
+              {
+                ...intakeGrant,
+                assignmentId:
+                  capture === 'missing-native'
+                    ? 'not-native'
+                    : intakeGrant.assignmentId,
+              },
               {
                 bundle: 'company_opportunity_follow_up_coordinator',
                 version: 'v1',
@@ -216,6 +208,8 @@ function installTransport(initial: ActorContext) {
       if (path === '/api/companies') return Response.json([company]);
       if (path === '/api/activity-log') return Response.json({ events: [] });
       if (path === '/api/clients') return Response.json([]);
+      if (path.startsWith('/api/client-duplicate-reviews?'))
+        return Response.json({ items: [], next_cursor: null });
       if (path.startsWith(`${discoveryPath}?`)) {
         if (heldDiscovery) {
           const held = heldDiscovery;
@@ -227,7 +221,9 @@ function installTransport(initial: ActorContext) {
           ...clientDiscoveryPage,
           items:
             currentActor.workspacePermissions.includes('client.manage') ||
-            currentActor.activeCompany?.clientPermissions?.includes(
+            holds(
+              currentActor.activeCompany,
+              'company_director_client_access',
               'client.read',
             )
               ? clientDiscoveryPage.items
@@ -452,7 +448,7 @@ describe('Opportunity follow-up through the actual App', () => {
         ...replacement,
         activeCompany: {
           ...replacement.activeCompany,
-          clientPermissionAssignmentId: '60000000-0000-4000-8000-000000000002',
+
           grants: withCompanyGrants(replacement.activeCompany.grants, {
             ...clientGrant,
             assignmentId: '60000000-0000-4000-8000-000000000002',
@@ -481,9 +477,7 @@ describe('Opportunity follow-up through the actual App', () => {
         displayName: 'Client capture revoked Actor DEMO',
         activeCompany: {
           ...clientReplacement.activeCompany,
-          clientPermissions: [],
-          clientPermissionAssignmentId: undefined,
-          clientPermissionSetVersion: undefined,
+
           grants: withoutCompanyGrants(
             clientReplacement.activeCompany.grants,
             'company_director_client_access',

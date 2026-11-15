@@ -1,3 +1,4 @@
+import { companyGrants } from '../src/access/company-grants.test-fixture';
 import {
   expect,
   test,
@@ -338,13 +339,12 @@ async function installRoutes(page: Page) {
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: [
-                    'client.read',
-                    'client.create',
-                    'client.update',
-                  ],
-                  clientPermissionAssignmentId: 'director-registration-644',
-                  clientPermissionSetVersion: 'v1',
+
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v1',
+                    assignmentId: 'director-registration-644',
+                  }),
                 },
               }
             : {}),

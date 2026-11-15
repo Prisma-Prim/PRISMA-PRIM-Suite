@@ -15,14 +15,7 @@ export const actor = {
   activeCompany: {
     id: 'company-a',
     displayName: 'Company',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.opportunity.read',
-      'commercial.opportunity.next_action.update',
-    ],
-    commercialIntakePermissionAssignmentId:
-      '11111111-1111-4111-8111-111111111111',
-    commercialIntakePermissionSetVersion: 'v2',
+
     grants: companyGrants(
       {
         bundle: 'company_commercial_intake',

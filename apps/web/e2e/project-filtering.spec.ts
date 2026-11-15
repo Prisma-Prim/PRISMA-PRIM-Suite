@@ -69,11 +69,7 @@ test(`filters loaded Projects without losing detail or exact retry`, async ({
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read', 'project.create'],
-                  documentPermissions: [
-                    'document.read',
-                    'document.project.manage',
-                  ],
+
                   grants: companyGrants(
                     ...projectDocumentGrants([
                       'document.read',

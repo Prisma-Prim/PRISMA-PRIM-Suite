@@ -35,7 +35,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company',
     displayName: 'PRISMA-PRIM',
-    projectPermissions: ['project.read', 'project.create'],
+
     grants: companyGrants({
       bundle: 'company_project_access',
       version: 'v1',
@@ -1235,8 +1235,7 @@ it('passes Open Document unchanged to the opened Project’s linked Documents', 
         activeCompany: {
           id: 'company',
           displayName: 'PRISMA-PRIM',
-          projectPermissions: ['project.read'],
-          documentPermissions: ['document.read'],
+
           grants: withCompanyGrants(
             companyGrants({
               bundle: 'company_project_access',
@@ -1325,7 +1324,7 @@ describe('Client identity changes', () => {
     activeCompany: {
       id: 'company',
       displayName: 'PRISMA-PRIM',
-      projectPermissions: ['project.read', 'project.create'],
+
       grants: companyGrants(
         {
           bundle: 'company_task_manager',

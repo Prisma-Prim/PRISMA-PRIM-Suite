@@ -27,13 +27,7 @@ const actor: ActorContext = {
   ...modelOfferActor,
   activeCompany: {
     ...company,
-    clientPermissions: [],
-    commercialIntakePermissionAssignmentId: 'intake-911',
-    commercialIntakePermissionSetVersion: 'v4',
-    commercialIntakePermissions: [
-      'commercial.request.read',
-      'commercial.opportunity.read',
-    ],
+
     offerApproverAssignmentId: 'approver-911',
     offerApproverPermissionSetVersion: 'v2',
     offerPermissions: [

@@ -1,3 +1,4 @@
+import { grantOf } from './access/company-grants';
 import {
   deferred,
   resetCurrentWorkApp,
@@ -87,17 +88,7 @@ function actorFor(companyId: string): ActorContext {
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
-      projectPermissions: ['project.read'],
-      projectPermissionAssignmentId: 'project-assignment-1',
-      projectPermissionSetVersion: 'v2',
+
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -543,12 +534,29 @@ describe('Client dossier and Project navigation through App', () => {
             ...actor.activeCompany,
             documentContentReaderAssignmentId: capture,
             documentContentReaderPermissionSetVersion: 'v1',
-            documentPermissions: ['document.content.read'],
-            grants: withCompanyGrants(actor.activeCompany.grants, {
-              bundle: 'company_document_content_reader',
-              version: 'v1',
-              assignmentId: capture,
-            }),
+
+            grants: withCompanyGrants(
+              withCompanyGrants(actor.activeCompany.grants, {
+                bundle: 'company_document_content_reader',
+                version: 'v1',
+                assignmentId: capture,
+              }),
+              {
+                bundle: 'company_document_registrar',
+                version: 'v1',
+                assignmentId:
+                  grantOf(
+                    {
+                      grants: withCompanyGrants(actor.activeCompany.grants, {
+                        bundle: 'company_document_content_reader',
+                        version: 'v1',
+                        assignmentId: capture,
+                      }),
+                    },
+                    'company_document_registrar',
+                  )?.assignmentId ?? 'fixture-document-access',
+              },
+            ),
           };
         return actor;
       };

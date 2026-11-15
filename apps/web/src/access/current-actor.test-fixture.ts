@@ -1,3 +1,4 @@
+import { companyGrants } from './company-grants.test-fixture';
 import type { ActorContext } from './current-actor';
 
 // A complete wire example also keeps every optional Company field in coverage.
@@ -13,20 +14,23 @@ export const completeActor = {
   activeCompany: {
     id: 'sample',
     displayName: 'sample',
-    grants: [
+    grants: companyGrants(
       {
         bundle: 'company_context_access',
+        version: null,
         assignmentId: 'sample-context',
-        permissionSetVersion: null,
-        permissions: [],
+      },
+      {
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'sample-client',
       },
       {
         bundle: 'company_project_access',
+        version: 'v1',
         assignmentId: 'sample-project',
-        permissionSetVersion: 'v1',
-        permissions: ['project.read', 'project.create'],
       },
-    ],
+    ),
     workingEvidenceCasePermissions: { version: 'future', arbitrary: null },
     workingEvidenceCaseReaderAssignmentId: 'sample-working-reader',
     workingEvidenceCaseReaderPermissionSetVersion: 'future',

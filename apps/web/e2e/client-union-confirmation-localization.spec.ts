@@ -1,3 +1,4 @@
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import {
   expect,
   test,
@@ -632,9 +633,12 @@ for (const copy of Object.values(confirmationLocaleCases)) {
       ...confirmationActor,
       activeCompany: {
         ...confirmationCompanies[0],
-        clientPermissions: ['client.read'],
-        clientPermissionAssignmentId: 'replacement-v1-716',
-        clientPermissionSetVersion: 'v1',
+
+        grants: withCompanyGrants(confirmationCompanies[0]?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v1',
+          assignmentId: 'replacement-v1-716',
+        }),
       },
     } satisfies typeof confirmationActor;
     state.actor = legacyActor;
@@ -665,8 +669,12 @@ for (const copy of Object.values(confirmationLocaleCases)) {
       activeCompany: {
         ...resolverCompany,
         ...confirmationCompanies[1],
-        clientPermissionAssignmentId: 'fresh-v2-company-b-716',
-        clientPermissionSetVersion: 'v2',
+
+        grants: withCompanyGrants(confirmationCompanies[1]?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'fresh-v2-company-b-716',
+        }),
       },
     };
     state.comparison = {

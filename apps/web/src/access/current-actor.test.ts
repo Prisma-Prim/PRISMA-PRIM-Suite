@@ -12,6 +12,7 @@ import { paymentAuthority } from '../payment-observation/payment-authority';
 import { paymentEvidenceAuthority } from '../payment-evidence/payment-evidence-authority';
 import { paymentEvidenceActor } from '../payment-evidence/payment-evidence.test-fixture';
 import { browserIdentity } from '../production-shell/production-shell-context.test-fixtures';
+import { grantOf } from './company-grants';
 import { readCurrentActor } from './current-actor';
 import { invoiceRecordAuthority } from './invoice-record-authority';
 import { completeActor } from './current-actor.test-fixture';
@@ -67,10 +68,6 @@ describe('current Actor representation', () => {
               '10000000-0000-4000-8000-000000000005',
             receivedAddendumAccessPermissionSetVersion: 'v1',
             receivedAddendumClientReadCapture: capture,
-            documentPermissions: [
-              ...native.activeCompany.documentPermissions,
-              'document.received_addendum.access',
-            ],
             grants: withCompanyGrants(native.activeCompany.grants, {
               bundle: 'company_received_addendum_access',
               version: 'v1',
@@ -213,8 +210,10 @@ describe('current Actor representation', () => {
       expect(result).toEqual({ status: 'ok', value: actor });
       if (result.status !== 'ok') throw new Error('Expected a readable Actor');
       expect(result.value).toBe(actor);
-      expect(result.value.activeCompany?.clientPermissions).toBe(
-        completeActor.activeCompany.clientPermissions,
+      expect(
+        grantOf(result.value.activeCompany, 'company_director_client_access'),
+      ).toBe(
+        grantOf(completeActor.activeCompany, 'company_director_client_access'),
       );
     },
   );

@@ -13,8 +13,7 @@ import {
 const company = {
   id: 'company-1',
   displayName: 'PRISMA-PRIM',
-  projectPermissions: ['project.read'],
-  clientPermissions: ['client.read'],
+
   grants: companyGrants(
     {
       bundle: 'company_director_client_access',
@@ -162,7 +161,7 @@ it.each([
       ...actor,
       activeCompany: {
         ...company,
-        projectPermissions: [],
+
         grants: withoutCompanyGrants(company.grants, 'company_project_access'),
       },
     },
@@ -173,7 +172,7 @@ it.each([
       ...actor,
       activeCompany: {
         ...company,
-        clientPermissions: [],
+
         grants: withoutCompanyGrants(
           company.grants,
           'company_director_client_access',

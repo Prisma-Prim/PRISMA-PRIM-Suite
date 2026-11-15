@@ -16,12 +16,6 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 it('offers native designation without Content Reader or Uploader and retains confirmation when its subsequent read fails', async () => {
   const actor = paymentEvidenceActor();
-  actor.activeCompany.documentPermissions =
-    actor.activeCompany.documentPermissions.filter(
-      (permission) =>
-        permission !== 'document.content.read' &&
-        permission !== 'document.content.upload',
-    );
   actor.activeCompany.grants = withoutCompanyGrants(
     actor.activeCompany.grants,
     'company_document_content_reader',

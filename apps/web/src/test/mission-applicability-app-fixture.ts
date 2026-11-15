@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../access/company-grants.test-fixture';
 import { vi } from 'vitest';
 import { companyGrants } from '../access/company-grants.test-fixture';
 import { expectedPilotActivities } from '../project/project-pilot-plan.test-fixtures';
@@ -36,62 +37,55 @@ export const actor = {
   activeCompany: {
     id: companyId,
     displayName: 'Company DEMO',
-    clientPermissions: [],
-    projectPermissions: ['project.read', 'project.create'],
-    projectPermissionAssignmentId: 'project-grant',
-    projectPermissionSetVersion: 'v2',
-    documentPermissions: [
-      'document.read',
-      'document.content.read',
-      'document.mission_deliverable.access',
-    ],
-    documentPermissionAssignmentId: 'registrar-grant',
-    documentPermissionSetVersion: 'v3',
+
     documentContentReaderAssignmentId: 'content-grant',
     documentContentReaderPermissionSetVersion: 'v1',
     missionDeliverableAccessAssignmentId: 'mission-grant',
     missionDeliverableAccessPermissionSetVersion: 'v1',
-    grants: companyGrants(
-      {
-        bundle: 'company_project_access',
-        version: 'v2',
-        assignmentId: 'project-grant',
-      },
-      {
-        bundle: 'company_task_manager',
-        version: 'v1',
-        assignmentId: 'task-grant',
-      },
-      {
-        bundle: 'company_project_template_user',
-        version: 'v2',
-        assignmentId: 'template-grant',
-      },
-      {
-        bundle: 'company_document_registrar',
-        version: 'v3',
-        assignmentId: 'registrar-grant',
-      },
-      {
-        bundle: 'company_document_content_reader',
-        version: 'v1',
-        assignmentId: 'content-grant',
-      },
-      {
-        bundle: 'company_mission_deliverable_access',
-        version: 'v1',
-        assignmentId: 'mission-grant',
-      },
-      {
-        bundle: 'company_mission_applicability_coordinator',
-        version: 'v1',
-        assignmentId: 'coordinator-grant',
-      },
-      {
-        bundle: 'company_mission_applicability_approver',
-        version: 'v1',
-        assignmentId: 'approver-grant',
-      },
+    grants: withoutCompanyGrants(
+      companyGrants(
+        {
+          bundle: 'company_project_access',
+          version: 'v2',
+          assignmentId: 'project-grant',
+        },
+        {
+          bundle: 'company_task_manager',
+          version: 'v1',
+          assignmentId: 'task-grant',
+        },
+        {
+          bundle: 'company_project_template_user',
+          version: 'v2',
+          assignmentId: 'template-grant',
+        },
+        {
+          bundle: 'company_document_registrar',
+          version: 'v3',
+          assignmentId: 'registrar-grant',
+        },
+        {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: 'content-grant',
+        },
+        {
+          bundle: 'company_mission_deliverable_access',
+          version: 'v1',
+          assignmentId: 'mission-grant',
+        },
+        {
+          bundle: 'company_mission_applicability_coordinator',
+          version: 'v1',
+          assignmentId: 'coordinator-grant',
+        },
+        {
+          bundle: 'company_mission_applicability_approver',
+          version: 'v1',
+          assignmentId: 'approver-grant',
+        },
+      ),
+      'company_director_client_access',
     ),
   },
 };

@@ -56,16 +56,10 @@ function reader(): ActorContext {
     activeCompany: {
       id: first.companyId,
       displayName: 'Message Company',
-      clientPermissions: ['client.read'],
+
       offerPermissions: ['commercial.offer.read'],
       offerMessageReadCapture: capture,
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.opportunity.read',
-        'commercial.opportunity.next_action.update',
-      ],
-      commercialIntakePermissionAssignmentId: 'intake-1043',
-      commercialIntakePermissionSetVersion: 'v2',
+
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -194,7 +188,7 @@ it('holds the exact composer outside Client/economic refresh keys and preserves 
     displayName: 'Renamed current reader',
     activeCompany: {
       ...company,
-      clientPermissions: [],
+
       grants: withoutCompanyGrants(
         company?.grants,
         'company_director_client_access',

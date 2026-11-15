@@ -67,7 +67,7 @@ function actorIn(
     workspacePermissions: [],
     activeCompany: {
       ...company,
-      clientPermissions: [],
+
       ...grants.reduce<Grants>(
         (merged, grant) => ({
           ...merged,
@@ -426,7 +426,13 @@ it('ignores a late reply of the previous Company and hides the section in a Comp
 });
 
 it('remounts the whole section when Pricing User is granted, granted again or revoked', async () => {
-  const clientReader: Grants = { clientPermissions: ['client.read'] };
+  const clientReader: Grants = {
+    grants: companyGrants({
+      bundle: 'company_director_client_access',
+      version: 'v1',
+      assignmentId: 'fixture-client-access',
+    }),
+  };
   const state: ApiState = {
     actors: {
       [companyA.id]: actorIn(

@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
@@ -39,13 +40,15 @@ test('registers and reopens a Company preparatory Project after reload', async (
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: [],
-                  projectPermissions: ['project.read', 'project.create'],
-                  grants: companyGrants({
-                    bundle: 'company_project_access',
-                    version: 'v1',
-                    assignmentId: 'project-grant',
-                  }),
+
+                  grants: withoutCompanyGrants(
+                    companyGrants({
+                      bundle: 'company_project_access',
+                      version: 'v1',
+                      assignmentId: 'project-grant',
+                    }),
+                    'company_director_client_access',
+                  ),
                 },
               }
             : {}),

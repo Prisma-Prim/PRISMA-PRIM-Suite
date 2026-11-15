@@ -1,3 +1,4 @@
+import { companyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -26,9 +27,12 @@ function directorActor(): ActorContext {
     workspacePermissions: [],
     activeCompany: {
       ...companyA,
-      clientPermissions: ['client.read', 'client.create', 'client.update'],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v1',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v1',
+        assignmentId: 'assignment-1',
+      }),
     },
   };
 }
@@ -139,15 +143,19 @@ describe('Client ownership through App', () => {
             ...actor.activeCompany,
             ...companyA,
             ...(boundary === 'assignment'
-              ? { clientPermissionAssignmentId: 'assignment-2' }
+              ? {
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v1',
+                    assignmentId: 'assignment-2',
+                  }),
+                }
               : {
-                  clientPermissionSetVersion: 'v2',
-                  clientPermissions: [
-                    'client.read',
-                    'client.create',
-                    'client.update',
-                    'client.duplicate.resolve',
-                  ],
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v2',
+                    assignmentId: 'assignment-1',
+                  }),
                 }),
           },
         };

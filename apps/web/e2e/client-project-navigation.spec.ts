@@ -1,3 +1,5 @@
+import { grantOf } from '../src/access/company-grants';
+import { withCompanyGrants } from '../src/access/company-grants.test-fixture';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page } from '@playwright/test';
 import type { TaskView } from '../src/project/task-response';
@@ -70,21 +72,43 @@ test(`navigates between one Client dossier and its loaded Projects`, async ({
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  projectPermissions: ['project.read'],
-                  // Client read comes from Workspace client.manage; without a
-                  // Client grant the Client mission overview stays hidden, as
-                  // it was without captured Client and Project assignments.
-                  grants: companyGrants(
+
+                  // The Company Client grant also enables its scoped Project overview.
+                  // Its paginated read is served separately from the directory.
+                  grants: withCompanyGrants(
+                    companyGrants(
+                      {
+                        bundle: 'company_task_manager',
+                        version: 'v1',
+                        assignmentId: 'task-navigation',
+                      },
+                      {
+                        bundle: 'company_project_access',
+                        version: 'v1',
+                        assignmentId: 'project-grant',
+                      },
+                    ),
                     {
-                      bundle: 'company_task_manager',
+                      bundle: 'company_director_client_access',
                       version: 'v1',
-                      assignmentId: 'task-navigation',
-                    },
-                    {
-                      bundle: 'company_project_access',
-                      version: 'v1',
-                      assignmentId: 'project-grant',
+                      assignmentId:
+                        grantOf(
+                          {
+                            grants: companyGrants(
+                              {
+                                bundle: 'company_task_manager',
+                                version: 'v1',
+                                assignmentId: 'task-navigation',
+                              },
+                              {
+                                bundle: 'company_project_access',
+                                version: 'v1',
+                                assignmentId: 'project-grant',
+                              },
+                            ),
+                          },
+                          'company_director_client_access',
+                        )?.assignmentId ?? 'fixture-client-access',
                     },
                   ),
                 },
@@ -109,6 +133,22 @@ test(`navigates between one Client dossier and its loaded Projects`, async ({
       return route.fulfill({ json: dossier });
     if (path === `/api/clients/${otherClient.id}`)
       return route.fulfill({ json: otherDossier });
+    if (
+      path === '/api/projects' &&
+      new URL(request.url()).searchParams.has('offset')
+    )
+      return route.fulfill({
+        json: {
+          companyId: company.id,
+          clientDossierId: new URL(request.url()).searchParams.get(
+            'clientDossierId',
+          ),
+          offset: 0,
+          pageSize: 25,
+          hasMore: false,
+          items: [],
+        },
+      });
     if (path === '/api/projects') {
       projectReads += 1;
       return route.fulfill({ json: [project] });
@@ -299,28 +339,26 @@ test(`lists a historical Project from the canonical and then the restored dossie
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: [
-                    'client.read',
-                    'client.create',
-                    'client.update',
-                    'client.duplicate.resolve',
-                  ],
-                  clientPermissionAssignmentId: 'client-identity-grant',
-                  clientPermissionSetVersion: 'v2',
-                  projectPermissions: ['project.read'],
-                  // Client read comes from Workspace client.manage; without a
-                  // Client grant the Client mission overview stays hidden, as
-                  // it was without captured Client and Project assignments.
-                  grants: companyGrants(
+
+                  // The Company Client grant also enables its scoped Project overview.
+                  // Its paginated read is served separately from the directory.
+                  grants: withCompanyGrants(
+                    companyGrants(
+                      {
+                        bundle: 'company_task_manager',
+                        version: 'v1',
+                        assignmentId: 'task-identity-grant',
+                      },
+                      {
+                        bundle: 'company_project_access',
+                        version: 'v1',
+                        assignmentId: 'project-grant',
+                      },
+                    ),
                     {
-                      bundle: 'company_task_manager',
-                      version: 'v1',
-                      assignmentId: 'task-identity-grant',
-                    },
-                    {
-                      bundle: 'company_project_access',
-                      version: 'v1',
-                      assignmentId: 'project-grant',
+                      bundle: 'company_director_client_access',
+                      version: 'v2',
+                      assignmentId: 'client-identity-grant',
                     },
                   ),
                 },
@@ -421,6 +459,22 @@ test(`lists a historical Project from the canonical and then the restored dossie
       ...project,
       clientDossierId: united ? second.id : first.id,
     };
+    if (
+      path === '/api/projects' &&
+      new URL(request.url()).searchParams.has('offset')
+    )
+      return route.fulfill({
+        json: {
+          companyId: company.id,
+          clientDossierId: new URL(request.url()).searchParams.get(
+            'clientDossierId',
+          ),
+          offset: 0,
+          pageSize: 25,
+          hasMore: false,
+          items: [],
+        },
+      });
     if (path === '/api/projects') {
       projectReads += 1;
       return route.fulfill({ json: [projected] });
@@ -709,21 +763,43 @@ test(`opens the records each Company summary counts from the home`, async ({
             ? {
                 activeCompany: {
                   ...company,
-                  clientPermissions: ['client.read'],
-                  projectPermissions: ['project.read'],
-                  // Client read comes from Workspace client.manage; without a
-                  // Client grant the Client mission overview stays hidden, as
-                  // it was without captured Client and Project assignments.
-                  grants: companyGrants(
+
+                  // The Company Client grant also enables its scoped Project overview.
+                  // Its paginated read is served separately from the directory.
+                  grants: withCompanyGrants(
+                    companyGrants(
+                      {
+                        bundle: 'company_task_manager',
+                        version: 'v1',
+                        assignmentId: 'task-operational-home',
+                      },
+                      {
+                        bundle: 'company_project_access',
+                        version: 'v1',
+                        assignmentId: 'project-grant',
+                      },
+                    ),
                     {
-                      bundle: 'company_task_manager',
+                      bundle: 'company_director_client_access',
                       version: 'v1',
-                      assignmentId: 'task-operational-home',
-                    },
-                    {
-                      bundle: 'company_project_access',
-                      version: 'v1',
-                      assignmentId: 'project-grant',
+                      assignmentId:
+                        grantOf(
+                          {
+                            grants: companyGrants(
+                              {
+                                bundle: 'company_task_manager',
+                                version: 'v1',
+                                assignmentId: 'task-operational-home',
+                              },
+                              {
+                                bundle: 'company_project_access',
+                                version: 'v1',
+                                assignmentId: 'project-grant',
+                              },
+                            ),
+                          },
+                          'company_director_client_access',
+                        )?.assignmentId ?? 'fixture-client-access',
                     },
                   ),
                 },
@@ -818,6 +894,22 @@ test(`opens the records each Company summary counts from the home`, async ({
         });
     if (path === '/api/assigned-tasks')
       return route.fulfill({ json: { tasks: [] } });
+    if (
+      path === '/api/projects' &&
+      new URL(request.url()).searchParams.has('offset')
+    )
+      return route.fulfill({
+        json: {
+          companyId: company.id,
+          clientDossierId: new URL(request.url()).searchParams.get(
+            'clientDossierId',
+          ),
+          offset: 0,
+          pageSize: 25,
+          hasMore: false,
+          items: [],
+        },
+      });
     if (path === '/api/projects') {
       reads.projects += 1;
       return route.fulfill({ json: [project] });

@@ -1,3 +1,4 @@
+import { withoutCompanyGrants } from '../src/access/company-grants.test-fixture';
 import type { Page } from '@playwright/test';
 import {
   actorContextFixture,
@@ -163,15 +164,7 @@ export async function installTransmissionRoutes(
         ? {
             activeCompany: {
               ...company707,
-              clientPermissions: [],
-              commercialIntakePermissionAssignmentId: 'intake-reader-707',
-              commercialIntakePermissionSetVersion: 'v1',
-              commercialIntakePermissions: [
-                'commercial.request.read',
-                'commercial.request.create',
-                'commercial.opportunity.read',
-                'commercial.opportunity.create',
-              ],
+
               offerPermissionAssignmentId:
                 readOnly || retired ? undefined : 'offer-preparer-707',
               offerPermissionSetVersion: readOnly || retired ? undefined : 'v1',
@@ -187,28 +180,31 @@ export async function installTransmissionRoutes(
                       'commercial.offer.transmission.record',
                       'commercial.offer.response.record',
                     ],
-              grants: companyGrants(
-                {
-                  bundle: 'company_commercial_intake',
-                  version: 'v1',
-                  assignmentId: 'intake-reader-707',
-                },
-                // The reader without transmission authority keeps Offer read
-                // through the Approver grant alone.
-                {
-                  bundle: 'company_offer_approver',
-                  version: 'v1',
-                  assignmentId: 'offer-approver-707',
-                },
-                ...(readOnly || retired
-                  ? []
-                  : [
-                      {
-                        bundle: 'company_offer_preparer',
-                        version: 'v1',
-                        assignmentId: 'offer-preparer-707',
-                      } satisfies CompanyGrantRequest,
-                    ]),
+              grants: withoutCompanyGrants(
+                companyGrants(
+                  {
+                    bundle: 'company_commercial_intake',
+                    version: 'v1',
+                    assignmentId: 'intake-reader-707',
+                  },
+                  // The reader without transmission authority keeps Offer read
+                  // through the Approver grant alone.
+                  {
+                    bundle: 'company_offer_approver',
+                    version: 'v1',
+                    assignmentId: 'offer-approver-707',
+                  },
+                  ...(readOnly || retired
+                    ? []
+                    : [
+                        {
+                          bundle: 'company_offer_preparer',
+                          version: 'v1',
+                          assignmentId: 'offer-preparer-707',
+                        } satisfies CompanyGrantRequest,
+                      ]),
+                ),
+                'company_director_client_access',
               ),
             },
           }

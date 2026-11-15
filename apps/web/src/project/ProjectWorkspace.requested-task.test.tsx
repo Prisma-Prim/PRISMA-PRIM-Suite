@@ -25,7 +25,7 @@ import {
 const company = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
-  projectPermissions: ['project.read', 'project.create'],
+
   grants: withCompanyGrants(
     companyGrants({
       bundle: 'company_task_manager',

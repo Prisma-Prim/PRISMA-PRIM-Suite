@@ -20,12 +20,7 @@ export function teamTasksQueryFixture() {
     workspacePermissions: [],
     activeCompany: {
       ...company,
-      clientPermissions: ['client.read'],
-      clientPermissionAssignmentId: id('5'),
-      clientPermissionSetVersion: 'v1',
-      projectPermissions: ['project.read'],
-      projectPermissionAssignmentId: id('6'),
-      projectPermissionSetVersion: 'v2',
+
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',

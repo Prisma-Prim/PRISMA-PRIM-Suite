@@ -1,3 +1,4 @@
+import { grantOf } from './access/company-grants';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -56,7 +57,7 @@ type Company = ReturnType<typeof companyOf>;
 function withoutClientRead(company: Company): Company {
   return {
     ...company,
-    clientPermissions: [],
+
     grants: withoutCompanyGrants(
       company.grants,
       'company_director_client_access',
@@ -101,14 +102,7 @@ function actor(): ActorContext {
       ...modelContractActor.activeCompany,
       id: companyId,
       displayName: 'Synthetic PDF Company',
-      commercialIntakePermissionAssignmentId: 'intake-965',
-      commercialIntakePermissionSetVersion: 'v1',
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-      ],
+
       commercialActivityPermissions: ['commercial.activity.read'],
       // The model Offer preparation also reads the Profitability
       // Contributor grant beside the model Contract actor's grants.
@@ -975,7 +969,18 @@ it.each(['read', 'manage'])(
       activeCompany:
         remaining === 'manage'
           ? withoutClientRead(companyOf(state.actor))
-          : { ...companyOf(state.actor), clientPermissions: ['client.read'] },
+          : {
+              ...companyOf(state.actor),
+              grants: withCompanyGrants(companyOf(state.actor)?.grants, {
+                bundle: 'company_director_client_access',
+                version: 'v1',
+                assignmentId:
+                  grantOf(
+                    { grants: companyOf(state.actor)?.grants },
+                    'company_director_client_access',
+                  )?.assignmentId ?? 'fixture-client-access',
+              }),
+            },
     });
     expect(state.pdf[0].signal?.aborted).toBe(false);
     await act(async () =>
@@ -994,11 +999,16 @@ it('keeps a generated EXECUTED Contract PDF independent of optional signing-Docu
     ...state.actor,
     activeCompany: {
       ...companyOf(state.actor),
-      documentPermissions: [
-        'document.read',
-        'document.content.read',
-        'document.received_contract.access',
-      ],
+
+      grants: withCompanyGrants(companyOf(state.actor)?.grants, {
+        bundle: 'company_document_registrar',
+        version: 'v1',
+        assignmentId:
+          grantOf(
+            { grants: companyOf(state.actor)?.grants },
+            'company_document_registrar',
+          )?.assignmentId ?? 'fixture-document-access',
+      }),
     },
   };
   await open();
@@ -1011,7 +1021,13 @@ it('keeps a generated EXECUTED Contract PDF independent of optional signing-Docu
   state.documentDenied = true;
   await revalidate(state, {
     ...state.actor,
-    activeCompany: { ...companyOf(state.actor), documentPermissions: [] },
+    activeCompany: {
+      ...companyOf(state.actor),
+      grants: withoutCompanyGrants(
+        companyOf(state.actor)?.grants,
+        'company_document_registrar',
+      ),
+    },
   });
   expect(state.pdf[0].signal?.aborted).toBe(false);
   await act(async () =>

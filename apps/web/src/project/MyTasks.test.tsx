@@ -25,7 +25,7 @@ const copy = taskCopy.myTasks;
 const company = {
   id: 'company',
   displayName: 'PRISMA-PRIM',
-  projectPermissions: ['project.read'],
+
   grants: companyGrants(
     {
       bundle: 'company_task_manager',
@@ -360,7 +360,7 @@ it.each([
       ...actor,
       activeCompany: {
         ...company,
-        projectPermissions: [],
+
         grants: withoutCompanyGrants(company.grants, 'company_project_access'),
       },
     },
@@ -418,7 +418,7 @@ it('reads Client authority from Company client.read as well as client.manage', a
         workspacePermissions: [],
         activeCompany: {
           ...company,
-          clientPermissions: ['client.read'],
+
           grants: withCompanyGrants(company.grants, {
             bundle: 'company_director_client_access',
             version: 'v1',

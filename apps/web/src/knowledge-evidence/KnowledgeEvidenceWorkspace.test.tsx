@@ -1,3 +1,4 @@
+import { grantOf } from '../access/company-grants';
 import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -534,14 +535,39 @@ it('keeps valid read ownership through an unrelated source-administrator replace
         ...knowledgeActor,
         activeCompany: {
           ...knowledgeActor.activeCompany,
-          documentPermissions: [
-            ...knowledgeActor.activeCompany.documentPermissions,
-          ].reverse(),
-          grants: withCompanyGrants(readerGrants, {
-            bundle: 'company_knowledge_source_administrator',
-            version: 'v1',
-            assignmentId: '80000000-0000-4000-8000-000000001099',
-          }),
+
+          grants: withCompanyGrants(
+            withCompanyGrants(readerGrants, {
+              bundle: 'company_knowledge_source_administrator',
+              version: 'v1',
+              assignmentId: '80000000-0000-4000-8000-000000001099',
+            }),
+            {
+              bundle: 'company_document_registrar',
+              version:
+                grantOf(
+                  {
+                    grants: withCompanyGrants(readerGrants, {
+                      bundle: 'company_knowledge_source_administrator',
+                      version: 'v1',
+                      assignmentId: '80000000-0000-4000-8000-000000001099',
+                    }),
+                  },
+                  'company_document_registrar',
+                )?.permissionSetVersion ?? 'v1',
+              assignmentId:
+                grantOf(
+                  {
+                    grants: withCompanyGrants(readerGrants, {
+                      bundle: 'company_knowledge_source_administrator',
+                      version: 'v1',
+                      assignmentId: '80000000-0000-4000-8000-000000001099',
+                    }),
+                  },
+                  'company_document_registrar',
+                )?.assignmentId ?? 'fixture-document-access',
+            },
+          ),
         },
       }}
     />,
@@ -582,7 +608,7 @@ it('requires the native reference-read prerequisite before token lookup or evide
         ...knowledgeActor,
         activeCompany: {
           ...knowledgeActor.activeCompany,
-          documentPermissions: ['document.read', 'document.content.read'],
+
           grants: [
             ...withoutCompanyGrants(readerGrants, 'company_document_registrar'),
             {

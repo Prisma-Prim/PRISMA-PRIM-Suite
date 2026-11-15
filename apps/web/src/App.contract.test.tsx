@@ -48,7 +48,7 @@ it('opens a recorded Contract from its Request without Offer or Client authority
     workspacePermissions: [],
     activeCompany: {
       ...company,
-      clientPermissions: [],
+
       contractPermissions: [
         'commercial.contract.read',
         'commercial.contract.prepare',
@@ -56,25 +56,21 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       ],
       contractPermissionAssignmentId: 'contract-grant',
       contractPermissionSetVersion: 'v1',
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-      ],
-      commercialIntakePermissionAssignmentId: 'intake-grant',
-      commercialIntakePermissionSetVersion: 'v1',
-      grants: companyGrants(
-        {
-          bundle: 'company_contract_preparer',
-          version: 'v1',
-          assignmentId: 'contract-grant',
-        },
-        {
-          bundle: 'company_commercial_intake',
-          version: 'v1',
-          assignmentId: 'intake-grant',
-        },
+
+      grants: withoutCompanyGrants(
+        companyGrants(
+          {
+            bundle: 'company_contract_preparer',
+            version: 'v1',
+            assignmentId: 'contract-grant',
+          },
+          {
+            bundle: 'company_commercial_intake',
+            version: 'v1',
+            assignmentId: 'intake-grant',
+          },
+        ),
+        'company_director_client_access',
       ),
     },
   };

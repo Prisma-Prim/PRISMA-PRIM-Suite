@@ -1,3 +1,4 @@
+import { companyGrants } from '../access/company-grants.test-fixture';
 import {
   fireEvent,
   render,
@@ -28,14 +29,12 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-709',
     displayName: 'Companie {Я}',
-    clientPermissions: [
-      'client.read',
-      'client.create',
-      'client.update',
-      'client.duplicate.resolve',
-    ],
-    clientPermissionAssignmentId: 'resolver-assignment-709',
-    clientPermissionSetVersion: 'v2',
+
+    grants: companyGrants({
+      bundle: 'company_director_client_access',
+      version: 'v2',
+      assignmentId: 'resolver-assignment-709',
+    }),
   },
 };
 const comparison = {

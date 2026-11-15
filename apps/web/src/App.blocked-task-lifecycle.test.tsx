@@ -31,8 +31,7 @@ const actor: ActorContext = {
   workspacePermissions: [],
   activeCompany: {
     ...company,
-    clientPermissions: ['client.read'],
-    projectPermissions: ['project.read'],
+
     grants: companyGrants(
       {
         bundle: 'company_director_client_access',
@@ -572,7 +571,6 @@ it.each(['task', 'project', 'client', 'captured version'])(
           : {}),
         ...(kind === 'project'
           ? {
-              projectPermissions: [],
               grants: withoutCompanyGrants(
                 actor.activeCompany?.grants,
                 'company_project_access',
@@ -581,7 +579,6 @@ it.each(['task', 'project', 'client', 'captured version'])(
           : {}),
         ...(kind === 'client'
           ? {
-              clientPermissions: [],
               grants: withoutCompanyGrants(
                 actor.activeCompany?.grants,
                 'company_director_client_access',

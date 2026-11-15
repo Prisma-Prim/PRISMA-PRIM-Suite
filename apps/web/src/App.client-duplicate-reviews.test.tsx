@@ -1,3 +1,8 @@
+import { grantOf } from './access/company-grants';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -58,14 +63,12 @@ function resolverActor(): ActorContext {
     workspacePermissions: ['client.manage'],
     activeCompany: {
       ...companyA,
-      clientPermissions: [
-        'client.read',
-        'client.create',
-        'client.update',
-        'client.duplicate.resolve',
-      ],
-      clientPermissionAssignmentId: 'assignment-1',
-      clientPermissionSetVersion: 'v2',
+
+      grants: companyGrants({
+        bundle: 'company_director_client_access',
+        version: 'v2',
+        assignmentId: 'assignment-1',
+      }),
     },
   };
 }
@@ -220,14 +223,19 @@ describe('duplicate review ownership through App', () => {
             ...state.actor.activeCompany,
             ...companyA,
             ...(boundary === 'assignment'
-              ? { clientPermissionAssignmentId: 'assignment-2' }
+              ? {
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v1',
+                    assignmentId: 'assignment-2',
+                  }),
+                }
               : {
-                  clientPermissionSetVersion: 'v1',
-                  clientPermissions: [
-                    'client.read',
-                    'client.create',
-                    'client.update',
-                  ],
+                  grants: companyGrants({
+                    bundle: 'company_director_client_access',
+                    version: 'v1',
+                    assignmentId: 'fixture-client-access',
+                  }),
                 }),
           },
         };
@@ -275,7 +283,16 @@ describe('duplicate review ownership through App', () => {
           activeCompany: {
             ...state.actor.activeCompany,
             ...companyA,
-            clientPermissionAssignmentId: 'assignment-2',
+
+            grants: withCompanyGrants(state.actor.activeCompany?.grants, {
+              bundle: 'company_director_client_access',
+              version:
+                grantOf(
+                  { grants: state.actor.activeCompany?.grants },
+                  'company_director_client_access',
+                )?.permissionSetVersion ?? 'v1',
+              assignmentId: 'assignment-2',
+            }),
           },
         };
         revalidateAuthority();

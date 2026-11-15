@@ -130,7 +130,7 @@ async function installServer(page: Page) {
             ? {
                 activeCompany: {
                   ...company,
-                  projectPermissions: ['project.read'],
+
                   grants: companyGrants(
                     {
                       bundle: 'company_task_manager',

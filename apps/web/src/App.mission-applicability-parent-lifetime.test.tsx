@@ -1,3 +1,4 @@
+import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -69,9 +70,12 @@ it.each(cases)(
       ...actor,
       activeCompany: {
         ...actor.activeCompany,
-        clientPermissions: ['client.read', 'client.duplicate.resolve'],
-        clientPermissionAssignmentId: 'client-live-demo',
-        clientPermissionSetVersion: 'v2',
+
+        grants: withCompanyGrants(actor.activeCompany?.grants, {
+          bundle: 'company_director_client_access',
+          version: 'v2',
+          assignmentId: 'client-live-demo',
+        }),
       },
     };
     installParentServer(
