@@ -295,7 +295,7 @@ test('the first night of a week opens its comment with runtime, failure, seed, r
   );
   assert.ok(
     body.includes(
-      '**Failures:** 1 this week, 0 filed as a real bug, 1 not filed (a false alarm once triaged).',
+      '**Failures:** 1 in this comment, 0 filed as a real bug, 1 not filed (a false alarm once triaged).',
     ),
   );
   assert.ok(
@@ -547,4 +547,224 @@ test('a manual replay reports only the selected job and retains old two-journey 
     repository,
   });
   assert.deepEqual(nightsInComment(body, '2026-11-09'), [historical]);
+});
+
+test('a complete week keeps bounded financial repetitions within one GitHub comment', (t) => {
+  for (const repetitions of [6, 20]) {
+    const nights = Array.from({ length: 7 }, (_, day) => {
+      const raw = summary(
+        'financial-action-sequences',
+        Array.from({ length: repetitions }, (_, index) => {
+          const seed = 1422001 + day * 100 + index;
+          return {
+            status: 'passed',
+            chaosSeed: seed,
+            sequences: ['payment-observation', 'invoice-record'].flatMap(
+              (caseId) =>
+                ['desktop', 'narrow'].map((width) => ({
+                  caseId,
+                  width,
+                  seed,
+                  steps: 10,
+                  status: 'passed',
+                  runs: 2,
+                  shrinks: 0,
+                  durationMilliseconds: 1000,
+                  path: null,
+                  coverage: {
+                    'locale:fr': 2,
+                    'open-recorded-observation': 1,
+                    'return-to-inventory': 1,
+                    'start-literal-draft': 1,
+                    'submit-and-lose-committed-reply': 1,
+                    'retry-identically-with-double-click': 1,
+                  },
+                })),
+            ),
+          };
+        }),
+      );
+      return nightOf({
+        run: workflowRun({
+          id: 501 + day,
+          startedAt: `2026-11-${String(9 + day).padStart(2, '0')}T02:20:00Z`,
+        }),
+        jobs,
+        summaries: new Map([
+          ...summaries(),
+          [
+            'financial-action-sequences',
+            parseChaosSummary(JSON.stringify(raw)),
+          ],
+        ]),
+      });
+    });
+    const body = renderWeek({
+      week: '2026-11-09',
+      nights,
+      bugs: new Map([[1376001, 1400]]),
+      server,
+      repository,
+    });
+    assert.ok(
+      body.length <= 65536,
+      `${repetitions} repetitions per night produced ${body.length} characters`,
+    );
+    t.diagnostic(
+      `${repetitions} repetitions per night: ${body.length} characters`,
+    );
+    const retained = nightsInComment(body, '2026-11-09');
+    assert.ok(retained);
+    assert.equal(retained.length, 7);
+    assert.equal(
+      retained
+        .flatMap((night) => night.journeys)
+        .flatMap((entry) => entry.failures).length,
+      7,
+    );
+    assert.ok(body.includes('7 filed as a real bug, 0 not filed'));
+    assert.ok(body.includes(String(1422001 + 600 + repetitions - 1)));
+    assert.equal(
+      retained
+        .flatMap((night) => night.journeys)
+        .flatMap((entry) => entry.sequences ?? [])
+        .reduce((total, sequence) => total + sequence.runs, 0),
+      7 * repetitions * 4 * 2,
+    );
+  }
+});
+
+test('keeps pathless interruption evidence separate from successful aggregates', () => {
+  const raw = summary('financial-action-sequences', [
+    {
+      status: 'interrupted',
+      chaosSeed: 1422001,
+      sequences: [
+        {
+          ...passingFinancial.runs[0].sequences[0],
+          status: 'interrupted',
+          runs: 0,
+          coverage: {},
+        },
+      ],
+    },
+  ]);
+  const parsed = parseChaosSummary(JSON.stringify(raw));
+  assert.ok(parsed);
+  const night = nightOf({
+    run: workflowRun(),
+    jobs,
+    summaries: new Map([['financial-action-sequences', parsed]]),
+  });
+  const body = renderWeek({
+    week: '2026-11-09',
+    nights: [night],
+    bugs: new Map(),
+    server,
+    repository,
+  });
+  const retained = nightsInComment(body, '2026-11-09');
+  assert.ok(retained);
+  const financial = retained[0].journeys.find(
+    (entry) => entry.journey === 'financial-action-sequences',
+  );
+  assert.ok(financial);
+  assert.equal(financial.sequences[0].status, 'interrupted');
+  assert.equal(financial.sequences[0].runs, 0);
+  assert.equal(financial.sequences[0].repetitions, undefined);
+  assert.ok(body.includes('seeds: `1422001`'));
+  assert.ok(body.includes('could not run (interrupted)'));
+});
+
+test('an oversized week opens a bounded continuation and reruns update their owning part', async () => {
+  const large = structuredClone(failingHome);
+  large.runs[1].failures[0].error = 'Native diagnostic evidence '.repeat(900);
+  const evidence = () =>
+    new Map([
+      ...summaries(),
+      ['multi-company-home', parseChaosSummary(JSON.stringify(large))],
+    ]);
+  const first = github();
+  await report(first.api, { summaries: evidence() });
+  const earlier = {
+    id: 42,
+    html_url: 'https://github.com/owner/repo/issues/1132#issuecomment-42',
+    body: first.writes()[0].body.body,
+  };
+  assert.ok(earlier.body.length <= 65536);
+  const later = github({
+    comments: [earlier],
+    run: workflowRun({ id: 502, startedAt: '2026-11-15T02:20:00Z' }),
+  });
+  await report(later.api, { runId: 502, summaries: evidence() });
+  const [continuation] = later.writes();
+  assert.equal(continuation.method, 'POST');
+  assert.ok(continuation.body.body.length <= 65536);
+  assert.ok(continuation.body.body.includes(earlier.html_url));
+  const current = {
+    id: 43,
+    html_url: 'https://github.com/owner/repo/issues/1132#issuecomment-43',
+    body: continuation.body.body,
+  };
+  const retained = [earlier, current].flatMap((comment) =>
+    nightsInComment(comment.body, '2026-11-09'),
+  );
+  assert.deepEqual(
+    retained.map((night) => night.runId),
+    [501, 502],
+  );
+  assert.equal(
+    retained
+      .flatMap((night) => night.journeys)
+      .flatMap((entry) => entry.failures).length,
+    2,
+  );
+  assert.ok(
+    retained[0].journeys[1].failures[0].error.includes(
+      'Native diagnostic evidence',
+    ),
+  );
+  const rerun = github({
+    comments: [earlier, current],
+    run: workflowRun({ id: 501, attempt: 2 }),
+    bugs: [{ number: 1400, title: 'A confirmed defect', body: 'seed 1376001' }],
+  });
+  await report(rerun.api, { summaries: evidence() });
+  assert.equal(rerun.writes()[0].method, 'PATCH');
+  assert.equal(rerun.writes()[0].path, 'issues/comments/42');
+  assert.ok(rerun.writes()[0].body.body.length <= 65536);
+  assert.ok(
+    rerun
+      .writes()
+      .some(
+        (write) =>
+          write.path === 'issues/comments/43' &&
+          write.body.body.includes('Triage: real bug #1400.'),
+      ),
+  );
+  assert.ok(rerun.writes().every((write) => write.body.body.length <= 65536));
+});
+
+test('an oversized single night fails visibly without changing an earlier report', async () => {
+  const first = github();
+  await report(first.api);
+  const existing = {
+    id: 42,
+    html_url: 'https://github.com/owner/repo/issues/1132#issuecomment-42',
+    body: first.writes()[0].body.body,
+  };
+  const large = structuredClone(failingHome);
+  large.runs[1].failures[0].error = 'Native diagnostic evidence '.repeat(3000);
+  const next = github({ comments: [existing] });
+  await assert.rejects(
+    report(next.api, {
+      summaries: new Map([
+        ...summaries(),
+        ['multi-company-home', parseChaosSummary(JSON.stringify(large))],
+      ]),
+    }),
+    /complete evidence remains in the workflow artifacts/u,
+  );
+  assert.deepEqual(next.writes(), []);
+  assert.equal(nightsInComment(existing.body, '2026-11-09').length, 1);
 });

@@ -9,7 +9,7 @@ import {
 } from './browser-sequences.mjs';
 
 // Seeded UI chaos (#1376, stage 2 of #1155) lands in the weekly inspection:
-// each finished night on main updates one comment per week (Monday, UTC) on
+// each finished night on main updates a bounded part of its week (Monday, UTC) on
 // the open `weekly-inspection` issue with every night's runtime and result,
 // and each failure's seed, replay command and triage state. The comment
 // keeps its nights in a data block, so a rerun of the same night replaces it.
@@ -24,6 +24,7 @@ const INSPECTION_LABEL = 'weekly-inspection';
 const BUG_LABEL = 'fuzz-found';
 const DATA_VERSION = 1;
 const MAXIMUM_COMMENT_PAGES = 10;
+const MAXIMUM_COMMENT_LENGTH = 65536;
 const STATUSES = ['passed', 'failed', 'error', 'interrupted', 'usage-error'];
 const CONCLUSIONS = [
   'success',
@@ -64,6 +65,77 @@ function sequenceEvidence(value, journey) {
     schema: 'prisma-prim-browser-sequences/v1',
     journey,
   });
+}
+
+function compactSequences(sequences) {
+  const result = [];
+  const passed = new Map();
+  for (const sequence of sequences) {
+    if (sequence.status !== 'passed' || sequence.path !== null) {
+      result.push(sequence);
+      continue;
+    }
+    const repetitions = sequence.repetitions ?? [
+      { run: sequence.run, seed: sequence.seed },
+    ];
+    const key = JSON.stringify([
+      sequence.caseId,
+      sequence.width,
+      sequence.steps,
+    ]);
+    const existing = passed.get(key);
+    if (!existing) {
+      const aggregate = {
+        ...sequence,
+        repetitions: [...repetitions],
+        coverage: { ...sequence.coverage },
+      };
+      passed.set(key, aggregate);
+      result.push(aggregate);
+      continue;
+    }
+    existing.repetitions.push(...repetitions);
+    existing.runs += sequence.runs;
+    existing.shrinks += sequence.shrinks;
+    existing.durationMilliseconds += sequence.durationMilliseconds;
+    for (const [label, total] of Object.entries(sequence.coverage))
+      existing.coverage[label] = (existing.coverage[label] ?? 0) + total;
+  }
+  return result;
+}
+
+function compactNight(night) {
+  return {
+    ...night,
+    journeys: night.journeys.map((entry) => ({
+      ...entry,
+      ...(entry.sequences
+        ? { sequences: compactSequences(entry.sequences) }
+        : {}),
+    })),
+  };
+}
+
+function validStoredSequence(sequence, journey) {
+  const evidence = sequenceEvidence(sequence, journey);
+  return (
+    isCount(sequence.run) &&
+    evidence &&
+    (sequence.repetitions === undefined ||
+      (evidence.status === 'passed' &&
+        evidence.path === null &&
+        Array.isArray(sequence.repetitions) &&
+        sequence.repetitions.length > 0 &&
+        sequence.repetitions.every(
+          (sample) =>
+            sample !== null &&
+            typeof sample === 'object' &&
+            isCount(sample.run) &&
+            isSeed(sample.seed),
+        ) &&
+        sequence.repetitions[0].run === sequence.run &&
+        sequence.repetitions[0].seed === sequence.seed))
+  );
 }
 function sequencesInRun(run, journey) {
   if (run.sequences !== undefined && !Array.isArray(run.sequences)) return null;
@@ -174,7 +246,7 @@ function minutesBetween(start, end) {
  * real runtime with the chaos summary's runs and failures.
  */
 export function nightOf({ run, jobs, summaries }) {
-  return {
+  return compactNight({
     runId: run.id,
     attempt: run.run_attempt,
     event: run.event,
@@ -207,7 +279,7 @@ export function nightOf({ run, jobs, summaries }) {
         })),
       };
     }),
-  };
+  });
 }
 
 function validNight(night) {
@@ -233,10 +305,8 @@ function validNight(night) {
         typeof entry.stoppedByBudget === 'boolean' &&
         (entry.sequences === undefined ||
           (Array.isArray(entry.sequences) &&
-            entry.sequences.every(
-              (sequence) =>
-                isCount(sequence.run) &&
-                sequenceEvidence(sequence, entry.journey),
+            entry.sequences.every((sequence) =>
+              validStoredSequence(sequence, entry.journey),
             ))) &&
         Array.isArray(entry.failures) &&
         entry.failures.every(
@@ -312,7 +382,8 @@ export function bugCiting(issues, seed) {
 /** The whole comment of one week, with its data block last. */
 export function renderWeek({ week, nights, bugs, server, repository }) {
   const base = `${server}/${repository}`;
-  const rows = nights.flatMap((night) =>
+  const retained = nights.map(compactNight);
+  const rows = retained.flatMap((night) =>
     night.journeys.map((entry) => {
       const time = night.startedAt.slice(0, 16).replace('T', ' ');
       const runs = `${entry.passed} of ${entry.runs}${entry.stoppedByBudget ? ' (budget)' : ''}`;
@@ -321,37 +392,41 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
       return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}](${base}/actions/runs/${night.runId}) | [\`${night.sha.slice(0, 7)}\`](${base}/commit/${night.sha}) | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
     }),
   );
-  const sequenceRows = nights.flatMap((night) =>
+  const sequenceRows = retained.flatMap((night) =>
     night.journeys.flatMap((entry) =>
       (entry.sequences ?? []).map((sequence) => {
         const evidence = sequenceEvidence(sequence, entry.journey);
+        const samples = sequence.repetitions ?? [{ seed: evidence.seed }];
         const replay =
           evidence.path === null
-            ? '—'
+            ? `seeds: ${samples.map(({ seed }) => `\`${seed}\``).join(', ')}`
             : `\`${browserSequenceReplayCommand(evidence)}\``;
         const coverage =
           Object.entries(evidence.coverage)
             .map(([label, total]) => `${label}=${total}`)
             .join(', ') || 'none';
-        return `| ${night.startedAt.slice(0, 10)} / ${sequence.run} | ${evidence.caseId} / ${evidence.width} | ${evidence.status} | ${evidence.runs} | ${evidence.shrinks} | ${(evidence.durationMilliseconds / 1000).toFixed(1)} s | ${coverage} | ${replay} |`;
+        const repetitions = sequence.repetitions
+          ? sequence.repetitions.map(({ run }) => run).join(', ')
+          : sequence.run;
+        return `| ${night.startedAt.slice(0, 10)} / ${repetitions} | ${evidence.caseId} / ${evidence.width} | ${evidence.status} | ${evidence.runs} | ${evidence.shrinks} | ${(evidence.durationMilliseconds / 1000).toFixed(1)} s | ${coverage} | ${replay} |`;
       }),
     ),
   );
-  const failures = nights.flatMap((night) =>
+  const failures = retained.flatMap((night) =>
     night.journeys.flatMap((entry) =>
       entry.failures.map((failure) => ({ night, entry, failure })),
     ),
   );
   const filed = failures.filter(({ failure }) => bugs.has(failure.seed));
-  const harness = nights.flatMap((night) =>
+  const harness = retained.flatMap((night) =>
     night.journeys
       .filter((entry) => !['passed', 'failed'].includes(result(entry)))
       .map((entry) => ({ night, entry })),
   );
-  const data = JSON.stringify({ version: DATA_VERSION, nights }).replaceAll(
-    '>',
-    '\\u003e',
-  );
+  const data = JSON.stringify({
+    version: DATA_VERSION,
+    nights: retained,
+  }).replaceAll('>', '\\u003e');
   return [
     marker(week),
     `## Nightly UI chaos, week of ${week}`,
@@ -366,15 +441,17 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
           '',
           'Generated browser sequence evidence:',
           '',
-          '| Night / repetition | Case / screen | Result | Model runs | Reductions | Duration | Verified actions | Exact replay |',
+          'Successful repetitions are aggregated by night, case, screen and step bound; every seed is retained. Per-repetition detail remains in the run summary artifact. Failures, interruptions and exact replays remain separate.',
+          '',
+          '| Night / repetition | Case / screen | Result | Model runs | Reductions | Duration | Verified actions | Seeds / exact replay |',
           '| --- | --- | --- | ---: | ---: | ---: | --- | --- |',
           ...sequenceRows,
         ]
       : []),
     '',
     failures.length === 0
-      ? '**Failures:** none this week.'
-      : `**Failures:** ${failures.length} this week, ${filed.length} filed as a real bug, ${failures.length - filed.length} not filed (a false alarm once triaged).`,
+      ? '**Failures:** none in this comment.'
+      : `**Failures:** ${failures.length} in this comment, ${filed.length} filed as a real bug, ${failures.length - filed.length} not filed (a false alarm once triaged).`,
     '',
     ...failures.map(({ night, entry, failure }, index) => {
       const bug = bugs.get(failure.seed);
@@ -411,6 +488,23 @@ async function allComments(api, issue) {
     if (batch.length < 100) break;
   }
   return comments;
+}
+
+function retainPartNote(body, previousBody) {
+  const note =
+    /\n\n((?:The \[earlier report part\]|This entry supersedes run|The earlier comment of this week)[^\n]+)\n\nReplay a failure/u.exec(
+      previousBody ?? '',
+    )?.[1];
+  return note
+    ? body.replace('\n\nReplay a failure', `\n\n${note}\n\nReplay a failure`)
+    : body;
+}
+
+function requireCommentSize(body, runId) {
+  if (body.length > MAXIMUM_COMMENT_LENGTH)
+    throw new Error(
+      `The report for run ${runId} exceeds GitHub's comment limit; its complete evidence remains in the workflow artifacts. The oversized comment was not written.`,
+    );
 }
 
 /**
@@ -452,9 +546,15 @@ export async function reportNightlyUiChaos({
       'No open weekly-inspection issue: the Weekly inspection workflow creates it.',
     );
   const comments = await allComments(api, inspection.number);
-  const existing = comments.findLast((comment) =>
+  const weekComments = comments.filter((comment) =>
     comment.body?.startsWith(marker(week)),
   );
+  const existing =
+    weekComments.findLast((comment) =>
+      nightsInComment(comment.body, week)?.some(
+        (entry) => entry.runId === night.runId,
+      ),
+    ) ?? weekComments.at(-1);
   const previous = existing ? nightsInComment(existing.body, week) : [];
   const nights = withNight(previous ?? [], night);
 
@@ -462,27 +562,70 @@ export async function reportNightlyUiChaos({
     await api('GET', `issues?labels=${BUG_LABEL}&state=all&per_page=100`)
   ).filter((issue) => !issue.pull_request);
   const bugs = new Map();
-  for (const entry of nights.flatMap((item) => item.journeys))
+  const wholeWeek = [
+    ...weekComments.flatMap(
+      (comment) => nightsInComment(comment.body, week) ?? [],
+    ),
+    ...nights,
+  ];
+  for (const entry of wholeWeek.flatMap((item) => item.journeys))
     for (const failure of entry.failures) {
       const bug = bugCiting(bugIssues, failure.seed);
       if (bug !== null) bugs.set(failure.seed, bug);
     }
-  const body = renderWeek({ week, nights, bugs, server, repository });
+  async function refreshOtherParts(updatedCommentId) {
+    for (const comment of weekComments) {
+      if (comment.id === updatedCommentId) continue;
+      const retained = nightsInComment(comment.body, week);
+      if (retained === null) continue;
+      const refreshed = retainPartNote(
+        renderWeek({ week, nights: retained, bugs, server, repository }),
+        comment.body,
+      );
+      requireCommentSize(refreshed, night.runId);
+      if (refreshed !== comment.body)
+        await api('PATCH', `issues/comments/${comment.id}`, {
+          body: refreshed,
+        });
+    }
+  }
+  let body = retainPartNote(
+    renderWeek({ week, nights, bugs, server, repository }),
+    existing?.body,
+  );
+  const continuation = body.length > MAXIMUM_COMMENT_LENGTH;
+  if (continuation) {
+    body = renderWeek({ week, nights: [night], bugs, server, repository });
+    if (existing) {
+      const earlier =
+        existing.html_url ??
+        `${server}/${repository}/issues/${inspection.number}#issuecomment-${existing.id}`;
+      const note = previous?.some((entry) => entry.runId === night.runId)
+        ? `This entry supersedes run ${night.runId} in the [earlier report part](${earlier}); its earlier evidence remains there.`
+        : `The [earlier report part](${earlier}) retains all its nights and failures. This continuation keeps each GitHub comment within its size limit.`;
+      body = body.replace(
+        '\n\nReplay a failure',
+        `\n\n${note}\n\nReplay a failure`,
+      );
+    }
+  }
+  if (previous === null)
+    body = body.replace(
+      '\n\nReplay a failure',
+      `\n\nThe earlier comment of this week has unreadable data and stays as it is: [comment](${existing.html_url}).\n\nReplay a failure`,
+    );
+  requireCommentSize(body, night.runId);
 
-  if (existing && previous !== null) {
+  if (existing && previous !== null && !continuation) {
     await api('PATCH', `issues/comments/${existing.id}`, { body });
+    await refreshOtherParts(existing.id);
     log(`Updated the week of ${week} on #${inspection.number}.`);
     return;
   }
   await api('POST', `issues/${inspection.number}/comments`, {
-    body:
-      previous === null
-        ? body.replace(
-            '\n\nReplay a failure',
-            `\n\nThe earlier comment of this week has unreadable data and stays as it is: [comment](${existing.html_url}).\n\nReplay a failure`,
-          )
-        : body,
+    body,
   });
+  await refreshOtherParts();
   log(`Opened the week of ${week} on #${inspection.number}.`);
 }
 
