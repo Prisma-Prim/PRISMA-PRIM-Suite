@@ -80,7 +80,11 @@ describe('Client ownership through App', () => {
             if (selected === companyB.id)
               actor = {
                 ...actor,
-                activeCompany: { ...actor.activeCompany, ...companyB },
+                activeCompany: {
+                  grants: [],
+                  ...actor.activeCompany,
+                  ...companyB,
+                },
               };
             return respond(actor);
           }
@@ -329,7 +333,11 @@ describe('Client ownership through App', () => {
               : companyA;
           return respond({
             ...actor,
-            activeCompany: { ...actor.activeCompany, ...company },
+            activeCompany: {
+              grants: [],
+              ...actor.activeCompany,
+              ...company,
+            },
           });
         }
         if (path.endsWith('/companies')) return respond([companyA, companyB]);

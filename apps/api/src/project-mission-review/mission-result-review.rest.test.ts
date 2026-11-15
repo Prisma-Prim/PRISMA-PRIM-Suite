@@ -124,9 +124,14 @@ describe.skipIf(!databaseUrl)(
             .activeCompany,
         ),
       ).toMatchObject({
-        missionResultReviewPermissions: ['project.mission_result.review'],
-        missionResultReviewerAssignmentId: text(grant.id),
-        missionResultReviewerPermissionSetVersion: 'v1',
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_mission_result_reviewer',
+            assignmentId: text(grant.id),
+            permissionSetVersion: 'v1',
+            permissions: ['project.mission_result.review'],
+          }),
+        ]),
       });
       const body = {
         expectedReviewRevision: 0,

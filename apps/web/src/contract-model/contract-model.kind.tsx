@@ -29,7 +29,6 @@ export const CONTRACT_MODEL = {
     language: CONTRACT_MODEL_LANGUAGE,
   },
   grants: {
-    field: 'contractModelGrants',
     editor: {
       bundle: 'company_contract_model_editor',
       permissions: [

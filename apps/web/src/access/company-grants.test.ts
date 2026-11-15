@@ -190,6 +190,36 @@ describe('Company grants registry mirror', () => {
 });
 
 describe('Company grants parser', () => {
+  it.each([...apiRegistry()])(
+    'reads %s only through grants at every captured version',
+    async (bundle, versions) => {
+      const captures: [string | null, readonly string[]][] =
+        Object.keys(versions).length === 0
+          ? [[null, []]]
+          : Object.entries(versions);
+      for (const [permissionSetVersion, permissions] of captures) {
+        const activeCompany = {
+          id: 'fictional-company',
+          displayName: 'Fictional Company',
+          grants: [
+            {
+              bundle,
+              assignmentId: 'captured-assignment',
+              permissionSetVersion,
+              permissions,
+            },
+          ],
+        };
+        const actor = { ...completeActor, activeCompany };
+        expect(
+          await readCurrentActor({
+            api: { request: async () => ({ status: 'ok', value: actor }) },
+          }),
+        ).toEqual({ status: 'ok', value: actor });
+      }
+    },
+  );
+
   it('accepts a complete list, an empty list and additive keys', () => {
     expect(isCompanyGrants([contextGrant, grant()])).toBe(true);
     expect(isCompanyGrants([])).toBe(true);
@@ -254,7 +284,7 @@ describe('Company grants parser', () => {
     expect(isCompanyGrants(value)).toBe(false);
   });
 
-  it('refuses the current Actor with a malformed list and reads one without it', async () => {
+  it('refuses the current Actor with a malformed or missing grants list', async () => {
     const read = (activeCompany: unknown) =>
       readCurrentActor({
         api: {
@@ -288,14 +318,14 @@ describe('Company grants parser', () => {
       ),
     );
     const result = await read(withoutGrants);
-    expect(result).toEqual({
+    expect(result).toEqual({ status: 'error' });
+    expect(await read({ ...withoutGrants, grants: [] })).toEqual({
       status: 'ok',
-      value: { ...completeActor, activeCompany: withoutGrants },
+      value: {
+        ...completeActor,
+        activeCompany: { ...withoutGrants, grants: [] },
+      },
     });
-    if (result.status !== 'ok') throw new Error('Readable Actor required');
-    expect(
-      grantOf(result.value.activeCompany, 'company_project_access'),
-    ).toBeUndefined();
   });
 });
 

@@ -1,3 +1,4 @@
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { setTimeout } from 'node:timers/promises';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { InternalTaskStore } from './internal-task.store.js';
@@ -85,7 +86,10 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
         first,
         id: string(object(first.task).id),
         assignmentId: string(
-          object(c.actor.activeCompany).internalTaskManagerAssignmentId,
+          companyGrantOf(
+            object(c.actor.activeCompany),
+            'company_internal_task_manager',
+          )?.assignmentId,
         ),
       };
     }

@@ -88,9 +88,8 @@ const atelierDetailPath = `/api/projects/${atelierProject.id}`;
 const betaTasksPath = `/api/projects/${betaProject.id}/tasks`;
 const taskDraft = 'Collect the signed questionnaire';
 
-type ProjectPermissions = NonNullable<
-  NonNullable<ActorContext['activeCompany']>['projectPermissions']
->;
+type ProjectPermissions =
+  import('./access/company-grants').CompanyGrantPermission<'company_project_access'>[];
 function actorFor(
   companyId: string,
   projectPermissions: ProjectPermissions,

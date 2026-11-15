@@ -1415,24 +1415,10 @@ export function activityLocaleActor({
     activeCompany: {
       id: companyId,
       displayName: activityLiteral,
+      grants: [],
 
-      commercialActivityPermissions: ['commercial.activity.read'],
       ...(requests
         ? {
-            offerPermissions: [
-              'commercial.offer.read',
-              'commercial.offer.approve',
-              'commercial.offer.response.record',
-            ],
-            offerApproverAssignmentId: 'offer-reader-703',
-            offerApproverPermissionSetVersion: 'v1',
-            contractPermissions: [
-              'commercial.contract.read',
-              'commercial.contract.approve',
-              'commercial.contract.signature.record',
-            ],
-            contractApproverAssignmentId: 'contract-reader-703',
-            contractApproverPermissionSetVersion: 'v1',
             // The screens read these registry-consistent live grants.
             grants: companyGrants(
               {

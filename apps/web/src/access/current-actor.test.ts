@@ -49,6 +49,17 @@ afterEach(() => {
 });
 
 describe('current Actor representation', () => {
+  it('refuses a Company context without the required grants list', async () => {
+    const activeCompany = Object.fromEntries(
+      Object.entries(completeActor.activeCompany).filter(
+        ([key]) => key !== 'grants',
+      ),
+    );
+    expect(await read({ ...completeActor, activeCompany })).toEqual({
+      status: 'error',
+    });
+  });
+
   it.each([
     undefined,
     null,
@@ -64,9 +75,7 @@ describe('current Actor representation', () => {
           ...native,
           activeCompany: {
             ...native.activeCompany,
-            receivedAddendumAccessAssignmentId:
-              '10000000-0000-4000-8000-000000000005',
-            receivedAddendumAccessPermissionSetVersion: 'v1',
+
             receivedAddendumClientReadCapture: capture,
             grants: withCompanyGrants(native.activeCompany.grants, {
               bundle: 'company_received_addendum_access',
@@ -185,39 +194,6 @@ describe('current Actor representation', () => {
     expect(result.value).toBe(completeActor);
   });
 
-  it.each(['v1', 'v99'])(
-    'accepts additive backend Knowledge captures %s without interpreting their authority',
-    async (permissionSetVersion) => {
-      const actor = {
-        ...completeActor,
-        activeCompany: {
-          ...completeActor.activeCompany,
-          knowledgeGrants: [
-            {
-              bundle: 'company_knowledge_source_administrator',
-              assignmentId: '00000000-0000-4000-8000-000000007031',
-              permissionSetVersion,
-            },
-            {
-              bundle: 'company_knowledge_evidence_reader',
-              assignmentId: '00000000-0000-4000-8000-000000007032',
-              permissionSetVersion,
-            },
-          ],
-        },
-      };
-      const result = await read(actor);
-      expect(result).toEqual({ status: 'ok', value: actor });
-      if (result.status !== 'ok') throw new Error('Expected a readable Actor');
-      expect(result.value).toBe(actor);
-      expect(
-        grantOf(result.value.activeCompany, 'company_director_client_access'),
-      ).toBe(
-        grantOf(completeActor.activeCompany, 'company_director_client_access'),
-      );
-    },
-  );
-
   it('accepts Workspace-only context, additive fields and exact identifier spelling', async () => {
     const actor = {
       ...workspaceActor,
@@ -226,7 +202,7 @@ describe('current Actor representation', () => {
         id: 'Company-Case-Kept',
         displayName: '',
         newCompanyField: { future: true },
-        taskPermissions: ['task.read', 'task.read'],
+        grants: [],
       },
     };
     expect(await read(workspaceActor)).toEqual({
@@ -270,53 +246,30 @@ describe('current Actor representation', () => {
     ['array Company', { ...workspaceActor, activeCompany: [] }],
     [
       'missing Company id',
-      { ...workspaceActor, activeCompany: { displayName: 'Company' } },
+      {
+        ...workspaceActor,
+        activeCompany: {
+          grants: [],
+          displayName: 'Company',
+        },
+      },
     ],
     [
       'missing Company name',
-      { ...workspaceActor, activeCompany: { id: 'Company' } },
+      {
+        ...workspaceActor,
+        activeCompany: {
+          grants: [],
+          id: 'Company',
+        },
+      },
     ],
   ])('rejects %s as a read error', async (_name, value) => {
     expect(await read(value)).toEqual({ status: 'error' });
   });
 
   const typedFields = Object.entries(completeActor.activeCompany).filter(
-    ([name]) =>
-      ![
-        'receivedAddendumClientReadCapture',
-        'workingEvidenceCasePermissions',
-        'workingEvidenceCaseReaderAssignmentId',
-        'workingEvidenceCaseReaderPermissionSetVersion',
-        'workingEvidenceCaseRecorderAssignmentId',
-        'workingEvidenceCaseRecorderPermissionSetVersion',
-        'receivedAuditSourceAccessAssignmentId',
-        'receivedAuditSourceAccessPermissionSetVersion',
-        'workingEvidenceClientReadCapture',
-        'workingEvidenceContextCapture',
-
-        'missionPlanGrants',
-        'offerModelGrants',
-        'contractModelGrants',
-        'knowledgeGrants',
-        'externalInvoiceGrants',
-        'invoiceRecordReadCapture',
-        'offerMessageReadCapture',
-        'paymentObservationReadCapture',
-        'paymentObservationContextCapture',
-        'paymentGrants',
-        'paymentEvidenceContextCapture',
-        'paymentEvidenceReferenceReadCapture',
-        'opportunityFollowUpPermissions',
-        'opportunityFollowUpCoordinatorAssignmentId',
-        'opportunityFollowUpCoordinatorPermissionSetVersion',
-        'opportunityFollowUpReadCapture',
-        'internalTaskPermissions',
-        'internalTaskManagerAssignmentId',
-        'internalTaskManagerPermissionSetVersion',
-        'projectNextActionPermissions',
-        'projectNextActionCoordinatorAssignmentId',
-        'projectNextActionCoordinatorPermissionSetVersion',
-      ].includes(name),
+    ([name]) => !name.endsWith('Capture'),
   );
   it.each(typedFields)(
     'rejects corrupt or null Company %s',
@@ -330,7 +283,10 @@ describe('current Actor representation', () => {
         expect(
           await read({
             ...completeActor,
-            activeCompany: { ...completeActor.activeCompany, [name]: value },
+            activeCompany: {
+              ...completeActor.activeCompany,
+              [name]: value,
+            },
           }),
         ).toEqual({ status: 'error' });
       }
@@ -386,13 +342,7 @@ describe('current Actor representation', () => {
     const activeCompany = {
       ...completeActor.activeCompany,
       id: '00000000-0000-4000-8000-000000001030',
-      externalInvoiceGrants: [
-        {
-          bundle: 'company_invoice_reader',
-          assignmentId: '00000000-0000-4000-8000-000000001031',
-          permissionSetVersion: 'v1',
-        },
-      ],
+
       grants: [
         ...completeActor.activeCompany.grants,
         ...companyGrants({
@@ -422,7 +372,10 @@ describe('current Actor representation', () => {
     ]) {
       const actor = {
         ...completeActor,
-        activeCompany: { ...activeCompany, invoiceRecordReadCapture },
+        activeCompany: {
+          ...activeCompany,
+          invoiceRecordReadCapture,
+        },
       };
       const result = await read(actor);
       expect(result).toEqual({ status: 'ok', value: actor });
@@ -431,63 +384,26 @@ describe('current Actor representation', () => {
     }
   });
 
-  it.each([
-    ['projectPermissionSetVersion', 'v2'],
-    ['commercialIntakePermissionSetVersion', 'v2'],
-    ['commercialIntakePermissionSetVersion', 'v3'],
-    ['commercialIntakePermissionSetVersion', 'v4'],
-    ['contractPermissionSetVersion', 'v2'],
-    ['contractApproverPermissionSetVersion', 'v2'],
-    ['offerPermissionSetVersion', 'v2'],
-    ['offerPermissionSetVersion', 'v3'],
-    ['offerApproverPermissionSetVersion', 'v2'],
-    ['opportunityManagerPermissionSetVersion', 'v2'],
-    ['projectTemplatePermissionSetVersion', 'v2'],
-    ['documentPermissionSetVersion', 'v2'],
-    ['documentPermissionSetVersion', 'v3'],
-    ['clientPermissionSetVersion', 'v2'],
-  ])('preserves supported legacy %s %s', async (field, version) => {
-    const value = {
+  it('never reconstructs authority from additive per-bundle fields', async () => {
+    const actor = {
       ...completeActor,
-      activeCompany: { ...completeActor.activeCompany, [field]: version },
+      activeCompany: {
+        ...completeActor.activeCompany,
+        grants: [],
+        projectPermissions: ['project.read'],
+        projectPermissionAssignmentId: 'retired-shape',
+        projectPermissionSetVersion: 'v1',
+      },
     };
-    expect(await read(value)).toEqual({ status: 'ok', value });
+    const result = await read(actor);
+    if (result.status !== 'ok')
+      throw new Error('Expected additive fields to remain opaque');
+    expect(
+      grantOf(result.value.activeCompany, 'company_project_access'),
+    ).toBeUndefined();
   });
 
-  it.each([
-    'missionPlanGrants',
-    'offerModelGrants',
-    'contractModelGrants',
-    'knowledgeGrants',
-    'externalInvoiceGrants',
-    'internalTaskPermissions',
-    'internalTaskManagerAssignmentId',
-    'internalTaskManagerPermissionSetVersion',
-    'projectNextActionPermissions',
-    'projectNextActionCoordinatorAssignmentId',
-    'projectNextActionCoordinatorPermissionSetVersion',
-  ])(
-    'preserves opaque %s including unfamiliar versions and shapes',
-    async (field) => {
-      for (const capture of [
-        null,
-        'future',
-        [{ permissionSetVersion: 'v99', permissions: 1 }],
-      ]) {
-        const value = {
-          ...completeActor,
-          activeCompany: { ...completeActor.activeCompany, [field]: capture },
-        };
-        const result = await read(value);
-        expect(result).toEqual({ status: 'ok', value });
-        if (result.status !== 'ok')
-          throw new Error('Expected opaque capture compatibility');
-        expect(result.value).toBe(value);
-      }
-    },
-  );
-
-  it('leaves unsupported model captures and independent Mission configuration with their feature owners', async () => {
+  it('keeps Mission configuration independent from absent model grants', async () => {
     const grant = {
       assignmentId: '00000000-0000-4000-8000-000000000005',
       permissionSetVersion: 'v99',
@@ -500,26 +416,7 @@ describe('current Actor representation', () => {
       activeCompany: {
         id: '00000000-0000-4000-8000-000000000004',
         displayName: 'Company',
-        offerModelGrants: [
-          {
-            ...grant,
-            bundle: 'company_offer_model_editor',
-            permissions: [
-              'commercial.offer.model.read',
-              'commercial.offer.model.version.create',
-            ],
-          },
-        ],
-        contractModelGrants: [
-          {
-            ...grant,
-            bundle: 'company_contract_model_editor',
-            permissions: [
-              'commercial.contract.model.read',
-              'commercial.contract.model.version.create',
-            ],
-          },
-        ],
+
         // A Mission Plan grant of an unknown version refuses the whole
         // Actor (#1332), so only the registry configuration grant is listed.
         grants: companyGrants({
@@ -623,7 +520,10 @@ it.each([
     ]) {
       const actor = {
         ...native,
-        activeCompany: { ...native.activeCompany, [field]: value },
+        activeCompany: {
+          ...native.activeCompany,
+          [field]: value,
+        },
       };
       const result = await read(actor);
       expect(result).toEqual({ status: 'ok', value: actor });

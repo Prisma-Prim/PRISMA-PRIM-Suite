@@ -54,15 +54,9 @@ function actorFixture() {
       ...completeActor.activeCompany,
       id: companyId,
       displayName: 'Fictional Company',
-      receivedAddendumAccessAssignmentId:
-        '10000000-0000-4000-8000-000000000005',
-      receivedAddendumAccessPermissionSetVersion: 'v1',
+
       receivedAddendumClientReadCapture:
         'received-addendum-client-read.v1.' + 'a'.repeat(64),
-
-      contractPermissions: ['commercial.contract.read'],
-      contractPermissionAssignmentId: '10000000-0000-4000-8000-000000000016',
-      contractPermissionSetVersion: 'v2',
 
       grants: withCompanyGrants(
         completeActor.activeCompany.grants,

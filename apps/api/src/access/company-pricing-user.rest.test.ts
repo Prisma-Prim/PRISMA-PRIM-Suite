@@ -1,3 +1,4 @@
+import { companyGrantOf } from './company-grants.test-support.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
@@ -243,12 +244,21 @@ withPostgres('Company Pricing User REST', () => {
     const selected = await activeCompanyOf(company.id, PRICING_USER);
     expect(selected).toMatchObject({
       id: company.id,
-      pricingUserPermissions: PRICING_USER_PERMISSIONS,
-      pricingUserPermissionAssignmentId: assignmentId,
-      pricingUserPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_user',
+          permissions: PRICING_USER_PERMISSIONS,
+          assignmentId: assignmentId,
+          permissionSetVersion: 'v1',
+        }),
+      ]),
     });
-    expect(selected.pricingConfigurationPermissions).toBeUndefined();
-    expect(selected.serviceCataloguePermissions).toBeUndefined();
+    expect(
+      companyGrantOf(selected, 'company_pricing_configuration')?.permissions,
+    ).toBeUndefined();
+    expect(
+      companyGrantOf(selected, 'company_service_catalogue')?.permissions,
+    ).toBeUndefined();
 
     // The holder reads exactly what a configuration owner reads at the same
     // instant, including the derived state and the provisional marker, and
@@ -316,10 +326,13 @@ withPostgres('Company Pricing User REST', () => {
       company.id,
       CONFIGURATION_MEMBER,
     );
-    expect(configuration.pricingConfigurationPermissions).toEqual(
-      CONFIGURATION_PERMISSIONS,
-    );
-    expect(configuration.pricingUserPermissions).toBeUndefined();
+    expect(
+      companyGrantOf(configuration, 'company_pricing_configuration')
+        ?.permissions,
+    ).toEqual(CONFIGURATION_PERMISSIONS);
+    expect(
+      companyGrantOf(configuration, 'company_pricing_user')?.permissions,
+    ).toBeUndefined();
     expect(JSON.stringify(configuration)).not.toContain(
       'commercial.pricing.calculate',
     );
@@ -568,9 +581,14 @@ withPostgres('Company Pricing User REST', () => {
       lifecycle('company_pricing_user_assignment.granted', regrantedId),
     ]);
     expect(await activeCompanyOf(company.id, PRICING_USER)).toMatchObject({
-      pricingUserPermissions: PRICING_USER_PERMISSIONS,
-      pricingUserPermissionAssignmentId: regrantedId,
-      pricingUserPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_user',
+          permissions: PRICING_USER_PERMISSIONS,
+          assignmentId: regrantedId,
+          permissionSetVersion: 'v1',
+        }),
+      ]),
     });
 
     // The events stay under the Company assignment administration boundary.
@@ -790,8 +808,10 @@ withPostgres('Company Pricing User REST', () => {
     ).toEqual([]);
     expect(JSON.stringify(body)).not.toContain(fixture.requestId);
     expect(
-      (await activeCompanyOf(fixture.company.id, PRICING_USER))
-        .commercialActivityPermissions,
+      companyGrantOf(
+        await activeCompanyOf(fixture.company.id, PRICING_USER),
+        'company_commercial_activity_reader',
+      )?.permissions,
     ).toBeUndefined();
   }, 60_000);
 
@@ -818,10 +838,19 @@ withPostgres('Company Pricing User REST', () => {
 
       const selected = await activeCompanyOf(company.id, headers);
       if (role.legacyIntakeV1)
-        expect(selected.commercialIntakePermissionSetVersion).toBe('v1');
-      expect(selected.pricingUserPermissions).toBeUndefined();
-      expect(selected.pricingUserPermissionAssignmentId).toBeUndefined();
-      expect(selected.pricingUserPermissionSetVersion).toBeUndefined();
+        expect(
+          companyGrantOf(selected, 'company_commercial_intake')
+            ?.permissionSetVersion,
+        ).toBe('v1');
+      expect(
+        companyGrantOf(selected, 'company_pricing_user')?.permissions,
+      ).toBeUndefined();
+      expect(
+        companyGrantOf(selected, 'company_pricing_user')?.assignmentId,
+      ).toBeUndefined();
+      expect(
+        companyGrantOf(selected, 'company_pricing_user')?.permissionSetVersion,
+      ).toBeUndefined();
       expect(JSON.stringify(selected)).not.toContain(
         'commercial.pricing.calculate',
       );
@@ -849,8 +878,16 @@ withPostgres('Company Pricing User REST', () => {
       companyId: company.id,
     };
     expect(await activeCompanyOf(company.id, BOTH_MEMBER)).toMatchObject({
-      pricingConfigurationPermissions: CONFIGURATION_PERMISSIONS,
-      pricingUserPermissions: PRICING_USER_PERMISSIONS,
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_configuration',
+          permissions: CONFIGURATION_PERMISSIONS,
+        }),
+        expect.objectContaining({
+          bundle: 'company_pricing_user',
+          permissions: PRICING_USER_PERMISSIONS,
+        }),
+      ]),
     });
     const first = await publishAs(BOTH_MEMBER, company.id, 1, null);
     await expectReads(company.id, BOTH_MEMBER, first.id, 200);
@@ -858,10 +895,13 @@ withPostgres('Company Pricing User REST', () => {
     // Without Pricing User, Configuration keeps reads and publication.
     await revoke(PRICING_USER_ASSIGNMENTS, target);
     const configurationOnly = await activeCompanyOf(company.id, BOTH_MEMBER);
-    expect(configurationOnly.pricingUserPermissions).toBeUndefined();
-    expect(configurationOnly.pricingConfigurationPermissions).toEqual(
-      CONFIGURATION_PERMISSIONS,
-    );
+    expect(
+      companyGrantOf(configurationOnly, 'company_pricing_user')?.permissions,
+    ).toBeUndefined();
+    expect(
+      companyGrantOf(configurationOnly, 'company_pricing_configuration')
+        ?.permissions,
+    ).toEqual(CONFIGURATION_PERMISSIONS);
     await expectReads(company.id, BOTH_MEMBER, first.id, 200);
     await publishAs(BOTH_MEMBER, company.id, 2, 1);
 
@@ -869,10 +909,13 @@ withPostgres('Company Pricing User REST', () => {
     await grant(PRICING_USER_ASSIGNMENTS, target);
     await revoke(CONFIGURATION_ASSIGNMENTS, target);
     const pricingUserOnly = await activeCompanyOf(company.id, BOTH_MEMBER);
-    expect(pricingUserOnly.pricingConfigurationPermissions).toBeUndefined();
-    expect(pricingUserOnly.pricingUserPermissions).toEqual(
-      PRICING_USER_PERMISSIONS,
-    );
+    expect(
+      companyGrantOf(pricingUserOnly, 'company_pricing_configuration')
+        ?.permissions,
+    ).toBeUndefined();
+    expect(
+      companyGrantOf(pricingUserOnly, 'company_pricing_user')?.permissions,
+    ).toEqual(PRICING_USER_PERMISSIONS);
     await expectReads(company.id, BOTH_MEMBER, first.id, 200);
     const before = await writeCounts();
     const refused = await post(
@@ -888,8 +931,16 @@ withPostgres('Company Pricing User REST', () => {
     // A regrant restores exactly the granted authority.
     await grant(CONFIGURATION_ASSIGNMENTS, target);
     expect(await activeCompanyOf(company.id, BOTH_MEMBER)).toMatchObject({
-      pricingConfigurationPermissions: CONFIGURATION_PERMISSIONS,
-      pricingUserPermissions: PRICING_USER_PERMISSIONS,
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_configuration',
+          permissions: CONFIGURATION_PERMISSIONS,
+        }),
+        expect.objectContaining({
+          bundle: 'company_pricing_user',
+          permissions: PRICING_USER_PERMISSIONS,
+        }),
+      ]),
     });
     const third = await publishAs(BOTH_MEMBER, company.id, 3, 2);
     await expectReads(company.id, BOTH_MEMBER, third.id, 200);
@@ -920,9 +971,15 @@ withPostgres('Company Pricing User REST', () => {
       expect(await denied.text()).not.toContain('Illustrative');
     }
     const revoked = await activeCompanyOf(company.id, PRICING_USER);
-    expect(revoked.pricingUserPermissions).toBeUndefined();
-    expect(revoked.pricingUserPermissionAssignmentId).toBeUndefined();
-    expect(revoked.pricingUserPermissionSetVersion).toBeUndefined();
+    expect(
+      companyGrantOf(revoked, 'company_pricing_user')?.permissions,
+    ).toBeUndefined();
+    expect(
+      companyGrantOf(revoked, 'company_pricing_user')?.assignmentId,
+    ).toBeUndefined();
+    expect(
+      companyGrantOf(revoked, 'company_pricing_user')?.permissionSetVersion,
+    ).toBeUndefined();
 
     await grant(PRICING_USER_ASSIGNMENTS, target);
     await expectReads(company.id, PRICING_USER, rules.first.id, 200);
@@ -950,7 +1007,9 @@ withPostgres('Company Pricing User REST', () => {
           [version, assignmentId],
         );
         const unknown = await activeCompanyOf(company.id, PRICING_USER);
-        expect(unknown.pricingUserPermissions).toBeUndefined();
+        expect(
+          companyGrantOf(unknown, 'company_pricing_user')?.permissions,
+        ).toBeUndefined();
         for (const path of paths)
           expect({
             version,
@@ -1035,8 +1094,10 @@ withPostgres('Company Pricing User REST', () => {
       expect(await denied.text()).not.toContain('Only BIC');
     }
     expect(
-      (await activeCompanyOf(secondary.id, PRICING_USER))
-        .pricingUserPermissions,
+      companyGrantOf(
+        await activeCompanyOf(secondary.id, PRICING_USER),
+        'company_pricing_user',
+      )?.permissions,
     ).toBeUndefined();
 
     // Acting in its own Company, other Companies' and Workspaces' ids get

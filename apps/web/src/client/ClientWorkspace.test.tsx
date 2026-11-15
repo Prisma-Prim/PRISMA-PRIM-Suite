@@ -923,7 +923,11 @@ describe('ClientWorkspace', () => {
     );
     const bicActor: ActorContext = {
       ...actor,
-      activeCompany: { id: 'company-b', displayName: 'BIC' },
+      activeCompany: {
+        grants: [],
+        id: 'company-b',
+        displayName: 'BIC',
+      },
     };
 
     render(
@@ -1105,7 +1109,11 @@ describe('ClientWorkspace', () => {
       <ClientWorkspace
         actor={{
           ...actor,
-          activeCompany: { id: 'company-b', displayName: 'BIC' },
+          activeCompany: {
+            grants: [],
+            id: 'company-b',
+            displayName: 'BIC',
+          },
         }}
         identity={identity}
         onCompanyContextRejected={vi.fn()}
@@ -1169,7 +1177,11 @@ describe('ClientWorkspace', () => {
       <ClientWorkspace
         actor={{
           ...actor,
-          activeCompany: { id: 'company-b', displayName: 'BIC' },
+          activeCompany: {
+            grants: [],
+            id: 'company-b',
+            displayName: 'BIC',
+          },
         }}
         identity={identity}
         onCompanyContextRejected={vi.fn()}
@@ -1393,7 +1405,11 @@ describe('ClientWorkspace', () => {
     },
     {
       boundary: 'active Company',
-      actor: assignedActor({ id: 'company-b', displayName: 'BIC' }),
+      actor: assignedActor({
+        grants: [],
+        id: 'company-b',
+        displayName: 'BIC',
+      }),
     },
     {
       boundary: 'Client assignment',

@@ -276,7 +276,7 @@ it.each(['company', 'session', 'grant'] as const)(
                   ...userRequest,
                   assignmentId: '40000000-0000-4000-8000-000000000999',
                 })
-              : actor.activeCompany?.grants,
+              : (actor.activeCompany?.grants ?? []),
         },
       };
       view.rerender(

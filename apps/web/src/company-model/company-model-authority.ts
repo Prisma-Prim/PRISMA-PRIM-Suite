@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { grantOf } from '../access/company-grants';
 import type { CompanyModelGrants as Grants } from './company-model-kind';
 
 type Grant = {
@@ -7,7 +8,7 @@ type Grant = {
   version: 'v1';
 };
 
-/** The legacy Actor transport does not prove this new projection: admit it here. */
+/** Consume the kind's registry grants, preserving its exact capture checks. */
 export function companyModelAuthority(actor: ActorContext, grants: Grants) {
   const company = actor.activeCompany;
   if (
@@ -18,9 +19,11 @@ export function companyModelAuthority(actor: ActorContext, grants: Grants) {
     !id(actor.internalUserId)
   )
     return null;
-  const values = company[grants.field];
-  if (!Array.isArray(values) || values.length < 1 || values.length > 2)
-    return null;
+  const values = [
+    grantOf(company, grants.editor.bundle),
+    grantOf(company, grants.approver.bundle),
+  ].filter((grant) => grant !== undefined);
+  if (values.length < 1) return null;
   const admitted: Grant[] = [];
   const items: unknown[] = values;
   for (const value of items) {

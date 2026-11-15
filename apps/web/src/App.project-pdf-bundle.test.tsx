@@ -92,10 +92,6 @@ function actorFor(companyId = company.id): ActorContext {
     activeCompany: {
       ...(companyId === company.id ? company : companyB),
 
-      documentContentReaderAssignmentId: id(13),
-      documentContentReaderPermissionSetVersion: 'v1',
-      missionDeliverableAccessAssignmentId: id(14),
-      missionDeliverableAccessPermissionSetVersion: 'v1',
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -190,7 +186,7 @@ function install() {
         if (actor.activeCompany)
           actor.activeCompany = {
             ...actor.activeCompany,
-            documentContentReaderAssignmentId: state.readerId,
+
             grants: withCompanyGrants(actor.activeCompany.grants, {
               bundle: 'company_document_content_reader',
               version: 'v1',

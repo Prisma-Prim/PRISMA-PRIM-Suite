@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import {
   parseInternalUserId,
   parseWorkspaceId,
@@ -416,11 +417,27 @@ describe.skipIf(!databaseUrl)(
         }),
       );
       const activeCompany = object(current.activeCompany);
-      expect(activeCompany.documentPermissions).toEqual([
-        'document.project.manage',
-      ]);
-      expect(activeCompany.projectPermissions ?? []).toEqual([]);
-      expect(activeCompany.clientPermissions).toEqual([]);
+      expect(
+        companyPermissionsOf(activeCompany, [
+          'company_document_project_organizer',
+          'company_document_registrar',
+          'company_document_approver',
+          'company_document_content_reader',
+          'company_document_content_uploader',
+          'company_mission_deliverable_access',
+          'company_received_contract_access',
+          'company_received_addendum_access',
+          'company_received_audit_source_access',
+        ]),
+      ).toEqual(['document.project.manage']);
+      expect(
+        companyPermissionsOf(activeCompany, ['company_project_access']) ?? [],
+      ).toEqual([]);
+      expect(
+        companyPermissionsOf(activeCompany, [
+          'company_director_client_access',
+        ]) ?? [],
+      ).toEqual([]);
       expect(
         (
           await request(

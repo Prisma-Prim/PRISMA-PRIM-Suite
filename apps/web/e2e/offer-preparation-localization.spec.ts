@@ -238,14 +238,6 @@ async function installRoutes(page: Page) {
                 activeCompany: {
                   ...company,
 
-                  offerPermissionAssignmentId: 'offer-preparer-654',
-                  offerPermissionSetVersion: 'v1',
-                  offerPermissions: [
-                    'commercial.offer.read',
-                    'commercial.offer.prepare',
-                    'commercial.offer.transmission.record',
-                    'commercial.pricing.snapshot.read',
-                  ],
                   grants: companyGrants(
                     {
                       bundle: 'company_director_client_access',

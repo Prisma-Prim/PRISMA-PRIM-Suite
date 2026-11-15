@@ -469,7 +469,11 @@ describe('Client correction history', () => {
           )
             actor = {
               ...actor,
-              activeCompany: { ...actor.activeCompany, ...companyB },
+              activeCompany: {
+                grants: [],
+                ...actor.activeCompany,
+                ...companyB,
+              },
             };
           return respond(actor);
         }

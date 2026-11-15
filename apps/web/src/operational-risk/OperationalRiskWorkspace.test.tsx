@@ -385,8 +385,6 @@ describe('Operational Risk manual workspace', () => {
         id: companyId,
         displayName: 'Synthetic Risk Company',
 
-        taskPermissions: ['task.read'],
-
         grants: companyGrants({
           bundle: 'company_project_access',
           version: 'v1',

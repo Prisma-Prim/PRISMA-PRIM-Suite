@@ -23,13 +23,6 @@ export function paymentEvidenceActor() {
       id: paymentEvidenceIds.company,
       displayName: 'Fictional Company',
 
-      documentApproverAssignmentId: '10000000-0000-4000-8000-000000000011',
-      documentApproverPermissionSetVersion: 'v1' as const,
-      documentContentReaderAssignmentId: '10000000-0000-4000-8000-000000000012',
-      documentContentReaderPermissionSetVersion: 'v1' as const,
-      documentContentUploaderAssignmentId:
-        '10000000-0000-4000-8000-000000000013',
-      documentContentUploaderPermissionSetVersion: 'v1' as const,
       // The screens read these registry-consistent live grants.
       grants: companyGrants(
         {

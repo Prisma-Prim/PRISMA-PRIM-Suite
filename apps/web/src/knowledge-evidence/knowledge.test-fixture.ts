@@ -36,9 +36,6 @@ export const knowledgeActor = {
     id: '10000000-0000-4000-8000-000000000001',
     displayName: 'Company DEMO',
 
-    documentContentReaderAssignmentId: 'a0000000-0000-4000-8000-000000001015',
-    documentContentReaderPermissionSetVersion: 'v1',
-
     // Unmigrated screens still read the Client and Document per-bundle fields
     // above beside these grants.
     grants: companyGrants(

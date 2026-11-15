@@ -237,9 +237,14 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
         }),
       );
       expect(object(actor.activeCompany)).toMatchObject({
-        projectNextActionPermissions: ['project.next_action.update'],
-        projectNextActionCoordinatorAssignmentId: grant.id,
-        projectNextActionCoordinatorPermissionSetVersion: 'v1',
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_project_next_action_coordinator',
+            assignmentId: grant.id,
+            permissionSetVersion: 'v1',
+            permissions: ['project.next_action.update'],
+          }),
+        ]),
       });
       expect(
         (

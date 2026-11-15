@@ -51,21 +51,7 @@ function fixture(kind: Kind) {
     ...modelOfferActor,
     activeCompany: {
       ...company,
-      offerApproverAssignmentId: 'approver-852',
-      offerApproverPermissionSetVersion: 'v2',
-      offerPermissions: [
-        'commercial.offer.read',
-        'commercial.offer.prepare',
-        'commercial.offer.estimate.prepare',
-        'commercial.offer.model.select',
-        'commercial.offer.model_based.prepare',
-        'commercial.offer.transmission.record',
-        'commercial.offer.model_based.transmission.record',
-        'commercial.offer.approve',
-        'commercial.offer.model_based.approve',
-        'commercial.offer.response.record',
-        'commercial.offer.model_based.response.record',
-      ],
+
       grants: withCompanyGrants(company.grants, {
         bundle: 'company_offer_approver',
         version: 'v2',

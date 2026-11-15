@@ -49,14 +49,6 @@ it('opens a recorded Contract from its Request without Offer or Client authority
     activeCompany: {
       ...company,
 
-      contractPermissions: [
-        'commercial.contract.read',
-        'commercial.contract.prepare',
-        'commercial.contract.project.link',
-      ],
-      contractPermissionAssignmentId: 'contract-grant',
-      contractPermissionSetVersion: 'v1',
-
       grants: withoutCompanyGrants(
         companyGrants(
           {
@@ -224,7 +216,7 @@ it('opens a recorded Contract from its Request without Offer or Client authority
     activeCompany: {
       ...actor.activeCompany,
       ...company,
-      contractPermissions: [],
+
       grants: withoutCompanyGrants(
         actor.activeCompany?.grants,
         'company_contract_preparer',

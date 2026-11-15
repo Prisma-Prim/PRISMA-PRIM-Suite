@@ -48,7 +48,6 @@ function actorFor(companyId: string, state: Transport): ActorContext {
     activeCompany: {
       ...(companyId === companyB.id ? companyB : companyA),
 
-      commercialActivityPermissions: ['commercial.activity.read'],
       grants:
         state.intakeAssignment && state.requestCreate
           ? companyGrants({

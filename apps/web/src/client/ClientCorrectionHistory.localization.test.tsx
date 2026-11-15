@@ -314,6 +314,7 @@ it.each(['empty', 'error', 'unavailable'] as const)(
           ...baseActor,
           workspacePermissions: [],
           activeCompany: {
+            grants: [],
             id: 'company-history',
             displayName: 'Synthetic Company',
           },

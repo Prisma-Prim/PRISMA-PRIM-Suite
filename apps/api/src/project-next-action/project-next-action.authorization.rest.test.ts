@@ -1,3 +1,4 @@
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import {
   afterAll,
@@ -112,9 +113,10 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
             companyId: c.companyId,
           }),
         );
-        expect(object(actor.activeCompany).projectPermissionSetVersion).toBe(
-          version,
-        );
+        expect(
+          companyGrantOf(object(actor.activeCompany), 'company_project_access')
+            ?.permissionSetVersion,
+        ).toBe(version);
         expect(
           (await fixture.request(c.path, { companyId: c.companyId })).status,
         ).toBe(200);

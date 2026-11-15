@@ -165,21 +165,6 @@ export async function installTransmissionRoutes(
             activeCompany: {
               ...company707,
 
-              offerPermissionAssignmentId:
-                readOnly || retired ? undefined : 'offer-preparer-707',
-              offerPermissionSetVersion: readOnly || retired ? undefined : 'v1',
-              offerApproverAssignmentId:
-                readOnly || retired ? undefined : 'offer-approver-707',
-              offerApproverPermissionSetVersion:
-                readOnly || retired ? undefined : 'v1',
-              offerPermissions:
-                readOnly || retired
-                  ? ['commercial.offer.read']
-                  : [
-                      'commercial.offer.read',
-                      'commercial.offer.transmission.record',
-                      'commercial.offer.response.record',
-                    ],
               grants: withoutCompanyGrants(
                 companyGrants(
                   {

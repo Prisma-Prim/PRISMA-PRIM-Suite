@@ -47,8 +47,6 @@ const actor: ActorContext = {
     id: 'company-one',
     displayName: 'Synthetic Company',
 
-    offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
-    offerApproverAssignmentId: 'approver-assignment-one',
     grants: companyGrants(
       {
         bundle: 'company_commercial_intake',
@@ -206,9 +204,7 @@ function panel({
 }
 
 function actorWithPermissions(
-  permissions: NonNullable<
-    NonNullable<ActorContext['activeCompany']>['offerPermissions']
-  >,
+  permissions: import('./offer-grants.test-fixture').OfferPermission[],
 ): ActorContext {
   if (!actor.activeCompany)
     throw new Error('Expected synthetic active Company.');
@@ -216,7 +212,7 @@ function actorWithPermissions(
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      offerPermissions: permissions,
+
       grants: [
         ...withoutCompanyGrants(
           actor.activeCompany.grants,
@@ -775,9 +771,7 @@ it.each([
   },
 ] satisfies Array<{
   mode: string;
-  permissions: NonNullable<
-    NonNullable<ActorContext['activeCompany']>['offerPermissions']
-  >;
+  permissions: import('./offer-grants.test-fixture').OfferPermission[];
   run: boolean;
   decide: boolean;
 }>)(

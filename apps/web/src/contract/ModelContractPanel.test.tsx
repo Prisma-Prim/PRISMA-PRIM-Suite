@@ -595,7 +595,6 @@ it('wires scoped plan rejection through the actual Company-model Contract parent
       id: companyId,
       displayName: 'Synthetic Company',
 
-      taskPermissions: ['task.read', 'task.manage'],
       grants: withCompanyGrants(
         signingActor.activeCompany?.grants,
         userRequest,

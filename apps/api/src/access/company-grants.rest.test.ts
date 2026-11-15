@@ -20,364 +20,32 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 const WORKSPACE_ID = '00000000-0000-4000-8000-000000001332';
 
-/**
- * How the legacy per-bundle fields of the active Company context describe a
- * live grant of each bundle. `permissions` may be a field shared with other
- * bundles: each case holds only this bundle besides Company Context Access,
- * which adds no permission. A fact the legacy fields never carried is absent
- * from its entry, and `grants` must still carry it.
- */
-type LegacyDescription =
-  | { kind: 'context-only' }
-  | {
-      kind: 'fields';
-      permissions?: string;
-      assignmentId?: string;
-      permissionSetVersion?: string;
-    }
-  | { kind: 'list'; list: string; permissions: boolean };
+// A closed public shape detects any accidentally published server projection,
+// including a future per-bundle property. This list never grows for a bundle.
+const COMPANY_FIELDS = [
+  'id',
+  'displayName',
+  'grants',
+  'paymentObservationReadCapture',
+  'paymentObservationContextCapture',
+  'paymentEvidenceContextCapture',
+  'paymentEvidenceReferenceReadCapture',
+  'invoiceRecordReadCapture',
+  'offerMessageReadCapture',
+  'workingEvidenceClientReadCapture',
+  'workingEvidenceContextCapture',
+  'receivedAddendumClientReadCapture',
+  'opportunityFollowUpReadCapture',
+];
 
-function fields(
-  permissions: string | undefined,
-  assignmentId: string | undefined,
-  permissionSetVersion: string | undefined,
-): LegacyDescription {
-  return { kind: 'fields', permissions, assignmentId, permissionSetVersion };
+function expectPublicCompany(company: Record<string, unknown>) {
+  expect(
+    Object.keys(company).filter((key) => !COMPANY_FIELDS.includes(key)),
+  ).toEqual([]);
+  expect(company).toHaveProperty('id');
+  expect(company).toHaveProperty('displayName');
+  expect(company).toHaveProperty('grants');
 }
-
-const LEGACY_FIELDS = {
-  company_context_access: { kind: 'context-only' },
-  company_director_client_access: fields(
-    'clientPermissions',
-    'clientPermissionAssignmentId',
-    'clientPermissionSetVersion',
-  ),
-  company_internal_task_manager: fields(
-    'internalTaskPermissions',
-    'internalTaskManagerAssignmentId',
-    'internalTaskManagerPermissionSetVersion',
-  ),
-  company_task_manager: fields(
-    'taskPermissions',
-    'taskPermissionAssignmentId',
-    'taskPermissionSetVersion',
-  ),
-  company_document_project_organizer: fields(
-    'documentPermissions',
-    undefined,
-    undefined,
-  ),
-  company_document_registrar: fields(
-    'documentPermissions',
-    'documentPermissionAssignmentId',
-    'documentPermissionSetVersion',
-  ),
-  company_document_approver: fields(
-    'documentPermissions',
-    'documentApproverAssignmentId',
-    'documentApproverPermissionSetVersion',
-  ),
-  company_project_access: fields(
-    'projectPermissions',
-    'projectPermissionAssignmentId',
-    'projectPermissionSetVersion',
-  ),
-  company_commercial_intake: fields(
-    'commercialIntakePermissions',
-    'commercialIntakePermissionAssignmentId',
-    'commercialIntakePermissionSetVersion',
-  ),
-  company_service_catalogue: fields(
-    'serviceCataloguePermissions',
-    'serviceCataloguePermissionAssignmentId',
-    'serviceCataloguePermissionSetVersion',
-  ),
-  company_pricing_configuration: fields(
-    'pricingConfigurationPermissions',
-    'pricingConfigurationPermissionAssignmentId',
-    'pricingConfigurationPermissionSetVersion',
-  ),
-  company_pricing_user: fields(
-    'pricingUserPermissions',
-    'pricingUserPermissionAssignmentId',
-    'pricingUserPermissionSetVersion',
-  ),
-  company_pricing_adjustment: fields(
-    'pricingAdjustmentPermissions',
-    'pricingAdjustmentPermissionAssignmentId',
-    'pricingAdjustmentPermissionSetVersion',
-  ),
-  company_offer_preparer: fields(
-    'offerPermissions',
-    'offerPermissionAssignmentId',
-    'offerPermissionSetVersion',
-  ),
-  company_contract_preparer: fields(
-    'contractPermissions',
-    'contractPermissionAssignmentId',
-    'contractPermissionSetVersion',
-  ),
-  company_contract_early_preparation: fields(
-    'contractPermissions',
-    'contractEarlyPreparationAssignmentId',
-    'contractEarlyPreparationPermissionSetVersion',
-  ),
-  company_contract_approver: fields(
-    'contractPermissions',
-    'contractApproverAssignmentId',
-    'contractApproverPermissionSetVersion',
-  ),
-  company_offer_approver: fields(
-    'offerPermissions',
-    'offerApproverAssignmentId',
-    'offerApproverPermissionSetVersion',
-  ),
-  company_commercial_activity_reader: fields(
-    'commercialActivityPermissions',
-    undefined,
-    'commercialActivityPermissionSetVersion',
-  ),
-  company_opportunity_manager: fields(
-    'opportunityManagerPermissions',
-    'opportunityManagerPermissionAssignmentId',
-    'opportunityManagerPermissionSetVersion',
-  ),
-  company_project_approver: fields(
-    'projectApproverPermissions',
-    'projectApproverPermissionAssignmentId',
-    'projectApproverPermissionSetVersion',
-  ),
-  company_profitability_contributor: fields(
-    'profitabilityContributorPermissions',
-    'profitabilityContributorPermissionAssignmentId',
-    'profitabilityContributorPermissionSetVersion',
-  ),
-  company_profitability_director: fields(
-    'profitabilityDirectorPermissions',
-    'profitabilityDirectorPermissionAssignmentId',
-    'profitabilityDirectorPermissionSetVersion',
-  ),
-  company_sales_stage_configuration: fields(
-    'salesStageConfigurationPermissions',
-    'salesStageConfigurationPermissionAssignmentId',
-    'salesStageConfigurationPermissionSetVersion',
-  ),
-  company_document_content_reader: fields(
-    'documentPermissions',
-    'documentContentReaderAssignmentId',
-    'documentContentReaderPermissionSetVersion',
-  ),
-  company_document_content_uploader: fields(
-    'documentPermissions',
-    'documentContentUploaderAssignmentId',
-    'documentContentUploaderPermissionSetVersion',
-  ),
-  company_project_template_user: fields(
-    'projectTemplatePermissions',
-    'projectTemplatePermissionAssignmentId',
-    'projectTemplatePermissionSetVersion',
-  ),
-  company_project_stage_advancer: fields(
-    'projectStagePermissions',
-    'projectStagePermissionAssignmentId',
-    'projectStagePermissionSetVersion',
-  ),
-  company_project_template_configuration: fields(
-    'projectTemplateConfigurationPermissions',
-    'projectTemplateConfigurationPermissionAssignmentId',
-    'projectTemplateConfigurationPermissionSetVersion',
-  ),
-  company_ideas_reader: fields(
-    'ideasReaderPermissions',
-    'ideasReaderPermissionAssignmentId',
-    'ideasReaderPermissionSetVersion',
-  ),
-  company_ideas_recorder: fields(
-    'ideasRecorderPermissions',
-    'ideasRecorderPermissionAssignmentId',
-    'ideasRecorderPermissionSetVersion',
-  ),
-  company_ideas_reviewer: fields(
-    'ideasReviewerPermissions',
-    'ideasReviewerPermissionAssignmentId',
-    'ideasReviewerPermissionSetVersion',
-  ),
-  company_operational_risk_reader: fields(
-    'operationalRiskPermissions',
-    'operationalRiskReaderAssignmentId',
-    'operationalRiskReaderPermissionSetVersion',
-  ),
-  company_operational_risk_recorder: fields(
-    'operationalRiskPermissions',
-    'operationalRiskRecorderAssignmentId',
-    'operationalRiskRecorderPermissionSetVersion',
-  ),
-  company_task_result_recorder: fields(
-    'taskResultPermissions',
-    'taskResultRecorderAssignmentId',
-    'taskResultRecorderPermissionSetVersion',
-  ),
-  company_project_next_action_coordinator: fields(
-    'projectNextActionPermissions',
-    'projectNextActionCoordinatorAssignmentId',
-    'projectNextActionCoordinatorPermissionSetVersion',
-  ),
-  company_mission_applicability_coordinator: fields(
-    'missionApplicabilityProposalPermissions',
-    'missionApplicabilityCoordinatorAssignmentId',
-    'missionApplicabilityCoordinatorPermissionSetVersion',
-  ),
-  company_mission_applicability_approver: fields(
-    'missionApplicabilityDecisionPermissions',
-    'missionApplicabilityApproverAssignmentId',
-    'missionApplicabilityApproverPermissionSetVersion',
-  ),
-  company_mission_result_reviewer: fields(
-    'missionResultReviewPermissions',
-    'missionResultReviewerAssignmentId',
-    'missionResultReviewerPermissionSetVersion',
-  ),
-  company_mission_deliverable_access: fields(
-    'documentPermissions',
-    'missionDeliverableAccessAssignmentId',
-    'missionDeliverableAccessPermissionSetVersion',
-  ),
-  company_contract_signature_declarer: fields(
-    undefined,
-    'contractSignatureDeclarerAssignmentId',
-    'contractSignatureDeclarerPermissionSetVersion',
-  ),
-  company_received_contract_access: fields(
-    'documentPermissions',
-    'receivedContractAccessAssignmentId',
-    'receivedContractAccessPermissionSetVersion',
-  ),
-  company_received_addendum_access: fields(
-    'documentPermissions',
-    'receivedAddendumAccessAssignmentId',
-    'receivedAddendumAccessPermissionSetVersion',
-  ),
-  company_offer_model_editor: {
-    kind: 'list',
-    list: 'offerModelGrants',
-    permissions: true,
-  },
-  company_offer_model_approver: {
-    kind: 'list',
-    list: 'offerModelGrants',
-    permissions: true,
-  },
-  company_contract_model_editor: {
-    kind: 'list',
-    list: 'contractModelGrants',
-    permissions: true,
-  },
-  company_contract_model_approver: {
-    kind: 'list',
-    list: 'contractModelGrants',
-    permissions: true,
-  },
-  company_mission_plan_configuration: {
-    kind: 'list',
-    list: 'missionPlanGrants',
-    permissions: true,
-  },
-  company_mission_plan_user: {
-    kind: 'list',
-    list: 'missionPlanGrants',
-    permissions: true,
-  },
-  company_knowledge_source_administrator: {
-    kind: 'list',
-    list: 'knowledgeGrants',
-    permissions: false,
-  },
-  company_knowledge_evidence_reader: {
-    kind: 'list',
-    list: 'knowledgeGrants',
-    permissions: false,
-  },
-  company_payment_reader: {
-    kind: 'list',
-    list: 'paymentGrants',
-    permissions: false,
-  },
-  company_payment_recorder: {
-    kind: 'list',
-    list: 'paymentGrants',
-    permissions: false,
-  },
-  company_payment_confirmer: {
-    kind: 'list',
-    list: 'paymentGrants',
-    permissions: false,
-  },
-  company_payment_reverser: {
-    kind: 'list',
-    list: 'paymentGrants',
-    permissions: false,
-  },
-  company_payment_evidence_access: {
-    kind: 'list',
-    list: 'paymentGrants',
-    permissions: false,
-  },
-  company_invoice_reader: {
-    kind: 'list',
-    list: 'externalInvoiceGrants',
-    permissions: false,
-  },
-  company_invoice_recorder: {
-    kind: 'list',
-    list: 'externalInvoiceGrants',
-    permissions: false,
-  },
-  company_external_invoice_access: {
-    kind: 'list',
-    list: 'externalInvoiceGrants',
-    permissions: false,
-  },
-  company_opportunity_follow_up_coordinator: fields(
-    'opportunityFollowUpPermissions',
-    'opportunityFollowUpCoordinatorAssignmentId',
-    'opportunityFollowUpCoordinatorPermissionSetVersion',
-  ),
-  company_working_evidence_case_reader: fields(
-    'workingEvidenceCasePermissions',
-    'workingEvidenceCaseReaderAssignmentId',
-    'workingEvidenceCaseReaderPermissionSetVersion',
-  ),
-  company_working_evidence_case_recorder: fields(
-    'workingEvidenceCasePermissions',
-    'workingEvidenceCaseRecorderAssignmentId',
-    'workingEvidenceCaseRecorderPermissionSetVersion',
-  ),
-  company_received_audit_source_access: fields(
-    'documentPermissions',
-    'receivedAuditSourceAccessAssignmentId',
-    'receivedAuditSourceAccessPermissionSetVersion',
-  ),
-  company_certification_reader: fields(
-    'certificationReaderPermissions',
-    'certificationReaderAssignmentId',
-    'certificationReaderPermissionSetVersion',
-  ),
-  company_certification_programme_manager: fields(
-    'certificationProgrammeManagerPermissions',
-    'certificationProgrammeManagerAssignmentId',
-    'certificationProgrammeManagerPermissionSetVersion',
-  ),
-  company_certification_approver: fields(
-    'certificationApproverPermissions',
-    'certificationApproverAssignmentId',
-    'certificationApproverPermissionSetVersion',
-  ),
-  company_certification_auditor: fields(
-    'certificationAuditorPermissions',
-    'certificationAuditorAssignmentId',
-    'certificationAuditorPermissionSetVersion',
-  ),
-} satisfies Record<CompanyRoleBundle, LegacyDescription>;
 
 const KNOWLEDGE_ROUTES: Partial<Record<CompanyRoleBundle, string>> = {
   company_knowledge_source_administrator:
@@ -424,77 +92,6 @@ function expectedGrant(
   };
 }
 
-/** What the legacy fields say about `bundle`; undefined when they show no grant. */
-function legacyGrant(
-  company: Record<string, unknown>,
-  bundle: CompanyRoleBundle,
-):
-  | {
-      assignmentId?: unknown;
-      permissionSetVersion?: unknown;
-      permissions?: unknown;
-    }
-  | undefined {
-  const description: LegacyDescription = LEGACY_FIELDS[bundle];
-  switch (description.kind) {
-    case 'context-only':
-      return {};
-    case 'fields': {
-      // `clientPermissions` is always present, and empty without a grant.
-      const facts = Object.fromEntries(
-        (['permissions', 'assignmentId', 'permissionSetVersion'] as const)
-          .map((fact) => [fact, description[fact]] as const)
-          .flatMap(([fact, key]) =>
-            key === undefined ||
-            company[key] === undefined ||
-            (Array.isArray(company[key]) && company[key].length === 0)
-              ? []
-              : [[fact, company[key]]],
-          ),
-      );
-      return Object.keys(facts).length === 0 ? undefined : facts;
-    }
-    case 'list': {
-      const list = company[description.list];
-      if (list === undefined) return undefined;
-      if (!Array.isArray(list))
-        throw new Error(`${description.list} is not a list`);
-      const entries: unknown[] = list;
-      const entry = entries
-        .map(object)
-        .find((candidate) => candidate.bundle === bundle);
-      if (!entry) return undefined;
-      return {
-        assignmentId: entry.assignmentId,
-        permissionSetVersion: entry.permissionSetVersion,
-        ...(description.permissions ? { permissions: entry.permissions } : {}),
-      };
-    }
-  }
-}
-
-function sorted(value: unknown): unknown {
-  if (!Array.isArray(value)) return value;
-  const items: unknown[] = value;
-  return items.map(String).sort();
-}
-
-/** The legacy fields carry each fact they hold exactly as `grant` does. */
-function expectLegacyToDescribe(
-  company: Record<string, unknown>,
-  grant: ExpectedGrant,
-) {
-  const legacy = legacyGrant(company, grant.bundle);
-  expect(legacy, `legacy fields of ${grant.bundle}`).toBeDefined();
-  if (!legacy) return;
-  if ('assignmentId' in legacy)
-    expect(legacy.assignmentId).toBe(grant.assignmentId);
-  if ('permissionSetVersion' in legacy)
-    expect(legacy.permissionSetVersion).toBe(grant.permissionSetVersion);
-  if ('permissions' in legacy)
-    expect(sorted(legacy.permissions)).toEqual(sorted(grant.permissions));
-}
-
 describeWithPostgres('Active Company grants list', () => {
   let isolated: IsolatedPostgresTestDatabase;
   let harness: PostgresRestTestHarness;
@@ -539,16 +136,13 @@ describeWithPostgres('Active Company grants list', () => {
     await isolated?.close();
   });
 
-  it('covers every registry bundle with a legacy description and a route', () => {
-    expect(Object.keys(LEGACY_FIELDS).sort()).toEqual(
-      [...REGISTRY_BUNDLES].sort(),
-    );
+  it('covers every registry bundle through its assignment route', () => {
     for (const bundle of REGISTRY_BUNDLES)
       expect(routeOf(bundle)).toMatch(/^\/api\//u);
   });
 
   it.each(REGISTRY_BUNDLES)(
-    'describes a live %s grant in grants exactly as the legacy fields do, at every captured version and after its revocation',
+    'publishes a live %s only through grants, at every captured version and after its revocation',
     async (bundle) => {
       const target = await createTargets();
       const context =
@@ -572,7 +166,7 @@ describeWithPostgres('Active Company grants list', () => {
         const company = await activeCompany(target.companyId);
         const live = expectedGrant(bundle, text(receipt.id), version);
         expect(company.grants).toEqual(ordered([...others, live]));
-        expectLegacyToDescribe(company, live);
+        expectPublicCompany(company);
       }
 
       const revoke = await fetch(
@@ -590,7 +184,7 @@ describeWithPostgres('Active Company grants list', () => {
       }
       const company = await activeCompany(target.companyId);
       expect(company.grants).toEqual(others);
-      expect(legacyGrant(company, bundle)).toBeUndefined();
+      expectPublicCompany(company);
     },
   );
 
@@ -607,9 +201,7 @@ describeWithPostgres('Active Company grants list', () => {
     expect(actor.workspacePermissions).toContain('company.manage');
     const company = object(actor.activeCompany);
     expect(company.grants).toEqual([]);
-    for (const bundle of REGISTRY_BUNDLES)
-      if (bundle !== 'company_context_access')
-        expect(legacyGrant(company, bundle)).toBeUndefined();
+    expectPublicCompany(company);
 
     const withoutCompany = await objectResponse(
       await fetch(`${origin}/api/access/current-actor`, {

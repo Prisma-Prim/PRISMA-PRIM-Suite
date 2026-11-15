@@ -532,8 +532,6 @@ describe('Client dossier and Project navigation through App', () => {
         if (actor.activeCompany)
           actor.activeCompany = {
             ...actor.activeCompany,
-            documentContentReaderAssignmentId: capture,
-            documentContentReaderPermissionSetVersion: 'v1',
 
             grants: withCompanyGrants(
               withCompanyGrants(actor.activeCompany.grants, {

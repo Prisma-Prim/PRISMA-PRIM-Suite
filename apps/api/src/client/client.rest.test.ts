@@ -510,12 +510,17 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: ['company.manage'],
       activeCompany: {
         id: company.id,
-        clientPermissions: [
-          'client.read',
-          'client.create',
-          'client.update',
-          'client.duplicate.resolve',
-        ],
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_director_client_access',
+            permissions: [
+              'client.read',
+              'client.create',
+              'client.update',
+              'client.duplicate.resolve',
+            ],
+          }),
+        ]),
       },
     });
     const clients = await fetch(`${origin}/api/clients`, { headers });
@@ -563,7 +568,12 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: expect.arrayContaining(['client.manage']),
       activeCompany: {
         id: company.id,
-        clientPermissions: [],
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_director_client_access',
+            permissions: [],
+          }),
+        ]),
       },
     });
     await expect(listClients(company.id)).resolves.toEqual([client]);
@@ -608,12 +618,17 @@ describeWithPostgres('Client REST API', () => {
     await expect(directorActor.json()).resolves.toMatchObject({
       activeCompany: {
         id: company.id,
-        clientPermissions: [
-          'client.read',
-          'client.create',
-          'client.update',
-          'client.duplicate.resolve',
-        ],
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_director_client_access',
+            permissions: [
+              'client.read',
+              'client.create',
+              'client.update',
+              'client.duplicate.resolve',
+            ],
+          }),
+        ]),
       },
     });
 
@@ -1087,12 +1102,17 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: [],
       activeCompany: {
         id: company.id,
-        clientPermissions: [
-          'client.read',
-          'client.create',
-          'client.update',
-          'client.duplicate.resolve',
-        ],
+        grants: expect.arrayContaining([
+          expect.objectContaining({
+            bundle: 'company_director_client_access',
+            permissions: [
+              'client.read',
+              'client.create',
+              'client.update',
+              'client.duplicate.resolve',
+            ],
+          }),
+        ]),
       },
     });
 

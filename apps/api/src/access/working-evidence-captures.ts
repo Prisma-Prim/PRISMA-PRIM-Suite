@@ -8,13 +8,14 @@ import {
   workspaceMemberships,
   workspacePermissionGrants,
 } from '../database/schema/index.js';
-import type { ActorContext, ActiveCompanyContext } from './access.types.js';
+import type { ActorContext } from './access.types.js';
+import type { CompanyAuthorityContext } from './company-authority-context.js';
 
 /** Native alternatives are selected once; unrelated assignments never enter these captures. */
 export async function readWorkingEvidenceCaptures(input: {
   database: DatabaseContext;
   actor: ActorContext;
-  company: ActiveCompanyContext;
+  company: CompanyAuthorityContext;
   lock: boolean;
   expected?: {
     contextCapture: string | undefined;

@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
@@ -295,7 +296,13 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
       setup.companyId,
       READER_ASSIGNMENTS.filter((path) => path !== CONTRACT_APPROVER),
     );
-    expect(reader.activeCompany.contractPermissions).toBeUndefined();
+    expect(
+      companyPermissionsOf(reader.activeCompany, [
+        'company_contract_preparer',
+        'company_contract_early_preparation',
+        'company_contract_approver',
+      ]),
+    ).toBeUndefined();
     const withoutContractRead = await activityLog(READER, setup.companyId);
     expect(contractEvents(withoutContractRead)).toEqual([]);
     expect(withoutContractRead.events.map((event) => event.action)).toEqual(
@@ -311,9 +318,13 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   it('denies every reader lacking part of the Contract or linked Project authority', async () => {
     const contract = await linkedContract(setup, 'matrix');
     const reader = await preparedReader(setup.companyId, READER_ASSIGNMENTS);
-    expect(reader.activeCompany.contractPermissions).toContain(
-      'commercial.contract.read',
-    );
+    expect(
+      companyPermissionsOf(reader.activeCompany, [
+        'company_contract_preparer',
+        'company_contract_early_preparation',
+        'company_contract_approver',
+      ]),
+    ).toContain('commercial.contract.read');
     const readerActions = async () =>
       contractEvents(await activityLog(READER, setup.companyId)).map(
         (event) => event.action,

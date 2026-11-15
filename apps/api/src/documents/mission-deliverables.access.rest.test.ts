@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
@@ -207,8 +208,13 @@ withPostgres('D3 mission-deliverable authority REST', () => {
       (await json(await call('/access/current-actor'))).activeCompany,
     );
     expect(firstActor).toMatchObject({
-      missionDeliverableAccessAssignmentId: text(first.id),
-      missionDeliverableAccessPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_mission_deliverable_access',
+          assignmentId: text(first.id),
+          permissionSetVersion: 'v1',
+        }),
+      ]),
     });
     expect(
       (
@@ -221,9 +227,19 @@ withPostgres('D3 mission-deliverable authority REST', () => {
     const retired = record(
       (await json(await call('/access/current-actor'))).activeCompany,
     );
-    expect(retired.documentPermissions).not.toContain(
-      'document.mission_deliverable.access',
-    );
+    expect(
+      companyPermissionsOf(retired, [
+        'company_document_project_organizer',
+        'company_document_registrar',
+        'company_document_approver',
+        'company_document_content_reader',
+        'company_document_content_uploader',
+        'company_mission_deliverable_access',
+        'company_received_contract_access',
+        'company_received_addendum_access',
+        'company_received_audit_source_access',
+      ]),
+    ).not.toContain('document.mission_deliverable.access');
     expect(retired).not.toHaveProperty('missionDeliverableAccessAssignmentId');
     const next = await grant('/company-mission-deliverable-access-assignments');
     expect(next.id).not.toBe(first.id);
@@ -231,8 +247,13 @@ withPostgres('D3 mission-deliverable authority REST', () => {
       (await json(await call('/access/current-actor'))).activeCompany,
     );
     expect(nextActor).toMatchObject({
-      missionDeliverableAccessAssignmentId: text(next.id),
-      missionDeliverableAccessPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_mission_deliverable_access',
+          assignmentId: text(next.id),
+          permissionSetVersion: 'v1',
+        }),
+      ]),
     });
   });
 
@@ -581,9 +602,19 @@ withPostgres('D3 mission-deliverable authority REST', () => {
       const company = record(
         (await json(await call('/access/current-actor'))).activeCompany,
       );
-      expect(company.documentPermissions).not.toContain(
-        'document.mission_deliverable.access',
-      );
+      expect(
+        companyPermissionsOf(company, [
+          'company_document_project_organizer',
+          'company_document_registrar',
+          'company_document_approver',
+          'company_document_content_reader',
+          'company_document_content_uploader',
+          'company_mission_deliverable_access',
+          'company_received_contract_access',
+          'company_received_addendum_access',
+          'company_received_audit_source_access',
+        ]),
+      ).not.toContain('document.mission_deliverable.access');
       expect(company).not.toHaveProperty(
         'missionDeliverableAccessAssignmentId',
       );

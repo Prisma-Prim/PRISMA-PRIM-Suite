@@ -25,7 +25,6 @@ export const OFFER_MODEL = {
   path: '/offer-models/consulting-ro',
   identity: { code: OFFER_MODEL_CODE, language: OFFER_MODEL_LANGUAGE },
   grants: {
-    field: 'offerModelGrants',
     editor: {
       bundle: 'company_offer_model_editor',
       permissions: [

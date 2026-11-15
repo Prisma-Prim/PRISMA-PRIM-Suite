@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool, PoolClient } from 'pg';
 import { Logger } from '@nestjs/common';
 import {
@@ -1703,8 +1704,9 @@ withPostgres('Confirmed-cost Profitability Estimates REST', () => {
     // The existing general Activity surface is callable by active members;
     // profitability bundles must not add Company commercial Activity authority.
     expect(
-      record(contributorActor.activeCompany).commercialActivityPermissions ??
-        [],
+      companyPermissionsOf(record(contributorActor.activeCompany), [
+        'company_commercial_activity_reader',
+      ]) ?? [],
     ).toEqual([]);
     await grant(
       '/company-commercial-activity-reader-assignments',

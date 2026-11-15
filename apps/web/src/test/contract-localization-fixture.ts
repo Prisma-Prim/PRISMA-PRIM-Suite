@@ -59,31 +59,6 @@ export function contractLocaleActor(hasCompany = true) {
             id: contractLocaleCompany.id,
             displayName: contractLocaleCompany.displayName,
 
-            contractPermissionAssignmentId: 'contract-657',
-            contractPermissionSetVersion: 'v1',
-            contractPermissions: [
-              'commercial.contract.read',
-              'commercial.contract.prepare',
-              'commercial.contract.project.link',
-            ],
-            offerPermissionAssignmentId: 'offer-657',
-            offerPermissionSetVersion: 'v1',
-            offerPermissions: [
-              'commercial.offer.read',
-              'commercial.offer.prepare',
-              'commercial.offer.transmission.record',
-              'commercial.pricing.snapshot.read',
-            ],
-            pricingUserPermissionAssignmentId: 'pricing-657',
-            pricingUserPermissionSetVersion: 'v1',
-            pricingUserPermissions: [
-              'commercial.offering.read',
-              'commercial.pricing.configuration.read',
-              'commercial.pricing.calculate',
-              'commercial.pricing.snapshot.read',
-            ],
-            commercialActivityPermissionSetVersion: 'v1',
-            commercialActivityPermissions: ['commercial.activity.read'],
             // The screens read these registry-consistent live grants.
             grants: companyGrants(
               {
@@ -126,9 +101,7 @@ export function contractLocaleRevokedActor(hasCompany: boolean): ActorContext {
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      contractPermissionAssignmentId: undefined,
-      contractPermissionSetVersion: undefined,
-      contractPermissions: [],
+
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,
         'company_contract_preparer',

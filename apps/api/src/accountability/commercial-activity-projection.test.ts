@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import {
   commercialActivityTarget,
   commercialActivityTargetOf,
@@ -9,8 +9,8 @@ import {
 } from './commercial-activity-projection.js';
 
 function company(
-  overrides: Partial<ActiveCompanyContext> = {},
-): ActiveCompanyContext {
+  overrides: Partial<CompanyAuthorityContext> = {},
+): CompanyAuthorityContext {
   return {
     id: '00000000-0000-4000-8000-000000000001',
     displayName: 'PRISMA-PRIM',
@@ -618,7 +618,7 @@ describe('commercial Activity projection rules', () => {
       opportunityId: '00000000-0000-4000-8000-000000000359',
     };
     const reader = (
-      commercialIntakePermissions: ActiveCompanyContext['commercialIntakePermissions'],
+      commercialIntakePermissions: CompanyAuthorityContext['commercialIntakePermissions'],
     ) =>
       company({
         commercialActivityPermissions: ['commercial.activity.read'],

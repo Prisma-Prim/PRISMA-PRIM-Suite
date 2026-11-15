@@ -248,8 +248,7 @@ it('withholds source tuples and counts while preserving independently authorized
       ...actor.activeCompany,
       id: ids.project,
       displayName: 'Fictional Company',
-      receivedAuditSourceAccessAssignmentId: undefined,
-      receivedAuditSourceAccessPermissionSetVersion: undefined,
+
       grants: withoutCompanyGrants(
         actor.activeCompany?.grants,
         'company_received_audit_source_access',

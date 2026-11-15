@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool, PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -95,7 +96,11 @@ withPostgres('Company Service Catalogue REST', () => {
     const selected = record(
       await (await request('/access/current-actor', company.id)).json(),
     );
-    expect(record(selected.activeCompany).serviceCataloguePermissions).toEqual([
+    expect(
+      companyPermissionsOf(record(selected.activeCompany), [
+        'company_service_catalogue',
+      ]),
+    ).toEqual([
       'service.definition.read',
       'service.definition.create',
       'commercial.offering.read',
@@ -1059,8 +1064,13 @@ withPostgres('Company Service Catalogue REST', () => {
       ).json(),
     );
     const activeCompany = record(memberActor.activeCompany);
-    expect(activeCompany.commercialIntakePermissions).toBeUndefined();
-    expect(activeCompany.clientPermissions).toEqual([]);
+    expect(
+      companyPermissionsOf(activeCompany, ['company_commercial_intake']),
+    ).toBeUndefined();
+    expect(
+      companyPermissionsOf(activeCompany, ['company_director_client_access']) ??
+        [],
+    ).toEqual([]);
 
     const intakeOnly = entity(
       await command(
@@ -1094,7 +1104,9 @@ withPostgres('Company Service Catalogue REST', () => {
       ).json(),
     );
     expect(
-      record(otherBundlesActor.activeCompany).serviceCataloguePermissions,
+      companyPermissionsOf(record(otherBundlesActor.activeCompany), [
+        'company_service_catalogue',
+      ]),
     ).toBeUndefined();
     expect(
       (await request(DEFINITIONS, intakeOnly.id, { headers: MEMBER_HEADERS }))

@@ -800,9 +800,14 @@ withPostgres('Pricing Snapshots REST', () => {
     );
     expect(adjustmentCompany).toMatchObject({
       id: fixture.companyId,
-      pricingAdjustmentPermissions: ['commercial.pricing.adjustment.apply'],
-      pricingAdjustmentPermissionAssignmentId: expect.any(String),
-      pricingAdjustmentPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_adjustment',
+          assignmentId: expect.any(String),
+          permissionSetVersion: 'v1',
+          permissions: ['commercial.pricing.adjustment.apply'],
+        }),
+      ]),
     });
     expect(adjustmentCompany).not.toHaveProperty('pricingUserPermissions');
     expect(

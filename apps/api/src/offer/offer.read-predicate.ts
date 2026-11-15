@@ -1,4 +1,4 @@
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import { canReadCommercialTarget } from '../commercial-intake/commercial-intake.read-predicate.js';
 
 /**
@@ -9,7 +9,7 @@ import { canReadCommercialTarget } from '../commercial-intake/commercial-intake.
  * Offer target through this predicate; it gains no Offer behaviour from it.
  */
 export function canReadOfferTarget(
-  company: ActiveCompanyContext | undefined,
+  company: CompanyAuthorityContext | undefined,
 ): boolean {
   return (
     company?.offerPermissions?.includes('commercial.offer.read') === true &&

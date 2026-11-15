@@ -125,19 +125,6 @@
       "count": 1
     }
   },
-  "apps/web/src/access/current-actor.ts": {
-    "no-warning-comments": {
-      "count": 1
-    }
-  },
-  "apps/web/src/access/legacy-company-grant-reads.allowlist.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    },
-    "no-warning-comments": {
-      "count": 1
-    }
-  },
   "apps/web/src/api/latest-authenticated-request.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
@@ -201,11 +188,6 @@
   },
   "apps/web/src/commercial-pdf/CommercialPdfDownload.tsx": {
     "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/company-model/company-model-authority.ts": {
-    "no-warning-comments": {
       "count": 1
     }
   },

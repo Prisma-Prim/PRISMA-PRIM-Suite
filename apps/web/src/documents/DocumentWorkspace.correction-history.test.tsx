@@ -691,6 +691,7 @@ it('discards the history of another Company', async () => {
       actor={{
         ...correctingActor,
         activeCompany: {
+          grants: [],
           ...correctingActor.activeCompany,
           id: 'company-other',
           displayName: 'Other Company',

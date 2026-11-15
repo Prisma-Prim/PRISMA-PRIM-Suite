@@ -1,3 +1,4 @@
+import { companyGrantOf } from './company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -100,14 +101,12 @@ withPostgres(
           }),
         );
         expect(
-          responseRecord(current.activeCompany).externalInvoiceGrants,
-        ).toEqual([
-          {
-            bundle: bundle.bundle,
-            assignmentId: assignment.id,
-            permissionSetVersion: 'v1',
-          },
-        ]);
+          companyGrantOf(current.activeCompany, bundle.bundle),
+        ).toMatchObject({
+          bundle: bundle.bundle,
+          assignmentId: assignment.id,
+          permissionSetVersion: 'v1',
+        });
         const revoke = await fixture.request({
           path: `${path}/${source.preparerMembershipId}/${source.companyId}`,
           init: {
@@ -124,7 +123,7 @@ withPostgres(
           }),
         );
         expect(
-          responseRecord(refreshed.activeCompany).externalInvoiceGrants,
+          companyGrantOf(refreshed.activeCompany, bundle.bundle),
         ).toBeUndefined();
         const events = await fixture.pool.query(
           'SELECT action,metadata FROM activity_log_events WHERE action::text LIKE $1 ORDER BY action',

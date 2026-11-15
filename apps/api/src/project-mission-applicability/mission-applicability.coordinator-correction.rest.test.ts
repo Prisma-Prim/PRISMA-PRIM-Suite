@@ -1,3 +1,4 @@
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
@@ -266,7 +267,10 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
           internalUserId: c.actorB.internalUserId,
         },
         capture: {
-          assignmentId: captureB.missionApplicabilityCoordinatorAssignmentId,
+          assignmentId: companyGrantOf(
+            captureB,
+            'company_mission_applicability_coordinator',
+          )?.assignmentId,
           permissionSetVersion: 'v1',
         },
       });

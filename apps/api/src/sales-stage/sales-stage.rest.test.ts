@@ -931,16 +931,21 @@ describe.skipIf(!databaseUrl)('Sales Stage REST contract', () => {
     const ion = await grant('ion', [...SALES, 'client']);
     const actor = await read('/access/current-actor', { subject: 'ion' });
     expect(object(actor.activeCompany)).toMatchObject({
-      commercialIntakePermissionSetVersion: 'v4',
-      commercialIntakePermissions: [
-        'commercial.request.read',
-        'commercial.request.create',
-        'commercial.opportunity.read',
-        'commercial.opportunity.create',
-        'commercial.opportunity.next_action.update',
-        'commercial.request.client.associate',
-        'commercial.opportunity.stage.set',
-      ],
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_commercial_intake',
+          permissionSetVersion: 'v4',
+          permissions: [
+            'commercial.request.read',
+            'commercial.request.create',
+            'commercial.opportunity.read',
+            'commercial.opportunity.create',
+            'commercial.opportunity.next_action.update',
+            'commercial.request.client.associate',
+            'commercial.opportunity.stage.set',
+          ],
+        }),
+      ]),
     });
     // v1: capture and read; v2: next action; v3: one-time Client association.
     const captured = await capture('ion');

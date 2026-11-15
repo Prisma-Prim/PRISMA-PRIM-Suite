@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool, PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
@@ -124,8 +125,13 @@ withPostgres('Company Pricing Configuration REST', () => {
       await (await request('/access/current-actor', company.id)).json(),
     );
     expect(record(selected.activeCompany)).toMatchObject({
-      pricingConfigurationPermissions: CONFIGURATION_PERMISSIONS,
-      pricingConfigurationPermissionSetVersion: 'v1',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_pricing_configuration',
+          permissionSetVersion: 'v1',
+          permissions: CONFIGURATION_PERMISSIONS,
+        }),
+      ]),
     });
     expect(
       (
@@ -282,15 +288,18 @@ withPostgres('Company Pricing Configuration REST', () => {
     expect(deniedPublication.status).toBe(403);
     expect(await deniedPublication.text()).not.toContain('headVersionNumber');
     expect(
-      record(
+      companyPermissionsOf(
         record(
-          await (
-            await request('/access/current-actor', company.id, {
-              headers: CATALOGUE_MEMBER,
-            })
-          ).json(),
-        ).activeCompany,
-      ).pricingConfigurationPermissions,
+          record(
+            await (
+              await request('/access/current-actor', company.id, {
+                headers: CATALOGUE_MEMBER,
+              })
+            ).json(),
+          ).activeCompany,
+        ),
+        ['company_pricing_configuration'],
+      ),
     ).toBeUndefined();
     expect(catalogueMember.membershipId).not.toBe(owner.membershipId);
     await expectCounts({ versions: 1, receipts: 1, events: 1 });
@@ -2366,10 +2375,14 @@ withPostgres('Company Pricing Configuration REST', () => {
         ).json(),
       ).activeCompany,
     );
-    expect(configurationActor.pricingConfigurationPermissions).toEqual(
-      CONFIGURATION_PERMISSIONS,
-    );
-    expect(configurationActor.serviceCataloguePermissions).toBeUndefined();
+    expect(
+      companyPermissionsOf(configurationActor, [
+        'company_pricing_configuration',
+      ]),
+    ).toEqual(CONFIGURATION_PERMISSIONS);
+    expect(
+      companyPermissionsOf(configurationActor, ['company_service_catalogue']),
+    ).toBeUndefined();
     // Configuration v1 reads offerings with the unchanged response shape.
     expect(
       await (
@@ -2433,15 +2446,18 @@ withPostgres('Company Pricing Configuration REST', () => {
       '/company-commercial-activity-reader-assignments',
     ]);
     expect(
-      record(
+      companyPermissionsOf(
         record(
-          await (
-            await request('/access/current-actor', company.id, {
-              headers: OTHER_MEMBER,
-            })
-          ).json(),
-        ).activeCompany,
-      ).pricingConfigurationPermissions,
+          record(
+            await (
+              await request('/access/current-actor', company.id, {
+                headers: OTHER_MEMBER,
+              })
+            ).json(),
+          ).activeCompany,
+        ),
+        ['company_pricing_configuration'],
+      ),
     ).toBeUndefined();
     for (const path of [SCOPE, OFFERINGS])
       expect(

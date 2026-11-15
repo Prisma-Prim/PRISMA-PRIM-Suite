@@ -68,7 +68,7 @@ function withoutClientRead(company: Company): Company {
 function withoutOfferRead(company: Company): Company {
   return {
     ...company,
-    offerPermissions: [],
+
     grants: withoutCompanyGrants(
       company.grants,
       'company_offer_preparer',
@@ -84,7 +84,7 @@ function withoutOfferRead(company: Company): Company {
 function withOnlyOfferRead(company: Company): Company {
   return {
     ...company,
-    offerPermissions: ['commercial.offer.read'],
+
     grants: withCompanyGrants(
       withoutCompanyGrants(company.grants, 'company_offer_preparer'),
       {
@@ -103,7 +103,6 @@ function actor(): ActorContext {
       id: companyId,
       displayName: 'Synthetic PDF Company',
 
-      commercialActivityPermissions: ['commercial.activity.read'],
       // The model Offer preparation also reads the Profitability
       // Contributor grant beside the model Contract actor's grants.
       grants: withCompanyGrants(
@@ -509,8 +508,7 @@ it('keeps the exact PDF across an actual App edit-authority remount while the ol
     ...state.actor,
     activeCompany: {
       ...reader,
-      profitabilityContributorPermissionAssignmentId: undefined,
-      profitabilityContributorPermissions: [],
+
       grants: withoutCompanyGrants(
         reader.grants,
         'company_profitability_contributor',

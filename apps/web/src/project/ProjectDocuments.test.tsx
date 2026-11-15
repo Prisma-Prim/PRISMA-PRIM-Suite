@@ -528,7 +528,11 @@ it('discards late results when Company or actor authority changes', async () => 
   await screen.findByText('Loading working Documents…');
   const deniedActor: ActorContext = {
     ...actor,
-    activeCompany: { id: 'other-company', displayName: 'BIC' },
+    activeCompany: {
+      grants: [],
+      id: 'other-company',
+      displayName: 'BIC',
+    },
   };
   view.rerender(
     <ProjectDocuments
@@ -689,7 +693,14 @@ it('clears the query when the selector is reopened or the Company changes', asyn
   search('remote');
   view.rerender(
     <ProjectDocuments
-      actor={{ ...actor, activeCompany: { id: 'other', displayName: 'BIC' } }}
+      actor={{
+        ...actor,
+        activeCompany: {
+          grants: [],
+          id: 'other',
+          displayName: 'BIC',
+        },
+      }}
       identity={identity}
       projectId="project"
     />,
@@ -721,7 +732,14 @@ it('cannot restore a stale selector search from a delayed eligible reply', async
   );
   view.rerender(
     <ProjectDocuments
-      actor={{ ...actor, activeCompany: { id: 'other', displayName: 'BIC' } }}
+      actor={{
+        ...actor,
+        activeCompany: {
+          grants: [],
+          id: 'other',
+          displayName: 'BIC',
+        },
+      }}
       identity={identity}
       projectId="project"
     />,

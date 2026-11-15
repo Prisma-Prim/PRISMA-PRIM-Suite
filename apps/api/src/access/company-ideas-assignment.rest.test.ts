@@ -154,10 +154,6 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         id: companyId,
         displayName: 'Synthetic Company',
         grants: [contextGrant, ideasGrant(assignment.id)],
-        clientPermissions: [],
-        [`${bundle.prefix}Permissions`]: bundle.permissions,
-        [`${bundle.prefix}PermissionAssignmentId`]: assignment.id,
-        [`${bundle.prefix}PermissionSetVersion`]: 'v1',
       });
       const administration = await request(
         'company-context-assignments/administration',
@@ -210,7 +206,6 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         id: companyId,
         displayName: 'Synthetic Company',
         grants: [contextGrant],
-        clientPermissions: [],
       });
       const events = (await activity('owner')).filter(
         (event) =>
@@ -234,10 +229,6 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         id: companyId,
         displayName: 'Synthetic Company',
         grants: [contextGrant, ideasGrant(freshAssignment.id)],
-        clientPermissions: [],
-        [`${bundle.prefix}Permissions`]: bundle.permissions,
-        [`${bundle.prefix}PermissionAssignmentId`]: freshAssignment.id,
-        [`${bundle.prefix}PermissionSetVersion`]: 'v1',
       });
     },
   );

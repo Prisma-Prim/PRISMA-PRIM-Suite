@@ -5,14 +5,15 @@ import {
   companyRoleAssignments,
   workspacePermissionGrants,
 } from '../database/schema/index.js';
-import type { ActorContext, ActiveCompanyContext } from './access.types.js';
+import type { ActorContext } from './access.types.js';
+import type { CompanyAuthorityContext } from './company-authority-context.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 /** Only native Client-read sources participate. Workspace management is a real alternative. */
 export async function receivedAddendumClientReadCapture(input: {
   database: DatabaseContext;
   actor: ActorContext;
-  company: ActiveCompanyContext;
+  company: CompanyAuthorityContext;
   lock: boolean;
 }): Promise<string | undefined> {
   const { database, actor, company, lock } = input;

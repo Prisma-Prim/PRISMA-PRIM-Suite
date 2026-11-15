@@ -1,4 +1,4 @@
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import { canReadCommercialTarget } from '../commercial-intake/commercial-intake.read-predicate.js';
 
 /**
@@ -10,7 +10,7 @@ import { canReadCommercialTarget } from '../commercial-intake/commercial-intake.
  * Contract behaviour from it.
  */
 export function canReadContractTarget(
-  company: ActiveCompanyContext | undefined,
+  company: CompanyAuthorityContext | undefined,
 ): boolean {
   return (
     company?.contractPermissions?.includes('commercial.contract.read') ===

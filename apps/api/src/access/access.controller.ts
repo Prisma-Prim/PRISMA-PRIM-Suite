@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import type { ActorContext } from './access.types.js';
+import { currentActor, type CurrentActor } from './current-actor.js';
 import {
   ActorContextAdapter,
   type ActorContextRequest,
@@ -10,7 +10,7 @@ import {
 export class AccessController {
   @Get('current-actor')
   @UseGuards(ActorContextAdapter)
-  currentActor(@Req() request: ActorContextRequest): ActorContext {
-    return requireActorContext(request);
+  currentActor(@Req() request: ActorContextRequest): CurrentActor {
+    return currentActor(requireActorContext(request));
   }
 }

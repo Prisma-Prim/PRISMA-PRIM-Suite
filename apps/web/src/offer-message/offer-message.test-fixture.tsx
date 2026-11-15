@@ -24,18 +24,12 @@ export const target: OfferMessageTarget = {
 };
 export const capture = `offer-message-read.v1.${'b'.repeat(64)}`;
 export function messageActor(readCapture = capture) {
-  const commercialIntakePermissions: NonNullable<
-    ActorContext['activeCompany']
-  >['commercialIntakePermissions'] = [
-    'commercial.request.read',
-    'commercial.opportunity.read',
-  ];
   const company = {
+    grants: [],
     ...modelOfferActor.activeCompany,
     id: target.companyId,
     displayName: 'Synthetic Company',
     offerMessageReadCapture: readCapture,
-    commercialIntakePermissions,
   };
   return {
     ...modelOfferActor,

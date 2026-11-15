@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import {
@@ -869,8 +870,10 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
   it('requires an explicit grant, then creates, edits, completes and reopens with immutable attributable history', async () => {
     await grant('document');
     expect(
-      object((await read('/access/current-actor')).activeCompany)
-        .taskPermissions ?? [],
+      companyPermissionsOf(
+        object((await read('/access/current-actor')).activeCompany),
+        ['company_task_manager'],
+      ) ?? [],
     ).toEqual([]);
     expect((await request(`/projects/${projectId}/tasks`)).status).toBe(403);
     expect(
@@ -1038,11 +1041,24 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     const current = await read('/access/current-actor', {
       subject: 'task-member',
     });
+    expect(
+      companyPermissionsOf(current.activeCompany, [
+        'company_director_client_access',
+      ]) ?? [],
+    ).toEqual([]);
     expect(object(current.activeCompany)).toMatchObject({
-      taskPermissions: ['task.read', 'task.manage'],
-      clientPermissions: [],
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_task_manager',
+          permissions: ['task.read', 'task.manage'],
+        }),
+      ]),
     });
-    expect(object(current.activeCompany).projectPermissions ?? []).toEqual([]);
+    expect(
+      companyPermissionsOf(object(current.activeCompany), [
+        'company_project_access',
+      ]) ?? [],
+    ).toEqual([]);
     expect(
       (
         await request(`/projects/${projectId}/tasks`, {
@@ -1098,7 +1114,11 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       const id = string(task.id);
       await withUnsupportedPermissionVersion(assignment, version, async () => {
         const actor = await read('/access/current-actor');
-        expect(object(actor.activeCompany).taskPermissions ?? []).toEqual([]);
+        expect(
+          companyPermissionsOf(object(actor.activeCompany), [
+            'company_task_manager',
+          ]) ?? [],
+        ).toEqual([]);
         for (const path of [
           `/projects/${projectId}/tasks`,
           `/projects/${projectId}/eligible-task-assignees`,

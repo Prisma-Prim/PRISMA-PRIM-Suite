@@ -1,3 +1,7 @@
+import {
+  companyPermissionsOf,
+  companyGrantOf,
+} from '../access/company-grants.test-support.js';
 import type { Pool, PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -295,7 +299,9 @@ withPostgres('Company commercial intake REST', () => {
       ).json(),
     );
     const activeCompany = record(selected.activeCompany);
-    expect(activeCompany.commercialIntakePermissions).toEqual([
+    expect(
+      companyPermissionsOf(activeCompany, ['company_commercial_intake']),
+    ).toEqual([
       'commercial.request.read',
       'commercial.request.create',
       'commercial.opportunity.read',
@@ -304,7 +310,10 @@ withPostgres('Company commercial intake REST', () => {
       'commercial.request.client.associate',
       'commercial.opportunity.stage.set',
     ]);
-    expect(activeCompany.commercialIntakePermissionSetVersion).toBe('v4');
+    expect(
+      companyGrantOf(activeCompany, 'company_commercial_intake')
+        ?.permissionSetVersion,
+    ).toBe('v4');
     expect(
       (
         await request('/commercial-intake/requests', company.id, {
@@ -2717,8 +2726,13 @@ withPostgres('Company commercial intake REST', () => {
       await (await request('/access/current-actor', setup.company.id)).json(),
     );
     const legacyCompany = record(legacyActor.activeCompany);
-    expect(legacyCompany.commercialIntakePermissionSetVersion).toBe('v1');
-    expect(legacyCompany.commercialIntakePermissions).toEqual([
+    expect(
+      companyGrantOf(legacyCompany, 'company_commercial_intake')
+        ?.permissionSetVersion,
+    ).toBe('v1');
+    expect(
+      companyPermissionsOf(legacyCompany, ['company_commercial_intake']),
+    ).toEqual([
       'commercial.request.read',
       'commercial.request.create',
       'commercial.opportunity.read',
@@ -3473,7 +3487,9 @@ withPostgres('Company commercial intake REST', () => {
     );
     expect(v2Actor.workspacePermissions).not.toContain('client.manage');
     expect(
-      record(v2Actor.activeCompany).commercialIntakePermissions,
+      companyPermissionsOf(record(v2Actor.activeCompany), [
+        'company_commercial_intake',
+      ]),
     ).not.toContain('commercial.request.client.associate');
     expect(
       (

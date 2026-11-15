@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -1086,14 +1087,20 @@ describe.skipIf(!databaseUrl)(
         ).status,
       ).toBe(403);
       const actor = object((await read('/access/current-actor')).activeCompany);
-      expect(actor.projectStagePermissions).toEqual(['project.stage.advance']);
-      expect(actor.projectTemplatePermissions).toEqual([
+      expect(
+        companyPermissionsOf(actor, ['company_project_stage_advancer']),
+      ).toEqual(['project.stage.advance']);
+      expect(
+        companyPermissionsOf(actor, ['company_project_template_user']),
+      ).toEqual([
         'project.template.read',
         'project.template.instantiate',
         'project.template.pilot.read',
         'project.template.pilot.instantiate',
       ]);
-      expect(actor.projectPermissions).not.toContain('project.stage.advance');
+      expect(
+        companyPermissionsOf(actor, ['company_project_access']),
+      ).not.toContain('project.stage.advance');
     });
 
     it('reads source definitions without Client access while protecting every real Project and Task boundary', async () => {
@@ -1413,8 +1420,10 @@ describe.skipIf(!databaseUrl)(
         objects((await read(`/projects/${projectId}/tasks`)).tasks),
       ).toHaveLength(4);
       expect(
-        object((await read('/access/current-actor')).activeCompany)
-          .projectTemplatePermissions,
+        companyPermissionsOf(
+          object((await read('/access/current-actor')).activeCompany),
+          ['company_project_template_user'],
+        ),
       ).toBeUndefined();
     });
 

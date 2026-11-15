@@ -459,6 +459,7 @@ it('does not publish an older whole Actor after actual Company A→B→A and Rea
             ? {
                 ...freshA,
                 activeCompany: {
+                  grants: [],
                   ...freshA.activeCompany,
                   id: companyB,
                   displayName: 'Company B DEMO',

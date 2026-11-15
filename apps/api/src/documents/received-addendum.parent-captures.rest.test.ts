@@ -19,10 +19,8 @@ import {
   AccessService,
   SYNCHRONIZE_ACCESS_IDENTITY_PROFILE,
 } from '../access/access.service.js';
-import type {
-  ActorContext,
-  ActiveCompanyContext,
-} from '../access/access.types.js';
+import type { ActorContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import { DATABASE } from '../database/database.constants.js';
 import { revokeModelContractFixtureGrant } from '../contract/model-contract.test-fixture.js';
 import {
@@ -307,7 +305,7 @@ withPostgres('Received Addendum exact captured parent authority', () => {
 
   const invalidCaptures: Array<{
     label: string;
-    change: (company: ActiveCompanyContext) => ActiveCompanyContext;
+    change: (company: CompanyAuthorityContext) => CompanyAuthorityContext;
   }> = [
     {
       label: 'missing Contract ID',
@@ -352,11 +350,11 @@ withPostgres('Received Addendum exact captured parent authority', () => {
     },
     ...(
       ['v1', 'v2', 'v3'] satisfies Array<
-        ActiveCompanyContext['commercialIntakePermissionSetVersion']
+        CompanyAuthorityContext['commercialIntakePermissionSetVersion']
       >
     ).map((version) => ({
       label: `wrong supported Intake ${version}`,
-      change: (c: ActiveCompanyContext) => ({
+      change: (c: CompanyAuthorityContext) => ({
         ...c,
         commercialIntakePermissionSetVersion: version,
       }),

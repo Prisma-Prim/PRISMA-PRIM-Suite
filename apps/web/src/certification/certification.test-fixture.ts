@@ -146,11 +146,6 @@ export function certificationActor({
 
       ...(documents
         ? {
-            documentContentReaderAssignmentId: 'document-content-grant',
-            documentContentReaderPermissionSetVersion: 'v1',
-            receivedAuditSourceAccessAssignmentId:
-              '11310000-0000-4000-8000-000000000009',
-            receivedAuditSourceAccessPermissionSetVersion: 'v1',
             workingEvidenceContextCapture: `working-evidence-context.v1.${'c'.repeat(64)}`,
             workingEvidenceClientReadCapture: `working-evidence-client-read.v1.${'d'.repeat(64)}`,
           }

@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { sql, type SQLWrapper } from 'drizzle-orm';
-import type { ActiveCompanyContext, ActorContext } from './access.types.js';
+import type { ActorContext } from './access.types.js';
+import type { CompanyAuthorityContext } from './company-authority-context.js';
 import {
   COMPANY_ROLE_BUNDLES,
   companyRolePermissionsFor,
@@ -79,7 +80,7 @@ const snapshots = new WeakMap<
 /** Symbol identity survives internal spreads and is omitted by JSON serialization. */
 export function captureCompanyPermissions(input: {
   actor: ActorContext;
-  company: ActiveCompanyContext;
+  company: CompanyAuthorityContext;
   grants: readonly {
     bundle: CompanyRoleBundle;
     assignmentId: string;
@@ -176,8 +177,8 @@ export function carriesCapturedPermissions(
 
 /** Bind the legacy fields the existing projector wrote to this particular grant. */
 export function captureGrantProjection(input: {
-  before: ActiveCompanyContext;
-  after: ActiveCompanyContext;
+  before: CompanyAuthorityContext;
+  after: CompanyAuthorityContext;
   grant: { bundle: CompanyRoleBundle; permissionSetVersion: string | null };
 }): Readonly<Record<string, unknown>> {
   const previous = new Map(Object.entries(input.before));

@@ -1,3 +1,7 @@
+import {
+  companyPermissionsOf,
+  companyGrantOf,
+} from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -329,13 +333,25 @@ withPostgres('Received Addendum independent current authority', () => {
     );
     expect(actor.workspacePermissions).not.toContain('client.manage');
     const company = responseRecord(actor.activeCompany);
-    expect(company.clientPermissions).toEqual([]);
-    expect(company.receivedAddendumAccessAssignmentId).toEqual(
-      expect.any(String),
-    );
-    expect(company.documentPermissions).toContain(
-      'document.received_addendum.access',
-    );
+    expect(
+      companyPermissionsOf(company, ['company_director_client_access']) ?? [],
+    ).toEqual([]);
+    expect(
+      companyGrantOf(company, 'company_received_addendum_access')?.assignmentId,
+    ).toEqual(expect.any(String));
+    expect(
+      companyPermissionsOf(company, [
+        'company_document_project_organizer',
+        'company_document_registrar',
+        'company_document_approver',
+        'company_document_content_reader',
+        'company_document_content_uploader',
+        'company_mission_deliverable_access',
+        'company_received_contract_access',
+        'company_received_addendum_access',
+        'company_received_audit_source_access',
+      ]),
+    ).toContain('document.received_addendum.access');
     expect((await read()).status).toBe(403);
     expect((await read('/versions')).status).toBe(403);
     expect((await read(`/versions/${versionId}/content`)).status).toBe(403);
@@ -371,10 +387,20 @@ withPostgres('Received Addendum independent current authority', () => {
       await (await parent.call('/access/current-actor')).json(),
     );
     const current = responseRecord(actor.activeCompany);
-    expect(current.contractPermissions).toContain('commercial.contract.read');
-    expect(current.contractPermissions).not.toContain(
-      'commercial.contract.signature.record',
-    );
+    expect(
+      companyPermissionsOf(current, [
+        'company_contract_preparer',
+        'company_contract_early_preparation',
+        'company_contract_approver',
+      ]),
+    ).toContain('commercial.contract.read');
+    expect(
+      companyPermissionsOf(current, [
+        'company_contract_preparer',
+        'company_contract_early_preparation',
+        'company_contract_approver',
+      ]),
+    ).not.toContain('commercial.contract.signature.record');
     const choices = await parent.call('/documents/received-addendum-sources');
     expect(choices.status).toBe(200);
     expect(responseRecord(await choices.json()).sources).toContainEqual(
@@ -457,8 +483,12 @@ withPostgres('Received Addendum independent current authority', () => {
       );
       expect(actor.workspacePermissions).toContain('client.manage');
       const company = responseRecord(actor.activeCompany);
-      expect(company.clientPermissions).toEqual([]);
-      expect(company.clientPermissionAssignmentId).toBeUndefined();
+      expect(
+        companyPermissionsOf(company, ['company_director_client_access']) ?? [],
+      ).toEqual([]);
+      expect(
+        companyGrantOf(company, 'company_director_client_access')?.assignmentId,
+      ).toBeUndefined();
       expect(company.receivedAddendumClientReadCapture).toMatch(
         /^received-addendum-client-read\.v1\.[a-f0-9]{64}$/u,
       );

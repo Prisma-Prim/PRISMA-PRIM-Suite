@@ -373,6 +373,7 @@ test('selects and restores one server-validated Company context', async ({
         ? {
             ...actorContextFixture,
             activeCompany: {
+              grants: [],
               id: activeCompany.id,
               displayName: activeCompany.displayName,
             },
@@ -514,6 +515,7 @@ test('shows clear zero and one active Company states', async ({
           ? {
               ...actorContextFixture,
               activeCompany: {
+                grants: [],
                 id: onlyCompany.id,
                 displayName: onlyCompany.displayName,
               },
@@ -642,6 +644,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
           ? {
               ...actorContextFixture,
               activeCompany: {
+                grants: [],
                 id: availableCompany.id,
                 displayName: availableCompany.displayName,
               },
@@ -911,6 +914,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
     const activeCompany = companies.find(({ id }) => id === selectedId);
     return route.fulfill({
       json: {
+        grants: [],
         ...actorContextFixture,
         workspacePermissions: [
           'company.manage',

@@ -1,3 +1,7 @@
+import {
+  companyPermissionsOf,
+  companyGrantOf,
+} from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -1248,28 +1252,60 @@ withPostgres('Official Document Versions REST contract', () => {
       (await json(await call('/access/current-actor', { as: 'approver' })))
         .activeCompany,
     );
-    expect(approver).toMatchObject({
-      documentPermissions: expect.arrayContaining([
+    expect(
+      companyPermissionsOf(approver, [
+        'company_document_registrar',
+        'company_document_approver',
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
         'document.read',
         'document.version.designate_official',
       ]),
-      documentPermissionSetVersion: 'v1',
-      documentApproverPermissionSetVersion: 'v1',
+    );
+    expect(approver).toMatchObject({
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_document_registrar',
+          permissionSetVersion: 'v1',
+        }),
+        expect.objectContaining({
+          bundle: 'company_document_approver',
+          permissionSetVersion: 'v1',
+        }),
+      ]),
     });
-    expect(approver.documentPermissions).not.toContain('document.correct');
+    expect(
+      companyPermissionsOf(approver, [
+        'company_document_project_organizer',
+        'company_document_registrar',
+        'company_document_approver',
+        'company_document_content_reader',
+        'company_document_content_uploader',
+        'company_mission_deliverable_access',
+        'company_received_contract_access',
+        'company_received_addendum_access',
+        'company_received_audit_source_access',
+      ]),
+    ).not.toContain('document.correct');
     const registrar = record(
       (await json(await call('/access/current-actor', { as: 'registrar' })))
         .activeCompany,
     );
     expect(registrar).toMatchObject({
-      documentPermissionSetVersion: 'v3',
-      documentPermissions: [
-        'document.read',
-        'document.register',
-        'document.reference.read',
-        'document.correct',
-        'document.version.manage',
-      ],
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_document_registrar',
+          permissionSetVersion: 'v3',
+          permissions: [
+            'document.read',
+            'document.register',
+            'document.reference.read',
+            'document.correct',
+            'document.version.manage',
+          ],
+        }),
+      ]),
     });
     // No backfill, other bundle or Workspace ownership confers either.
     const { rows } = await harness.pool.query(
@@ -1341,10 +1377,23 @@ withPostgres('Official Document Versions REST contract', () => {
           (await json(await call('/access/current-actor', { as: 'approver' })))
             .activeCompany,
         );
-        expect(actor.documentPermissions).not.toContain(
-          'document.version.designate_official',
-        );
-        expect(actor.documentApproverPermissionSetVersion).toBeUndefined();
+        expect(
+          companyPermissionsOf(actor, [
+            'company_document_project_organizer',
+            'company_document_registrar',
+            'company_document_approver',
+            'company_document_content_reader',
+            'company_document_content_uploader',
+            'company_mission_deliverable_access',
+            'company_received_contract_access',
+            'company_received_addendum_access',
+            'company_received_audit_source_access',
+          ]),
+        ).not.toContain('document.version.designate_official');
+        expect(
+          companyGrantOf(actor, 'company_document_approver')
+            ?.permissionSetVersion,
+        ).toBeUndefined();
         expect((await designate(documentId, first, 1)).status).toBe(403);
       });
     const registrar = await assignmentOf(

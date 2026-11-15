@@ -256,6 +256,7 @@ it.each([200, 403])(
     const other = {
       ...actor,
       activeCompany: {
+        grants: [],
         ...actor.activeCompany,
         id: '10000000-0000-4000-8000-000000000999',
         displayName: 'Other',
@@ -557,6 +558,7 @@ it.each([200, 403])(
     const other = {
       ...actor,
       activeCompany: {
+        grants: [],
         ...actor.activeCompany,
         id: '10000000-0000-4000-8000-000000000999',
         displayName: 'Other',

@@ -31,10 +31,6 @@ const actor: ActorContext = {
     id: 'company',
     displayName: 'Company DEMO',
 
-    documentContentReaderAssignmentId: 'reader',
-    documentContentReaderPermissionSetVersion: 'v1',
-    missionDeliverableAccessAssignmentId: 'mission',
-    missionDeliverableAccessPermissionSetVersion: 'v1',
     grants: companyGrants(
       {
         bundle: 'company_project_access',
@@ -398,7 +394,6 @@ it('preserves ordinary Task work while an evidence-only capture change retires p
     ...actor,
     activeCompany: {
       ...actor.activeCompany,
-      documentContentReaderAssignmentId: undefined,
 
       grants: withoutCompanyGrants(
         actor.activeCompany.grants,

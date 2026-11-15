@@ -210,7 +210,7 @@ it.each(['detail', 'historical'] as const)(
         ...actor.activeCompany,
         id: ids.project,
         displayName: 'Fictional Company',
-        receivedAuditSourceAccessAssignmentId: ids.evidence,
+
         grants: withCompanyGrants(actor.activeCompany?.grants, {
           bundle: 'company_received_audit_source_access',
           version: 'v1',

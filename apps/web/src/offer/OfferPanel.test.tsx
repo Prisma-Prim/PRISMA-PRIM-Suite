@@ -2044,14 +2044,6 @@ function actor(companyId: string): ActorContext {
       id: companyId,
       displayName: companyId,
 
-      offerPermissions: [
-        'commercial.offer.read',
-        'commercial.offer.prepare',
-        'commercial.offer.transmission.record',
-        'commercial.pricing.snapshot.read',
-      ],
-      offerPermissionAssignmentId: `assignment-${companyId}`,
-      offerPermissionSetVersion: 'v1',
       grants: companyGrants(
         {
           bundle: 'company_director_client_access',
@@ -2075,9 +2067,7 @@ function actor(companyId: string): ActorContext {
 
 function actorWithOfferPermissions(
   companyId: string,
-  offerPermissions: NonNullable<
-    NonNullable<ActorContext['activeCompany']>['offerPermissions']
-  >,
+  offerPermissions: import('./offer-grants.test-fixture').OfferPermission[],
 ): ActorContext {
   const current = actor(companyId);
   if (!current.activeCompany) throw new Error('Expected an active Company.');
@@ -2085,7 +2075,7 @@ function actorWithOfferPermissions(
     ...current,
     activeCompany: {
       ...current.activeCompany,
-      offerPermissions,
+
       grants: [
         ...withoutCompanyGrants(
           current.activeCompany.grants,

@@ -20,17 +20,6 @@ export const modelOfferActor: ActorContext = {
     id: MODEL_OFFER_COMPANY,
     displayName: 'Synthetic model Offer Company',
 
-    offerPermissionAssignmentId: 'preparer-852',
-    offerPermissionSetVersion: 'v3',
-    offerPermissions: [
-      'commercial.offer.read',
-      'commercial.offer.prepare',
-      'commercial.offer.estimate.prepare',
-      'commercial.offer.model.select',
-      'commercial.offer.model_based.prepare',
-      'commercial.offer.transmission.record',
-      'commercial.offer.model_based.transmission.record',
-    ],
     grants: withCompanyGrants(
       profitabilityActor.activeCompany?.grants,
       {

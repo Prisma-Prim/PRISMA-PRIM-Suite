@@ -65,8 +65,6 @@ const company = {
         )?.assignmentId ?? 'fixture-client-access',
     },
   ),
-
-  documentApproverAssignmentId: 'approver-document-locale',
 } satisfies NonNullable<ActorContext['activeCompany']>;
 const client = {
   id: 'client-document-locale',

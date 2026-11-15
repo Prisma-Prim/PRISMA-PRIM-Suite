@@ -28,13 +28,6 @@ const actor: ActorContext = {
   activeCompany: {
     ...company,
 
-    offerApproverAssignmentId: 'approver-911',
-    offerApproverPermissionSetVersion: 'v2',
-    offerPermissions: [
-      'commercial.offer.read',
-      'commercial.offer.approve',
-      'commercial.offer.model_based.approve',
-    ],
     grants: withCompanyGrants(
       withoutCompanyGrants(
         company.grants,
@@ -434,8 +427,7 @@ it('keeps old captured approvers useful and fails closed on unknown captures wit
     ...actor,
     activeCompany: {
       ...base,
-      offerApproverPermissionSetVersion: 'v1',
-      offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
+
       grants: withCompanyGrants(base.grants, {
         bundle: 'company_offer_approver',
         version: 'v1',
@@ -452,6 +444,7 @@ it('keeps old captured approvers useful and fails closed on unknown captures wit
   const unknown = {
     ...legacy,
     activeCompany: {
+      grants: [],
       ...legacy.activeCompany,
       id: company.id,
       displayName: company.displayName,

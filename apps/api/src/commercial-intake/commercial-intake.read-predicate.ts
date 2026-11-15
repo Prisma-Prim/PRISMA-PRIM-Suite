@@ -1,4 +1,4 @@
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 
 /**
  * The commercial targets another module may need to authorize. Commercial
@@ -16,7 +16,7 @@ const REQUIRED_READS = {
 } as const satisfies Record<CommercialTargetKind, readonly string[]>;
 
 export function canReadCommercialTarget(
-  company: ActiveCompanyContext | undefined,
+  company: CompanyAuthorityContext | undefined,
   target: CommercialTargetKind,
 ): boolean {
   const permissions = company?.commercialIntakePermissions ?? [];

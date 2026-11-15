@@ -651,8 +651,7 @@ it.each(['source A → B → A', 'equal-permission Recorder replacement'])(
             ...actor,
             activeCompany: {
               ...company,
-              documentContentReaderAssignmentId:
-                '10000000-0000-4000-8000-000000001098',
+
               grants: withCompanyGrants(company.grants, {
                 bundle: 'company_document_content_reader',
                 version: 'v1',
@@ -1716,8 +1715,7 @@ it.each([
           }
         : {
             ...company,
-            documentContentReaderAssignmentId:
-              '10000000-0000-4000-8000-000000001094',
+
             grants: withCompanyGrants(company.grants, {
               bundle: 'company_document_content_reader',
               version: 'v1',

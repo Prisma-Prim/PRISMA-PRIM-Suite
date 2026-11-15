@@ -50,7 +50,8 @@ import {
   workspacePermissionGrants,
   workspaceMemberships,
 } from '../database/schema/index.js';
-import type { ActiveCompanyContext, ActorContext } from './access.types.js';
+import type { ActorContext } from './access.types.js';
+import type { CompanyAuthorityContext } from './company-authority-context.js';
 import { describeCompanyGrants } from './company-grants.js';
 import {
   COMPANY_CONTEXT_CONFERRING_BUNDLES,
@@ -687,7 +688,7 @@ export class CompanyContextAuthorization {
   async resolveAuthorizedActiveCompany(
     actor: ActorContext,
     companyId: string,
-  ): Promise<ActiveCompanyContext | undefined> {
+  ): Promise<CompanyAuthorityContext | undefined> {
     if (actor.workspacePermissions.includes('company.manage')) {
       const company = await this.findActiveCompany(
         actor.workspaceId,
@@ -1489,7 +1490,7 @@ export class CompanyContextAuthorization {
   private async findActiveCompany(
     workspaceId: string,
     companyId: string,
-  ): Promise<ActiveCompanyContext | undefined> {
+  ): Promise<CompanyAuthorityContext | undefined> {
     const [company] = await this.databaseContext.connection
       .select({ id: companies.id, displayName: companies.displayName })
       .from(companies)
@@ -1509,7 +1510,7 @@ export class CompanyContextAuthorization {
   private async findAssignedActiveCompanies(
     actor: ActorContext,
     companyId?: string,
-  ): Promise<readonly ActiveCompanyContext[]> {
+  ): Promise<readonly CompanyAuthorityContext[]> {
     const conditions = [
       eq(companyRoleAssignments.workspaceId, actor.workspaceId),
       eq(
@@ -1539,12 +1540,12 @@ export class CompanyContextAuthorization {
         ),
       )
       .where(and(...conditions));
-    const companiesById = new Map<string, ActiveCompanyContext>();
+    const companiesById = new Map<string, CompanyAuthorityContext>();
     const projections = new Map<string, Readonly<Record<string, unknown>>>();
     const independentlyAuthorizedCompanies = new Set<string>();
     for (const row of rows) {
       const existing = companiesById.get(row.id);
-      const company: ActiveCompanyContext = existing ?? {
+      const company: CompanyAuthorityContext = existing ?? {
         id: row.id,
         displayName: row.displayName,
         grants: [],

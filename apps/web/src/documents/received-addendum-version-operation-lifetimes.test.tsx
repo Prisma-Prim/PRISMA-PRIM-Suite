@@ -32,14 +32,6 @@ const company = {
   id: '10000000-0000-4000-8000-000000000001',
   displayName: 'Fictional Company',
 
-  documentApproverAssignmentId: '10000000-0000-4000-8000-000000000004',
-  documentApproverPermissionSetVersion: 'v1',
-  documentContentReaderAssignmentId: '10000000-0000-4000-8000-000000000005',
-  documentContentReaderPermissionSetVersion: 'v1',
-  documentContentUploaderAssignmentId: '10000000-0000-4000-8000-000000000006',
-  documentContentUploaderPermissionSetVersion: 'v1',
-  receivedAddendumAccessAssignmentId: '10000000-0000-4000-8000-000000000007',
-  receivedAddendumAccessPermissionSetVersion: 'v1',
   receivedAddendumClientReadCapture:
     'received-addendum-client-read.v1.' + 'a'.repeat(64),
   grants: withCompanyGrants(

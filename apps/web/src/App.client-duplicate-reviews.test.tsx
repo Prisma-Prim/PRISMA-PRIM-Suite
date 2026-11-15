@@ -101,7 +101,11 @@ function installTransport() {
         )
           state.actor = {
             ...state.actor,
-            activeCompany: { ...state.actor.activeCompany, ...companyB },
+            activeCompany: {
+              grants: [],
+              ...state.actor.activeCompany,
+              ...companyB,
+            },
           };
         return respond(state.actor);
       }

@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -421,10 +422,14 @@ withPostgres('Company commercial Activity read REST', () => {
       ).json(),
     );
     const activeCompany = record(selected.activeCompany);
-    expect(activeCompany.commercialActivityPermissions).toEqual([
-      'commercial.activity.read',
-    ]);
-    expect(activeCompany.commercialIntakePermissions).toBeUndefined();
+    expect(
+      companyPermissionsOf(activeCompany, [
+        'company_commercial_activity_reader',
+      ]),
+    ).toEqual(['commercial.activity.read']);
+    expect(
+      companyPermissionsOf(activeCompany, ['company_commercial_intake']),
+    ).toBeUndefined();
     expect(
       (
         await request('/commercial-intake/requests', company.id, {
@@ -499,7 +504,9 @@ withPostgres('Company commercial Activity read REST', () => {
       await (await request('/access/current-actor', company.id)).json(),
     );
     expect(
-      record(selected.activeCompany).commercialActivityPermissions,
+      companyPermissionsOf(record(selected.activeCompany), [
+        'company_commercial_activity_reader',
+      ]),
     ).toBeUndefined();
     const page = await (await request('/activity-log', company.id)).json();
     expect(commercialActions(page)).toEqual([]);

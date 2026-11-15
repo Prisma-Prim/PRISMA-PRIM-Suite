@@ -90,15 +90,6 @@ function reader(): ActorContext {
       id: companyId,
       displayName: 'Company A',
 
-      commercialActivityPermissions: ['commercial.activity.read'],
-
-      offerPermissions: [
-        'commercial.offer.read',
-        'commercial.offer.approve',
-        'commercial.offer.response.record',
-      ],
-      offerApproverAssignmentId: 'approver-1',
-      offerApproverPermissionSetVersion: 'v1',
       grants: withoutCompanyGrants(
         companyGrants(
           {

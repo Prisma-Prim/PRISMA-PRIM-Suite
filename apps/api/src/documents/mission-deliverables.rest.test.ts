@@ -1,3 +1,4 @@
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
@@ -33,9 +34,19 @@ withPostgres('D3 governed mission-deliverable PDFs REST', () => {
   it('registers an explicitly authorized reference-free mission draft and reopens its empty Version', async () => {
     await grant('/company-mission-deliverable-access-assignments');
     const actor = await json(await call('/access/current-actor'));
-    expect(record(actor.activeCompany).documentPermissions).toContain(
-      'document.mission_deliverable.access',
-    );
+    expect(
+      companyPermissionsOf(record(actor.activeCompany), [
+        'company_document_project_organizer',
+        'company_document_registrar',
+        'company_document_approver',
+        'company_document_content_reader',
+        'company_document_content_uploader',
+        'company_mission_deliverable_access',
+        'company_received_contract_access',
+        'company_received_addendum_access',
+        'company_received_audit_source_access',
+      ]),
+    ).toContain('document.mission_deliverable.access');
     const response = await call('/documents', {
       method: 'POST',
       body: {

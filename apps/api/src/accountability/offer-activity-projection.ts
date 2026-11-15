@@ -1,4 +1,4 @@
-import type { ActiveCompanyContext } from '../access/access.types.js';
+import type { CompanyAuthorityContext } from '../access/company-authority-context.js';
 import {
   OFFER_QUALITY_CODES,
   type OfferQualityRuleSetVersion,
@@ -85,7 +85,7 @@ export type OfferActivityProjection =
  * the complete Offer read prerequisite, or none at all.
  */
 export function eligibleOfferActivityActions(
-  company: ActiveCompanyContext | undefined,
+  company: CompanyAuthorityContext | undefined,
 ): readonly OfferActivityAction[] {
   const permissions = company?.commercialActivityPermissions ?? [];
   return permissions.includes('commercial.activity.read') &&

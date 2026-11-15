@@ -1,3 +1,7 @@
+import {
+  companyGrantOf,
+  companyPermissionsOf,
+} from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -255,11 +259,13 @@ describe.skipIf(!databaseUrl)(
       const current = object(
         (await fixture.read('/access/current-actor')).activeCompany,
       );
-      expect(current.projectTemplatePermissionSetVersion).toBe('v1');
-      expect(current.projectTemplatePermissions).toEqual([
-        'project.template.read',
-        'project.template.instantiate',
-      ]);
+      expect(
+        companyGrantOf(current, 'company_project_template_user')
+          ?.permissionSetVersion,
+      ).toBe('v1');
+      expect(
+        companyPermissionsOf(current, ['company_project_template_user']),
+      ).toEqual(['project.template.read', 'project.template.instantiate']);
       expect(
         (await fixture.request(`/project-templates?templateKey=${pilotKey}`))
           .status,
@@ -299,7 +305,9 @@ describe.skipIf(!databaseUrl)(
       const next = object(
         (await fixture.read('/access/current-actor')).activeCompany,
       );
-      expect(next.projectTemplatePermissions).toEqual([
+      expect(
+        companyPermissionsOf(next, ['company_project_template_user']),
+      ).toEqual([
         'project.template.read',
         'project.template.instantiate',
         'project.template.pilot.read',
@@ -918,7 +926,9 @@ describe.skipIf(!databaseUrl)(
           const actor = object(
             (await fixture.read('/access/current-actor')).activeCompany,
           );
-          expect(actor.projectTemplatePermissions).toBeUndefined();
+          expect(
+            companyPermissionsOf(actor, ['company_project_template_user']),
+          ).toBeUndefined();
         }
       } finally {
         await fixture.harness.pool.query(

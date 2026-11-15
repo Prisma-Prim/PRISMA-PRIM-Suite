@@ -1,3 +1,7 @@
+import {
+  companyGrantOf,
+  companyPermissionsOf,
+} from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
@@ -69,14 +73,28 @@ withPostgres('D4 independent Task result authority REST', () => {
     });
     const actor = await json(await fixture.call('/access/current-actor'));
     expect(record(actor.activeCompany)).toMatchObject({
-      taskResultPermissions: ['task.result.record'],
-      taskResultRecorderAssignmentId: text(grant.id),
-      taskResultRecorderPermissionSetVersion: 'v1',
-      taskPermissions: ['task.read', 'task.manage'],
-      projectPermissionAssignmentId: expect.any(String),
-      projectPermissionSetVersion: 'v2',
-      documentPermissionAssignmentId: expect.any(String),
-      documentPermissionSetVersion: 'v3',
+      grants: expect.arrayContaining([
+        expect.objectContaining({
+          bundle: 'company_task_result_recorder',
+          assignmentId: text(grant.id),
+          permissionSetVersion: 'v1',
+          permissions: ['task.result.record'],
+        }),
+        expect.objectContaining({
+          bundle: 'company_project_access',
+          assignmentId: expect.any(String),
+          permissionSetVersion: 'v2',
+        }),
+        expect.objectContaining({
+          bundle: 'company_document_registrar',
+          assignmentId: expect.any(String),
+          permissionSetVersion: 'v3',
+        }),
+        expect.objectContaining({
+          bundle: 'company_task_manager',
+          permissions: ['task.read', 'task.manage'],
+        }),
+      ]),
     });
     const created = await submit();
     expect(created.status).toBe(201);
@@ -155,7 +173,10 @@ withPostgres('D4 independent Task result authority REST', () => {
     const actor = await json(await fixture.call('/access/current-actor'));
     expect(actor.workspacePermissions).toContain('client.manage');
     expect(
-      record(actor.activeCompany).clientPermissionAssignmentId,
+      companyGrantOf(
+        record(actor.activeCompany),
+        'company_director_client_access',
+      )?.assignmentId,
     ).toBeUndefined();
     expect((await fixture.call(`/tasks/${context.taskId}`)).status).toBe(200);
     for (const path of routes())
@@ -265,10 +286,15 @@ withPostgres('D4 independent Task result authority REST', () => {
         expect((await submit()).status).toBe(403);
         const actor = await json(await fixture.call('/access/current-actor'));
         expect(
-          record(actor.activeCompany).taskResultPermissions,
+          companyPermissionsOf(record(actor.activeCompany), [
+            'company_task_result_recorder',
+          ]),
         ).toBeUndefined();
         expect(
-          record(actor.activeCompany).taskResultRecorderAssignmentId,
+          companyGrantOf(
+            record(actor.activeCompany),
+            'company_task_result_recorder',
+          )?.assignmentId,
         ).toBeUndefined();
         const current = await fixture.call(`/tasks/${context.taskId}/results`);
         expect(current.status).toBe(200);

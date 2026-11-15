@@ -32,7 +32,7 @@ const administrator = {
   email: 'administrator@example.test',
   active: true,
   workspacePermissions: ['company.assignment.manage'],
-  activeCompany: company,
+  activeCompany: { ...company, grants: [] },
 } satisfies ActorContext;
 
 beforeEach(() => {

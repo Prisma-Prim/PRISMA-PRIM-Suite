@@ -80,16 +80,6 @@ export const invoiceUiActor: ActorContext = {
     id: invoiceUiIds.company,
     displayName: 'Fictional Company',
 
-    documentContentReaderAssignmentId: 'content-reader',
-    documentContentReaderPermissionSetVersion: 'v1',
-    documentContentUploaderAssignmentId: 'uploader',
-    documentContentUploaderPermissionSetVersion: 'v1',
-    documentApproverAssignmentId: 'approver',
-    documentApproverPermissionSetVersion: 'v1',
-    contractPermissions: ['commercial.contract.read'],
-    contractPermissionAssignmentId: 'contract-reader',
-    contractPermissionSetVersion: 'v2',
-
     // Unmigrated screens still read the Client, Document, Contract and
     // Commercial Intake per-bundle fields above beside these grants.
     grants: companyGrants(...invoiceUiGrantRequests),

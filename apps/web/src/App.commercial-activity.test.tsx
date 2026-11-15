@@ -24,8 +24,6 @@ const reader = {
     id: COMPANY_ID,
     displayName: 'PRISMA-PRIM',
 
-    commercialActivityPermissions: ['commercial.activity.read'],
-
     grants: withCompanyGrants(
       withoutCompanyGrants(undefined, 'company_director_client_access'),
       {

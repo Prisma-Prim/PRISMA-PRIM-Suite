@@ -1,3 +1,4 @@
+import { readCurrentActor } from '../access/current-actor';
 import { expect, it } from 'vitest';
 import { assertMessageCoverage } from '../localization/messages';
 import { projectNextActionMessages } from './project-next-action.copy';
@@ -209,14 +210,35 @@ it.each([
   [],
   ['project.next_action.update', 'future.permission'],
 ])(
-  'fails closed on an unknown write capture while preserving its opaque representation',
-  (capture) => {
+  'refuses an unknown write grant at the current Actor boundary',
+  async (capture) => {
+    const result = await readCurrentActor({
+      api: {
+        request: async () => ({
+          status: 'ok',
+          value: {
+            ...completeActor,
+            activeCompany: {
+              ...completeActor.activeCompany,
+              grants: [
+                {
+                  bundle: 'company_project_next_action_coordinator',
+                  assignmentId: 'next-action-grant',
+                  permissionSetVersion: 'v1',
+                  permissions: capture,
+                },
+              ],
+            },
+          },
+        }),
+      },
+    });
+    expect(result).toEqual({ status: 'error' });
     expect(
       canCoordinateNextAction({
         ...completeActor,
         activeCompany: {
           ...completeActor.activeCompany,
-          projectNextActionPermissions: capture,
         },
       }),
     ).toBe(false);

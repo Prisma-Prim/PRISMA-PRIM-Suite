@@ -738,6 +738,7 @@ it.each(['ok', 'company forbidden', 'session unauthorized'] as const)(
     const selfActor = {
       ...props.actor,
       activeCompany: {
+        grants: [],
         id: assignmentCompanyId,
         displayName: assignmentCompanyName,
       },

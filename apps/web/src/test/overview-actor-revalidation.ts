@@ -24,9 +24,6 @@ export function withOfferDecisionQueue(actor: ActorContext): ActorContext {
     activeCompany: {
       ...company,
 
-      offerPermissions: ['commercial.offer.read', 'commercial.offer.approve'],
-      offerApproverAssignmentId: 'overview-queue-approver',
-      offerApproverPermissionSetVersion: 'v1',
       grants: withCompanyGrants(
         withoutCompanyGrants(company?.grants, 'company_offer_preparer'),
         {

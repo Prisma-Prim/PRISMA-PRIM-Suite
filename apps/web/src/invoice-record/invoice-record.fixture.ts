@@ -33,16 +33,6 @@ const company = {
   displayName: 'Fictional Company',
   invoiceRecordReadCapture: capture,
 
-  documentContentReaderAssignmentId: '20000000-0000-4000-8000-000000000003',
-  documentContentReaderPermissionSetVersion: 'v1',
-  documentContentUploaderAssignmentId: '20000000-0000-4000-8000-000000000004',
-  documentContentUploaderPermissionSetVersion: 'v1',
-  documentApproverAssignmentId: '20000000-0000-4000-8000-000000000005',
-  documentApproverPermissionSetVersion: 'v1',
-  contractPermissions: ['commercial.contract.read'],
-  contractPermissionAssignmentId: '20000000-0000-4000-8000-000000000006',
-  contractPermissionSetVersion: 'v2',
-
   // Unmigrated screens still read the Client, Document, Contract and
   // Commercial Intake per-bundle fields above beside these grants.
   grants: companyGrants(
@@ -110,8 +100,6 @@ export const financeOnly: ActorContext = {
   ...actor,
   activeCompany: {
     ...company,
-
-    contractPermissions: [],
 
     grants: companyGrants({
       bundle: 'company_invoice_recorder',

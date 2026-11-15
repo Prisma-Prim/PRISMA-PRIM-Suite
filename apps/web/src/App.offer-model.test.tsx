@@ -19,18 +19,6 @@ const actor: ActorContext = {
     id: companyId,
     displayName: 'Synthetic consulting Company',
 
-    offerModelGrants: [
-      {
-        bundle: 'company_offer_model_editor',
-        assignmentId: '40000000-0000-4000-8000-000000000847',
-        permissionSetVersion: 'v1',
-        permissions: [
-          'commercial.offer.model.read',
-          'commercial.offer.model.version.create',
-        ],
-      },
-    ],
-
     grants: withoutCompanyGrants(undefined, 'company_director_client_access'),
   },
 };
