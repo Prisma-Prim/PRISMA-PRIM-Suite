@@ -334,11 +334,6 @@
       "count": 4
     }
   },
-  "apps/web/src/invoice-record/invoice-record-owner.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/knowledge-evidence/KnowledgeEvidenceWorkspace.tsx": {
     "no-restricted-syntax": {
       "count": 1
@@ -462,11 +457,6 @@
   "apps/web/src/payment-evidence/PaymentEvidenceVersions.tsx": {
     "no-restricted-syntax": {
       "count": 1
-    }
-  },
-  "apps/web/src/payment-observation/payment-owner.ts": {
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "apps/web/src/pricing-configuration/PricingConfigurationWorkspace.tsx": {

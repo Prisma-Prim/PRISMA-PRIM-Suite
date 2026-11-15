@@ -172,3 +172,26 @@ it('supersedes, retires on request and refuses work after unmount', () => {
   expect(third?.aborted).toBe(true);
   expect(operation.begin()).toBeNull();
 });
+
+it('refuses an old begin callback after its equal scope returns', () => {
+  const probe = renderHook(({ scope }) => useScopedOperation(scope), {
+    initialProps: { scope: 'authority-a' },
+  });
+  const retired = probe.result.current;
+  probe.rerender({ scope: 'authority-b' });
+  probe.rerender({ scope: 'authority-a' });
+  expect(retired.begin()).toBeNull();
+  expect(probe.result.current.begin()?.aborted).toBe(false);
+});
+
+it('keeps current work when a retired cleanup runs after an equal scope returns', () => {
+  const probe = renderHook(({ scope }) => useScopedOperation(scope), {
+    initialProps: { scope: 'authority-a' },
+  });
+  const retired = probe.result.current;
+  probe.rerender({ scope: 'authority-b' });
+  probe.rerender({ scope: 'authority-a' });
+  const fresh = probe.result.current.begin();
+  retired.retire();
+  expect(fresh?.aborted).toBe(false);
+});

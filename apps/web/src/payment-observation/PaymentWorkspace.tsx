@@ -9,10 +9,10 @@ import {
   readPaymentInventory,
 } from './payment-contract';
 import {
-  usePaymentLifetime,
-  usePaymentOwner,
-  type PaymentAccessProps,
-} from './payment-owner';
+  useRequestLifetime,
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import type {
   PaymentAction,
   PaymentCurrent,
@@ -27,7 +27,7 @@ import { PaymentSources } from './PaymentSources';
 import { PaymentDownload } from './PaymentDownload';
 import { PaymentRevisionView, PaymentSummaryView, paymentCopy } from './ui';
 
-type Props = PaymentAccessProps & {
+type Props = ActorRequestProps & {
   onProtectedWorkChange: (active: boolean) => void;
   onOpenClient?: (id: string) => void;
   onOpenDocument?: (
@@ -38,7 +38,7 @@ type Props = PaymentAccessProps & {
 };
 export function PaymentWorkspace(props: Props) {
   const authority = paymentAuthority(props.actor);
-  const lifetime = usePaymentLifetime(
+  const lifetime = useRequestLifetime(
     props.identity,
     authority
       ? JSON.stringify([
@@ -66,45 +66,45 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
     copy = paymentCopy[locale],
     visible = useContext(SectionVisibility),
     a = props.authority;
-  const readGeneration = usePaymentLifetime(props.identity, a.readKey);
-  const owner = usePaymentOwner(
-    props,
-    a.companyId,
-    JSON.stringify([a.readKey, visible]),
-  );
-  const createGeneration = usePaymentLifetime(
+  const readGeneration = useRequestLifetime(props.identity, a.readKey);
+  const owner = useActorRequests({
+    ...props,
+    companyId: a.companyId,
+    scope: JSON.stringify([a.readKey, visible]),
+  });
+  const createGeneration = useRequestLifetime(
     props.identity,
     a.createKey ?? 'no-create',
   );
-  const correctGeneration = usePaymentLifetime(
+  const correctGeneration = useRequestLifetime(
     props.identity,
     a.correctKey ?? 'no-correct',
   );
-  const withdrawGeneration = usePaymentLifetime(
+  const withdrawGeneration = useRequestLifetime(
     props.identity,
     a.recordKey ?? 'no-withdraw',
   );
-  const confirmGeneration = usePaymentLifetime(
+  const confirmGeneration = useRequestLifetime(
     props.identity,
     a.confirmKey ?? 'no-confirm',
   );
-  const reverseGeneration = usePaymentLifetime(
+  const reverseGeneration = useRequestLifetime(
     props.identity,
     a.reverseKey ?? 'no-reverse',
   );
-  const clientProjectionGeneration = usePaymentLifetime(
+  const clientProjectionGeneration = useRequestLifetime(
     props.identity,
     props.projectionAuthority,
   );
-  const sourceProjectionGeneration = usePaymentLifetime(
+  const sourceProjectionGeneration = useRequestLifetime(
     props.identity,
     a.projectionKey ?? 'no-source-projection',
   );
-  const downloadGeneration = usePaymentLifetime(
+  const downloadGeneration = useRequestLifetime(
     props.identity,
     a.downloadKey ?? 'no-download',
   );
-  const sourceGeneration = usePaymentLifetime(
+  const sourceGeneration = useRequestLifetime(
     props.identity,
     JSON.stringify([a.createKey, a.readCapture]),
   );

@@ -6,10 +6,10 @@ import { holdsContractRead } from '../contract/contract-grants';
 import { useInvoiceRecordCopy } from './invoice-record-copy';
 import {
   accessRejected,
-  useInvoiceLifetime,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-} from './invoice-record-owner';
+  useRequestLifetime,
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import { object, uuid } from './invoice-record-values';
 
 export type InvoiceContractTarget = {
@@ -18,7 +18,7 @@ export type InvoiceContractTarget = {
   contractVersionId: string;
   clientRequestId: string;
 };
-type Props = InvoiceAccessProps & {
+type Props = ActorRequestProps & {
   companyId: string;
   recordId: string;
   contract: Omit<InvoiceContractTarget, 'clientRequestId'>;
@@ -76,14 +76,18 @@ export function InvoiceRecordContractLink(props: Props) {
     props.editing,
     available,
   ]);
-  const generation = useInvoiceLifetime(props.identity, scope);
+  const generation = useRequestLifetime(props.identity, scope);
   if (!available) return null;
   return <NativeContractLinkOwner key={generation} {...props} scope={scope} />;
 }
 function NativeContractLinkOwner(props: Props & { scope: string }) {
   const copy = useInvoiceRecordCopy();
   const nativeCopy = useContractCopy();
-  const owner = useInvoiceOwner(props, props.companyId, props.scope);
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: props.scope,
+  });
   const latest = useRef(props);
   latest.current = props;
   const pending = useRef(false);

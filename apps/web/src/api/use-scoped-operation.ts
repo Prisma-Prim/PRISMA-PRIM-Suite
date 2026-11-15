@@ -1,47 +1,113 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
-export type ScopedOperation = {
-  /**
-   * Supersedes the slot's earlier work and returns the new work's signal, or
-   * `null` when the caller rendered a scope that is no longer committed or the
-   * owner has unmounted. Apply a result only while its signal is not aborted.
-   */
-  begin: () => AbortSignal | null;
-  /** Retires the slot's current work. */
+export type PendingOperation = {
+  readonly signal: AbortSignal;
+  release: () => void;
   retire: () => void;
 };
+export type ScopedOperation = {
+  /** Start from an event/effect under the committed scope, or return null. */
+  begin: () => AbortSignal | null;
+  retire: () => void;
+};
+export type ScopedOperationGroup = {
+  /** Independent members do not supersede each other. */
+  begin: () => PendingOperation | null;
+  retire: () => void;
+  isLive: () => boolean;
+  isPending: () => boolean;
+};
 
-type Owner = { scope: string; controller: AbortController | null };
+function createOperationGroup() {
+  const pending = new Set<AbortController>();
+  return {
+    begin(): PendingOperation {
+      const controller = new AbortController();
+      pending.add(controller);
+      return {
+        signal: controller.signal,
+        release: () => {
+          pending.delete(controller);
+        },
+        retire: () => {
+          pending.delete(controller);
+          controller.abort();
+        },
+      };
+    },
+    retire() {
+      const retiring = [...pending];
+      pending.clear();
+      for (const controller of retiring) controller.abort();
+    },
+    isPending: () => pending.size > 0,
+  };
+}
+type Owner = {
+  scope: { value: string };
+  group: ReturnType<typeof createOperationGroup>;
+  latest: PendingOperation | null;
+};
 
-/**
- * One slot of asynchronous work tied to a captured authority or source scope.
- *
- * Changing `scope` or unmounting retires the slot's work for good, even when
- * equal values return. Retirement runs inside the commit, before the browser
- * paints, so input on the first displayed frame begins work that this reset
- * can no longer reach (#1095, #1096). Each StrictMode effect replay creates a
- * fresh owner: replayed setup begins live work and earlier work stays retired.
- * Call `begin` from event handlers, passive effects or their continuations,
- * never during render.
- */
-export function useScopedOperation(scope: string): ScopedOperation {
+/** Speculative renders cannot retire the committed owner or its callbacks. */
+function useOperationOwner(scope: string) {
+  const rendered = useMemo(() => ({ value: scope }), [scope]);
   const owner = useRef<Owner | null>(null);
   useLayoutEffect(() => {
-    const current: Owner = { scope, controller: null };
+    const current: Owner = {
+      scope: rendered,
+      group: createOperationGroup(),
+      latest: null,
+    };
     owner.current = current;
     return () => {
-      owner.current = null;
-      current.controller?.abort();
+      if (owner.current === current) owner.current = null;
+      current.group.retire();
     };
-  }, [scope]);
-  const begin = useCallback(() => {
+  }, [rendered]);
+  return useCallback(() => {
     const current = owner.current;
-    if (current?.scope !== scope) return null;
-    current.controller?.abort();
-    const controller = new AbortController();
-    current.controller = controller;
-    return controller.signal;
-  }, [scope]);
-  const retire = useCallback(() => owner.current?.controller?.abort(), []);
+    return current?.scope === rendered ? current : null;
+  }, [rendered]);
+}
+
+/**
+ * Latest work under one committed scope. Equal values returning later have a
+ * new owner; old controls and continuations remain retired. Layout cleanup
+ * precedes paint (#1095/#1096), and StrictMode setup creates a fresh owner.
+ */
+export function useScopedOperation(scope: string): ScopedOperation {
+  const capture = useOperationOwner(scope);
+  const begin = useCallback(() => {
+    const current = capture();
+    if (!current) return null;
+    const previous = current.latest;
+    const next = current.group.begin();
+    current.latest = next;
+    previous?.retire();
+    return next.signal;
+  }, [capture]);
+  const retire = useCallback(() => {
+    const current = capture();
+    if (!current) return;
+    current.latest = null;
+    current.group.retire();
+  }, [capture]);
   return useMemo(() => ({ begin, retire }), [begin, retire]);
+}
+
+/** Parallel members share a scope; completion releases only that member. */
+export function useScopedOperationGroup(scope: string): ScopedOperationGroup {
+  const capture = useOperationOwner(scope);
+  const begin = useCallback(() => capture()?.group.begin() ?? null, [capture]);
+  const retire = useCallback(() => capture()?.group.retire(), [capture]);
+  const isLive = useCallback(() => capture() !== null, [capture]);
+  const isPending = useCallback(
+    () => capture()?.group.isPending() ?? false,
+    [capture],
+  );
+  return useMemo(
+    () => ({ begin, retire, isLive, isPending }),
+    [begin, retire, isLive, isPending],
+  );
 }

@@ -6,9 +6,9 @@ import { useInvoiceRecordCopy } from './invoice-record-copy';
 import { type InvoiceRevision } from './invoice-record-history';
 import {
   accessRejected,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-} from './invoice-record-owner';
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import { sameValues } from './invoice-record-values';
 import { InvoiceValuesView } from './InvoiceRecordValues';
 
@@ -62,7 +62,7 @@ function Revision({ fact }: { fact: InvoiceRevision }) {
   );
 }
 export function InvoiceRecordHistory(
-  props: InvoiceAccessProps & {
+  props: ActorRequestProps & {
     companyId: string;
     readCapture: string;
     readAuthority: string;
@@ -74,11 +74,11 @@ export function InvoiceRecordHistory(
 ) {
   const copy = useInvoiceRecordCopy();
   const record = props.current.record;
-  const owner = useInvoiceOwner(
-    props,
-    props.companyId,
-    JSON.stringify([props.readAuthority, record.id, record.revision]),
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: JSON.stringify([props.readAuthority, record.id, record.revision]),
+  });
   const [items, setItems] = useState(props.current.history.items);
   const [cursor, setCursor] = useState(props.current.history.nextCursor);
   const [state, setState] = useState<'idle' | 'loading' | 'error' | 'changed'>(

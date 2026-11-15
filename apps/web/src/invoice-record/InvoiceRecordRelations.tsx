@@ -1,9 +1,9 @@
 import type { LiveSource, Related } from './invoice-record-contract';
 import { useInvoiceRecordCopy } from './invoice-record-copy';
 import type {
-  InvoiceAccessProps,
-  InvoiceAccessRecovery,
-} from './invoice-record-owner';
+  ActorRequestProps,
+  AccessRecovery,
+} from '../api/use-actor-requests';
 import { InvoiceRecordDownload } from './InvoiceRecordDownload';
 import {
   InvoiceRecordContractLink,
@@ -16,7 +16,7 @@ export type InvoiceRelatedCallbacks = {
 };
 /** Only a still-current native projection reaches this view; copied facts live outside it. */
 export function InvoiceRecordRelations(
-  props: InvoiceAccessProps &
+  props: ActorRequestProps &
     InvoiceRelatedCallbacks & {
       companyId: string;
       recordId: string;
@@ -25,7 +25,7 @@ export function InvoiceRecordRelations(
       related: Related | undefined;
       editing: boolean;
       onDenied: () => void;
-      recoverAccess?: InvoiceAccessRecovery;
+      recoverAccess?: AccessRecovery;
     },
 ) {
   const copy = useInvoiceRecordCopy();

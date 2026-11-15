@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { readPaymentSources } from './payment-contract';
-import { usePaymentOwner, type PaymentAccessProps } from './payment-owner';
+import {
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import type { PaymentSelectable, PaymentSourcePage } from './payment.types';
 import { PaymentSourceView, paymentCopy } from './ui';
 
 export function PaymentSources(
-  props: PaymentAccessProps & {
+  props: ActorRequestProps & {
     companyId: string;
     capture: string;
     authority: string;
@@ -17,7 +20,11 @@ export function PaymentSources(
 ) {
   const { locale } = useInterfaceLocale(),
     copy = paymentCopy[locale];
-  const owner = usePaymentOwner(props, props.companyId, props.authority);
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: props.authority,
+  });
   const [page, setPage] = useState<PaymentSourcePage>(),
     [status, setStatus] = useState('loading');
   const sequence = useRef(0);

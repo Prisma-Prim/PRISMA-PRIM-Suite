@@ -8,14 +8,14 @@ import {
 import { useInvoiceRecordCopy } from './invoice-record-copy';
 import {
   accessRejected,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-  type InvoiceAccessRecovery,
-} from './invoice-record-owner';
+  useActorRequests,
+  type ActorRequestProps,
+  type AccessRecovery,
+} from '../api/use-actor-requests';
 import { InvoiceContextView } from './InvoiceRecordValues';
 
 export function InvoiceSourcePicker(
-  props: InvoiceAccessProps & {
+  props: ActorRequestProps & {
     companyId: string;
     readCapture: string;
     sourceAuthority: string;
@@ -23,17 +23,17 @@ export function InvoiceSourcePicker(
     onSelect: (value: InvoiceSource | undefined) => void;
     disabled: boolean;
     onDenied: () => void;
-    recoverAccess?: InvoiceAccessRecovery;
+    recoverAccess?: AccessRecovery;
   },
 ) {
   const copy = useInvoiceRecordCopy();
   const id = useId();
-  const owner = useInvoiceOwner(
-    props,
-    props.companyId,
-    props.sourceAuthority,
-    props.recoverAccess,
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.companyId,
+    scope: props.sourceAuthority,
+    recoverThrough: props.recoverAccess,
+  });
   const [items, setItems] = useState<InvoiceSource[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');

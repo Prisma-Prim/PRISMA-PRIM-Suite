@@ -8,10 +8,10 @@ import { displayMoney } from './invoice-record-money';
 import type { InvoiceReceipt } from './invoice-record-history';
 import {
   accessRejected,
-  useInvoiceLifetime,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-} from './invoice-record-owner';
+  useRequestLifetime,
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import {
   InvoiceRecordDetail,
   type InvoiceAuthority,
@@ -20,9 +20,9 @@ import { InvoiceRecordForm } from './InvoiceRecordForm';
 import type { InvoiceRelatedCallbacks } from './InvoiceRecordRelations';
 import './invoice-record.css';
 
-export type InvoiceRecordsWorkspaceProps = InvoiceAccessProps &
+export type InvoiceRecordsWorkspaceProps = ActorRequestProps &
   InvoiceRelatedCallbacks & { projectionAuthority: string };
-function financeReadCapture(actor: InvoiceAccessProps['actor']) {
+function financeReadCapture(actor: ActorRequestProps['actor']) {
   const company = actor.activeCompany;
   return company &&
     'invoiceRecordReadCapture' in company &&
@@ -35,7 +35,7 @@ export function InvoiceRecordsWorkspace(props: InvoiceRecordsWorkspaceProps) {
   const visible = useContext(SectionVisibility);
   const authority = invoiceRecordAuthority(props.actor);
   const capture = financeReadCapture(props.actor);
-  const generation = useInvoiceLifetime(
+  const generation = useRequestLifetime(
     props.identity,
     JSON.stringify([
       authority?.key,
@@ -76,11 +76,11 @@ function InvoiceWorkspaceOwner(
   },
 ) {
   const copy = useInvoiceRecordCopy();
-  const owner = useInvoiceOwner(
-    props,
-    props.authority.companyId,
-    props.authority.key,
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.authority.companyId,
+    scope: props.authority.key,
+  });
   const [selection, setSelection] = useState<Selection>({ kind: 'inventory' });
   const [denied, setDenied] = useState(false);
   const [create, setCreate] = useState<{
@@ -89,7 +89,7 @@ function InvoiceWorkspaceOwner(
     manage: string;
   }>();
   const generation = useRef(0);
-  const sourceGeneration = useInvoiceLifetime(
+  const sourceGeneration = useRequestLifetime(
     props.identity,
     JSON.stringify([
       props.authority.sourceKey,
@@ -201,11 +201,11 @@ function InvoiceInventory(
 ) {
   const copy = useInvoiceRecordCopy();
   const { locale } = useInterfaceLocale();
-  const owner = useInvoiceOwner(
-    props,
-    props.authority.companyId,
-    props.authority.key,
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.authority.companyId,
+    scope: props.authority.key,
+  });
   const [items, setItems] = useState<InvoiceSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');

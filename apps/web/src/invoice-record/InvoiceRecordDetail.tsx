@@ -6,10 +6,10 @@ import { useInvoiceRecordCopy } from './invoice-record-copy';
 import type { InvoiceReceipt } from './invoice-record-history';
 import {
   accessRejected,
-  useInvoiceLifetime,
-  useInvoiceOwner,
-  type InvoiceAccessProps,
-} from './invoice-record-owner';
+  useRequestLifetime,
+  useActorRequests,
+  type ActorRequestProps,
+} from '../api/use-actor-requests';
 import {
   InvoiceRecordRelations,
   type InvoiceRelatedCallbacks,
@@ -25,7 +25,7 @@ type Read =
   | { kind: 'loading' | 'error' | 'denied' }
   | { kind: 'ready'; current: InvoiceCurrent; projection: number };
 export function InvoiceRecordDetail(
-  props: InvoiceAccessProps &
+  props: ActorRequestProps &
     InvoiceRelatedCallbacks & {
       authority: InvoiceAuthority;
       readCapture: string;
@@ -38,27 +38,27 @@ export function InvoiceRecordDetail(
 ) {
   const copy = useInvoiceRecordCopy();
   const { formatDateTime } = useInterfaceLocale();
-  const projection = useInvoiceLifetime(
+  const projection = useRequestLifetime(
     props.identity,
     props.projectionAuthority,
   );
-  const sourceGeneration = useInvoiceLifetime(
+  const sourceGeneration = useRequestLifetime(
     props.identity,
     JSON.stringify([props.authority.sourceKey, props.projectionAuthority]),
   );
-  const manageGeneration = useInvoiceLifetime(
+  const manageGeneration = useRequestLifetime(
     props.identity,
     props.authority.manageKey ?? 'unavailable',
   );
-  const contentGeneration = useInvoiceLifetime(
+  const contentGeneration = useRequestLifetime(
     props.identity,
     JSON.stringify([props.authority.contentKey, projection]),
   );
-  const owner = useInvoiceOwner(
-    props,
-    props.authority.companyId,
-    JSON.stringify([props.authority.key, props.recordId, projection]),
-  );
+  const owner = useActorRequests({
+    ...props,
+    companyId: props.authority.companyId,
+    scope: JSON.stringify([props.authority.key, props.recordId, projection]),
+  });
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [confirmation, setConfirmation] = useState(props.confirmed);
   const [refreshFailed, setRefreshFailed] = useState(false);
