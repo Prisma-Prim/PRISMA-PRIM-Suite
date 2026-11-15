@@ -14121,238 +14121,1629 @@ components:
       required:
         - id
         - displayName
-        - clientPermissions
+        - grants
       properties:
-        workingEvidenceCasePermissions:
-          type: array
-          uniqueItems: true
-          maxItems: 2
-          items:
-            type: string
-            enum: [working_evidence_case.read, working_evidence_case.record]
-          description: Additive captured Reader/Recorder permissions; Reader is preferred for a fresh read and Recorder is consumed for a write. Native context, Project, original Client and source/content captures remain independent.
-        workingEvidenceCaseReaderAssignmentId: { type: string, format: uuid }
-        workingEvidenceCaseReaderPermissionSetVersion:
-          { type: string, const: v1 }
-        workingEvidenceCaseRecorderAssignmentId: { type: string, format: uuid }
-        workingEvidenceCaseRecorderPermissionSetVersion:
-          { type: string, const: v1 }
-        receivedAuditSourceAccessAssignmentId: { type: string, format: uuid }
-        receivedAuditSourceAccessPermissionSetVersion:
-          { type: string, const: v1 }
-        workingEvidenceContextCapture:
-          type: string
-          pattern: '^working-evidence-context\.v1\.[0-9a-f]{64}$'
-          description: Opaque identity of the selected supported native Company admission; grants no permission. Revocation or equal-permission replacement retires the consumed identity.
-        workingEvidenceClientReadCapture:
-          type: string
-          pattern: '^working-evidence-client-read\.v1\.[0-9a-f]{64}$'
-          description: Opaque identity of the selected native original-Client read alternative, preferring Workspace client.manage when available; grants no permission. Revocation or equal-permission replacement retires the consumed identity.
-        receivedAddendumAccessAssignmentId: { type: string, format: uuid }
-        receivedAddendumAccessPermissionSetVersion: { type: string, const: v1 }
-        receivedAddendumClientReadCapture:
-          type: string
-          pattern: '^received-addendum-client-read\.v1\.[a-f0-9]{64}$'
-          description: Exact scoped native Client-read alternative identity; Workspace client.manage remains a supported alternative. Parent and PDF authorities are independent.
-
-        opportunityFollowUpPermissions:
-          type: array
-          uniqueItems: true
-          items:
-            {
-              type: string,
-              enum:
-                [
-                  commercial.opportunity.follow_up.read,
-                  commercial.opportunity.follow_up.manage,
-                ],
-            }
-        opportunityFollowUpCoordinatorAssignmentId:
-          { type: string, format: uuid }
-        opportunityFollowUpCoordinatorPermissionSetVersion:
-          { type: string, const: v1 }
-        opportunityFollowUpReadCapture:
-          type: string
-          pattern: '^opportunity-follow-up-read\.v1\.[0-9a-f]{64}$'
-          description: Opaque consumed live read authority identity. Context and native captured rights remain independent; replacement invalidates older owners.
-        offerMessageReadCapture:
-          type: string
-          pattern: '^offer-message-read\.v1\.[0-9a-f]{64}$'
-          description: Optional opaque consumed Company-context, Intake and Offer read observation. It grants no new permission and only its feature consumer interprets the supported format.
-        paymentObservationContextCapture:
-          type: string
-          pattern: '^payment-observation-context\.v1\.[a-f0-9]{64}$'
-          description: Optional opaque identity of the one supported Company admission consumed by Payment; independent of the selected Reader and of native Source rights. It grants no permission.
-        paymentObservationReadCapture:
-          type: string
-          pattern: '^payment-observation-read\.v1\.[a-f0-9]{64}$'
-          description: Optional opaque Payment copied-read authority identity; no native Source/Client/content permission or action is implied.
-        paymentGrants:
-          description: Exact supported v1 role identities; no native Company context, Client identity, Document/content grant or monetary workflow is implied. Read selection is independent of Recorder mutation and payer projection authority.
-          type: array
-          maxItems: 5
-          uniqueItems: true
-          items: { $ref: '#/components/schemas/PaymentCapturedGrant' }
-        paymentEvidenceContextCapture:
-          type: string
-          pattern: '^payment-evidence-context\.v1\.[0-9a-f]{64}$'
-          description: Optional opaque selected native Company-context identity/version observation; no permission is granted by the digest.
-        paymentEvidenceReferenceReadCapture:
-          type: string
-          pattern: '^payment-evidence-reference-read\.v1\.[0-9a-f]{64}$'
-          description: Optional opaque selected native original-Client reference-read authority identity/version observation; complete payer copying still requires separate Company client.read.
-        invoiceRecordReadCapture:
-          type: string
-          pattern: '^invoice-record-read\.v1\.[0-9a-f]{64}$'
-          description: Opaque financial-only live capture; does not imply Document/Contract/Client rights.
-        externalInvoiceGrants:
-          description: Exact optional captured v1 identities; no permission, native grant or Company context is inferred from their presence alone. Duplicate or malformed required captures fail closed.
-          type: array
-          maxItems: 3
-          uniqueItems: true
-          items: { $ref: '#/components/schemas/ExternalInvoiceCapturedGrant' }
         id:
           type: string
           format: uuid
         displayName:
           type: string
-        clientPermissions:
+        grants:
           type: array
           uniqueItems: true
           items:
-            type: string
-            enum:
-              - client.read
-              - client.create
-              - client.update
-              - client.duplicate.resolve
-        clientPermissionAssignmentId:
+            $ref: '#/components/schemas/CompanyGrant'
+          allOf:
+            - contains:
+                properties:
+                  bundle:
+                    const: company_context_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_director_client_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_internal_task_manager
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_task_manager
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_document_project_organizer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_document_registrar
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_document_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_project_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_commercial_intake
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_service_catalogue
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_pricing_configuration
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_pricing_user
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_pricing_adjustment
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_offer_preparer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_contract_preparer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_contract_early_preparation
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_contract_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_offer_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_commercial_activity_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_opportunity_manager
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_project_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_profitability_contributor
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_profitability_director
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_sales_stage_configuration
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_document_content_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_document_content_uploader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_project_template_user
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_project_stage_advancer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_project_template_configuration
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_ideas_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_ideas_recorder
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_ideas_reviewer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_operational_risk_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_operational_risk_recorder
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_task_result_recorder
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_project_next_action_coordinator
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_mission_applicability_coordinator
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_mission_applicability_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_mission_result_reviewer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_mission_deliverable_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_contract_signature_declarer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_received_contract_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_received_addendum_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_offer_model_editor
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_offer_model_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_contract_model_editor
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_contract_model_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_mission_plan_configuration
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_mission_plan_user
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_knowledge_source_administrator
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_knowledge_evidence_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_payment_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_payment_recorder
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_payment_confirmer
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_payment_reverser
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_payment_evidence_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_invoice_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_invoice_recorder
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_external_invoice_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_opportunity_follow_up_coordinator
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_working_evidence_case_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_working_evidence_case_recorder
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_received_audit_source_access
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_certification_reader
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_certification_programme_manager
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_certification_approver
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+            - contains:
+                properties:
+                  bundle:
+                    const: company_certification_auditor
+                required:
+                  - bundle
+              minContains: 0
+              maxContains: 1
+        workingEvidenceContextCapture:
           type: string
-          format: uuid
-        clientPermissionSetVersion:
-          type: string
-          enum:
-            - v1
-            - v2
-        documentPermissions:
-          type: array
-          uniqueItems: true
-          description: Current captured Document permissions; content grants never expand metadata or Version-management authority.
-          items:
-            type: string
-            enum:
-              - document.read
-              - document.register
-              - document.reference.read
-              - document.correct
-              - document.project.manage
-              - document.version.manage
-              - document.version.designate_official
-              - document.content.read
-              - document.content.upload
-              - document.received_audit_source.access
-        documentContentReaderAssignmentId:
-          type: string
-          format: uuid
-        documentContentReaderPermissionSetVersion:
-          type: string
-          const: v1
-        documentContentUploaderAssignmentId:
-          type: string
-          format: uuid
-        documentContentUploaderPermissionSetVersion:
-          type: string
-          const: v1
-        projectStagePermissions:
-          type: array
-          uniqueItems: true
-          maxItems: 1
-          items: { type: string, const: project.stage.advance }
-        projectStagePermissionAssignmentId: { type: string, format: uuid }
-        projectStagePermissionSetVersion: { type: string, const: v1 }
-        projectTemplateConfigurationPermissions:
-          type: array
-          uniqueItems: true
-          maxItems: 1
-          items: { type: string, const: project.template.version.create }
-        projectTemplateConfigurationPermissionAssignmentId:
-          { type: string, format: uuid }
-        projectTemplateConfigurationPermissionSetVersion:
-          { type: string, const: v1 }
-        projectTemplatePermissions:
-          type: array
-          uniqueItems: true
-          maxItems: 4
-          items:
-            type: string
-            enum:
-              - project.template.read
-              - project.template.instantiate
-              - project.template.pilot.read
-              - project.template.pilot.instantiate
+          pattern: ^working-evidence-context\.v1\.[0-9a-f]{64}$
           description: >-
-            Captured v1 preserves only generic read/instantiate. Explicit revoke/regrant captures v2 and adds pilot.read/pilot.instantiate; neither confers
-            independent Project, Task, stage, publishing or lifecycle authority.
-        projectTemplatePermissionAssignmentId:
+            Opaque identity of the selected supported native Company admission; grants no permission.
+            Revocation or equal-permission replacement retires the consumed identity.
+        workingEvidenceClientReadCapture:
+          type: string
+          pattern: ^working-evidence-client-read\.v1\.[0-9a-f]{64}$
+          description: >-
+            Opaque identity of the selected native original-Client read alternative, preferring
+            Workspace client.manage when available; grants no permission. Revocation or equal-permission
+            replacement retires the consumed identity.
+        receivedAddendumClientReadCapture:
+          type: string
+          pattern: ^received-addendum-client-read\.v1\.[a-f0-9]{64}$
+          description: >-
+            Exact scoped native Client-read alternative identity; Workspace client.manage remains a
+            supported alternative. Parent and PDF authorities are independent.
+        opportunityFollowUpReadCapture:
+          type: string
+          pattern: ^opportunity-follow-up-read\.v1\.[0-9a-f]{64}$
+          description: >-
+            Opaque consumed live read authority identity. Context and native captured rights remain
+            independent; replacement invalidates older owners.
+        offerMessageReadCapture:
+          type: string
+          pattern: ^offer-message-read\.v1\.[0-9a-f]{64}$
+          description: >-
+            Optional opaque consumed Company-context, Intake and Offer read observation. It grants no
+            new permission and only its feature consumer interprets the supported format.
+        paymentObservationContextCapture:
+          type: string
+          pattern: ^payment-observation-context\.v1\.[a-f0-9]{64}$
+          description: >-
+            Optional opaque identity of the one supported Company admission consumed by Payment;
+            independent of the selected Reader and of native Source rights. It grants no permission.
+        paymentObservationReadCapture:
+          type: string
+          pattern: ^payment-observation-read\.v1\.[a-f0-9]{64}$
+          description: >-
+            Optional opaque Payment copied-read authority identity; no native Source/Client/content
+            permission or action is implied.
+        paymentEvidenceContextCapture:
+          type: string
+          pattern: ^payment-evidence-context\.v1\.[0-9a-f]{64}$
+          description: >-
+            Optional opaque selected native Company-context identity/version observation; no permission
+            is granted by the digest.
+        paymentEvidenceReferenceReadCapture:
+          type: string
+          pattern: ^payment-evidence-reference-read\.v1\.[0-9a-f]{64}$
+          description: >-
+            Optional opaque selected native original-Client reference-read authority identity/version
+            observation; complete payer copying still requires separate Company client.read.
+        invoiceRecordReadCapture:
+          type: string
+          pattern: ^invoice-record-read\.v1\.[0-9a-f]{64}$
+          description: Opaque financial-only live capture; does not imply Document/Contract/Client rights.
+    CompanyGrant:
+      description: >-
+        Generated from COMPANY_ROLE_BUNDLES; update with node scripts/company-grants-openapi.mjs
+        --write.
+      type: object
+      additionalProperties: false
+      required:
+        - bundle
+        - assignmentId
+        - permissionSetVersion
+        - permissions
+      properties:
+        bundle:
+          type: string
+        assignmentId:
           type: string
           format: uuid
-        projectTemplatePermissionSetVersion:
-          type: string
-          enum: [v1, v2]
-        projectPermissions:
+        permissionSetVersion:
+          type:
+            - string
+            - 'null'
+        permissions:
           type: array
           uniqueItems: true
           items:
             type: string
-            enum:
-              - project.read
-              - project.create
-              - project.update
-        internalTaskPermissions:
-          type: array
-          uniqueItems: true
-          items:
-            { type: string, enum: [internal_task.read, internal_task.manage] }
-        internalTaskManagerAssignmentId: { type: string, format: uuid }
-        internalTaskManagerPermissionSetVersion: { type: string, const: v1 }
-        taskPermissions:
-          type: array
-          uniqueItems: true
-          items:
-            type: string
-            enum:
-              - task.read
-              - task.manage
-        taskPermissionAssignmentId:
-          type: string
-          format: uuid
-        taskPermissionSetVersion:
-          type: string
-          const: v1
-        projectPermissionAssignmentId: { type: string, format: uuid }
-        projectPermissionSetVersion: { type: string, enum: [v1, v2] }
-        documentPermissionAssignmentId: { type: string, format: uuid }
-        taskResultPermissions:
-          type: array
-          uniqueItems: true
-          items: { type: string, const: task.result.record }
-        taskResultRecorderAssignmentId: { type: string, format: uuid }
-        taskResultRecorderPermissionSetVersion: { type: string, const: v1 }
-        projectApproverPermissions:
-          type: array
-          uniqueItems: true
-          description: Present only while a live captured Company Project Approver v1 assignment exists in the active Company.
-          items:
-            type: string
-            enum:
-              - project.lifecycle.transition
-              - project.close
-        projectApproverPermissionAssignmentId:
-          type: string
-          format: uuid
-        projectApproverPermissionSetVersion:
-          type: string
-          const: v1
+      oneOf:
+        - properties:
+            bundle:
+              const: company_context_access
+            permissionSetVersion:
+              const: null
+            permissions:
+              minItems: 0
+              maxItems: 0
+              items: false
+        - properties:
+            bundle:
+              const: company_director_client_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - client.read
+                  - client.create
+                  - client.update
+        - properties:
+            bundle:
+              const: company_director_client_access
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - client.read
+                  - client.create
+                  - client.update
+                  - client.duplicate.resolve
+        - properties:
+            bundle:
+              const: company_internal_task_manager
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - internal_task.read
+                  - internal_task.manage
+        - properties:
+            bundle:
+              const: company_task_manager
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - task.read
+                  - task.manage
+        - properties:
+            bundle:
+              const: company_document_project_organizer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.project.manage
+        - properties:
+            bundle:
+              const: company_document_registrar
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - document.read
+                  - document.register
+                  - document.reference.read
+        - properties:
+            bundle:
+              const: company_document_registrar
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - document.read
+                  - document.register
+                  - document.reference.read
+                  - document.correct
+        - properties:
+            bundle:
+              const: company_document_registrar
+            permissionSetVersion:
+              const: v3
+            permissions:
+              minItems: 5
+              maxItems: 5
+              items:
+                enum:
+                  - document.read
+                  - document.register
+                  - document.reference.read
+                  - document.correct
+                  - document.version.manage
+        - properties:
+            bundle:
+              const: company_document_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.version.designate_official
+        - properties:
+            bundle:
+              const: company_project_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - project.read
+                  - project.create
+        - properties:
+            bundle:
+              const: company_project_access
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - project.read
+                  - project.create
+                  - project.update
+        - properties:
+            bundle:
+              const: company_commercial_intake
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - commercial.request.read
+                  - commercial.request.create
+                  - commercial.opportunity.read
+                  - commercial.opportunity.create
+        - properties:
+            bundle:
+              const: company_commercial_intake
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 5
+              maxItems: 5
+              items:
+                enum:
+                  - commercial.request.read
+                  - commercial.request.create
+                  - commercial.opportunity.read
+                  - commercial.opportunity.create
+                  - commercial.opportunity.next_action.update
+        - properties:
+            bundle:
+              const: company_commercial_intake
+            permissionSetVersion:
+              const: v3
+            permissions:
+              minItems: 6
+              maxItems: 6
+              items:
+                enum:
+                  - commercial.request.read
+                  - commercial.request.create
+                  - commercial.opportunity.read
+                  - commercial.opportunity.create
+                  - commercial.opportunity.next_action.update
+                  - commercial.request.client.associate
+        - properties:
+            bundle:
+              const: company_commercial_intake
+            permissionSetVersion:
+              const: v4
+            permissions:
+              minItems: 7
+              maxItems: 7
+              items:
+                enum:
+                  - commercial.request.read
+                  - commercial.request.create
+                  - commercial.opportunity.read
+                  - commercial.opportunity.create
+                  - commercial.opportunity.next_action.update
+                  - commercial.request.client.associate
+                  - commercial.opportunity.stage.set
+        - properties:
+            bundle:
+              const: company_service_catalogue
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - service.definition.read
+                  - service.definition.create
+                  - commercial.offering.read
+                  - commercial.offering.manage
+        - properties:
+            bundle:
+              const: company_pricing_configuration
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - commercial.offering.read
+                  - commercial.pricing.configuration.read
+                  - commercial.pricing.configuration.manage
+        - properties:
+            bundle:
+              const: company_pricing_user
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - commercial.offering.read
+                  - commercial.pricing.configuration.read
+                  - commercial.pricing.calculate
+                  - commercial.pricing.snapshot.read
+        - properties:
+            bundle:
+              const: company_pricing_adjustment
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - commercial.pricing.adjustment.apply
+        - properties:
+            bundle:
+              const: company_offer_preparer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - commercial.offer.read
+                  - commercial.offer.prepare
+                  - commercial.offer.transmission.record
+                  - commercial.pricing.snapshot.read
+        - properties:
+            bundle:
+              const: company_offer_preparer
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 5
+              maxItems: 5
+              items:
+                enum:
+                  - commercial.offer.read
+                  - commercial.offer.prepare
+                  - commercial.offer.transmission.record
+                  - commercial.pricing.snapshot.read
+                  - commercial.offer.estimate.prepare
+        - properties:
+            bundle:
+              const: company_offer_preparer
+            permissionSetVersion:
+              const: v3
+            permissions:
+              minItems: 8
+              maxItems: 8
+              items:
+                enum:
+                  - commercial.offer.read
+                  - commercial.offer.prepare
+                  - commercial.offer.transmission.record
+                  - commercial.pricing.snapshot.read
+                  - commercial.offer.estimate.prepare
+                  - commercial.offer.model.select
+                  - commercial.offer.model_based.prepare
+                  - commercial.offer.model_based.transmission.record
+        - properties:
+            bundle:
+              const: company_contract_preparer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - commercial.contract.read
+                  - commercial.contract.prepare
+                  - commercial.contract.project.link
+        - properties:
+            bundle:
+              const: company_contract_preparer
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 5
+              maxItems: 5
+              items:
+                enum:
+                  - commercial.contract.read
+                  - commercial.contract.prepare
+                  - commercial.contract.project.link
+                  - commercial.contract.model.select
+                  - commercial.contract.model_based.prepare
+        - properties:
+            bundle:
+              const: company_contract_early_preparation
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - commercial.contract.prepare_pending_offer
+        - properties:
+            bundle:
+              const: company_contract_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - commercial.contract.read
+                  - commercial.contract.approve
+                  - commercial.contract.signature.record
+        - properties:
+            bundle:
+              const: company_contract_approver
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - commercial.contract.read
+                  - commercial.contract.approve
+                  - commercial.contract.signature.record
+                  - commercial.contract.model_based.approve
+        - properties:
+            bundle:
+              const: company_offer_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - commercial.offer.read
+                  - commercial.offer.approve
+                  - commercial.offer.response.record
+        - properties:
+            bundle:
+              const: company_offer_approver
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 5
+              maxItems: 5
+              items:
+                enum:
+                  - commercial.offer.read
+                  - commercial.offer.approve
+                  - commercial.offer.response.record
+                  - commercial.offer.model_based.approve
+                  - commercial.offer.model_based.response.record
+        - properties:
+            bundle:
+              const: company_commercial_activity_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - commercial.activity.read
+        - properties:
+            bundle:
+              const: company_opportunity_manager
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - commercial.opportunity.assign
+        - properties:
+            bundle:
+              const: company_opportunity_manager
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - commercial.opportunity.assign
+                  - commercial.opportunity.outcome.change
+        - properties:
+            bundle:
+              const: company_project_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - project.lifecycle.transition
+                  - project.close
+        - properties:
+            bundle:
+              const: company_profitability_contributor
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - commercial.profitability_estimate.read
+                  - commercial.profitability_estimate.create
+        - properties:
+            bundle:
+              const: company_profitability_director
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - commercial.profitability_estimate.read
+                  - commercial.profitability_estimate.decide
+        - properties:
+            bundle:
+              const: company_sales_stage_configuration
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - commercial.sales_stage.configure
+        - properties:
+            bundle:
+              const: company_document_content_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.content.read
+        - properties:
+            bundle:
+              const: company_document_content_uploader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.content.upload
+        - properties:
+            bundle:
+              const: company_project_template_user
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - project.template.read
+                  - project.template.instantiate
+        - properties:
+            bundle:
+              const: company_project_template_user
+            permissionSetVersion:
+              const: v2
+            permissions:
+              minItems: 4
+              maxItems: 4
+              items:
+                enum:
+                  - project.template.read
+                  - project.template.instantiate
+                  - project.template.pilot.read
+                  - project.template.pilot.instantiate
+        - properties:
+            bundle:
+              const: company_project_stage_advancer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - project.stage.advance
+        - properties:
+            bundle:
+              const: company_project_template_configuration
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - project.template.version.create
+        - properties:
+            bundle:
+              const: company_ideas_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - idea.read
+        - properties:
+            bundle:
+              const: company_ideas_recorder
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - idea.record
+        - properties:
+            bundle:
+              const: company_ideas_reviewer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - idea.disposition.record
+        - properties:
+            bundle:
+              const: company_operational_risk_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - risk.read
+        - properties:
+            bundle:
+              const: company_operational_risk_recorder
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - risk.record
+        - properties:
+            bundle:
+              const: company_task_result_recorder
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - task.result.record
+        - properties:
+            bundle:
+              const: company_project_next_action_coordinator
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - project.next_action.update
+        - properties:
+            bundle:
+              const: company_mission_applicability_coordinator
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - project.mission_applicability.propose
+        - properties:
+            bundle:
+              const: company_mission_applicability_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - project.mission_applicability.decide
+                  - project.mission_applicability.restore
+        - properties:
+            bundle:
+              const: company_mission_result_reviewer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - project.mission_result.review
+        - properties:
+            bundle:
+              const: company_mission_deliverable_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.mission_deliverable.access
+        - properties:
+            bundle:
+              const: company_contract_signature_declarer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - commercial.contract.signature.declare_external
+        - properties:
+            bundle:
+              const: company_received_contract_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.received_contract.access
+        - properties:
+            bundle:
+              const: company_received_addendum_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.received_addendum.access
+        - properties:
+            bundle:
+              const: company_offer_model_editor
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - commercial.offer.model.read
+                  - commercial.offer.model.version.create
+        - properties:
+            bundle:
+              const: company_offer_model_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - commercial.offer.model.read
+                  - commercial.offer.model.decide
+                  - commercial.offer.model.withdraw
+        - properties:
+            bundle:
+              const: company_contract_model_editor
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - commercial.contract.model.read
+                  - commercial.contract.model.version.create
+        - properties:
+            bundle:
+              const: company_contract_model_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 3
+              maxItems: 3
+              items:
+                enum:
+                  - commercial.contract.model.read
+                  - commercial.contract.model.decide
+                  - commercial.contract.model.withdraw
+        - properties:
+            bundle:
+              const: company_mission_plan_configuration
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - project.mission_plan.read
+                  - project.mission_plan.publish
+        - properties:
+            bundle:
+              const: company_mission_plan_user
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - project.mission_plan.read
+                  - project.mission_plan.instantiate
+        - properties:
+            bundle:
+              const: company_knowledge_source_administrator
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - knowledge.source.manage
+        - properties:
+            bundle:
+              const: company_knowledge_evidence_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - knowledge.evidence.read
+        - properties:
+            bundle:
+              const: company_payment_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - payment.read
+        - properties:
+            bundle:
+              const: company_payment_recorder
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - payment.read
+                  - payment.record
+        - properties:
+            bundle:
+              const: company_payment_confirmer
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - payment.read
+                  - payment.confirm
+        - properties:
+            bundle:
+              const: company_payment_reverser
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - payment.read
+                  - payment.reverse
+        - properties:
+            bundle:
+              const: company_payment_evidence_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.payment_evidence.access
+        - properties:
+            bundle:
+              const: company_invoice_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - finance.read
+        - properties:
+            bundle:
+              const: company_invoice_recorder
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - finance.read
+                  - finance.manage
+        - properties:
+            bundle:
+              const: company_external_invoice_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.external_invoice.access
+        - properties:
+            bundle:
+              const: company_opportunity_follow_up_coordinator
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - commercial.opportunity.follow_up.read
+                  - commercial.opportunity.follow_up.manage
+        - properties:
+            bundle:
+              const: company_working_evidence_case_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - working_evidence_case.read
+        - properties:
+            bundle:
+              const: company_working_evidence_case_recorder
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 2
+              maxItems: 2
+              items:
+                enum:
+                  - working_evidence_case.read
+                  - working_evidence_case.record
+        - properties:
+            bundle:
+              const: company_received_audit_source_access
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - document.received_audit_source.access
+        - properties:
+            bundle:
+              const: company_certification_reader
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - certification.read
+        - properties:
+            bundle:
+              const: company_certification_programme_manager
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - certification.programme.manage
+        - properties:
+            bundle:
+              const: company_certification_approver
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - certification.approve
+        - properties:
+            bundle:
+              const: company_certification_auditor
+            permissionSetVersion:
+              const: v1
+            permissions:
+              minItems: 1
+              maxItems: 1
+              items:
+                enum:
+                  - certification.audit.record
     ClientUnionDossier:
       type: object
       additionalProperties: false

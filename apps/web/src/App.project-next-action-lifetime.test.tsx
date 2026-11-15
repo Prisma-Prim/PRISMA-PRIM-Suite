@@ -107,9 +107,6 @@ it.each(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...nextActionActor.activeCompany,
-        ...(field === 'projectPermissionAssignmentId'
-          ? { [field]: 'replacement-capture' }
-          : {}),
         grants: withCompanyGrants(
           nextActionActor.activeCompany.grants,
           field === 'projectPermissionAssignmentId'

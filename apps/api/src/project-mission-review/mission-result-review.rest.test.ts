@@ -1,4 +1,5 @@
 import { preserveFrozenResultDocument } from '../task/task-results.test-support.js';
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   commandAttempt,
@@ -742,7 +743,9 @@ describe.skipIf(!databaseUrl)(
             (await json(await fixture.call('/access/current-actor')))
               .activeCompany,
           );
-          expect(actor).not.toHaveProperty('missionResultReviewerAssignmentId');
+          expect(
+            companyGrantOf(actor, 'company_mission_result_reviewer'),
+          ).toBeUndefined();
           expect(
             (await fixture.call(path, { method: 'POST', body })).status,
           ).toBe(403);

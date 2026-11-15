@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "runId": "01a1df82-e0d6-7872-86e1-20074ea99fad",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1334,
+  "pullRequest": 1419,
+  "harness": "codex-local",
+  "figuresSource": "codex-rollout",
+  "time": {
+    "start": "2026-11-15T14:00:59.738Z",
+    "end": "2026-11-15T14:06:56.261Z",
+    "durationSeconds": 357
+  },
+  "tokens": {
+    "input": 95099,
+    "output": 6944,
+    "cacheCreation": 0,
+    "cacheRead": 1658368
+  },
+  "models": [
+    {
+      "model": "gpt-6-astra",
+      "tokens": {
+        "input": 95099,
+        "output": 6944,
+        "cacheCreation": 0,
+        "cacheRead": 1658368
+      },
+      "estimatedPriceUsd": "not reported"
+    }
+  ],
+  "price": { "estimatedUsd": "not reported", "priceTable": "2026-11-11" },
+  "outcome": {
+    "result": "fail",
+    "findings": { "P0": 0, "P1": 1, "P2": 9, "P3": 2 },
+    "notes": "Read-only source audit at cb1862a4. Groups: one public schema, eight consumer families, one negative assertion family, two fixture and type families. No tests run."
+  }
+}

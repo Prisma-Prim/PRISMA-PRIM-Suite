@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { companyGrantsOf } from './public-company-grants.test-support';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -120,7 +121,15 @@ export async function preparePaymentEvidenceCase(page: Page, suffix: string) {
   ])
     await grant(bundle);
   const actor = await read('/access/current-actor', companyId);
-  expect(paymentObject(actor.activeCompany).paymentGrants).toBeUndefined();
+  expect(
+    companyGrantsOf(paymentObject(actor.activeCompany), [
+      'company_payment_reader',
+      'company_payment_recorder',
+      'company_payment_confirmer',
+      'company_payment_reverser',
+      'company_payment_evidence_access',
+    ]),
+  ).toBeUndefined();
   const clientName = `Fictional original payer Ș Я é ${suffix}`;
   const primaryParty = {
     kind: 'PRIMARY',
@@ -237,7 +246,13 @@ export async function administerPaymentRoles(
     ).toBeVisible();
   }
   const actor = await ready.read('/access/current-actor', ready.companyId);
-  const grants: unknown = paymentObject(actor.activeCompany).paymentGrants;
+  const grants: unknown = companyGrantsOf(paymentObject(actor.activeCompany), [
+    'company_payment_reader',
+    'company_payment_recorder',
+    'company_payment_confirmer',
+    'company_payment_reverser',
+    'company_payment_evidence_access',
+  ]);
   expect(grants).toHaveLength(5);
 }
 

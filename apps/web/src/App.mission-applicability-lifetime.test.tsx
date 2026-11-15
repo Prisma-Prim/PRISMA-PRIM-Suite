@@ -266,7 +266,6 @@ it.each(
       displayName: 'Fresh parent Actor DEMO',
       activeCompany: {
         ...initial.activeCompany,
-        ...(field in initial.activeCompany ? { [field]: replacement } : {}),
         grants: withCompanyGrants(initial.activeCompany.grants, grant),
       },
     };

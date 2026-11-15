@@ -1,4 +1,7 @@
-import { companyPermissionsOf } from '../access/company-grants.test-support.js';
+import {
+  companyGrantOf,
+  companyPermissionsOf,
+} from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
@@ -240,7 +243,9 @@ withPostgres('D3 mission-deliverable authority REST', () => {
         'company_received_audit_source_access',
       ]),
     ).not.toContain('document.mission_deliverable.access');
-    expect(retired).not.toHaveProperty('missionDeliverableAccessAssignmentId');
+    expect(
+      companyGrantOf(retired, 'company_mission_deliverable_access'),
+    ).toBeUndefined();
     const next = await grant('/company-mission-deliverable-access-assignments');
     expect(next.id).not.toBe(first.id);
     const nextActor = record(
@@ -615,9 +620,9 @@ withPostgres('D3 mission-deliverable authority REST', () => {
           'company_received_audit_source_access',
         ]),
       ).not.toContain('document.mission_deliverable.access');
-      expect(company).not.toHaveProperty(
-        'missionDeliverableAccessAssignmentId',
-      );
+      expect(
+        companyGrantOf(company, 'company_mission_deliverable_access'),
+      ).toBeUndefined();
       expect(await (await call('/documents')).json()).toEqual([]);
       for (const path of [
         `/documents/${documentId}`,

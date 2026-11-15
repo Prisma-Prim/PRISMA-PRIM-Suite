@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { companyPermissionsOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   commandAttempt,
@@ -31,13 +32,18 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
       const c = await fixture.setup();
       expect(c.actor.workspacePermissions).toEqual([]);
       const company = object(c.actor.activeCompany);
-      expect(company.internalTaskPermissions).toEqual([
-        'internal_task.read',
-        'internal_task.manage',
-      ]);
-      expect(company.projectPermissions).toBeUndefined();
-      expect(company.taskPermissions).toBeUndefined();
-      expect(company.clientPermissions).toEqual([]);
+      expect(
+        companyPermissionsOf(company, ['company_internal_task_manager']),
+      ).toEqual(['internal_task.read', 'internal_task.manage']);
+      expect(
+        companyPermissionsOf(company, ['company_project_access']),
+      ).toBeUndefined();
+      expect(
+        companyPermissionsOf(company, ['company_task_manager']),
+      ).toBeUndefined();
+      expect(
+        companyPermissionsOf(company, ['company_director_client_access']) ?? [],
+      ).toEqual([]);
       const response = await fixture.request('/company-internal-tasks', {
         method: 'POST',
         companyId: c.companyId,

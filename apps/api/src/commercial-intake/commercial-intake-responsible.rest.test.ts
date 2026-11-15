@@ -643,14 +643,14 @@ describe.skipIf(!databaseUrl)(
         companyGrantOf(company, 'company_opportunity_manager')?.assignmentId,
       ).toBe(granted.id);
       for (const absent of [
-        'commercialIntakePermissions',
-        'commercialActivityPermissions',
-        'projectPermissions',
-        'taskPermissions',
-        'pricingConfigurationPermissions',
-        'serviceCataloguePermissions',
+        'company_commercial_intake',
+        'company_commercial_activity_reader',
+        'company_project_access',
+        'company_task_manager',
+        'company_pricing_configuration',
+        'company_service_catalogue',
       ])
-        expect(company).not.toHaveProperty(absent);
+        expect(companyGrantOf(company, absent)).toBeUndefined();
       expect(
         companyPermissionsOf(company, ['company_director_client_access']) ?? [],
       ).toEqual([]);

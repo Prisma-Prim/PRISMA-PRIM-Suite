@@ -7,7 +7,6 @@ import {
   type Route,
   type TestInfo,
 } from '@playwright/test';
-import type { ActorContext } from '../src/access-types';
 import type {
   WorkingDocument,
   WorkingDocumentDetail,
@@ -69,9 +68,7 @@ const workingDocument = {
 // backend, database or external provider is exercised by these browser journeys.
 async function installProjectDocumentsFixture(page: Page) {
   const state: {
-    permissions: NonNullable<
-      ActorContext['activeCompany']
-    >['documentPermissions'];
+    permissions: Parameters<typeof projectDocumentGrants>[0];
     document: WorkingDocument;
     linked: boolean;
     mutable: boolean;

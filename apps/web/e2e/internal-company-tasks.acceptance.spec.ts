@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { companyPermissionsOf } from './public-company-grants.test-support';
 import { expect, test, type Locator } from '@playwright/test';
 import { internalTaskMessages } from '../src/internal-task/internal-task.copy';
 import { resolveMessage } from '../src/localization/messages';
@@ -88,13 +89,18 @@ for (const locale of ['en', 'ro', 'fr', 'ru'] as const)
     const actor = object(await actorResponse.json()),
       company = object(actor.activeCompany);
     expect(actor.workspacePermissions).toEqual([]);
-    expect(company.clientPermissions).toEqual([]);
-    expect(company.taskPermissions).toBeUndefined();
-    expect(company.projectPermissions).toBeUndefined();
-    expect(company.internalTaskPermissions).toEqual([
-      'internal_task.read',
-      'internal_task.manage',
-    ]);
+    expect(
+      companyPermissionsOf(company, ['company_director_client_access']) ?? [],
+    ).toEqual([]);
+    expect(
+      companyPermissionsOf(company, ['company_task_manager']),
+    ).toBeUndefined();
+    expect(
+      companyPermissionsOf(company, ['company_project_access']),
+    ).toBeUndefined();
+    expect(
+      companyPermissionsOf(company, ['company_internal_task_manager']),
+    ).toEqual(['internal_task.read', 'internal_task.manage']);
     await page.goto('/');
     if (narrow)
       await activate(page.getByRole('button', { name: 'Open navigation' }));

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import {
   backendPid,
   waitForBlocked,
@@ -40,19 +41,29 @@ withPostgres(
       const { membershipId, companyId } = fixture.ids;
       const beforeCompany = paymentRecord(fixture.beforeActor.activeCompany);
       const afterCompany = paymentRecord(fixture.afterActor.activeCompany);
-      expect(beforeCompany.clientPermissionSetVersion).toBe('v1');
-      expect(beforeCompany.clientPermissions).not.toContain(
+      const beforeDirector = companyGrantOf(
+        beforeCompany,
+        'company_director_client_access',
+      );
+      const afterDirector = companyGrantOf(
+        afterCompany,
+        'company_director_client_access',
+      );
+      expect(beforeDirector?.permissionSetVersion).toBe('v1');
+      expect(beforeDirector?.assignmentId).toBe(fixture.revoked.id);
+      expect(beforeDirector?.permissions).not.toContain(
         'client.duplicate.resolve',
       );
-      expect(afterCompany).toMatchObject({
-        id: companyId,
-        clientPermissionSetVersion: 'v2',
-        clientPermissionAssignmentId: fixture.refreshed.id,
-        documentPermissionSetVersion: 'v3',
+      expect(afterCompany.id).toBe(companyId);
+      expect(afterDirector).toMatchObject({
+        permissionSetVersion: 'v2',
+        assignmentId: fixture.refreshed.id,
       });
-      expect(afterCompany.clientPermissions).toContain(
-        'client.duplicate.resolve',
-      );
+      expect(
+        companyGrantOf(afterCompany, 'company_document_registrar')
+          ?.permissionSetVersion,
+      ).toBe('v3');
+      expect(afterDirector?.permissions).toContain('client.duplicate.resolve');
       expect(fixture.refreshed.id).not.toBe(fixture.revoked.id);
       expect(fixture.refreshed.workspaceMembershipId).toBe(membershipId);
     });

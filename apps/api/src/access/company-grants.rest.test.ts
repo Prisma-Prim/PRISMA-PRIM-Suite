@@ -15,6 +15,9 @@ import {
   type CompanyRoleBundle,
 } from './company-permissions.js';
 import { assignmentRouteCases } from './company-role-assignment.routes.test-fixture.js';
+import { createCurrentActorValidator } from '../../../../scripts/company-grants-openapi.mjs';
+
+const currentActorContract = createCurrentActorValidator();
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
@@ -250,7 +253,12 @@ describeWithPostgres('Active Company grants list', () => {
   async function activeCompany(companyId: string) {
     const response = await currentActor(companyId);
     expect(response.status).toBe(200);
-    return object((await objectResponse(response)).activeCompany);
+    const actor = await objectResponse(response);
+    expect(
+      currentActorContract.accepts(actor),
+      currentActorContract.errors(),
+    ).toBe(true);
+    return object(actor.activeCompany);
   }
 
   async function createTargets() {

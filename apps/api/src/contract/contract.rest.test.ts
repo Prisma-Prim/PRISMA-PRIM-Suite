@@ -8695,12 +8695,13 @@ withPostgres('First illustrative Contract REST', () => {
     expect(
       companyPermissionsOf(active, ['company_director_client_access']) ?? [],
     ).toEqual([]);
-    for (const field of [
-      'offerPermissions',
-      'pricingUserPermissions',
-      'pricingConfigurationPermissions',
+    for (const bundle of [
+      'company_offer_preparer',
+      'company_offer_approver',
+      'company_pricing_user',
+      'company_pricing_configuration',
     ])
-      expect(active[field]).toBeUndefined();
+      expect(companyGrantOf(active, bundle)).toBeUndefined();
     expect(
       (
         await request({

@@ -1,4 +1,7 @@
-import { companyPermissionsOf } from '../access/company-grants.test-support.js';
+import {
+  companyGrantOf,
+  companyPermissionsOf,
+} from '../access/company-grants.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -75,9 +78,12 @@ withPostgres('Received Contract independent access and scope REST', () => {
             'company_received_audit_source_access',
           ]),
         ).not.toContain('document.received_contract.access');
-        expect(responseRecord(actor.activeCompany)).not.toHaveProperty(
-          'receivedContractAccessAssignmentId',
-        );
+        expect(
+          companyGrantOf(
+            actor.activeCompany,
+            'company_received_contract_access',
+          ),
+        ).toBeUndefined();
         expect((await f.call('')).status).toBe(404);
         expect((await f.call('/versions')).status).toBe(404);
         expect(

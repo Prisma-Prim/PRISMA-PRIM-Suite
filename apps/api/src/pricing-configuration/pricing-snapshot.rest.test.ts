@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { companyGrantOf } from '../access/company-grants.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ServerClock } from '../clock/server-clock.js';
 import {
@@ -809,7 +810,9 @@ withPostgres('Pricing Snapshots REST', () => {
         }),
       ]),
     });
-    expect(adjustmentCompany).not.toHaveProperty('pricingUserPermissions');
+    expect(
+      companyGrantOf(adjustmentCompany, 'company_pricing_user'),
+    ).toBeUndefined();
     expect(
       (
         await pool.query(

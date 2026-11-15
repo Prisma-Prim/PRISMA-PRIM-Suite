@@ -1,4 +1,5 @@
 import { removeRoute } from './route-removal';
+import { companyGrantOf } from './public-company-grants.test-support';
 import { expectSelectAppearance } from './select-appearance';
 import { expectValue, openSelect, selectOption } from './select-option';
 import {
@@ -1505,7 +1506,10 @@ test('opens a personal case with real captured Intake v1 and keeps the next acti
     const actor: unknown = await actorResponse.json();
     if (!isRecord(actor) || !isRecord(actor.activeCompany))
       throw new Error('Expected the synthetic reader Company.');
-    expect(actor.activeCompany.commercialIntakePermissionSetVersion).toBe('v1');
+    expect(
+      companyGrantOf(actor.activeCompany, 'company_commercial_intake')
+        ?.permissionSetVersion,
+    ).toBe('v1');
     await page.route('**/api/**', async (route) =>
       route.continue({
         headers: { ...route.request().headers(), ...headers },
