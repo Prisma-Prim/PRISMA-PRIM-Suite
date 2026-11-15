@@ -314,29 +314,14 @@
       "count": 6
     }
   },
-  "apps/web/src/documents/ExternalInvoiceRegistration.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/documents/ExternalInvoiceRelation.tsx": {
     "no-restricted-syntax": {
       "count": 1
     }
   },
-  "apps/web/src/documents/ReceivedAddendumRegistration.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/documents/ReceivedAddendumRelation.tsx": {
     "no-restricted-syntax": {
       "count": 1
-    }
-  },
-  "apps/web/src/documents/ReceivedContractRegistration.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "apps/web/src/documents/ReceivedContractRelation.tsx": {
