@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1425-session-access-20261115",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1425,
+  "pullRequest": 1426,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T20:18:15.000Z",
+    "end": "2026-11-15T22:12:34.580Z",
+    "durationSeconds": 6860
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 8,
+      "P3": 0
+    },
+    "notes": "Six prior ownership gaps and two migration regressions reproduced and fixed. Scripts, strict types and native sequences passed; exact eight-to-one fault replay red/green. CI runs the corrected full web suite. Model, tokens and price not reported."
+  }
+}
