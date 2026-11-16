@@ -115,6 +115,25 @@ describe('native document text extraction', () => {
       ['legalName', 'ООО Пример'],
     ]);
   });
+  it('preserves a wrapped Russian PDF value for review instead of publishing only its first line', async () => {
+    const { pdf, font } = await unicodePdf();
+    const page = pdf.addPage();
+    page.drawText('Адрес', { x: 40, y: 700, size: 12, font });
+    page.drawText('улица Мира 1', { x: 330, y: 700, size: 12, font });
+    page.drawText('Кишинёв', { x: 330, y: 680, size: 12, font });
+    const bytes = await pdf.save();
+    const result = await extractDocumentText({ kind: 'pdf', bytes });
+    expect(analyzeExtracted({ bytes, extraction: result }).candidates).toEqual(
+      [],
+    );
+    expect(result.state).toBe('partial');
+    expect(result.issues).toContainEqual({
+      code: 'table_continuation',
+      locator: 'page:1',
+    });
+    expect(result.passages[0].text).toContain('улица Мира 1');
+    expect(result.passages[0].text).toContain('Кишинёв');
+  });
   it('preserves native Russian/Romanian diagram text without claiming to interpret vector relationships', async () => {
     const { pdf, font } = await unicodePdf();
     const page = pdf.addPage();
@@ -419,6 +438,26 @@ describe('hostile OOXML packages', () => {
 });
 
 describe('DOCX table rows', () => {
+  it('withholds a Word table value interrupted by a text box instead of concatenating its fragments', async () => {
+    const bytes = docx({
+      'word/document.xml': xml(
+        '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cod fiscal</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>00123</w:t><w:pict xmlns:v="urn:schemas-microsoft-com:vml"><v:shape><v:textbox><w:txbxContent><w:p><w:r><w:t>IDNO: 0012345678901</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict><w:t>999</w:t></w:r></w:p></w:tc></w:tr></w:tbl>',
+      ),
+    });
+    const result = await extractDocumentText({ kind: 'docx', bytes });
+    expect(
+      analyzeExtracted({ bytes, extraction: result }).candidates.map(
+        (c) => c.value,
+      ),
+    ).toEqual(['0012345678901']);
+    expect(result.issues).toContainEqual({
+      code: 'embedded_text_container',
+      locator: 'word/document.xml#table:1/row:1',
+    });
+    expect(result.passages.some((p) => p.locator.includes('#textbox:'))).toBe(
+      true,
+    );
+  });
   it('reads modern Word diagram text boxes without inventing their graphic relationships', async () => {
     const bytes = docx({
       'word/document.xml': xml(

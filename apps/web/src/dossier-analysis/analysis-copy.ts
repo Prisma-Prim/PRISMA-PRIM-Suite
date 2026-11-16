@@ -489,6 +489,7 @@ const issueCopy = {
 const issueGroups = new Map<string, keyof (typeof issueCopy)['en']>([
   ['complex_layout', 'layout'],
   ['overlapping_text', 'layout'],
+  ['table_continuation', 'layout'],
   ['table_cell_tab', 'layout'],
   ['merged_table_cell', 'layout'],
   ['nested_table', 'layout'],

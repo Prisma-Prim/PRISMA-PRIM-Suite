@@ -335,6 +335,7 @@ export function analyzeDossier({
                 'embedded_text_container',
                 'complex_layout',
                 'overlapping_text',
+                'table_continuation',
               ].includes(issue.code)) ||
             (issue.code === 'nested_table' && p.locator.includes('#table:')),
         )

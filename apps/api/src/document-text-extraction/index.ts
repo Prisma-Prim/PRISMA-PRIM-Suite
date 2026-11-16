@@ -170,20 +170,25 @@ function pdfText(items, locator) {
   }
   let overlapping = false;
   const lines = rows.map(row => {
-    let text = '', right = null;
+    let text = '', right = null, valueX = null;
     for (const item of row.items.sort((a,b) => a.transform[4] - b.transform[4])) {
       const x = item.transform[4], height = Math.max(1, Math.abs(item.transform[3]), item.height);
       const gap = right === null ? 0 : x - right;
-      if (gap > Math.max(12, height)) text += '\t';
+      if (gap > Math.max(12, height)) { text += '\t'; valueX ??= x; }
       else if (gap > height * 0.15 && text && !/\s$/.test(text) && !/^\s/.test(item.str)) text += ' ';
       if (right !== null && gap < -Math.max(1, height * 0.25) && item.str.trim()) overlapping = true;
-      text += !item.str.trim() && item.width > Math.max(12, height) ? '\t' : item.str;
+      if (!item.str.trim() && item.width > Math.max(12, height)) { text += '\t'; valueX ??= x + item.width; }
+      else text += item.str;
       right = Math.max(right ?? x, x + item.width);
     }
-    return text;
+    return { text, valueX, x: row.items[0].transform[4], y: row.y, height: row.height };
   });
   if (overlapping) issue('overlapping_text', locator);
-  return lines.join('\n');
+  if (lines.some((line, index) => {
+    const previous = lines[index - 1];
+    return previous && previous.valueX !== null && line.valueX === null && Math.abs(line.x - previous.valueX) <= Math.min(line.height, previous.height) * 0.5 && previous.y - line.y <= Math.max(line.height, previous.height) * 2.5;
+  })) issue('table_continuation', locator);
+  return lines.map(line => line.text).join('\n');
 }
 async function pdf() {
   const { getDocument, OPS } = await import(pathToFileURL(workerData.pdf).href);
@@ -358,7 +363,11 @@ function docx() {
     let paragraph = null, inText = false, index = 0, paragraphIndex = 0, paragraphBox = null, depth = 0, rootSeen = false, tableCount = 0, textBoxCount = 0;
     const tables = [];
     const paragraphStack = [], textBoxes = [];
-    const paragraphLocator = () => paragraphBox === null ? part + '#paragraph:' + paragraphIndex : part + '#textbox:' + paragraphBox + '/paragraph:' + paragraphIndex;
+    const paragraphLocator = () => {
+      if (paragraphBox !== null) return part + '#textbox:' + paragraphBox + '/paragraph:' + paragraphIndex;
+      const table = currentTable();
+      return table?.row ? part + '#table:' + table.number + '/row:' + table.row.number : part + '#paragraph:' + paragraphIndex;
+    };
     const currentTable = () => tables[tables.length - 1];
     const parser = new SaxesParser({ xmlns: true });
     parser.on('doctype', () => { throw Error('doctype forbidden'); });
