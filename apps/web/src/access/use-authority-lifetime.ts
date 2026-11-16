@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useRequestLifetime } from '../api/use-actor-requests';
 import { useScopedOperationGroup } from '../api/use-scoped-operation';
@@ -11,8 +11,11 @@ export function useAuthorityLifetime(
   const lifetime = useRequestLifetime(identity, signature);
   const owner = useScopedOperationGroup(String(lifetime));
   const committed = useRef(owner.capture);
+  const [, publishCommittedLifetime] = useState(lifetime);
   useLayoutEffect(() => {
     committed.current = owner.capture;
-  }, [owner]);
+    // Re-evaluate stored projection guards after the previous owner closes.
+    publishCommittedLifetime(lifetime);
+  }, [owner, lifetime]);
   return useCallback(() => committed.current(), []);
 }

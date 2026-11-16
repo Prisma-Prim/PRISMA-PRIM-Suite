@@ -133,6 +133,75 @@ afterEach(() => {
   localStorage.clear();
 });
 describe('Stored questionnaire PDF through Document Versions', () => {
+  it('withholds protected PDF metadata immediately when Reader authority changes before the replacement read completes', async () => {
+    const pending: { complete?: (value: Response) => void } = {};
+    const waiting = new Promise<Response>((resolve) => {
+      pending.complete = resolve;
+    });
+    let reads = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input) !== '/api/documents/document/versions')
+          throw new Error('Unexpected protected Document request');
+        reads += 1;
+        return reads === 1 ? Response.json(versionRead(true, 20)) : waiting;
+      }),
+    );
+    const identity = deterministicBrowserIdentity();
+    function view(currentActor: ActorContext) {
+      return (
+        <InterfaceLocaleProvider>
+          <DocumentVersions
+            actor={currentActor}
+            identity={identity}
+            documentId="document"
+            workingRevision={2}
+            onRefresh={() => undefined}
+          />
+        </InterfaceLocaleProvider>
+      );
+    }
+    const rendered = render(view(actor));
+    await screen.findByText('questionnaire.pdf');
+    const company = actor.activeCompany;
+    if (!company) throw new Error('Expected the native Reader Company');
+    rendered.rerender(
+      view({
+        ...actor,
+        activeCompany: {
+          ...company,
+          grants: withoutCompanyGrants(
+            company.grants,
+            'company_document_content_reader',
+          ),
+        },
+      }),
+    );
+    await waitFor(() => expect(reads).toBe(2));
+    try {
+      expect(screen.queryByText('questionnaire.pdf')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Descarcă PDF-ul Versiunii 1' }),
+      ).not.toBeInTheDocument();
+    } finally {
+      await act(async () => {
+        if (!pending.complete)
+          throw new Error('Expected the replacement Versions read');
+        const read = versionRead(true, 20);
+        pending.complete(
+          Response.json({
+            ...read,
+            versions: read.versions.map((version) => ({
+              ...version,
+              pdfContent: { state: 'stored', access: 'denied' },
+            })),
+          }),
+        );
+        await waiting;
+      });
+    }
+  });
   it('finishes an immutable download and retains its confirmed upload while the fresh Versions read fails', async () => {
     const bytes = new TextEncoder().encode('%PDF-1.4\nDEMO\n%%EOF\n');
     const replacement = new File(

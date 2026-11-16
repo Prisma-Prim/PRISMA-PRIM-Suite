@@ -447,6 +447,22 @@ function noFreshCommands(ancestor: Exclude<Ancestor, 'inventory'>) {
     expect(input).toBeDisabled();
 }
 afterEach(() => vi.unstubAllGlobals());
+it('withholds the old evidence inventory while a replacement read capture is still awaiting its native reply', async () => {
+  const api = boundary();
+  const view = show();
+  await positiveDocument();
+  expect(screen.getByRole('button', { name: 'Open evidence' })).toBeVisible();
+  api.hold('inventory');
+  view.actor(readerB);
+  await api.requestedRead();
+  try {
+    expect(
+      screen.queryByRole('button', { name: 'Open evidence' }),
+    ).not.toBeInTheDocument();
+  } finally {
+    await api.reload(500);
+  }
+});
 
 it.each([
   { ancestor: 'detail', action: 'upload', status: 403 },
