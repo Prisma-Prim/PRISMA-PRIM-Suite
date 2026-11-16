@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1427-ci-synchronization-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1427,
+  "pullRequest": 1428,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T03:05:26.000Z",
+    "end": "2026-11-16T03:36:58.000Z",
+    "durationSeconds": 1892
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "CI2090 desktop repetition2 exposed a fixture recovery race. Current API activity now fences fault removal; product runtime unchanged. Passed18 native tests in3 complete repetitions at both widths, including exact original CI generated input; no skipped/flaky cases. Final images inspected; strict E2E/application types, lint and format passed. Initial passing replays and unsuccessful launch retained, not used to dismiss CI failure. New CI pending; model/tokens/price unavailable."
+  }
+}

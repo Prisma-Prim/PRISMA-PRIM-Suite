@@ -74,22 +74,26 @@ export function pendingApiRequests(page: Page): ReadonlySet<Request> {
   return observeApiRequests(page).pending;
 }
 
-function observeApiRequests(page: Page) {
+export function observeApiRequests(page: Page) {
   const pending = new Set<Request>();
+  let lastActivity = Date.now();
   let navigating = false;
   const requested = (request: Request) => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame())
       navigating = true;
-    else if (new URL(request.url()).pathname.startsWith('/api/'))
+    else if (new URL(request.url()).pathname.startsWith('/api/')) {
       pending.add(request);
+      lastActivity = Date.now();
+    }
   };
   const navigated = (frame: Frame) => {
     if (frame !== page.mainFrame() || !navigating) return;
     navigating = false;
     pending.clear();
+    lastActivity = Date.now();
   };
   const finished = (request: Request) => {
-    pending.delete(request);
+    if (pending.delete(request)) lastActivity = Date.now();
   };
   page.on('request', requested);
   page.on('framenavigated', navigated);
@@ -97,6 +101,8 @@ function observeApiRequests(page: Page) {
   page.on('requestfailed', finished);
   return {
     pending,
+    isIdle: () =>
+      pending.size === 0 && Date.now() - lastActivity >= IDLE_MILLISECONDS,
     dispose() {
       page.off('request', requested);
       page.off('framenavigated', navigated);

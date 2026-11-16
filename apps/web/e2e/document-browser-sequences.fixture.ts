@@ -12,7 +12,11 @@ import type {
   BrowserAction,
   BrowserSequenceAdapter,
 } from './browser-sequences.fixture';
-import { expect, expectApiFailure } from './ui-chaos.fixture';
+import {
+  expect,
+  expectApiFailure,
+  observeApiRequests,
+} from './ui-chaos.fixture';
 import { removeRoute } from './route-removal';
 import { replaceSourceBeforePdfReply } from './document-held-download.fixture';
 import { expectValue, selectOption } from './select-option';
@@ -455,6 +459,23 @@ function createDocumentAdapter(
         expect(sent[before]).toEqual(current.sent);
         intent = null;
       }
+      async function retryConfirmedRead() {
+        const before = sent.length;
+        // The command refreshes Versions and its parent independently. Keep
+        // both failed until their delayed replies settle before lifting the fault.
+        await expect.poll(requests.isIdle).toBe(true);
+        const control = documents.getByRole('button', {
+          name: word('retry'),
+          exact: true,
+        });
+        await expect(control).toBeVisible();
+        failedRead = false;
+        await control.click();
+        await expect(
+          documents.locator('.working-document-version'),
+        ).toHaveCount(versions.length);
+        expect(sent).toHaveLength(before);
+      }
       async function download(
         version: Version,
         pdf: Pdf,
@@ -672,6 +693,7 @@ function createDocumentAdapter(
         }
       }
       if (mode === 'pdf') await chooseFile(initial);
+      const requests = observeApiRequests(page);
       return {
         actions(value) {
           const actions: BrowserAction[] = [
@@ -697,17 +719,7 @@ function createDocumentAdapter(
           else if (failedRead)
             actions.push({
               label: 'retry-confirmed-read-without-writing',
-              run: async () => {
-                const before = sent.length;
-                failedRead = false;
-                await documents
-                  .getByRole('button', { name: word('retry'), exact: true })
-                  .click();
-                await expect(
-                  documents.locator('.working-document-version'),
-                ).toHaveCount(versions.length);
-                expect(sent).toHaveLength(before);
-              },
+              run: retryConfirmedRead,
             });
           else {
             actions.push({
@@ -794,15 +806,11 @@ function createDocumentAdapter(
         verify,
         async settle() {
           if (intent) await retry();
-          if (failedRead) {
-            failedRead = false;
-            await documents
-              .getByRole('button', { name: word('retry'), exact: true })
-              .click();
-          }
+          if (failedRead) await retryConfirmedRead();
           await verify();
         },
         async dispose() {
+          requests.dispose();
           page.off('request', observe);
           await removeRoute(page, versionsPattern, denyRead);
           await removeRoute(page, '**/api/**', identify);
