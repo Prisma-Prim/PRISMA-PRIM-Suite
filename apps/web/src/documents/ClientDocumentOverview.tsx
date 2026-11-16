@@ -10,6 +10,9 @@ import {
 } from 'react';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import type { BrowserIdentity } from '../access-composition';
 import {
   handleAuthenticatedAccessRejection,
@@ -71,12 +74,10 @@ type View =
     };
 
 export function ClientDocumentOverview(props: Props) {
-  const session = useRef({ identity: props.identity, generation: 0 });
-  if (session.current.identity !== props.identity)
-    session.current = {
-      identity: props.identity,
-      generation: session.current.generation + 1,
-    };
+  const generation = useRequestLifetime(
+    props.identity,
+    JSON.stringify([props.identity.loaded, props.identity.signedIn]),
+  );
   const company = props.actor.activeCompany;
   const workspaceClientRead =
     props.actor.workspacePermissions.includes('client.manage');
@@ -99,7 +100,7 @@ export function ClientDocumentOverview(props: Props) {
         holdsClientRead(company),
       ];
   const context = [
-    session.current.generation,
+    generation,
     props.actor.internalUserId,
     props.actor.workspaceMembershipId,
     props.actor.workspaceId,
@@ -127,16 +128,28 @@ function DocumentOverviewOwner(
   const { formatNumber } = useInterfaceLocale();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [offset, setOffset] = useState(0);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const reads = useScopedOperation('client-documents');
+  const captureRecovery = useAuthorityLifetime(
+    JSON.stringify(props.actor),
+    props.identity,
+  );
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
   const heading = useRef<HTMLHeadingElement>(null);
   const familyCaptures = captures(props.company);
   const familyKey = JSON.stringify(familyCaptures);
   const currentFamilyKey = useRef(familyKey);
-  currentFamilyKey.current = familyKey;
+  useLayoutEffect(() => {
+    currentFamilyKey.current = familyKey;
+  });
   const load = useCallback(
     (keepReady = false) => {
+      const signal = reads.begin();
+      if (!signal) return;
+      const recovery = captureRecovery();
+      const currentRecovery = () => !signal.aborted && recovery();
       const expectedCaptures = captures(callbacks.current.company);
       const expectedKey = JSON.stringify(expectedCaptures);
       if (!keepReady) {
@@ -144,7 +157,7 @@ function DocumentOverviewOwner(
         setView({ kind: 'loading' });
       }
       return runLatestAuthenticatedRequest({
-        pending,
+        signal,
         identity: callbacks.current.identity,
         execute: (api, signal) =>
           api.request('/documents', {
@@ -162,6 +175,7 @@ function DocumentOverviewOwner(
             await handleAuthenticatedAccessRejection({
               result,
               signal,
+              isCurrent: currentRecovery,
               identity: callbacks.current.identity,
               companyContextId: props.company.id,
               onCompanyContextRejected:
@@ -191,11 +205,11 @@ function DocumentOverviewOwner(
           ),
       });
     },
-    [props.company.id],
+    [props.company.id, reads, captureRecovery],
   );
   useEffect(() => {
     void load(true);
-    return () => pending.current?.abort();
+    return reads.retire;
   }, [load, familyKey]);
   const matching =
     view.kind === 'ready'
@@ -296,15 +310,7 @@ function DocumentEntry({
   const invoice = useExternalInvoiceCopy();
   const addendum = useReceivedAddendumCopy();
   const auditSource = useReceivedAuditSourceCopy();
-  const lifetime = useRef<AbortController | undefined>(undefined);
-  useLayoutEffect(() => {
-    const controller = new AbortController();
-    lifetime.current = controller;
-    return () => {
-      controller.abort();
-      lifetime.current = undefined;
-    };
-  }, []);
+  const lifetime = useScopedOperation(JSON.stringify([item.id, item.type]));
   const status = {
     'received-audit-source': auditSource(item.version.status),
     questionnaire: documents[item.version.status],
@@ -331,7 +337,7 @@ function DocumentEntry({
       <button
         type="button"
         onClick={() => {
-          const sourceSignal = lifetime.current?.signal;
+          const sourceSignal = lifetime.begin();
           if (sourceSignal && !sourceSignal.aborted)
             onOpenDocument({
               documentId: item.id,

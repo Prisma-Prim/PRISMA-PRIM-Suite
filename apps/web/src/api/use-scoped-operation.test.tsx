@@ -9,7 +9,10 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { useScopedOperation } from './use-scoped-operation';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from './use-scoped-operation';
 
 type Begun = (AbortSignal | null)[];
 
@@ -156,6 +159,44 @@ it('recreates a live owner after the StrictMode cleanup (#888)', () => {
   expect(begun[0]?.aborted).toBe(true);
   expect(begun[1]).toBeInstanceOf(AbortSignal);
   expect(begun[1]?.aborted).toBe(false);
+});
+
+it('never revives an exact lifetime capture when StrictMode recreates its owner', () => {
+  const captures: Array<() => boolean> = [];
+  const probe = renderHook(
+    () => {
+      const group = useScopedOperationGroup('document');
+      useEffect(() => {
+        captures.push(group.capture());
+      }, [group]);
+      return group;
+    },
+    { wrapper: StrictMode },
+  );
+  expect(captures).toHaveLength(2);
+  expect(captures[0]?.()).toBe(false);
+  expect(captures[1]?.()).toBe(true);
+  probe.unmount();
+  expect(captures[1]?.()).toBe(false);
+});
+
+it('completes latest leases independently and supersedes their released continuations', () => {
+  const probe = renderHook(() => useScopedOperationGroup('document'));
+  const group = probe.result.current;
+  const sibling = group.begin();
+  const first = group.beginLatest();
+  if (!sibling || !first)
+    throw new Error('Expected admitted Document operations');
+  first.release();
+  expect(group.isPending()).toBe(true);
+  const second = group.beginLatest();
+  expect(first.signal.aborted).toBe(true);
+  expect(sibling.signal.aborted).toBe(false);
+  second?.release();
+  sibling.release();
+  expect(group.isPending()).toBe(false);
+  probe.unmount();
+  expect(second?.signal.aborted).toBe(true);
 });
 
 it('supersedes, retires on request and refuses work after unmount', () => {

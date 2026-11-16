@@ -22,6 +22,16 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'access-action-sequences',
     title: 'explores generated native Company context action sequences',
   },
+  {
+    id: 'document-version',
+    journey: 'document-action-sequences',
+    title: 'explores generated native Document Version action sequences',
+  },
+  {
+    id: 'document-pdf',
+    journey: 'document-action-sequences',
+    title: 'explores generated native Document PDF action sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {

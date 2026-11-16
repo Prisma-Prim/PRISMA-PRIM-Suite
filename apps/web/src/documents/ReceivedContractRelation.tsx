@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -43,22 +46,50 @@ function RelationSession({ actor, identity, documentId, ...callbacks }: Props) {
   const [revision, setRevision] = useState(0);
   const companyId = actor.activeCompany?.id;
   const allowed = canReadReceivedContractRelation(actor.activeCompany);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      actor.active,
+      actor.internalUserId,
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      companyId,
+      documentId,
+      receivedContractSourceAuthority(actor.activeCompany),
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
+  const reads = useScopedOperation(String(lifetime));
+  const captureRecovery = useAuthorityLifetime(JSON.stringify(actor), identity);
   const rejection = useRef(callbacks);
-  rejection.current = callbacks;
+  useLayoutEffect(() => {
+    rejection.current = callbacks;
+  });
   useEffect(() => {
-    if (!allowed || !companyId) return;
-    const request = new AbortController();
+    if (
+      !allowed ||
+      !companyId ||
+      !identity.loaded ||
+      !identity.signedIn ||
+      !actor.active
+    )
+      return;
+    const signal = reads.begin();
+    if (!signal) return;
+    const recovery = captureRecovery();
+    const currentRecovery = () => !signal.aborted && recovery();
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        if (request.signal.aborted) return;
+        if (signal.aborted) return;
         const result = await api.request(
           `/documents/${encodeURIComponent(documentId)}`,
-          { companyContextId: companyId, signal: request.signal },
+          { companyContextId: companyId, signal: signal },
         );
-        if (request.signal.aborted) return;
+        if (signal.aborted) return;
         if (result.status === 'unauthorized') {
-          await identity.rejectSession();
+          if (currentRecovery()) await identity.rejectSession();
           return;
         }
         if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -78,7 +109,8 @@ function RelationSession({ actor, identity, documentId, ...callbacks }: Props) {
             result: { status: 'forbidden' },
             identity,
             companyContextId: companyId,
-            signal: request.signal,
+            signal,
+            isCurrent: currentRecovery,
             onActorRevalidated: rejection.current.onActorRevalidated ?? ignore,
             onCompanyContextRejected:
               rejection.current.onCompanyContextRejected ?? ignore,
@@ -86,11 +118,11 @@ function RelationSession({ actor, identity, documentId, ...callbacks }: Props) {
               rejection.current.onWorkspaceAccessRejected ?? ignore,
           });
       } catch {
-        if (!request.signal.aborted) setFailed(true);
+        if (!signal.aborted) setFailed(true);
       }
     })();
-    return () => request.abort();
-  }, [identity, companyId, documentId, allowed, revision]);
+    return reads.retire;
+  }, [identity, companyId, documentId, allowed, revision, lifetime, reads]);
   if (!allowed || relation?.access === 'denied')
     return <p>{copy.t('relationDenied')}</p>;
   if (failed)

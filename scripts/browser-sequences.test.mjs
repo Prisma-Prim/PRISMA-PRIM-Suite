@@ -58,6 +58,32 @@ test('refuses a replay for an unknown adapter before running a browser', () => {
   );
 });
 
+test('validates each Document replay only against its own journey', () => {
+  const script = fileURLToPath(
+    new URL('./browser-sequences.mjs', import.meta.url),
+  );
+  for (const selection of [
+    'document-version@desktop~10~0:1',
+    'document-pdf@narrow~10~0:1',
+  ]) {
+    const command = (journey) =>
+      spawnSync(process.execPath, [script, 'validate-replay', journey], {
+        env: {
+          ...process.env,
+          UI_CHAOS_SEED: '1427001',
+          UI_SEQUENCE_REPLAY: selection,
+        },
+        encoding: 'utf8',
+      });
+    const own = command('document-action-sequences');
+    assert.equal(own.status, 0, own.stderr);
+    assert.equal(own.stdout, '');
+    const access = command('access-action-sequences');
+    assert.equal(access.status, 2);
+    assert.match(access.stderr, /Unknown sequence case/u);
+  }
+});
+
 test('replays the retained case, width, sequence bound and reduction path with its original seed', () => {
   const options = readBrowserSequenceOptions({
     journey: 'financial-action-sequences',

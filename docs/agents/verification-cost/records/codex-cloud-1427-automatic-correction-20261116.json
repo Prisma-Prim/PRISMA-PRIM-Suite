@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1427-automatic-correction-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1427,
+  "pullRequest": 1428,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T01:56:55.000Z",
+    "end": "2026-11-16T02:47:21.000Z",
+    "durationSeconds": 3026
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Automatic P2 reproduced through Document PDF and PaymentEvidence projections; committed authority notification fixed both. Passed: 432 focused and 5798 full web tests, types/lint/format, six native Document and four native Evidence browser cases, both widths. Screenshots inspected. Three private harness failures retained separately. New required CI pending. Model, tokens and price unavailable."
+  }
+}

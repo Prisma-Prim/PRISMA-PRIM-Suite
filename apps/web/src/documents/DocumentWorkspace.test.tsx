@@ -111,6 +111,57 @@ const listedRegistrationTime = `Registration time${new Intl.DateTimeFormat(
   { dateStyle: 'medium', timeStyle: 'short' },
 ).format(new Date(document.createdAt))}`;
 afterEach(() => vi.unstubAllGlobals());
+it('retires a correction before dispatch when the identity changes during token lookup', async () => {
+  let release: ((value: string) => void) | undefined;
+  const token = new Promise<string>((resolve) => {
+    release = resolve;
+  });
+  let hold = false;
+  let held = false;
+  const original: BrowserIdentity = {
+    ...identity,
+    getToken: async () => {
+      if (hold) {
+        held = true;
+        return token;
+      }
+      return 'original';
+    },
+  };
+  const writes: string[] = [];
+  stubFetch(async (path, request) => {
+    if (request?.method === 'PATCH') {
+      writes.push(path);
+      return new Response(null, { status: 503 });
+    }
+    if (path.endsWith('/clients')) return Response.json([]);
+    if (path.endsWith('/documents/document')) return Response.json(document);
+    return Response.json([document]);
+  });
+  const rendered = render(
+    <DocumentWorkspace actor={actor} identity={original} />,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  changeValue(
+    screen.getByLabelText('Title'),
+    'Correction from retired identity',
+  );
+  hold = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+  await waitFor(() => expect(held).toBe(true));
+  rendered.rerender(<DocumentWorkspace actor={actor} identity={identity} />);
+  await act(async () => {
+    release?.('obsolete-token');
+    await token;
+  });
+  expect(writes).toEqual([]);
+  expect(
+    screen.queryByRole('button', { name: 'Retry same correction' }),
+  ).not.toBeInTheDocument();
+});
 it('presents real Working Documents in Prisme', async () => {
   stubFetch(
     vi.fn(async (url: string) =>
@@ -131,7 +182,9 @@ it('presents real Working Documents in Prisme', async () => {
       .getByRole('heading', { name: 'Working Documents' })
       .closest('header'),
   ).toHaveClass('working-documents-heading');
-  expect(workspace.querySelector('ul')).toHaveClass('working-document-list');
+  await waitFor(() =>
+    expect(workspace.querySelector('ul')).toHaveClass('working-document-list'),
+  );
   expect(
     within(workspace)
       .getByRole('button', { name: 'Register working reference' })

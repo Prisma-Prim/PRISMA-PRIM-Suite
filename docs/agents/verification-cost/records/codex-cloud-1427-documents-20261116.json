@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1427-documents-20261116",
+  "date": "2026-11-15",
+  "runType": "pull-request-proof",
+  "issue": 1427,
+  "pullRequest": 1428,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-15T23:18:40.000Z",
+    "end": "2026-11-16T01:37:20.526Z",
+    "durationSeconds": 8321
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 8,
+      "P3": 0
+    },
+    "notes": "Five original ownership defects and three migration/review regressions reproduced and fixed. Web 5795, Document 377 and script 1235 tests passed; native families 18 and final generated/hand 6 passed. Real key fault shrank 10 to 2 actions; exact red/restored green. Required CI pending; model, tokens and price not reported."
+  }
+}

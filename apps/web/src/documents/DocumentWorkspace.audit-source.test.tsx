@@ -7,6 +7,7 @@ import {
 } from '../test/render-with-interface-locale';
 import { changeValue } from '../test/select-option';
 import { afterEach, expect, it, vi } from 'vitest';
+import { Suspense, startTransition } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { DocumentWorkspace } from './DocumentWorkspace';
@@ -53,6 +54,70 @@ const identity: BrowserIdentity = {
   signedOutView: null,
 };
 afterEach(() => vi.unstubAllGlobals());
+it('keeps the committed received-source draft when an authority replacement suspends', async () => {
+  vi.stubGlobal('fetch', async (input: string) =>
+    Response.json(
+      input.endsWith('/clients')
+        ? [{ id: 'client', displayName: 'Fictional Client' }]
+        : [],
+    ),
+  );
+  const waiting = new Promise<never>(() => undefined);
+  let suspended = false;
+  function Gate({ hold }: { hold: boolean }) {
+    if (hold) {
+      suspended = true;
+      throw waiting;
+    }
+    return null;
+  }
+  function view(current: ActorContext, hold: boolean) {
+    return (
+      <Suspense fallback={<p>Source replacement pending</p>}>
+        <DocumentWorkspace actor={current} identity={identity} />
+        <Gate hold={hold} />
+      </Suspense>
+    );
+  }
+  const rendered = render(view(actor, false));
+  await screen.findByRole('button', { name: 'Register working reference' });
+  changeValue(
+    screen.getByLabelText('Document family'),
+    'received-audit-source',
+  );
+  changeValue(screen.getByLabelText('Client'), 'client');
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Unsent committed source' },
+  });
+  const company = actor.activeCompany;
+  if (!company) throw new Error('Expected source Company');
+  const replacement: ActorContext = {
+    ...actor,
+    activeCompany: {
+      ...company,
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_received_audit_source_access',
+        version: 'v1',
+        assignmentId: '10000000-0000-4000-8000-000000000099',
+      }),
+    },
+  };
+  act(() => startTransition(() => rendered.rerender(view(replacement, true))));
+  await waitFor(() => expect(suspended).toBe(true));
+  expect(
+    screen.queryByText('Source replacement pending'),
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: 'Still editing the displayed source' },
+  });
+  expect(screen.getByLabelText('Title')).toHaveValue('Unsent committed source');
+  expect(screen.getByLabelText('Purpose')).toHaveValue(
+    'Still editing the displayed source',
+  );
+  expect(
+    screen.queryByLabelText('External HTTPS link'),
+  ).not.toBeInTheDocument();
+});
 it('deliberately preserves a received source without inventing an external reference or Project', async () => {
   const writes: unknown[] = [];
   const saved = {

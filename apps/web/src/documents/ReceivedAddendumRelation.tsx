@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -38,20 +40,10 @@ export function ReceivedAddendumRelation(props: Props) {
     JSON.stringify(props.actor),
     props.identity,
   );
-  const [owner, setOwner] = useState({
-    signature,
-    identity: props.identity,
-    generation: 0,
-  });
-  if (owner.signature !== signature || owner.identity !== props.identity)
-    setOwner({
-      signature,
-      identity: props.identity,
-      generation: owner.generation + 1,
-    });
+  const generation = useRequestLifetime(props.identity, signature);
   return (
     <RelationSession
-      key={JSON.stringify([signature, owner.generation])}
+      key={JSON.stringify([signature, generation])}
       {...props}
       captureOwner={captureOwner}
       captureRecovery={captureRecovery}
@@ -76,14 +68,28 @@ function RelationSession({
     identity.loaded &&
     identity.signedIn &&
     canReadReceivedAddendumRelation(actor);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      documentId,
+      receivedAddendumSourceAuthority(actor),
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
+  const reads = useScopedOperation(String(lifetime));
   const callbacksRef = useRef(callbacks);
-  callbacksRef.current = callbacks;
+  useLayoutEffect(() => {
+    callbacksRef.current = callbacks;
+  });
   useEffect(() => {
     if (!allowed || !companyId) return;
-    const request = new AbortController(),
-      owner = captureOwner(),
+    const admitted = reads.begin();
+    if (!admitted) return;
+    const signal = admitted;
+    const owner = captureOwner(),
       recovery = captureRecovery();
-    const current = () => !request.signal.aborted && owner();
+    const current = () => !signal.aborted && owner();
     const currentRecovery = () => current() && recovery();
     setProjection({ status: 'loading' });
     async function reject() {
@@ -92,7 +98,7 @@ function RelationSession({
         result: { status: 'forbidden' },
         identity,
         companyContextId: companyId,
-        signal: request.signal,
+        signal: signal,
         isCurrent: currentRecovery,
         onActorRevalidated: (next) => {
           if (currentRecovery())
@@ -116,7 +122,7 @@ function RelationSession({
           `/documents/${encodeURIComponent(documentId)}`,
           {
             companyContextId: companyId,
-            signal: request.signal,
+            signal: signal,
             cache: 'no-store',
           },
         );
@@ -156,8 +162,10 @@ function RelationSession({
           );
       }
     })();
-    return () => request.abort();
+    return reads.retire;
   }, [
+    reads,
+    lifetime,
     allowed,
     captureOwner,
     captureRecovery,

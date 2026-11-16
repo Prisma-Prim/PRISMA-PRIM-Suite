@@ -1,4 +1,5 @@
-import { useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
 import type { ActorContext } from '../access-types';
 import { grantOf } from '../access/company-grants';
 import { captureOf } from './document-grants';
@@ -374,25 +375,15 @@ export function useDocumentFamilyAuthority({
     company,
     'received-audit-source',
   );
-  const auditSourceOwner = useRef({
-    signature: auditSourceSignature,
+  const auditSourceGeneration = useRequestLifetime(
     identity,
-    generation: 0,
-  });
-  if (
-    auditSourceOwner.current.signature !== auditSourceSignature ||
-    auditSourceOwner.current.identity !== identity
-  )
-    auditSourceOwner.current = {
-      signature: auditSourceSignature,
-      identity,
-      generation: auditSourceOwner.current.generation + 1,
-    };
+    auditSourceSignature,
+  );
   const captures = {
     questionnaire: 'questionnaire',
     'received-audit-source': JSON.stringify([
       auditSourceSignature,
-      auditSourceOwner.current.generation,
+      auditSourceGeneration,
     ]),
     'mission-deliverable': documentFamilyCaptureKey(
       company,

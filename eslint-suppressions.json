@@ -241,46 +241,6 @@
       "count": 1
     }
   },
-  "apps/web/src/documents/ClientDocumentOverview.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/documents/DocumentPdfContent.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/documents/DocumentVersionReferences.test.tsx": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    }
-  },
-  "apps/web/src/documents/DocumentVersions.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/documents/DocumentWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 6
-    }
-  },
-  "apps/web/src/documents/ExternalInvoiceRelation.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/documents/ReceivedAddendumRelation.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/documents/ReceivedContractRelation.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/web/src/ideas/IdeasWorkspace.tsx": {
     "no-restricted-syntax": {
       "count": 4
