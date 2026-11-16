@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1429-initial-proof-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1429,
+  "pullRequest": 1430,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T05:21:38.000Z",
+    "end": "2026-11-16T08:36:19.655Z",
+    "durationSeconds": 11682
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 4,
+      "P3": 0
+    },
+    "notes": "Measured claim-to-local-proof wall-clock window, including failed intermediate native/harness runs and controlled-fault pilots. Final5813web and1235script tests passed;2existing opt-in/platform skips. Native10source+12combined cases passed. Thirteen owner sites retired. Local proof passed; PR CI pending. Model usage and provider cost not reported."
+  }
+}

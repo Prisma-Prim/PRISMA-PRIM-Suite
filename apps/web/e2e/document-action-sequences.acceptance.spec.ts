@@ -5,6 +5,7 @@ import { expect, test, expectApiFailure } from './ui-chaos.fixture';
 import { removeRoute } from './route-removal';
 import { replaceSourceBeforePdfReply } from './document-held-download.fixture';
 import { runBrowserSequences } from './browser-sequences.fixture';
+import { paymentEvidenceSequenceAdapter } from './payment-evidence-browser-sequences.fixture';
 import {
   documentVersionSequenceAdapter,
   documentPdfSequenceAdapter,
@@ -46,6 +47,78 @@ test.describe('generated Document sequences', () => {
       adapter: documentPdfSequenceAdapter,
     });
   });
+
+  test('explores generated native PaymentEvidence source action sequences', async ({
+    page,
+  }, info) => {
+    test.setTimeout(150_000);
+    await runBrowserSequences({
+      page,
+      info,
+      adapter: paymentEvidenceSequenceAdapter,
+    });
+  });
+});
+
+test('checks the PaymentEvidence sequence adapter against the native source recipe', async ({
+  page,
+}, info) => {
+  test.setTimeout(180_000);
+  const world = await paymentEvidenceSequenceAdapter.open({
+    page,
+    info,
+    trial: 1,
+    initial: 'PRIMARY',
+  });
+  const run = async (
+    label: string,
+    variant: 'a' | 'b' | 'c' = 'a',
+    locale: 'en' | 'fr' = 'en',
+  ) => {
+    const action = world
+      .actions({ variant, locale, payer: 'ADDITIONAL' })
+      .find((candidate) => candidate.label === label);
+    if (!action)
+      throw new Error(`Expected enabled Evidence recipe action: ${label}`);
+    await action.run();
+    await world.verify();
+  };
+  try {
+    await world.verify();
+    await run('preserve-evidence-pdf-lost-receipt');
+    await run('change-interface-locale', 'a', 'fr');
+    await run('retry-exact-evidence-command-with-double-admission');
+    await run('change-interface-locale');
+    await run('correct-literal-evidence-metadata-failed-read');
+    await run('retry-confirmed-evidence-read-without-writing');
+    await run('preserve-evidence-pdf-none', 'b');
+    await run('download-original-evidence-history-tuple');
+    await run('retire-held-evidence-pdf-200');
+    await run('retire-held-evidence-pdf-403');
+    await run('designate-evidence-failed-read');
+    await run('retry-confirmed-evidence-read-without-writing');
+    await run('start-empty-evidence-successor-failed-read');
+    await run('retry-confirmed-evidence-read-without-writing');
+    await run('select-native-evidence-version-2');
+    await run('preserve-evidence-pdf-none', 'c');
+    await run('designate-evidence-none');
+    await run('register-another-evidence-lost-receipt');
+    await run('retry-exact-evidence-command-with-double-admission');
+    await run('correct-literal-evidence-metadata-lost-receipt');
+    await run('retry-exact-evidence-command-with-double-admission');
+    await run('toggle-only-native-payer-projection');
+    await run('toggle-only-native-payer-projection');
+    await run('select-evidence-1');
+    await run('select-native-evidence-version-1');
+    await run('download-original-evidence-history-tuple');
+    await world.settle();
+    await page.screenshot({
+      path: info.outputPath('payment-evidence-sequence-recipe.png'),
+      fullPage: true,
+    });
+  } finally {
+    await world.dispose();
+  }
 });
 
 test('recovers a confirmed Version read while its authorized immutable PDF download is still pending', async ({

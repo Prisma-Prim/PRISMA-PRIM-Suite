@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
-import {
-  createAuthenticatedApiClient,
-  type ApiResult,
-} from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   readDocumentVersions,
   type DocumentVersion,
@@ -25,6 +29,7 @@ import type { PaymentEvidenceAccessCallbacks } from './payment-evidence-types';
 import { PaymentEvidenceVersionCommand } from './PaymentEvidenceVersionCommand';
 import { PaymentEvidencePdf } from './PaymentEvidencePdf';
 import { usePaymentEvidenceCopy } from './payment-evidence.copy';
+import { usePaymentEvidenceAccessRecovery } from './use-payment-evidence-access-recovery';
 
 export interface PaymentEvidenceVersionsProps extends PaymentEvidenceAccessCallbacks {
   actor: ActorContext;
@@ -35,24 +40,27 @@ export interface PaymentEvidenceVersionsProps extends PaymentEvidenceAccessCallb
   workingRevision: number;
   operationKeys: PaymentEvidenceOperationKeys;
   metadataReadable?: boolean;
+  metadataCurrent?: boolean;
   recoveryGeneration?: number;
   onRefresh: () => Promise<void> | void;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
 }
 type Read =
   | { status: 'loading' | 'error' | 'denied' }
-  | { status: 'ready'; owner: () => boolean; page: DocumentVersions };
+  | {
+      status: 'available';
+      freshness: 'current' | 'refreshing' | 'failed';
+      owner: () => boolean;
+      page: DocumentVersions;
+    };
 /** Native reference-free Versions with independent read, designation and upload owners. */
 export function PaymentEvidenceVersions(props: PaymentEvidenceVersionsProps) {
   const copy = useDocumentVersionsCopy();
-  const { actor, ...sourceProps } = props;
-  const authority = paymentEvidenceAuthority(actor);
-  const [owner, setOwner] = useState({
-    identity: props.identity,
-    generation: 0,
-  });
-  if (owner.identity !== props.identity)
-    setOwner({ identity: props.identity, generation: owner.generation + 1 });
+  const authority = paymentEvidenceAuthority(props.actor);
+  const identityGeneration = useRequestLifetime(
+    props.identity,
+    JSON.stringify([props.identity.loaded, props.identity.signedIn]),
+  );
   if (!authority || authority.readKey !== props.operationKeys.readKey)
     return <p>{copy.unavailable}</p>;
   return (
@@ -63,26 +71,28 @@ export function PaymentEvidenceVersions(props: PaymentEvidenceVersionsProps) {
         props.actor.workspaceMembershipId,
         authority.companyId,
         props.documentId,
-        owner.generation,
+        identityGeneration,
       ])}
-      {...sourceProps}
+      {...props}
       companyId={authority.companyId}
     />
   );
 }
 function SourceVersions({
+  actor,
   identity,
   documentId,
   workingRevision,
   requestedVersionId,
   operationKeys,
   metadataReadable = true,
+  metadataCurrent = true,
   recoveryGeneration = 0,
   onRefresh,
   onProtectedWorkChange,
   companyId,
   ...accessCallbacks
-}: Omit<PaymentEvidenceVersionsProps, 'actor'> & { companyId: string }) {
+}: PaymentEvidenceVersionsProps & { companyId: string }) {
   const copy = useDocumentVersionsCopy(),
     sourceCopy = usePaymentEvidenceCopy(),
     locale = useInterfaceLocale();
@@ -101,45 +111,42 @@ function SourceVersions({
     designation: false,
     upload: false,
   });
-  const life = useAuthorityLifetime(
-      JSON.stringify([operationKeys.readKey, metadataReadable]),
-      identity,
-    ),
-    callbacks = useRef({ onRefresh, ...accessCallbacks });
-  callbacks.current = { onRefresh, ...accessCallbacks };
+  const scope = JSON.stringify([
+    operationKeys.readKey,
+    metadataReadable,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const life = useAuthorityLifetime(scope, identity);
+  const readGeneration = useRequestLifetime(identity, scope);
+  const reads = useScopedOperationGroup(String(readGeneration));
+  const rejected = usePaymentEvidenceAccessRecovery({
+    actor,
+    identity,
+    companyId,
+    ...accessCallbacks,
+  });
+  const callbacks = useRef({ onRefresh, rejected });
+  useLayoutEffect(() => {
+    callbacks.current = { onRefresh, rejected };
+  });
   const requestedRevision = Math.max(workingRevision, confirmedRevision);
   useDocumentNavigationProtection(
     busy.successor || busy.designation || busy.upload,
     onProtectedWorkChange,
   );
-  const rejected = useCallback(
-    async (
-      result: ApiResult<unknown>,
-      signal: AbortSignal,
-      isCurrent: () => boolean,
-    ) => {
-      if (!isCurrent() || signal.aborted) return;
-      await handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId: companyId,
-        signal,
-        isCurrent,
-        onCompanyContextRejected: (id) =>
-          callbacks.current.onCompanyContextRejected?.(id),
-        onActorRevalidated: (next) =>
-          callbacks.current.onActorRevalidated?.(next),
-        onWorkspaceAccessRejected: () =>
-          callbacks.current.onWorkspaceAccessRejected?.(),
-      });
-    },
-    [companyId, identity],
-  );
   useEffect(() => {
     if (!metadataReadable) return;
-    const request = new AbortController(),
-      live = life(),
-      current = () => !request.signal.aborted && live();
+    const request = reads.beginLatest();
+    if (!request) return;
+    const live = life(),
+      current = () => !request.signal.aborted && live(),
+      onRejected = callbacks.current.rejected;
+    setRead((previous) =>
+      previous.status === 'available' && previous.owner()
+        ? { ...previous, freshness: 'refreshing' }
+        : { status: 'loading' },
+    );
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -160,7 +167,7 @@ function SourceVersions({
             result.status === 'notFound'
           ) {
             setRead({ status: 'denied' });
-            await rejected(result, request.signal, current);
+            await onRejected(result, request.signal, current);
             return;
           }
           throw new Error('Version read unavailable');
@@ -190,7 +197,8 @@ function SourceVersions({
           })),
         };
         setRead({
-          status: 'ready',
+          status: 'available',
+          freshness: 'current',
           owner: live,
           page: metadata,
         });
@@ -209,10 +217,17 @@ function SourceVersions({
             : currentSelection,
         );
       } catch {
-        if (current()) setRead({ status: 'error' });
+        if (current())
+          setRead((previous) =>
+            previous.status === 'available' && previous.owner()
+              ? { ...previous, freshness: 'failed' }
+              : { status: 'error' },
+          );
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
+    return request.retire;
   }, [
     companyId,
     documentId,
@@ -220,18 +235,24 @@ function SourceVersions({
     life,
     operationKeys.readKey,
     metadataReadable,
-    rejected,
+    reads,
     requestedRevision,
     requestedVersionId,
     recoveryGeneration,
     retry,
   ]);
+  const available =
+    metadataReadable && read.status === 'available' && read.owner();
   const readable =
-    metadataReadable &&
-    read.status === 'ready' &&
-    read.owner() &&
+    available &&
+    metadataCurrent &&
+    read.status === 'available' &&
+    read.freshness === 'current' &&
     read.page.workingRevision >= requestedRevision;
-  const page = readable ? read.page : undefined;
+  const page = read.status === 'available' && available ? read.page : undefined;
+  const failed =
+    read.status === 'error' ||
+    (read.status === 'available' && read.freshness === 'failed');
   const selected = page?.versions.find(
     (version) => version.id === selection.version?.id,
   );
@@ -271,10 +292,10 @@ function SourceVersions({
       aria-label={copy.title}
     >
       <h5>{copy.title}</h5>
-      {!readable && read.status !== 'error' && read.status !== 'denied' && (
+      {!readable && !failed && read.status !== 'denied' && (
         <p role="status">{copy.loading}</p>
       )}
-      {read.status === 'error' && (
+      {failed && (
         <div role="alert">
           <p>{confirmed ? sourceCopy('confirmedRefreshFailed') : copy.error}</p>
           <button type="button" onClick={() => setRetry((value) => value + 1)}>
@@ -283,7 +304,7 @@ function SourceVersions({
         </div>
       )}
       {read.status === 'denied' && <p role="alert">{copy.unavailable}</p>}
-      {readable && page && (
+      {available && page && (
         <>
           {!page.mutable && <p>{copy.readOnly}</p>}
           <ol aria-label={copy.list}>
@@ -366,7 +387,7 @@ function SourceVersions({
             page?.workingRevision ?? 0,
           )}
           contentState={selected?.pdfContent.state ?? 'absent'}
-          readable={readable}
+          readable={available}
           contentReadKey={operationKeys.contentReadKey}
           uploadKey={operationKeys.uploadKey}
           recoveryGeneration={successfulRecoveryGeneration}

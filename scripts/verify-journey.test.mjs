@@ -940,8 +940,12 @@ test('an exact generated replay runs only its selected test and screen', () => {
   );
 });
 
-test('Document proof requires both native cases and screens independently of Access and financial evidence', async (t) => {
-  const reports = ['document-version', 'document-pdf'].flatMap((caseId) =>
+test('Document proof requires every implemented native case and screen independently of Access and financial evidence', async (t) => {
+  const reports = [
+    'document-version',
+    'document-pdf',
+    'payment-evidence',
+  ].flatMap((caseId) =>
     ['desktop', 'narrow'].map((width) => ({
       schema: 'prisma-prim-browser-sequences/v1',
       caseId,
@@ -964,7 +968,7 @@ test('Document proof requires both native cases and screens independently of Acc
         runs: [
           {
             exitCode: 0,
-            report: playwrightReport({ expected: 6 }),
+            report: playwrightReport({ expected: 8 }),
             sequenceReports,
           },
         ],
@@ -981,12 +985,15 @@ test('Document proof requires both native cases and screens independently of Acc
       'document-pdf@narrow',
       'document-version@desktop',
       'document-version@narrow',
+      'payment-evidence@desktop',
+      'payment-evidence@narrow',
     ],
   );
   for (const missing of [
     reports.slice(0, 1),
     reports.filter((entry) => entry.width === 'desktop'),
     reports.filter((entry) => entry.caseId === 'document-version'),
+    reports.filter((entry) => entry.caseId !== 'payment-evidence'),
   ]) {
     const partial = await run(missing);
     assert.equal(partial.summary.status, 'error');

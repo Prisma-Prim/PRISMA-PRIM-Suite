@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -9,6 +10,66 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import { PaymentEvidencePdfUpload } from './PaymentEvidencePdfUpload';
 import { paymentEvidenceIds as ids } from './payment-evidence.test-fixture';
 afterEach(() => vi.unstubAllGlobals());
+it('admits only one PDF upload when the public preserve control is activated twice during token acquisition', async () => {
+  const pending: { release?: (token: string) => void } = {};
+  const token = new Promise<string>((resolve) => {
+    pending.release = resolve;
+  });
+  const fetch = vi.fn(async () =>
+    Response.json({
+      documentId: ids.document,
+      workingRevision: 2,
+      versionId: ids.version,
+      versionNumber: 1,
+      action: 'representation_added',
+      representationId: '10000000-0000-4000-8000-000000000020',
+      appendedAfterDesignation: false,
+    }),
+  );
+  vi.stubGlobal('fetch', fetch);
+  const confirmed = vi.fn();
+  render(
+    <PaymentEvidencePdfUpload
+      identity={{
+        ...deterministicBrowserIdentity(),
+        requestHeaders: undefined,
+        getToken: () => token,
+      }}
+      companyId={ids.company}
+      documentId={ids.document}
+      versionId={ids.version}
+      versionNumber={1}
+      workingRevision={1}
+      uploadKey="independent-recorder-upload"
+      canUpload
+      onConfirmed={confirmed}
+      onProtectedWorkChange={vi.fn()}
+      onRejected={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Choose the PDF file'), {
+    target: {
+      files: [
+        new File(['%PDF-1.4 synthetic notice'], 'fictional-notice.pdf', {
+          type: 'application/pdf',
+        }),
+      ],
+    },
+  });
+  const preserve = screen.getByRole('button', { name: 'Preserve PDF' });
+  try {
+    act(() => {
+      preserve.click();
+      preserve.click();
+    });
+  } finally {
+    await act(async () => pending.release?.('owned-token'));
+  }
+  await screen.findByText('The PDF was preserved.');
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(confirmed).toHaveBeenCalledTimes(1);
+});
+
 it('preserves the same immutable File/path/key for an uncertain upload independently of read changes and keeps confirmed save after refresh failure', async () => {
   const writes: Array<{ path: string; file: unknown; key: string | null }> = [];
   const receipt = {

@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
-import {
-  createAuthenticatedApiClient,
-  type ApiResult,
-} from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useDocumentNavigationProtection } from '../documents/document-navigation-protection';
 import {
   paymentEvidenceAuthority,
@@ -20,6 +18,7 @@ import {
 import { usePaymentEvidenceCopy } from './payment-evidence.copy';
 import { PaymentEvidenceRegistration } from './PaymentEvidenceRegistration';
 import { PaymentEvidenceDetail } from './PaymentEvidenceDetail';
+import { usePaymentEvidenceAccessRecovery } from './use-payment-evidence-access-recovery';
 import type {
   PaymentEvidenceAccessCallbacks,
   PaymentEvidenceSelection,
@@ -45,15 +44,10 @@ export function PaymentEvidenceSourcePanel(
 ) {
   const copy = usePaymentEvidenceCopy(),
     authority = paymentEvidenceAuthority(props.actor);
-  const [identityOwner, setIdentityOwner] = useState({
-    identity: props.identity,
-    generation: 0,
-  });
-  if (identityOwner.identity !== props.identity)
-    setIdentityOwner({
-      identity: props.identity,
-      generation: identityOwner.generation + 1,
-    });
+  const identityGeneration = useRequestLifetime(
+    props.identity,
+    JSON.stringify([props.identity.loaded, props.identity.signedIn]),
+  );
   if (!authority || !props.identity.loaded || !props.identity.signedIn)
     return (
       <section
@@ -71,7 +65,7 @@ export function PaymentEvidenceSourcePanel(
         props.actor.workspaceId,
         props.actor.workspaceMembershipId,
         authority.companyId,
-        identityOwner.generation,
+        identityGeneration,
       ])}
       {...props}
       authority={authority}
@@ -102,41 +96,35 @@ function AvailablePaymentEvidencePanel({
     [revision, setRevision] = useState(0),
     [protectedWork, setProtectedWork] = useState(false),
     [confirmed, setConfirmed] = useState<string>();
-  const life = useAuthorityLifetime(authority.readKey, identity);
-  const callbacks = useRef({
+  const scope = JSON.stringify([
+    authority.readKey,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const life = useAuthorityLifetime(scope, identity);
+  const readGeneration = useRequestLifetime(identity, scope);
+  const reads = useScopedOperationGroup(String(readGeneration));
+  const reject = usePaymentEvidenceAccessRecovery({
+    actor,
+    identity,
+    companyId: authority.companyId,
     ...accessCallbacks,
+  });
+  const callbacks = useRef({
     onActivityRecorded,
     onSelect,
+    reject,
   });
-  callbacks.current = { ...accessCallbacks, onActivityRecorded, onSelect };
+  useLayoutEffect(() => {
+    callbacks.current = { onActivityRecorded, onSelect, reject };
+  });
   useDocumentNavigationProtection(protectedWork, onProtectedWorkChange);
-  const reject = useCallback(
-    async (
-      result: ApiResult<unknown>,
-      signal: AbortSignal,
-      isCurrent: () => boolean,
-    ) => {
-      if (!isCurrent() || signal.aborted) return;
-      await handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId: authority.companyId,
-        signal,
-        isCurrent,
-        onCompanyContextRejected: (id) =>
-          callbacks.current.onCompanyContextRejected?.(id),
-        onActorRevalidated: (next) =>
-          callbacks.current.onActorRevalidated?.(next),
-        onWorkspaceAccessRejected: () =>
-          callbacks.current.onWorkspaceAccessRejected?.(),
-      });
-    },
-    [authority.companyId, identity],
-  );
   useEffect(() => {
-    const request = new AbortController(),
-      live = life(),
-      current = () => !request.signal.aborted && live();
+    const request = reads.beginLatest();
+    if (!request) return;
+    const live = life(),
+      current = () => !request.signal.aborted && live(),
+      rejected = callbacks.current.reject;
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -153,7 +141,7 @@ function AvailablePaymentEvidencePanel({
             result.status === 'forbidden'
           ) {
             setList({ status: 'denied' });
-            await reject(result, request.signal, current);
+            await rejected(result, request.signal, current);
             return;
           }
           throw new Error('Evidence inventory unavailable');
@@ -171,17 +159,12 @@ function AvailablePaymentEvidencePanel({
         setList({ status: 'ready', owner: live, documents });
       } catch {
         if (current()) setList({ status: 'error' });
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
-  }, [
-    authority.companyId,
-    authority.readKey,
-    identity,
-    life,
-    revision,
-    reject,
-  ]);
+    return request.retire;
+  }, [authority.companyId, authority.readKey, identity, life, reads, revision]);
   function registered(document: PaymentEvidenceDocument) {
     setConfirmed(document.id);
     setRevision((value) => value + 1);

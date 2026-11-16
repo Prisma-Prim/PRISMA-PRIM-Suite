@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { DocumentVersions } from '../documents/DocumentVersions';
 import { DocumentCorrectionHistory } from '../documents/DocumentCorrectionHistory';
 import { useDocumentNavigationProtection } from '../documents/document-navigation-protection';
@@ -24,7 +26,9 @@ import { PaymentEvidenceMetadataCorrection } from './PaymentEvidenceMetadataCorr
 type DetailState =
   | { status: 'loading' | 'error' | 'denied' }
   | {
-      status: 'ready';
+      status: 'available';
+      freshness: 'current' | 'refreshing' | 'failed';
+      observedRead: number;
       owner: () => boolean;
       document: PaymentEvidenceDocument;
     };
@@ -63,12 +67,20 @@ export function PaymentEvidenceDetail({
     [recoveryGeneration, setRecoveryGeneration] = useState(0);
   const [correctionBusy, setCorrectionBusy] = useState(false),
     [versionBusy, setVersionBusy] = useState(false);
-  const lifetime = useAuthorityLifetime(
-    JSON.stringify([operationKeys.readKey, documentId, selectionGeneration]),
-    identity,
-  );
+  const scope = JSON.stringify([
+    operationKeys.readKey,
+    documentId,
+    selectionGeneration,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const lifetime = useAuthorityLifetime(scope, identity);
+  const readGeneration = useRequestLifetime(identity, scope);
+  const reads = useScopedOperationGroup(String(readGeneration));
   const callbacks = useRef({ onRejected, onActivityRecorded });
-  callbacks.current = { onRejected, onActivityRecorded };
+  useLayoutEffect(() => {
+    callbacks.current = { onRejected, onActivityRecorded };
+  });
   useDocumentNavigationProtection(
     correctionBusy || versionBusy,
     onProtectedWorkChange,
@@ -76,9 +88,11 @@ export function PaymentEvidenceDetail({
   const companyId = actor.activeCompany?.id;
   const focusRequested = useRef(true);
   useEffect(() => {
-    const request = new AbortController(),
-      live = lifetime(),
-      current = () => !request.signal.aborted && live();
+    const request = reads.beginLatest();
+    if (!request) return;
+    const live = lifetime();
+    const current = () => !request.signal.aborted && live();
+    const rejected = callbacks.current.onRejected;
     const focusOrigin = document.activeElement;
     const shouldFocus = focusRequested.current;
     void (async () => {
@@ -101,7 +115,7 @@ export function PaymentEvidenceDetail({
             result.status === 'notFound'
           ) {
             setDetail({ status: 'denied' });
-            await callbacks.current.onRejected(result, request.signal, current);
+            await rejected(result, request.signal, current);
             return;
           }
           throw new Error('Evidence read failed');
@@ -114,7 +128,9 @@ export function PaymentEvidenceDetail({
         setRecoveryGeneration((current) => Math.max(current, deliberateReload));
         setVersionRevision(metadata.workingRevision);
         setDetail({
-          status: 'ready',
+          status: 'available',
+          freshness: 'current',
+          observedRead: reload,
           owner: live,
           document: metadata,
         });
@@ -130,10 +146,17 @@ export function PaymentEvidenceDetail({
             heading.current.focus();
         });
       } catch {
-        if (current()) setDetail({ status: 'error' });
+        if (current())
+          setDetail((previous) =>
+            previous.status === 'available' && previous.owner()
+              ? { ...previous, freshness: 'failed' }
+              : { status: 'error' },
+          );
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
+    return request.retire;
   }, [
     companyId,
     deliberateReload,
@@ -141,20 +164,35 @@ export function PaymentEvidenceDetail({
     identity,
     lifetime,
     operationKeys.readKey,
+    reads,
     reload,
     selectionGeneration,
   ]);
-  const readable = detail.status === 'ready' && detail.owner();
+  const readable = detail.status === 'available' && detail.owner();
+  const current =
+    detail.status === 'available' && readable && detail.freshness === 'current';
+  const failed =
+    detail.status === 'error' ||
+    (detail.status === 'available' && detail.freshness === 'failed');
   const loaded =
-    detail.status === 'ready' && readable ? detail.document : undefined;
+    detail.status === 'available' && readable ? detail.document : undefined;
+  const observedRead =
+    detail.status === 'available' ? detail.observedRead : undefined;
+  function beginRead() {
+    setDetail((previous) =>
+      previous.status === 'available' && previous.owner()
+        ? { ...previous, freshness: 'refreshing' }
+        : { status: 'loading' },
+    );
+  }
   function refresh() {
     setConfirmed(true);
-    setDetail({ status: 'loading' });
+    beginRead();
     setReload((value) => value + 1);
     callbacks.current.onActivityRecorded?.();
   }
   function reloadEvidence() {
-    setDetail({ status: 'loading' });
+    beginRead();
     setDeliberateReload((value) => value + 1);
     setReload((value) => value + 1);
   }
@@ -167,10 +205,10 @@ export function PaymentEvidenceDetail({
       >
         {copy('refresh')}
       </button>
-      {!readable && detail.status !== 'error' && detail.status !== 'denied' && (
+      {!current && !failed && detail.status !== 'denied' && (
         <p role="status">{copy('loading')}</p>
       )}
-      {detail.status === 'error' && (
+      {failed && (
         <div role="alert">
           <p>{confirmed ? copy('confirmedRefreshFailed') : copy('error')}</p>
           <button type="button" onClick={reloadEvidence}>
@@ -224,6 +262,7 @@ export function PaymentEvidenceDetail({
                 operationKeys.payerKey,
                 documentId,
                 selectionGeneration,
+                observedRead,
               ])}
               identity={identity}
               companyId={loaded.companyId}
@@ -241,7 +280,7 @@ export function PaymentEvidenceDetail({
           identity={identity}
           companyId={companyId}
           documentId={documentId}
-          document={readable ? loaded : undefined}
+          document={current ? loaded : undefined}
           correctKey={operationKeys.correctKey}
           recoveryGeneration={recoveryGeneration}
           onProtectedWorkChange={setCorrectionBusy}
@@ -271,6 +310,7 @@ export function PaymentEvidenceDetail({
             workingRevision={versionRevision}
             operationKeys={operationKeys}
             paymentEvidenceReadable={readable}
+            paymentEvidenceCurrent={current}
             paymentEvidenceRecoveryGeneration={recoveryGeneration}
             {...accessCallbacks}
             onRefresh={refresh}
