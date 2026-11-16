@@ -48,6 +48,103 @@ test.describe('generated Document sequences', () => {
   });
 });
 
+test('recovers a confirmed Version read while its authorized immutable PDF download is still pending', async ({
+  page,
+}, info) => {
+  test.setTimeout(150_000);
+  const world = await documentVersionSequenceAdapter.open({
+    page,
+    info,
+    trial: 1,
+    initial: 'a',
+  });
+  const latch: { release?: () => void; captured?: () => void } = {};
+  const holding = new Promise<void>((resolve) => {
+    latch.release = resolve;
+  });
+  const captured = new Promise<void>((resolve) => {
+    latch.captured = resolve;
+  });
+  let bytes: Buffer | undefined;
+  let downloading = false;
+  let received = false;
+  const pattern = '**/api/documents/*/versions/*/content/*';
+  const hold = async (route: Route) => {
+    if (
+      !/\/content\/[0-9a-f-]{36}$/iu.test(
+        new URL(route.request().url()).pathname,
+      )
+    )
+      return route.fallback();
+    const response = await route.fetch();
+    expect(response.status()).toBe(200);
+    bytes = await response.body();
+    if (!latch.captured) throw new Error('Expected the native PDF capture');
+    latch.captured();
+    await holding;
+    await route.fulfill({ response });
+  };
+  const observeDownload = () => {
+    received = true;
+  };
+  page.on('download', observeDownload);
+  async function run(label: string) {
+    const action = world
+      .actions({ locale: 'en', variant: 'a' })
+      .find((candidate) => candidate.label === label);
+    if (!action) throw new Error(`Expected enabled native action: ${label}`);
+    await action.run();
+    await world.verify();
+  }
+  const errors: unknown[] = [];
+  try {
+    await page.route(pattern, hold);
+    await run('designation-failed-read');
+    await page
+      .getByRole('button', { name: 'Download Version 1 PDF', exact: true })
+      .click();
+    await captured;
+    downloading = true;
+    await run('retry-confirmed-read-without-writing');
+    expect(received).toBe(false);
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    if (!latch.release) throw new Error('Expected the native PDF release');
+    const saved = downloading ? page.waitForEvent('download') : null;
+    latch.release();
+    if (saved) {
+      const download = await saved;
+      expect(download.suggestedFilename()).toBe('fictional-sequence-a.pdf');
+      const file = await download.path();
+      if (!file || !bytes)
+        throw new Error('Expected the exact native PDF bytes');
+      expect(await readFile(file)).toEqual(bytes);
+    }
+    await world.settle();
+    await page.screenshot({
+      path: info.outputPath('document-independent-read-recovery.png'),
+      fullPage: true,
+    });
+  } catch (error) {
+    errors.push(error);
+  }
+  page.off('download', observeDownload);
+  for (const cleanup of [
+    () => removeRoute(page, pattern, hold),
+    () => world.dispose(),
+  ]) {
+    try {
+      await cleanup();
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length)
+    throw new AggregateError(errors, 'Native Document read recovery failed');
+});
+
 test('preserves native PDF retry bytes and freezes an official Version before starting its empty-PDF successor', async ({
   page,
 }, info) => {

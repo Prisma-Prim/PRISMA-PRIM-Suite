@@ -16,6 +16,7 @@ import {
   expect,
   expectApiFailure,
   observeApiRequests,
+  IDLE_DEADLINE_MILLISECONDS,
 } from './ui-chaos.fixture';
 import { removeRoute } from './route-removal';
 import { replaceSourceBeforePdfReply } from './document-held-download.fixture';
@@ -72,7 +73,7 @@ function createDocumentAdapter(
       ];
       let selected: Variant | null = null;
       let intent: Intent | null = null;
-      let failedRead = false;
+      let failedRead: ReturnType<typeof observeApiRequests> | null = null;
       let failedReads = 0;
       const sent: Sent[] = [];
       const contentReads: string[] = [];
@@ -363,7 +364,16 @@ function createDocumentAdapter(
           await route.abort('connectionfailed');
         };
         if (fault === 'lost-receipt') await page.route(pattern, lose);
-        if (fault === 'failed-read') failedRead = true;
+        if (fault === 'failed-read')
+          failedRead = observeApiRequests(page, (request) => {
+            const path = new URL(request.url()).pathname;
+            return (
+              request.method() === 'GET' &&
+              (path === '/api/documents' ||
+                path === `/api/documents/${source.documentId}` ||
+                path === `/api/documents/${source.documentId}/versions`)
+            );
+          });
         const response =
           fault === 'lost-receipt'
             ? null
@@ -461,15 +471,35 @@ function createDocumentAdapter(
       }
       async function retryConfirmedRead() {
         const before = sent.length;
+        const reads = failedRead;
+        if (!reads) throw new Error('Expected the failed native read phase');
         // The command refreshes Versions and its parent independently. Keep
         // both failed until their delayed replies settle before lifting the fault.
-        await expect.poll(requests.isIdle).toBe(true);
+        await expect
+          .poll(
+            () =>
+              reads.isIdle()
+                ? []
+                : reads.pending.size
+                  ? [...reads.pending].map(
+                      (request) =>
+                        `${request.method()} ${new URL(request.url()).pathname}`,
+                    )
+                  : ['Native read quiet interval pending'],
+            {
+              timeout: IDLE_DEADLINE_MILLISECONDS,
+              message:
+                'The post-command Document reads must settle before retry',
+            },
+          )
+          .toEqual([]);
         const control = documents.getByRole('button', {
           name: word('retry'),
           exact: true,
         });
         await expect(control).toBeVisible();
-        failedRead = false;
+        failedRead = null;
+        reads.dispose();
         await control.click();
         await expect(
           documents.locator('.working-document-version'),
@@ -501,7 +531,8 @@ function createDocumentAdapter(
         ]);
       }
       async function replaceCompanySource() {
-        failedRead = false;
+        failedRead?.dispose();
+        failedRead = null;
         await chooseCompany('b', false);
         await chooseCompany('a');
         selected = null;
@@ -693,7 +724,6 @@ function createDocumentAdapter(
         }
       }
       if (mode === 'pdf') await chooseFile(initial);
-      const requests = observeApiRequests(page);
       return {
         actions(value) {
           const actions: BrowserAction[] = [
@@ -810,7 +840,8 @@ function createDocumentAdapter(
           await verify();
         },
         async dispose() {
-          requests.dispose();
+          failedRead?.dispose();
+          failedRead = null;
           page.off('request', observe);
           await removeRoute(page, versionsPattern, denyRead);
           await removeRoute(page, '**/api/**', identify);
@@ -820,7 +851,7 @@ function createDocumentAdapter(
           locale,
           selected,
           intent: intent?.plan.kind ?? null,
-          failedRead,
+          failedRead: failedRead !== null,
           failedReads,
           writes: sent.length,
           versions: versions.map((version) => ({

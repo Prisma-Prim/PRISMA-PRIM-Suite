@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1427-ci-read-phase-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1427,
+  "pullRequest": 1428,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T03:59:16.000Z",
+    "end": "2026-11-16T04:35:55.000Z",
+    "durationSeconds": 2199
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "CI2091 idle gate diagnosed with native held-PDF REDs at both widths. Scoped read phases use the existing15s idle deadline;60s case budgets unchanged. Final25 native tests passed: exact narrow replay and3 full8-test repetitions underCI5s assertions;no skips/flakies. Strict types,40 verifier/map tests,lint/format passed. Runtime unchanged;newCI pending. Model/tokens/price unavailable."
+  }
+}

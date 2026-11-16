@@ -74,14 +74,20 @@ export function pendingApiRequests(page: Page): ReadonlySet<Request> {
   return observeApiRequests(page).pending;
 }
 
-export function observeApiRequests(page: Page) {
+export function observeApiRequests(
+  page: Page,
+  includes: (request: Request) => boolean = () => true,
+) {
   const pending = new Set<Request>();
   let lastActivity = Date.now();
   let navigating = false;
   const requested = (request: Request) => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame())
       navigating = true;
-    else if (new URL(request.url()).pathname.startsWith('/api/')) {
+    else if (
+      new URL(request.url()).pathname.startsWith('/api/') &&
+      includes(request)
+    ) {
       pending.add(request);
       lastActivity = Date.now();
     }
@@ -132,7 +138,7 @@ const DELIBERATE_REFUSAL =
   /^Failed to load resource: the server responded with a status of 4\d\d\b/u;
 /** The network counts as idle after this long without any request event. */
 const IDLE_MILLISECONDS = 500;
-const IDLE_DEADLINE_MILLISECONDS = 15_000;
+export const IDLE_DEADLINE_MILLISECONDS = 15_000;
 /** Rendering after the last response gets this long to drop its loading state. */
 const LOADING_DEADLINE_MILLISECONDS = 10_000;
 
