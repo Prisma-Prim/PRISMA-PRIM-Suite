@@ -1,6 +1,12 @@
 import { usePaymentEvidenceCopy } from '../payment-evidence/payment-evidence.copy';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import {
+  useScopedOperationGroup,
+  type PendingOperation,
+} from '../api/use-scoped-operation';
+import { documentNativeAuthority } from './document-native-authority';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import {
   Fragment,
@@ -146,6 +152,19 @@ function DocumentSession({
     JSON.stringify(actor),
     identity,
   );
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      actor.active,
+      actor.internalUserId,
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      actor.activeCompany?.id,
+      documentNativeAuthority(actor, DEFAULT_REGISTRATION_FAMILY)?.metadata,
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
   const paymentCopy = usePaymentEvidenceCopy();
   const sectionVisible = useContext(SectionVisibility);
   const [receivedBusy, setReceivedBusy] = useState(false);
@@ -216,7 +235,9 @@ function DocumentSession({
     receivedBusy ||
     versionWorkProtected;
   const protectedWorkInProgress = useRef(protectedWorkActive);
-  protectedWorkInProgress.current = protectedWorkActive;
+  useLayoutEffect(() => {
+    protectedWorkInProgress.current = protectedWorkActive;
+  });
   /**
    * A dossier restriction arrived while a protected command was open; the
    * detail it would have retired is reconciled once that correction ends.
@@ -227,7 +248,7 @@ function DocumentSession({
    * that command, its key and its draft are never aborted or replaced.
    */
   const [registrationInFlight, setRegistrationInFlight] =
-    useState<AbortController>();
+    useState<PendingOperation>();
   /**
    * A requested Document not yet opened. It waits for a registration in flight
    * or a protected draft, and a newer request replaces it.
@@ -236,7 +257,9 @@ function DocumentSession({
   /** A request this workspace was mounted with counts as already accepted. */
   const acceptedRequestId = useRef(requestedDocument?.requestId);
   const activeFilter = useRef(filter);
-  activeFilter.current = filter;
+  useLayoutEffect(() => {
+    activeFilter.current = filter;
+  });
   const registrationPayload = JSON.stringify(
     familyScreen(family).referenceUrl
       ? { clientId, title, purpose, url }
@@ -244,17 +267,30 @@ function DocumentSession({
   );
   /** The registration draft as the member holds it now, as a command payload. */
   const currentRegistrationPayload = useRef(registrationPayload);
-  currentRegistrationPayload.current = registrationPayload;
+  useLayoutEffect(() => {
+    currentRegistrationPayload.current = registrationPayload;
+  });
   const listReady = useRef(false);
-  listReady.current = state.status === 'ready';
+  useLayoutEffect(() => {
+    listReady.current = state.status === 'ready';
+  });
   const identityRevision = useRef(clientIdentityRevision);
-  identityRevision.current = clientIdentityRevision;
-  const pending = useRef<AbortController | undefined>(undefined);
-  const financialRead = useRef<AbortController | undefined>(undefined);
-  /** The ordinary detail read in flight, if any; never a mutation. */
-  const detailRead = useRef<AbortController | undefined>(undefined);
-  const listRequest = useRef<AbortController | undefined>(undefined);
-  const dossierRefresh = useRef<AbortController | undefined>(undefined);
+  useLayoutEffect(() => {
+    identityRevision.current = clientIdentityRevision;
+  });
+  const commands = useScopedOperationGroup(
+    JSON.stringify([lifetime, 'commands']),
+  );
+  const detailRead = useScopedOperationGroup(
+    JSON.stringify([lifetime, 'detail']),
+  );
+  const detailReadFamily = useRef<WorkspaceFamily | undefined>(undefined);
+  const listRequest = useScopedOperationGroup(
+    JSON.stringify([lifetime, 'list']),
+  );
+  const dossierRefresh = useScopedOperationGroup(
+    JSON.stringify([lifetime, 'dossier', detail?.id]),
+  );
   const startedListWrites = useRef(0);
   const publishedListWrite = useRef(0);
   /**
@@ -282,7 +318,9 @@ function DocumentSession({
    */
   const correctionRevision = useRef<number | undefined>(undefined);
   /** The detail and list re-read after a Version command; never a mutation. */
-  const versionRefresh = useRef<AbortController | undefined>(undefined);
+  const versionRefresh = useScopedOperationGroup(
+    JSON.stringify([lifetime, 'version-refresh', detail?.id]),
+  );
   const companyId = actor.activeCompany?.id;
   const hostProtected =
     protectedWorkActive || registrationInFlight !== undefined;
@@ -312,7 +350,9 @@ function DocumentSession({
   });
   const familyCaptures = familyAuthority.captures;
   const currentFamilyCaptures = useRef(familyCaptures);
-  currentFamilyCaptures.current = familyCaptures;
+  useLayoutEffect(() => {
+    currentFamilyCaptures.current = familyCaptures;
+  });
   const previousFamilyCaptures = useRef(familyCaptures);
   useLayoutEffect(() => {
     const previous = previousFamilyCaptures.current;
@@ -320,12 +360,8 @@ function DocumentSession({
     const retired = (type: WorkspaceFamily) =>
       previous[type] !== familyCaptures[type];
     if (!WORKSPACE_FAMILIES.some(retired)) return;
-    if (
-      WORKSPACE_FAMILIES.some(
-        (type) => familyScreen(type).financial && retired(type),
-      )
-    )
-      financialRead.current?.abort();
+    if (detailReadFamily.current && retired(detailReadFamily.current))
+      detailRead.retire();
     // Retire cached rows/read replies before paint, without unmounting an unrelated PDF owner.
     for (const [id, entry] of confirmedRegistrations.current)
       if (retired(entry.document.type))
@@ -354,13 +390,14 @@ function DocumentSession({
     correctionRetry.current = undefined;
     correctionRevision.current = undefined;
     if (detailRetired) {
-      pending.current?.abort();
-      versionRefresh.current?.abort();
-      dossierRefresh.current?.abort();
+      detailRead.retire();
+      commands.retire();
+      versionRefresh.retire();
+      dossierRefresh.retire();
       setDetail(undefined);
     }
     if (registrationRetired) {
-      registrationInFlight?.abort();
+      registrationInFlight?.retire();
       setRegistrationInFlight(undefined);
       retry.current = undefined;
       setFamily(DEFAULT_REGISTRATION_FAMILY);
@@ -517,7 +554,7 @@ function DocumentSession({
   // A different Company, member or Document authority retires the presentation
   // owned by this module, including the drafts and held requests started under
   // it and the rows loaded under it, which the load below replaces.
-  useEffect(() => {
+  useLayoutEffect(() => {
     publishList(reserveListWrite(), () => ({ status: 'loading' }));
     setDetail(undefined);
     setFilter({ kind: 'text', query: '' });
@@ -536,13 +573,16 @@ function DocumentSession({
     correctionRetry.current = undefined;
     confirmedRegistrations.current.clear();
     correctionRevision.current = undefined;
-    pending.current?.abort();
-    versionRefresh.current?.abort();
+    detailRead.retire();
+    commands.retire();
+    versionRefresh.retire();
     return () => {
-      pending.current?.abort();
-      versionRefresh.current?.abort();
+      detailRead.retire();
+      commands.retire();
+      versionRefresh.retire();
     };
   }, [
+    lifetime,
     companyId,
     canRead,
     canCorrect,
@@ -555,13 +595,13 @@ function DocumentSession({
   // in flight is superseded rather than raced. Drafts and retryable commands
   // are untouched, because only the loaded rows are republished.
   useEffect(() => {
-    const request = new AbortController();
-    listRequest.current?.abort();
-    listRequest.current = request;
+    const request = listRequest.beginLatest();
+    if (!request) return;
+    const recoveryIsCurrent = captureActorRecovery();
     const sequence = reserveListWrite();
     if (!companyId || !canRead) {
       publishList(sequence, () => ({ status: 'denied' }));
-      return () => request.abort();
+      return request.retire;
     }
     if (!listReady.current)
       publishList(sequence, () => ({ status: 'loading' }));
@@ -584,7 +624,7 @@ function DocumentSession({
           documents.status === 'unauthorized' ||
           clients.status === 'unauthorized'
         ) {
-          await identity.rejectSession();
+          if (recoveryIsCurrent()) await identity.rejectSession();
           return;
         }
         if (
@@ -619,10 +659,14 @@ function DocumentSession({
           sequence,
           startedUnderRevision: clientIdentityRevision,
         });
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
+    return request.retire;
   }, [
+    lifetime,
+    listRequest,
     identity,
     companyId,
     canRead,
@@ -644,9 +688,9 @@ function DocumentSession({
       setStaleDossier(undefined);
       return;
     }
-    const request = new AbortController();
-    dossierRefresh.current?.abort();
-    dossierRefresh.current = request;
+    const request = dossierRefresh.beginLatest();
+    if (!request) return;
+    const recoveryIsCurrent = captureActorRecovery();
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -657,7 +701,7 @@ function DocumentSession({
         );
         if (request.signal.aborted) return;
         if (reopened.status === 'unauthorized') {
-          await identity.rejectSession();
+          if (recoveryIsCurrent()) await identity.rejectSession();
           return;
         }
         if (reopened.status === 'forbidden' || reopened.status === 'notFound') {
@@ -673,9 +717,11 @@ function DocumentSession({
         settleDetailRead(reloaded, revision);
       } catch {
         if (!request.signal.aborted) setMutation('error');
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
+    return request.retire;
   }, [
     staleDossier,
     protectedWorkActive,
@@ -689,9 +735,8 @@ function DocumentSession({
    * with any ordinary detail read still in flight that would republish it.
    */
   function retireDetailBehindRestriction(): void {
-    const read = detailRead.current;
-    if (read && !read.signal.aborted) {
-      read.abort();
+    if (detailRead.isPending()) {
+      detailRead.retire();
       setMutation('idle');
     }
     setDetail(undefined);
@@ -776,8 +821,10 @@ function DocumentSession({
       detail.id !== requestedDocument.documentId
     )
       return;
+    const current = commands.capture();
     const frame = window.requestAnimationFrame(() => {
       if (
+        !current() ||
         !detailHeading.current?.isConnected ||
         requestedDocument.sourceSignal?.aborted
       )
@@ -791,10 +838,11 @@ function DocumentSession({
   async function open(id: string, intent?: RequestedDocument) {
     const source = intent?.sourceSignal;
     if (source?.aborted) return;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
-    detailRead.current = request;
+    if (!identity.loaded || !identity.signedIn || !actor.active) return;
+    commands.retire();
+    const request = detailRead.beginLatest();
+    if (!request) return;
+    const recoveryIsCurrent = captureActorRecovery();
     const financialType =
       state.status === 'ready'
         ? state.documents.find(
@@ -802,17 +850,17 @@ function DocumentSession({
               document.id === id && familyScreen(document.type).financial,
           )?.type
         : undefined;
-    if (financialType) financialRead.current = request;
+    detailReadFamily.current =
+      state.status === 'ready'
+        ? state.documents.find((document) => document.id === id)?.type
+        : undefined;
     const financialCapture = financialType && familyCaptures[financialType];
     const financialCurrent = () =>
       !financialType ||
       currentFamilyCaptures.current[financialType] === financialCapture;
     const retireSource = () => {
-      request.abort();
-      if (detailRead.current === request) {
-        detailRead.current = undefined;
-        setMutation('idle');
-      }
+      request.retire();
+      if (!detailRead.isPending()) setMutation('idle');
     };
     source?.addEventListener('abort', retireSource, { once: true });
     const startedUnderRevision = identityRevision.current;
@@ -827,7 +875,7 @@ function DocumentSession({
       });
       if (request.signal.aborted || !financialCurrent()) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
+        if (recoveryIsCurrent()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -850,7 +898,7 @@ function DocumentSession({
       if (!request.signal.aborted) setMutation('error');
     } finally {
       source?.removeEventListener('abort', retireSource);
-      if (detailRead.current === request) detailRead.current = undefined;
+      request.release();
     }
   }
   /**
@@ -859,9 +907,9 @@ function DocumentSession({
    * the revision it was started from.
    */
   async function refreshOpenDetail(documentId: string): Promise<void> {
-    versionRefresh.current?.abort();
-    const request = new AbortController();
-    versionRefresh.current = request;
+    const request = versionRefresh.beginLatest();
+    if (!request) return;
+    const recoveryIsCurrent = captureActorRecovery();
     const sequence = reserveListWrite();
     const startedUnderRevision = identityRevision.current;
     try {
@@ -882,7 +930,7 @@ function DocumentSession({
         documentResult.status === 'unauthorized' ||
         documentsResult.status === 'unauthorized'
       ) {
-        await identity.rejectSession();
+        if (recoveryIsCurrent()) await identity.rejectSession();
         return;
       }
       if (
@@ -907,6 +955,8 @@ function DocumentSession({
       );
     } catch {
       if (!request.signal.aborted) setMutation('error');
+    } finally {
+      request.release();
     }
   }
   function beginCorrection() {
@@ -960,9 +1010,17 @@ function DocumentSession({
         })();
     if (!command) return;
     correctionRetry.current = command;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
+    if (
+      !commands.isLive() ||
+      commands.isPending() ||
+      !identity.loaded ||
+      !identity.signedIn ||
+      !actor.active
+    )
+      return;
+    detailRead.retire();
+    const request = commands.begin();
+    if (!request) return;
     setCorrection('pending');
     const recoveryIsCurrent = captureActorRecovery();
     let confirmedOutcome: 'corrected' | 'unchanged' | undefined;
@@ -1000,7 +1058,7 @@ function DocumentSession({
           }).catch(() => undefined);
           return;
         }
-        await identity.rejectSession();
+        if (recoveryIsCurrent()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -1066,6 +1124,8 @@ function DocumentSession({
             : 'unchanged-refresh-failed',
         );
       }
+    } finally {
+      request.release();
     }
   }
   function publishRegistration({
@@ -1132,9 +1192,17 @@ function DocumentSession({
         ? retry.current
         : { payload, key: crypto.randomUUID() };
     retry.current = command;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
+    if (
+      !commands.isLive() ||
+      commands.isPending() ||
+      !identity.loaded ||
+      !identity.signedIn ||
+      !actor.active
+    )
+      return;
+    detailRead.retire();
+    const request = commands.begin();
+    if (!request) return;
     const startedUnderRevision = identityRevision.current;
     const submittedFrom = activeFilter.current;
     setMutation('pending');
@@ -1175,7 +1243,7 @@ function DocumentSession({
           }).catch(() => undefined);
           return;
         }
-        await identity.rejectSession();
+        if (recoveryIsCurrent()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden') {
@@ -1207,6 +1275,7 @@ function DocumentSession({
     } catch {
       if (!request.signal.aborted) setMutation('error');
     } finally {
+      request.release();
       settleRegistration();
     }
   }

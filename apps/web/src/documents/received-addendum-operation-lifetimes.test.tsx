@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
+import { Suspense, startTransition } from 'react';
 import type { ActorContext } from '../access-types';
 import { completeActor } from '../access/current-actor.test-fixture';
 import { withCompanyGrants } from '../access/company-grants.test-fixture';
@@ -363,6 +364,63 @@ it('keeps confirmation and offers only a read retry after a confirmed upload ref
   fireEvent.click(retry);
   await screen.findByText('kept.pdf', { exact: true });
   expect(fixture.writes).toHaveLength(2);
+});
+
+it('keeps the committed Document recovery live while a replacement Actor render suspends', async () => {
+  const reply = deferred<Response>();
+  const fixture = serve({
+    upload: () => new Response(null, { status: 403 }),
+    actorReply: reply.promise,
+  });
+  const identity = deterministicBrowserIdentity();
+  const onActorRevalidated = vi.fn();
+  const never = new Promise<never>(() => undefined);
+  function CommitGate({ suspend }: { suspend: boolean }) {
+    if (suspend) throw never;
+    return null;
+  }
+  function view(currentActor: ActorContext, suspend: boolean) {
+    return (
+      <Suspense fallback={<p>Replacement pending</p>}>
+        <DocumentWorkspace
+          actor={currentActor}
+          identity={identity}
+          onActorRevalidated={onActorRevalidated}
+        />
+        <CommitGate suspend={suspend} />
+      </Suspense>
+    );
+  }
+  const committed = actor();
+  const rendered = render(view(committed, false));
+  await open();
+  await chooseFile();
+  fireEvent.click(screen.getByRole('button', { name: 'Preserve PDF' }));
+  await waitFor(() => expect(fixture.state.actorReads).toBe(1));
+  act(() => {
+    startTransition(() => {
+      rendered.rerender(
+        view(
+          actor(replacing('company_document_approver', 'speculative')),
+          true,
+        ),
+      );
+    });
+  });
+  expect(screen.queryByText('Replacement pending')).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: 'Fictional Addendum' }),
+  ).toBeVisible();
+  await act(async () => {
+    reply.resolve(Response.json(committed));
+    await reply.promise;
+  });
+  expect(onActorRevalidated).toHaveBeenCalledTimes(1);
+  expect(onActorRevalidated).toHaveBeenCalledWith(
+    expect.objectContaining({
+      workspaceMembershipId: committed.workspaceMembershipId,
+    }),
+  );
 });
 
 it('does not install a held full Actor recovery after an unrelated Approver update', async () => {

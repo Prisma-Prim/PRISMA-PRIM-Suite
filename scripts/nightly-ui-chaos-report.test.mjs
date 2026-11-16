@@ -101,6 +101,27 @@ const passingAccess = summary('access-action-sequences', [
   },
 ]);
 
+const passingDocuments = summary('document-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1427001,
+    sequences: ['document-version', 'document-pdf'].flatMap((caseId) =>
+      ['desktop', 'narrow'].map((width) => ({
+        caseId,
+        width,
+        seed: 1427001,
+        steps: 10,
+        status: 'passed',
+        runs: 2,
+        shrinks: 0,
+        durationMilliseconds: 1000,
+        path: null,
+        coverage: { 'retry-exact-command-with-double-admission': 1 },
+      })),
+    ),
+  },
+]);
+
 function workflowRun({
   id = 501,
   attempt = 1,
@@ -140,6 +161,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (document-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
   { name: 'report', conclusion: null, started_at: null, completed_at: null },
 ];
 const summaries = () =>
@@ -156,6 +183,10 @@ const summaries = () =>
     [
       'access-action-sequences',
       parseChaosSummary(JSON.stringify(passingAccess)),
+    ],
+    [
+      'document-action-sequences',
+      parseChaosSummary(JSON.stringify(passingDocuments)),
     ],
   ]);
 
@@ -269,6 +300,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-access-action-sequences',
       JSON.stringify(passingAccess),
     ],
+    [
+      'nightly-ui-chaos-summary-document-action-sequences',
+      JSON.stringify(passingDocuments),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -299,6 +334,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['multi-company-home', 'failure', 12, 2, 1, false],
       ['financial-action-sequences', 'success', 4, 1, 1, false],
       ['access-action-sequences', 'success', 4, 1, 1, false],
+      ['document-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -385,7 +421,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary).',
     ),
   );
 
@@ -629,11 +665,19 @@ test('the financial-only repetition week remains bounded within one GitHub comme
           startedAt: `2026-11-${String(9 + day).padStart(2, '0')}T02:20:00Z`,
         }),
         jobs: jobs.filter(
-          (job) => job.name !== 'chaos (access-action-sequences)',
+          (job) =>
+            ![
+              'chaos (access-action-sequences)',
+              'chaos (document-action-sequences)',
+            ].includes(job.name),
         ),
         summaries: new Map([
           ...[...summaries()].filter(
-            ([journey]) => journey !== 'access-action-sequences',
+            ([journey]) =>
+              ![
+                'access-action-sequences',
+                'document-action-sequences',
+              ].includes(journey),
           ),
           [
             'financial-action-sequences',
@@ -721,7 +765,7 @@ test('a larger multi-family week keeps every actual case in bounded linked comme
   }
   assert.ok(
     comments.length > 1,
-    'The measured four-family week needs a continuation.',
+    'The measured five-family week needs a continuation.',
   );
   const retained = comments.flatMap(
     (comment) => nightsInComment(comment.body, '2026-11-09') ?? [],
@@ -744,6 +788,21 @@ test('a larger multi-family week keeps every actual case in bounded linked comme
         'company-context@narrow',
         'workspace-access@desktop',
         'workspace-access@narrow',
+      ],
+    );
+    const documents = night.journeys.find(
+      (journey) => journey.journey === 'document-action-sequences',
+    );
+    assert.ok(documents);
+    assert.deepEqual(
+      documents.sequences
+        .map((sequence) => sequence.caseId + '@' + sequence.width)
+        .sort(),
+      [
+        'document-pdf@desktop',
+        'document-pdf@narrow',
+        'document-version@desktop',
+        'document-version@narrow',
       ],
     );
   }

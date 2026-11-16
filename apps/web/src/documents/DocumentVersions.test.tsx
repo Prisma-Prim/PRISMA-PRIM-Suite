@@ -13,6 +13,7 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { DocumentWorkspace } from './DocumentWorkspace';
+import { DocumentVersions } from './DocumentVersions';
 import {
   documentGrants,
   type DocumentPermission,
@@ -248,11 +249,18 @@ function serve(initial: {
   return { state, requests };
 }
 function deferred<T>() {
-  let resolve!: (value: T) => void;
+  let resolve: ((value: T) => void) | undefined;
   const promise = new Promise<T>((resolver) => {
     resolve = resolver;
   });
-  return { promise, resolve };
+  return {
+    promise,
+    resolve(value: T) {
+      if (!resolve)
+        throw new Error('Expected an initialized deferred response');
+      resolve(value);
+    },
+  };
 }
 async function openDocument() {
   fireEvent.click(await screen.findByRole('button', { name: TITLE }));
@@ -770,6 +778,80 @@ describe('the Document Versions section', () => {
     await waitFor(() =>
       expect(onActorRevalidated).toHaveBeenCalledWith(revalidated),
     );
+  });
+
+  it('admits the next enabled Version command while a confirmed command refresh remains pending', async () => {
+    const refresh = deferred<void>();
+    const { state, requests } = serve({
+      detail: documentAt(
+        1,
+        { id: 'version-1', status: 'draft', url: V1_URL },
+        'allowed',
+      ),
+      versions: versionsRead(1, [draft(1, V1_URL)]),
+      designate: () => {
+        state.versions = versionsRead(2, [official(1, V1_URL)]);
+        return Response.json({
+          documentId: 'document',
+          action: 'designated_official',
+          workingRevision: 2,
+          versionId: 'version-1',
+          versionNumber: 1,
+          supersededVersionNumber: null,
+        });
+      },
+      draftCommand: () => {
+        state.versions = versionsRead(3, [
+          draft(2, V1_URL),
+          official(1, V1_URL),
+        ]);
+        return Response.json(
+          {
+            documentId: 'document',
+            action: 'drafted',
+            workingRevision: 3,
+            versionId: 'version-2',
+            versionNumber: 2,
+            sourceVersionNumber: 1,
+          },
+          { status: 201 },
+        );
+      },
+    });
+    render(
+      <DocumentVersions
+        actor={actorWith([
+          ...REGISTRAR_V3,
+          'document.version.designate_official',
+        ])}
+        identity={identity}
+        documentId="document"
+        workingRevision={1}
+        onRefresh={() => refresh.promise}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Designate as official' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm official designation' }),
+    );
+    await screen.findByText('Version 1 is now official.');
+    const start = await screen.findByRole('button', {
+      name: 'Start new draft',
+    });
+    expect(start).toBeEnabled();
+    fireEvent.click(start);
+    await waitFor(() =>
+      expect(
+        requests.filter((request) => request.method === 'POST'),
+      ).toHaveLength(2),
+    );
+    await act(async () => {
+      refresh.resolve();
+      await refresh.promise;
+    });
+    await screen.findByRole('heading', { name: 'Version 2' });
   });
 
   it('never rebases an open correction draft on a detail refreshed by a Version command', async () => {

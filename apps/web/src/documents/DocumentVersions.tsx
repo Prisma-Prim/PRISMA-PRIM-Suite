@@ -1,21 +1,10 @@
-import { receivedAuditSourceNativeAuthority } from './received-audit-source-access';
 import {
-  receivedAddendumNativeAuthority,
-  type ReceivedAddendumNativeAuthority,
-} from './received-addendum-access';
+  documentNativeAuthority,
+  type DocumentNativeAuthority,
+} from './document-native-authority';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
-import { grantOf, holds } from '../access/company-grants';
-import { holdsClientRead } from './document-grants';
 import { PaymentEvidenceVersions } from '../payment-evidence/PaymentEvidenceVersions';
 import type { PaymentEvidenceOperationKeys } from '../payment-evidence/payment-evidence-authority';
-import {
-  hasExternalInvoiceAccess,
-  hasExternalInvoiceNativeRead,
-} from './external-invoice-access';
-import {
-  documentFamilyCaptureKey,
-  hasDocumentFamilyAccess,
-} from './document-family-access';
 import {
   familyScreen,
   isWorkspaceFamily,
@@ -27,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -34,6 +24,11 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import {
   handleAuthenticatedAccessRejection,
@@ -58,7 +53,7 @@ import './document-versions.css';
 type ReadState =
   | { status: 'loading' | 'error' | 'unavailable' }
   | {
-      status: 'ready';
+      status: 'ready' | 'refreshing';
       read: VersionsRead;
       current: () => boolean;
       refreshFailed: boolean;
@@ -121,9 +116,8 @@ interface AccessRejection {
 /**
  * The formal Versions of one open working Document: each Version's status,
  * attribution and references, with the designation and new-draft commands the
- * live permissions allow. Received Addendum operations retire only with their
- * consumed native authority; its metadata owner survives unrelated grant
- * replacement. Other families retain their existing shared section lifetime.
+ * live permissions allow. Each operation retires with its consumed authority;
+ * independent metadata and immutable content work survive unrelated grants.
  */
 export function DocumentVersions({
   actor,
@@ -180,116 +174,21 @@ export function DocumentVersions({
     );
   }
   const company = actor.activeCompany;
-  const canRead = holds(company, 'company_document_registrar', 'document.read');
-  const canReadReference = holds(
-    company,
-    'company_document_registrar',
-    'document.reference.read',
-  );
-  const canManageVersions = holds(
-    company,
-    'company_document_registrar',
-    'document.version.manage',
-  );
-  const canDesignateOfficial = holds(
-    company,
-    'company_document_approver',
-    'document.version.designate_official',
-  );
-  const holdsContentRead = holds(
-    company,
-    'company_document_content_reader',
-    'document.content.read',
-  );
-  const holdsContentUpload = holds(
-    company,
-    'company_document_content_uploader',
-    'document.content.upload',
-  );
-  const receivedAddendum =
-    documentType === 'received-addendum'
-      ? receivedAddendumNativeAuthority(actor)
-      : documentType === 'received-audit-source'
-        ? receivedAuditSourceNativeAuthority(actor)
-        : undefined;
-  if (
-    (documentType === 'received-addendum' ||
-      documentType === 'received-audit-source') &&
-    (!receivedAddendum || !identity.loaded || !identity.signedIn)
-  )
+  const authority = documentNativeAuthority(actor, documentType);
+  if (!company || !authority || !identity.loaded || !identity.signedIn)
     return null;
-  if (
-    !company ||
-    !canRead ||
-    !hasDocumentFamilyAccess(company, documentType) ||
-    (familyScreen(documentType).financial &&
-      !hasExternalInvoiceNativeRead(
-        company,
-        actor.workspacePermissions.includes('client.manage'),
-      ))
-  )
-    return null;
-  const registrar = grantOf(company, 'company_document_registrar');
-  const approver = grantOf(company, 'company_document_approver');
-  const reader = grantOf(company, 'company_document_content_reader');
-  const uploader = grantOf(company, 'company_document_content_uploader');
-  const canMutateFamily =
-    !familyScreen(documentType).financial ||
-    hasExternalInvoiceAccess(company, true);
   return (
     <VersionsSection
-      key={
-        receivedAddendum
-          ? JSON.stringify([receivedAddendum.metadata, documentId])
-          : JSON.stringify([
-              actor.workspaceId,
-              actor.workspaceMembershipId,
-              company.id,
-              documentId,
-              documentType,
-              documentFamilyCaptureKey(company, documentType),
-              [
-                canRead,
-                canReadReference,
-                canManageVersions,
-                canDesignateOfficial,
-                holdsContentRead,
-                holdsContentUpload,
-              ],
-              registrar?.permissionSetVersion ?? null,
-              approver?.assignmentId ?? null,
-              reader?.assignmentId ?? null,
-              reader?.permissionSetVersion ?? null,
-              uploader?.assignmentId ?? null,
-              uploader?.permissionSetVersion ?? null,
-              holdsClientRead(company),
-              actor.workspacePermissions.includes('client.manage'),
-            ])
-      }
+      key={JSON.stringify([authority.metadata, documentId])}
       identity={identity}
       companyId={company.id}
       documentId={documentId}
       documentType={documentType}
       workingRevision={workingRevision}
-      receivedAddendum={receivedAddendum}
-      canDesignate={
-        receivedAddendum
-          ? receivedAddendum.designation !== null
-          : canMutateFamily && canReadReference && canDesignateOfficial
-      }
-      canStartDraft={
-        receivedAddendum
-          ? receivedAddendum.successor !== null
-          : canMutateFamily && canReadReference && canManageVersions
-      }
-      canUploadContent={
-        receivedAddendum
-          ? receivedAddendum.upload !== null
-          : canMutateFamily &&
-            holdsContentRead &&
-            holdsContentUpload &&
-            canManageVersions
-      }
+      authority={authority}
+      canDesignate={authority.designation !== null}
+      canStartDraft={authority.successor !== null}
+      canUploadContent={authority.upload !== null}
       onRefresh={onRefresh}
       onProtectedWorkChange={onProtectedWorkChange}
       rejection={{
@@ -307,7 +206,7 @@ function VersionsSection({
   documentId,
   documentType,
   workingRevision,
-  receivedAddendum,
+  authority,
   canDesignate,
   canStartDraft,
   canUploadContent,
@@ -320,7 +219,7 @@ function VersionsSection({
   documentId: string;
   documentType: DocumentFamily;
   workingRevision: number;
-  receivedAddendum?: ReceivedAddendumNativeAuthority;
+  authority: DocumentNativeAuthority;
   canDesignate: boolean;
   canStartDraft: boolean;
   canUploadContent: boolean;
@@ -329,6 +228,9 @@ function VersionsSection({
   rejection: AccessRejection;
 }) {
   const copy = useDocumentVersionsCopy();
+  const preserveProjection =
+    documentType === 'received-addendum' ||
+    documentType === 'received-audit-source';
   const titleId = useId();
   const confirmationId = useId();
   const [readState, setRead] = useState<ReadState>({ status: 'loading' });
@@ -358,78 +260,80 @@ function VersionsSection({
     },
     [],
   );
-  /** Versions reads only; a command is never aborted here. */
-  const readRequest = useRef<AbortController | undefined>(undefined);
-  /** Late command outcomes of a retired section never render. */
-  const mounted = useRef(true);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      companyId,
+      documentId,
+      authority.metadata,
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
+  const reads = useScopedOperation(
+    JSON.stringify([
+      lifetime,
+      authority.versions,
+      preserveProjection ? null : authority.designation,
+    ]),
+  );
+  const designations = useScopedOperationGroup(
+    JSON.stringify([lifetime, authority.designation]),
+  );
+  const successors = useScopedOperationGroup(
+    JSON.stringify([lifetime, authority.successor]),
+  );
   const refresh = useRef(onRefresh);
-  refresh.current = onRefresh;
   const reject = useRef(rejection);
-  reject.current = rejection;
+  useLayoutEffect(() => {
+    refresh.current = onRefresh;
+    reject.current = rejection;
+  });
   const confirmButton = useRef<HTMLButtonElement>(null);
-  const captureRead = useAuthorityLifetime(
-    receivedAddendum?.versions ?? 'absent',
-    identity,
-  );
-  const captureDesignation = useAuthorityLifetime(
-    receivedAddendum?.designation ?? 'denied',
-    identity,
-  );
-  const captureSuccessor = useAuthorityLifetime(
-    receivedAddendum?.successor ?? 'denied',
-    identity,
-  );
-  const captureRecovery = useAuthorityLifetime(
-    receivedAddendum?.recovery ?? 'absent',
-    identity,
-  );
-  const commandRequest = useRef<AbortController | undefined>(undefined);
+  const captureRead = useAuthorityLifetime(authority.versions, identity);
+  const captureRecovery = useAuthorityLifetime(authority.recovery, identity);
   const read =
-    readState.status === 'ready' && receivedAddendum && !readState.current()
+    (readState.status === 'ready' || readState.status === 'refreshing') &&
+    !readState.current()
       ? { status: 'loading' as const }
       : readState;
-  const command =
-    receivedAddendum && !ownedCommand.current()
-      ? { status: 'idle' as const }
-      : ownedCommand.state;
-  function setCommand(
-    state: CommandState,
-    current: () => boolean = () => mounted.current,
-  ) {
+  const command = !ownedCommand.current()
+    ? { status: 'idle' as const }
+    : ownedCommand.state;
+  function setCommand(state: CommandState, current = successors.capture()) {
     setOwnedCommand({ state, current });
   }
   function commandOwner(action: VersionCommand['action']) {
-    if (!receivedAddendum) return () => mounted.current;
     if (action === 'designated_official')
-      return receivedAddendum.designation ? captureDesignation() : () => false;
-    return receivedAddendum.successor ? captureSuccessor() : () => false;
+      return authority.designation ? designations.capture() : () => false;
+    return authority.successor ? successors.capture() : () => false;
   }
-  useEffect(() => {
-    if (receivedAddendum && !ownedCommand.current())
-      commandRequest.current?.abort();
-  }, [receivedAddendum, ownedCommand]);
 
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      commandRequest.current?.abort();
-    };
-  }, []);
+  function requireFreshProjection() {
+    setRead((previous) =>
+      (previous.status === 'ready' || previous.status === 'refreshing') &&
+      previous.current()
+        ? { ...previous, status: 'refreshing', refreshFailed: false }
+        : { status: 'loading' },
+    );
+  }
 
   const load = useCallback(async (): Promise<void> => {
-    const current = receivedAddendum ? captureRead() : () => mounted.current;
-    const recovery = receivedAddendum ? captureRecovery() : () => true;
+    const signal = reads.begin();
+    if (!signal) return;
+    const current = captureRead();
+    const recovery = captureRecovery();
     function failed() {
-      if (receivedAddendum && !current()) return;
+      if (!current()) return;
       setRead((previous) =>
-        receivedAddendum && previous.status === 'ready' && previous.current()
+        (previous.status === 'ready' || previous.status === 'refreshing') &&
+        previous.current()
           ? { ...previous, refreshFailed: true }
           : { status: 'error' },
       );
     }
     await runLatestAuthenticatedRequest({
-      pending: readRequest,
+      signal,
       identity,
       execute: (api, signal) =>
         api.request(`/documents/${encodeURIComponent(documentId)}/versions`, {
@@ -437,9 +341,9 @@ function VersionsSection({
           signal,
         }),
       async onResult(result) {
-        if (receivedAddendum && !current()) return;
+        if (!current()) return;
         if (result.status === 'unauthorized') {
-          if (receivedAddendum) failed();
+          failed();
           if (recovery()) await identity.rejectSession();
           return;
         }
@@ -452,7 +356,7 @@ function VersionsSection({
           return;
         }
         const parsed = readDocumentVersions(result.value, documentType);
-        if (receivedAddendum && !current()) return;
+        if (!current()) return;
         setRead({
           status: 'ready',
           read: parsed,
@@ -467,7 +371,8 @@ function VersionsSection({
     companyId,
     documentId,
     documentType,
-    receivedAddendum?.versions,
+    authority.versions,
+    reads,
     captureRead,
     captureRecovery,
   ]);
@@ -476,14 +381,11 @@ function VersionsSection({
   // loaded rows stay visible until the newer read answers.
   useEffect(() => {
     void load();
-    return () => readRequest.current?.abort();
-  }, [load, workingRevision, reloads]);
+    return reads.retire;
+  }, [load, workingRevision, reloads, reads]);
 
   useEffect(() => {
-    if (
-      command.status === 'confirming' &&
-      (!receivedAddendum || ownedCommand.current())
-    )
+    if (command.status === 'confirming' && ownedCommand.current())
       confirmButton.current?.focus();
   }, [command.status]);
 
@@ -491,17 +393,23 @@ function VersionsSection({
     next: VersionCommand,
     current = commandOwner(next.action),
   ): Promise<void> {
-    if (receivedAddendum && !current()) return;
-    const recovery = receivedAddendum ? captureRecovery() : () => true;
+    if (!current()) return;
+    const recovery = captureRecovery();
     const currentRecovery = () => current() && recovery();
-    const request = receivedAddendum ? new AbortController() : undefined;
-    if (request) commandRequest.current = request;
+    if (designations.isPending() || successors.isPending()) return;
+    const requests =
+      next.action === 'designated_official' ? designations : successors;
+    const request = requests.begin();
+    if (!request) return;
+    const intentionCurrent = current;
+    current = () => intentionCurrent() && !request.signal.aborted;
     setCommand({ status: 'pending', command: next }, current);
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (receivedAddendum && !current()) return;
+      if (!current()) return;
       const result = await api.request(next.path, {
-        ...(request ? { signal: request.signal } : {}),
+        // An already dispatched ordinary command retains its durable delivery policy.
+        ...(preserveProjection ? { signal: request.signal } : {}),
         method: 'POST',
         companyContextId: companyId,
         headers: {
@@ -510,13 +418,11 @@ function VersionsSection({
         },
         body: next.payload,
       });
-      if (!mounted.current || (receivedAddendum && !current())) return;
+      if (!current()) return;
       switch (result.status) {
         case 'unauthorized':
-          if (receivedAddendum)
-            setCommand({ status: 'refused', reason: 'denied' }, current);
-          if (!receivedAddendum || currentRecovery())
-            await identity.rejectSession();
+          setCommand({ status: 'refused', reason: 'denied' }, current);
+          if (currentRecovery()) await identity.rejectSession();
           return;
         case 'forbidden':
           setCommand({ status: 'refused', reason: 'denied' }, current);
@@ -527,19 +433,18 @@ function VersionsSection({
             result,
             identity,
             companyContextId: companyId,
-            ...(receivedAddendum
-              ? { signal: request?.signal, isCurrent: currentRecovery }
-              : {}),
+            signal: request.signal,
+            isCurrent: currentRecovery,
             onCompanyContextRejected: (rejected) => {
-              if (!receivedAddendum || currentRecovery())
+              if (currentRecovery())
                 return reject.current.onCompanyContextRejected(rejected);
             },
             onActorRevalidated: (actor) => {
-              if (!receivedAddendum || currentRecovery())
+              if (currentRecovery())
                 return reject.current.onActorRevalidated(actor);
             },
             onWorkspaceAccessRejected: () => {
-              if (!receivedAddendum || currentRecovery())
+              if (currentRecovery())
                 return reject.current.onWorkspaceAccessRejected();
             },
           }).catch(() => undefined);
@@ -574,7 +479,7 @@ function VersionsSection({
           return;
         case 'ok': {
           const receipt = readDocumentVersionReceipt(result.value);
-          if (receivedAddendum && !current()) return;
+          if (!current()) return;
           if (
             receipt.documentId !== documentId ||
             receipt.action !== next.action
@@ -591,6 +496,8 @@ function VersionsSection({
             current,
           );
           setReloads((count) => count + 1);
+          // The confirmed command is complete; its derived read owns its own lifetime.
+          request.release();
           // The owner reports its own refresh failure; the confirmed command
           // is never presented as uncertain.
           await Promise.resolve(refresh.current()).catch(() => undefined);
@@ -602,8 +509,10 @@ function VersionsSection({
         }
       }
     } catch {
-      if (mounted.current && (!receivedAddendum || current()))
+      if (current())
         setCommand({ status: 'uncertain', command: next }, current);
+    } finally {
+      request.release();
     }
   }
 
@@ -711,20 +620,27 @@ function VersionsSection({
     <section
       className="working-document-versions"
       aria-labelledby={titleId}
-      aria-busy={read.status === 'loading'}
+      aria-busy={
+        read.status === 'loading' ||
+        (read.status === 'refreshing' && !read.refreshFailed)
+      }
     >
       <h4 id={titleId}>{copy.title}</h4>
-      {read.status === 'loading' && <p>{copy.loading}</p>}
+      {(read.status === 'loading' ||
+        (read.status === 'refreshing' && !read.refreshFailed)) && (
+        <p>{copy.loading}</p>
+      )}
       {read.status === 'unavailable' && <p>{copy.unavailable}</p>}
       {(read.status === 'error' ||
-        (read.status === 'ready' && read.refreshFailed)) && (
+        ((read.status === 'ready' || read.status === 'refreshing') &&
+          read.refreshFailed)) && (
         <>
           <p role="alert">{copy.error}</p>
           <button
             type="button"
             onClick={() => {
-              if (!receivedAddendum || read.status !== 'ready')
-                setRead({ status: 'loading' });
+              if (!preserveProjection || read.status !== 'ready')
+                requireFreshProjection();
               setReloads((count) => count + 1);
             }}
           >
@@ -732,7 +648,7 @@ function VersionsSection({
           </button>
         </>
       )}
-      {read.status === 'ready' && (
+      {(read.status === 'ready' || read.status === 'refreshing') && (
         <>
           {!read.read.mutable && <p>{copy.readOnly}</p>}
           <ol className="working-document-versions-list" aria-label={copy.list}>
@@ -742,28 +658,29 @@ function VersionsSection({
                 version={version}
                 documentType={documentType}
                 mutable={read.read.mutable}
-                canManage={canStartDraft && documentType === 'questionnaire'}
+                canManage={
+                  read.status === 'ready' &&
+                  canStartDraft &&
+                  documentType === 'questionnaire'
+                }
                 busy={busy}
                 onAdd={addReference}
                 onRemove={removeReference}
               >
                 <DocumentPdfContent
                   identity={identity}
-                  receivedAddendumOwnership={
-                    receivedAddendum
-                      ? {
-                          readKey: receivedAddendum.content,
-                          uploadKey: receivedAddendum.upload,
-                          captureRecovery,
-                        }
-                      : undefined
-                  }
+                  ownership={{
+                    readKey: authority.content,
+                    uploadKey: authority.upload,
+                    captureRecovery,
+                  }}
                   companyId={companyId}
                   documentId={documentId}
                   versionId={version.id}
                   versionNumber={version.number}
                   content={version.pdfContent}
                   canUpload={
+                    read.status === 'ready' &&
                     canUploadContent &&
                     read.read.mutable &&
                     version.status === 'draft' &&
@@ -777,67 +694,59 @@ function VersionsSection({
                     })
                   }
                   onConfirmed={() => {
-                    if (!receivedAddendum) setRead({ status: 'loading' });
+                    if (!preserveProjection) requireFreshProjection();
                     setReloads((count) => count + 1);
                     void Promise.resolve()
                       .then(() => refresh.current())
                       .catch(() => undefined);
                   }}
                   onReload={() => {
-                    if (!receivedAddendum) setRead({ status: 'loading' });
+                    if (!preserveProjection) requireFreshProjection();
                     reload();
                   }}
                   onDenied={async (currentRecovery) => {
-                    await handleAuthenticatedAccessRejection({
-                      result: { status: 'forbidden' },
-                      identity,
-                      companyContextId: companyId,
-                      ...(receivedAddendum
-                        ? { isCurrent: currentRecovery }
-                        : {}),
-                      onCompanyContextRejected: (company) => {
-                        if (
-                          mounted.current &&
-                          (!receivedAddendum || currentRecovery?.())
-                        )
-                          return reject.current.onCompanyContextRejected(
-                            company,
-                          );
-                      },
-                      onActorRevalidated: (actor) => {
-                        if (
-                          mounted.current &&
-                          (!receivedAddendum || currentRecovery?.())
-                        )
+                    const currentRead = captureRead();
+                    let actorPublished = false;
+                    try {
+                      await handleAuthenticatedAccessRejection({
+                        result: { status: 'forbidden' },
+                        identity,
+                        companyContextId: companyId,
+                        isCurrent: currentRecovery,
+                        onCompanyContextRejected: (company) => {
+                          if (currentRecovery())
+                            return reject.current.onCompanyContextRejected(
+                              company,
+                            );
+                        },
+                        onActorRevalidated: (actor) => {
+                          if (!currentRecovery()) return;
+                          actorPublished = true;
                           return reject.current.onActorRevalidated(actor);
-                      },
-                      onWorkspaceAccessRejected: () => {
-                        if (
-                          mounted.current &&
-                          (!receivedAddendum || currentRecovery?.())
-                        )
-                          return reject.current.onWorkspaceAccessRejected();
-                      },
-                    });
-                    if (
-                      mounted.current &&
-                      (!receivedAddendum || currentRecovery?.())
-                    )
-                      setReloads((count) => count + 1);
+                        },
+                        onWorkspaceAccessRejected: () => {
+                          if (currentRecovery())
+                            return reject.current.onWorkspaceAccessRejected();
+                        },
+                      });
+                    } finally {
+                      if (
+                        currentRead() &&
+                        (actorPublished || currentRecovery())
+                      )
+                        setReloads((count) => count + 1);
+                    }
                   }}
                 />
-                {read.read.mutable &&
+                {read.status === 'ready' &&
+                  read.read.mutable &&
                   canDesignate &&
                   version.status === 'draft' &&
                   (documentType === 'questionnaire' ||
                     version.pdfContent.state === 'stored') && (
                     <button
                       type="button"
-                      disabled={
-                        busy ||
-                        (receivedAddendum !== undefined &&
-                          protectedPdfVersions.size > 0)
-                      }
+                      disabled={busy || protectedPdfVersions.size > 0}
                       onClick={() =>
                         setCommand(
                           {
@@ -858,7 +767,8 @@ function VersionsSection({
                       {copy.designate}
                     </button>
                   )}
-                {read.read.mutable &&
+                {read.status === 'ready' &&
+                  read.read.mutable &&
                   canStartDraft &&
                   version.status === 'official' &&
                   !read.read.versions.some(
@@ -866,11 +776,7 @@ function VersionsSection({
                   ) && (
                     <button
                       type="button"
-                      disabled={
-                        busy ||
-                        (receivedAddendum !== undefined &&
-                          protectedPdfVersions.size > 0)
-                      }
+                      disabled={busy || protectedPdfVersions.size > 0}
                       onClick={() => startDraft(read.read.workingRevision)}
                     >
                       {copy.startDraft}

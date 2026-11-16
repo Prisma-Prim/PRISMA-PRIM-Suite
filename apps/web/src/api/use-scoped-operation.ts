@@ -13,9 +13,13 @@ export type ScopedOperation = {
 export type ScopedOperationGroup = {
   /** Independent members do not supersede each other. */
   begin: () => PendingOperation | null;
+  /** Supersede this group's previous latest member, retaining completion. */
+  beginLatest: () => PendingOperation | null;
   retire: () => void;
   isLive: () => boolean;
   isPending: () => boolean;
+  /** Capture the exact committed owner's lifetime, including setup replay. */
+  capture: () => () => boolean;
 };
 
 /** One imperative lifetime owns admission, completion and cancellation. */
@@ -114,13 +118,28 @@ export function useScopedOperationGroup(scope: string): ScopedOperationGroup {
     [capture],
   );
   const retire = useCallback(() => capture()?.operations.retire(), [capture]);
+  const beginLatest = useCallback(
+    () => capture()?.operations.beginLatest() ?? null,
+    [capture],
+  );
   const isLive = useCallback(() => capture() !== null, [capture]);
   const isPending = useCallback(
     () => capture()?.operations.isPending() ?? false,
     [capture],
   );
+  const captureLifetime = useCallback(
+    () => capture()?.operations.isLive ?? (() => false),
+    [capture],
+  );
   return useMemo(
-    () => ({ begin, retire, isLive, isPending }),
-    [begin, retire, isLive, isPending],
+    () => ({
+      begin,
+      beginLatest,
+      retire,
+      isLive,
+      isPending,
+      capture: captureLifetime,
+    }),
+    [begin, beginLatest, retire, isLive, isPending, captureLifetime],
   );
 }

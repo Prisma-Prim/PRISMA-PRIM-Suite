@@ -299,6 +299,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
   assert.deepEqual(await listChaosJourneys(root), [
     'access-action-sequences',
     'certification-journey',
+    'document-action-sequences',
     'financial-action-sequences',
     'multi-company-home',
   ]);
@@ -719,7 +720,7 @@ test('command line: chaos on a journey without the chaos fixture is a usage erro
   assert.match(child.stderr, /"ideas" has not opted into UI chaos/u);
   assert.match(
     child.stderr,
-    /certification-journey, financial-action-sequences, multi-company-home/u,
+    /certification-journey, document-action-sequences, financial-action-sequences, multi-company-home/u,
   );
   assert.equal(child.final.status, 'usage-error');
 });
@@ -937,4 +938,85 @@ test('an exact generated replay runs only its selected test and screen', () => {
       'retains one native Payment outcome through lost reply',
     ),
   );
+});
+
+test('Document proof requires both native cases and screens independently of Access and financial evidence', async (t) => {
+  const reports = ['document-version', 'document-pdf'].flatMap((caseId) =>
+    ['desktop', 'narrow'].map((width) => ({
+      schema: 'prisma-prim-browser-sequences/v1',
+      caseId,
+      journey: 'document-action-sequences',
+      width,
+      seed: 1427001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1200,
+      path: null,
+      coverage: { 'retry-exact-command-with-double-admission': 1 },
+    })),
+  );
+  const run = (sequenceReports) =>
+    runFixture(t, {
+      journey: 'document-action-sequences',
+      outcomes: {
+        runs: [
+          {
+            exitCode: 0,
+            report: playwrightReport({ expected: 6 }),
+            sequenceReports,
+          },
+        ],
+      },
+    });
+  const complete = await run(reports);
+  assert.equal(complete.summary.status, 'passed');
+  assert.deepEqual(
+    complete.summary.runs[0].sequences
+      .map((entry) => entry.caseId + '@' + entry.width)
+      .sort(),
+    [
+      'document-pdf@desktop',
+      'document-pdf@narrow',
+      'document-version@desktop',
+      'document-version@narrow',
+    ],
+  );
+  for (const missing of [
+    reports.slice(0, 1),
+    reports.filter((entry) => entry.width === 'desktop'),
+    reports.filter((entry) => entry.caseId === 'document-version'),
+  ]) {
+    const partial = await run(missing);
+    assert.equal(partial.summary.status, 'error');
+    assert.match(partial.summary.message, /Missing generated browser proof/u);
+  }
+  for (const [caseId, journey] of [
+    ['workspace-access', 'access-action-sequences'],
+    ['payment-observation', 'financial-action-sequences'],
+  ]) {
+    const unrelated = await run(
+      reports.map((entry) => ({ ...entry, caseId, journey })),
+    );
+    assert.equal(unrelated.summary.status, 'error');
+  }
+  const replay = await runFixture(t, {
+    journey: 'document-action-sequences',
+    sequenceSelection: { caseId: 'document-pdf', width: 'narrow', path: '0:1' },
+    outcomes: {
+      runs: [
+        {
+          exitCode: 0,
+          report: playwrightReport({ expected: 1 }),
+          sequenceReports: reports.filter(
+            (entry) =>
+              entry.caseId === 'document-pdf' && entry.width === 'narrow',
+          ),
+        },
+      ],
+    },
+  });
+  assert.equal(replay.summary.status, 'passed');
+  assert.equal(replay.summary.runs[0].sequences.length, 1);
 });

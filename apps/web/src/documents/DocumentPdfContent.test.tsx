@@ -1,4 +1,7 @@
 import { grantOf } from '../access/company-grants';
+import { Blob as NodeBlob } from 'node:buffer';
+import { webcrypto } from 'node:crypto';
+import { useState } from 'react';
 import {
   act,
   fireEvent,
@@ -9,10 +12,16 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { InterfaceLocaleProvider } from '../localization/interface-locale';
-import { deterministicBrowserIdentity } from '../access-composition';
+import {
+  deterministicBrowserIdentity,
+  type BrowserIdentity,
+} from '../access-composition';
 import { DocumentVersions } from './DocumentVersions';
 import { documentGrants } from './document-grants.test-fixture';
-import { withCompanyGrants } from '../access/company-grants.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -119,10 +128,360 @@ function versionRead(stored: boolean, size: number, revision = stored ? 2 : 1) {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   localStorage.clear();
 });
 describe('Stored questionnaire PDF through Document Versions', () => {
+  it('finishes an immutable download and retains its confirmed upload while the fresh Versions read fails', async () => {
+    const bytes = new TextEncoder().encode('%PDF-1.4\nDEMO\n%%EOF\n');
+    const replacement = new File(
+      ['%PDF-1.4\nDEMO B\n%%EOF\n'],
+      'replacement.pdf',
+      {
+        type: 'application/pdf',
+      },
+    );
+    vi.stubGlobal('Blob', NodeBlob);
+    vi.stubGlobal('crypto', webcrypto);
+    const originalURL = URL;
+    const created = vi.fn(() => 'blob:original');
+    vi.stubGlobal(
+      'URL',
+      class extends originalURL {
+        static createObjectURL = created;
+        static revokeObjectURL = vi.fn();
+      },
+    );
+    const downloaded: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      downloaded.push(this.download);
+    });
+    const pending: { complete?: (value: Response) => void } = {};
+    const original = new Promise<Response>((resolve) => {
+      pending.complete = resolve;
+    });
+    let downloadStarted = false;
+    let reads = 0;
+    let writes = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, request?: RequestInit) => {
+        const path = String(input);
+        if (path === '/api/documents/document/versions') {
+          reads += 1;
+          if (reads > 1) return new Response(null, { status: 503 });
+          const read = versionRead(true, bytes.length);
+          return Response.json({
+            ...read,
+            versions: read.versions.map((version) => ({
+              ...version,
+              pdfContent: {
+                ...version.pdfContent,
+                sha256:
+                  'c7f9f3b4275952b9ffc96ecdc4966176f09c2fe7e150ff32e8b9f2fc69e8644f',
+              },
+            })),
+          });
+        }
+        if (path.endsWith('/content/pdf')) {
+          downloadStarted = true;
+          return original;
+        }
+        if (path.includes('/content?') && request?.method === 'POST') {
+          writes += 1;
+          return Response.json(
+            {
+              action: 'representation_added',
+              documentId: 'document',
+              versionId: 'version',
+              versionNumber: 1,
+              workingRevision: 3,
+              representationId: 'replacement',
+              appendedAfterDesignation: false,
+            },
+            { status: 201 },
+          );
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    render(
+      <InterfaceLocaleProvider>
+        <DocumentVersions
+          actor={actor}
+          identity={deterministicBrowserIdentity()}
+          documentId="document"
+          workingRevision={2}
+          onRefresh={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Descarcă PDF-ul Versiunii 1',
+      }),
+    );
+    await waitFor(() => expect(downloadStarted).toBe(true));
+    fireEvent.change(screen.getByLabelText('Alege fișierul PDF'), {
+      target: { files: [replacement] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Păstrează PDF-ul' }));
+    await screen.findByRole('alert');
+    await act(async () => {
+      if (!pending.complete)
+        throw new Error('Expected the held original PDF response');
+      pending.complete(
+        new Response(bytes, {
+          headers: {
+            'content-type': 'application/pdf',
+            'content-length': String(bytes.length),
+          },
+        }),
+      );
+      await original;
+    });
+    await waitFor(() => expect(downloaded).toEqual(['questionnaire.pdf']));
+    expect(created).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('PDF-ul a fost păstrat.')).toBeVisible();
+    expect(
+      screen.queryByLabelText('Alege fișierul PDF'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Reîncearcă același PDF' }),
+    ).not.toBeInTheDocument();
+    expect(writes).toBe(1);
+  });
+  it('keeps the Reader available after a refused upload revalidates the loss of Uploader only', async () => {
+    const company = actor.activeCompany;
+    if (!company) throw new Error('Expected the PDF Company');
+    const replacement: ActorContext = {
+      ...actor,
+      activeCompany: {
+        ...company,
+        grants: withoutCompanyGrants(
+          company.grants,
+          'company_document_content_uploader',
+        ),
+      },
+    };
+    const revalidated = vi.fn();
+    const file = new File(['%PDF-1.4\nDEMO\n%%EOF\n'], 'replacement.pdf', {
+      type: 'application/pdf',
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, request?: RequestInit) => {
+        const path = String(input);
+        if (path === '/api/documents/document/versions')
+          return Response.json(versionRead(true, file.size));
+        if (path.includes('/content?') && request?.method === 'POST')
+          return new Response(null, { status: 403 });
+        if (path.startsWith('/api/access/current-actor'))
+          return Response.json(replacement);
+        throw new Error(`Unexpected public PDF request: ${path}`);
+      }),
+    );
+    const identity = deterministicBrowserIdentity();
+    function CurrentDocument() {
+      const [current, setCurrent] = useState(actor);
+      return (
+        <InterfaceLocaleProvider>
+          <DocumentVersions
+            actor={current}
+            identity={identity}
+            documentId="document"
+            workingRevision={2}
+            onRefresh={() => undefined}
+            onActorRevalidated={(next) => {
+              revalidated(next);
+              setCurrent(next);
+            }}
+          />
+        </InterfaceLocaleProvider>
+      );
+    }
+    render(<CurrentDocument />);
+    fireEvent.change(await screen.findByLabelText('Alege fișierul PDF'), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Păstrează PDF-ul' }));
+    await waitFor(() => expect(revalidated).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByLabelText('Alege fișierul PDF'),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', {
+        name: 'Descarcă PDF-ul Versiunii 1',
+      }),
+    ).toBeEnabled();
+    expect(screen.getByText('questionnaire.pdf')).toBeVisible();
+  });
+  it('keeps an ordinary Reader download alive across an unrelated Uploader replacement', async () => {
+    const bytes = new TextEncoder().encode('%PDF-1.4\nDEMO\n%%EOF\n');
+    vi.stubGlobal('Blob', NodeBlob);
+    vi.stubGlobal('crypto', webcrypto);
+    const originalURL = URL;
+    const created = vi.fn(() => 'blob:questionnaire');
+    const revoked = vi.fn();
+    vi.stubGlobal(
+      'URL',
+      class extends originalURL {
+        static createObjectURL = created;
+        static revokeObjectURL = revoked;
+      },
+    );
+    const clicked = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const pending: { complete?: (value: Response) => void } = {};
+    const response = new Promise<Response>((resolve) => {
+      pending.complete = resolve;
+    });
+    let downloadStarted = false;
+    let versionReads = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = String(input);
+        if (path === '/api/documents/document/versions') {
+          versionReads += 1;
+          const read = versionRead(true, bytes.length);
+          return Response.json({
+            ...read,
+            versions: read.versions.map((version) => ({
+              ...version,
+              pdfContent: {
+                ...version.pdfContent,
+                sha256:
+                  'c7f9f3b4275952b9ffc96ecdc4966176f09c2fe7e150ff32e8b9f2fc69e8644f',
+              },
+            })),
+          });
+        }
+        if (path.endsWith('/content/pdf')) {
+          downloadStarted = true;
+          return response;
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    const identity = deterministicBrowserIdentity();
+    function view(currentActor: ActorContext) {
+      return (
+        <InterfaceLocaleProvider>
+          <DocumentVersions
+            actor={currentActor}
+            identity={identity}
+            documentId="document"
+            workingRevision={2}
+            onRefresh={() => undefined}
+          />
+        </InterfaceLocaleProvider>
+      );
+    }
+    const rendered = render(view(actor));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Descarcă PDF-ul Versiunii 1',
+      }),
+    );
+    await waitFor(() => expect(downloadStarted).toBe(true));
+    const company = actor.activeCompany;
+    if (!company) throw new Error('Expected test Company');
+    rendered.rerender(
+      view({
+        ...actor,
+        activeCompany: {
+          ...company,
+          grants: withCompanyGrants(company.grants, {
+            bundle: 'company_document_content_uploader',
+            version: 'v1',
+            assignmentId: 'new-uploader',
+          }),
+        },
+      }),
+    );
+    await act(async () => {
+      pending.complete?.(
+        new Response(bytes, {
+          headers: {
+            'content-type': 'application/pdf',
+            'content-length': String(bytes.length),
+          },
+        }),
+      );
+      await response;
+    });
+    await waitFor(() => expect(clicked).toHaveBeenCalledTimes(1));
+    expect(created).toHaveBeenCalledTimes(1);
+    expect(revoked).toHaveBeenCalledWith('blob:questionnaire');
+    expect(versionReads).toBe(1);
+  });
+  it('retires an ordinary PDF upload before dispatch when its identity changes during token lookup', async () => {
+    const file = new File(['%PDF-1.4\nDEMO\n%%EOF\n'], 'questionnaire.pdf', {
+      type: 'application/pdf',
+    });
+    const token: { resolve?: (value: string) => void } = {};
+    const waiting = new Promise<string>((resolve) => {
+      token.resolve = resolve;
+    });
+    let tokenRequests = 0;
+    const firstIdentity = {
+      ...deterministicBrowserIdentity(),
+      getToken: () => {
+        tokenRequests += 1;
+        return tokenRequests === 2 ? waiting : Promise.resolve('first');
+      },
+    };
+    const replacementIdentity = deterministicBrowserIdentity();
+    const writes: string[] = [];
+    const onRefresh = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, request?: RequestInit) => {
+        const path = String(input);
+        if (path === '/api/documents/document/versions')
+          return Response.json(versionRead(false, file.size));
+        if (path.includes('/content?') && request?.method === 'POST') {
+          writes.push(path);
+          return new Response(null, { status: 503 });
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    function view(identity: BrowserIdentity) {
+      return (
+        <InterfaceLocaleProvider>
+          <DocumentVersions
+            actor={actor}
+            identity={identity}
+            documentId="document"
+            workingRevision={1}
+            onRefresh={onRefresh}
+          />
+        </InterfaceLocaleProvider>
+      );
+    }
+    const rendered = render(view(firstIdentity));
+    fireEvent.change(await screen.findByLabelText('Alege fișierul PDF'), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Păstrează PDF-ul' }));
+    await waitFor(() => expect(tokenRequests).toBe(2));
+    rendered.rerender(view(replacementIdentity));
+    await act(async () => {
+      token.resolve?.('retired-identity-token');
+      await waiting;
+    });
+    expect(writes).toEqual([]);
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Păstrează PDF-ul' }),
+    ).toBeDisabled();
+  });
   it('offers Romanian upload and reopens the preserved file after a confirmed upload', async () => {
     const file = new File(['%PDF-1.4\nDEMO\n%%EOF\n'], 'questionnaire.pdf', {
       type: 'application/pdf',

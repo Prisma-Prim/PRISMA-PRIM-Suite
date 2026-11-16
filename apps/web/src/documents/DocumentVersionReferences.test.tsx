@@ -281,7 +281,10 @@ describe('typed Document Version references', () => {
       name: 'Remove',
     });
     expect(remove).toHaveLength(2);
-    fireEvent.click(remove[0]!);
+    const firstRemoval = remove[0];
+    if (!firstRemoval)
+      throw new Error('Expected the draft reference removal control');
+    fireEvent.click(firstRemoval);
     await screen.findByText('A draft reference was removed from Version 2.');
     expect(writes).toEqual([
       {
