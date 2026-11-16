@@ -215,3 +215,36 @@ test('refuses empty successful generated proof and malformed coverage or replay 
     'interrupted',
   );
 });
+
+test('validates each native Contract replay against its own journey', () => {
+  for (const width of ['desktop', 'narrow']) {
+    const selection = `contract-signing@${width}~6~0:2`;
+    const environment = { UI_CHAOS_SEED: '57', UI_SEQUENCE_REPLAY: selection };
+    assert.deepEqual(
+      readBrowserSequenceOptions({
+        journey: 'contract-action-sequences',
+        environment,
+      }).replay,
+      { caseId: 'contract-signing', width, path: '0:2' },
+    );
+    for (const journey of [
+      'financial-action-sequences',
+      'access-action-sequences',
+      'document-action-sequences',
+    ])
+      assert.throws(
+        () => readBrowserSequenceOptions({ journey, environment }),
+        /Unknown sequence case/u,
+      );
+    assert.equal(
+      browserSequenceReplayCommand({
+        caseId: 'contract-signing',
+        width,
+        seed: 57,
+        steps: 6,
+        path: '0:2',
+      }),
+      `UI_SEQUENCE_REPLAY='${selection}' pnpm verify:journey contract-action-sequences --chaos 57`,
+    );
+  }
+});

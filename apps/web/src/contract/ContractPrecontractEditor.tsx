@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -47,6 +55,21 @@ export function ContractPrecontractEditor({
   onProtectionChange: (value: boolean) => void;
   onCreated: (contractId: string) => void;
 }) {
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      acceptedVersionId,
+    ]),
+  );
+  const operations = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onCreated });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onCreated };
+  });
   const copy = useContractPrecontractCopy();
   const [scope, setScope] = useState(''),
     [financial, setFinancial] = useState(''),
@@ -55,14 +78,12 @@ export function ContractPrecontractEditor({
     [end, setEnd] = useState(''),
     [special, setSpecial] = useState(''),
     [feedback, setFeedback] = useState<Feedback>('idle');
-  const pending = useRef<AbortController | undefined>(undefined),
-    attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   useEffect(() => {
     onProtectionChange(feedback === 'running' || feedback === 'uncertain');
   }, [feedback, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
@@ -72,6 +93,7 @@ export function ContractPrecontractEditor({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
+      operations.isPending() ||
       protectedCommand ||
       feedback === 'running' ||
       TERMINAL.includes(feedback)
@@ -103,8 +125,9 @@ export function ContractPrecontractEditor({
       }),
     };
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = operations.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -123,7 +146,7 @@ export function ContractPrecontractEditor({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -139,7 +162,8 @@ export function ContractPrecontractEditor({
           throw new Error('Invalid created Precontract.');
         attempt.current = undefined;
         setFeedback('idle');
-        onCreated(created.id);
+        controller.release();
+        callbacks.current.onCreated(created.id);
       } else if (result.status === 'validation') {
         attempt.current = undefined;
         setFeedback('invalid');
@@ -159,6 +183,8 @@ export function ContractPrecontractEditor({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   return (

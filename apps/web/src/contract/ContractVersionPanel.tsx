@@ -5,7 +5,15 @@ import {
   type ContractPreparationSource,
 } from './contract-response';
 import { contractPath } from './contract-response';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -59,8 +67,25 @@ export function ContractVersionPanel({
     mayRevise &&
     !contract.version.supersededByVersionId &&
     contract.version.executionState !== 'EXECUTED';
-  const sourceRejection = useRef(reject);
-  sourceRejection.current = reject;
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contract.id,
+      contract.version.id,
+    ]),
+  );
+  const reads = useScopedOperationGroup(
+    JSON.stringify([lifetime, early, mayEdit]),
+  );
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onCreated });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onCreated };
+  });
   const [sourceView, setSourceView] = useState<
     | { kind: 'loading' | 'unavailable' }
     | { kind: 'available'; source: ContractPreparationSource }
@@ -80,21 +105,21 @@ export function ContractVersionPanel({
     [conditions, setConditions] = useState(
       contract.version.specialConditions ?? '',
     );
-  const attempt = useRef<{ body: string; key: string } | undefined>(undefined),
-    pending = useRef<AbortController | undefined>(undefined);
+  const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   useEffect(() => {
     onProtectionChange(feedback === 'running' || feedback === 'uncertain');
   }, [feedback, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
   );
   useEffect(() => {
     if (!early || !mayEdit) return;
-    const controller = new AbortController();
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setSourceView({ kind: 'loading' });
     setSelectedSource('');
     void (async () => {
@@ -106,7 +131,7 @@ export function ContractVersionPanel({
           { companyContextId: companyId, signal: controller.signal },
         );
         if (controller.signal.aborted) return;
-        if (await sourceRejection.current(result, controller.signal)) {
+        if (await rejected(result, controller.signal)) {
           if (!controller.signal.aborted)
             setSourceView({ kind: 'unavailable' });
           return;
@@ -121,15 +146,18 @@ export function ContractVersionPanel({
         );
       } catch {
         if (!controller.signal.aborted) setSourceView({ kind: 'unavailable' });
+      } finally {
+        controller.release();
       }
     })();
-    return () => controller.abort();
-  }, [identity, companyId, opportunityId, early, mayEdit, sourceReload]);
+    return controller.retire;
+  }, [identity, companyId, opportunityId, early, mayEdit, sourceReload, reads]);
   const frozen =
     feedback === 'running' || feedback === 'uncertain' || protectedCommand;
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
+      writes.isPending() ||
       (early &&
         !attempt.current &&
         (sourceView.kind !== 'available' ||
@@ -179,8 +207,9 @@ export function ContractVersionPanel({
       }),
     };
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -199,7 +228,7 @@ export function ContractVersionPanel({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -225,7 +254,8 @@ export function ContractVersionPanel({
           throw new Error('Invalid Contract Version result.');
         attempt.current = undefined;
         setFeedback('success');
-        onCreated();
+        controller.release();
+        callbacks.current.onCreated();
         return;
       }
       if (result.status === 'validation') {
@@ -259,6 +289,8 @@ export function ContractVersionPanel({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   if (!mayEdit) return null;

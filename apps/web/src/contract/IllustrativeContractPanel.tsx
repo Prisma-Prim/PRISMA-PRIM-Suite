@@ -16,14 +16,22 @@ import { ContractProjectsPanel } from './ContractProjectsPanel';
 import { useContractSignatureCopy } from './contract-signature.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
 import { ContractQualityPanel } from './ContractQualityPanel';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useContractAccessRecovery } from './use-contract-access-recovery';
 import { useContractRecordedValues } from './contract-recorded-values';
 import { useContractCopy } from './contract.copy';
 import { grantOf, holds } from '../access/company-grants';
@@ -168,6 +176,7 @@ export function IllustrativeContractPanel({
     contractPrepare &&
     clientRead &&
     holdsPricingSnapshotRead(context);
+  const pricingKey = JSON.stringify(grantOf(context, 'company_pricing_user'));
   const stamp = JSON.stringify([
     currentClientId,
     opportunityId,
@@ -181,7 +190,6 @@ export function IllustrativeContractPanel({
     grantOf(context, 'company_contract_approver'),
     grantOf(context, 'company_commercial_intake'),
     grantOf(context, 'company_director_client_access'),
-    grantOf(context, 'company_pricing_user'),
     grantOf(context, 'company_offer_preparer'),
     grantOf(context, 'company_offer_approver'),
     grantOf(context, 'company_project_access')?.permissions,
@@ -205,8 +213,13 @@ export function IllustrativeContractPanel({
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
-  const request = useRef<AbortController | undefined>(undefined),
-    attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([identity.loaded, identity.signedIn, stamp]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const writes = useScopedOperationGroup(String(lifetime));
   const locked =
     running ||
     addendumProtected ||
@@ -221,22 +234,18 @@ export function IllustrativeContractPanel({
     onProtectedWorkChange?.(locked);
     return () => onProtectedWorkChange?.(false);
   }, [locked, onProtectedWorkChange]);
-  async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
-    return handleAuthenticatedAccessRejection({
-      result,
-      identity,
-      companyContextId: companyId,
-      onCompanyContextRejected,
-      onActorRevalidated,
-      onWorkspaceAccessRejected,
-      signal,
-    });
-  }
-  async function load(
-    signal: AbortSignal,
-    versionId?: string,
-    wanted?: RequestedContractVersion,
-  ) {
+  const reject = useContractAccessRecovery({
+    actor,
+    identity,
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+  });
+  const callbacks = useRef({ reject });
+  useLayoutEffect(() => {
+    callbacks.current = { reject };
+  });
+  async function load(versionId?: string, wanted?: RequestedContractVersion) {
     // Any other read, a chosen version or the head after a command, is newer
     // than the requested version and retires it.
     if (wanted === undefined) requested.current = undefined;
@@ -244,6 +253,10 @@ export function IllustrativeContractPanel({
       setView({ kind: 'denied' });
       return;
     }
+    const request = reads.beginLatest();
+    if (!request) return;
+    const { signal } = request;
+    const rejected = callbacks.current.reject;
     setView({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -257,7 +270,7 @@ export function IllustrativeContractPanel({
             { companyContextId: companyId, signal },
           );
       if (signal.aborted) return;
-      if (await reject(result, signal)) {
+      if (await rejected(result, signal)) {
         if (!signal.aborted) setView({ kind: 'denied' });
         return;
       }
@@ -298,7 +311,7 @@ export function IllustrativeContractPanel({
                 { companyContextId: companyId, signal },
               );
         if (signal.aborted) return;
-        if (await reject(source, signal)) {
+        if (await rejected(source, signal)) {
           if (!signal.aborted) setView({ kind: 'denied' });
           return;
         }
@@ -322,10 +335,11 @@ export function IllustrativeContractPanel({
       });
     } catch {
       if (!signal.aborted) setView({ kind: 'error' });
+    } finally {
+      request.release();
     }
   }
   useEffect(() => {
-    request.current?.abort();
     attempt.current = undefined;
     setFeedback(null);
     setRunning(false);
@@ -333,20 +347,18 @@ export function IllustrativeContractPanel({
     setStart('');
     setEnd('');
     setConditions('');
-    const controller = new AbortController();
-    request.current = controller;
     // A requested version applies only inside its own agreement; opening
     // another agreement retires it.
     if (requestedAgreementOf(requested.current) !== agreementId)
       requested.current = undefined;
     const wanted = requested.current;
-    void load(controller.signal, wanted?.contractVersionId, wanted);
+    void load(wanted?.contractVersionId, wanted);
     return () => {
-      controller.abort();
-      request.current?.abort();
+      reads.retire();
+      writes.retire();
     };
     // This authority key captures every input which can invalidate business state.
-  }, [stamp, opportunityId, identity]);
+  }, [stamp, opportunityId, identity, reads, writes]);
   useEffect(() => {
     setAgreementId(requestedAgreementOf(requested.current));
     setAddendumSuccessId(null);
@@ -355,6 +367,7 @@ export function IllustrativeContractPanel({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
+      writes.isPending() ||
       running ||
       precontractProtected ||
       (!mayPrepare && !mayPrepareEarly) ||
@@ -383,9 +396,10 @@ export function IllustrativeContractPanel({
       }),
     };
     attempt.current = command;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    reads.retire();
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setRunning(true);
     setFeedback(null);
     try {
@@ -405,7 +419,7 @@ export function IllustrativeContractPanel({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -437,6 +451,7 @@ export function IllustrativeContractPanel({
       if (!controller.signal.aborted) setFeedback('uncertain');
     } finally {
       if (!controller.signal.aborted) setRunning(false);
+      controller.release();
     }
   }
   if (!mayRead) return null;
@@ -533,7 +548,7 @@ export function IllustrativeContractPanel({
             companyId &&
             currentClientId && (
               <ContractDirectEditor
-                key={stamp + ':direct-create'}
+                key={stamp + pricingKey + ':direct-create'}
                 identity={identity}
                 companyId={companyId}
                 opportunityId={opportunityId}
@@ -671,6 +686,7 @@ export function IllustrativeContractPanel({
                 <ContractAddendumEditor
                   key={
                     stamp +
+                    pricingKey +
                     ':addendum:' +
                     view.contract.id +
                     ':' +
@@ -693,10 +709,7 @@ export function IllustrativeContractPanel({
                   onCreated={(id) => {
                     setAddendumSuccessId(id);
                     if (agreementId === id) {
-                      request.current?.abort();
-                      const controller = new AbortController();
-                      request.current = controller;
-                      void load(controller.signal);
+                      void load();
                     } else setAgreementId(id);
                   }}
                 />
@@ -711,10 +724,7 @@ export function IllustrativeContractPanel({
               locked={locked || qualityProtected}
               reject={reject}
               onOpen={(versionId) => {
-                request.current?.abort();
-                const controller = new AbortController();
-                request.current = controller;
-                void load(controller.signal, versionId);
+                void load(versionId);
               }}
             />
             {(view.contract.origin === 'ACCEPTED_OFFER' ||
@@ -748,10 +758,7 @@ export function IllustrativeContractPanel({
                 onCreated={() => {
                   if (view.contract.origin === 'OFFER_PREPARATION')
                     setSavedEarlyRevision({ stamp, opportunityId, identity });
-                  request.current?.abort();
-                  const controller = new AbortController();
-                  request.current = controller;
-                  void load(controller.signal);
+                  void load();
                 }}
               />
             )}
@@ -763,6 +770,7 @@ export function IllustrativeContractPanel({
                 <ContractDirectEditor
                   key={
                     stamp +
+                    pricingKey +
                     ':direct-revise:' +
                     view.contract.version.id +
                     ':' +
@@ -782,10 +790,7 @@ export function IllustrativeContractPanel({
                   reject={reject}
                   onProtectionChange={setVersionProtected}
                   onCreated={() => {
-                    request.current?.abort();
-                    const controller = new AbortController();
-                    request.current = controller;
-                    void load(controller.signal);
+                    void load();
                   }}
                 />
               )}
@@ -799,9 +804,7 @@ export function IllustrativeContractPanel({
               versionId={view.contract.version.id}
               preparation={view.contract.origin === 'OFFER_PREPARATION'}
               versionState={view.contract.version}
-              onCompanyContextRejected={onCompanyContextRejected}
-              onActorRevalidated={onActorRevalidated}
-              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              reject={reject}
             />
             <ContractDecisionPanel
               key={stamp + ':decision:' + view.contract.version.id}
@@ -935,9 +938,7 @@ export function IllustrativeContractPanel({
                 onProtectionChange={setProjectLinkProtected}
                 onOpenProject={onOpenProject}
                 onReload={() => {
-                  const controller = new AbortController();
-                  request.current = controller;
-                  void load(controller.signal);
+                  void load();
                 }}
                 onLinked={(link, project) =>
                   setView((current) =>
@@ -1091,10 +1092,7 @@ export function IllustrativeContractPanel({
         disabled={locked || view.kind === 'loading'}
         onClick={() => {
           setFeedback(null);
-          request.current?.abort();
-          const controller = new AbortController();
-          request.current = controller;
-          void load(controller.signal);
+          void load();
         }}
       >
         {copy('refresh')}

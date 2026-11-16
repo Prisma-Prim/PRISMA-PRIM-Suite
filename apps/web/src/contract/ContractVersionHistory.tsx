@@ -1,5 +1,7 @@
 import { contractPath } from './contract-response';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -48,11 +50,26 @@ export function ContractVersionHistory({
   }
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [loading, setLoading] = useState(false);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contract.id,
+      contract.revision,
+    ]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject });
+  useLayoutEffect(() => {
+    callbacks.current = { reject };
+  });
   async function load(cursor?: string) {
-    pending.current?.abort();
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setLoading(true);
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -62,7 +79,7 @@ export function ContractVersionHistory({
         { companyContextId: companyId, signal: controller.signal },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied || result.status !== 'ok')
         throw new Error('Unavailable versions.');
@@ -81,12 +98,20 @@ export function ContractVersionHistory({
       if (!controller.signal.aborted) setState({ kind: 'error' });
     } finally {
       if (!controller.signal.aborted) setLoading(false);
+      controller.release();
     }
   }
   useEffect(() => {
     void load();
-    return () => pending.current?.abort();
-  }, [identity, companyId, opportunityId, contract.id, contract.revision]);
+    return reads.retire;
+  }, [
+    identity,
+    companyId,
+    opportunityId,
+    contract.id,
+    contract.revision,
+    reads,
+  ]);
   return (
     <section aria-label={copy('history')}>
       <h5>{copy('history')}</h5>

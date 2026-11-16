@@ -571,3 +571,134 @@ it('preserves an independently uncertain declaration key when only Project autho
   expect(attempts).toHaveLength(2);
   expect(attempts[1]).toEqual(attempts[0]);
 });
+
+it('preserves an uncertain declaration through unrelated Contract Preparer capture replacement', async () => {
+  const attempts: { body: RequestInit['body']; key: string | null }[] = [];
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const path = input.toString();
+    if (path.endsWith('/pdf-candidates'))
+      return response({
+        items: [signingPdf],
+        nextCursor: null,
+        warningCodes: signingIntent.acknowledgedWarningCodes,
+      });
+    if (path.endsWith('/signing-declarations')) {
+      attempts.push({
+        body: init?.body,
+        key: new Headers(init?.headers).get('idempotency-key'),
+      });
+      return attempts.length === 1
+        ? response({}, 503)
+        : response(reportedSigningFixture(), 201);
+    }
+    return response({ contract: approvedSigningContract(), precontract: null });
+  });
+  const view = render(panel());
+  await fill();
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Declare both reported signatures, concordance and case acceptance',
+    }),
+  );
+  await screen.findByRole('button', {
+    name: 'Retry the identical declaration',
+  });
+  const company = signingActor.activeCompany;
+  if (!company) throw new Error('Missing signing Company.');
+  view.rerender(
+    panel({
+      ...signingActor,
+      activeCompany: {
+        ...company,
+        grants: withCompanyGrants(company.grants, {
+          bundle: 'company_contract_preparer',
+          version: 'v2',
+          assignmentId: 'unrelated-preparer-replaced',
+        }),
+      },
+    }),
+  );
+  expect(screen.getAllByLabelText('Literal signatory label')[0]).toHaveValue(
+    signingIntent.providerSignatory.label,
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Retry the identical declaration' }),
+  );
+  await screen.findByRole('heading', { name: 'Recorded declaration' });
+  expect(attempts).toHaveLength(2);
+  expect(attempts[1]).toEqual(attempts[0]);
+});
+
+it('preserves the independently selected PDF through Contract Preparer capture replacement', async () => {
+  const downloads: {
+    signal: AbortSignal | null | undefined;
+    resolve: (value: Response) => void;
+  }[] = [];
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const path = input.toString();
+    if (path.endsWith('/pdf-candidates'))
+      return response({
+        items: [signingPdf],
+        nextCursor: null,
+        warningCodes: signingIntent.acknowledgedWarningCodes,
+      });
+    if (path.endsWith('/content/' + signingPdf.representationId))
+      return new Promise<Response>((resolve) =>
+        downloads.push({ signal: init?.signal, resolve }),
+      );
+    return response({ contract: approvedSigningContract(), precontract: null });
+  });
+  const view = render(panel());
+  await fill();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download this exact PDF' }),
+  );
+  await waitFor(() => expect(downloads).toHaveLength(1));
+  const original = downloads[0];
+  if (!original?.signal) throw new Error('Missing actual PDF read.');
+  const company = signingActor.activeCompany;
+  if (!company) throw new Error('Missing signing Company.');
+  const next = {
+    ...signingActor,
+    activeCompany: {
+      ...company,
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_contract_preparer',
+        version: 'v2',
+        assignmentId: 'independent-preparer-replaced',
+      }),
+    },
+  };
+  view.rerender(panel(next));
+  expect(original.signal.aborted).toBe(false);
+  await act(async () => original.resolve(response({}, 503)));
+  expect(
+    await screen.findByRole('button', { name: 'Download this exact PDF' }),
+  ).toBeEnabled();
+  expect(
+    screen.getByText(
+      'The target, source or permission is unavailable. Reload before a new intent.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download this exact PDF' }),
+  );
+  await waitFor(() => expect(downloads).toHaveLength(2));
+  const current = downloads[1];
+  if (!current?.signal) throw new Error('Missing current PDF read.');
+  view.rerender(
+    panel({
+      ...next,
+      activeCompany: {
+        ...next.activeCompany,
+        grants: withoutCompanyGrants(
+          next.activeCompany.grants,
+          'company_document_content_reader',
+        ),
+      },
+    }),
+  );
+  expect(current.signal.aborted).toBe(true);
+  await act(async () => current.resolve(response({}, 503)));
+});

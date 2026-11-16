@@ -1,7 +1,9 @@
 import { useContractDirectCopy } from './contract-direct.copy';
 import { useContractAddendumCopy } from './contract-addendum.copy';
 import { contractPath, contractQualityRunBinding } from './contract-response';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -64,14 +66,26 @@ export function ContractDecisionPanel({
   const attempt = useRef<
     { body: string; key: string; kind: 'approve' | 'reject' } | undefined
   >(undefined);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      companyId,
+      opportunityId,
+      contract.id,
+      contract.version.id,
+    ]),
+  );
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onDecision });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onDecision };
+  });
   const decision = contract.version.decision;
   useEffect(() => {
     onProtectionChange(feedback === 'running' || feedback === 'uncertain');
   }, [feedback, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
@@ -85,6 +99,7 @@ export function ContractDecisionPanel({
   async function execute(kind: 'approve' | 'reject') {
     if (
       !mayDecide ||
+      writes.isPending() ||
       decision ||
       feedback === 'running' ||
       protectedChecks ||
@@ -106,8 +121,9 @@ export function ContractDecisionPanel({
       ),
     };
     attempt.current = command;
-    const request = new AbortController();
-    pending.current = request;
+    const request = writes.begin();
+    if (!request) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -126,7 +142,7 @@ export function ContractDecisionPanel({
         },
       );
       if (request.signal.aborted) return;
-      const denied = await reject(result, request.signal);
+      const denied = await rejected(result, request.signal);
       if (request.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -144,7 +160,8 @@ export function ContractDecisionPanel({
           throw new Error('Mismatched decision result.');
         attempt.current = undefined;
         setFeedback('success');
-        onDecision(recorded);
+        request.release();
+        callbacks.current.onDecision(recorded);
       } else if (result.status === 'validation') {
         attempt.current = undefined;
         setFeedback('invalid');
@@ -170,6 +187,8 @@ export function ContractDecisionPanel({
       } else setFeedback('uncertain');
     } catch {
       if (!request.signal.aborted) setFeedback('uncertain');
+    } finally {
+      request.release();
     }
   }
   return (

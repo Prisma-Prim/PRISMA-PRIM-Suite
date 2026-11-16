@@ -1,9 +1,11 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   useContractQualityCopy,
   useContractQualityRuleLabel,
 } from './contract-quality.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -55,6 +57,22 @@ export function ContractQualityPanel({
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      agreementId,
+      binding.versionId,
+    ]),
+  );
+  const operations = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onRun });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onRun };
+  });
   const copy = useContractQualityCopy();
   const ruleLabel = useContractQualityRuleLabel();
   const { locale } = useInterfaceLocale();
@@ -70,14 +88,12 @@ export function ContractQualityPanel({
     nextCursor: string | null;
   } | null>(null);
   const [state, setState] = useState<State>('idle');
-  const pending = useRef<AbortController | undefined>(undefined);
   const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   useEffect(() => {
     onProtectionChange(state === 'running' || state === 'uncertain');
   }, [state, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
@@ -90,6 +106,7 @@ export function ContractQualityPanel({
       | { kind: 'reopen'; id: string },
   ) {
     if (
+      operations.isPending() ||
       protectedDecision ||
       state === 'running' ||
       state === 'loading' ||
@@ -102,9 +119,9 @@ export function ContractQualityPanel({
         ? (attempt.current ?? { body: '{}', key: crypto.randomUUID() })
         : null;
     if (command) attempt.current = command;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
+    const request = operations.beginLatest();
+    if (!request) return;
+    const rejected = callbacks.current.reject;
     setState(action.kind === 'run' ? 'running' : 'loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -130,7 +147,7 @@ export function ContractQualityPanel({
           : {}),
       });
       if (request.signal.aborted) return;
-      const denied = await reject(result, request.signal);
+      const denied = await rejected(result, request.signal);
       if (request.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -145,7 +162,8 @@ export function ContractQualityPanel({
           if (action.kind === 'reopen' && recorded.id !== action.id)
             throw new Error('Mismatched Contract run.');
           setRun(recorded);
-          onRun?.(recorded);
+          request.release();
+          callbacks.current.onRun?.(recorded);
         }
         attempt.current = undefined;
         setState('idle');
@@ -173,6 +191,8 @@ export function ContractQualityPanel({
         setHistory(null);
         setState(command ? 'uncertain' : 'error');
       }
+    } finally {
+      request.release();
     }
   }
   const busy =

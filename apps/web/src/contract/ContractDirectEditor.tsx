@@ -1,5 +1,14 @@
 import { useContractRecordedValues } from './contract-recorded-values';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -84,9 +93,25 @@ export function ContractDirectEditor({
       'loading',
     ),
     [feedback, setFeedback] = useState<Feedback>('idle');
-  const attempt = useRef<{ body: string; key: string } | undefined>(undefined),
-    pending = useRef<AbortController | undefined>(undefined),
-    choicePending = useRef<AbortController | undefined>(undefined);
+  const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      mode.kind === 'create'
+        ? ['create', mode.clientId]
+        : ['revise', mode.contract.id, mode.contract.version.id],
+    ]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onCreated });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onCreated };
+  });
   const frozen =
     protectedCommand || feedback === 'running' || feedback === 'uncertain';
   useEffect(() => {
@@ -95,15 +120,13 @@ export function ContractDirectEditor({
   useEffect(() => {
     void loadChoices();
     return () => {
-      pending.current?.abort();
-      choicePending.current?.abort();
       onProtectionChange(false);
     };
-  }, [identity, companyId, opportunityId]);
+  }, [identity, companyId, opportunityId, reads]);
   async function loadChoices(cursor?: string) {
-    choicePending.current?.abort();
-    const controller = new AbortController();
-    choicePending.current = controller;
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setChoiceState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -122,8 +145,8 @@ export function ContractDirectEditor({
       ]);
       if (controller.signal.aborted) return;
       if (
-        (await reject(prices, controller.signal)) ||
-        (entities && (await reject(entities, controller.signal)))
+        (await rejected(prices, controller.signal)) ||
+        (entities && (await rejected(entities, controller.signal)))
       ) {
         if (!controller.signal.aborted) {
           setFeedback('denied');
@@ -171,11 +194,14 @@ export function ContractDirectEditor({
       setChoiceState('ready');
     } catch {
       if (!controller.signal.aborted) setChoiceState('error');
+    } finally {
+      controller.release();
     }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
+      writes.isPending() ||
       protectedCommand ||
       feedback === 'running' ||
       ['denied', 'stale', 'unavailable', 'conflict', 'success'].includes(
@@ -218,8 +244,9 @@ export function ContractDirectEditor({
       }),
     };
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -238,7 +265,7 @@ export function ContractDirectEditor({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -276,7 +303,8 @@ export function ContractDirectEditor({
         }
         attempt.current = undefined;
         setFeedback('success');
-        onCreated(contract);
+        controller.release();
+        callbacks.current.onCreated(contract);
         return;
       }
       if (result.status === 'validation') {
@@ -297,6 +325,8 @@ export function ContractDirectEditor({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   const snapshotChoices: SnapshotChoice[] =

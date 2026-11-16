@@ -2,7 +2,15 @@ import {
   ContractMissionPlanCreatePanel,
   type ContractMissionPlanContext,
 } from './ContractMissionPlanCreatePanel';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import type { ApiResult } from '../api/authenticated-api-client';
 import {
@@ -87,18 +95,33 @@ export function ContractProjectsPanel({
   const [plannedProtected, setPlannedProtected] = useState(false),
     [creationProtected, setCreationProtected] = useState(false),
     [candidateRefresh, setCandidateRefresh] = useState(0);
-  const read = useRef<AbortController | undefined>(undefined),
-    pending = useRef<AbortController | undefined>(undefined),
-    attempt = useRef<
-      | {
-          body: string;
-          key: string;
-          project: ContractProjectCandidate;
-          revision: number;
-        }
-      | undefined
-    >(undefined);
+  const attempt = useRef<
+    | {
+        body: string;
+        key: string;
+        project: ContractProjectCandidate;
+        revision: number;
+      }
+    | undefined
+  >(undefined);
   const eligible = mayLink && contract.version.executionState === 'EXECUTED';
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contract.id,
+      contract.kind,
+    ]),
+  );
+  const reads = useScopedOperationGroup(JSON.stringify([lifetime, eligible]));
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onLinked });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onLinked };
+  });
   const busy =
     feedback === 'running' ||
     feedback === 'uncertain' ||
@@ -116,10 +139,11 @@ export function ContractProjectsPanel({
   ].includes(feedback);
   useEffect(() => {
     if (!eligible) return;
-    const controller = new AbortController();
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setLoad({ kind: 'loading' });
-    read.current = controller;
-    async function loadCandidates() {
+    const loadCandidates = async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
@@ -128,7 +152,7 @@ export function ContractProjectsPanel({
           { companyContextId: companyId, signal: controller.signal },
         );
         if (controller.signal.aborted) return;
-        const denied = await reject(result, controller.signal);
+        const denied = await rejected(result, controller.signal);
         if (controller.signal.aborted) return;
         if (denied) setLoad({ kind: 'denied' });
         else if (result.status === 'notFound') setLoad({ kind: 'unavailable' });
@@ -140,13 +164,15 @@ export function ContractProjectsPanel({
         else setLoad({ kind: 'error' });
       } catch {
         if (!controller.signal.aborted) setLoad({ kind: 'error' });
+      } finally {
+        controller.release();
       }
-    }
+    };
     void loadCandidates();
-    return () => controller.abort();
+    return controller.retire;
     // The parent keys this session by actor, Company and all captured authority.
     // Revision changes after our own successful link retain feedback and selection.
-  }, [identity, companyId, opportunityId, eligible, candidateRefresh]);
+  }, [identity, companyId, opportunityId, eligible, candidateRefresh, reads]);
   useEffect(() => {
     onProtectionChange(
       feedback === 'running' ||
@@ -157,8 +183,6 @@ export function ContractProjectsPanel({
   }, [feedback, creationProtected, plannedProtected, onProtectionChange]);
   useEffect(
     () => () => {
-      read.current?.abort();
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
@@ -167,6 +191,7 @@ export function ContractProjectsPanel({
   async function execute(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (
+      writes.isPending() ||
       !eligible ||
       feedback === 'running' ||
       protectedCommand ||
@@ -198,8 +223,9 @@ export function ContractProjectsPanel({
         : undefined);
     if (!command) return;
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -218,7 +244,7 @@ export function ContractProjectsPanel({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -245,7 +271,8 @@ export function ContractProjectsPanel({
               }
             : current,
         );
-        onLinked(link, command.project);
+        controller.release();
+        callbacks.current.onLinked(link, command.project);
       } else if (result.status === 'validation') {
         attempt.current = undefined;
         setFeedback('invalid');
@@ -273,6 +300,8 @@ export function ContractProjectsPanel({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   function created(link: ContractProjectLink, project: ProjectSummary) {

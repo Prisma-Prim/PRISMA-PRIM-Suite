@@ -2,9 +2,11 @@ import {
   useCommercialPdfDisplayed,
   type CommercialPdfCallbacks,
 } from '../commercial-pdf/CommercialPdfDownload';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useContractAccessRecovery } from './use-contract-access-recovery';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   IllustrativeContractPanel,
   type ContractPanelProps,
@@ -24,15 +26,13 @@ type PdfContractPanelProps = ContractPanelProps & {
   pdf?: CommercialPdfCallbacks;
 };
 export function ContractPanel(props: PdfContractPanelProps) {
-  const generation = useRef({ identity: props.identity, value: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      value: generation.current.value + 1,
-    };
+  const generation = useRequestLifetime(
+    props.identity,
+    JSON.stringify([props.identity.loaded, props.identity.signedIn]),
+  );
   const c = props.actor.activeCompany;
   const illustrativeKey = JSON.stringify([
-    generation.current.value,
+    generation,
     props.actor.active,
     props.actor.workspaceId,
     props.actor.internalUserId,
@@ -51,7 +51,7 @@ export function ContractPanel(props: PdfContractPanelProps) {
     grantOf(c, 'company_director_client_access'),
   ]);
   const key = JSON.stringify([
-    generation.current.value,
+    generation,
     props.actor.active,
     props.actor.workspaceId,
     props.actor.internalUserId,
@@ -97,12 +97,37 @@ function ContractJourneyOwner(
     holdsContractRead(company) &&
     holds(company, 'company_commercial_intake', 'commercial.opportunity.read');
   const requested = props.requestedVersion;
+  const reject = useContractAccessRecovery(props);
+  const callbacks = useRef({ reject });
+  useLayoutEffect(() => {
+    callbacks.current = { reject };
+  });
   const path = `/contracts/opportunities/${encodeURIComponent(props.opportunityId)}${requested && requested.kind !== 'CONTRACT' ? '/agreements/' + encodeURIComponent(requested.contractId) : ''}${requested ? '/versions/' + encodeURIComponent(requested.contractVersionId) : ''}`;
+  const lifetime = useRequestLifetime(
+    props.identity,
+    JSON.stringify([
+      companyId,
+      mayRead,
+      path,
+      grantOf(company, 'company_contract_preparer'),
+      grantOf(company, 'company_contract_approver'),
+      grantOf(company, 'company_commercial_intake'),
+      grantOf(company, 'company_offer_preparer'),
+      grantOf(company, 'company_offer_approver'),
+      props.actor.workspacePermissions.includes('client.manage')
+        ? 'workspace-client-read'
+        : grantOf(company, 'company_director_client_access'),
+    ]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const bootstrapping = route.kind !== 'illustrative' && route.kind !== 'model';
   useEffect(() => {
-    if (!companyId || !mayRead) return;
+    if (!companyId || !mayRead || !bootstrapping) return;
     setRoute({ kind: 'loading' });
-    const controller = new AbortController(),
-      { signal } = controller;
+    const request = reads.beginLatest();
+    if (!request) return;
+    const { signal } = request;
+    const rejected = callbacks.current.reject;
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(props.identity);
@@ -112,18 +137,7 @@ function ContractJourneyOwner(
           signal,
         });
         if (signal.aborted) return;
-        if (
-          await handleAuthenticatedAccessRejection({
-            result,
-            identity: props.identity,
-            companyContextId: companyId,
-            onCompanyContextRejected: props.onCompanyContextRejected,
-            onActorRevalidated: props.onActorRevalidated ?? ignore,
-            onWorkspaceAccessRejected:
-              props.onWorkspaceAccessRejected ?? ignore,
-            signal,
-          })
-        ) {
+        if (await rejected(result, signal)) {
           if (!signal.aborted) setRoute({ kind: 'denied' });
           return;
         }
@@ -157,18 +171,7 @@ function ContractJourneyOwner(
             { companyContextId: companyId, signal },
           );
           if (signal.aborted) return;
-          if (
-            await handleAuthenticatedAccessRejection({
-              result: source,
-              identity: props.identity,
-              companyContextId: companyId,
-              onCompanyContextRejected: props.onCompanyContextRejected,
-              onActorRevalidated: props.onActorRevalidated ?? ignore,
-              onWorkspaceAccessRejected:
-                props.onWorkspaceAccessRejected ?? ignore,
-              signal,
-            })
-          ) {
+          if (await rejected(source, signal)) {
             if (!signal.aborted) setRoute({ kind: 'denied' });
             return;
           }
@@ -193,10 +196,21 @@ function ContractJourneyOwner(
           });
       } catch {
         if (!signal.aborted) setRoute({ kind: 'error' });
+      } finally {
+        request.release();
       }
     })();
-    return () => controller.abort();
-  }, [props.identity, props.opportunityId, companyId, mayRead, path, reload]);
+    return request.retire;
+  }, [
+    props.identity,
+    props.opportunityId,
+    companyId,
+    mayRead,
+    path,
+    reload,
+    reads,
+    bootstrapping,
+  ]);
   if (!mayRead) return null;
   if (route.kind === 'illustrative')
     return (
@@ -242,4 +256,3 @@ function record(value: unknown): Record<string, unknown> {
     throw new Error('Invalid Contract response.');
   return Object.fromEntries(Object.entries(value));
 }
-function ignore() {}

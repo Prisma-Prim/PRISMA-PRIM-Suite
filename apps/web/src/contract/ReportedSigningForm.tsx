@@ -1,5 +1,14 @@
 import { useDocumentVersionsCopy } from '../documents/document-versions.copy';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
@@ -92,8 +101,34 @@ export function ReportedSigningForm(props: {
   });
   const feedback =
     mutation.kind === 'editing' ? mutation.feedback : mutation.kind;
-  const read = useRef<AbortController | undefined>(undefined),
-    write = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    props.identity,
+    JSON.stringify([
+      props.identity.loaded,
+      props.identity.signedIn,
+      props.companyId,
+      props.membershipId,
+      props.opportunityId,
+      props.contract.id,
+      props.contract.version.id,
+    ]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({
+    reject: props.reject,
+    onDeclared: props.onDeclared,
+    onPdfSelected: props.onPdfSelected,
+    onReload: props.onReload,
+  });
+  useLayoutEffect(() => {
+    callbacks.current = {
+      reject: props.reject,
+      onDeclared: props.onDeclared,
+      onPdfSelected: props.onPdfSelected,
+      onReload: props.onReload,
+    };
+  });
   const protectedSelf =
     mutation.kind === 'running' || mutation.kind === 'uncertain';
   const locked = protectedSelf || props.protectedCommand;
@@ -103,17 +138,15 @@ export function ReportedSigningForm(props: {
   }, [protectedSelf, props.onProtectionChange]);
   useEffect(
     () => () => {
-      read.current?.abort();
-      write.current?.abort();
       props.onProtectionChange(false);
     },
     [],
   );
   async function load(cursor?: string) {
     if (mutation.kind !== 'editing') return;
-    read.current?.abort();
-    const controller = new AbortController();
-    read.current = controller;
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setReadState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
@@ -125,9 +158,9 @@ export function ReportedSigningForm(props: {
         { companyContextId: props.companyId, signal: controller.signal },
       );
       if (controller.signal.aborted) return;
-      const rejected = await props.reject(result, controller.signal);
+      const denial = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
-      if (rejected || result.status !== 'ok')
+      if (denial || result.status !== 'ok')
         throw new Error('Unavailable PDF selection.');
       const next = readSigningPdfCandidates(result.value);
       if (
@@ -141,17 +174,19 @@ export function ReportedSigningForm(props: {
       }));
       if (!cursor) {
         setSelected('');
-        props.onPdfSelected(null);
+        callbacks.current.onPdfSelected(null);
       }
       setReadState('idle');
     } catch {
       if (!controller.signal.aborted) {
         setPage(null);
         setSelected('');
-        props.onPdfSelected(null);
+        callbacks.current.onPdfSelected(null);
         setAcknowledged([]);
         setReadState('error');
       }
+    } finally {
+      controller.release();
     }
   }
 
@@ -194,7 +229,7 @@ export function ReportedSigningForm(props: {
   async function submit(event?: FormEvent) {
     event?.preventDefault();
     if (
-      write.current ||
+      writes.isPending() ||
       props.protectedCommand ||
       mutation.kind === 'running' ||
       mutation.kind === 'confirmed'
@@ -207,9 +242,10 @@ export function ReportedSigningForm(props: {
       setMutation({ kind: 'editing', feedback: 'invalid' });
       return;
     }
-    read.current?.abort();
-    const controller = new AbortController();
-    write.current = controller;
+    reads.retire();
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setMutation({ kind: 'running', command });
     try {
       const api = await createAuthenticatedApiClient(props.identity);
@@ -225,9 +261,9 @@ export function ReportedSigningForm(props: {
         body: command.body,
       });
       if (controller.signal.aborted) return;
-      const rejected = await props.reject(result, controller.signal);
+      const denial = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
-      if (rejected) {
+      if (denial) {
         setMutation({ kind: 'editing', feedback: 'unavailable' });
         return;
       }
@@ -272,21 +308,30 @@ export function ReportedSigningForm(props: {
       )
         throw new Error('Mismatched declaration response.');
       setMutation({ kind: 'confirmed' });
-      props.onDeclared(declaration);
+      controller.release();
+      callbacks.current.onDeclared(declaration);
     } catch {
       if (!controller.signal.aborted)
         setMutation({ kind: 'uncertain', command });
     } finally {
-      if (write.current === controller) write.current = undefined;
+      controller.release();
     }
   }
   async function reload() {
-    if (mutation.kind === 'editing' && (await props.onReload())) {
-      setMutation({ kind: 'editing', feedback: 'idle' });
-      setPage(null);
-      setSelected('');
-      props.onPdfSelected(null);
-      setAcknowledged([]);
+    if (mutation.kind !== 'editing') return;
+    const request = reads.beginLatest();
+    if (!request) return;
+    try {
+      const reloaded = await callbacks.current.onReload();
+      if (!request.signal.aborted && reloaded) {
+        setMutation({ kind: 'editing', feedback: 'idle' });
+        setPage(null);
+        setSelected('');
+        callbacks.current.onPdfSelected(null);
+        setAcknowledged([]);
+      }
+    } finally {
+      request.release();
     }
   }
   function warningLabel(code: string) {

@@ -299,6 +299,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
   assert.deepEqual(await listChaosJourneys(root), [
     'access-action-sequences',
     'certification-journey',
+    'contract-action-sequences',
     'document-action-sequences',
     'financial-action-sequences',
     'multi-company-home',
@@ -720,7 +721,7 @@ test('command line: chaos on a journey without the chaos fixture is a usage erro
   assert.match(child.stderr, /"ideas" has not opted into UI chaos/u);
   assert.match(
     child.stderr,
-    /certification-journey, document-action-sequences, financial-action-sequences, multi-company-home/u,
+    /certification-journey, contract-action-sequences, document-action-sequences, financial-action-sequences, multi-company-home/u,
   );
   assert.equal(child.final.status, 'usage-error');
 });
@@ -1026,4 +1027,106 @@ test('Document proof requires every implemented native case and screen independe
   });
   assert.equal(replay.summary.status, 'passed');
   assert.equal(replay.summary.runs[0].sequences.length, 1);
+});
+
+test('Contract proof requires its own generated case on both screens and preserves an isolated exact replay', async (t) => {
+  const reports = ['desktop', 'narrow'].map((width) => ({
+    schema: 'prisma-prim-browser-sequences/v1',
+    caseId: 'contract-signing',
+    journey: 'contract-action-sequences',
+    width,
+    seed: 57,
+    steps: 6,
+    status: 'passed',
+    runs: 2,
+    shrinks: 0,
+    durationMilliseconds: 1200,
+    path: null,
+    coverage: { 'retry-exact-contract-command-with-double-admission': 1 },
+  }));
+  const run = (sequenceReports) =>
+    runFixture(t, {
+      journey: 'contract-action-sequences',
+      outcomes: {
+        runs: [
+          {
+            exitCode: 0,
+            report: playwrightReport({ expected: 4 }),
+            sequenceReports,
+          },
+        ],
+      },
+    });
+  const complete = await run(reports);
+  assert.equal(complete.summary.status, 'passed');
+  assert.deepEqual(
+    complete.summary.runs[0].sequences
+      .map((entry) => entry.caseId + '@' + entry.width)
+      .sort(),
+    ['contract-signing@desktop', 'contract-signing@narrow'],
+  );
+  for (const missing of [[], reports.slice(0, 1)]) {
+    const partial = await run(missing);
+    assert.equal(partial.summary.status, 'error');
+    assert.match(partial.summary.message, /Missing generated browser proof/u);
+  }
+  const unrelated = await run(
+    reports.map((entry) => ({
+      ...entry,
+      caseId: 'payment-evidence',
+      journey: 'document-action-sequences',
+    })),
+  );
+  assert.equal(unrelated.summary.status, 'error');
+  const replay = await runFixture(t, {
+    journey: 'contract-action-sequences',
+    sequenceSelection: {
+      caseId: 'contract-signing',
+      width: 'narrow',
+      path: '0:2',
+    },
+    outcomes: {
+      runs: [
+        {
+          exitCode: 0,
+          report: playwrightReport({ expected: 1 }),
+          sequenceReports: reports.filter((entry) => entry.width === 'narrow'),
+        },
+      ],
+    },
+  });
+  assert.equal(replay.summary.status, 'passed');
+  assert.equal(replay.summary.runs[0].sequences.length, 1);
+  const plan = planJourneyVerification({
+    root,
+    journeys: ['contract-action-sequences'],
+    journey: 'contract-action-sequences',
+    repeat: 1,
+    cpuLoad: null,
+    output: '/tmp/contract-exact-replay',
+    parallelism: 1,
+    playwrightCli: '/playwright/cli.js',
+    startedAt,
+    sequenceSelection: {
+      caseId: 'contract-signing',
+      width: 'narrow',
+      path: '0:2',
+    },
+  });
+  const args = plan.runs[0].args;
+  assert.equal(
+    args[args.indexOf('--project') + 1],
+    'operational-acceptance-narrow',
+  );
+  const selection = new RegExp(args[args.indexOf('--grep') + 1]);
+  assert.ok(
+    selection.test(
+      'generated Contract sequences explores generated native Contract signing action sequences',
+    ),
+  );
+  assert.ok(
+    !selection.test(
+      'checks the Contract signing sequence adapter against the native reported-signing recipe',
+    ),
+  );
 });
