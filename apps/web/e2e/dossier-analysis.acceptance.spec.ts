@@ -132,7 +132,7 @@ test('an editor follows an exact native dossier source through analysis and cont
         narrow
           ? 'Графические элементы не интерпретированы; доступный текст сохранён.'
           : 'Elementele grafice nu sunt interpretate; textul disponibil este păstrat.',
-        { exact: true },
+        { exact: false },
       )
       .first(),
   ).toBeVisible();

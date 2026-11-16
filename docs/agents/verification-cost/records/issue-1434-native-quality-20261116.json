@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-native-quality-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": 1435,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T21:22:10.000Z",
+    "end": "2026-11-16T22:20:08.000Z",
+    "durationSeconds": 3478
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 6,
+      "P3": 0
+    },
+    "notes": "Completed local RU/RO native proof: 74 focused tests, 23 UI tests, native API 2/2, desktop/narrow 2/2 with four captures inspected; evaluator 53/53; format/lint/types/drift passed. Six demonstrated extraction/search defects corrected, including two Spec review findings. Initial type check and localized browser assertion failures retained. Publication CI remains required; PR tracks its result. Usage and price unavailable."
+  }
+}
