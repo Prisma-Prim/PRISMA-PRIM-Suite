@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   readPaymentEvidenceDocument,
   type PaymentEvidenceSource,
@@ -20,9 +22,20 @@ export function PaymentEvidencePayer({
 }) {
   const copy = usePaymentEvidenceCopy();
   const [payer, setPayer] = useState<PaymentEvidenceSource['payer']>();
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([companyId, documentId, identity.loaded, identity.signedIn]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const rejection = useRef(onRejected);
+  useLayoutEffect(() => {
+    rejection.current = onRejected;
+  });
   useEffect(() => {
-    const request = new AbortController(),
-      current = () => !request.signal.aborted;
+    const request = reads.beginLatest();
+    if (!request) return;
+    const current = () => reads.isLive() && !request.signal.aborted;
+    const reject = rejection.current;
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -37,7 +50,7 @@ export function PaymentEvidencePayer({
         );
         if (!current()) return;
         if (result.status !== 'ok') {
-          await onRejected(result, request.signal, current);
+          await reject(result, request.signal, current);
           if (current()) setPayer({ kind: 'UNAVAILABLE' });
           return;
         }
@@ -48,10 +61,12 @@ export function PaymentEvidencePayer({
         setPayer(loaded.paymentEvidenceSource.payer);
       } catch {
         if (current()) setPayer({ kind: 'UNAVAILABLE' });
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
-  }, [companyId, documentId, identity, onRejected]);
+    return request.retire;
+  }, [companyId, documentId, identity, reads]);
   if (!payer) return <p role="status">{copy('loading')}</p>;
   if (payer.kind === 'UNAVAILABLE') return <p>{copy('payerUnavailable')}</p>;
   return (

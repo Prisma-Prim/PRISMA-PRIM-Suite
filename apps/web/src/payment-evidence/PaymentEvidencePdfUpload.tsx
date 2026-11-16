@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   readDocumentVersionReceipt,
   type DocumentVersionReceipt,
@@ -54,19 +56,26 @@ export function PaymentEvidencePdfUpload({
     id = useId(),
     [file, setFile] = useState<File>(),
     [upload, setUpload] = useState<Upload>({ status: 'idle' });
-  const life = useAuthorityLifetime(
-      JSON.stringify([uploadKey, documentId, versionId]),
-      identity,
-    ),
-    pending = useRef<AbortController | undefined>(undefined),
-    input = useRef<HTMLInputElement>(null);
+  const scope = JSON.stringify([
+    companyId,
+    uploadKey,
+    documentId,
+    versionId,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const life = useAuthorityLifetime(scope, identity);
+  const generation = useRequestLifetime(identity, scope);
+  const uploads = useScopedOperationGroup(String(generation));
+  const input = useRef<HTMLInputElement>(null);
   const callbacks = useRef({ onConfirmed, onRejected, recoveryGeneration });
-  callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
+  useLayoutEffect(() => {
+    callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
+  });
   const [confirmedRevision, setConfirmedRevision] = useState(0);
   const canStart = canUpload && workingRevision >= confirmedRevision;
   const busy = upload.status === 'pending' || upload.status === 'uncertain';
   useDocumentNavigationProtection(busy, onProtectedWorkChange);
-  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
     if (
       upload.status === 'conflict' &&
@@ -78,10 +87,12 @@ export function PaymentEvidencePdfUpload({
     }
   }, [recoveryGeneration, upload]);
   async function submit(command: Command) {
-    const request = new AbortController(),
-      live = life(),
-      current = () => !request.signal.aborted && live();
-    pending.current = request;
+    if (uploads.isPending()) return;
+    const request = uploads.begin();
+    if (!request) return;
+    const live = life();
+    const current = () => !request.signal.aborted && live();
+    const rejected = callbacks.current.onRejected;
     setUpload({ status: 'pending', command });
     let settled = false;
     try {
@@ -107,7 +118,7 @@ export function PaymentEvidencePdfUpload({
         setUpload({ status: 'denied' });
         setFile(undefined);
         if (input.current) input.current.value = '';
-        await callbacks.current.onRejected(result, request.signal, current);
+        await rejected(result, request.signal, current);
         return;
       }
       if (result.status === 'conflict') {
@@ -152,11 +163,14 @@ export function PaymentEvidencePdfUpload({
       setUpload({ status: 'confirmed' });
       setFile(undefined);
       if (input.current) input.current.value = '';
+      request.release();
       await Promise.resolve(callbacks.current.onConfirmed(receipt)).catch(
         () => undefined,
       );
     } catch {
       if (!settled && current()) setUpload({ status: 'uncertain', command });
+    } finally {
+      request.release();
     }
   }
   function preserve() {

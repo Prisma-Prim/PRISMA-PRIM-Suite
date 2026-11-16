@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   createAuthenticatedApiClient,
   conflictCode,
@@ -69,21 +71,28 @@ export function PaymentEvidenceVersionCommand({
 }) {
   const copy = useDocumentVersionsCopy(),
     [state, setState] = useState<State>({ status: 'idle' });
-  const life = useAuthorityLifetime(
-      JSON.stringify([authorityKey, documentId, action]),
-      identity,
-    ),
-    pending = useRef<AbortController | undefined>(undefined),
-    confirmButton = useRef<HTMLButtonElement>(null);
+  const scope = JSON.stringify([
+    companyId,
+    authorityKey,
+    documentId,
+    action,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const life = useAuthorityLifetime(scope, identity);
+  const generation = useRequestLifetime(identity, scope);
+  const commands = useScopedOperationGroup(String(generation));
+  const confirmButton = useRef<HTMLButtonElement>(null);
   const callbacks = useRef({ onConfirmed, onRejected, recoveryGeneration });
-  callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
+  useLayoutEffect(() => {
+    callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
+  });
   useDocumentNavigationProtection(
     state.status === 'confirming' ||
       state.status === 'pending' ||
       state.status === 'uncertain',
     onProtectedWorkChange,
   );
-  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
     if (state.status !== 'confirming') return;
     const live = life();
@@ -106,7 +115,8 @@ export function PaymentEvidenceVersionCommand({
       setState({ status: 'idle' });
   }, [recoveryGeneration, state]);
   function prepare() {
-    if (!canStart || expectedRevision >= 2147483647) return;
+    if (!canStart || commands.isPending() || expectedRevision >= 2147483647)
+      return;
     const base = {
       body: JSON.stringify({ expectedRevision }),
       key: crypto.randomUUID(),
@@ -133,10 +143,12 @@ export function PaymentEvidenceVersionCommand({
       });
   }
   async function submit(command: Command) {
-    const request = new AbortController(),
-      live = life(),
-      current = () => !request.signal.aborted && live();
-    pending.current = request;
+    if (commands.isPending()) return;
+    const request = commands.begin();
+    if (!request) return;
+    const live = life();
+    const current = () => !request.signal.aborted && live();
+    const rejected = callbacks.current.onRejected;
     setState({ status: 'pending', command });
     let settled = false;
     try {
@@ -169,7 +181,7 @@ export function PaymentEvidenceVersionCommand({
       ) {
         settled = true;
         setState({ status: 'denied' });
-        await callbacks.current.onRejected(result, request.signal, current);
+        await rejected(result, request.signal, current);
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
@@ -208,11 +220,14 @@ export function PaymentEvidenceVersionCommand({
         throw new Error('Unexpected Version receipt');
       settled = true;
       setState({ status: 'confirmed', receipt });
+      request.release();
       await Promise.resolve(callbacks.current.onConfirmed(receipt)).catch(
         () => undefined,
       );
     } catch {
       if (!settled && current()) setState({ status: 'uncertain', command });
+    } finally {
+      request.release();
     }
   }
   return (

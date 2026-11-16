@@ -1,7 +1,16 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { readDocumentCorrectionReceipt } from '../documents/document-response';
 import { useDocumentNavigationProtection } from '../documents/document-navigation-protection';
 import { usePaymentEvidenceCopy } from './payment-evidence.copy';
@@ -52,13 +61,22 @@ export function PaymentEvidenceMetadataCorrection({
   const [attempt, setAttempt] = useState<CorrectionAttempt>({
     status: 'closed',
   });
-  const pending = useRef<AbortController | undefined>(undefined);
-  const life = useAuthorityLifetime(correctKey ?? 'unavailable', identity);
+  const scope = JSON.stringify([
+    companyId,
+    documentId,
+    correctKey,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const life = useAuthorityLifetime(scope, identity);
+  const generation = useRequestLifetime(identity, scope);
+  const commands = useScopedOperationGroup(String(generation));
   const callbacks = useRef({ onConfirmed, onRejected, recoveryGeneration });
-  callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
+  useLayoutEffect(() => {
+    callbacks.current = { onConfirmed, onRejected, recoveryGeneration };
+  });
   const busy = attempt.status === 'pending' || attempt.status === 'uncertain';
   useDocumentNavigationProtection(busy, onProtectedWorkChange);
-  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
     if (
       attempt.status === 'conflict' &&
@@ -70,6 +88,7 @@ export function PaymentEvidenceMetadataCorrection({
   if (!correctKey) return null;
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (commands.isPending()) return;
     if (attempt.status !== 'editing' && attempt.status !== 'uncertain') return;
     if (!metadata(attempt.title, 200) || !metadata(attempt.purpose, 2000)) {
       if (attempt.status === 'editing')
@@ -89,10 +108,11 @@ export function PaymentEvidenceMetadataCorrection({
             }),
             key: crypto.randomUUID(),
           };
-    const request = new AbortController(),
-      live = life(),
-      current = () => !request.signal.aborted && live();
-    pending.current = request;
+    const request = commands.begin();
+    if (!request) return;
+    const live = life();
+    const current = () => !request.signal.aborted && live();
+    const rejected = callbacks.current.onRejected;
     setAttempt({ ...command, status: 'pending' });
     let settled = false;
     try {
@@ -119,7 +139,7 @@ export function PaymentEvidenceMetadataCorrection({
       ) {
         settled = true;
         setAttempt({ status: 'denied' });
-        await callbacks.current.onRejected(result, request.signal, current);
+        await rejected(result, request.signal, current);
         return;
       }
       if (result.status === 'conflict') {
@@ -152,10 +172,13 @@ export function PaymentEvidenceMetadataCorrection({
         throw new Error('Invalid correction receipt');
       settled = true;
       setAttempt({ status: 'confirmed' });
+      request.release();
       callbacks.current.onConfirmed();
     } catch {
       if (!settled && current())
         setAttempt({ ...command, status: 'uncertain' });
+    } finally {
+      request.release();
     }
   }
   const editable =

@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -8,6 +7,8 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { useDocumentNavigationProtection } from '../documents/document-navigation-protection';
 import {
@@ -59,22 +60,31 @@ export function PaymentEvidenceRegistration({
     [receivedOn, setReceivedOn] = useState('');
   const [selected, setSelected] = useState<Selection>();
   const [attempt, setAttempt] = useState<Attempt>({ status: 'editable' });
-  const pending = useRef<AbortController | undefined>(undefined);
-  const envelopeLifetime = useAuthorityLifetime(registerKey, identity);
+  const scope = JSON.stringify([
+    companyId,
+    registerKey,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const envelopeLifetime = useAuthorityLifetime(scope, identity);
+  const generation = useRequestLifetime(identity, scope);
+  const commands = useScopedOperationGroup(String(generation));
   const copyLifetime = useAuthorityLifetime(
     freshPayerKey ?? 'unavailable',
     identity,
   );
   const callbacks = useRef({ onRegistered, onRejected });
-  callbacks.current = { onRegistered, onRejected };
+  useLayoutEffect(() => {
+    callbacks.current = { onRegistered, onRejected };
+  });
   const busy = attempt.status === 'pending' || attempt.status === 'uncertain';
   useDocumentNavigationProtection(busy, onProtectedWorkChange);
-  useEffect(() => () => pending.current?.abort(), []);
   useLayoutEffect(() => {
     setSelected(undefined);
   }, [freshPayerKey]);
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (commands.isPending()) return;
     if (
       attempt.status === 'pending' ||
       attempt.status === 'confirmed' ||
@@ -116,9 +126,10 @@ export function PaymentEvidenceRegistration({
         }),
       };
     }
-    const request = new AbortController();
-    pending.current = request;
+    const request = commands.begin();
+    if (!request) return;
     const current = () => !request.signal.aborted && live();
+    const rejected = callbacks.current.onRejected;
     setAttempt({ status: 'pending', command });
     let settled = false;
     let dispatched = attempt.status === 'uncertain';
@@ -145,7 +156,7 @@ export function PaymentEvidenceRegistration({
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         settled = true;
         setAttempt({ status: 'refused' });
-        await callbacks.current.onRejected(result, request.signal, current);
+        await rejected(result, request.signal, current);
         return;
       }
       if (result.status === 'validation' || result.status === 'notFound') {
@@ -176,6 +187,7 @@ export function PaymentEvidenceRegistration({
         throw new Error('Mismatched registration response');
       settled = true;
       setAttempt({ status: 'confirmed' });
+      request.release();
       callbacks.current.onRegistered(paymentEvidenceMetadata(saved));
     } catch {
       if (!settled && current())
@@ -184,6 +196,8 @@ export function PaymentEvidenceRegistration({
             ? { status: 'uncertain', command }
             : { status: 'editable', invalid: true },
         );
+    } finally {
+      request.release();
     }
   }
   const locked =

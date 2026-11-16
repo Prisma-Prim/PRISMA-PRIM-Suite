@@ -105,19 +105,20 @@ const passingDocuments = summary('document-action-sequences', [
   {
     status: 'passed',
     chaosSeed: 1427001,
-    sequences: ['document-version', 'document-pdf'].flatMap((caseId) =>
-      ['desktop', 'narrow'].map((width) => ({
-        caseId,
-        width,
-        seed: 1427001,
-        steps: 10,
-        status: 'passed',
-        runs: 2,
-        shrinks: 0,
-        durationMilliseconds: 1000,
-        path: null,
-        coverage: { 'retry-exact-command-with-double-admission': 1 },
-      })),
+    sequences: ['document-version', 'document-pdf', 'payment-evidence'].flatMap(
+      (caseId) =>
+        ['desktop', 'narrow'].map((width) => ({
+          caseId,
+          width,
+          seed: 1427001,
+          steps: 10,
+          status: 'passed',
+          runs: 2,
+          shrinks: 0,
+          durationMilliseconds: 1000,
+          path: null,
+          coverage: { 'retry-exact-command-with-double-admission': 1 },
+        })),
     ),
   },
 ]);
@@ -803,6 +804,8 @@ test('a larger multi-family week keeps every actual case in bounded linked comme
         'document-pdf@narrow',
         'document-version@desktop',
         'document-version@narrow',
+        'payment-evidence@desktop',
+        'payment-evidence@narrow',
       ],
     );
   }

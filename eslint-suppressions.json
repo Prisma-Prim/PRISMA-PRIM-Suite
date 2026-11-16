@@ -321,56 +321,6 @@
       "count": 2
     }
   },
-  "apps/web/src/payment-evidence/PaymentEvidenceDetail.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidenceMetadataCorrection.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidencePayer.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidencePayerPicker.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidencePdf.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidencePdfUpload.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidenceRegistration.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidenceSourcePanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidenceVersionCommand.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/payment-evidence/PaymentEvidenceVersions.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/web/src/pricing-configuration/PricingConfigurationWorkspace.tsx": {
     "no-restricted-syntax": {
       "count": 3

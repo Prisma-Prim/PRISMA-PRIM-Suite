@@ -32,6 +32,11 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'document-action-sequences',
     title: 'explores generated native Document PDF action sequences',
   },
+  {
+    id: 'payment-evidence',
+    journey: 'document-action-sequences',
+    title: 'explores generated native PaymentEvidence source action sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {

@@ -13,7 +13,10 @@ import {
 } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { readCurrentActor } from '../access/current-actor';
-import { withCompanyGrants } from '../access/company-grants.test-fixture';
+import {
+  withCompanyGrants,
+  withoutCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { changeValue } from '../test/select-option';
 import { PaymentEvidenceSourcePanel } from './PaymentEvidenceSourcePanel';
 import { paymentEvidenceAuthority } from './payment-evidence-authority';
@@ -82,12 +85,20 @@ function boundary(registration = false, initialOfficial = false) {
   let official = initialOfficial;
   let corrected = false;
   let uploaded = false;
+  let payerAvailable = true;
+  let failNextDocumentRead = false;
   function document() {
     const source = paymentEvidenceDocument();
     return {
       ...source,
       title: corrected ? 'Corrected literal notice' : source.title,
       workingRevision: revision,
+      paymentEvidenceSource: {
+        ...source.paymentEvidenceSource,
+        payer: payerAvailable
+          ? source.paymentEvidenceSource.payer
+          : { kind: 'UNAVAILABLE' },
+      },
       version: { ...source.version, status: official ? 'official' : 'draft' },
     };
   }
@@ -154,6 +165,14 @@ function boundary(registration = false, initialOfficial = false) {
         return new Promise<Response>((resolve) => writes.push(resolve));
       if (path === actorPath)
         return new Promise<Response>((resolve) => recoveries.push(resolve));
+      if (
+        call.method === 'GET' &&
+        path === documentPath &&
+        failNextDocumentRead
+      ) {
+        failNextDocumentRead = false;
+        return new Response(null, { status: 500 });
+      }
       if (path === heldPath)
         return new Promise<Response>((resolve) =>
           heldReads.push({ call, resolve }),
@@ -179,6 +198,12 @@ function boundary(registration = false, initialOfficial = false) {
   );
   return {
     calls,
+    withholdPayer() {
+      payerAvailable = false;
+    },
+    failNextDocumentRead() {
+      failNextDocumentRead = true;
+    },
     mutations: () =>
       calls.filter((call) => call.method === 'POST' || call.method === 'PATCH'),
     observeRevision(value: number) {
@@ -310,6 +335,7 @@ function show(registration = false) {
     selection = { ...target, generation: selection.generation + 1 };
     view?.rerender(ui());
   }
+  const recovered = vi.fn(updateActor);
   const protectedWork = vi.fn();
   const ui = () => (
     <PaymentEvidenceSourcePanel
@@ -318,12 +344,13 @@ function show(registration = false) {
       selection={selection}
       onSelect={select}
       onProtectedWorkChange={protectedWork}
-      onActorRevalidated={updateActor}
+      onActorRevalidated={recovered}
     />
   );
   const view = render(ui());
   return {
     actor: updateActor,
+    recovered,
     async refreshActor() {
       const api = await createAuthenticatedApiClient(identity);
       const result = await readCurrentActor({
@@ -374,7 +401,10 @@ const retryNames = {
   correction: 'Retry identical correction',
   registration: 'Retry identical evidence registration',
 };
-async function dispatch(action: Action) {
+async function dispatch(
+  action: Action,
+  activate: (button: HTMLElement) => void = (button) => fireEvent.click(button),
+) {
   if (action === 'registration') {
     await waitFor(() =>
       expect(screen.getByLabelText('Original Client')).toBeEnabled(),
@@ -390,7 +420,7 @@ async function dispatch(action: Action) {
       screen.getByLabelText('Declared source'),
       'Fictional manual notice',
     );
-    fireEvent.click(
+    activate(
       screen.getByRole('button', {
         name: 'Preserve evidence source',
       }),
@@ -404,17 +434,17 @@ async function dispatch(action: Action) {
     fireEvent.change(screen.getByLabelText('Choose the PDF file'), {
       target: { files: [file] },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Preserve PDF' }));
+    activate(screen.getByRole('button', { name: 'Preserve PDF' }));
     return file;
   } else if (action === 'successor') {
-    fireEvent.click(screen.getByRole('button', { name: 'Start new draft' }));
+    activate(screen.getByRole('button', { name: 'Start new draft' }));
   } else if (action === 'designation') {
     fireEvent.click(
       screen.getByRole('button', {
         name: 'Designate as official',
       }),
     );
-    fireEvent.click(
+    activate(
       await screen.findByRole('button', {
         name: 'Confirm official designation',
       }),
@@ -426,7 +456,7 @@ async function dispatch(action: Action) {
       }),
     );
     changeValue(screen.getByLabelText('Title'), 'Corrected literal notice');
-    fireEvent.click(
+    activate(
       screen.getByRole('button', {
         name: 'Save metadata correction',
       }),
@@ -447,6 +477,168 @@ function noFreshCommands(ancestor: Exclude<Ancestor, 'inventory'>) {
     expect(input).toBeDisabled();
 }
 afterEach(() => vi.unstubAllGlobals());
+it.each([
+  'registration',
+  'correction',
+  'upload',
+  'designation',
+  'successor',
+] as const)(
+  'admits one $0 command through two activations of its rendered submit control',
+  async (action) => {
+    const api = boundary(action === 'registration', action === 'successor');
+    show(action === 'registration');
+    if (action !== 'registration')
+      await positiveDocument(action !== 'successor');
+    await dispatch(action, (button) => {
+      act(() => {
+        button.click();
+        button.click();
+      });
+    });
+    await waitFor(() => expect(api.mutations().length).toBeGreaterThan(0));
+    const dispatched = api.mutations().length;
+    try {
+      expect(dispatched).toBe(1);
+    } finally {
+      for (let index = 0; index < dispatched; index++) await api.uncertain();
+    }
+  },
+);
+
+it.each(['inventory', 'versions'] as const)(
+  'does not publish an older Actor recovery from %s after a newer content denial commits under the same evidence read capture',
+  async (ancestor) => {
+    const api = boundary();
+    const view = show();
+    await positiveDocument();
+    api.hold(ancestor);
+    view.actor(readerB);
+    await api.requestedRead();
+    await api.deny(403);
+    await api.actorRequested();
+    const newerActor = {
+      ...readerB,
+      activeCompany: {
+        ...readerB.activeCompany,
+        grants: withoutCompanyGrants(
+          readerB.activeCompany.grants,
+          'company_document_content_reader',
+        ),
+      },
+    };
+    expect(paymentEvidenceAuthority(newerActor)?.readKey).toBe(
+      paymentEvidenceAuthority(readerB)?.readKey,
+    );
+    expect(paymentEvidenceAuthority(newerActor)?.contentReadKey).toBeNull();
+    let released = false;
+    try {
+      view.actor(newerActor);
+      expect(screen.queryByText(originalFileName)).not.toBeInTheDocument();
+      released = true;
+      await api.recover(readerB);
+      expect(view.recovered).not.toHaveBeenCalled();
+      expect(screen.queryByText(originalFileName)).not.toBeInTheDocument();
+    } finally {
+      if (!released) await api.recover(newerActor);
+    }
+  },
+);
+
+it.each(['inventory', 'versions', 'detail'] as const)(
+  'does not start recovery for an old %s refusal delivered after a newer Actor commits',
+  async (ancestor) => {
+    const api = boundary();
+    const view = show();
+    await positiveDocument();
+    api.hold(ancestor);
+    view.actor(readerB);
+    await api.requestedRead();
+    const newerActor = {
+      ...readerB,
+      activeCompany: {
+        ...readerB.activeCompany,
+        grants: withoutCompanyGrants(
+          readerB.activeCompany.grants,
+          'company_document_content_reader',
+        ),
+      },
+    };
+    const recoveries = () =>
+      api.calls.filter((call) => call.path === actorPath);
+    await act(async () => view.actor(newerActor));
+    try {
+      await api.deny(403);
+      expect(recoveries()).toHaveLength(0);
+      expect(view.recovered).not.toHaveBeenCalled();
+    } finally {
+      if (recoveries().length) await api.recover(newerActor);
+    }
+  },
+);
+
+it('keeps a correction confirmed with read-only recovery when its first source refresh is unavailable', async () => {
+  const api = boundary();
+  show();
+  await positiveDocument();
+  await dispatch('correction');
+  await waitFor(() => expect(api.mutations()).toHaveLength(1));
+  api.failNextDocumentRead();
+  await api.confirm('correction');
+  await screen.findByText('Metadata correction confirmed.');
+  await screen.findByText(
+    'The save was confirmed, but the evidence could not be refreshed. Retry only the read.',
+  );
+  expect(api.mutations()).toHaveLength(1);
+  reloadEvidence();
+  await screen.findByRole('heading', { name: 'Corrected literal notice' });
+  expect(api.mutations()).toHaveLength(1);
+});
+
+it('refreshes a server-withheld payer projection independently of otherwise authorized evidence and PDF work', async () => {
+  const api = boundary();
+  show();
+  await positiveDocument();
+  await screen.findByRole('region', { name: /^Exact payer$/u });
+  api.withholdPayer();
+  reloadEvidence();
+  await screen.findByText(
+    'The frozen payer is unavailable with your current access.',
+  );
+  expect(
+    screen.queryByRole('region', { name: /^Exact payer$/u }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: 'Fictional notice' }),
+  ).toBeVisible();
+  await screen.findByText(originalFileName, { exact: true });
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Designate as official' }),
+    ).toBeEnabled(),
+  );
+  expect(
+    screen.getByRole('button', { name: 'Download Version 1 PDF' }),
+  ).toBeEnabled();
+  expect(api.mutations()).toHaveLength(0);
+});
+
+it('preserves authorized evidence projections without duplicate reads when only the Actor display label changes', async () => {
+  const api = boundary();
+  const view = show();
+  await positiveDocument();
+  const requests = api.calls.map(({ method, path }) => ({ method, path }));
+  await act(async () => {
+    view.actor({ ...actorA, displayName: 'Updated member label' });
+  });
+  expect(screen.getByText('Updated member label')).toBeVisible();
+  expect(screen.getByText(originalFileName, { exact: true })).toBeVisible();
+  expect(api.calls.map(({ method, path }) => ({ method, path }))).toEqual(
+    requests,
+  );
+  expect(view.recovered).not.toHaveBeenCalled();
+});
+
 it('withholds the old evidence inventory while a replacement read capture is still awaiting its native reply', async () => {
   const api = boundary();
   const view = show();

@@ -65,6 +65,8 @@ test('validates each Document replay only against its own journey', () => {
   for (const selection of [
     'document-version@desktop~10~0:1',
     'document-pdf@narrow~10~0:1',
+    'payment-evidence@desktop~10~0:1',
+    'payment-evidence@narrow~10~0:1',
   ]) {
     const command = (journey) =>
       spawnSync(process.execPath, [script, 'validate-replay', journey], {

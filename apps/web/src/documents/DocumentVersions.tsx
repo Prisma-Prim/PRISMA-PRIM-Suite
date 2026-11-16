@@ -130,6 +130,7 @@ export function DocumentVersions({
   onProtectedWorkChange,
   paymentEvidenceRequestedVersionId,
   paymentEvidenceReadable = true,
+  paymentEvidenceCurrent = true,
   paymentEvidenceRecoveryGeneration = 0,
   onCompanyContextRejected = () => undefined,
   onActorRevalidated = () => undefined,
@@ -142,6 +143,8 @@ export function DocumentVersions({
   operationKeys?: PaymentEvidenceOperationKeys;
   /** Source read projection availability never owns an existing write envelope. */
   paymentEvidenceReadable?: boolean;
+  /** Fresh source data gates new commands independently of an existing PDF read. */
+  paymentEvidenceCurrent?: boolean;
   paymentEvidenceRequestedVersionId?: string;
   /** A successful deliberate Source reload, never a command lifetime/key. */
   paymentEvidenceRecoveryGeneration?: number;
@@ -164,6 +167,7 @@ export function DocumentVersions({
         operationKeys={operationKeys}
         requestedVersionId={paymentEvidenceRequestedVersionId}
         metadataReadable={paymentEvidenceReadable}
+        metadataCurrent={paymentEvidenceCurrent}
         recoveryGeneration={paymentEvidenceRecoveryGeneration}
         onRefresh={onRefresh}
         onProtectedWorkChange={onProtectedWorkChange}

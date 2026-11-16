@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   readDocumentVersions,
   type DocumentVersionReceipt,
@@ -93,33 +95,37 @@ function PaymentEvidencePdfRead({
       'idle',
     ),
     [retry, setRetry] = useState(0);
-  const life = useAuthorityLifetime(
-      JSON.stringify([contentReadKey, documentId, versionId]),
-      identity,
-    ),
-    downloadRequest = useRef<AbortController | undefined>(undefined),
-    historyRequest = useRef<AbortController | undefined>(undefined),
-    retired = useRef(false);
+  const scope = JSON.stringify([
+    companyId,
+    contentReadKey,
+    documentId,
+    versionId,
+    identity.loaded,
+    identity.signedIn,
+  ]);
+  const life = useAuthorityLifetime(scope, identity);
+  const generation = useRequestLifetime(identity, scope);
+  const metadataReads = useScopedOperationGroup(String(generation));
+  const historyReads = useScopedOperationGroup(String(generation));
+  const downloads = useScopedOperationGroup(String(generation));
+  const retired = useRef(false);
   const rejected = useRef(onRejected);
-  rejected.current = onRejected;
+  useLayoutEffect(() => {
+    rejected.current = onRejected;
+  });
   const path =
     '/documents/' +
     encodeURIComponent(documentId) +
     '/versions/' +
     encodeURIComponent(versionId) +
     '/content';
-  useEffect(
-    () => () => {
-      downloadRequest.current?.abort();
-      historyRequest.current?.abort();
-    },
-    [],
-  );
   useEffect(() => {
-    const request = new AbortController(),
-      live = life(),
+    const request = metadataReads.beginLatest();
+    if (!request) return;
+    const live = life(),
       current = () => !request.signal.aborted && live() && !retired.current;
-    historyRequest.current?.abort();
+    const reject = rejected.current;
+    historyReads.retire();
     setHistory(undefined);
     setHistoryStatus('idle');
     setMetadata({ status: 'loading' });
@@ -144,9 +150,9 @@ function PaymentEvidencePdfRead({
           ) {
             setMetadata({ status: 'denied' });
             retired.current = true;
-            downloadRequest.current?.abort();
-            historyRequest.current?.abort();
-            await rejected.current(
+            downloads.retire();
+            historyReads.retire();
+            await reject(
               result,
               request.signal,
               () => !request.signal.aborted && live(),
@@ -168,8 +174,8 @@ function PaymentEvidencePdfRead({
           selected.pdfContent.access === 'denied'
         ) {
           setMetadata({ status: 'denied' });
-          downloadRequest.current?.abort();
-          historyRequest.current?.abort();
+          downloads.retire();
+          historyReads.retire();
           retired.current = true;
           return;
         }
@@ -182,26 +188,31 @@ function PaymentEvidencePdfRead({
         setMetadata({ status: 'ready', content: selected.pdfContent });
       } catch {
         if (current()) setMetadata({ status: 'error' });
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
+    return request.retire;
   }, [
     companyId,
     contentReadKey,
     documentId,
     identity,
     life,
+    metadataReads,
+    historyReads,
+    downloads,
     retry,
     versionId,
     versionNumber,
     workingRevision,
   ]);
   async function loadHistory(beforeRevision?: number) {
-    historyRequest.current?.abort();
-    const request = new AbortController(),
-      live = life(),
+    const request = historyReads.beginLatest();
+    if (!request) return;
+    const live = life(),
       current = () => !request.signal.aborted && live() && !retired.current;
-    historyRequest.current = request;
+    const reject = rejected.current;
     setHistoryStatus('pending');
     const previous = history;
     try {
@@ -229,8 +240,8 @@ function PaymentEvidencePdfRead({
           setMetadata({ status: 'denied' });
           retired.current = true;
           setHistory(undefined);
-          downloadRequest.current?.abort();
-          await rejected.current(
+          downloads.retire();
+          await reject(
             result,
             request.signal,
             () => !request.signal.aborted && live(),
@@ -273,14 +284,16 @@ function PaymentEvidencePdfRead({
       setHistoryStatus('idle');
     } catch {
       if (current()) setHistoryStatus('error');
+    } finally {
+      request.release();
     }
   }
   async function downloadFile(pdf: PreservedDocumentPdf) {
-    downloadRequest.current?.abort();
-    const request = new AbortController(),
-      live = life(),
+    const request = downloads.beginLatest();
+    if (!request) return;
+    const live = life(),
       current = () => !request.signal.aborted && live() && !retired.current;
-    downloadRequest.current = request;
+    const reject = rejected.current;
     setDownload('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -305,8 +318,8 @@ function PaymentEvidencePdfRead({
           setMetadata({ status: 'denied' });
           retired.current = true;
           setHistory(undefined);
-          historyRequest.current?.abort();
-          await rejected.current(
+          historyReads.retire();
+          await reject(
             result,
             request.signal,
             () => !request.signal.aborted && live(),
@@ -342,6 +355,8 @@ function PaymentEvidencePdfRead({
       if (current()) setDownload('idle');
     } catch {
       if (current()) setDownload('error');
+    } finally {
+      request.release();
     }
   }
   if (metadata.status === 'denied') return <p>{copy.t('downloadDenied')}</p>;

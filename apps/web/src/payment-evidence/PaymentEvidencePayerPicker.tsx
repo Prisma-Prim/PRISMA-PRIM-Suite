@@ -1,6 +1,8 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { readClientLegalEntityList } from '../client/client-legal-entities-response';
 import { readClients } from '../documents/document-response';
 import { Select } from '../presentation/Select';
@@ -50,11 +52,23 @@ export function PaymentEvidencePayerPicker({
       ? partyValue === 'PRIMARY'
       : party.legalEntityId === partyValue,
   );
-  const rejection = useRef(onRejected);
-  rejection.current = onRejected;
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([companyId, identity.loaded, identity.signedIn]),
+  );
+  const directory = useScopedOperationGroup(String(lifetime));
+  const selectedClient = useScopedOperationGroup(
+    JSON.stringify([lifetime, clientId]),
+  );
+  const callbacks = useRef({ onSelect, onRejected });
+  useLayoutEffect(() => {
+    callbacks.current = { onSelect, onRejected };
+  });
   useEffect(() => {
-    const request = new AbortController(),
-      current = () => !request.signal.aborted;
+    const request = directory.beginLatest();
+    if (!request) return;
+    const current = () => directory.isLive() && !request.signal.aborted;
+    const rejected = callbacks.current.onRejected;
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -66,7 +80,7 @@ export function PaymentEvidencePayerPicker({
         });
         if (!current()) return;
         if (result.status !== 'ok') {
-          await rejection.current(result, request.signal, current);
+          await rejected(result, request.signal, current);
           if (current()) setError(true);
           return;
         }
@@ -74,17 +88,21 @@ export function PaymentEvidencePayerPicker({
         if (current()) setClients(loaded);
       } catch {
         if (current()) setError(true);
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
-  }, [companyId, identity, retry]);
+    return request.retire;
+  }, [companyId, directory, identity, retry]);
   useEffect(() => {
-    onSelect(undefined);
+    callbacks.current.onSelect(undefined);
     setParties(undefined);
     setPartyValue('');
     if (!clientId) return;
-    const request = new AbortController(),
-      current = () => !request.signal.aborted;
+    const request = selectedClient.beginLatest();
+    if (!request) return;
+    const current = () => selectedClient.isLive() && !request.signal.aborted;
+    const rejected = callbacks.current.onRejected;
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -101,7 +119,7 @@ export function PaymentEvidencePayerPicker({
         ]);
         if (!current()) return;
         if (dossier.status !== 'ok' || entities.status !== 'ok') {
-          await rejection.current(
+          await rejected(
             dossier.status !== 'ok' ? dossier : entities,
             request.signal,
             current,
@@ -124,10 +142,12 @@ export function PaymentEvidencePayerPicker({
           ]);
       } catch {
         if (current()) setError(true);
+      } finally {
+        request.release();
       }
     })();
-    return () => request.abort();
-  }, [clientId, companyId, identity, onSelect, retry]);
+    return request.retire;
+  }, [clientId, companyId, identity, retry, selectedClient]);
   function choose(value: string) {
     setPartyValue(value);
     const party = parties?.find((p) =>
