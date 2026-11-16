@@ -1,3 +1,4 @@
+import { DossierAnalysisController } from '../dossier-analysis/dossier-analysis.controller.js';
 import {
   RequestMethod,
   type CanActivate,
@@ -110,6 +111,7 @@ const actor: ActorContext = {
 // Every controller whose handlers read the actor through
 // `requireActorContext`. Each of their handlers is exercised below.
 const actorControllers: readonly Type[] = [
+  DossierAnalysisController,
   AccessController,
   ActivityLogController,
   CertificationController,

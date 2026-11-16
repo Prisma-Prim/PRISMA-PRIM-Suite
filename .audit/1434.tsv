@@ -1,0 +1,6 @@
+ts	phase	decision	why	evidence	result
+2026-11-16T16:18:04Z	scope	Deliver all six outcomes as one coordinated programme with isolated owners and sequential integration	Dan explicitly requested complete implementation and safe parallel work	GitHub issue #1434; user request 2026-11-16	AUTHORIZED
+2026-11-16T16:28:00Z	domain	Keep candidate analysis separate from Knowledge admission and formal Certification decisions	Existing Knowledge literal contract and Certification judgment retain their authorities	docs/product/dossier-analysis-prd.md sections 1 and 10	SELECTED
+2026-11-16T16:28:00Z	source	Preserve supplementary DOCX originals alongside exact native Document Versions; include native Case attachment relations	Native registry preserves PDFs only and the BIC Case documents need their own existing relation authority	docs/product/dossier-analysis-prd.md sections 5 and 12	SELECTED
+2026-11-16T16:28:00Z	dependencies	Promote pinned pdfjs-dist 6.4.299 and existing saxes 6.0.0 to runtime	Native PDF and strict namespaced DOCX extraction require runtime parsers	apps/api/package.json; pnpm-lock.yaml	SELECTED
+2026-11-16T17:23:25Z	handoff	Publish integrated work and transfer final verification to a separate Codex Cloud session	Dan explicitly changed delivery to a pushed branch and continuation ticket	User request 2026-11-16; docs/agents/1434-execution.md	AUTHORIZED

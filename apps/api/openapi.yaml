@@ -3,6 +3,1791 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/projects/{projectId}/dossier-analysis:
+    {
+      'get':
+        {
+          'operationId': 'getDossierAnalysisWorkspace',
+          'summary': 'Read selected sources and recent immutable runs',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisWorkspace',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/inventory:
+    {
+      'get':
+        {
+          'operationId': 'getDossierAnalysisInventory',
+          'summary': 'List authorized project evidence available for selection',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisInventory',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/sources:
+    {
+      'post':
+        {
+          'operationId': 'addDossierAnalysisPdfSource',
+          'summary': 'Select an existing exact native PDF representation',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              { '$ref': '#/components/parameters/IdempotencyKey' },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisSourceReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/DossierAnalysisSourceSelection',
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/sources/docx:
+    {
+      'post':
+        {
+          'operationId': 'addDossierAnalysisDocxSource',
+          'summary': 'Select a DOCX by uploading at most 5 MiB of raw DOCX bytes',
+          'tags': ['Dossier Analysis'],
+          'description': 'The query identifies a source document and version; caseId and attachmentId are both optional but must be supplied together. Request body is the raw DOCX file, not multipart. Exact Content-Type is required.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'documentId',
+                'in': 'query',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'documentVersionId',
+                'in': 'query',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'fileName',
+                'in': 'query',
+                'required': true,
+                'schema':
+                  { 'type': 'string', 'minLength': 6, 'maxLength': 120 },
+              },
+              {
+                'name': 'language',
+                'in': 'query',
+                'required': true,
+                'schema':
+                  { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+              },
+              {
+                'name': 'caseId',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+                'description': 'Must be supplied together with attachmentId.',
+              },
+              {
+                'name': 'attachmentId',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+                'description': 'Must be supplied together with caseId.',
+              },
+              {
+                'name': 'Idempotency-Key',
+                'in': 'header',
+                'required': true,
+                'schema':
+                  { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+              },
+            ],
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    {
+                      'schema':
+                        {
+                          'type': 'string',
+                          'format': 'binary',
+                          'maxLength': 5242880,
+                          'description': 'Raw DOCX bytes; the server enforces a 5 MiB byte limit.',
+                        },
+                    },
+                },
+            },
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Selected source receipt.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisSourceReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid query, DOCX media type, or DOCX file.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority is absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project/source.',
+                },
+              '409':
+                {
+                  'description': 'Idempotency or selected-source limit conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '413':
+                {
+                  'description': 'DOCX body exceeds 5 MiB.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/sources/{sourceId}:
+    {
+      'delete':
+        {
+          'operationId': 'removeDossierAnalysisSource',
+          'summary': 'Remove a selected source from future runs',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'sourceId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisSourceReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/sources/{sourceId}/original:
+    {
+      'get':
+        {
+          'operationId': 'getDossierAnalysisOriginalSource',
+          'summary': 'Download the original selected PDF or DOCX',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'sourceId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/pdf':
+                        { 'schema': { 'type': 'string', 'format': 'binary' } },
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                        { 'schema': { 'type': 'string', 'format': 'binary' } },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/runs:
+    {
+      'post':
+        {
+          'operationId': 'createDossierAnalysisRun',
+          'summary': 'Run deterministic analysis over selected sources',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              { '$ref': '#/components/parameters/IdempotencyKey' },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisRunReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'additionalProperties': false,
+                          'maxProperties': 0,
+                        },
+                    },
+                },
+            },
+        },
+      'get':
+        {
+          'operationId': 'listDossierAnalysisRunHistory',
+          'summary': 'Read the next bounded page of historical runs',
+          'tags': ['Dossier Analysis'],
+          'description': 'Continue the run history using the opaque runsNextCursor returned by the workspace or prior page. Cursor is bound to the current authorized project and selected source identity.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'cursor',
+                'in': 'query',
+                'required': true,
+                'description': 'Opaque continuation cursor returned as runsNextCursor.',
+                'schema':
+                  { 'type': 'string', 'minLength': 1, 'maxLength': 2048 },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Up to five authorized historical run summaries and an optional continuation cursor.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisHistoryPage',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid, expired, or mismatched history cursor.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401': { 'description': 'No verified External Principal.' },
+              '403': { 'description': 'Current required authority is absent.' },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, or historical run.',
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/runs/{runId}:
+    {
+      'get':
+        {
+          'operationId': 'getDossierAnalysisRun',
+          'summary': 'Read immutable run candidates, comparisons, coverage and reviewed suggestions',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'runId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisRunDetail',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/runs/{runId}/search:
+    {
+      'get':
+        {
+          'operationId': 'searchDossierAnalysisRun',
+          'summary': 'Search immutable run passages with bounded mode and metadata filters',
+          'tags': ['Dossier Analysis'],
+          'description': 'Search immutable run passages with bounded mode and metadata filters. A stale run returns 409 unless history=true is explicitly supplied.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'runId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'query',
+                'in': 'query',
+                'required': true,
+                'schema':
+                  { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+              },
+              {
+                'name': 'mode',
+                'in': 'query',
+                'required': true,
+                'schema':
+                  { 'type': 'string', 'enum': ['literal', 'lexical', 'fuzzy'] },
+              },
+              {
+                'name': 'cursor',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'maxLength': 4096 },
+              },
+              {
+                'name': 'limit',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'integer',
+                    'minimum': 1,
+                    'maximum': 50,
+                    'default': 20,
+                  },
+              },
+              {
+                'name': 'sourceId',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'field',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  { '$ref': '#/components/schemas/DossierAnalysisField' },
+              },
+              {
+                'name': 'language',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+              },
+              {
+                'name': 'versionStatus',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'enum': ['draft', 'official', 'superseded'],
+                  },
+              },
+              {
+                'name': 'kind',
+                'in': 'query',
+                'required': false,
+                'schema': { 'type': 'string', 'maxLength': 100 },
+              },
+              {
+                'name': 'documentId',
+                'in': 'query',
+                'required': false,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'history',
+                'in': 'query',
+                'required': false,
+                'description': 'Set to true to search a stale historical run. Without it, a stale run returns 409.',
+                'schema': { 'type': 'string', 'enum': ['true'] },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisSearchResult',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'The run is stale and history=true was not supplied, or the historical pipeline is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '413':
+                {
+                  'description': 'The matching passage would exceed the bounded search response size.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/runs/{runId}/context:
+    {
+      'get':
+        {
+          'operationId': 'getDossierAnalysisContextBundle',
+          'summary': 'Read a bounded context bundle with exact source manifest and untrusted-data rules',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'runId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisContextBundle',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/runs/{runId}/suggestions:
+    {
+      'post':
+        {
+          'operationId': 'importDossierAnalysisSuggestions',
+          'summary': 'Import human-reviewed proposals tied to the public run snapshot hash',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'runId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              { '$ref': '#/components/parameters/IdempotencyKey' },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisImportReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/DossierAnalysisProposalImport',
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/suggestions/{suggestionId}/reviews:
+    {
+      'post':
+        {
+          'operationId': 'reviewDossierAnalysisSuggestion',
+          'summary': 'Confirm, reject, or correct a proposal at its expected revision',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current project and source authorization. Inaccessible project, source, run and suggestion identifiers are returned as opaque not-found responses.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              {
+                'name': 'suggestionId',
+                'in': 'path',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+              { '$ref': '#/components/parameters/IdempotencyKey' },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful response.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisReviewReceipt',
+                            },
+                        },
+                    },
+                },
+              '400':
+                {
+                  'description': 'Invalid identifier, query, body or closed command grammar.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '401':
+                {
+                  'description': 'No verified External Principal.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '403':
+                {
+                  'description': 'Current required authority is absent.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '404':
+                {
+                  'description': 'Opaque missing or inaccessible project, source, run, or suggestion.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '409':
+                {
+                  'description': 'Idempotency, source limit, stale run or expected revision conflict.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+              '503':
+                {
+                  'description': 'Dossier analysis, preserved source, or history data is unavailable.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisError',
+                            },
+                        },
+                    },
+                },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          '$ref': '#/components/schemas/DossierAnalysisReviewCommand',
+                        },
+                    },
+                },
+            },
+        },
+    }
   /api/projects/{projectId}/working-evidence-cases:
     {
       'post':
@@ -7437,6 +9222,1087 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    DossierAnalysisError:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'statusCode': { 'type': 'integer' },
+            'message':
+              {
+                'oneOf':
+                  [
+                    { 'type': 'string' },
+                    { 'type': 'array', 'items': { 'type': 'string' } },
+                  ],
+              },
+            'error': { 'type': 'string' },
+          },
+        'required': ['statusCode', 'message'],
+        'additionalProperties': true,
+      }
+    DossierAnalysisLanguage:
+      { 'type': 'string', 'enum': ['ro', 'ru', 'fr', 'en'] }
+    DossierAnalysisField:
+      {
+        'type': 'string',
+        'enum':
+          [
+            'legalName',
+            'taxId',
+            'address',
+            'standard',
+            'auditType',
+            'auditDate',
+            'decisionDate',
+            'validFrom',
+            'validUntil',
+            'auditorDays',
+            'reference',
+            'scope',
+          ],
+      }
+    DossierAnalysisCitation:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'sourceId': { 'type': 'string', 'format': 'uuid' },
+            'documentVersionId': { 'type': 'string', 'format': 'uuid' },
+            'locator': { 'type': 'string' },
+            'start': { 'type': 'integer', 'minimum': 0 },
+            'end': { 'type': 'integer', 'minimum': 1 },
+            'quote': { 'type': 'string' },
+            'passageSha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+          },
+        'required':
+          [
+            'sourceId',
+            'documentVersionId',
+            'locator',
+            'start',
+            'end',
+            'quote',
+            'passageSha256',
+          ],
+      }
+    DossierAnalysisPassage:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'locator': { 'type': 'string' },
+            'text': { 'type': 'string' },
+            'sha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'page': { 'type': ['integer', 'null'], 'minimum': 1 },
+          },
+        'required': ['locator', 'text', 'sha256', 'page'],
+        'additionalProperties': true,
+      }
+    DossierAnalysisExtractionIssue:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'code': { 'type': 'string' },
+            'locator': { 'type': ['string', 'null'] },
+          },
+        'required': ['code', 'locator'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisExtraction:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'state':
+              {
+                'type': 'string',
+                'enum': ['complete', 'partial', 'unreadable', 'failed'],
+              },
+            'parserVersion': { 'type': 'string' },
+            'passages':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisPassage' },
+              },
+            'issues':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisExtractionIssue',
+                  },
+              },
+            'unitsTotal': { 'type': 'integer', 'minimum': 0 },
+            'unitsReadable': { 'type': 'integer', 'minimum': 0 },
+          },
+        'required':
+          [
+            'state',
+            'parserVersion',
+            'passages',
+            'issues',
+            'unitsTotal',
+            'unitsReadable',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisSource:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string', 'format': 'uuid' },
+            'documentId': { 'type': 'string', 'format': 'uuid' },
+            'documentVersionId': { 'type': 'string', 'format': 'uuid' },
+            'representationId':
+              { 'type': ['string', 'null'], 'format': 'uuid' },
+            'sourceSha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'fileName': { 'type': 'string' },
+            'documentTitle': { 'type': 'string' },
+            'documentType': { 'type': 'string' },
+            'versionNumber': { 'type': 'integer', 'minimum': 0 },
+            'versionStatus':
+              { 'type': 'string', 'enum': ['draft', 'official', 'superseded'] },
+            'language':
+              { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+            'kind': { 'type': 'string', 'enum': ['pdf', 'docx'] },
+            'sizeBytes':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 5242880 },
+            'mediaType':
+              {
+                'type': 'string',
+                'enum':
+                  [
+                    'application/pdf',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                  ],
+              },
+            'extraction':
+              {
+                'oneOf':
+                  [
+                    {
+                      '$ref': '#/components/schemas/DossierAnalysisExtraction',
+                    },
+                    { 'type': 'null' },
+                  ],
+              },
+          },
+        'required':
+          [
+            'id',
+            'documentId',
+            'documentVersionId',
+            'representationId',
+            'sourceSha256',
+            'fileName',
+            'documentTitle',
+            'documentType',
+            'versionNumber',
+            'versionStatus',
+            'language',
+            'kind',
+            'sizeBytes',
+            'mediaType',
+            'extraction',
+          ],
+        'additionalProperties': true,
+      }
+    DossierAnalysisSourceReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': { 'id': { 'type': 'string', 'format': 'uuid' } },
+        'required': ['id'],
+      }
+    DossierAnalysisSourceSelection:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'documentVersionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'representationId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'language':
+              { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+            'caseId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'attachmentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+          },
+        'description': 'caseId and attachmentId must either both be omitted or both be supplied.',
+        'required':
+          ['documentId', 'documentVersionId', 'representationId', 'language'],
+      }
+    DossierAnalysisDocxQuery:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'documentVersionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'fileName':
+              {
+                'type': 'string',
+                'minLength': 6,
+                'maxLength': 120,
+                'description': 'Safe filename ending in .docx; control characters and path separators are rejected.',
+              },
+            'language':
+              { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+            'caseId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'attachmentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+          },
+        'required': ['documentId', 'documentVersionId', 'fileName', 'language'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisRunReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': { 'id': { 'type': 'string', 'format': 'uuid' } },
+        'required': ['id'],
+      }
+    DossierAnalysisRunSummary:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'id':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'snapshotHash': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'createdAt': { 'type': 'string', 'format': 'date-time' },
+            'stale': { 'type': 'boolean' },
+          },
+        'required': ['id', 'snapshotHash', 'createdAt', 'stale'],
+      }
+    DossierAnalysisWorkspace:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'format': { 'const': 'DOSSIER_ANALYSIS/1' },
+            'sources':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    'allOf':
+                      [
+                        {
+                          '$ref': '#/components/schemas/DossierAnalysisSource',
+                        },
+                      ],
+                  },
+              },
+            'runs':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisRunSummary' },
+                'maxItems': 5,
+              },
+            'runsNextCursor': { 'type': ['string', 'null'], 'maxLength': 4096 },
+          },
+        'required': ['format', 'sources', 'runs', 'runsNextCursor'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisInventoryItem:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'documentTitle': { 'type': 'string' },
+            'documentType': { 'type': 'string' },
+            'documentVersionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'versionNumber': { 'type': 'integer' },
+            'versionStatus':
+              { 'type': 'string', 'enum': ['draft', 'official', 'superseded'] },
+            'representationId':
+              { 'type': ['string', 'null'], 'format': 'uuid' },
+            'fileName': { 'type': ['string', 'null'] },
+            'kind': { 'type': 'string', 'enum': ['pdf', 'docx'] },
+            'caseId': { 'type': ['string', 'null'], 'format': 'uuid' },
+            'attachmentId': { 'type': ['string', 'null'], 'format': 'uuid' },
+          },
+        'required':
+          [
+            'documentId',
+            'documentTitle',
+            'documentType',
+            'documentVersionId',
+            'versionNumber',
+            'versionStatus',
+            'representationId',
+            'fileName',
+            'kind',
+            'caseId',
+            'attachmentId',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisInventoryDocument:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'title': { 'type': 'string' },
+          },
+        'required': ['documentId', 'title'],
+      }
+    DossierAnalysisInventory:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'items':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisInventoryItem',
+                  },
+              },
+            'documents':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisInventoryDocument',
+                  },
+              },
+          },
+        'required': ['items', 'documents'],
+      }
+    DossierAnalysisCandidate:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'field': { '$ref': '#/components/schemas/DossierAnalysisField' },
+            'value': { 'type': 'string' },
+            'normalized': { 'type': ['string', 'null'] },
+            'normalizationState':
+              {
+                'type': 'string',
+                'enum': ['normalized', 'ambiguous', 'invalid', 'unsupported'],
+              },
+            'event': { 'type': ['string', 'null'] },
+            'citation':
+              { '$ref': '#/components/schemas/DossierAnalysisCitation' },
+          },
+        'required':
+          [
+            'field',
+            'value',
+            'normalized',
+            'normalizationState',
+            'event',
+            'citation',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisComparison:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'field': { '$ref': '#/components/schemas/DossierAnalysisField' },
+            'left': { '$ref': '#/components/schemas/DossierAnalysisCandidate' },
+            'right':
+              { '$ref': '#/components/schemas/DossierAnalysisCandidate' },
+            'outcome':
+              { 'type': 'string', 'enum': ['match', 'conflict', 'clarify'] },
+            'basis':
+              { 'type': 'string', 'enum': ['literal', 'normalized', 'prose'] },
+          },
+        'required': ['field', 'left', 'right', 'outcome', 'basis'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisCoverageField:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'field': { '$ref': '#/components/schemas/DossierAnalysisField' },
+            'state':
+              { 'type': 'string', 'enum': ['evaluated', 'not_evaluable'] },
+            'candidates': { 'type': 'integer', 'minimum': 0 },
+            'comparisons': { 'type': 'integer', 'minimum': 0 },
+          },
+        'required': ['field', 'state', 'candidates', 'comparisons'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisMissingDocument:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'title': { 'type': 'string' },
+          },
+        'required': ['documentId', 'title'],
+      }
+    DossierAnalysisCoverageSource:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'sourceId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'state':
+              {
+                'type': 'string',
+                'enum': ['complete', 'partial', 'unreadable', 'failed'],
+              },
+            'unitsTotal': { 'type': 'integer' },
+            'unitsReadable': { 'type': 'integer' },
+            'issues':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisExtractionIssue',
+                  },
+              },
+            'integrityFailures': { 'type': 'integer' },
+          },
+        'required':
+          [
+            'sourceId',
+            'state',
+            'unitsTotal',
+            'unitsReadable',
+            'issues',
+            'integrityFailures',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisCoverage:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'fields':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisCoverageField',
+                  },
+              },
+            'truncatedCandidates': { 'type': 'boolean' },
+            'truncatedComparisons': { 'type': 'boolean' },
+            'missingDocuments':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisMissingDocument',
+                  },
+              },
+            'sources':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisCoverageSource',
+                  },
+              },
+          },
+        'required':
+          [
+            'fields',
+            'truncatedCandidates',
+            'truncatedComparisons',
+            'missingDocuments',
+            'sources',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisSuggestionProposal:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'field': { '$ref': '#/components/schemas/DossierAnalysisField' },
+            'value': { 'type': 'string', 'minLength': 1, 'maxLength': 2000 },
+            'rationale':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 4000 },
+            'citations':
+              {
+                'type': 'array',
+                'minItems': 1,
+                'maxItems': 20,
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisCitation' },
+              },
+          },
+        'required': ['field', 'value', 'rationale', 'citations'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisReview:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'revision': { 'type': 'integer', 'minimum': 1 },
+            'decision':
+              { 'type': 'string', 'enum': ['confirm', 'reject', 'correct'] },
+            'replacementValue': { 'type': ['string', 'null'] },
+            'actorMembershipId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'actorDisplayName': { 'type': 'string' },
+            'recordedAt': { 'type': 'string', 'format': 'date-time' },
+          },
+        'required':
+          [
+            'revision',
+            'decision',
+            'replacementValue',
+            'actorMembershipId',
+            'actorDisplayName',
+            'recordedAt',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisSuggestion:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'proposal':
+              {
+                '$ref': '#/components/schemas/DossierAnalysisSuggestionProposal',
+              },
+            'revision': { 'type': 'integer', 'minimum': 0 },
+            'createdAt': { 'type': 'string', 'format': 'date-time' },
+            'reviews':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisReview' },
+              },
+          },
+        'required': ['id', 'proposal', 'revision', 'createdAt', 'reviews'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisRunDetail:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'snapshotHash': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'pipelineVersion': { 'type': 'string' },
+            'createdAt': { 'type': 'string', 'format': 'date-time' },
+            'stale': { 'type': 'boolean' },
+            'sources':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisSource' },
+              },
+            'candidates':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisCandidate' },
+              },
+            'comparisons':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisComparison' },
+              },
+            'coverage':
+              { '$ref': '#/components/schemas/DossierAnalysisCoverage' },
+            'suggestions':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisSuggestion' },
+              },
+          },
+        'required':
+          [
+            'id',
+            'snapshotHash',
+            'pipelineVersion',
+            'createdAt',
+            'stale',
+            'sources',
+            'candidates',
+            'comparisons',
+            'coverage',
+            'suggestions',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisSearchHit:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'source': { '$ref': '#/components/schemas/DossierAnalysisSource' },
+            'passage':
+              {
+                'type': 'object',
+                'properties':
+                  {
+                    'locator': { 'type': 'string' },
+                    'text': { 'type': 'string' },
+                    'sha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+                    'page': { 'type': ['integer', 'null'], 'minimum': 1 },
+                  },
+                'required': ['locator', 'text', 'sha256', 'page'],
+                'additionalProperties': false,
+              },
+            'score': { 'type': 'number' },
+            'reason': { 'type': 'string' },
+          },
+        'required': ['source', 'passage', 'score', 'reason'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisSearchResult:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'snapshotHash': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'stale': { 'type': 'boolean' },
+            'hits':
+              {
+                'type': 'array',
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisSearchHit' },
+              },
+            'truncated': { 'type': 'boolean' },
+            'nextCursor': { 'type': ['string', 'null'] },
+          },
+        'required':
+          ['snapshotHash', 'stale', 'hits', 'truncated', 'nextCursor'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisContextSource:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'sourceId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'documentId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'documentVersionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'representationId':
+              { 'type': ['string', 'null'], 'format': 'uuid' },
+            'sourceSha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'fileName': { 'type': 'string' },
+            'documentTitle': { 'type': 'string' },
+            'documentType': { 'type': 'string' },
+            'versionNumber': { 'type': 'integer' },
+            'versionStatus':
+              { 'type': 'string', 'enum': ['draft', 'official', 'superseded'] },
+            'language':
+              { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+            'extraction':
+              {
+                'type': 'object',
+                'properties':
+                  {
+                    'state':
+                      {
+                        'type': 'string',
+                        'enum': ['complete', 'partial', 'unreadable', 'failed'],
+                      },
+                    'parserVersion': { 'type': 'string' },
+                    'issues':
+                      {
+                        'type': 'array',
+                        'items':
+                          {
+                            '$ref': '#/components/schemas/DossierAnalysisExtractionIssue',
+                          },
+                      },
+                    'unitsTotal': { 'type': 'integer' },
+                    'unitsReadable': { 'type': 'integer' },
+                  },
+                'required':
+                  [
+                    'state',
+                    'parserVersion',
+                    'issues',
+                    'unitsTotal',
+                    'unitsReadable',
+                  ],
+                'additionalProperties': false,
+              },
+          },
+        'required':
+          [
+            'sourceId',
+            'documentId',
+            'documentVersionId',
+            'representationId',
+            'sourceSha256',
+            'fileName',
+            'documentTitle',
+            'documentType',
+            'versionNumber',
+            'versionStatus',
+            'language',
+            'extraction',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisContextEntry:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'sourceId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'documentVersionId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'locator': { 'type': 'string' },
+            'text': { 'type': 'string' },
+            'sha256': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+          },
+        'required':
+          ['sourceId', 'documentVersionId', 'locator', 'text', 'sha256'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisContextOmission:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'sourceId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'locator': { 'type': 'string' },
+            'reason':
+              {
+                'type': 'string',
+                'enum': ['byte_limit', 'integrity', 'unreadable'],
+              },
+          },
+        'required': ['sourceId', 'locator', 'reason'],
+        'additionalProperties': false,
+      }
+    DossierAnalysisContextBundle:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'version': { 'const': 'dossier-context/v1' },
+            'snapshotHash': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'pipelineVersion': { 'type': 'string' },
+            'missingDocuments':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisMissingDocument',
+                  },
+              },
+            'rules':
+              {
+                'type': 'object',
+                'properties':
+                  {
+                    'sourceContent': { 'const': 'untrusted_data' },
+                    'proposals': { 'const': 'human_review_required' },
+                  },
+                'required': ['sourceContent', 'proposals'],
+                'additionalProperties': false,
+              },
+            'sources':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisContextSource',
+                  },
+              },
+            'entries':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisContextEntry',
+                  },
+              },
+            'omissions':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisContextOmission',
+                  },
+              },
+            'runId':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'stale': { 'type': 'boolean' },
+          },
+        'required':
+          [
+            'version',
+            'snapshotHash',
+            'pipelineVersion',
+            'missingDocuments',
+            'rules',
+            'sources',
+            'entries',
+            'omissions',
+            'runId',
+            'stale',
+          ],
+        'additionalProperties': false,
+      }
+    DossierAnalysisProposalImport:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'snapshotHash': { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+            'suggestions':
+              {
+                'type': 'array',
+                'minItems': 1,
+                'maxItems': 100,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisSuggestionProposal',
+                  },
+              },
+          },
+        'required': ['snapshotHash', 'suggestions'],
+      }
+    DossierAnalysisImportReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'ids':
+              {
+                'type': 'array',
+                'items':
+                  {
+                    'type': 'string',
+                    'format': 'uuid',
+                    'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                  },
+              },
+          },
+        'required': ['ids'],
+      }
+    DossierAnalysisReviewCommand:
+      {
+        'oneOf':
+          [
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'properties':
+                {
+                  'expectedRevision':
+                    { 'type': 'integer', 'minimum': 0, 'maximum': 2147483646 },
+                  'decision': { 'const': 'confirm' },
+                },
+              'required': ['expectedRevision', 'decision'],
+            },
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'properties':
+                {
+                  'expectedRevision':
+                    { 'type': 'integer', 'minimum': 0, 'maximum': 2147483646 },
+                  'decision': { 'const': 'reject' },
+                },
+              'required': ['expectedRevision', 'decision'],
+            },
+            {
+              'type': 'object',
+              'additionalProperties': false,
+              'properties':
+                {
+                  'expectedRevision':
+                    { 'type': 'integer', 'minimum': 0, 'maximum': 2147483646 },
+                  'decision': { 'const': 'correct' },
+                  'replacementValue':
+                    {
+                      'type': 'string',
+                      'minLength': 1,
+                      'maxLength': 2000,
+                      'pattern': "^\\S(?:[\\s\\S]*\\S)?$",
+                    },
+                },
+              'required': ['expectedRevision', 'decision', 'replacementValue'],
+            },
+          ],
+      }
+    DossierAnalysisReviewReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'id':
+              {
+                'type': 'string',
+                'format': 'uuid',
+                'pattern': '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+              },
+            'revision': { 'type': 'integer', 'minimum': 1 },
+          },
+        'required': ['id', 'revision'],
+      }
+    DossierAnalysisHistoryPage:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'runs':
+              {
+                'type': 'array',
+                'maxItems': 5,
+                'items':
+                  { '$ref': '#/components/schemas/DossierAnalysisRunSummary' },
+              },
+            'runsNextCursor': { 'type': ['string', 'null'], 'maxLength': 4096 },
+          },
+        'required': ['runs', 'runsNextCursor'],
+      }
     WorkingEvidenceSupportInput:
       {
         'type': 'object',
