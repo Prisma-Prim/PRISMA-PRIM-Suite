@@ -457,37 +457,56 @@ const issueCopy = {
     unreadable: 'This part could not be read.',
     limit: 'A processing limit was reached.',
     unsupported: 'Some content could not be analyzed.',
+    layout: 'Ambiguous layout; verify this part manually.',
+    graphics:
+      'Graphic elements are not interpreted; available text is preserved.',
   },
   fr: {
     unreadable: 'Cette partie n’a pas pu être lue.',
     limit: 'Une limite de traitement a été atteinte.',
     unsupported: 'Une partie du contenu n’a pas pu être analysée.',
+    layout: 'Structure ambiguë : vérifiez cette partie manuellement.',
+    graphics:
+      'Les éléments graphiques ne sont pas interprétés ; le texte disponible est conservé.',
   },
   ro: {
     unreadable: 'Această parte nu a putut fi citită.',
     limit: 'A fost atinsă o limită de procesare.',
     unsupported: 'O parte a conținutului nu a putut fi analizată.',
+    layout: 'Structură ambiguă: verificați manual această parte.',
+    graphics:
+      'Elementele grafice nu sunt interpretate; textul disponibil este păstrat.',
   },
   ru: {
     unreadable: 'Эту часть не удалось прочитать.',
     limit: 'Достигнут предел обработки.',
     unsupported: 'Часть содержимого не удалось проанализировать.',
+    layout: 'Неоднозначная структура: проверьте этот фрагмент вручную.',
+    graphics:
+      'Графические элементы не интерпретированы; доступный текст сохранён.',
   },
 };
+const issueGroups = new Map<string, keyof (typeof issueCopy)['en']>([
+  ['complex_layout', 'layout'],
+  ['overlapping_text', 'layout'],
+  ['table_cell_tab', 'layout'],
+  ['merged_table_cell', 'layout'],
+  ['nested_table', 'layout'],
+  ['vector_content', 'graphics'],
+  ['embedded_content', 'graphics'],
+  ['embedded_text_container', 'graphics'],
+  ['page_unreadable', 'unreadable'],
+  ['no_native_text', 'unreadable'],
+  ['image_content', 'unreadable'],
+  ['unreadable', 'unreadable'],
+  ['parser_error', 'unreadable'],
+]);
 export function useAnalysisIssue() {
   const { locale } = useInterfaceLocale();
   return (code: string) => {
-    const group = code.includes('limit')
-      ? 'limit'
-      : [
-            'page_unreadable',
-            'no_native_text',
-            'image_content',
-            'unreadable',
-            'parser_error',
-          ].includes(code)
-        ? 'unreadable'
-        : 'unsupported';
+    const group =
+      issueGroups.get(code) ??
+      (code.includes('limit') ? 'limit' : 'unsupported');
     return issueCopy[locale][group];
   };
 }

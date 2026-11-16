@@ -125,6 +125,7 @@ export function evaluateEngine() {
   return {
     version: 'dossier-engine-evaluation/v1' as const,
     kind: 'synthetic_deterministic_rules' as const,
+    pipelineVersion: result.pipelineVersion,
     snapshotHash: result.snapshotHash,
     extraction: {
       matched,
@@ -210,6 +211,32 @@ export function evaluateScenarios() {
     ['auditor days', 'Auditor days: 2,5', 'auditorDays', '2.5'],
     ['reference', 'Reference: 001-A', 'reference', '001-A'],
     ['scope prose', 'Scope: Manufacturing', 'scope', null],
+    ['indented Romanian tax id', '\u00a0Cod fiscal:\t00042', 'taxId', '00042'],
+    [
+      'indented Russian legal name',
+      '\tНаименование организации: ООО Пример',
+      'legalName',
+      'ооо пример',
+    ],
+    ['Romanian IDNO', 'IDNO: 0012345678901', 'taxId', '0012345678901'],
+    [
+      'Russian fiscal code',
+      'Фискальный код: 0012345678901',
+      'taxId',
+      '0012345678901',
+    ],
+    [
+      'legacy Romanian diacritics',
+      'Denumirea organizaţiei: Atelier Ştiinţă',
+      'legalName',
+      'atelier stiinta',
+    ],
+    [
+      'decomposed Romanian label',
+      'Adresa\u0306: Strada Unirii',
+      'address',
+      'strada unirii',
+    ],
   ];
   for (const [name, text, field, normalized] of extractionCases)
     cases.push({
@@ -531,6 +558,96 @@ export function evaluateScenarios() {
       },
     },
   );
+  cases.push(
+    {
+      name: 'indented prose does not establish a labelled fact',
+      run: () =>
+        analyzeDossier({
+          sources: [source('a', '  Consultez la ligne Tax ID: 001')],
+          missingDocuments: [],
+        }).candidates.length === 0,
+    },
+    {
+      name: 'canonical Cyrillic spelling preserves distinct letters',
+      run: () =>
+        searchDossier({
+          sources: [source('a', 'и'), source('b', 'й')],
+          query: 'и\u0306',
+          mode: 'lexical',
+          filters: {},
+        })
+          .hits.map((hit) => hit.source.id)
+          .join('|') === 'b',
+    },
+    {
+      name: 'canonical Romanian spelling retains exact evidence',
+      run: () =>
+        searchDossier({
+          sources: [source('a', 'Știință')],
+          query: 'S\u0326tiint\u0326a\u0306',
+          mode: 'lexical',
+          filters: {},
+        }).hits[0]?.passage.text === 'Știință',
+    },
+    {
+      name: 'one adjacent-letter typo is fuzzy only',
+      run: () => {
+        const input = {
+          sources: [source('a', 'contract valabil')],
+          query: 'contrcat',
+          filters: {},
+        };
+        return (
+          searchDossier({ ...input, mode: 'fuzzy' }).hits.length === 1 &&
+          searchDossier({ ...input, mode: 'lexical' }).hits.length === 0
+        );
+      },
+    },
+    {
+      name: 'Russian exact phrase precedes scattered and alternative terms',
+      run: () =>
+        searchDossier({
+          sources: [
+            source('a-loose', 'Аудит включает проверку сертификации'),
+            source('b-alternative', 'аудита сертификации'),
+            source('z-exact', 'АУДИТ сертификации'),
+          ],
+          query: 'аудит сертификации',
+          mode: 'lexical',
+          filters: {},
+        })
+          .hits.map((hit) => hit.source.id)
+          .join('|') === 'z-exact|a-loose|b-alternative',
+    },
+  );
+  for (const [name, query, text] of [
+    ['Romanian document inflection', 'document', 'Lista documentelor'],
+    ['Russian certificate inflection', 'сертификат', 'Реестр сертификатов'],
+    ['Russian certification inflection', 'сертификация', 'Схема сертификации'],
+  ])
+    cases.push({
+      name,
+      run: () =>
+        searchDossier({
+          sources: [source('a', text)],
+          query,
+          mode: 'lexical',
+          filters: {},
+        }).hits.length === 1,
+    });
+  cases.push({
+    name: 'multiline table identifier stays ambiguous',
+    run: () => {
+      const a = source('a', 'IDNO\t001234\n005678');
+      a.extraction.passages[0].locator = 'word/document.xml#table:1/row:1';
+      const result = analyzeDossier({ sources: [a], missingDocuments: [] });
+      return (
+        result.candidates.length === 1 &&
+        result.candidates[0].value === '001234\n005678' &&
+        result.candidates[0].normalizationState === 'ambiguous'
+      );
+    },
+  });
   return cases.map(({ name, run }) => {
     try {
       const passed = run();

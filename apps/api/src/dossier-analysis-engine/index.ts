@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const DOSSIER_ANALYSIS_PIPELINE_VERSION = 'dossier-analysis-rules/v1';
+export const DOSSIER_ANALYSIS_PIPELINE_VERSION = 'dossier-analysis-rules/v2';
 
 export interface EvidenceSource {
   id: string;
@@ -108,6 +108,9 @@ const labels: Record<FieldName, readonly string[]> = {
     'tax identification number',
     'cod fiscal',
     'cui',
+    'idno',
+    'идно',
+    'фискальный код',
     'identifiant fiscal',
     'numéro fiscal',
     'инн',
@@ -186,10 +189,18 @@ const labels: Record<FieldName, readonly string[]> = {
     'область сертификации',
   ],
 };
+const fieldsByLabel = new Map<string, FieldName>();
+for (const field of FIELDS)
+  for (const label of labels[field]) fieldsByLabel.set(fold(label), field);
 function normalize(
   field: FieldName,
   value: string,
 ): Pick<Candidate, 'normalized' | 'normalizationState'> {
+  if (
+    !['legalName', 'address', 'scope'].includes(field) &&
+    /[\r\n]/u.test(value)
+  )
+    return { normalized: null, normalizationState: 'ambiguous' };
   if (
     ['auditDate', 'decisionDate', 'validFrom', 'validUntil'].includes(field)
   ) {
@@ -267,17 +278,22 @@ function referenceKind(
   );
   if (!passage) return null;
   const before = passage.text.slice(0, candidate.citation.start);
-  const line = before
-    .slice(before.lastIndexOf('\n') + 1)
-    .toLocaleLowerCase()
-    .replace(/^(?:stage|etapa|étape|этап)\s*[12]\s*[-–:]?\s+/iu, '')
-    .replace(/[\s:：]+$/u, '');
+  const line = fold(
+    (passage.locator.includes('#table:')
+      ? before
+      : before.slice(before.lastIndexOf('\n') + 1)
+    )
+      .trimStart()
+      .normalize('NFC')
+      .toLocaleLowerCase()
+      .replace(/^(?:stage|etapa|étape|этап)\s*[12]\s*[-–:]?\s+/iu, '')
+      .replace(/[\s:：]+$/u, ''),
+  ).replace(/\s+/gu, ' ');
   if (
     [
       'contract reference',
-      'referință contract',
       'referinta contract',
-      'référence contrat',
+      'reference contrat',
       'номер договора',
     ].includes(line)
   )
@@ -285,9 +301,8 @@ function referenceKind(
   if (
     [
       'invoice reference',
-      'referință factură',
       'referinta factura',
-      'référence facture',
+      'reference facture',
       'номер счета',
       'номер счёта',
     ].includes(line)
@@ -314,18 +329,30 @@ export function analyzeDossier({
         source.extraction.issues.some(
           (issue) =>
             (issue.locator === p.locator &&
-              ['table_cell_tab', 'merged_table_cell'].includes(issue.code)) ||
+              [
+                'table_cell_tab',
+                'merged_table_cell',
+                'embedded_text_container',
+                'complex_layout',
+                'overlapping_text',
+              ].includes(issue.code)) ||
             (issue.code === 'nested_table' && p.locator.includes('#table:')),
         )
       )
         continue;
+      const tableRow = p.locator.includes('#table:');
+      if (tableRow && p.text.split('\t').length !== 2) continue;
       let offset = 0;
       let namedEvent: string | null = null;
       let invalidEvent = false;
-      for (const line of p.text.split('\n')) {
+      for (const line of tableRow ? [p.text] : p.text.split('\n')) {
+        const lineOffset = offset;
+        offset += line.length + 1;
+        const content = line.trimStart();
+        const indentation = line.length - content.length;
         const eventLine =
           /^(?:event|eveniment|événement|событие)\s*:\s*(\S(?:.*\S)?)\s*$/iu.exec(
-            line,
+            content,
           );
         if (eventLine) {
           invalidEvent = Buffer.byteLength(eventLine[1], 'utf8') > 200;
@@ -335,55 +362,52 @@ export function analyzeDossier({
           } else namedEvent = eventLine[1];
         }
         const stage = /^(?:stage|etapa|étape|этап)\s*([12])\s*[-–:]?\s+/iu.exec(
-          line,
+          content,
         );
         const stageKey = stage ? `stage${stage[1]}` : null;
         const event = namedEvent
           ? `event:${namedEvent}${stageKey ? `|${stageKey}` : ''}`
           : stageKey;
-        const prefixLength = stage?.[0].length ?? 0;
+        const prefixLength = indentation + (stage?.[0].length ?? 0);
         const body = line.slice(prefixLength);
-        for (const field of FIELDS)
-          for (const label of labels[field]) {
-            if (
-              body.slice(0, label.length).toLocaleLowerCase() !==
-              label.toLocaleLowerCase()
-            )
-              continue;
-            const suffix = body.slice(label.length);
-            const m =
-              /^(?:[ \r]*[:：][ \r]*(?:\t[ \r]*)?|[ \r]*\t[ \r]*)([^\s\t](?:[^\t]*?[^\s\t])?)[ \r]*$/u.exec(
-                suffix,
+        const separator = body.search(/[:：\t]/u);
+        const field =
+          separator < 0 || separator > 100
+            ? undefined
+            : fieldsByLabel.get(
+                fold(body.slice(0, separator)).replace(/\s+/gu, ' ').trim(),
               );
-            if (!m) continue;
-            if (
-              invalidEvent ||
-              Buffer.byteLength(m[1], 'utf8') > 4096 ||
-              candidates.length >= 500
-            ) {
-              truncatedCandidates = true;
-              break;
-            }
-            const start =
-              offset + prefixLength + label.length + suffix.indexOf(m[1]);
-            const candidate: Candidate = {
-              field,
-              value: m[1],
-              ...normalize(field, m[1]),
-              event,
-              citation: citation(source, p, start, start + m[1].length),
-            };
-            const size =
-              Buffer.byteLength(JSON.stringify(candidate), 'utf8') + 1;
-            if (candidateBytes + size > 1048576) {
-              truncatedCandidates = true;
-              break;
-            }
-            candidates.push(candidate);
-            candidateBytes += size;
-            break;
-          }
-        offset += line.length + 1;
+        if (!field) continue;
+        const suffix = body.slice(separator);
+        const m =
+          /^(?:[ \r]*[:：][ \r]*(?:\t[ \r]*)?|[ \r]*\t[ \r]*)([^\s\t](?:[^\t]*?[^\s\t])?)[ \r]*$/u.exec(
+            suffix,
+          );
+        if (!m) continue;
+        if (
+          invalidEvent ||
+          Buffer.byteLength(m[1], 'utf8') > 4096 ||
+          candidates.length >= 500
+        ) {
+          truncatedCandidates = true;
+          continue;
+        }
+        const start =
+          lineOffset + prefixLength + separator + suffix.indexOf(m[1]);
+        const candidate: Candidate = {
+          field,
+          value: m[1],
+          ...normalize(field, m[1]),
+          event,
+          citation: citation(source, p, start, start + m[1].length),
+        };
+        const size = Buffer.byteLength(JSON.stringify(candidate), 'utf8') + 1;
+        if (candidateBytes + size > 1048576) {
+          truncatedCandidates = true;
+          continue;
+        }
+        candidates.push(candidate);
+        candidateBytes += size;
       }
     }
   const byId = new Map(sources.map((s) => [s.id, s]));
@@ -554,26 +578,61 @@ export interface SearchHit {
   score: number;
   reason: string;
 }
-const fold = (value: string) =>
-  value
+function fold(value: string): string {
+  return value
+    .normalize('NFC')
     .toLocaleLowerCase()
     .replace(/\p{Script=Latin}\p{M}*/gu, (character) =>
       character.normalize('NFD').replace(/\p{M}/gu, ''),
     );
+}
 const tokens = (value: string) => fold(value).match(/[\p{L}\p{N}]+/gu) ?? [];
 // Explicit language-local alternatives only; no automatic translation.
 const synonyms: readonly (readonly string[])[] = [
-  ['audit', 'auditing'],
-  ['certificare', 'certificarii'],
+  ['audit', 'auditing', 'auditul', 'auditului', 'audituri', 'auditurilor'],
+  [
+    'certificare',
+    'certificarea',
+    'certificari',
+    'certificarii',
+    'certificarilor',
+  ],
+  [
+    'certificat',
+    'certificatul',
+    'certificatului',
+    'certificate',
+    'certificatelor',
+  ],
+  ['document', 'documentul', 'documentului', 'documente', 'documentelor'],
+  ['contract', 'contractul', 'contractului', 'contracte', 'contractelor'],
   ['certification', 'certifie'],
-  ['аудит', 'аудита'],
+  ['аудит', 'аудита', 'аудиту', 'аудитом', 'аудитов'],
+  [
+    'сертификат',
+    'сертификата',
+    'сертификату',
+    'сертификатом',
+    'сертификаты',
+    'сертификатов',
+  ],
+  [
+    'документ',
+    'документа',
+    'документу',
+    'документом',
+    'документы',
+    'документов',
+  ],
+  ['договор', 'договора', 'договору', 'договором', 'договоры', 'договоров'],
+  ['сертификация', 'сертификации', 'сертификацию', 'сертификацией'],
 ];
 function equivalent(a: string, b: string) {
   return (
     a === b || synonyms.some((group) => group.includes(a) && group.includes(b))
   );
 }
-function distanceAtMostOne(a: string, b: string): boolean {
+function withinOneTypo(a: string, b: string): boolean {
   if (Math.abs(a.length - b.length) > 1) return false;
   let i = 0,
     j = 0,
@@ -584,6 +643,11 @@ function distanceAtMostOne(a: string, b: string): boolean {
       j++;
     } else {
       if (++edits > 1) return false;
+      if (a.length === b.length && a[i] === b[j + 1] && a[i + 1] === b[j]) {
+        i += 2;
+        j += 2;
+        continue;
+      }
       if (a.length >= b.length) i++;
       if (b.length >= a.length) j++;
     }
@@ -601,22 +665,29 @@ function searchScore(
     available = tokens(text);
   if (!wanted.length) return null;
   let approximate = false;
+  let alternative = false;
   for (const word of wanted) {
-    if (available.some((other) => equivalent(word, other))) continue;
+    if (available.some((other) => other === word)) continue;
+    if (available.some((other) => equivalent(word, other))) {
+      alternative = true;
+      continue;
+    }
     if (
       mode === 'fuzzy' &&
       word.length >= 4 &&
-      available.some((other) => distanceAtMostOne(word, other))
+      available.some((other) => withinOneTypo(word, other))
     ) {
       approximate = true;
       continue;
     }
     return null;
   }
-  return {
-    score: approximate ? 50 : 80,
-    reason: approximate ? 'fuzzy' : 'lexical',
-  };
+  if (approximate) return { score: 50, reason: 'fuzzy' };
+  if (alternative) return { score: 70, reason: 'lexical' };
+  const phrase = available.some((_, start) =>
+    wanted.every((word, index) => available[start + index] === word),
+  );
+  return { score: phrase ? 90 : 80, reason: 'lexical' };
 }
 export function searchDossier({
   sources,

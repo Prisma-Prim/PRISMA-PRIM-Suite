@@ -319,8 +319,15 @@ describe.skipIf(!databaseUrl)(
           '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="root" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
         'word/_rels/document.xml.rels':
           '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>',
-        'word/document.xml':
-          '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Tax ID: RO87654321</w:t></w:r></w:p><w:p><w:r><w:t>Adresă: Strada Lalelelor</w:t></w:r></w:p><w:p><w:r><w:t>Адрес: улица Мира</w:t></w:r></w:p><w:p><w:r><w:t>Adresse: Rue du Soleil</w:t></w:r></w:p></w:body></w:document>',
+        'word/document.xml': [
+          '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>',
+          '<w:tbl><w:tr><w:tc><w:p><w:r><w:t xml:space="preserve">  IDNO</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>RO87654321</w:t></w:r></w:p></w:tc></w:tr></w:tbl>',
+          '<w:p><w:r><w:t>Adresă: Strada Lalelelor</w:t></w:r></w:p><w:p><w:r><w:t>Адрес: улица Мира</w:t></w:r></w:p>',
+          '<w:p><w:r><w:t>Adresse: Rue du Soleil certifié</w:t></w:r></w:p>',
+          '<w:p><w:r><w:t>Audit documente de certificare</w:t></w:r></w:p><w:p><w:r><w:t>AUDIT de certificare</w:t></w:r></w:p>',
+          '<w:p><w:r><w:t>Știință și certificare</w:t></w:r></w:p><w:p><w:r><w:t>Действительный сертификат</w:t></w:r></w:p>',
+          '</w:body></w:document>',
+        ].join(''),
       };
       const docx = zipSync(
         Object.fromEntries(
@@ -364,7 +371,21 @@ describe.skipIf(!databaseUrl)(
       expect(JSON.stringify(run)).toContain('page:1');
       expect(JSON.stringify(run)).toContain('RO87654321');
       const candidates = array(run.candidates);
-      const candidate = candidates.find((item) => item.field === 'taxId');
+      expect(candidates).toContainEqual(
+        expect.objectContaining({
+          field: 'taxId',
+          value: 'RO87654321',
+          citation: expect.objectContaining({
+            sourceId: docxId,
+            start: 7,
+            end: 17,
+            quote: 'RO87654321',
+          }),
+        }),
+      );
+      const candidate = candidates.find(
+        (item) => item.field === 'taxId' && item.value === 'RO12345678',
+      );
       expect(candidate).toBeDefined();
       if (!candidate) throw new Error('Expected cited synthetic tax ID');
       const citation = object(candidate.citation);
@@ -542,7 +563,7 @@ describe.skipIf(!databaseUrl)(
       expect(search.status).toBe(200);
       expect(JSON.stringify(await search.json())).toContain('RO12345678');
       const firstPage = await call(
-        `${prefix}/runs/${runId}/search?query=Tax&mode=lexical&limit=1`,
+        `${prefix}/runs/${runId}/search?query=RO&mode=literal&limit=1`,
       );
       expect(firstPage.status).toBe(200);
       const firstText = await firstPage.text();
@@ -553,7 +574,7 @@ describe.skipIf(!databaseUrl)(
       expect(array(first.hits)).toHaveLength(1);
       const cursor = string(first.nextCursor);
       const secondPage = await call(
-        `${prefix}/runs/${runId}/search?query=Tax&mode=lexical&limit=1&cursor=${encodeURIComponent(cursor)}`,
+        `${prefix}/runs/${runId}/search?query=RO&mode=literal&limit=1&cursor=${encodeURIComponent(cursor)}`,
       );
       expect(secondPage.status).toBe(200);
       const second = object(await secondPage.json());
@@ -577,6 +598,11 @@ describe.skipIf(!databaseUrl)(
         ['улица', 'lexical', 'улица'],
         ['soleil', 'lexical', 'Soleil'],
         ['lalelelur', 'fuzzy', 'Lalelelor'],
+        ['lalelelro', 'fuzzy', 'Lalelelor'],
+        ['certifie\u0301', 'lexical', 'certifié'],
+        ['мриа', 'fuzzy', 'Мира'],
+        ['S\u0326tiint\u0326a\u0306', 'lexical', 'Știință'],
+        ['деи\u0306ствительныи\u0306', 'lexical', 'Действительный'],
       ]) {
         const result = await call(
           `${prefix}/runs/${runId}/search?query=${encodeURIComponent(query)}&mode=${mode}&sourceId=${docxId}`,
@@ -584,6 +610,15 @@ describe.skipIf(!databaseUrl)(
         expect(result.status).toBe(200);
         expect(JSON.stringify(await result.json())).toContain(expected);
       }
+      const ranked = await call(
+        `${prefix}/runs/${runId}/search?query=${encodeURIComponent('audit de certificare')}&mode=lexical&sourceId=${docxId}`,
+      );
+      expect(ranked.status).toBe(200);
+      expect(
+        array(object(await ranked.json()).hits).map(
+          (hit) => object(hit.passage).text,
+        ),
+      ).toEqual(['AUDIT de certificare', 'Audit documente de certificare']);
       const documentBefore = object(
         await (await call(`/documents/${documentId}`)).json(),
       );

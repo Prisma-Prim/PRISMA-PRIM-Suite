@@ -115,6 +115,113 @@ describe('dossier analysis', () => {
         .hits,
     ).toHaveLength(2);
   });
+  it('matches canonical Unicode spellings without conflating Cyrillic letters or changing literal search', () => {
+    const sources = [
+      source('a', 'и'),
+      source('b', 'й'),
+      source('c', 'François certifié'),
+    ];
+    expect(
+      searchDossier({
+        sources,
+        query: 'и\u0306',
+        mode: 'lexical',
+        filters: {},
+      }).hits.map((hit) => hit.source.id),
+    ).toEqual(['b']);
+    expect(
+      searchDossier({
+        sources,
+        query: 'franc\u0327ois',
+        mode: 'lexical',
+        filters: {},
+      }).hits.map((hit) => hit.source.id),
+    ).toEqual(['c']);
+    expect(
+      searchDossier({ sources, query: 'и\u0306', mode: 'literal', filters: {} })
+        .hits,
+    ).toEqual([]);
+    expect(sources[1].extraction.passages[0].text).toBe('й');
+  });
+  it('recovers one adjacent-letter typo in fuzzy search while keeping short and multiple typos strict', () => {
+    const sources = [source('a', 'certification аудит')];
+    for (const query of ['certifciation', 'аудти']) {
+      expect(
+        searchDossier({ sources, query, mode: 'fuzzy', filters: {} }).hits.map(
+          (hit) => [hit.source.id, hit.reason],
+        ),
+      ).toEqual([['a', 'fuzzy']]);
+      expect(
+        searchDossier({ sources, query, mode: 'lexical', filters: {} }).hits,
+      ).toEqual([]);
+    }
+    for (const query of ['certifciatoin', 'аи', 'аидот'])
+      expect(
+        searchDossier({ sources, query, mode: 'fuzzy', filters: {} }).hits,
+      ).toEqual([]);
+  });
+  it('ranks an exact token phrase before scattered terms, alternatives and typos across pages', () => {
+    const input = {
+      sources: [
+        source(
+          'a-loose',
+          'Audit with unrelated review sections before certification',
+        ),
+        source('b-alternative', 'Auditing certification'),
+        source('c-typo', 'Audti certification'),
+        source('z-phrase', 'Before AUDIT certification after'),
+      ],
+      query: 'audit certification',
+      mode: 'fuzzy' as const,
+      filters: {},
+      limit: 2,
+    };
+    const first = searchDossier(input);
+    expect(first.hits.map((hit) => hit.source.id)).toEqual([
+      'z-phrase',
+      'a-loose',
+    ]);
+    expect(first.nextCursor).not.toBeNull();
+    const second = searchDossier({ ...input, cursor: first.nextCursor ?? '' });
+    expect(second.hits.map((hit) => hit.source.id)).toEqual([
+      'b-alternative',
+      'c-typo',
+    ]);
+    expect(second.nextCursor).toBeNull();
+    const scores = [...first.hits, ...second.hits].map((hit) => hit.score);
+    expect(scores[0]).toBeGreaterThan(scores[1]);
+    expect(scores[1]).toBeGreaterThan(scores[2]);
+    expect(scores[2]).toBeGreaterThan(scores[3]);
+  });
+  it.each([
+    ['certificat', 'Datele certificatelor emise', 'ro', 1],
+    ['document', 'Lista documentelor necesare', 'ro', 1],
+    ['contract', 'Înregistrarea contractelor', 'ro', 1],
+    ['certificare', 'Etapele certificării', 'ro', 0],
+    ['сертификат', 'Реестр сертификатов', 'ru', 1],
+    ['документ', 'Проверка документов', 'ru', 1],
+    ['договор', 'Приложение к договору', 'ru', 1],
+    ['аудит', 'Подготовка к аудиту', 'ru', 1],
+    ['сертификация', 'Схема сертификации', 'ru', 0],
+  ] satisfies [string, string, EvidenceSource['language'], number][])(
+    'retrieves ordinary Romanian/Russian inflections for %s',
+    (query, text, language, literalHits) => {
+      const a = source('a', text);
+      a.language = language;
+      const sources = [a, source('unrelated', 'Дата решения / data deciziei')];
+      const result = searchDossier({
+        sources,
+        query,
+        mode: 'lexical',
+        filters: {},
+      });
+      expect(result.hits.map((hit) => hit.source.id)).toEqual(['a']);
+      expect(result.hits[0].passage.text).toBe(text);
+      expect(
+        searchDossier({ sources, query, mode: 'literal', filters: {} }).hits,
+      ).toHaveLength(literalHits);
+    },
+  );
   it('binds page cursors to the snapshot and all search inputs', () => {
     const sources = [source('a', 'Audit'), source('b', 'Audit')];
     const input = {
@@ -284,6 +391,110 @@ describe('dossier analysis', () => {
       expect(c.citation.quote).toBe(c.value);
     }
   });
+  it('recognizes indented labels and event references without moving original citations', () => {
+    const a = source(
+      'a',
+      '  Cod fiscal: 00123\n\tAdresse:\tRue École\n  Event: annual\n\tStage 1 Contract reference: C-001',
+    );
+    const b = source(
+      'b',
+      'Cod fiscal: 00124\nEvent: annual\nStage 1 Contract reference: C-001',
+    );
+    const result = analyzeDossier({ sources: [a, b], missingDocuments: [] });
+    expect(result.candidates.map((c) => [c.field, c.value, c.event])).toEqual([
+      ['taxId', '00123', null],
+      ['address', 'Rue École', null],
+      ['reference', 'C-001', 'event:annual|stage1'],
+      ['taxId', '00124', null],
+      ['reference', 'C-001', 'event:annual|stage1'],
+    ]);
+    expect(result.candidates[0].citation).toMatchObject({
+      start: 14,
+      end: 19,
+      quote: '00123',
+    });
+    expect(result.comparisons.map((c) => [c.field, c.outcome])).toEqual([
+      ['taxId', 'conflict'],
+      ['reference', 'match'],
+    ]);
+    for (const c of result.candidates) {
+      const text =
+        c.citation.sourceId === 'a'
+          ? a.extraction.passages[0].text
+          : b.extraction.passages[0].text;
+      expect(text.slice(c.citation.start, c.citation.end)).toBe(c.value);
+    }
+  });
+  it.each([
+    ['  IDNO: 0012345678901', 'taxId', '0012345678901'],
+    ['\tФискальный код: 0012345678901', 'taxId', '0012345678901'],
+    ['Denumirea organizaţiei: Atelier Ştiinţă', 'legalName', 'Atelier Ştiinţă'],
+    ['Adresa\u0306:\tStrada Unirii', 'address', 'Strada Unirii'],
+  ])(
+    'recognizes Romanian and Russian document labels with exact evidence: %s',
+    (text, field, value) => {
+      const input = source('a', text);
+      const result = analyzeDossier({ sources: [input], missingDocuments: [] });
+      expect(result.candidates.map((c) => [c.field, c.value])).toEqual([
+        [field, value],
+      ]);
+      const c = result.candidates[0];
+      expect(c.citation.quote).toBe(value);
+      expect(text.slice(c.citation.start, c.citation.end)).toBe(value);
+    },
+  );
+  it('keeps complete multiline Word cell values and refuses ambiguous column associations', () => {
+    const address = source('address', 'Адрес\tулица Мира 1\nКишинёв');
+    const tax = source('tax', 'Фискальный\nкод\t001234\n005678');
+    const columns = source('columns', '\tIDNO\t000999');
+    for (const s of [address, tax, columns])
+      s.extraction.passages[0].locator = 'word/document.xml#table:1/row:1';
+    const result = analyzeDossier({
+      sources: [address, tax, columns, source('plain', 'IDNO: 001234')],
+      missingDocuments: [],
+    });
+    expect(
+      result.candidates.map((c) => [c.field, c.value, c.normalizationState]),
+    ).toEqual([
+      ['address', 'улица Мира 1\nКишинёв', 'normalized'],
+      ['taxId', '001234\n005678', 'ambiguous'],
+      ['taxId', '001234', 'normalized'],
+    ]);
+    expect(result.candidates[0].normalized).toBe('улица мира 1 кишинёв');
+    expect(result.candidates[1].citation.quote).toBe('001234\n005678');
+    expect(result.comparisons).toEqual([]);
+  });
+  it.each([
+    {
+      left: 'Etapa 1 Referinţă contract: C-001',
+      right: 'Etapa 1 Referință contract: C-001',
+      locator: 'p1',
+    },
+    {
+      left: 'Etapa 1 Referinţă\ncontract\tC-001',
+      right: 'Etapa 1 Referință contract\tC-001',
+      locator: 'word/document.xml#table:1/row:1',
+    },
+    {
+      left: 'Этап 1 Номер договора: C-001',
+      right: 'Этап 1 Номер договора: C-001',
+      locator: 'p1',
+    },
+  ])(
+    'preserves explicit Romanian/Russian reference roles: $left',
+    ({ left, right, locator }) => {
+      const a = source('a', left),
+        b = source('b', right);
+      a.extraction.passages[0].locator = locator;
+      b.extraction.passages[0].locator = locator;
+      expect(
+        analyzeDossier({
+          sources: [a, b],
+          missingDocuments: [],
+        }).comparisons.map((c) => [c.field, c.outcome]),
+      ).toEqual([['reference', 'match']]);
+    },
+  );
   it('does not infer facts from structurally ambiguous table rows', () => {
     const a = source('a', 'Cod fiscal\t00123');
     a.extraction.state = 'partial';

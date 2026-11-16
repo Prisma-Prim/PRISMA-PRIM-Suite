@@ -125,8 +125,12 @@ export async function prepareDossier(
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="root" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
     'word/_rels/document.xml.rels':
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>',
-    'word/document.xml':
-      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Tax ID: RO87654321</w:t></w:r></w:p></w:body></w:document>',
+    'word/document.xml': [
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>',
+      '<w:tbl><w:tr><w:tc><w:p><w:r><w:t xml:space="preserve">  Cod fiscal</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>RO87654321</w:t></w:r></w:p></w:tc></w:tr></w:tbl>',
+      '<w:p><w:r><w:pict xmlns:v="urn:schemas-microsoft-com:vml"><v:shape id="fictional-diagram" style="width:120pt;height:40pt"><v:textbox><w:txbxContent><w:p><w:r><w:t>Организация: учебный пример</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r></w:p>',
+      '</w:body></w:document>',
+    ].join(''),
   };
   const docx = Buffer.from(
     zipSync(

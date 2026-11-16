@@ -15,7 +15,7 @@ export interface TextExtraction {
   unitsTotal: number;
   unitsReadable: number;
 }
-export const DOCUMENT_TEXT_PARSER_VERSION = 'native-text.v1';
+export const DOCUMENT_TEXT_PARSER_VERSION = 'native-text.v2';
 const parserVersion = DOCUMENT_TEXT_PARSER_VERSION;
 function failure(code: string): TextExtraction {
   return {
@@ -43,6 +43,7 @@ export async function extractDocumentText(input: {
     workerData: {
       bytes: new Uint8Array(input.bytes),
       kind: input.kind,
+      parserVersion,
       pdf: require.resolve('pdfjs-dist/legacy/build/pdf.mjs'),
       fflate: require.resolve('fflate'),
       saxes: require.resolve('saxes'),
@@ -139,7 +140,7 @@ const { parentPort, workerData } = require('node:worker_threads');
 const { createHash } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 const MAX_TEXT = 2 * 1024 * 1024, MAX_XML = 8 * 1024 * 1024, MAX_ARCHIVE_XML = 16 * 1024 * 1024, MAX_ENTRIES = 500;
-const result = { state: 'complete', parserVersion: 'native-text.v1', passages: [], issues: [], unitsTotal: 0, unitsReadable: 0 };
+const result = { state: 'complete', parserVersion: workerData.parserVersion, passages: [], issues: [], unitsTotal: 0, unitsReadable: 0 };
 let textBytes = 0, truncated = false;
 function issue(code, locator = null) { result.issues.push({ code, locator }); }
 function add(locator, text, page) {
@@ -153,6 +154,36 @@ function add(locator, text, page) {
 function finish() {
   result.state = result.passages.length === 0 && !truncated ? 'unreadable' : result.issues.length ? 'partial' : 'complete';
   parentPort.postMessage(result);
+}
+function pdfText(items, locator) {
+  const textItems = items.filter(item => 'str' in item && item.str.length);
+  if (textItems.some(item => !Array.isArray(item.transform) || item.transform.length !== 6 || ![item.width, item.height, ...item.transform].every(Number.isFinite) || Math.abs(item.transform[1]) > 0.001 || item.transform[0] <= 0 || item.transform[3] <= 0 || item.dir === 'rtl')) {
+    issue('complex_layout', locator);
+    return textItems.map(item => item.str + (item.hasEOL ? '\n' : '')).join('');
+  }
+  const rows = [];
+  for (const item of [...textItems].sort((a,b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4])) {
+    const height = Math.max(1, Math.abs(item.transform[3]), item.height);
+    const row = rows[rows.length - 1];
+    if (row && Math.abs(row.y - item.transform[5]) <= Math.min(row.height, height) * 0.25) row.items.push(item);
+    else rows.push({ y: item.transform[5], height, items: [item] });
+  }
+  let overlapping = false;
+  const lines = rows.map(row => {
+    let text = '', right = null;
+    for (const item of row.items.sort((a,b) => a.transform[4] - b.transform[4])) {
+      const x = item.transform[4], height = Math.max(1, Math.abs(item.transform[3]), item.height);
+      const gap = right === null ? 0 : x - right;
+      if (gap > Math.max(12, height)) text += '\t';
+      else if (gap > height * 0.15 && text && !/\s$/.test(text) && !/^\s/.test(item.str)) text += ' ';
+      if (right !== null && gap < -Math.max(1, height * 0.25) && item.str.trim()) overlapping = true;
+      text += !item.str.trim() && item.width > Math.max(12, height) ? '\t' : item.str;
+      right = Math.max(right ?? x, x + item.width);
+    }
+    return text;
+  });
+  if (overlapping) issue('overlapping_text', locator);
+  return lines.join('\n');
 }
 async function pdf() {
   const { getDocument, OPS } = await import(pathToFileURL(workerData.pdf).href);
@@ -169,7 +200,8 @@ async function pdf() {
         const content = await page.getTextContent({ disableNormalization: true });
         const operators = await page.getOperatorList();
         if (operators.fnArray.some(op => op === OPS.paintImageXObject || op === OPS.paintInlineImageXObject || op === OPS.paintImageMaskXObject || op === OPS.paintJpegXObject)) issue('image_content', locator);
-        const text = content.items.filter(item => 'str' in item).map(item => item.str + (item.hasEOL ? '\n' : '')).join('');
+        if (operators.fnArray.some(op => op === OPS.constructPath || op === OPS.rawFillPath)) issue('vector_content', locator);
+        const text = pdfText(content.items, locator);
         if (add(locator, text, n)) result.unitsReadable++;
         else if (!text.trim()) issue('no_native_text', locator);
       } catch { issue('page_unreadable', locator); }
@@ -323,8 +355,10 @@ function docx() {
     if (truncated) break;
     const bytes = parts[part];
     if (bytes.length > MAX_XML) throw Error('xml limit');
-    let paragraph = null, inText = false, index = 0, depth = 0, rootSeen = false, tableCount = 0;
+    let paragraph = null, inText = false, index = 0, paragraphIndex = 0, paragraphBox = null, depth = 0, rootSeen = false, tableCount = 0, textBoxCount = 0;
     const tables = [];
+    const paragraphStack = [], textBoxes = [];
+    const paragraphLocator = () => paragraphBox === null ? part + '#paragraph:' + paragraphIndex : part + '#textbox:' + paragraphBox + '/paragraph:' + paragraphIndex;
     const currentTable = () => tables[tables.length - 1];
     const parser = new SaxesParser({ xmlns: true });
     parser.on('doctype', () => { throw Error('doctype forbidden'); });
@@ -350,7 +384,17 @@ function docx() {
         if (!row || row.cell) throw Error('invalid table cell');
         row.cell = [];
       }
-      else if (tag.local === 'p') { if (paragraph !== null) throw Error('nested paragraphs'); paragraph = ''; index++; }
+      else if (tag.local === 'txbxContent') {
+        textBoxes.push(++textBoxCount);
+        if (paragraph !== null) issue('embedded_text_container', paragraphLocator());
+      }
+      else if (tag.local === 'p') {
+        if (paragraph !== null) {
+          if (!textBoxes.length || paragraphBox === textBoxes[textBoxes.length - 1]) throw Error('nested paragraphs');
+          paragraphStack.push({ paragraph, inText, paragraphIndex, paragraphBox });
+        }
+        paragraph = ''; inText = false; paragraphIndex = ++index; paragraphBox = textBoxes[textBoxes.length - 1] ?? null;
+      }
       else if (paragraph !== null && tag.local === 't') inText = true;
       else if (paragraph !== null && tag.local === 'tab') {
         const table = currentTable();
@@ -364,7 +408,7 @@ function docx() {
       else if (paragraph !== null && (tag.local === 'br' || tag.local === 'cr')) paragraph += '\n';
       else if (tag.local === 'altChunk' || tag.local === 'subDoc') issue('unsupported_content', part);
       else if (tag.local === 'ins' || tag.local === 'del' || tag.local === 'moveFrom' || tag.local === 'moveTo') issue('tracked_changes', part + '#paragraph:' + index);
-      else if (paragraph !== null && (tag.local === 'drawing' || tag.local === 'object' || tag.local === 'pict')) issue('embedded_content', part + '#paragraph:' + index);
+      else if (paragraph !== null && (tag.local === 'drawing' || tag.local === 'object' || tag.local === 'pict')) issue('embedded_content', paragraphLocator());
     });
     parser.on('text', value => { if (paragraph !== null && inText) paragraph += value; });
     parser.on('cdata', value => { if (paragraph !== null && inText) paragraph += value; });
@@ -372,15 +416,21 @@ function docx() {
       if (namespaces.has(tag.uri) && tag.local === 't') inText = false;
       if (namespaces.has(tag.uri) && tag.local === 'p' && paragraph !== null) {
         const table = currentTable();
-        if (table) {
+        if (paragraphBox !== null) {
+          result.unitsTotal++;
+          if (add(paragraphLocator(), paragraph, null)) result.unitsReadable++;
+        } else if (table) {
           if (!table.row || !table.row.cell) throw Error('paragraph outside table cell');
           table.row.cell.push(paragraph);
         } else {
           result.unitsTotal++;
-          if (add(part + '#paragraph:' + index, paragraph, null)) result.unitsReadable++;
+          if (add(paragraphLocator(), paragraph, null)) result.unitsReadable++;
         }
-        paragraph = null;
+        const outer = paragraphStack.pop();
+        if (outer) ({ paragraph, inText, paragraphIndex, paragraphBox } = outer);
+        else { paragraph = null; inText = false; paragraphIndex = 0; paragraphBox = null; }
       }
+      if (namespaces.has(tag.uri) && tag.local === 'txbxContent') textBoxes.pop();
       if (namespaces.has(tag.uri) && tag.local === 'tc') {
         const row = currentTable()?.row;
         if (!row || !row.cell) throw Error('invalid table cell');
@@ -406,6 +456,6 @@ function docx() {
   finish();
 }
 Promise.resolve().then(() => workerData.kind === 'pdf' ? pdf() : docx()).catch(() => {
-  parentPort.postMessage({state:'failed', parserVersion:'native-text.v1', passages:[], issues:[{code:'parser_error',locator:null}], unitsTotal:0, unitsReadable:0});
+  parentPort.postMessage({state:'failed', parserVersion:workerData.parserVersion, passages:[], issues:[{code:'parser_error',locator:null}], unitsTotal:0, unitsReadable:0});
 });
 `;

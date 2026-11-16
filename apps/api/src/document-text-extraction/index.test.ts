@@ -1,8 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees } from 'pdf-lib';
 import { strToU8, zipSync } from 'fflate';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import fontkit from '@pdf-lib/fontkit';
 import { extractDocumentText } from './index.js';
+import { analyzeDossier } from '../dossier-analysis-engine/index.js';
+
+function analyzeExtracted({
+  bytes,
+  extraction,
+}: {
+  bytes: Uint8Array;
+  extraction: Awaited<ReturnType<typeof extractDocumentText>>;
+}) {
+  return analyzeDossier({
+    sources: [
+      {
+        id: 'original',
+        documentId: 'document',
+        documentVersionId: 'version',
+        representationId: null,
+        sourceSha256: createHash('sha256').update(bytes).digest('hex'),
+        fileName: 'fictional.docx',
+        documentTitle: 'Dosar fictiv',
+        documentType: 'certificate',
+        versionNumber: 1,
+        versionStatus: 'official',
+        language: 'ru',
+        extraction,
+      },
+    ],
+    missingDocuments: [],
+  });
+}
 
 const wordNs = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 function docx(parts: Record<string, string>) {
@@ -41,7 +73,115 @@ function docx(parts: Record<string, string>) {
 const xml = (body: string) =>
   `<?xml version="1.0"?><w:document xmlns:w="${wordNs}"><w:body>${body}</w:body></w:document>`;
 
+async function unicodePdf() {
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit(fontkit);
+  const font = await pdf.embedFont(
+    await readFile(
+      join(__dirname, '..', 'commercial-pdf', 'assets', 'DejaVuSans.ttf'),
+    ),
+    { subset: true },
+  );
+  return { pdf, font };
+}
+
 describe('native document text extraction', () => {
+  it('reads Russian/Romanian PDF table rows in spatial order when columns were painted separately', async () => {
+    const { pdf, font } = await unicodePdf();
+    const page = pdf.addPage();
+    page.drawText('IDNO', { x: 40, y: 700, size: 12, font });
+    page.drawText('Наименование организации', {
+      x: 40,
+      y: 675,
+      size: 12,
+      font,
+    });
+    page.drawText('0012345678901', { x: 330, y: 700, size: 12, font });
+    page.drawText('ООО Пример', { x: 330, y: 675, size: 12, font });
+    const bytes = await pdf.save();
+    const result = await extractDocumentText({ kind: 'pdf', bytes });
+    expect(result.state).toBe('complete');
+    expect(result.passages.map((p) => p.text)).toEqual([
+      'IDNO\t0012345678901\nНаименование организации\tООО Пример',
+    ]);
+    expect(result.passages[0].page).toBe(1);
+    expect(
+      analyzeExtracted({ bytes, extraction: result }).candidates.map((c) => [
+        c.field,
+        c.value,
+      ]),
+    ).toEqual([
+      ['taxId', '0012345678901'],
+      ['legalName', 'ООО Пример'],
+    ]);
+  });
+  it('preserves native Russian/Romanian diagram text without claiming to interpret vector relationships', async () => {
+    const { pdf, font } = await unicodePdf();
+    const page = pdf.addPage();
+    page.drawRectangle({
+      x: 40,
+      y: 650,
+      width: 160,
+      height: 45,
+      borderWidth: 1,
+    });
+    page.drawRectangle({
+      x: 300,
+      y: 650,
+      width: 170,
+      height: 45,
+      borderWidth: 1,
+    });
+    page.drawLine({
+      start: { x: 200, y: 672 },
+      end: { x: 300, y: 672 },
+      thickness: 1,
+    });
+    page.drawText('Аудит', { x: 55, y: 670, size: 12, font });
+    page.drawText('Certificare', { x: 315, y: 670, size: 12, font });
+    const bytes = await pdf.save();
+    const result = await extractDocumentText({ kind: 'pdf', bytes });
+    expect(result.state).toBe('partial');
+    expect(result.issues).toContainEqual({
+      code: 'vector_content',
+      locator: 'page:1',
+    });
+    expect(result.passages[0].text).toContain('Аудит');
+    expect(result.passages[0].text).toContain('Certificare');
+    expect(analyzeExtracted({ bytes, extraction: result }).candidates).toEqual(
+      [],
+    );
+  });
+  it.each(['overlap', 'rotation', 'three-columns'])(
+    'does not invent a PDF table value from %s',
+    async (layout) => {
+      const pdf = await PDFDocument.create();
+      const page = pdf.addPage();
+      page.drawText('IDNO', { x: 40, y: 700, size: 12 });
+      page.drawText('001234', {
+        x: 250,
+        y: 700,
+        size: 12,
+        ...(layout === 'rotation' ? { rotate: degrees(90) } : {}),
+      });
+      if (layout !== 'rotation')
+        page.drawText('005678', {
+          x: layout === 'overlap' ? 250 : 400,
+          y: 700,
+          size: 12,
+        });
+      const bytes = await pdf.save();
+      const result = await extractDocumentText({ kind: 'pdf', bytes });
+      if (layout !== 'three-columns')
+        expect(result.issues).toContainEqual({
+          code: layout === 'overlap' ? 'overlapping_text' : 'complex_layout',
+          locator: 'page:1',
+        });
+      expect(
+        analyzeExtracted({ bytes, extraction: result }).candidates,
+      ).toEqual([]);
+    },
+  );
   it('extracts each PDF page with exact stable page anchors and hashes', async () => {
     const pdf = await PDFDocument.create();
     const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -279,6 +419,90 @@ describe('hostile OOXML packages', () => {
 });
 
 describe('DOCX table rows', () => {
+  it('reads modern Word diagram text boxes without inventing their graphic relationships', async () => {
+    const bytes = docx({
+      'word/document.xml': xml(
+        '<w:p><w:r><w:t>Introducere</w:t><w:drawing xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wp:inline><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:txbx><w:txbxContent><w:p><w:r><w:t>Наименование организации: ООО Пример</w:t><w:br/><w:t>IDNO: 0012345678901</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>',
+      ),
+    });
+    const result = await extractDocumentText({ kind: 'docx', bytes });
+    expect(result.state).toBe('partial');
+    expect(result.passages[0].locator).toBe(
+      'word/document.xml#textbox:1/paragraph:2',
+    );
+    expect(
+      analyzeExtracted({ bytes, extraction: result }).candidates.map((c) => [
+        c.field,
+        c.value,
+      ]),
+    ).toEqual([
+      ['legalName', 'ООО Пример'],
+      ['taxId', '0012345678901'],
+    ]);
+  });
+  it('keeps Russian multiline cells whole and does not turn merged headers or extra columns into facts', async () => {
+    const cell = (text: string) =>
+      `<w:tc>${text
+        .split('\n')
+        .map((line) => `<w:p><w:r><w:t>${line}</w:t></w:r></w:p>`)
+        .join('')}</w:tc>`;
+    const bytes = docx({
+      'word/document.xml': xml(
+        `<w:tbl><w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/></w:tcPr><w:p><w:r><w:t>Identitate</w:t></w:r></w:p></w:tc></w:tr><w:tr>${cell('Адрес')}${cell('Кишинёв\nулица Мира 1')}</w:tr><w:tr>${cell('IDNO')}${cell('001234\n005678')}</w:tr><w:tr>${cell('IDNO')}${cell('001')}${cell('002')}</w:tr></w:tbl>`,
+      ),
+    });
+    const result = await extractDocumentText({ kind: 'docx', bytes });
+    expect(result.state).toBe('partial');
+    expect(result.unitsReadable).toBe(4);
+    expect(
+      analyzeExtracted({ bytes, extraction: result }).candidates.map((c) => [
+        c.field,
+        c.value,
+        c.normalizationState,
+      ]),
+    ).toEqual([
+      ['address', 'Кишинёв\nулица Мира 1', 'normalized'],
+      ['taxId', '001234\n005678', 'ambiguous'],
+    ]);
+    for (const c of analyzeExtracted({ bytes, extraction: result })
+      .candidates) {
+      const p = result.passages.find((p) => p.locator === c.citation.locator);
+      expect(p?.text.slice(c.citation.start, c.citation.end)).toBe(c.value);
+    }
+  });
+  it('preserves Russian text-box evidence and its Romanian surrounding paragraph separately', async () => {
+    const bytes = docx({
+      'word/document.xml': xml(
+        '<w:p><w:r><w:t>Cod fiscal: </w:t><w:pict xmlns:v="urn:schemas-microsoft-com:vml"><v:shape><v:textbox><w:txbxContent><w:p><w:r><w:t>Фискальный код: 0012345678901</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict><w:t>semnătură</w:t></w:r></w:p>',
+      ),
+    });
+    const result = await extractDocumentText({ kind: 'docx', bytes });
+    expect(result.state).toBe('partial');
+    expect(
+      result.passages.map(({ locator, text }) => ({ locator, text })),
+    ).toEqual([
+      {
+        locator: 'word/document.xml#textbox:1/paragraph:2',
+        text: 'Фискальный код: 0012345678901',
+      },
+      {
+        locator: 'word/document.xml#paragraph:1',
+        text: 'Cod fiscal: semnătură',
+      },
+    ]);
+    expect(result.issues).toContainEqual({
+      code: 'embedded_text_container',
+      locator: 'word/document.xml#paragraph:1',
+    });
+    expect(result.unitsReadable).toBe(2);
+    expect(result.passages.every((p) => p.page === null)).toBe(true);
+    expect(
+      analyzeExtracted({ bytes, extraction: result }).candidates.map((c) => [
+        c.field,
+        c.value,
+      ]),
+    ).toEqual([['taxId', '0012345678901']]);
+  });
   it('preserves field labels with adjacent cell values and multiple paragraphs', async () => {
     const text = xml(
       '<w:p><w:r><w:t>Introduction</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cod fiscal</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>0012345678</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>Address</w:t></w:r></w:p><w:p><w:r><w:t>Line two</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Paris</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>France</w:t></w:r></w:p></w:tc></w:tr></w:tbl>',

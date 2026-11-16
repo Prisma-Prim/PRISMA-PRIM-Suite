@@ -64,6 +64,7 @@ test('an editor follows an exact native dossier source through analysis and cont
   if (!contextPath) throw new Error('Missing context download');
   const context: unknown = JSON.parse(await readFile(contextPath, 'utf8'));
   expect(JSON.stringify(context)).toContain(fixture.versionId);
+  expect(JSON.stringify(context)).toContain('Организация: учебный пример');
   await expect(page.getByText(/partial/i).first()).toBeVisible();
   await page.getByLabel('Query').fill('RO12345678');
   const currentSearch = page.waitForResponse((response) =>
@@ -121,12 +122,33 @@ test('an editor follows an exact native dossier source through analysis and cont
   await expect(
     page.getByRole('button', { name: 'Correct', exact: true }),
   ).toHaveCount(0);
+  await selectOption(
+    page.getByRole('combobox', { name: 'Interface language', exact: true }),
+    narrow ? 'ru' : 'ro',
+  );
+  await expect(
+    page
+      .getByText(
+        narrow
+          ? 'Графические элементы не интерпретированы; доступный текст сохранён.'
+          : 'Elementele grafice nu sunt interpretate; textul disponibil este păstrat.',
+        { exact: true },
+      )
+      .first(),
+  ).toBeVisible();
+  await expect(docxPassage).toBeVisible();
   await page.screenshot({
     path: info.outputPath(
       `dossier-analysis-${narrow ? 'narrow' : 'desktop'}.png`,
     ),
     fullPage: true,
   });
+  await selectOption(
+    page.getByRole('combobox', {
+      name: /^(?:Limba interfeței|Язык интерфейса)$/,
+    }),
+    'en',
+  );
   await revokeUpload(page.request, fixture.companyId);
   await page.reload();
   if (narrow)
