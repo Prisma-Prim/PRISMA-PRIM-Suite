@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { holds } from '../access/company-grants';
@@ -11,6 +11,7 @@ import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useRequestLifetime } from '../api/use-actor-requests';
 import { useAccessRecovery } from '../api/use-access-recovery';
 import { digest, uuid } from '../knowledge-evidence/knowledge-response';
+import { Select } from '../presentation/Select';
 import {
   inventory,
   detail,
@@ -148,6 +149,7 @@ function AnalysisOwner(
   props: DossierAnalysisProps & { companyId: string; scope: string },
 ) {
   const c = useAnalysisCopy();
+  const selectId = useId();
   const cursors = useRef(new Set<string>());
   const term = useAnalysisTerms();
   const truncation = useAnalysisTruncation();
@@ -351,6 +353,16 @@ function AnalysisOwner(
         const result = detail(v);
         if (result.id !== id) throw new Error('Wrong run');
         setSelected(result);
+        setData((current) =>
+          current
+            ? {
+                ...current,
+                runs: current.runs.map((run) =>
+                  run.id === result.id ? { ...run, stale: result.stale } : run,
+                ),
+              }
+            : current,
+        );
       }
     } catch {
       setMessage(c[63]);
@@ -653,37 +665,34 @@ function AnalysisOwner(
                   <legend>{c[44]}</legend>
                   <label>
                     {c[44]}
-                    <select
+                    <Select
+                      id={`${selectId}-document`}
                       value={choice ? String(docs.indexOf(choice)) : ''}
-                      onChange={(e) =>
+                      disabled={busy || !!pending}
+                      onValueChange={(value) =>
                         setChoice(
-                          e.target.value === ''
-                            ? null
-                            : (docs[Number(e.target.value)] ?? null),
+                          value === '' ? null : (docs[Number(value)] ?? null),
                         )
                       }
-                    >
-                      <option value="">{c[45]}</option>
-                      {docs.map((d, index) => (
-                        <option key={index} value={index}>
-                          {d.documentTitle} · {d.versionNumber} ·{' '}
-                          {term(d.versionStatus)} · {d.fileName ?? 'DOCX'}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder={c[45]}
+                      options={docs.map((d, index) => ({
+                        value: String(index),
+                        label: `${d.documentTitle} · ${d.versionNumber} · ${term(d.versionStatus)} · ${d.fileName ?? 'DOCX'}`,
+                      }))}
+                    />
                   </label>
                   <label>
                     {c[38]}
-                    <select
+                    <Select
+                      id={`${selectId}-source-language`}
                       value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                    >
-                      {['ro', 'ru', 'fr', 'en'].map((l) => (
-                        <option key={l} value={l}>
-                          {term(l)}
-                        </option>
-                      ))}
-                    </select>
+                      disabled={busy || !!pending}
+                      onValueChange={setLanguage}
+                      options={['ro', 'ru', 'fr', 'en'].map((value) => ({
+                        value,
+                        label: term(value),
+                      }))}
+                    />
                   </label>
                   <button
                     disabled={!choice?.representationId}
@@ -880,105 +889,102 @@ function AnalysisOwner(
                 </label>
                 <label>
                   {c[16]}
-                  <select
+                  <Select
+                    id={`${selectId}-search-mode`}
                     value={mode}
-                    onChange={(e) => {
-                      setMode(e.target.value);
+                    onValueChange={(value) => {
+                      setMode(value);
                       searches.retire();
                       setResults(null);
                     }}
-                  >
-                    <option value="literal">{c[18]}</option>
-                    <option value="lexical">{c[19]}</option>
-                    <option value="fuzzy">{c[20]}</option>
-                  </select>
+                    options={[
+                      { value: 'literal', label: c[18] },
+                      { value: 'lexical', label: c[19] },
+                      { value: 'fuzzy', label: c[20] },
+                    ]}
+                  />
                 </label>
                 <label>
                   {c[37]}
-                  <select
+                  <Select
+                    id={`${selectId}-search-source`}
                     value={filterSource}
-                    onChange={(e) => {
-                      setFilterSource(e.target.value);
+                    onValueChange={(value) => {
+                      setFilterSource(value);
                       searches.retire();
                       setResults(null);
                     }}
-                  >
-                    <option value="">{c[40]}</option>
-                    {selected.sources.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.documentTitle} · {s.versionNumber}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={c[40]}
+                    options={selected.sources.map((s) => ({
+                      value: s.id,
+                      label: `${s.documentTitle} · ${s.versionNumber}`,
+                    }))}
+                  />
                 </label>
                 <label>
                   {c[38]}
-                  <select
+                  <Select
+                    id={`${selectId}-search-language`}
                     value={filterLanguage}
-                    onChange={(e) => {
-                      setFilterLanguage(e.target.value);
+                    onValueChange={(value) => {
+                      setFilterLanguage(value);
                       searches.retire();
                       setResults(null);
                     }}
-                  >
-                    <option value="">{c[40]}</option>
-                    {['ro', 'ru', 'fr', 'en'].map((l) => (
-                      <option key={l} value={l}>
-                        {term(l)}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={c[40]}
+                    options={['ro', 'ru', 'fr', 'en'].map((value) => ({
+                      value,
+                      label: term(value),
+                    }))}
+                  />
                 </label>
                 <label>
                   {c[66]}
-                  <select
+                  <Select
+                    id={`${selectId}-search-status`}
                     value={filterStatus}
-                    onChange={(e) => {
-                      setFilterStatus(e.target.value);
+                    onValueChange={(value) => {
+                      setFilterStatus(value);
                       searches.retire();
                       setResults(null);
                     }}
-                  >
-                    <option value="">{c[40]}</option>
-                    {['draft', 'official', 'superseded'].map((l) => (
-                      <option key={l} value={l}>
-                        {term(l)}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={c[40]}
+                    options={['draft', 'official', 'superseded'].map(
+                      (value) => ({
+                        value,
+                        label: term(value),
+                      }),
+                    )}
+                  />
                 </label>
                 <label>
                   {c[65]}
-                  <select
+                  <Select
+                    id={`${selectId}-search-kind`}
                     value={filterKind}
-                    onChange={(e) => {
-                      setFilterKind(e.target.value);
+                    onValueChange={(value) => {
+                      setFilterKind(value);
                       searches.retire();
                       setResults(null);
                     }}
-                  >
-                    <option value="">{c[40]}</option>
-                    {Array.from(
+                    placeholder={c[40]}
+                    options={Array.from(
                       new Set(selected.sources.map((s) => s.documentType)),
-                    ).map((l) => (
-                      <option key={l} value={l}>
-                        {term(l)}
-                      </option>
-                    ))}
-                  </select>
+                    ).map((value) => ({ value, label: term(value) }))}
+                  />
                 </label>
                 <label>
                   {c[29]}
-                  <select
+                  <Select
+                    id={`${selectId}-search-field`}
                     value={filterField}
-                    onChange={(e) => {
-                      setFilterField(e.target.value);
+                    onValueChange={(value) => {
+                      setFilterField(value);
                       searches.retire();
                       setResults(null);
                     }}
-                  >
-                    <option value="">{c[40]}</option>
-                    {[
+                    placeholder={c[40]}
+                    options={[
                       'legalName',
                       'taxId',
                       'address',
@@ -991,12 +997,8 @@ function AnalysisOwner(
                       'auditorDays',
                       'reference',
                       'scope',
-                    ].map((f) => (
-                      <option key={f} value={f}>
-                        {term(f)}
-                      </option>
-                    ))}
-                  </select>
+                    ].map((value) => ({ value, label: term(value) }))}
+                  />
                 </label>
                 <button disabled={selected.stale && !history}>{c[17]}</button>
               </form>
@@ -1117,11 +1119,12 @@ function AnalysisOwner(
                     <legend>{c[57]}</legend>
                     <label>
                       {c[29]}
-                      <select
+                      <Select
+                        id={`${selectId}-suggestion-field`}
                         value={field}
-                        onChange={(e) => setField(e.target.value)}
-                      >
-                        {[
+                        disabled={busy || !!pending}
+                        onValueChange={setField}
+                        options={[
                           'legalName',
                           'taxId',
                           'address',
@@ -1134,12 +1137,8 @@ function AnalysisOwner(
                           'auditorDays',
                           'reference',
                           'scope',
-                        ].map((f) => (
-                          <option key={f} value={f}>
-                            {term(f)}
-                          </option>
-                        ))}
-                      </select>
+                        ].map((value) => ({ value, label: term(value) }))}
+                      />
                     </label>
                     <label>
                       {c[30]}
@@ -1157,10 +1156,11 @@ function AnalysisOwner(
                     </label>
                     <label>
                       {c[58]}
-                      <select
+                      <Select
+                        id={`${selectId}-suggestion-citation`}
                         value={citationKey}
-                        onChange={(e) => {
-                          const index = e.target.value;
+                        disabled={busy || !!pending}
+                        onValueChange={(index) => {
                           const picked = citations.find(
                             (_, i) => String(i) === index,
                           );
@@ -1171,15 +1171,12 @@ function AnalysisOwner(
                               : '',
                           );
                         }}
-                      >
-                        <option value="">{c[59]}</option>
-                        {citations.map((cit, n) => (
-                          <option key={n} value={n}>
-                            {sourceName(cit.sourceId)} · {cit.locator} ·{' '}
-                            {cit.quote.slice(0, 120)}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder={c[59]}
+                        options={citations.map((cit, n) => ({
+                          value: String(n),
+                          label: `${sourceName(cit.sourceId)} · ${cit.locator} · ${cit.quote.slice(0, 120)}`,
+                        }))}
+                      />
                     </label>
                     <label>
                       {interaction.quote}

@@ -5,7 +5,7 @@ import {
   revokeUpload,
   startNativeVersion,
 } from './dossier-analysis.acceptance-fixture';
-import { selectOption } from './select-option';
+import { openSelect, selectOption } from './select-option';
 
 test('an editor follows an exact native dossier source through analysis and context export', async ({
   page,
@@ -40,14 +40,10 @@ test('an editor follows an exact native dossier source through analysis and cont
   await page.getByRole('tab', { name: 'Dossier analysis' }).focus();
   await page.keyboard.press('Enter');
   const selector = page.getByLabel('Document and version');
-  await expect(
-    selector.getByRole('option', { name: /Dossier Original.*dossier\.pdf/ }),
-  ).toBeAttached();
-  await selectOption(selector, {
-    label: await selector
-      .getByRole('option', { name: /Dossier Original.*dossier\.pdf/ })
-      .innerText(),
-  });
+  const documents = await openSelect(selector);
+  await documents
+    .getByRole('option', { name: /Dossier Original.*dossier\.pdf/ })
+    .click();
   await page.getByRole('button', { name: 'Add PDF' }).click();
   await page.getByLabel('Choose file').setInputFiles({
     name: 'supplement.docx',
@@ -70,7 +66,11 @@ test('an editor follows an exact native dossier source through analysis and cont
   expect(JSON.stringify(context)).toContain(fixture.versionId);
   await expect(page.getByText(/partial/i).first()).toBeVisible();
   await page.getByLabel('Query').fill('RO12345678');
+  const currentSearch = page.waitForResponse((response) =>
+    response.url().includes('/search?'),
+  );
   await page.getByRole('button', { name: 'Search', exact: true }).click();
+  expect((await currentSearch).status()).toBe(200);
   await expect(page.getByText(/Tax ID: RO12345678/).first()).toBeVisible();
   const originalButton = page
     .locator('blockquote')
@@ -99,18 +99,25 @@ test('an editor follows an exact native dossier source through analysis and cont
     .getByLabel('Rationale')
     .fill('Review the synthetic tax identifier');
   const citation = manual.getByLabel('Citation passage');
-  await expect(citation.locator('option').nth(1)).toBeAttached();
-  await citation.selectOption({ index: 1 });
+  const citationOptions = await openSelect(citation);
+  await citationOptions
+    .getByRole('option', { name: /page:1.*RO12345678/ })
+    .click();
   await manual.getByRole('button', { name: 'Submit' }).click();
   await page.getByLabel('Replacement value').fill('RO12345679');
   await page.getByRole('button', { name: 'Correct', exact: true }).click();
   await expect(page.getByText('RO12345679', { exact: false })).toBeVisible();
   await expect(
-    page.getByText('Review the synthetic tax identifier'),
+    page
+      .getByRole('paragraph')
+      .filter({ hasText: 'Review the synthetic tax identifier' }),
   ).toBeVisible();
   await startNativeVersion(page.request, fixture.companyId, fixture.documentId);
   await page.getByRole('button', { name: 'Open run' }).first().click();
   await expect(page.getByText('Historical / stale').first()).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Open run' }).first().locator('..'),
+  ).toContainText('Historical / stale');
   await expect(
     page.getByRole('button', { name: 'Correct', exact: true }),
   ).toHaveCount(0);
@@ -148,7 +155,21 @@ test('an editor follows an exact native dossier source through analysis and cont
     page.getByRole('button', { name: 'Context JSON' }),
   ).toBeVisible();
   await page.getByLabel('Query').fill('RO12345678');
+  await expect(
+    page.getByRole('button', { name: 'Search', exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole('checkbox', { name: 'Search this historical run' })
+    .check();
+  const historicalSearch = page.waitForResponse((response) =>
+    response.url().includes('/search?'),
+  );
   await page.getByRole('button', { name: 'Search', exact: true }).click();
+  const historicalResult = await historicalSearch;
+  expect(historicalResult.status()).toBe(200);
+  expect(new URL(historicalResult.url()).searchParams.get('history')).toBe(
+    'true',
+  );
   const readerPassage = page
     .locator('blockquote')
     .filter({ hasText: 'RO12345678' })

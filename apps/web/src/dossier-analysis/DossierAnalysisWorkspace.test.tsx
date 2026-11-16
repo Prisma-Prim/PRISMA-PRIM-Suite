@@ -10,6 +10,7 @@ import { withCompanyGrants } from '../access/company-grants.test-fixture';
 import { knowledgeActor } from '../knowledge-evidence/knowledge.test-fixture';
 import type { BrowserIdentity } from '../access-composition';
 import { DossierAnalysisWorkspace } from './DossierAnalysisWorkspace';
+import { selectOption } from '../test/select-option';
 
 const identity = {
   loaded: true,
@@ -158,7 +159,7 @@ it('opens a historical run, shows partial coverage and preserves exact evidence 
       return Response.json({
         format: 'DOSSIER_ANALYSIS/1',
         sources: [source],
-        runs: [run],
+        runs: [{ ...run, stale: false }],
         runsNextCursor: null,
       });
     }),
@@ -180,6 +181,9 @@ it('opens a historical run, shows partial coverage and preserves exact evidence 
   expect(screen.getAllByText(/Partial/).length).toBeGreaterThan(0);
   expect(screen.getByText(/This part could not be read. page 2/)).toBeVisible();
   expect(screen.getAllByText(/Historical \/ stale/).length).toBeGreaterThan(0);
+  expect(
+    screen.getByRole('button', { name: 'Open run' }).closest('li'),
+  ).toHaveTextContent('Historical / stale');
 });
 it('does not render a response from a retired project', async () => {
   localStorage.setItem('prisma-prim.interface-locale', 'en');
@@ -272,8 +276,9 @@ it('selects a native PDF and retries an uncertain write with the same request ke
   );
   render(<DossierAnalysisWorkspace {...props} actor={editor} />);
   const selector = await screen.findByLabelText('Document and version');
+  fireEvent.click(selector);
   await screen.findByRole('option', { name: /Fictional/ });
-  fireEvent.change(selector, { target: { value: '0' } });
+  selectOption(selector, '0');
   fireEvent.click(screen.getByRole('button', { name: 'Add PDF' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
   await vi.waitFor(() => expect(writes).toHaveLength(2));
@@ -491,8 +496,9 @@ it('preserves the DOCX file and idempotency key after an uncertain upload', asyn
   );
   render(<DossierAnalysisWorkspace {...props} actor={editor} />);
   const selector = await screen.findByLabelText('Document and version');
+  fireEvent.click(selector);
   await screen.findByRole('option', { name: /Fictional/ });
-  fireEvent.change(selector, { target: { value: '0' } });
+  selectOption(selector, '0');
   const file = new File(['fictional original'], 'fiction.docx', {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });
@@ -759,9 +765,7 @@ it('submits a cited manual suggestion and a correction with the current revision
   fireEvent.change(screen.getByLabelText('Rationale'), {
     target: { value: 'From source' },
   });
-  fireEvent.change(screen.getByLabelText('Citation passage'), {
-    target: { value: '0' },
-  });
+  selectOption(screen.getByLabelText('Citation passage'), '0');
   fireEvent.click(
     within(screen.getByRole('group', { name: 'Manual suggestion' })).getByRole(
       'button',
@@ -798,12 +802,8 @@ it('submits a cited manual suggestion and a correction with the current revision
   fireEvent.change(screen.getByLabelText('Query'), {
     target: { value: 'Tax ID' },
   });
-  fireEvent.change(screen.getByLabelText('Search evidence'), {
-    target: { value: 'lexical' },
-  });
-  fireEvent.change(screen.getByLabelText('Source'), {
-    target: { value: source.id },
-  });
+  selectOption(screen.getByLabelText('Search evidence'), 'lexical');
+  selectOption(screen.getByLabelText('Source'), source.id);
   fireEvent.click(screen.getByRole('button', { name: 'Search' }));
   fireEvent.click(await screen.findByRole('button', { name: 'More results' }));
   await vi.waitFor(() => expect(searches).toHaveLength(2));
@@ -991,9 +991,7 @@ it('submits a short unique quote from a long passage and refuses missing or repe
   fireEvent.change(screen.getByLabelText('Rationale'), {
     target: { value: 'From the source' },
   });
-  fireEvent.change(screen.getByLabelText('Citation passage'), {
-    target: { value: '0' },
-  });
+  selectOption(screen.getByLabelText('Citation passage'), '0');
   const quote = screen.getByLabelText('Exact quote');
   const submit = within(
     screen.getByRole('group', { name: 'Manual suggestion' }),
@@ -1003,13 +1001,9 @@ it('submits a short unique quote from a long passage and refuses missing or repe
   fireEvent.change(quote, { target: { value: 'Repeated phrase' } });
   expect(submit).toBeDisabled();
   expect(writes).toHaveLength(0);
-  fireEvent.change(screen.getByLabelText('Citation passage'), {
-    target: { value: '' },
-  });
+  selectOption(screen.getByLabelText('Citation passage'), '');
   expect(quote).toHaveValue('');
-  fireEvent.change(screen.getByLabelText('Citation passage'), {
-    target: { value: '0' },
-  });
+  selectOption(screen.getByLabelText('Citation passage'), '0');
   fireEvent.change(quote, { target: { value: 'Distinct tax number 12345' } });
   expect(submit).toBeEnabled();
   fireEvent.click(submit);
