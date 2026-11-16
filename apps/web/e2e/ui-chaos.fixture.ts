@@ -215,6 +215,81 @@ async function visibleLoadingStates(page: Page): Promise<string[]> {
   });
 }
 
+declare global {
+  interface Window {
+    __prismaRecordSandboxHtml?: (owner: string, html: string) => Promise<void>;
+    __prismaSandboxHistory?: {
+      owner: string;
+      flush: () => Promise<void>;
+      disconnect: () => void;
+    };
+  }
+}
+const sandboxRecorders = new WeakMap<
+  Page,
+  { owner: string; record: (html: unknown) => void }
+>();
+const sandboxBindingPages = new WeakSet<Page>();
+let sandboxHistorySequence = 0;
+
+/** Record every srcdoc before a replacement can hide a genuinely blocked script. */
+function installSandboxHistory(owner: string) {
+  if (window !== window.top) return;
+  window.__prismaSandboxHistory?.disconnect();
+  const publish = window.__prismaRecordSandboxHtml;
+  if (typeof publish !== 'function')
+    throw new Error('Missing sandbox history binding.');
+  const send = publish;
+  const seen = new Set<string>();
+  const pending = new Set<Promise<void>>();
+  let failed = false;
+  function remember(html: string | null) {
+    if (html === null || seen.has(html)) return;
+    seen.add(html);
+    const result = send(owner, html);
+    pending.add(result);
+    void result.then(
+      () => pending.delete(result),
+      () => {
+        failed = true;
+        pending.delete(result);
+      },
+    );
+  }
+  function collect(element: Element) {
+    if (element instanceof HTMLIFrameElement)
+      remember(element.getAttribute('srcdoc'));
+    for (const frame of element.querySelectorAll('iframe'))
+      remember(frame.getAttribute('srcdoc'));
+  }
+  function changed(records: MutationRecord[]) {
+    for (const record of records) {
+      if (record.type === 'attributes') remember(record.oldValue);
+      if (record.target instanceof Element) collect(record.target);
+      for (const node of [...record.addedNodes, ...record.removedNodes])
+        if (node instanceof Element) collect(node);
+    }
+  }
+  const observer = new MutationObserver(changed);
+  observer.observe(document, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['srcdoc'],
+    attributeOldValue: true,
+  });
+  window.__prismaSandboxHistory = {
+    owner,
+    async flush() {
+      changed(observer.takeRecords());
+      await Promise.all([...pending]);
+      if (failed) throw new Error('Sandbox source history was not recorded.');
+    },
+    disconnect: () => observer.disconnect(),
+  };
+  if (document.documentElement) collect(document.documentElement);
+}
+
 export async function startChaos(
   page: Page,
   testInfo: TestInfo,
@@ -245,11 +320,66 @@ export async function startChaos(
   }
 
   const errors: string[] = [];
+  const sandboxTraceChecks: {
+    message: string;
+    location: ReturnType<ConsoleMessage['location']>;
+  }[] = [];
+  const trace = testInfo.project.use.trace;
+  const traceMode = typeof trace === 'string' ? trace : trace?.mode;
+  const snapshotTracing =
+    (traceMode === 'on' || traceMode === 'retain-on-failure') &&
+    (typeof trace !== 'object' || trace.snapshots !== false);
+  const sandboxSources = new Set<string>();
+  let sourceHistoryValid = true;
+  let sourceScript: string | undefined;
+  const sourceOwner = String(++sandboxHistorySequence);
+  if (snapshotTracing) {
+    sandboxRecorders.set(page, {
+      owner: sourceOwner,
+      record: (html) => {
+        if (typeof html === 'string') sandboxSources.add(html);
+        else sourceHistoryValid = false;
+      },
+    });
+    if (!sandboxBindingPages.has(page)) {
+      await page.exposeFunction(
+        '__prismaRecordSandboxHtml',
+        (owner: unknown, html: unknown) => {
+          const current = sandboxRecorders.get(page);
+          if (current && owner === current.owner) current.record(html);
+        },
+      );
+      sandboxBindingPages.add(page);
+    }
+    session ??= await page.context().newCDPSession(page);
+    await session.send('Page.enable');
+    const script = await session.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `(${installSandboxHistory.toString()})(${JSON.stringify(sourceOwner)})`,
+    });
+    sourceScript = script.identifier;
+    await page.evaluate(installSandboxHistory, sourceOwner);
+  }
+
   const deliberate: ExpectedFailure[] = [];
   expectedFailures.set(page, deliberate);
   const consoleMessage = (message: ConsoleMessage) => {
     if (message.type() !== 'error' || DELIBERATE_REFUSAL.test(message.text()))
       return;
+    if (
+      snapshotTracing &&
+      message.text() ===
+        "Blocked script execution in 'about:srcdoc' because the document's frame is sandboxed and the 'allow-scripts' permission is not set." &&
+      message.location().columnNumber === 0 &&
+      ((message.location().url === 'about:srcdoc' &&
+        message.location().lineNumber >= 0) ||
+        (message.location().url === '' && message.location().lineNumber > 0))
+    ) {
+      sandboxTraceChecks.push({
+        message: `console error: ${message.text()}`,
+        location: message.location(),
+      });
+      return;
+    }
     const controlledNetworkFailure =
       /^Failed to load resource: (?:net::ERR_[A-Z_]+\b|the server responded with a status of 5\d\d\b)/u.test(
         message.text(),
@@ -360,6 +490,22 @@ export async function startChaos(
 
   return {
     async dispose() {
+      if (snapshotTracing && !page.isClosed()) {
+        await page.evaluate(async (owner) => {
+          const history = window.__prismaSandboxHistory;
+          if (history?.owner !== owner) return;
+          const flushed = history.flush();
+          history.disconnect();
+          await flushed;
+          delete window.__prismaSandboxHistory;
+        }, sourceOwner);
+        if (session && sourceScript)
+          await session.send('Page.removeScriptToEvaluateOnNewDocument', {
+            identifier: sourceScript,
+          });
+      }
+      if (sandboxRecorders.get(page)?.owner === sourceOwner)
+        sandboxRecorders.delete(page);
       if (prototype.click === chaosClick) prototype.click = click;
       page.off('console', consoleMessage);
       page.off('pageerror', pageError);
@@ -415,7 +561,89 @@ export async function startChaos(
         }
       }
       // Read after the waits: a late answer can still raise an error.
-      const problems = checked ? [...errors, ...states] : [];
+      // Snapshot instrumentation itself can emit this diagnostic. Qualify once
+      // after settling, without recursively inspecting frames from console events.
+      if (snapshotTracing) {
+        try {
+          await page.evaluate(async (owner) => {
+            const history = window.__prismaSandboxHistory;
+            if (!history || history.owner !== owner)
+              throw new Error('Missing current sandbox source history.');
+            await history.flush();
+          }, sourceOwner);
+        } catch {
+          sourceHistoryValid = false;
+        }
+      }
+      const sandboxProof =
+        sandboxTraceChecks.length === 0 || !sourceHistoryValid
+          ? {
+              qualified: false,
+              previews: 0,
+              observedSources: sandboxSources.size,
+            }
+          : await page
+              .locator('iframe')
+              .evaluateAll(
+                (frames, observed: string[]) => {
+                  const current: string[] = [];
+                  for (const frame of frames) {
+                    const html = frame.getAttribute('srcdoc');
+                    if (frame.getAttribute('sandbox') !== '' || html === null)
+                      return {
+                        qualified: false,
+                        previews: frames.length,
+                        observedSources: observed.length,
+                      };
+                    current.push(html);
+                  }
+                  const sources = [...observed, ...current];
+                  const inert =
+                    sources.length > 0 &&
+                    sources.every((html) => {
+                      const preview = new DOMParser().parseFromString(
+                        html,
+                        'text/html',
+                      );
+                      if (
+                        preview.querySelector(
+                          'script,iframe,object,embed,meta[http-equiv="refresh"]',
+                        )
+                      )
+                        return false;
+                      return Array.from(preview.querySelectorAll('*')).every(
+                        (element) =>
+                          Array.from(element.attributes).every(
+                            (attribute) =>
+                              !/^on/iu.test(attribute.name) &&
+                              !/javascript\s*:/iu.test(attribute.value),
+                          ),
+                      );
+                    });
+                  return {
+                    qualified: inert,
+                    previews: frames.length,
+                    observedSources: observed.length,
+                  };
+                },
+                [...sandboxSources],
+              )
+              .catch(() => ({
+                qualified: false,
+                previews: 0,
+                observedSources: sandboxSources.size,
+              }));
+      const sandboxTraceDiagnostics = sandboxTraceChecks.map((diagnostic) => ({
+        ...diagnostic,
+        ...sandboxProof,
+      }));
+      const allErrors = [
+        ...errors,
+        ...sandboxTraceDiagnostics
+          .filter((proof) => !proof.qualified)
+          .map((proof) => proof.message),
+      ];
+      const problems = checked ? [...allErrors, ...states] : [];
       await testInfo.attach(options.attachmentName ?? 'ui-chaos.json', {
         contentType: 'application/json',
         body: JSON.stringify(
@@ -424,7 +652,8 @@ export async function startChaos(
             replay,
             project,
             plan: plan.describe(),
-            errors,
+            errors: allErrors,
+            sandboxTraceDiagnostics,
             expectedFailures: deliberate.map((entry) => ({
               method: entry.request.method(),
               path: new URL(entry.request.url()).pathname,

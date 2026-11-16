@@ -37,6 +37,11 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'document-action-sequences',
     title: 'explores generated native PaymentEvidence source action sequences',
   },
+  {
+    id: 'contract-signing',
+    journey: 'contract-action-sequences',
+    title: 'explores generated native Contract signing action sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {

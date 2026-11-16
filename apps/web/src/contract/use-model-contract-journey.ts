@@ -3,8 +3,10 @@ import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useContractAccessRecovery } from './use-contract-access-recovery';
 import { useScopedOperation } from '../api/use-scoped-operation';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
 import {
   readModelOffer,
   type ModelOfferView,
@@ -149,18 +151,18 @@ export function useModelContractJourney(
       ? 'workspace-client-read'
       : [client?.assignmentId, client?.permissionSetVersion, companyClientRead],
   ]);
-  const projectGeneration = useRef({
-    authority: projectReadAuthority,
-    revision: 0,
-  });
-  if (projectGeneration.current.authority !== projectReadAuthority)
-    projectGeneration.current = {
-      authority: projectReadAuthority,
-      revision: projectGeneration.current.revision + 1,
-    };
+  const projectGeneration = useRequestLifetime(
+    props.identity,
+    JSON.stringify([
+      props.actor.workspaceId,
+      props.actor.internalUserId,
+      props.actor.workspaceMembershipId,
+      projectReadAuthority,
+    ]),
+  );
   const projectReadKey = JSON.stringify([
     projectReadAuthority,
-    projectGeneration.current.revision,
+    projectGeneration,
   ]);
   // Every read/result carries the Project authority captured when it began.
   // A held old response cannot requalify cached metadata under a new grant.
@@ -196,7 +198,6 @@ export function useModelContractJourney(
     [reason, setReason] = useState(''),
     [acknowledgements, setAcknowledgements] = useState<string[]>([]);
   const attempt = useRef<Attempt | undefined>(undefined);
-  const activeWrite = useRef(false);
   const locked = running || feedback === 'uncertain' || siblingsProtected;
   const mutationAuthority = JSON.stringify([
     contractPreparer?.assignmentId,
@@ -217,21 +218,36 @@ export function useModelContractJourney(
   ]);
   // A sibling taking revision ownership starts a new read generation: earlier
   // navigation/reload replies retire, independently requested later reads stay.
-  const ownership = useRef({ siblingsProtected, generation: 0 });
-  if (ownership.current.siblingsProtected !== siblingsProtected)
-    ownership.current = {
-      siblingsProtected,
-      generation: ownership.current.generation + (siblingsProtected ? 1 : 0),
-    };
-  const readScope = JSON.stringify([
-    mutationAuthority,
-    ownership.current.generation,
-  ]);
+  const [ownership, setOwnership] = useState({
+    siblingsProtected,
+    generation: 0,
+  });
+  const generation =
+    ownership.generation +
+    (ownership.siblingsProtected !== siblingsProtected && siblingsProtected
+      ? 1
+      : 0);
+  if (ownership.siblingsProtected !== siblingsProtected)
+    setOwnership({ siblingsProtected, generation });
+  const mutationLifetime = useRequestLifetime(
+    props.identity,
+    JSON.stringify([
+      props.identity.loaded,
+      props.identity.signedIn,
+      props.actor.workspaceId,
+      props.actor.internalUserId,
+      props.actor.workspaceMembershipId,
+      companyId,
+      props.opportunityId,
+      mutationAuthority,
+    ]),
+  );
+  const readScope = JSON.stringify([mutationLifetime, generation]);
   // Work retires inside the commit that changes its scope, so a click on the
   // first displayed frame (Copy, or History after a sibling took ownership)
   // keeps its own command and reads.
   const reads = useScopedOperation(readScope),
-    writes = useScopedOperation(mutationAuthority);
+    writes = useScopedOperationGroup(String(mutationLifetime));
   // A retired read scope's status reads as idle in the render that retires it.
   // The generation never repeats, but authority values can (A→B→A), so the
   // authority reset below also discards the status for good.
@@ -240,7 +256,6 @@ export function useModelContractJourney(
     setReadStatus(state === 'idle' ? null : { scope: readScope, state });
   useLayoutEffect(() => {
     attempt.current = undefined;
-    activeWrite.current = false;
     setReadStatus(null);
     setDraft(blank());
     setSources({ offer: null, model: null });
@@ -249,26 +264,18 @@ export function useModelContractJourney(
     setAcknowledgements([]);
     setRunning(false);
     setFeedback(null);
-  }, [mutationAuthority]);
+  }, [mutationLifetime]);
   useEffect(() => {
     if (!props.initialContract && mayPrepare)
       void loadSources(props.initialOffer);
   }, []);
 
+  const recover = useContractAccessRecovery(props);
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
-    const denied = await handleAuthenticatedAccessRejection({
-      result,
-      identity: props.identity,
-      companyContextId: companyId,
-      onCompanyContextRejected: props.onCompanyContextRejected,
-      onActorRevalidated: props.onActorRevalidated ?? ignore,
-      onWorkspaceAccessRejected: props.onWorkspaceAccessRejected ?? ignore,
-      signal,
-    });
+    const denied = await recover(result, signal);
     if (denied && !signal.aborted) {
       reads.retire();
       writes.retire();
-      activeWrite.current = false;
       if (denied === 'unauthorized')
         setContractSnapshot({ contract: null, projectReadKey });
       setDraft(blank());
@@ -589,7 +596,7 @@ export function useModelContractJourney(
   async function write(kind: CommandKind) {
     if (
       siblingsProtected ||
-      activeWrite.current ||
+      writes.isPending() ||
       (attempt.current && attempt.current.kind !== kind) ||
       !companyId
     )
@@ -601,10 +608,10 @@ export function useModelContractJourney(
       setFeedback('invalid');
       return;
     }
-    const signal = writes.begin();
-    if (!signal) return;
+    const request = writes.begin();
+    if (!request) return;
+    const { signal } = request;
     attempt.current = command;
-    activeWrite.current = true;
     reads.retire();
     setReadState('idle');
     setRunning(true);
@@ -713,9 +720,8 @@ export function useModelContractJourney(
     } catch {
       if (!signal.aborted) setFeedback('uncertain');
     } finally {
-      // A retired write was released by whoever retired it.
+      request.release();
       if (!signal.aborted) {
-        activeWrite.current = false;
         setRunning(false);
       }
     }
@@ -763,4 +769,3 @@ function record(value: unknown): Record<string, unknown> {
     throw new Error('Invalid response.');
   return Object.fromEntries(Object.entries(value));
 }
-function ignore() {}

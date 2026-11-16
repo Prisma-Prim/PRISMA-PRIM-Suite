@@ -1,5 +1,13 @@
 import type { PlanVersion } from '../mission-plan/mission-plan-response';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -72,9 +80,24 @@ export function ContractProjectCreatePanel({
       ? undefined
       : JSON.stringify(candidates.map((project) => project.id).sort());
   const attempt = useRef<
-      { body: string; key: string; revision: number; path: string } | undefined
-    >(undefined),
-    pending = useRef<AbortController | undefined>(undefined);
+    { body: string; key: string; revision: number; path: string } | undefined
+  >(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contractId,
+      contractKind,
+    ]),
+  );
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onCreated, onCandidatesChanged });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onCreated, onCandidatesChanged };
+  });
   const acknowledged =
     attempt.current !== undefined ||
     (setStamp !== undefined && acknowledgedSet === setStamp);
@@ -96,7 +119,6 @@ export function ContractProjectCreatePanel({
   }, [feedback, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
@@ -104,7 +126,13 @@ export function ContractProjectCreatePanel({
 
   async function execute(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (feedback === 'running' || protectedCommand || terminal) return;
+    if (
+      writes.isPending() ||
+      feedback === 'running' ||
+      protectedCommand ||
+      terminal
+    )
+      return;
     if (
       !attempt.current &&
       (sourceMissing ||
@@ -137,8 +165,9 @@ export function ContractProjectCreatePanel({
       }),
     };
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -154,7 +183,7 @@ export function ContractProjectCreatePanel({
         body: command.body,
       });
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -168,7 +197,8 @@ export function ContractProjectCreatePanel({
           throw new Error('Mismatched created Project result.');
         attempt.current = undefined;
         setFeedback('success');
-        onCreated(link, project);
+        controller.release();
+        callbacks.current.onCreated(link, project);
       } else if (result.status === 'validation') {
         attempt.current = undefined;
         setFeedback('invalid');
@@ -181,7 +211,8 @@ export function ContractProjectCreatePanel({
           case 'PROJECT_CANDIDATES_CHANGED':
             setAcknowledgedSet(undefined);
             setFeedback('changed');
-            onCandidatesChanged();
+            controller.release();
+            callbacks.current.onCandidatesChanged();
             break;
           case 'PROJECT_CANDIDATE_LIMIT':
             setFeedback('limit');
@@ -198,6 +229,8 @@ export function ContractProjectCreatePanel({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   return (

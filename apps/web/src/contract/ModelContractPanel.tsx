@@ -2,9 +2,8 @@ import {
   CommercialPdfSelection,
   type CommercialPdfCallbacks,
 } from '../commercial-pdf/CommercialPdfDownload';
-import { useCallback, useEffect, useState } from 'react';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import type { ApiResult } from '../api/authenticated-api-client';
+import { useEffect, useState } from 'react';
+import { useContractAccessRecovery } from './use-contract-access-recovery';
 import { ContractProjectsPanel } from './ContractProjectsPanel';
 import { grantOf, holds } from '../access/company-grants';
 import { SigningPdfDownload } from './SigningPdfDownload';
@@ -48,25 +47,7 @@ export function ModelContractPanel(
   const company = props.actor.activeCompany;
   const declarationAuthority = reportedSigningAuthority(props.actor),
     pdfAuthority = reportedSigningPdfAuthority(props.actor);
-  const reject = useCallback(
-    (result: ApiResult<unknown>, signal: AbortSignal) =>
-      handleAuthenticatedAccessRejection({
-        result,
-        identity: props.identity,
-        companyContextId: company?.id,
-        onCompanyContextRejected: props.onCompanyContextRejected,
-        onActorRevalidated: props.onActorRevalidated ?? (() => undefined),
-        onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
-        signal,
-      }),
-    [
-      props.identity,
-      company?.id,
-      props.onCompanyContextRejected,
-      props.onActorRevalidated,
-      props.onWorkspaceAccessRejected,
-    ],
-  );
+  const reject = useContractAccessRecovery(props);
   const contractPreparer = grantOf(company, 'company_contract_preparer'),
     project = grantOf(company, 'company_project_access'),
     client = grantOf(company, 'company_director_client_access');

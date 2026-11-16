@@ -1,5 +1,13 @@
 import { useContractRecordedValues } from './contract-recorded-values';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -71,16 +79,31 @@ export function ContractAddendumEditor({
     >('closed'),
     [feedback, setFeedback] = useState<Feedback>('idle'),
     [nextSnapshotCursor, setNextSnapshotCursor] = useState<string | null>(null);
-  const pending = useRef<AbortController | undefined>(undefined),
-    snapshotPending = useRef<AbortController | undefined>(undefined),
-    attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contract.id,
+      contract.version.id,
+    ]),
+  );
+  const reads = useScopedOperationGroup(
+    JSON.stringify([lifetime, maySelectSnapshot]),
+  );
+  const writes = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onCreated });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onCreated };
+  });
   useEffect(() => {
     onProtectionChange(feedback === 'running' || feedback === 'uncertain');
   }, [feedback, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
-      snapshotPending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
@@ -89,9 +112,9 @@ export function ContractAddendumEditor({
     protectedCommand || feedback === 'running' || feedback === 'uncertain';
   async function loadSnapshots(cursor?: string) {
     if (!maySelectSnapshot || locked) return;
-    snapshotPending.current?.abort();
-    const controller = new AbortController();
-    snapshotPending.current = controller;
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setSnapshotState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -101,7 +124,7 @@ export function ContractAddendumEditor({
         { companyContextId: companyId, signal: controller.signal },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied || result.status !== 'ok') {
         setSnapshotState('error');
@@ -135,11 +158,14 @@ export function ContractAddendumEditor({
       setSnapshotState('ready');
     } catch {
       if (!controller.signal.aborted) setSnapshotState('error');
+    } finally {
+      controller.release();
     }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
+      writes.isPending() ||
       protectedCommand ||
       feedback === 'running' ||
       ['denied', 'stale', 'unavailable', 'conflict', 'success'].includes(
@@ -161,8 +187,9 @@ export function ContractAddendumEditor({
       }),
     };
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = writes.begin();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -183,7 +210,7 @@ export function ContractAddendumEditor({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -219,7 +246,8 @@ export function ContractAddendumEditor({
         }
         attempt.current = undefined;
         setFeedback('success');
-        onCreated(id);
+        controller.release();
+        callbacks.current.onCreated(id);
       } else if (result.status === 'validation') {
         attempt.current = undefined;
         setFeedback('invalid');
@@ -236,6 +264,8 @@ export function ContractAddendumEditor({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   return (

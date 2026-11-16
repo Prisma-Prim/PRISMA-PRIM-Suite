@@ -1,5 +1,13 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { contractPath, contractQualityRunBinding } from './contract-response';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -52,6 +60,22 @@ export function ContractSignaturePanel({
   onSignature: (signature: ContractSignatureView) => void;
   onProtectionChange: (protectedCommand: boolean) => void;
 }) {
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contract.id,
+      contract.version.id,
+    ]),
+  );
+  const operations = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject, onSignature });
+  useLayoutEffect(() => {
+    callbacks.current = { reject, onSignature };
+  });
   const copy = useContractSignatureCopy(),
     { locale, formatDate } = useInterfaceLocale();
   const [feedback, setFeedback] = useState<Feedback>('idle');
@@ -63,8 +87,7 @@ export function ContractSignaturePanel({
     note: '',
   });
   const [acknowledged, setAcknowledged] = useState<readonly string[]>([]);
-  const pending = useRef<AbortController | undefined>(undefined),
-    attempt = useRef<{ body: string; key: string } | undefined>(undefined);
+  const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   const { signature, decision } = contract.version;
   const eligible = mayRecord && decision?.kind === 'APPROVE' && !signature;
   const busy =
@@ -90,14 +113,19 @@ export function ContractSignaturePanel({
   }, [feedback, onProtectionChange]);
   useEffect(
     () => () => {
-      pending.current?.abort();
       onProtectionChange(false);
     },
     [onProtectionChange],
   );
   async function execute(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!eligible || feedback === 'running' || protectedChecks || terminal)
+    if (
+      operations.isPending() ||
+      !eligible ||
+      feedback === 'running' ||
+      protectedChecks ||
+      terminal
+    )
       return;
     const command = attempt.current ?? {
       key: crypto.randomUUID(),
@@ -110,8 +138,9 @@ export function ContractSignaturePanel({
       }),
     };
     attempt.current = command;
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = operations.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setFeedback('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -130,7 +159,7 @@ export function ContractSignaturePanel({
         },
       );
       if (controller.signal.aborted) return;
-      const denied = await reject(result, controller.signal);
+      const denied = await rejected(result, controller.signal);
       if (controller.signal.aborted) return;
       if (denied) {
         attempt.current = undefined;
@@ -144,7 +173,8 @@ export function ContractSignaturePanel({
           throw new Error('Mismatched signature revision.');
         attempt.current = undefined;
         setFeedback('success');
-        onSignature(recorded);
+        controller.release();
+        callbacks.current.onSignature(recorded);
       } else if (result.status === 'validation') {
         attempt.current = undefined;
         setFeedback('invalid');
@@ -179,6 +209,8 @@ export function ContractSignaturePanel({
       } else setFeedback('uncertain');
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
+    } finally {
+      controller.release();
     }
   }
   if (!signature && !eligible) return null;

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -23,15 +25,32 @@ export function SigningPdfDownload({
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
   const copy = useReportedSigningCopy();
-  const request = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      pdf.documentId,
+      pdf.documentVersionId,
+      pdf.representationId,
+      pdf.sha256,
+      pdf.size,
+      pdf.fileName,
+    ]),
+  );
+  const downloads = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject });
+  useLayoutEffect(() => {
+    callbacks.current = { reject };
+  });
   const [state, setState] = useState<
     'idle' | 'running' | 'unavailable' | 'denied'
   >('idle');
-  useEffect(() => () => request.current?.abort(), []);
   async function download() {
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const controller = downloads.beginLatest();
+    if (!controller) return;
+    const rejected = callbacks.current.reject;
     setState('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -41,7 +60,7 @@ export function SigningPdfDownload({
         { companyContextId: companyId, signal: controller.signal },
       );
       if (controller.signal.aborted) return;
-      if (await reject(result, controller.signal)) {
+      if (await rejected(result, controller.signal)) {
         if (!controller.signal.aborted) setState('denied');
         return;
       }
@@ -79,6 +98,8 @@ export function SigningPdfDownload({
       setState('idle');
     } catch {
       if (!controller.signal.aborted) setState('unavailable');
+    } finally {
+      controller.release();
     }
   }
   if (state === 'denied') return <p>{copy('pdfDenied')}</p>;

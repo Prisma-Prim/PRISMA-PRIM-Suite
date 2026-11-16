@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
-import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import type { ContractRejection } from './use-contract-access-recovery';
 import { useContractCopy } from './contract.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
 import type { ContractView } from './contract-response';
@@ -35,9 +36,7 @@ export function ContractRepresentationViewer({
   versionState,
   kind,
   preparation = false,
-  onCompanyContextRejected,
-  onActorRevalidated,
-  onWorkspaceAccessRejected,
+  reject,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -48,19 +47,37 @@ export function ContractRepresentationViewer({
   versionState: ContractVersionState;
   kind: ContractView['kind'];
   preparation?: boolean;
-  onCompanyContextRejected: (companyId: string) => void;
-  onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
-  onWorkspaceAccessRejected: () => Promise<void> | void;
+  reject: ContractRejection;
 }) {
   const copy = useContractCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   const [view, setView] = useState<DocumentView>({ kind: 'closed' });
   const [requestNumber, setRequestNumber] = useState(0);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      companyId,
+      opportunityId,
+      contractId,
+      versionId,
+      kind,
+      preparation,
+    ]),
+  );
+  const reads = useScopedOperationGroup(String(lifetime));
+  const callbacks = useRef({ reject });
+  useLayoutEffect(() => {
+    callbacks.current = { reject };
+  });
   useEffect(() => {
     if (requestNumber === 0) return;
-    const controller = new AbortController();
-    const { signal } = controller;
+    const request = reads.beginLatest();
+    if (!request) return;
+    const { signal } = request;
+    const rejected = callbacks.current.reject;
     setView({ kind: 'loading' });
     void (async () => {
       try {
@@ -71,17 +88,7 @@ export function ContractRepresentationViewer({
           { companyContextId: companyId, signal },
         );
         if (signal.aborted) return;
-        if (
-          await handleAuthenticatedAccessRejection({
-            result,
-            identity,
-            companyContextId: companyId,
-            onCompanyContextRejected,
-            onActorRevalidated,
-            onWorkspaceAccessRejected,
-            signal,
-          })
-        ) {
+        if (await rejected(result, signal)) {
           if (!signal.aborted) setView({ kind: 'denied' });
           return;
         }
@@ -102,9 +109,11 @@ export function ContractRepresentationViewer({
         });
       } catch {
         if (!signal.aborted) setView({ kind: 'error' });
+      } finally {
+        request.release();
       }
     })();
-    return () => controller.abort();
+    return request.retire;
   }, [
     requestNumber,
     identity,
@@ -114,9 +123,7 @@ export function ContractRepresentationViewer({
     versionId,
     kind,
     preparation,
-    onCompanyContextRejected,
-    onActorRevalidated,
-    onWorkspaceAccessRejected,
+    reads,
   ]);
   return (
     <section className="contract-representation" aria-label={copy('document')}>

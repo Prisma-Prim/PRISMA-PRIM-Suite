@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1431-initial-proof-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1431,
+  "pullRequest": 1432,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T09:44:50.000Z",
+    "end": "2026-11-16T13:55:50.000Z",
+    "durationSeconds": 15060
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 8,
+      "P3": 2
+    },
+    "notes": "Claim-to-local-proof wall clock, including failed and interrupted pilots. 28 owners retired;9 regressions cover7 grouped ownership findings. Also caught a genuine-error false negative and2 navigation/map defects. Web/types/lint/format passed;script map failure corrected with4/4 public checks;26 native+16 browser diagnostic cases passed. Controlled4-to3 shrink/exact RED/byte-restored GREEN completed. PR CI pending;model usage and provider cost not reported."
+  }
+}

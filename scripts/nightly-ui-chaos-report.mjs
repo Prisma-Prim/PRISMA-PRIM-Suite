@@ -22,6 +22,7 @@ export const CHAOS_JOURNEYS = [
   'financial-action-sequences',
   'access-action-sequences',
   'document-action-sequences',
+  'contract-action-sequences',
 ];
 const INSPECTION_LABEL = 'weekly-inspection';
 const BUG_LABEL = 'fuzz-found';
@@ -434,7 +435,7 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
     marker(week),
     `## Nightly UI chaos, week of ${week}`,
     '',
-    'Seeded UI chaos (#1376, stage 2 of #1155) replays acceptance journeys on a throwaway database under response delays, out-of-order responses, a slowed CPU, double submits and back navigation, with the Company switch and access loss of `multi-company-home`. It never blocks a pull request. Generated financial, Access and Document action sequences (#1422, #1425, #1427) vary native actions and values, retain reductions and exact replay, and report only measured coverage. Every failure stays counted here.',
+    'Seeded UI chaos (#1376, stage 2 of #1155) replays acceptance journeys on a throwaway database under response delays, out-of-order responses, a slowed CPU, double submits and back navigation, with the Company switch and access loss of `multi-company-home`. It never blocks a pull request. Generated financial, Access, Document and Contract action sequences (#1422, #1425, #1427, #1431) vary native actions and values, retain reductions and exact replay, and report only measured coverage. Every failure stays counted here.',
     '',
     '| Night (UTC) | Run | Commit | Journey | Runs passed | Result | Job time |',
     '| --- | --- | --- | --- | ---: | --- | ---: |',
