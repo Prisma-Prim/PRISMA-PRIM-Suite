@@ -8,7 +8,7 @@ Use an OpenAI-provisioned **public OAuth client** supporting the exact hosted re
 
 Check actual eligibility with the [official integration route](https://developers.openai.com/siwc/quickstart) and its [hosted/local boundary](https://developers.openai.com/siwc/token-sharing-open-source). Non-commercial use and a public repository do not establish approval. The application does not submit an external application or change its license automatically.
 
-Configure the operator-owned server environment:
+Apply the normal reviewed database migrations before enabling the harness, then configure the operator-owned server environment:
 
 | Setting                          | Required value                                                                                                                                           |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |

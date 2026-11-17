@@ -643,5 +643,27 @@ describe.skipIf(!databaseUrl)(
         ).state,
       ).toBe('connected');
     }, 120_000);
+    it('rejects a connection bound to another Workspace Company at the PostgreSQL boundary', async () => {
+      const otherWorkspace = randomUUID(),
+        otherMembership = randomUUID();
+      await database.targetPool.query(
+        'INSERT INTO workspaces (id, name) VALUES ($1, $2)',
+        [otherWorkspace, 'Fictional isolated Workspace'],
+      );
+      const membership = await database.targetPool.query(
+        'INSERT INTO workspace_memberships (id, workspace_id, internal_user_id) SELECT $1, $2, internal_user_id FROM workspace_memberships WHERE workspace_id = $3 LIMIT 1',
+        [otherMembership, otherWorkspace, workspaceId],
+      );
+      expect(membership.rowCount).toBe(1);
+      await expect(
+        database.targetPool.query(
+          "INSERT INTO dossier_harness_connections (id, workspace_id, company_id, actor_id, client_id, identity_key, label, epoch, updated_at) VALUES ($1, $2, $3, $4, 'fictional-client', 'fictional-identity', 'Fictional', 1, now())",
+          [randomUUID(), otherWorkspace, companyId, otherMembership],
+        ),
+      ).rejects.toMatchObject({
+        code: '23503',
+        constraint: 'dossier_harness_connection_company_fk',
+      });
+    });
   },
 );

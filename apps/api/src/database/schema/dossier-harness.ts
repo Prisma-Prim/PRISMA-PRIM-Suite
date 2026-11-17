@@ -10,7 +10,7 @@ import {
   foreignKey,
   check,
 } from 'drizzle-orm/pg-core';
-import { workspaceMemberships } from './core.js';
+import { companies, workspaceMemberships } from './core.js';
 import { projects } from './project.js';
 import { dossierAnalysisRuns } from './dossier-analysis.js';
 
@@ -57,6 +57,11 @@ export const dossierHarnessConnections = pgTable(
       t.actorId,
       t.id,
     ),
+    foreignKey({
+      name: 'dossier_harness_connection_company_fk',
+      columns: [t.workspaceId, t.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
     foreignKey({
       columns: [t.workspaceId, t.actorId],
       foreignColumns: [

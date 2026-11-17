@@ -1,4 +1,5 @@
 import { DossierAnalysisController } from '../dossier-analysis/dossier-analysis.controller.js';
+import { DossierHarnessController } from '../dossier-harness/harness.controller.js';
 import {
   RequestMethod,
   type CanActivate,
@@ -112,6 +113,7 @@ const actor: ActorContext = {
 // `requireActorContext`. Each of their handlers is exercised below.
 const actorControllers: readonly Type[] = [
   DossierAnalysisController,
+  DossierHarnessController,
   AccessController,
   ActivityLogController,
   CertificationController,

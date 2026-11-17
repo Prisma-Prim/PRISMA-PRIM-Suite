@@ -855,6 +855,13 @@
       "when": 1794904994178,
       "tag": "0121_dossier_harness",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1794909411532,
+      "tag": "0122_dossier_harness_company_scope",
+      "breakpoints": true
     }
   ]
 }
