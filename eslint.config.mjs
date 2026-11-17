@@ -45,8 +45,9 @@ const apiSyntaxExemptFiles = [
   '**/*.test-{support,fixture}.ts',
   'apps/api/test-support/**',
 ];
-const nativeDocumentFamilyCall =
-  'CallExpression:matches([callee.property.name=/^require(ReceivedAuditSource|ReceivedAddendum|ExternalInvoice|PaymentEvidence)NativeAccess$/], [callee.computed=true][callee.property.value=/^require(ReceivedAuditSource|ReceivedAddendum|ExternalInvoice|PaymentEvidence)NativeAccess$/])';
+const nativeDocumentFamilyMethod =
+  '/^require(ReceivedAuditSource|ReceivedAddendum|ExternalInvoice|PaymentEvidence)NativeAccess$/';
+const nativeDocumentFamilyCall = `CallExpression:matches([callee.property.name=${nativeDocumentFamilyMethod}], [callee.computed=true][callee.property.value=${nativeDocumentFamilyMethod}], [callee.computed=true][callee.property.type="TemplateLiteral"][callee.property.expressions.length=0][callee.property.quasis.0.value.cooked=${nativeDocumentFamilyMethod}])`;
 const nativeDocumentFamilyMessage =
   'Use DocumentFamilyAccess.requireFamilyAccess and DOCUMENT_FAMILY_POLICY for native Document family access; only registration adapters may call native access directly for their register action (#1212).';
 const nativeDocumentFamilyRestriction = {

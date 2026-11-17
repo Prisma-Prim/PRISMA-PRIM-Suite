@@ -105,6 +105,41 @@ test('all four native family calls are refused in consumers and their test fixtu
   );
 });
 
+test('static template method names cannot bypass Document family access', async () => {
+  const source = [
+    'declare const access: Record<string, (actor: unknown, options: unknown) => Promise<void>>;',
+    'declare const actor: unknown;',
+    'export const read = () => Promise.all([',
+    ...nativeFamilyMethods.flatMap((method) => [
+      'access[`' + method + '`](actor, { action: "content-read" }),',
+      'access?.[`' + method + '`]?.(actor, { action: "content-read" }),',
+    ]),
+    ']);',
+  ].join('\n');
+  const result = await lintFiles({
+    'apps/api/src/documents/documents.service.ts': source,
+    'apps/api/src/documents/consumer.ts': source,
+    'apps/api/src/documents/consumer.test.ts': source,
+  });
+  assert.equal(result.status, lintErrors, result.output);
+  assert.equal(
+    result.output.match(/error .*DocumentFamilyAccess\.requireFamilyAccess/g)
+      ?.length,
+    24,
+    result.output,
+  );
+
+  const allowed = await lintFiles({
+    'apps/api/src/access/native.ts': source,
+    'apps/api/src/documents/document-family-access.ts': source,
+    'apps/api/src/documents/documents.service.ts': source.replaceAll(
+      'content-read',
+      'register',
+    ),
+  });
+  assert.equal(allowed.status, 0, allowed.output);
+});
+
 test('Access and the central Document family module may call native access', async () => {
   const result = await lintFiles({
     'apps/api/src/access/company-context-authorization.ts': nativeFamilyCalls(),
