@@ -34,3 +34,5 @@ The current job limit is 4,096 text batches and 100 validated proposals. The com
 Refresh tokens rotate under a single-session lease. Disconnect clears local use before attempting remote revocation; an unconfirmed remote revocation is displayed and can be resolved in [ChatGPT connection/usage settings](https://chatgpt.com/settings/usage). No live account has been activated by the development tests.
 
 ChatGPT account settings can permit apps to consume purchased ChatGPT credits after included usage. Disable that option and automatic credit purchases in ChatGPT if processing must stop at the included allowance. PRISMA never buys credits or uses a separate paid API-key fallback.
+
+Concurrent reviews can pause while their shared connection is being renewed. Resume after the connection becomes available. That refusal has not sent a model request; an expired refresh state requires reconnecting instead.

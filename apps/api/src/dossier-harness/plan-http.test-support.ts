@@ -15,12 +15,14 @@ export async function createPlanHttpFixture() {
   const controls: {
     failure: 'none' | 'quota' | 'fabricated';
     wait: (() => Promise<void>) | null;
+    refreshWait: (() => Promise<void>) | null;
     grant: boolean;
     expiresIn: number;
     verbose: boolean;
   } = {
     failure: 'none',
     wait: null,
+    refreshWait: null,
     grant: true,
     expiresIn: 3600,
     verbose: false,
@@ -49,7 +51,10 @@ export async function createPlanHttpFixture() {
     if (url.pathname === '/jwks') return json({ keys: [jwk] });
     if (url.pathname === '/api/accounts/oauth/token') {
       const body = new URLSearchParams(String(init?.body));
-      if (body.get('grant_type') === 'refresh_token') refreshes++;
+      if (body.get('grant_type') === 'refresh_token') {
+        refreshes++;
+        await controls.refreshWait?.();
+      }
       const token = await new SignJWT({
         nonce: body.get('code'),
         email: 'fictional-plan@example.test',

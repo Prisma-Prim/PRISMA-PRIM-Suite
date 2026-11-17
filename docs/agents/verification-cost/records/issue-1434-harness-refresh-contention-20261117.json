@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-harness-refresh-contention-20261117",
+  "date": "2026-11-17",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": 1435,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T11:01:24.000Z",
+    "end": "2026-11-17T11:09:33.000Z",
+    "durationSeconds": 489
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "First GitHub review reproduced refresh contention stranding an undisclosed batch lease. Real PostgreSQL/HTTP barrier regression first returned409; now pauses/releases and resumes immediately with one refresh, no extra model call. Expired refresh state requests reauth.14 targeted cases pass; usage/price unavailable."
+  }
+}

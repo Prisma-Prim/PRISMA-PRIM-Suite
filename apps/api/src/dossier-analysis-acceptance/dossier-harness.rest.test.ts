@@ -665,5 +665,77 @@ describe.skipIf(!databaseUrl)(
         constraint: 'dossier_harness_connection_company_fk',
       });
     });
+    it('releases an undisclosed batch while another job refreshes credentials, then resumes immediately', async () => {
+      const started = await command(`${prefix}/harness/connect`, {});
+      const url = new URL(string(started.authorizationUrl));
+      protocol.controls.expiresIn = 1;
+      await command(`${prefix}/harness/connect/complete`, {
+        state: started.state,
+        code: url.searchParams.get('nonce'),
+      });
+      protocol.controls.expiresIn = 3600;
+      const runId = string((await command(`${prefix}/runs`, {})).id);
+      const create = (language: string) =>
+        command(`${prefix}/harness/jobs`, {
+          runId,
+          model: 'fixture-model',
+          language,
+        });
+      const firstId = string((await create('fr')).id),
+        secondId = string((await create('ro')).id);
+      let release: () => void = () => undefined;
+      let entered: () => void = () => undefined;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const refreshing = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      protocol.controls.refreshWait = () => {
+        entered();
+        return blocked;
+      };
+      const reviewsBefore = protocol.reviewCount(),
+        refreshesBefore = protocol.refreshCount();
+      const first = call(`${prefix}/harness/jobs/${firstId}/advance`, {
+        method: 'POST',
+        body: {},
+      });
+      await refreshing;
+      try {
+        const paused = await command(
+          `${prefix}/harness/jobs/${secondId}/advance`,
+          {},
+        );
+        expect(paused.state).toBe('paused');
+        expect(paused.nextBatch).toBe(0);
+        expect(protocol.reviewCount()).toBe(reviewsBefore);
+      } finally {
+        protocol.controls.refreshWait = null;
+        release();
+        expect((await first).status).toBe(201);
+      }
+      await command(`${prefix}/harness/jobs/${secondId}/control`, {
+        action: 'resume',
+      });
+      const resumed = await command(
+        `${prefix}/harness/jobs/${secondId}/advance`,
+        {},
+      );
+      expect(resumed.nextBatch).toBe(1);
+      expect(protocol.refreshCount() - refreshesBefore).toBe(1);
+      expect(protocol.reviewCount() - reviewsBefore).toBe(2);
+      await database.targetPool.query(
+        "UPDATE dossier_harness_connections SET refresh_lease = $1, refresh_until = now() - interval '1 second' WHERE workspace_id = $2 AND company_id = $3",
+        [randomUUID(), workspaceId, companyId],
+      );
+      const expired = await command(
+        `${prefix}/harness/jobs/${secondId}/advance`,
+        {},
+      );
+      expect(expired.state).toBe('reauth');
+      expect(expired.nextBatch).toBe(1);
+      expect(protocol.reviewCount() - reviewsBefore).toBe(2);
+    }, 120_000);
   },
 );

@@ -17,6 +17,7 @@ import { dossierAnalysisEvents } from '../database/schema/dossier-analysis.js';
 import {
   dossierHarnessJobs as jobs,
   dossierHarnessCache as cache,
+  type HarnessState,
 } from '../database/schema/dossier-harness.js';
 import { DossierRunService } from '../dossier-analysis/run.service.js';
 import {
@@ -38,7 +39,7 @@ import {
   readBatchProposals,
   reviewRequest,
 } from './index.js';
-import { PlanFailure } from './provider.js';
+import { PlanFailure, type PlanFailureKind } from './provider.js';
 import { commandBody, commandText } from './commands.js';
 
 type Job = typeof jobs.$inferSelect;
@@ -465,14 +466,15 @@ export class DossierHarnessJobService {
           const row = await this.row(actor, projectId, companyId, id);
           const frozen = await this.frozen(actor, projectId, row.runId);
           if (row.lease !== captured.lease) return this.view(row, frozen);
-          const state =
-            error.kind === 'quota'
-              ? 'quota'
-              : error.kind === 'reauth'
-                ? 'reauth'
-                : error.kind === 'interrupted'
-                  ? 'uncertain'
-                  : 'failed';
+          const states = {
+            quota: 'quota',
+            reauth: 'reauth',
+            interrupted: 'uncertain',
+            busy: 'paused',
+            invalid: 'failed',
+            unavailable: 'failed',
+          } satisfies Record<PlanFailureKind, HarnessState>;
+          const state = states[error.kind];
           const [next] = await this.db.connection
             .update(jobs)
             .set({

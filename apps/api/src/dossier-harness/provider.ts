@@ -1,7 +1,9 @@
 import { createLocalJWKSet, jwtVerify } from 'jose';
 
+/** busy is a local credential-refresh refusal, before any inference dispatch. */
+/** busy is a local credential-refresh refusal before inference is dispatched. */
 export type PlanFailureKind =
-  'quota' | 'reauth' | 'invalid' | 'unavailable' | 'interrupted';
+  'quota' | 'reauth' | 'invalid' | 'unavailable' | 'interrupted' | 'busy';
 export class PlanFailure extends Error {
   constructor(readonly kind: PlanFailureKind) {
     super('ChatGPT plan request did not complete.');

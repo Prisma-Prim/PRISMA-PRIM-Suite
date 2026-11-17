@@ -373,12 +373,11 @@ export class DossierHarnessConnectionService {
           throw new PlanFailure('reauth');
         const saved = this.credentials(row.encrypted, actor, companyId);
         if (row.refreshLease)
-          throw new ConflictException({
-            code:
-              row.refreshUntil && row.refreshUntil.getTime() > Date.now()
-                ? 'connection_busy'
-                : 'reauthorization_required',
-          });
+          throw new PlanFailure(
+            row.refreshUntil && row.refreshUntil.getTime() > Date.now()
+              ? 'busy'
+              : 'reauth',
+          );
         const refresh = saved.tokens.expiresAt <= Date.now() + 60_000;
         if (refresh)
           await this.db.connection
