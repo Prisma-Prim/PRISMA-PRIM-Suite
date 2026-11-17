@@ -146,3 +146,5 @@ H5. Accessible ro/ru/fr/en Project UI, account/configuration/limit errors, progr
 H6. Format/lint/types, relevant native tests, independent Standards/Spec review, publication CI, execution proof and cost record. Protocol fixtures do not establish actual account eligibility, model quality or private-corpus capacity.
 
 Official references checked 2026-11-17: [Sign in with ChatGPT](https://developers.openai.com/siwc/quickstart), [hosted website flow](https://developers.openai.com/siwc/website), [plan scopes and registration](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [runtime limits](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations), and [credential lifecycle](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions). Actual hosted-client entitlement/configuration must match its provisioned contract; the open dynamic-registration loopback flow is not repurposed as hosted approval.
+
+Operator setup and actual account prerequisites: [subscription harness activation](../agents/dossier-harness-activation.md).

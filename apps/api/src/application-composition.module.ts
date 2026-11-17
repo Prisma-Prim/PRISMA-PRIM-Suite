@@ -2,6 +2,8 @@ import { CompanyRoleAssignmentController } from './access/company-role-assignmen
 import { WorkingEvidenceModule } from './working-evidence/working-evidence.module.js';
 import { DossierAnalysisModule } from './dossier-analysis/dossier-analysis.module.js';
 import { DossierAnalysisController } from './dossier-analysis/dossier-analysis.controller.js';
+import { DossierHarnessModule } from './dossier-harness/harness.module.js';
+import { DossierHarnessController } from './dossier-harness/harness.controller.js';
 import { WorkingEvidenceController } from './working-evidence/working-evidence.controller.js';
 import { PaymentModule } from './payment/payment.module.js';
 import { PaymentController } from './payment/payment.controller.js';
@@ -123,6 +125,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 @Module({
   imports: [
     DossierAnalysisModule,
+    DossierHarnessModule,
     WorkingEvidenceModule,
     PaymentModule,
     InvoiceRecordModule,
@@ -158,6 +161,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
   ],
   controllers: [
     DossierAnalysisController,
+    DossierHarnessController,
     WorkingEvidenceController,
     PaymentController,
     InvoiceRecordController,

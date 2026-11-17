@@ -29,6 +29,7 @@ import {
   useAnalysisHistoryCopy,
 } from './analysis-copy';
 import './analysis.css';
+import { DossierHarnessPanel } from './DossierHarnessPanel';
 
 export interface DossierAnalysisProps {
   actor: ActorContext;
@@ -795,6 +796,19 @@ function AnalysisOwner(
                 {c[25]}
               </button>
               <h4>{c[13]}</h4>
+              {editable && (
+                <DossierHarnessPanel
+                  key={selected.id}
+                  identity={props.identity}
+                  companyId={props.companyId}
+                  projectId={props.projectId}
+                  runId={selected.id}
+                  stale={selected.stale}
+                  scope={props.scope + ':' + selected.id}
+                  onDenied={deny}
+                  onImported={() => openRun(selected.id)}
+                />
+              )}
               {(selected.coverage.truncatedCandidates ||
                 selected.coverage.truncatedComparisons) && (
                 <p role="status">{truncation}</p>

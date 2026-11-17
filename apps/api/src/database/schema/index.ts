@@ -60,3 +60,4 @@ export * from './received-addendum-documents.js';
 export * from './working-evidence.js';
 export * from './certification.js';
 export * from './dossier-analysis.js';
+export * from './dossier-harness.js';

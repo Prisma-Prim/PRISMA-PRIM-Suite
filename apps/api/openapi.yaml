@@ -3,6 +3,605 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/projects/{projectId}/dossier-analysis/harness:
+    {
+      'get':
+        {
+          'operationId': 'getDossierHarnessConnection',
+          'summary': 'Read subscription connection and granted model catalog',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierHarnessConnection',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/connect:
+    {
+      'post':
+        {
+          'operationId': 'startDossierHarnessConnection',
+          'summary': 'Start actor-bound PKCE authorization',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              'type': 'object',
+                              'properties':
+                                {
+                                  'authorizationUrl':
+                                    { 'type': 'string', 'format': 'uri' },
+                                  'state': { 'type': 'string' },
+                                },
+                              'required': ['authorizationUrl', 'state'],
+                              'additionalProperties': false,
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/connect/complete:
+    {
+      'post':
+        {
+          'operationId': 'completeDossierHarnessConnection',
+          'summary': 'Consume one-time callback and verify the inference grant',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierHarnessConnection',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'state': { 'type': 'string', 'maxLength': 100 },
+                              'code': { 'type': 'string', 'maxLength': 4096 },
+                            },
+                          'required': ['state', 'code'],
+                          'additionalProperties': false,
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/disconnect:
+    {
+      'post':
+        {
+          'operationId': 'disconnectDossierHarnessConnection',
+          'summary': 'Clear local credentials and attempt remote revocation',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              'type': 'object',
+                              'properties':
+                                { 'remoteRevoked': { 'type': 'boolean' } },
+                              'required': ['state', 'remoteRevoked'],
+                              'additionalProperties': false,
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/jobs:
+    {
+      'get':
+        {
+          'operationId': 'listDossierHarnessJobs',
+          'summary': 'List the ten most recent reviews for the exact run',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'name': 'runId',
+                'in': 'query',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              'type': 'object',
+                              'properties':
+                                {
+                                  'items':
+                                    {
+                                      'type': 'array',
+                                      'maxItems': 10,
+                                      'items':
+                                        {
+                                          '$ref': '#/components/schemas/DossierHarnessJob',
+                                        },
+                                    },
+                                },
+                              'required': ['items'],
+                              'additionalProperties': false,
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+      'post':
+        {
+          'operationId': 'createDossierHarnessJob',
+          'summary': 'Create an idempotent bounded review',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'name': 'Idempotency-Key',
+                'in': 'header',
+                'required': true,
+                'schema': { 'type': 'string', 'maxLength': 200 },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierHarnessJob',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'runId': { 'type': 'string', 'format': 'uuid' },
+                              'model': { 'type': 'string', 'maxLength': 120 },
+                              'language':
+                                {
+                                  '$ref': '#/components/schemas/DossierAnalysisLanguage',
+                                },
+                            },
+                          'required': ['runId', 'model', 'language'],
+                          'additionalProperties': false,
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/jobs/{id}:
+    {
+      'get':
+        {
+          'operationId': 'getDossierHarnessJob',
+          'summary': 'Read persisted checkpoint and exact proposals',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'name': 'id',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierHarnessJob',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/jobs/{id}/advance:
+    {
+      'post':
+        {
+          'operationId': 'advanceDossierHarnessJob',
+          'summary': 'Lease and execute one batch or reuse an exact cached result',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'name': 'id',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierHarnessJob',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/jobs/{id}/control:
+    {
+      'post':
+        {
+          'operationId': 'controlDossierHarnessJob',
+          'summary': 'Pause after the current batch, explicitly resume or cancel',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'name': 'id',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierHarnessJob',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+          'requestBody':
+            {
+              'required': true,
+              'content':
+                {
+                  'application/json':
+                    {
+                      'schema':
+                        {
+                          'type': 'object',
+                          'properties':
+                            {
+                              'action':
+                                {
+                                  'type': 'string',
+                                  'enum': ['pause', 'resume', 'cancel'],
+                                },
+                            },
+                          'required': ['action'],
+                          'additionalProperties': false,
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/harness/jobs/{id}/import:
+    {
+      'post':
+        {
+          'operationId': 'importDossierHarnessProposals',
+          'summary': 'Import completed proposals into existing human review',
+          'tags': ['Dossier Analysis'],
+          'description': 'Requires current Project edit and source authority in the server actor Company. Jobs and account connections are private to the actor. No automatic charged fallback.',
+          'parameters':
+            [
+              {
+                'name': 'projectId',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'name': 'id',
+                'in': 'path',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+            ],
+          'responses':
+            {
+              '201':
+                {
+                  'description': 'Successful scoped operation. No OAuth credentials are returned.',
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierAnalysisImportReceipt',
+                            },
+                        },
+                    },
+                },
+              '400': { 'description': 'Malformed command.' },
+              '401': { 'description': 'No verified principal.' },
+              '403': { 'description': 'Required authority absent.' },
+              '404':
+                { 'description': 'Opaque inaccessible or missing resource.' },
+              '409':
+                {
+                  'description': 'Stale source, conflicting state or retired connection.',
+                },
+              '503':
+                { 'description': 'Configuration or provider unavailable.' },
+            },
+        },
+    }
   /api/projects/{projectId}/dossier-analysis:
     {
       'get':
@@ -9222,6 +9821,114 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    DossierHarnessConnection:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'state':
+              {
+                'type': 'string',
+                'enum': ['configuration_required', 'disconnected', 'connected'],
+              },
+            'account': { 'type': ['string', 'null'] },
+            'models':
+              {
+                'type': 'array',
+                'maxItems': 200,
+                'items':
+                  {
+                    'type': 'object',
+                    'properties':
+                      {
+                        'id': { 'type': 'string' },
+                        'label': { 'type': 'string' },
+                      },
+                    'required': ['id', 'label'],
+                    'additionalProperties': false,
+                  },
+              },
+          },
+        'required': ['state', 'account', 'models'],
+        'additionalProperties': false,
+      }
+    DossierHarnessJob:
+      {
+        'type': 'object',
+        'properties':
+          {
+            'id': { 'type': 'string', 'format': 'uuid' },
+            'runId': { 'type': 'string', 'format': 'uuid' },
+            'model': { 'type': 'string' },
+            'language':
+              { '$ref': '#/components/schemas/DossierAnalysisLanguage' },
+            'state':
+              {
+                'type': 'string',
+                'enum':
+                  [
+                    'queued',
+                    'running',
+                    'pausing',
+                    'paused',
+                    'quota',
+                    'reauth',
+                    'failed',
+                    'uncertain',
+                    'completed',
+                    'cancelled',
+                  ],
+              },
+            'nextBatch': { 'type': 'integer', 'minimum': 0 },
+            'totalBatches':
+              { 'type': 'integer', 'minimum': 0, 'maximum': 4096 },
+            'cacheHits': { 'type': 'integer', 'minimum': 0 },
+            'stale': { 'type': 'boolean' },
+            'imported': { 'type': 'boolean' },
+            'coverage':
+              {
+                'type': 'object',
+                'properties':
+                  {
+                    'readableUnits': { 'type': 'integer', 'minimum': 0 },
+                    'totalUnits': { 'type': 'integer', 'minimum': 0 },
+                    'incompleteSources': { 'type': 'integer', 'minimum': 0 },
+                  },
+                'required':
+                  ['readableUnits', 'totalUnits', 'incompleteSources'],
+                'additionalProperties': false,
+              },
+            'proposals':
+              {
+                'type': 'array',
+                'maxItems': 200,
+                'items':
+                  {
+                    '$ref': '#/components/schemas/DossierAnalysisSuggestionProposal',
+                  },
+              },
+            'createdAt': { 'type': 'string', 'format': 'date-time' },
+            'updatedAt': { 'type': 'string', 'format': 'date-time' },
+          },
+        'required':
+          [
+            'id',
+            'runId',
+            'model',
+            'language',
+            'state',
+            'nextBatch',
+            'totalBatches',
+            'cacheHits',
+            'stale',
+            'imported',
+            'coverage',
+            'proposals',
+            'createdAt',
+            'updatedAt',
+          ],
+        'additionalProperties': false,
+      }
     DossierAnalysisError:
       {
         'type': 'object',
