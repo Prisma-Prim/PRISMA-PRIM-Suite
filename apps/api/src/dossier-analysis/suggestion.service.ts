@@ -27,6 +27,8 @@ import {
 import { parseReview } from './commands.js';
 import { DossierRunService } from './run.service.js';
 
+export const MAX_SUGGESTION_IMPORT_BYTES = 256 * 1024;
+
 @Injectable()
 export class DossierSuggestionService {
   constructor(
@@ -150,7 +152,8 @@ export class DossierSuggestionService {
       !value ||
       typeof value !== 'object' ||
       Array.isArray(value) ||
-      Buffer.byteLength(JSON.stringify(value), 'utf8') > 256 * 1024
+      Buffer.byteLength(JSON.stringify(value), 'utf8') >
+        MAX_SUGGESTION_IMPORT_BYTES
     )
       throw new BadRequestException('Invalid suggestions.');
     const body = Object.fromEntries(Object.entries(value));

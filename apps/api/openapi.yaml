@@ -9901,7 +9901,7 @@ components:
             'proposals':
               {
                 'type': 'array',
-                'maxItems': 200,
+                'maxItems': 100,
                 'items':
                   {
                     '$ref': '#/components/schemas/DossierAnalysisSuggestionProposal',

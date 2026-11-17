@@ -19,9 +19,13 @@ import {
   dossierHarnessCache as cache,
 } from '../database/schema/dossier-harness.js';
 import { DossierRunService } from '../dossier-analysis/run.service.js';
-import { DossierSuggestionService } from '../dossier-analysis/suggestion.service.js';
+import {
+  DossierSuggestionService,
+  MAX_SUGGESTION_IMPORT_BYTES,
+} from '../dossier-analysis/suggestion.service.js';
 import {
   DOSSIER_ANALYSIS_PIPELINE_VERSION,
+  MAX_PROPOSALS_PER_IMPORT,
   type ProposedSuggestion,
 } from '../dossier-analysis-engine/index.js';
 import {
@@ -170,9 +174,9 @@ export class DossierHarnessJobService {
         )
         .orderBy(desc(jobs.createdAt), desc(jobs.id))
         .limit(10);
-      return {
-        items: await Promise.all(rows.map((row) => this.view(row, frozen))),
-      };
+      const items = [];
+      for (const row of rows) items.push(await this.view(row, frozen));
+      return { items };
     });
   }
   async get(actor: ActorContext, projectId: string, id: string) {
@@ -409,8 +413,13 @@ export class DossierHarnessJobService {
             proposals,
           ];
           if (
-            checkpoint.flat().length > 200 ||
-            Buffer.byteLength(JSON.stringify(checkpoint)) > 1024 * 1024
+            checkpoint.flat().length > MAX_PROPOSALS_PER_IMPORT ||
+            Buffer.byteLength(
+              JSON.stringify({
+                snapshotHash: row.snapshotHash,
+                suggestions: checkpoint.flat(),
+              }),
+            ) > MAX_SUGGESTION_IMPORT_BYTES
           )
             throw new PlanFailure('invalid');
           await this.db.connection

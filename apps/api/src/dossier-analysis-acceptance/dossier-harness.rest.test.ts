@@ -239,7 +239,10 @@ describe.skipIf(!databaseUrl)(
             },
           })
         ).status,
-      ).toBe(404);
+      ).toBe(409);
+      expect(object(await (await call(`${prefix}/harness`)).json()).state).toBe(
+        'disconnected',
+      );
       const noGrantStart = await command(`${prefix}/harness/connect`, {});
       const noGrantUrl = new URL(string(noGrantStart.authorizationUrl));
       protocol.controls.grant = false;
@@ -331,6 +334,9 @@ describe.skipIf(!databaseUrl)(
       expect(cached.cacheHits).toBe(1);
       expect(protocol.reviewCount()).toBe(1);
       const quotaId = string((await create('ro')).id);
+      const listResponse = await call(`${prefix}/harness/jobs?runId=${runId}`);
+      expect(listResponse.status).toBe(200);
+      expect(array(object(await listResponse.json()).items)).toHaveLength(3);
       protocol.controls.failure = 'quota';
       expect(
         (await command(`${prefix}/harness/jobs/${quotaId}/advance`, {})).state,
@@ -499,11 +505,11 @@ describe.skipIf(!databaseUrl)(
       );
       expect(uploaded.status, await uploaded.clone().text()).toBe(201);
       const runId = string((await command(`${prefix}/runs`, {})).id);
-      const create = () =>
+      const create = (language = 'ru') =>
         command(`${prefix}/harness/jobs`, {
           runId,
           model: 'fixture-model',
-          language: 'ru',
+          language,
         });
       const first = await create(),
         id = string(first.id);
@@ -585,6 +591,55 @@ describe.skipIf(!databaseUrl)(
       expect(cached.state).toBe('completed');
       expect(cached.cacheHits).toBe(cached.totalBatches);
       expect(protocol.reviewCount()).toBe(beforeCache);
+      protocol.controls.verbose = true;
+      try {
+        const oversized = await create('en');
+        const oversizedId = string(oversized.id);
+        let result = oversized;
+        for (let n = 0; n < 50 && result.state === 'queued'; n++)
+          result = await command(
+            `${prefix}/harness/jobs/${oversizedId}/advance`,
+            {},
+          );
+        expect(result.state).toBe('failed');
+        expect(result.nextBatch).toBeLessThan(result.totalBatches);
+        expect(
+          (
+            await call(`${prefix}/harness/jobs/${oversizedId}/import`, {
+              method: 'POST',
+              body: {},
+            })
+          ).status,
+        ).toBe(409);
+      } finally {
+        protocol.controls.verbose = false;
+      }
+    }, 120_000);
+    it('allows reconnecting and clears local use when stored credentials cannot be decrypted', async () => {
+      await database.targetPool.query(
+        "UPDATE dossier_harness_connections SET encrypted = 'unreadable-ciphertext'",
+      );
+      const response = await call(`${prefix}/harness`);
+      expect(response.status).toBe(200);
+      expect(object(await response.json()).state).toBe('disconnected');
+      const disconnected = await command(`${prefix}/harness/disconnect`, {});
+      expect(disconnected.remoteRevoked).toBe(false);
+      const after = await database.targetPool.query(
+        'SELECT encrypted FROM dossier_harness_connections',
+      );
+      expect(
+        after.rows.every((row: unknown) => object(row).encrypted === null),
+      ).toBe(true);
+      const started = await command(`${prefix}/harness/connect`, {});
+      const url = new URL(string(started.authorizationUrl));
+      expect(
+        (
+          await command(`${prefix}/harness/connect/complete`, {
+            state: started.state,
+            code: url.searchParams.get('nonce'),
+          })
+        ).state,
+      ).toBe('connected');
     }, 120_000);
   },
 );

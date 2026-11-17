@@ -129,8 +129,15 @@ export class DossierHarnessConnectionService {
       const row = await this.row(actor, companyId);
       if (!row?.encrypted)
         return { state: 'disconnected', account: null, models: [] };
-      const saved = this.credentials(row.encrypted, actor, companyId);
-      return { state: 'connected', account: row.label, models: saved.models };
+      if (row.clientId !== this.configuration().clientId)
+        return { state: 'disconnected', account: null, models: [] };
+      try {
+        const saved = this.credentials(row.encrypted, actor, companyId);
+        return { state: 'connected', account: row.label, models: saved.models };
+      } catch (error) {
+        if (!(error instanceof PlanFailure)) throw error;
+        return { state: 'disconnected', account: null, models: [] };
+      }
     });
   }
   async start(actor: ActorContext, projectId: string) {
@@ -311,9 +318,16 @@ export class DossierHarnessConnectionService {
       projectId,
       async (companyId) => {
         const row = await this.row(actor, companyId);
-        const credentials = row?.encrypted
-          ? this.credentials(row.encrypted, actor, companyId)
-          : null;
+        let credentials: ReturnType<
+          DossierHarnessConnectionService['credentials']
+        > | null = null;
+        if (row?.encrypted) {
+          try {
+            credentials = this.credentials(row.encrypted, actor, companyId);
+          } catch (error) {
+            if (!(error instanceof PlanFailure)) throw error;
+          }
+        }
         if (row)
           await this.db.connection
             .update(connections)
@@ -327,18 +341,17 @@ export class DossierHarnessConnectionService {
               updatedAt: new Date(),
             })
             .where(eq(connections.id, row.id));
-        return credentials && row
-          ? { credentials, clientId: row.clientId }
-          : null;
+        return row?.encrypted ? { credentials, clientId: row.clientId } : null;
       },
     );
     const remoteRevoked =
       !saved ||
-      (await this.client.revoke(
-        saved.credentials.endpoints.revoke,
-        saved.clientId,
-        saved.credentials.tokens.refreshToken,
-      ));
+      (saved.credentials !== null &&
+        (await this.client.revoke(
+          saved.credentials.endpoints.revoke,
+          saved.clientId,
+          saved.credentials.tokens.refreshToken,
+        )));
     return { state: 'disconnected', remoteRevoked };
   }
   async use(

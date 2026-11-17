@@ -17,7 +17,14 @@ export async function createPlanHttpFixture() {
     wait: (() => Promise<void>) | null;
     grant: boolean;
     expiresIn: number;
-  } = { failure: 'none', wait: null, grant: true, expiresIn: 3600 };
+    verbose: boolean;
+  } = {
+    failure: 'none',
+    wait: null,
+    grant: true,
+    expiresIn: 3600,
+    verbose: false,
+  };
   const json = (v: unknown) =>
     new Response(JSON.stringify(v), {
       headers: { 'content-type': 'application/json' },
@@ -90,24 +97,24 @@ export async function createPlanHttpFixture() {
       const p = object(data.passages[0]);
       if (typeof p.start !== 'number') throw new Error('Expected offset');
       const quote = text(p.text).slice(0, 20);
-      const result = [
-        {
-          field: 'scope',
-          value: 'Проверить документ',
-          rationale: 'Propunere fictivă pentru verificare',
-          citations: [
-            {
-              sourceId: p.sourceId,
-              documentVersionId: p.documentVersionId,
-              locator: p.locator,
-              passageSha256: p.passageSha256,
-              start: p.start,
-              end: p.start + quote.length,
-              quote: controls.failure === 'fabricated' ? 'invented' : quote,
-            },
-          ],
-        },
-      ];
+      const result = Array.from({ length: controls.verbose ? 8 : 1 }, () => ({
+        field: 'scope',
+        value: controls.verbose ? 'Ж'.repeat(2000) : 'Проверить документ',
+        rationale: controls.verbose
+          ? 'Ж'.repeat(4000)
+          : 'Propunere fictivă pentru verificare',
+        citations: [
+          {
+            sourceId: p.sourceId,
+            documentVersionId: p.documentVersionId,
+            locator: p.locator,
+            passageSha256: p.passageSha256,
+            start: p.start,
+            end: p.start + quote.length,
+            quote: controls.failure === 'fabricated' ? 'invented' : quote,
+          },
+        ],
+      }));
       return new Response(
         'data: ' +
           JSON.stringify({

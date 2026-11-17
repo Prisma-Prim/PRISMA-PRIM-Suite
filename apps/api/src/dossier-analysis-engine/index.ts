@@ -937,6 +937,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 /** Validates provenance and literal substrings, not semantic support or acceptance. */
+export const MAX_PROPOSALS_PER_IMPORT = 100;
 export function validateSuggestions({
   sources,
   snapshotHash,
@@ -950,7 +951,7 @@ export function validateSuggestions({
     snapshotHash !== dossierSnapshotHash(sources) ||
     !Array.isArray(value) ||
     value.length < 1 ||
-    value.length > 100
+    value.length > MAX_PROPOSALS_PER_IMPORT
   )
     throw new Error('Invalid suggestions');
   return value.map((item: unknown) => {

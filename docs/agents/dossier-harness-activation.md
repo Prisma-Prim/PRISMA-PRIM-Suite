@@ -29,7 +29,7 @@ The runtime needs HTTPS egress to `auth.openai.com` and `api.openai.com`. Discov
 4. Inspect coverage, exact quotations and candidate proposals. Import separately, then confirm/reject/correct through existing attributed human review. No result establishes conformity or completeness.
 5. Exercise quota pause, source change, disconnect and restart before broader use. A request interrupted after dispatch may have consumed allowance; the interface requires deliberate recovery rather than blind retry.
 
-The current job limit is 4,096 text batches and 200 validated proposals, with a 1 MiB checkpoint cap. Native source/parser limits remain in force. The provider boundary caps each request at 180 seconds for inference (45 seconds for OAuth/catalog requests) and 512 KiB of streamed response. Oversized or invalid outputs stop the job without declaring it complete. Partial and unreadable sources remain explicit; OCR is not implemented here.
+The current job limit is 4,096 text batches and 100 validated proposals. The complete native import payload, including citations, is limited to 256 KiB. Native source/parser limits remain in force. The provider boundary caps each request at 180 seconds for inference (45 seconds for OAuth/catalog requests) and 512 KiB of streamed response. Oversized or invalid outputs stop the job without declaring it complete. Partial and unreadable sources remain explicit; OCR is not implemented here.
 
 Refresh tokens rotate under a single-session lease. Disconnect clears local use before attempting remote revocation; an unconfirmed remote revocation is displayed and can be resolved in [ChatGPT connection/usage settings](https://chatgpt.com/settings/usage). No live account has been activated by the development tests.
 
