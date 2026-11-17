@@ -59,6 +59,153 @@ async function lintFiles(files) {
 const accessRule = 'no-restricted-imports';
 const activityRule = 'no-restricted-syntax';
 
+test('Document consumers cannot call native family access outside the family module', async () => {
+  const result = await lintFiles({
+    'apps/api/src/documents/documents.service.ts': `
+      declare const access: Record<string, (actor: unknown, options: unknown) => Promise<void>>;
+      declare const actor: unknown;
+      export const read = () => access.requireReceivedAuditSourceNativeAccess(actor, { action: 'content-read' });
+    `,
+  });
+
+  assert.equal(result.status, lintErrors, result.output);
+  assert.match(result.output, /DocumentFamilyAccess\.requireFamilyAccess/);
+  assert.match(result.output, /DOCUMENT_FAMILY_POLICY/);
+});
+
+const nativeFamilyMethods = [
+  'requireReceivedAuditSourceNativeAccess',
+  'requireReceivedAddendumNativeAccess',
+  'requireExternalInvoiceNativeAccess',
+  'requirePaymentEvidenceNativeAccess',
+];
+
+function nativeFamilyCalls(action = 'content-read') {
+  return `
+    declare const access: Record<string, (actor: unknown, options: unknown) => Promise<void>>;
+    declare const actor: unknown;
+    export const read = () => Promise.all([
+      ${nativeFamilyMethods.map((method) => `access.${method}(actor, { action: '${action}' })`).join(',\n')}
+    ]);
+  `;
+}
+
+test('all four native family calls are refused in consumers and their test fixtures', async () => {
+  const result = await lintFiles({
+    'apps/api/src/documents/consumer.ts': nativeFamilyCalls(),
+    'apps/api/src/documents/consumer.test.ts': nativeFamilyCalls(),
+    'apps/api/src/documents/consumer.test-support.ts': nativeFamilyCalls(),
+  });
+  assert.equal(result.status, lintErrors, result.output);
+  assert.equal(
+    result.output.match(/error .*DocumentFamilyAccess\.requireFamilyAccess/g)
+      ?.length,
+    12,
+    result.output,
+  );
+});
+
+test('Access and the central Document family module may call native access', async () => {
+  const result = await lintFiles({
+    'apps/api/src/access/company-context-authorization.ts': nativeFamilyCalls(),
+    'apps/api/src/access/company-context-authorization.test.ts':
+      nativeFamilyCalls(),
+    'apps/api/src/documents/document-family-access.ts': nativeFamilyCalls(),
+  });
+  assert.equal(result.status, 0, result.output);
+});
+
+test('named registration adapters admit register only and no other module inherits that exception', async () => {
+  const files = [
+    'apps/api/src/documents/documents.service.ts',
+    'apps/api/src/documents/received-addendum-relations.service.ts',
+    'apps/api/src/documents/external-invoice-relations.service.ts',
+    'apps/api/src/documents/payment-evidence-sources.service.ts',
+  ];
+  const allowed = await lintFiles(
+    Object.fromEntries(
+      files.map((file) => [
+        file,
+        nativeFamilyCalls('register').replaceAll(
+          "{ action: 'register' }",
+          "{ lockAssignment: true, action: 'register' }",
+        ),
+      ]),
+    ),
+  );
+  assert.equal(allowed.status, 0, allowed.output);
+
+  const refused = await lintFiles({
+    ...Object.fromEntries(files.map((file) => [file, nativeFamilyCalls()])),
+    'apps/api/src/documents/new-registration.ts': nativeFamilyCalls('register'),
+  });
+  assert.equal(refused.status, lintErrors, refused.output);
+  assert.equal(
+    refused.output.match(/error .*DocumentFamilyAccess\.requireFamilyAccess/g)
+      ?.length,
+    20,
+    refused.output,
+  );
+});
+
+test('computed and optional native calls cannot hide behind a nested register action', async () => {
+  const result = await lintFiles({
+    'apps/api/src/documents/documents.service.ts': `
+      declare const access: Record<string, (...args: unknown[]) => Promise<void>>;
+      declare const actor: unknown;
+      declare const options: Record<string, unknown>;
+      declare const key: string;
+      declare function nested(actor: unknown, options: unknown): unknown;
+      export const read = () => Promise.all([
+        access['requireReceivedAuditSourceNativeAccess'](actor, { action: 'content-read' }),
+        access?.requireReceivedAddendumNativeAccess?.(actor, { action: 'content-read' }),
+        access.requireExternalInvoiceNativeAccess(actor, { action: 'content-read', metadata: { action: 'register' } }),
+        access.requirePaymentEvidenceNativeAccess(actor, { action: 'content-read' }, { action: 'register' }),
+        access.requireExternalInvoiceNativeAccess(actor, { action: 'content-read', metadata: nested(actor, { action: 'register' }) }),
+        access.requireExternalInvoiceNativeAccess(actor, { action: 'register', ...options }),
+        access.requireExternalInvoiceNativeAccess(actor, { action: 'register', [key]: 'content-read' }),
+      ]);
+    `,
+  });
+  assert.equal(result.status, lintErrors, result.output);
+  assert.equal(
+    result.output.match(/error .*DocumentFamilyAccess\.requireFamilyAccess/g)
+      ?.length,
+    7,
+    result.output,
+  );
+});
+
+test('recorded native family migration calls do not admit an additional bypass', async () => {
+  const file =
+    'apps/api/src/documents/document-working-evidence-reference.service.ts';
+  const source = `
+    declare const access: Record<string, (actor: unknown, options: unknown) => Promise<void>>;
+    declare const actor: unknown;
+    export const read = () => access.requireReceivedAuditSourceNativeAccess(actor, { action: 'content-read' });
+  `;
+  const baseline = JSON.stringify({
+    [file]: {
+      'no-restricted-syntax': {
+        count: 1,
+        reason: 'Existing #1212 migration call.',
+      },
+    },
+  });
+  const recorded = await lintFiles({
+    [file]: source,
+    'eslint-suppressions.json': baseline,
+  });
+  assert.equal(recorded.status, 0, recorded.output);
+
+  const added = await lintFiles({
+    [file]: `${source}\nexport const another = () => access.requireReceivedAuditSourceNativeAccess(actor, { action: 'content-read' });`,
+    'eslint-suppressions.json': baseline,
+  });
+  assert.equal(added.status, lintErrors, added.output);
+  assert.match(added.output, /DocumentFamilyAccess\.requireFamilyAccess/);
+});
+
 test('e2e route removal must use the helper while page-close teardown can justify an exception', async () => {
   const unsafe = await lintFiles({
     'apps/web/e2e/read.spec.ts': `
