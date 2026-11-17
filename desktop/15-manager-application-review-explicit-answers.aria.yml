@@ -1,0 +1,41 @@
+- form "Înregistrați analiza":
+  - paragraph: Răspundeți explicit la fiecare criteriu, cu o notă. Cererea poate fi acceptată doar dacă toate cele patru răspunsuri sunt da. O respingere închide dosarul.
+  - group "Domeniul solicitat și categoria lanțului alimentar pot fi certificate":
+    - text: Domeniul solicitat și categoria lanțului alimentar pot fi certificate
+    - radio "Da" [checked]
+    - text: Da
+    - radio "Nu"
+    - text: Nu Notă
+    - textbox "Notă": Verificat pe dosarul fictiv / Проверено по учебному досье.
+  - group "O echipă de audit competentă este disponibilă":
+    - text: O echipă de audit competentă este disponibilă
+    - radio "Da" [checked]
+    - text: Da
+    - radio "Nu"
+    - text: Nu Notă
+    - textbox "Notă": Verificat pe dosarul fictiv / Проверено по учебному досье.
+  - group "Un decident de certificare competent este disponibil":
+    - text: Un decident de certificare competent este disponibil
+    - radio "Da" [checked]
+    - text: Da
+    - radio "Nu"
+    - text: Nu Notă
+    - textbox "Notă": Verificat pe dosarul fictiv / Проверено по учебному досье.
+  - group "Riscurile, inclusiv cele privind imparțialitatea, sunt acceptabile":
+    - text: Riscurile, inclusiv cele privind imparțialitatea, sunt acceptabile
+    - radio "Da" [checked]
+    - text: Da
+    - radio "Nu"
+    - text: Nu Notă
+    - textbox "Notă": Verificat pe dosarul fictiv / Проверено по учебному досье.
+  - group "Rezultat":
+    - text: Rezultat
+    - radio "Acceptați cererea" [checked]
+    - text: Acceptați cererea
+    - radio "Respingeți cererea"
+    - text: Respingeți cererea
+  - group "Analiza cererii de către organismul de certificare":
+    - text: Analiza cererii de către organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - button "Înregistrați analiza"

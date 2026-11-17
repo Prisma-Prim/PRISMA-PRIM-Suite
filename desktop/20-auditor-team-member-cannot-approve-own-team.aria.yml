@@ -1,0 +1,520 @@
+- article "Dosarul de certificare AUDIT-1438-desktop":
+  - button "Reîncărcați dosarul"
+  - button "Înapoi la dosarele de certificare"
+  - heading "Dosarul de certificare AUDIT-1438-desktop" [level=4]
+  - term: Entitatea juridică a Clientului
+  - definition: Lactis Demo SRL
+  - term: Standard
+  - definition: ISO 22000:2018
+  - term: Tipul auditului
+  - definition: Certificare inițială
+  - term: Stare
+  - definition: Deschis
+  - term: Etapa următoare
+  - definition: Decizia privind echipa
+  - term: Deschis de
+  - definition: Ada Ionescu
+  - term: Deschis la
+  - definition:
+    - time: 17 nov. 2026, 17:53
+  - term: Revizie
+  - definition: "19"
+  - list "Etape":
+    - listitem:
+      - strong: Cerere
+      - text: Înregistrată — versiunea 2
+    - listitem:
+      - strong: Analiza cererii
+      - text: Acceptată
+    - listitem:
+      - strong: Durata auditului
+      - text: Înregistrată — versiunea 1
+    - listitem:
+      - strong: Contractul de certificare
+      - text: Înregistrată — versiunea 1
+    - listitem:
+      - strong: Echipa de audit
+      - text: Înregistrată — versiunea 1
+    - listitem:
+      - strong: Decizia privind echipa
+      - text: De decis — versiunea 1
+    - listitem:
+      - strong: Auditul de etapa 1
+      - text: Așteaptă echipa aprobată
+    - listitem:
+      - strong: Auditul de etapa 2
+      - text: Așteaptă un raport al etapei 1 care concluzionează că clientul este pregătit
+    - listitem:
+      - strong: Urmărirea neconformităților
+      - text: Așteaptă raportul etapei 2
+    - listitem:
+      - strong: Recomandarea echipei
+      - text: Așteaptă raportul etapei 2
+    - listitem:
+      - strong: Datele certificatului
+      - text: Așteaptă raportul etapei 2
+    - listitem:
+      - strong: Analiza dosarului
+      - text: Așteaptă recomandarea echipei
+    - listitem:
+      - strong: Decizia de certificare
+      - text: Așteaptă analiza dosarului
+    - listitem:
+      - strong: Certificat
+      - text: Așteaptă o decizie de acordare
+  - paragraph: Puteți consulta acest dosar. Înregistrarea unei etape necesită dreptul de manager de program de certificare.
+  - region "Coerența dosarului":
+    - heading "Coerența dosarului" [level=5]
+    - paragraph: Verificarea compară valorile înregistrate în dosar. Fiecare neconcordanță arată ambele valori cu sursa lor; o persoană o rezolvă printr-o corectare sau printr-o acceptare motivată.
+    - paragraph: Set de reguli dossier-consistency-2026-11.4
+    - list "Neconcordanțe deschise pe verdicte":
+      - listitem: "Critic : 0"
+      - listitem: "Eroare : 0"
+      - listitem: "De clarificat : 0"
+    - paragraph: Nicio neconcordanță găsită de setul de reguli dossier-consistency-2026-11.4.
+    - button "Înregistrează o neconcordanță manuală"
+  - region "Schimburi și termene":
+    - heading "Schimburi și termene" [level=5]
+    - paragraph: Ce s-a primit și ce s-a trimis, cu versiunile exacte ale documentelor, interlocutorul, data și canalul; termenele de procedură care decurg de aici; și ce trebuie reverificat la următorul audit.
+    - heading "Termene de procedură" [level=6]
+    - paragraph: Niciun termen de procedură configurat
+    - paragraph:
+      - strong: Date deduse din dosar
+    - list:
+      - listitem: Începerea cel târziu a primei supravegheri se stabilește odată cu certificatul.
+    - heading "Registrul schimburilor" [level=6]
+    - paragraph: Niciun schimb înregistrat
+    - heading "Elemente de reverificat" [level=6]
+    - paragraph: Ce trebuie verificat la următorul audit al aceleiași entități juridice a clientului. Elementele rămân deschise până când supravegherea le închide.
+    - paragraph: Nimic de reverificat
+    - button "Adăugați un element de reverificat"
+  - region "Cerere":
+    - heading "Cerere" [level=5]
+    - paragraph:
+      - text: "Versiunea 2 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+      - time: 17 nov. 2026, 17:53
+      - text: "Motivul corectării: Corecție concurentă fictivă înregistrată înaintea primei ferestre."
+    - term: Data cererii semnate
+    - definition:
+      - time: 3 oct. 2026
+    - term: Denumirea juridică declarată
+    - definition: Lactis Demo SRL
+    - term: Adresa declarată
+    - definition: Str. Exemplu 1, Demo City
+    - term: Amplasamente
+    - definition:
+      - list:
+        - listitem: Str. Exemplu 1, Demo City — Fabrică de lactate / Молочный завод (fictiv)
+    - term: Domeniul solicitat
+    - definition: Producerea laptelui pasteurizat (exemplu)
+    - term: Subcategoriile lanțului alimentar (ISO 22003-1)
+    - definition: CI
+    - term: Studii HACCP
+    - definition: "2"
+    - term: Număr total de angajați
+    - definition: "40"
+    - term: Echivalent normă întreagă efectiv
+    - definition: "40"
+    - term: Schimburi
+    - definition: "1"
+    - term: Activitate sezonieră
+    - definition: Activitate permanentă — a doua fereastră (fictiv).
+    - term: Alte sisteme certificate
+    - definition: Nedeclarat
+    - term: Procese externalizate
+    - definition: Nedeclarat
+    - term: Consultant
+    - definition: Fără consultant
+    - term: Limbile auditului
+    - definition: ro, ru
+    - term: Perioada preferată pentru audit
+    - definition: Nedeclarat
+  - region "Analiza cererii":
+    - heading "Analiza cererii" [level=5]
+    - paragraph:
+      - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+      - time: 17 nov. 2026, 17:53
+    - term: Domeniul solicitat și categoria lanțului alimentar pot fi certificate
+    - definition:
+      - strong: Da
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: O echipă de audit competentă este disponibilă
+    - definition:
+      - strong: Da
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Un decident de certificare competent este disponibil
+    - definition:
+      - strong: Da
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Riscurile, inclusiv cele privind imparțialitatea, sunt acceptabile
+    - definition:
+      - strong: Da
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Rezultat
+    - definition: Acceptată
+  - region "Durata auditului":
+    - heading "Durata auditului" [level=5]
+    - paragraph:
+      - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+      - time: 17 nov. 2026, 17:53
+    - paragraph: Valori în zile-auditor.
+    - term: Auditul inițial pe amplasament
+    - definition: "3"
+    - term: Etapa 1 pe amplasament
+    - definition: "1"
+    - term: Etapa 2 pe amplasament
+    - definition: "2"
+    - term: Auditul de supraveghere pe amplasament
+    - definition: "1"
+    - term: Auditul de recertificare pe amplasament
+    - definition: "2"
+    - term: Justificare
+    - definition: Nedeclarat
+    - term: Calcul
+    - definition: Propunere calculată
+    - term: Subcategoria principală
+    - definition: CI
+    - term: Subcategoriile lanțului alimentar (ISO 22003-1)
+    - definition: CI
+    - term: Studii HACCP pe subcategorie
+    - definition: "CI: 2"
+    - term: Echivalent normă întreagă efectiv
+    - definition: "40"
+    - term: Factori de majorare (%)
+    - definition: Niciunul
+    - term: Factori de reducere (%)
+    - definition: Niciunul
+    - term: Versiunea regulii
+    - definition: iso22000-basic-2026-11
+    - group: Afișați propunerea calculată
+  - region "Registrul documentelor dosarului":
+    - heading "Registrul documentelor dosarului" [level=5]
+    - paragraph: PDF-uri exacte primite de la Client și atașate acestui dosar, în ordinea atașării. Fiecare atașament păstrează versiunea exactă și amprenta ei SHA-256.
+    - list:
+      - listitem:
+        - strong: Fictional signed questionnaire — versiunea 1
+        - term: Rol
+        - definition: Chestionar de cerere
+        - term: Fișier
+        - definition: questionnaire.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional signed questionnaire — versiunea 1"
+      - listitem:
+        - strong: Fictional signed certification agreement — versiunea 1
+        - term: Rol
+        - definition: Contract de certificare
+        - term: Fișier
+        - definition: agreement.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional signed certification agreement — versiunea 1"
+      - listitem:
+        - strong: Fictional Stage 1 plan — versiunea 1
+        - term: Rol
+        - definition: Plan de audit
+        - term: Fișier
+        - definition: plan1.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Stage 1 plan — versiunea 1"
+      - listitem:
+        - strong: Fictional Stage 1 report — versiunea 1
+        - term: Rol
+        - definition: Raport de audit
+        - term: Fișier
+        - definition: report1.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Stage 1 report — versiunea 1"
+      - listitem:
+        - strong: Fictional Stage 2 plan — versiunea 1
+        - term: Rol
+        - definition: Plan de audit
+        - term: Fișier
+        - definition: plan2.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Stage 2 plan — versiunea 1"
+      - listitem:
+        - strong: Fictional Stage 2 report — versiunea 1
+        - term: Rol
+        - definition: Raport de audit
+        - term: Fișier
+        - definition: report2.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Stage 2 report — versiunea 1"
+      - listitem:
+        - strong: Fictional receiving evidence — versiunea 1
+        - term: Rol
+        - definition: Dovadă
+        - term: Fișier
+        - definition: evidence.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional receiving evidence — versiunea 1"
+      - listitem:
+        - strong: Fictional agreed Certificate data — versiunea 1
+        - term: Rol
+        - definition: Formularul datelor certificatului
+        - term: Fișier
+        - definition: certificateData.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional agreed Certificate data — versiunea 1"
+      - listitem:
+        - strong: Fictional Certificate draft DEMO-0001 — versiunea 1
+        - term: Rol
+        - definition: Proiectul certificatului
+        - term: Fișier
+        - definition: draft.pdf
+        - term: Dimensiune
+        - definition: 2,1 kB
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: 905bb3fc5684…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Certificate draft DEMO-0001 — versiunea 1"
+      - listitem:
+        - strong: Fictional client opinion — versiunea 1
+        - term: Rol
+        - definition: Opinia clientului
+        - term: Fișier
+        - definition: opinion.pdf
+        - term: Dimensiune
+        - definition: 595 B
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional client opinion — versiunea 1"
+      - listitem:
+        - strong: Fictional Certificate DEMO-0001 — versiunea 1
+        - term: Rol
+        - definition: Certificat
+        - term: Fișier
+        - definition: certificate.pdf
+        - term: Dimensiune
+        - definition: 2 kB
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: 0062b5a1998c…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Certificate DEMO-0001 — versiunea 1"
+      - listitem:
+        - strong: Fictional Certificate revision 1 — versiunea 1
+        - term: Rol
+        - definition: Certificat
+        - term: Fișier
+        - definition: revision.pdf
+        - term: Dimensiune
+        - definition: 2,1 kB
+        - term: Amprentă SHA-256
+        - definition:
+          - group:
+            - code: 905bb3fc5684…
+        - term: Atașat de
+        - definition: Ada Ionescu
+        - term: Atașat la
+        - definition:
+          - time: 17 nov. 2026, 17:53
+        - button "Descărcați Fictional Certificate revision 1 — versiunea 1"
+  - region "Contractul de certificare":
+    - heading "Contractul de certificare" [level=5]
+    - paragraph:
+      - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+      - time: 17 nov. 2026, 17:53
+    - term: Semnat la
+    - definition:
+      - time: 8 oct. 2026
+    - term: Original semnat
+    - definition: Fictional signed certification agreement — versiunea 1 (agreement.pdf)
+  - region "Echipa de audit":
+    - heading "Echipa de audit" [level=5]
+    - paragraph:
+      - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+      - time: 17 nov. 2026, 17:53
+    - paragraph: "Stare: Așteaptă o decizie"
+    - list:
+      - listitem:
+        - strong: Ion Popa — Șef de echipă
+        - term: Membru al spațiului de lucru
+        - definition: Ion Popa
+        - term: Deține categoria lanțului alimentar a clientului
+        - definition: Da
+        - term: Competență
+        - definition: Fictional ISO 22000 auditor, category C
+        - term: Nu a oferit consultanță clientului
+        - definition: Confirmată
+        - term: Nu a fost angajat al clientului
+        - definition: Confirmată
+        - term: Nu este implicat în conducerea clientului
+        - definition: Confirmată
+        - term: S-a angajat să păstreze confidențialitatea
+        - definition: Confirmată
+    - term: Analiza imparțialității
+    - definition: Nedocumentată
+  - region "Decizia privind echipa":
+    - heading "Decizia privind echipa" [level=5]
+    - paragraph: Nicio decizie nu este încă înregistrată.
+    - paragraph: "Nu puteți decide asupra acestei echipe: sunteți legat de un membru al uneia dintre versiunile ei. Trebuie să decidă un aprobator care nu face parte din echipă."
+  - region "Eliberarea certificatului":
+    - heading "Eliberarea certificatului" [level=5]
+    - paragraph: Eliberarea este doar pentru citire pentru acest membru.
+    - list:
+      - listitem:
+        - heading "Proiect" [level=6]
+        - paragraph: Nu este înregistrat niciun proiect de certificat.
+      - listitem:
+        - heading "Opinia clientului" [level=6]
+        - paragraph: Neînregistrat
+      - listitem:
+        - heading "Aprobare" [level=6]
+        - paragraph: Neînregistrat
+        - list:
+          - listitem: Este necesară o decizie de acordare a certificării.
+          - listitem: Înregistrează mai întâi un proiect de certificat.
+          - listitem: Înregistrează opinia clientului sau motivul omiterii pentru acest proiect.
+      - listitem:
+        - heading "Emitere" [level=6]
+        - paragraph: Neînregistrat
+        - list:
+          - listitem: Este necesară o decizie de acordare a certificării.
+          - listitem: Înregistrează mai întâi un proiect de certificat.
+          - listitem: Înregistrează opinia clientului sau motivul omiterii pentru acest proiect.
+          - listitem: Proiectul curent trebuie aprobat înainte de emitere.
+      - listitem:
+        - heading "Transmitere" [level=6]
+        - paragraph: Neînregistrat
+  - region "Registrul dosarului în PDF":
+    - heading "Registrul dosarului în PDF" [level=5]
+    - paragraph: PDF generat care enumeră fiecare versiune de etapă și fiecare versiune de document referită în acest dosar, în limba interfeței. Nu este un formular oficial al organismului de certificare și nu înlocuiește niciun original semnat.
+    - button "Descărcați registrul dosarului (PDF)"
+  - region "Cronologie":
+    - heading "Cronologie" [level=5]
+    - list:
+      - listitem:
+        - strong: Cerere — versiunea 1
+        - paragraph:
+          - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+          - time: 17 nov. 2026, 17:53
+        - group: Afișați valorile înregistrate
+      - listitem:
+        - strong: Cerere — versiunea 2
+        - paragraph:
+          - text: "Versiunea 2 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+          - time: 17 nov. 2026, 17:53
+          - text: "Motivul corectării: Corecție concurentă fictivă înregistrată înaintea primei ferestre."
+        - group: Afișați valorile înregistrate
+      - listitem:
+        - strong: Analiza cererii — Acceptată
+        - paragraph:
+          - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+          - time: 17 nov. 2026, 17:53
+        - group: Afișați valorile înregistrate
+      - listitem:
+        - strong: Durata auditului — versiunea 1
+        - paragraph:
+          - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+          - time: 17 nov. 2026, 17:53
+        - group: Afișați valorile înregistrate
+      - listitem:
+        - strong: Contractul de certificare — versiunea 1
+        - paragraph:
+          - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+          - time: 17 nov. 2026, 17:53
+        - group: Afișați valorile înregistrate
+      - listitem:
+        - strong: Echipa de audit — versiunea 1
+        - paragraph:
+          - text: "Versiunea 1 · Înregistrată de: Ada Ionescu · Înregistrată la:"
+          - time: 17 nov. 2026, 17:53
+        - group: Afișați valorile înregistrate

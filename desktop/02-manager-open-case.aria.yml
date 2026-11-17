@@ -1,0 +1,9 @@
+- form "Deschiderea unui dosar de certificare":
+  - heading "Deschiderea unui dosar de certificare" [level=4]
+  - paragraph: Certificare inițială ISO 22000:2018 pentru o entitate juridică a Clientului acestui Proiect.
+  - text: Entitatea juridică a Clientului
+  - combobox "Entitatea juridică a Clientului": Lactis Demo SRL
+  - text: Referința comenzii
+  - textbox "Referința comenzii": AUDIT-1438-desktop
+  - button "Deschideți dosarul de certificare"
+  - button "Anulați"

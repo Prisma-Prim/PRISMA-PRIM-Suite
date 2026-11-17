@@ -1,0 +1,17 @@
+- form "Aprobă proiectul certificatului":
+  - heading "Aprobă proiectul certificatului" [level=6]
+  - text: Data aprobării proiectului
+  - textbox "Data aprobării proiectului": 2026-11-17
+  - checkbox "Confirm că proiectul redă exact textele acordate în fiecare limbă." [checked]
+  - text: Confirm că proiectul redă exact textele acordate în fiecare limbă.
+  - checkbox "Confirm că proiectul indică numărul certificatului înregistrat." [checked]
+  - text: Confirm că proiectul indică numărul certificatului înregistrat.
+  - checkbox "Confirm că proiectul indică valabilitatea calculată de la data deciziei." [checked]
+  - text: Confirm că proiectul indică valabilitatea calculată de la data deciziei.
+  - checkbox "Atest că aprobatorul proiectului nu este membru al echipei de audit." [checked]
+  - text: Atest că aprobatorul proiectului nu este membru al echipei de audit.
+  - group "Aprobatorul proiectului pentru organismul de certificare":
+    - text: Aprobatorul proiectului pentru organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - button "Aprobă proiectul certificatului"

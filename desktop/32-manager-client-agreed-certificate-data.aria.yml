@@ -1,0 +1,19 @@
+- form "Înregistrați datele certificatului":
+  - paragraph: Un manager de program înregistrează, pentru fiecare limbă a certificatului, numele titularului, adresa și domeniul convenite cu clientul, împreună cu formularul semnat. Certificatul se înregistrează după ce acestea indică exact ce acordă decizia.
+  - group "Textele certificatului convenite":
+    - text: Textele certificatului convenite
+    - group "Textul certificatului 1":
+      - text: Textul certificatului 1 Limba
+      - textbox "Limba": ro
+      - text: Codul limbii acestui text al certificatului, de exemplu ro sau en; fiecare limbă o singură dată. Numele titularului
+      - textbox "Numele titularului": Lactis Demo SRL
+      - text: Adresa
+      - textbox "Adresa": Str. Exemplu 1, Demo City
+      - text: Domeniul
+      - textbox "Domeniul": Producerea laptelui pasteurizat (exemplu)
+    - button "Adăugați o limbă a certificatului"
+  - text: Convenit la
+  - textbox "Convenit la": 2026-11-17
+  - text: Formularul semnat al datelor certificatului
+  - combobox "Formularul semnat al datelor certificatului": Fictional agreed Certificate data — versiunea 1 (certificateData.pdf)
+  - button "Înregistrați datele certificatului"

@@ -1,0 +1,78 @@
+- form "Propuneți echipa":
+  - paragraph: Propuneți membrii care vor audita acest dosar. Echipa are exact un șef de echipă, iar categoria lanțului alimentar a clientului este deținută de șeful de echipă sau, în lipsă, de un expert tehnic. Fiecare membru răspunde explicit la cele patru declarații de imparțialitate; un „nu” necesită descrierea conflictului.
+  - group "Membrul 1":
+    - text: Membrul 1 Nume
+    - textbox "Nume": Ion Popa
+    - text: Rolul în echipă
+    - combobox "Rolul în echipă": Șef de echipă
+    - text: Membru al spațiului de lucru
+    - combobox "Membru al spațiului de lucru": Nelegat
+    - text: "Opțional. Pot fi legate doar persoanele deja cunoscute în acest dosar: dvs. și cei care au înregistrat o etapă sau au atașat un document. Legătura permite serverului să împiedice acea persoană să aprobe echipa."
+    - checkbox "Deține categoria lanțului alimentar a clientului" [checked]
+    - text: Deține categoria lanțului alimentar a clientului Competență
+    - textbox "Competență": Auditor fictiv ISO 22000, categoria C / Учебный аудитор.
+    - group "Declarații de imparțialitate":
+      - text: Declarații de imparțialitate
+      - group "Nu a oferit consultanță clientului":
+        - text: Nu a oferit consultanță clientului
+        - radio "Confirmată" [checked]
+        - text: Confirmată
+        - radio "Conflict"
+        - text: Conflict
+        - radio "De verificat"
+        - text: De verificat
+      - group "Nu a fost angajat al clientului":
+        - text: Nu a fost angajat al clientului
+        - radio "Confirmată" [checked]
+        - text: Confirmată
+        - radio "Conflict"
+        - text: Conflict
+        - radio "De verificat"
+        - text: De verificat
+      - group "Nu este implicat în conducerea clientului":
+        - text: Nu este implicat în conducerea clientului
+        - radio "Confirmată" [checked]
+        - text: Confirmată
+        - radio "Conflict"
+        - text: Conflict
+        - radio "De verificat"
+        - text: De verificat
+      - group "S-a angajat să păstreze confidențialitatea":
+        - text: S-a angajat să păstreze confidențialitatea
+        - radio "Confirmată" [checked]
+        - text: Confirmată
+        - radio "Conflict"
+        - text: Conflict
+        - radio "De verificat"
+        - text: De verificat
+  - button "Adăugați un membru"
+  - group "Analiza imparțialității":
+    - text: "Analiza imparțialității Opțional: documentați cum a fost analizată imparțialitatea echipei, cu dovezi atașate la dosar. Analiză"
+    - textbox "Analiză"
+    - group "Dovezi atașate la dosar":
+      - text: Dovezi atașate la dosar
+      - checkbox "Fictional signed questionnaire — versiunea 1 (questionnaire.pdf)"
+      - text: Fictional signed questionnaire — versiunea 1 (questionnaire.pdf)
+      - checkbox "Fictional signed certification agreement — versiunea 1 (agreement.pdf)"
+      - text: Fictional signed certification agreement — versiunea 1 (agreement.pdf)
+      - checkbox "Fictional Stage 1 plan — versiunea 1 (plan1.pdf)"
+      - text: Fictional Stage 1 plan — versiunea 1 (plan1.pdf)
+      - checkbox "Fictional Stage 1 report — versiunea 1 (report1.pdf)"
+      - text: Fictional Stage 1 report — versiunea 1 (report1.pdf)
+      - checkbox "Fictional Stage 2 plan — versiunea 1 (plan2.pdf)"
+      - text: Fictional Stage 2 plan — versiunea 1 (plan2.pdf)
+      - checkbox "Fictional Stage 2 report — versiunea 1 (report2.pdf)"
+      - text: Fictional Stage 2 report — versiunea 1 (report2.pdf)
+      - checkbox "Fictional receiving evidence — versiunea 1 (evidence.pdf)"
+      - text: Fictional receiving evidence — versiunea 1 (evidence.pdf)
+      - checkbox "Fictional agreed Certificate data — versiunea 1 (certificateData.pdf)"
+      - text: Fictional agreed Certificate data — versiunea 1 (certificateData.pdf)
+      - checkbox "Fictional Certificate draft DEMO-0001 — versiunea 1 (draft.pdf)"
+      - text: Fictional Certificate draft DEMO-0001 — versiunea 1 (draft.pdf)
+      - checkbox "Fictional client opinion — versiunea 1 (opinion.pdf)"
+      - text: Fictional client opinion — versiunea 1 (opinion.pdf)
+      - checkbox "Fictional Certificate DEMO-0001 — versiunea 1 (certificate.pdf)"
+      - text: Fictional Certificate DEMO-0001 — versiunea 1 (certificate.pdf)
+      - checkbox "Fictional Certificate revision 1 — versiunea 1 (revision.pdf)"
+      - text: Fictional Certificate revision 1 — versiunea 1 (revision.pdf)
+  - button "Propuneți echipa"

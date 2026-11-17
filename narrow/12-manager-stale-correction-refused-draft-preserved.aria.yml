@@ -1,0 +1,93 @@
+- form "Исправить заявку":
+  - paragraph: Исправление записывает новую версию с её причиной. Прежние версии остаются в хронологии.
+  - text: Дата подписанной заявки
+  - textbox "Дата подписанной заявки": 2026-10-03
+  - text: "Необязательно: дата, указанная на подписанной заявке, если она есть в бумажном деле. Заявленное юридическое наименование"
+  - textbox "Заявленное юридическое наименование": Lactis Demo SRL
+  - text: Заявленный адрес
+  - textbox "Заявленный адрес": Str. Exemplu 1, Demo City
+  - group "Площадки":
+    - text: Площадки
+    - group "Площадка 1":
+      - text: Площадка 1 Адрес площадки
+      - textbox "Адрес площадки": Str. Exemplu 1, Demo City
+      - text: Деятельность на площадке
+      - textbox "Деятельность на площадке": Fabrică de lactate / Молочный завод (fictiv)
+    - button "Добавить площадку"
+  - text: Запрашиваемая область
+  - textbox "Запрашиваемая область": Producerea laptelui pasteurizat (exemplu)
+  - group "Подкатегории пищевой цепи (ISO 22003-1)":
+    - text: Подкатегории пищевой цепи (ISO 22003-1)
+    - checkbox "AI"
+    - text: AI
+    - checkbox "AII"
+    - text: AII
+    - checkbox "BI"
+    - text: BI
+    - checkbox "BII"
+    - text: BII
+    - checkbox "BIII"
+    - text: BIII
+    - checkbox "C0"
+    - text: C0
+    - checkbox "CI" [checked]
+    - text: CI
+    - checkbox "CII"
+    - text: CII
+    - checkbox "CIII"
+    - text: CIII
+    - checkbox "CIV"
+    - text: CIV
+    - checkbox "D"
+    - text: D
+    - checkbox "E"
+    - text: E
+    - checkbox "FI"
+    - text: FI
+    - checkbox "FII"
+    - text: FII
+    - checkbox "G"
+    - text: G
+    - checkbox "H"
+    - text: H
+    - checkbox "I"
+    - text: I
+    - checkbox "J"
+    - text: J
+    - checkbox "K"
+    - text: K
+  - text: Исследования HACCP
+  - textbox "Исследования HACCP": "2"
+  - text: Общая численность персонала
+  - textbox "Общая численность персонала": "40"
+  - text: Фактические эквиваленты полной занятости
+  - textbox "Фактические эквиваленты полной занятости": "40"
+  - text: Больше нуля, не более одного знака после запятой. Смены
+  - textbox "Смены": "1"
+  - text: Сезонная деятельность
+  - textbox "Сезонная деятельность": Fără sezonalitate — prima fereastră (fictiv).
+  - text: Необязательно Другие сертифицированные системы
+  - textbox "Другие сертифицированные системы"
+  - text: Необязательно Процессы на аутсорсинге
+  - textbox "Процессы на аутсорсинге"
+  - text: Необязательно
+  - group "Привлекал ли клиент консультанта?":
+    - text: Привлекал ли клиент консультанта?
+    - radio "Да"
+    - text: Да
+    - radio "Нет" [checked]
+    - text: Нет
+  - group "Языки аудита":
+    - text: Языки аудита Язык аудита 1
+    - textbox "Язык аудита 1": ro
+    - button "Удалить язык 1"
+    - text: Язык аудита 2
+    - textbox "Язык аудита 2": ru
+    - button "Удалить язык 2"
+    - button "Добавить язык"
+  - text: Предпочтительный период аудита
+  - textbox "Предпочтительный период аудита"
+  - text: Необязательно Причина исправления
+  - textbox "Причина исправления": Corecție fictivă pregătită înaintea actualizării concurente.
+  - button "Записать исправление" [disabled]
+  - button "Отмена"

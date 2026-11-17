@@ -1,0 +1,9 @@
+{
+  "expected": "The existing active auditor Ion Popa can be linked to the first team",
+  "observedOptions": [
+    "Не связан",
+    "Ada Ionescu (вы)"
+  ],
+  "activeAuditorGrantedInSetup": true,
+  "continuity": "Blocked; a separately recorded public-API checkpoint is used only to inspect downstream UI steps"
+}

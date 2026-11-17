@@ -1,0 +1,21 @@
+- form "Înregistrează o revizuire a certificatului":
+  - heading "Înregistrează o revizuire a certificatului" [level=6]
+  - text: PDF-ul certificatului corectat
+  - combobox "PDF-ul certificatului corectat": Fictional Certificate revision 1 — versiunea 1 (revision.pdf)
+  - text: Data revizuirii
+  - textbox "Data revizuirii": 2026-11-17
+  - text: Motivul revizuirii
+  - textbox "Motivul revizuirii": "Exemplu fictiv: corectarea prezentării PDF; număr și valabilitate neschimbate."
+  - group "PDF-ul arată indicele și data revizuirii?":
+    - text: PDF-ul arată indicele și data revizuirii?
+    - radio "Da, marcate vizibil" [checked]
+    - text: Da, marcate vizibil
+    - radio "Nu, nu sunt marcate"
+    - text: Nu, nu sunt marcate
+  - checkbox "Atest că persoana care revizuiește certificatul nu este membru al echipei de audit." [checked]
+  - text: Atest că persoana care revizuiește certificatul nu este membru al echipei de audit.
+  - group "Persoana care revizuiește pentru organismul de certificare":
+    - text: Persoana care revizuiește pentru organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - button "Înregistrează revizuirea"

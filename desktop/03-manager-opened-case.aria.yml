@@ -1,0 +1,222 @@
+- article "Dosarul de certificare AUDIT-1438-desktop":
+  - button "Reîncărcați dosarul"
+  - button "Înapoi la dosarele de certificare"
+  - heading "Dosarul de certificare AUDIT-1438-desktop" [level=4]
+  - term: Entitatea juridică a Clientului
+  - definition: Lactis Demo SRL
+  - term: Standard
+  - definition: ISO 22000:2018
+  - term: Tipul auditului
+  - definition: Certificare inițială
+  - term: Stare
+  - definition: Deschis
+  - term: Etapa următoare
+  - definition: Înregistrarea cererii
+  - term: Deschis de
+  - definition: Ada Ionescu
+  - term: Deschis la
+  - definition:
+    - time: 17 nov. 2026, 17:53
+  - term: Revizie
+  - definition: "1"
+  - list "Etape":
+    - listitem:
+      - strong: Cerere
+      - text: De înregistrat
+    - listitem:
+      - strong: Analiza cererii
+      - text: Așteaptă cererea
+    - listitem:
+      - strong: Durata auditului
+      - text: Așteaptă analiza acceptată
+    - listitem:
+      - strong: Contractul de certificare
+      - text: Așteaptă durata confirmată
+    - listitem:
+      - strong: Echipa de audit
+      - text: Așteaptă contractul
+    - listitem:
+      - strong: Decizia privind echipa
+      - text: Așteaptă o echipă propusă
+    - listitem:
+      - strong: Auditul de etapa 1
+      - text: Așteaptă echipa aprobată
+    - listitem:
+      - strong: Auditul de etapa 2
+      - text: Așteaptă un raport al etapei 1 care concluzionează că clientul este pregătit
+    - listitem:
+      - strong: Urmărirea neconformităților
+      - text: Așteaptă raportul etapei 2
+    - listitem:
+      - strong: Recomandarea echipei
+      - text: Așteaptă raportul etapei 2
+    - listitem:
+      - strong: Datele certificatului
+      - text: Așteaptă raportul etapei 2
+    - listitem:
+      - strong: Analiza dosarului
+      - text: Așteaptă recomandarea echipei
+    - listitem:
+      - strong: Decizia de certificare
+      - text: Așteaptă analiza dosarului
+    - listitem:
+      - strong: Certificat
+      - text: Așteaptă o decizie de acordare
+  - region "Coerența dosarului":
+    - heading "Coerența dosarului" [level=5]
+    - paragraph: Verificarea compară valorile înregistrate în dosar. Fiecare neconcordanță arată ambele valori cu sursa lor; o persoană o rezolvă printr-o corectare sau printr-o acceptare motivată.
+    - paragraph: Set de reguli dossier-consistency-2026-11.4
+    - list "Neconcordanțe deschise pe verdicte":
+      - listitem: "Critic : 0"
+      - listitem: "Eroare : 0"
+      - listitem: "De clarificat : 0"
+    - paragraph: Nicio neconcordanță găsită de setul de reguli dossier-consistency-2026-11.4.
+    - button "Înregistrează o neconcordanță manuală"
+  - region "Schimburi și termene":
+    - heading "Schimburi și termene" [level=5]
+    - paragraph: Ce s-a primit și ce s-a trimis, cu versiunile exacte ale documentelor, interlocutorul, data și canalul; termenele de procedură care decurg de aici; și ce trebuie reverificat la următorul audit.
+    - heading "Termene de procedură" [level=6]
+    - paragraph: Niciun termen de procedură configurat
+    - paragraph:
+      - strong: Date deduse din dosar
+    - list:
+      - listitem: Începerea cel târziu a primei supravegheri se stabilește odată cu certificatul.
+    - heading "Registrul schimburilor" [level=6]
+    - paragraph: Niciun schimb înregistrat
+    - button "Înregistrați un schimb"
+    - heading "Elemente de reverificat" [level=6]
+    - paragraph: Ce trebuie verificat la următorul audit al aceleiași entități juridice a clientului. Elementele rămân deschise până când supravegherea le închide.
+    - paragraph: Nimic de reverificat
+    - button "Adăugați un element de reverificat"
+  - region "Cerere":
+    - heading "Cerere" [level=5]
+    - paragraph: Nicio cerere înregistrată încă.
+    - form "Înregistrați cererea":
+      - text: Data cererii semnate
+      - textbox "Data cererii semnate"
+      - text: "Opțional: data scrisă pe cererea semnată, când dosarul pe hârtie o conține. Denumirea juridică declarată"
+      - textbox "Denumirea juridică declarată"
+      - text: Adresa declarată
+      - textbox "Adresa declarată"
+      - group "Amplasamente":
+        - text: Amplasamente
+        - group "Amplasamentul 1":
+          - text: Amplasamentul 1 Adresa amplasamentului
+          - textbox "Adresa amplasamentului"
+          - text: Activitatea pe amplasament
+          - textbox "Activitatea pe amplasament"
+        - button "Adăugați un amplasament"
+      - text: Domeniul solicitat
+      - textbox "Domeniul solicitat"
+      - group "Subcategoriile lanțului alimentar (ISO 22003-1)":
+        - text: Subcategoriile lanțului alimentar (ISO 22003-1)
+        - checkbox "AI"
+        - text: AI
+        - checkbox "AII"
+        - text: AII
+        - checkbox "BI"
+        - text: BI
+        - checkbox "BII"
+        - text: BII
+        - checkbox "BIII"
+        - text: BIII
+        - checkbox "C0"
+        - text: C0
+        - checkbox "CI"
+        - text: CI
+        - checkbox "CII"
+        - text: CII
+        - checkbox "CIII"
+        - text: CIII
+        - checkbox "CIV"
+        - text: CIV
+        - checkbox "D"
+        - text: D
+        - checkbox "E"
+        - text: E
+        - checkbox "FI"
+        - text: FI
+        - checkbox "FII"
+        - text: FII
+        - checkbox "G"
+        - text: G
+        - checkbox "H"
+        - text: H
+        - checkbox "I"
+        - text: I
+        - checkbox "J"
+        - text: J
+        - checkbox "K"
+        - text: K
+      - text: Studii HACCP
+      - textbox "Studii HACCP"
+      - text: Număr total de angajați
+      - textbox "Număr total de angajați"
+      - text: Echivalent normă întreagă efectiv
+      - textbox "Echivalent normă întreagă efectiv"
+      - text: Mai mare decât zero, cu cel mult o zecimală. Schimburi
+      - textbox "Schimburi"
+      - text: Activitate sezonieră
+      - textbox "Activitate sezonieră"
+      - text: Opțional Alte sisteme certificate
+      - textbox "Alte sisteme certificate"
+      - text: Opțional Procese externalizate
+      - textbox "Procese externalizate"
+      - text: Opțional
+      - group "Clientul a apelat la un consultant?":
+        - text: Clientul a apelat la un consultant?
+        - radio "Da"
+        - text: Da
+        - radio "Nu"
+        - text: Nu
+      - group "Limbile auditului":
+        - text: Limbile auditului Limba auditului 1
+        - textbox "Limba auditului 1"
+        - button "Adăugați o limbă"
+      - text: Perioada preferată pentru audit
+      - textbox "Perioada preferată pentru audit"
+      - text: Opțional
+      - button "Înregistrați cererea"
+  - region "Analiza cererii":
+    - heading "Analiza cererii" [level=5]
+    - paragraph: Cererea nu a fost încă analizată.
+    - paragraph: Analiza devine disponibilă după înregistrarea cererii.
+  - region "Registrul documentelor dosarului":
+    - heading "Registrul documentelor dosarului" [level=5]
+    - paragraph: PDF-uri exacte primite de la Client și atașate acestui dosar, în ordinea atașării. Fiecare atașament păstrează versiunea exactă și amprenta ei SHA-256.
+    - paragraph: Niciun document nu este încă atașat acestui dosar.
+    - button "Atașați un document"
+  - region "Eliberarea certificatului":
+    - heading "Eliberarea certificatului" [level=5]
+    - list:
+      - listitem:
+        - heading "Proiect" [level=6]
+        - paragraph: Nu este înregistrat niciun proiect de certificat.
+      - listitem:
+        - heading "Opinia clientului" [level=6]
+        - paragraph: Neînregistrat
+      - listitem:
+        - heading "Aprobare" [level=6]
+        - paragraph: Neînregistrat
+        - list:
+          - listitem: Este necesară o decizie de acordare a certificării.
+          - listitem: Înregistrează mai întâi un proiect de certificat.
+          - listitem: Înregistrează opinia clientului sau motivul omiterii pentru acest proiect.
+      - listitem:
+        - heading "Emitere" [level=6]
+        - paragraph: Neînregistrat
+        - list:
+          - listitem: Este necesară o decizie de acordare a certificării.
+          - listitem: Înregistrează mai întâi un proiect de certificat.
+          - listitem: Înregistrează opinia clientului sau motivul omiterii pentru acest proiect.
+          - listitem: Proiectul curent trebuie aprobat înainte de emitere.
+      - listitem:
+        - heading "Transmitere" [level=6]
+        - paragraph: Neînregistrat
+  - region "Registrul dosarului în PDF":
+    - heading "Registrul dosarului în PDF" [level=5]
+    - paragraph: PDF generat care enumeră fiecare versiune de etapă și fiecare versiune de document referită în acest dosar, în limba interfeței. Nu este un formular oficial al organismului de certificare și nu înlocuiește niciun original semnat.
+    - button "Descărcați registrul dosarului (PDF)"
+  - region "Cronologie":
+    - heading "Cronologie" [level=5]
+    - paragraph: Nicio etapă înregistrată încă.

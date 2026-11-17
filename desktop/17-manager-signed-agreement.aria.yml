@@ -1,0 +1,7 @@
+- form "Înregistrați contractul":
+  - paragraph: Înregistrați data semnării contractului și originalul semnat atașat în registrul documentelor cu rolul Contract de certificare.
+  - text: Semnat la
+  - textbox "Semnat la": 2026-10-08
+  - text: Original semnat
+  - combobox "Original semnat": Fictional signed certification agreement — versiunea 1 (agreement.pdf)
+  - button "Înregistrați contractul"

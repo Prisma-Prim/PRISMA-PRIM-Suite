@@ -1,0 +1,12 @@
+- form "Atașați un document":
+  - heading "Atașați un document" [level=6]
+  - paragraph: Alegeți un PDF exact primit de la Clientul acestui dosar și rolul pe care îl are în dosar. Atașamentul păstrează această versiune exactă, chiar dacă documentul se schimbă ulterior.
+  - text: PDF primit
+  - combobox "PDF primit": Fictional signed questionnaire — versiunea 1
+  - text: Rol
+  - combobox "Rol": Chestionar de cerere
+  - text: Notă
+  - textbox "Notă"
+  - text: Opțional
+  - button "Atașați documentul"
+  - button "Anulați"

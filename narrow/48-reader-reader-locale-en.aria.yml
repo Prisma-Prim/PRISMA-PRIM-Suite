@@ -1,0 +1,124 @@
+- region "Certificate release":
+  - heading "Certificate release" [level=5]
+  - paragraph: The release is read-only for this member.
+  - list:
+    - listitem:
+      - heading "Draft" [level=6]
+      - paragraph:
+        - text: "Version 1 · Recorded by: Ada Ionescu · Recorded on:"
+        - time: Nov 17, 2026, 5:56 PM
+      - paragraph:
+        - text: DEMO-0001 ·
+        - time: Nov 17, 2026
+        - text: · Current draft
+      - paragraph: Fictional Certificate draft DEMO-0001 — version 1 (draft.pdf)
+    - listitem:
+      - heading "Client opinion" [level=6]
+      - paragraph:
+        - text: "Version 1 · Recorded by: Ada Ionescu · Recorded on:"
+        - time: Nov 17, 2026, 5:56 PM
+      - paragraph:
+        - text: Agreed ·
+        - time: Nov 17, 2026
+    - listitem:
+      - heading "Approval" [level=6]
+      - term: Valid from
+      - definition:
+        - time: Nov 17, 2026
+      - term: Valid until
+      - definition:
+        - time: Nov 16, 2029
+      - term: First surveillance to start by
+      - definition:
+        - time: Nov 17, 2027
+      - paragraph:
+        - text: "Version 1 · Recorded by: Workspace Owner · Recorded on:"
+        - time: Nov 17, 2026, 5:56 PM
+      - paragraph:
+        - time: Nov 17, 2026
+    - listitem:
+      - heading "Issuance" [level=6]
+      - paragraph:
+        - time: Nov 17, 2026
+        - text: · Workspace Owner
+      - region "Certificate":
+        - heading "Certificate" [level=5]
+        - paragraph:
+          - text: "Recorded by: Workspace Owner · Recorded on:"
+          - time: Nov 17, 2026, 5:56 PM
+        - term: Certificate number
+        - definition: DEMO-0001
+        - term: Certificate PDF
+        - definition: Fictional Certificate DEMO-0001 — version 1 (certificate.pdf)
+        - term: Signed by
+        - definition: Decision Maker Demo
+        - term: Function of the signatory
+        - definition: Head of the fictional certification body
+        - term: Independence from the audit team
+        - definition: Attested by the member who recorded it
+        - term: Valid from
+        - definition:
+          - time: Nov 17, 2026
+        - term: Valid until
+        - definition:
+          - time: Nov 16, 2029
+        - term: First surveillance to start by
+        - definition:
+          - time: Nov 17, 2027
+        - paragraph: "Computed by the server from the decision date: valid three years minus one day; the first surveillance starts within twelve months."
+        - button "Download Fictional Certificate DEMO-0001 — version 1"
+        - list "Certificate texts":
+          - listitem:
+            - term: Language
+            - definition: ro
+            - term: Holder name
+            - definition: Lactis Demo SRL
+            - term: Address
+            - definition: Str. Exemplu 1, Demo City
+            - term: Scope
+            - definition: Producerea laptelui pasteurizat (exemplu)
+    - listitem:
+      - heading "Transmission" [level=6]
+      - paragraph:
+        - time: Nov 17, 2026
+        - text: · Ada Ionescu · E-mail · Nov 17, 2026, 5:56 PM
+  - region "Certificate revisions":
+    - heading "Certificate revisions" [level=6]
+    - paragraph: The Certificate number, holder entity, decision date and validity remain unchanged.
+    - list "Revision history":
+      - listitem:
+        - heading "Issuance 0 — Superseded" [level=6]
+        - paragraph:
+          - text: DEMO-0001 ·
+          - time: Nov 17, 2026
+          - text: · Workspace Owner
+        - paragraph: Fictional Certificate DEMO-0001 — version 1 (certificate.pdf)
+        - button "Open PDF for revision 0"
+        - paragraph:
+          - text: Exchange Record 3 — Sent — Certificate ·
+          - time: Nov 17, 2026
+          - text: · Ada Ionescu · E-mail · FICTIONAL-sent-certificate
+      - listitem:
+        - heading "Revision 1 — Current" [level=6]
+        - paragraph:
+          - time: Nov 17, 2026
+          - text: · Workspace Owner · Nov 17, 2026, 5:56 PM
+        - paragraph: "Exemplu fictiv: corectarea prezentării PDF; număr și valabilitate neschimbate."
+        - term: Independence from the audit team
+        - definition: Attested by the member who recorded it
+        - paragraph: Fictional Certificate revision 1 — version 1 (revision.pdf)
+        - button "Open PDF for revision 1"
+        - list "Certificate texts":
+          - listitem:
+            - term: Language
+            - definition: ro
+            - term: Holder name
+            - definition: Lactis Demo SRL
+            - term: Address
+            - definition: Str. Exemplu 1, Demo City
+            - term: Scope
+            - definition: Producerea laptelui pasteurizat (exemplu)
+        - paragraph:
+          - text: Exchange Record 4 — Sent — Certificate ·
+          - time: Nov 17, 2026
+          - text: · Ada Ionescu · E-mail · FICTIONAL-sent-revision

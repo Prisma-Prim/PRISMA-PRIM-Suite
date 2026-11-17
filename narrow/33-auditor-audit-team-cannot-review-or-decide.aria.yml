@@ -1,0 +1,773 @@
+- article "Дело по сертификации AUDIT-1438-narrow":
+  - button "Загрузить дело заново"
+  - button "Назад к делам по сертификации"
+  - heading "Дело по сертификации AUDIT-1438-narrow" [level=4]
+  - term: Юридическое лицо Клиента
+  - definition: Lactis Demo SRL
+  - term: Стандарт
+  - definition: ISO 22000:2018
+  - term: Вид аудита
+  - definition: Первичная сертификация
+  - term: Статус
+  - definition: Открыто
+  - term: Следующий этап
+  - definition: Анализ досье
+  - term: Открыл(а)
+  - definition: Ada Ionescu
+  - term: Дата открытия
+  - definition:
+    - time: 17 нояб. 2026 г., 17:55
+  - term: Редакция
+  - definition: "30"
+  - list "Этапы":
+    - listitem:
+      - strong: Заявка
+      - text: Записана — версия 2
+    - listitem:
+      - strong: Анализ заявки
+      - text: Принята
+    - listitem:
+      - strong: Продолжительность аудита
+      - text: Записана — версия 1
+    - listitem:
+      - strong: Договор о сертификации
+      - text: Записана — версия 1
+    - listitem:
+      - strong: Аудиторская группа
+      - text: Записана — версия 1
+    - listitem:
+      - strong: Решение по группе
+      - text: Утверждена — версия 1
+    - listitem:
+      - strong: Аудит этапа 1
+      - text: Готов — версия отчёта 1
+    - listitem:
+      - strong: Аудит этапа 2
+      - text: Отчёт записан — версия 1
+    - listitem:
+      - strong: Работа с несоответствиями
+      - text: Завершено
+    - listitem:
+      - strong: Рекомендация группы
+      - text: Выдать сертификацию — версия 1
+    - listitem:
+      - strong: Данные сертификата
+      - text: Записана — версия 1
+    - listitem:
+      - strong: Анализ досье
+      - text: Нужно записать
+    - listitem:
+      - strong: Решение о сертификации
+      - text: Ожидает анализа досье
+    - listitem:
+      - strong: Сертификат
+      - text: Ожидает решения о выдаче
+  - paragraph: Вы можете просматривать это дело. Для записи этапа нужно право руководителя программы сертификации.
+  - region "Согласованность досье":
+    - heading "Согласованность досье" [level=5]
+    - paragraph: Проверка сравнивает значения, записанные в деле. Каждое расхождение показывает оба значения с их источником; человек устраняет его исправлением или принятием с указанием причины.
+    - paragraph: Набор правил dossier-consistency-2026-11.4
+    - list "Открытые расхождения по вердиктам":
+      - listitem: "Критическое : 0"
+      - listitem: "Ошибка : 0"
+      - listitem: "Требует уточнения : 0"
+    - paragraph: Набор правил dossier-consistency-2026-11.4 не нашёл расхождений.
+    - button "Внести расхождение вручную"
+  - region "Обмены и сроки":
+    - heading "Обмены и сроки" [level=5]
+    - paragraph: Что было получено и отправлено, с точными версиями документов, контрагентом, датой и каналом; вытекающие из этого процедурные сроки; и что нужно проверить повторно на следующем аудите.
+    - heading "Процедурные сроки" [level=6]
+    - paragraph: Процедурные сроки не настроены
+    - paragraph:
+      - strong: Даты, выведенные из дела
+    - list:
+      - listitem: Ответ на наблюдение 1 ожидается до 2026-11-09
+      - listitem: Крайний срок начала первого надзора устанавливается вместе с сертификатом.
+    - heading "Реестр обменов" [level=6]
+    - paragraph: Обмены не записаны
+    - heading "Пункты для повторной проверки" [level=6]
+    - paragraph: Что проверить на следующем аудите того же юридического лица клиента. Пункты остаются открытыми, пока надзор их не закроет.
+    - paragraph: Нечего проверять повторно
+    - button "Добавить пункт для повторной проверки"
+  - region "Заявка":
+    - heading "Заявка" [level=5]
+    - paragraph:
+      - text: "Версия 2 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+      - text: "Причина исправления: Corecție concurentă fictivă înregistrată înaintea primei ferestre."
+    - term: Дата подписанной заявки
+    - definition:
+      - time: 3 окт. 2026 г.
+    - term: Заявленное юридическое наименование
+    - definition: Lactis Demo SRL
+    - term: Заявленный адрес
+    - definition: Str. Exemplu 1, Demo City
+    - term: Площадки
+    - definition:
+      - list:
+        - listitem: Str. Exemplu 1, Demo City — Fabrică de lactate / Молочный завод (fictiv)
+    - term: Запрашиваемая область
+    - definition: Producerea laptelui pasteurizat (exemplu)
+    - term: Подкатегории пищевой цепи (ISO 22003-1)
+    - definition: CI
+    - term: Исследования HACCP
+    - definition: "2"
+    - term: Общая численность персонала
+    - definition: "40"
+    - term: Фактические эквиваленты полной занятости
+    - definition: "40"
+    - term: Смены
+    - definition: "1"
+    - term: Сезонная деятельность
+    - definition: Activitate permanentă — a doua fereastră (fictiv).
+    - term: Другие сертифицированные системы
+    - definition: Не указано
+    - term: Процессы на аутсорсинге
+    - definition: Не указано
+    - term: Консультант
+    - definition: Без консультанта
+    - term: Языки аудита
+    - definition: ro, ru
+    - term: Предпочтительный период аудита
+    - definition: Не указано
+  - region "Анализ заявки":
+    - heading "Анализ заявки" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Запрашиваемую область и категорию пищевой цепи можно сертифицировать
+    - definition:
+      - strong: Да
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Есть компетентная команда аудиторов
+    - definition:
+      - strong: Да
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Есть компетентное лицо для решения о сертификации
+    - definition:
+      - strong: Да
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Риски, в том числе для беспристрастности, приемлемы
+    - definition:
+      - strong: Да
+      - text: — Verificat pe dosarul fictiv / Проверено по учебному досье.
+    - term: Результат
+    - definition: Принята
+  - region "Продолжительность аудита":
+    - heading "Продолжительность аудита" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - paragraph: Значения в аудитор-днях.
+    - term: Первичный аудит на площадке
+    - definition: "3"
+    - term: Этап 1 на площадке
+    - definition: "1"
+    - term: Этап 2 на площадке
+    - definition: "2"
+    - term: Надзорный аудит на площадке
+    - definition: "1"
+    - term: Ресертификационный аудит на площадке
+    - definition: "2"
+    - term: Обоснование
+    - definition: Не указано
+    - term: Расчёт
+    - definition: Рассчитанное предложение
+    - term: Основная подкатегория
+    - definition: CI
+    - term: Подкатегории пищевой цепи (ISO 22003-1)
+    - definition: CI
+    - term: Исследования HACCP по подкатегориям
+    - definition: "CI: 2"
+    - term: Фактические эквиваленты полной занятости
+    - definition: "40"
+    - term: Факторы увеличения (%)
+    - definition: Нет
+    - term: Факторы уменьшения (%)
+    - definition: Нет
+    - term: Версия правила
+    - definition: iso22000-basic-2026-11
+    - group: Показать рассчитанное предложение
+  - region "Реестр документов дела":
+    - heading "Реестр документов дела" [level=5]
+    - paragraph: Точные PDF, полученные от Клиента и приложенные к этому делу, в порядке приложения. Каждое вложение хранит точную версию и её отпечаток SHA-256.
+    - list:
+      - listitem:
+        - strong: Fictional signed questionnaire — версия 1
+        - term: Роль
+        - definition: Анкета заявки
+        - term: Файл
+        - definition: questionnaire.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional signed questionnaire — версия 1"
+      - listitem:
+        - strong: Fictional signed certification agreement — версия 1
+        - term: Роль
+        - definition: Договор о сертификации
+        - term: Файл
+        - definition: agreement.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional signed certification agreement — версия 1"
+      - listitem:
+        - strong: Fictional Stage 1 plan — версия 1
+        - term: Роль
+        - definition: План аудита
+        - term: Файл
+        - definition: plan1.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Stage 1 plan — версия 1"
+      - listitem:
+        - strong: Fictional Stage 1 report — версия 1
+        - term: Роль
+        - definition: Отчёт об аудите
+        - term: Файл
+        - definition: report1.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Stage 1 report — версия 1"
+      - listitem:
+        - strong: Fictional Stage 2 plan — версия 1
+        - term: Роль
+        - definition: План аудита
+        - term: Файл
+        - definition: plan2.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Stage 2 plan — версия 1"
+      - listitem:
+        - strong: Fictional Stage 2 report — версия 1
+        - term: Роль
+        - definition: Отчёт об аудите
+        - term: Файл
+        - definition: report2.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Stage 2 report — версия 1"
+      - listitem:
+        - strong: Fictional receiving evidence — версия 1
+        - term: Роль
+        - definition: Свидетельство
+        - term: Файл
+        - definition: evidence.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional receiving evidence — версия 1"
+      - listitem:
+        - strong: Fictional agreed Certificate data — версия 1
+        - term: Роль
+        - definition: Форма данных сертификата
+        - term: Файл
+        - definition: certificateData.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional agreed Certificate data — версия 1"
+      - listitem:
+        - strong: Fictional Certificate draft DEMO-0001 — версия 1
+        - term: Роль
+        - definition: Проект сертификата
+        - term: Файл
+        - definition: draft.pdf
+        - term: Размер
+        - definition: 2,1 кБ
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: 905bb3fc5684…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Certificate draft DEMO-0001 — версия 1"
+      - listitem:
+        - strong: Fictional client opinion — версия 1
+        - term: Роль
+        - definition: Мнение клиента
+        - term: Файл
+        - definition: opinion.pdf
+        - term: Размер
+        - definition: 595 Б
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: ed5bbbd62e0a…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional client opinion — версия 1"
+      - listitem:
+        - strong: Fictional Certificate DEMO-0001 — версия 1
+        - term: Роль
+        - definition: Сертификат
+        - term: Файл
+        - definition: certificate.pdf
+        - term: Размер
+        - definition: 2 кБ
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: 0062b5a1998c…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Certificate DEMO-0001 — версия 1"
+      - listitem:
+        - strong: Fictional Certificate revision 1 — версия 1
+        - term: Роль
+        - definition: Сертификат
+        - term: Файл
+        - definition: revision.pdf
+        - term: Размер
+        - definition: 2,1 кБ
+        - term: Отпечаток SHA-256
+        - definition:
+          - group:
+            - code: 905bb3fc5684…
+        - term: Приложил(а)
+        - definition: Ada Ionescu
+        - term: Приложено
+        - definition:
+          - time: 17 нояб. 2026 г., 17:55
+        - button "Скачать Fictional Certificate revision 1 — версия 1"
+  - region "Договор о сертификации":
+    - heading "Договор о сертификации" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Дата подписания
+    - definition:
+      - time: 8 окт. 2026 г.
+    - term: Подписанный оригинал
+    - definition: Fictional signed certification agreement — версия 1 (agreement.pdf)
+  - region "Аудиторская группа":
+    - heading "Аудиторская группа" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - paragraph: "Статус: Утверждена"
+    - list:
+      - listitem:
+        - strong: Ion Popa — Руководитель группы
+        - term: Участник рабочего пространства
+        - definition: Ion Popa
+        - term: Владеет категорией пищевой цепи клиента
+        - definition: Да
+        - term: Компетентность
+        - definition: Fictional ISO 22000 auditor, category C
+        - term: Не оказывал(а) клиенту консультационных услуг
+        - definition: Подтверждено
+        - term: Не работал(а) у клиента
+        - definition: Подтверждено
+        - term: Не участвует в управлении клиентом
+        - definition: Подтверждено
+        - term: Обязался(ась) соблюдать конфиденциальность
+        - definition: Подтверждено
+    - term: Анализ беспристрастности
+    - definition: Не описан
+  - region "Решение по группе":
+    - heading "Решение по группе" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Workspace Owner · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Версия группы
+    - definition: Версия 1
+    - term: Решение
+    - definition: Утверждена
+    - term: Независимость от аудиторской группы
+    - definition: Подтверждено участником, внёсшим запись
+  - region "Аудит этапа 1":
+    - heading "Аудит этапа 1" [level=5]
+    - heading "План аудита" [level=6]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Дата начала
+    - definition:
+      - time: 13 окт. 2026 г.
+    - term: Дата окончания
+    - definition:
+      - time: 16 окт. 2026 г.
+    - term: Аудитор-дни на площадке
+    - definition: "1"
+    - term: Аудитор-дни дистанционно
+    - definition: "0"
+    - term: Цели
+    - definition: Verificarea documentelor și proceselor fictive / Учебная проверка процессов.
+    - term: Область аудита
+    - definition: Producerea laptelui pasteurizat (exemplu)
+    - term: PDF плана аудита
+    - definition: Fictional Stage 1 plan — версия 1 (plan1.pdf)
+    - term: Отправлен клиенту
+    - definition:
+      - time: 3 окт. 2026 г.
+    - term: Отклонение от подтверждённой продолжительности
+    - definition: Отклонение не указано
+    - paragraph:
+      - strong: Отправки этого документа
+    - paragraph: Отправки не записаны.
+    - heading "Отчёт об аудите" [level=6]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Дата отчёта
+    - definition:
+      - time: 16 окт. 2026 г.
+    - term: Анализ документации
+    - definition: Завершён
+    - term: Готовность к этапу 2
+    - definition: Готов к этапу 2
+    - term: Обоснование вывода
+    - definition: Pregătit pentru etapa 2 / Готов к этапу 2 (fictiv).
+    - term: PDF отчёта об аудите
+    - definition: Fictional Stage 1 report — версия 1 (report1.pdf)
+    - term: PDF списка участников
+    - definition: Не приложен
+    - paragraph:
+      - strong: Отправки этого документа
+    - paragraph: Отправки не записаны.
+    - button "Исправить отчёт этапа 1"
+    - region "Наблюдения этапа 1":
+      - heading "Наблюдения этапа 1" [level=6]
+      - paragraph: Руководитель утверждённой аудиторской группы записывает каждое наблюдение с требованием, процессом или областью, формулировкой, классификацией и точными свидетельствами, затем ведёт работу с каждым несоответствием. Утверждающий, не входящий в группу, может переклассифицировать наблюдение с указанием причины. Каждая версия остаётся в истории.
+      - paragraph: Для этого этапа наблюдения не записаны.
+      - paragraph: Наблюдения этапа 1 записываются до планирования этапа 2.
+  - region "Аудит этапа 2":
+    - heading "Аудит этапа 2" [level=5]
+    - heading "План аудита" [level=6]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Дата начала
+    - definition:
+      - time: 23 окт. 2026 г.
+    - term: Дата окончания
+    - definition:
+      - time: 26 окт. 2026 г.
+    - term: Аудитор-дни на площадке
+    - definition: "2"
+    - term: Аудитор-дни дистанционно
+    - definition: "0"
+    - term: Цели
+    - definition: Verificarea documentelor și proceselor fictive / Учебная проверка процессов.
+    - term: Область аудита
+    - definition: Producerea laptelui pasteurizat (exemplu)
+    - term: PDF плана аудита
+    - definition: Fictional Stage 2 plan — версия 1 (plan2.pdf)
+    - term: Отправлен клиенту
+    - definition:
+      - time: 13 окт. 2026 г.
+    - term: Отклонение от подтверждённой продолжительности
+    - definition: Отклонение не указано
+    - paragraph:
+      - strong: Отправки этого документа
+    - paragraph: Отправки не записаны.
+    - heading "Отчёт об аудите" [level=6]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Дата отчёта
+    - definition:
+      - time: 26 окт. 2026 г.
+    - term: Итоги аудита этапа 2
+    - definition: Audit fictiv finalizat cu o neconformitate majoră / Учебное несоответствие.
+    - term: PDF отчёта об аудите
+    - definition: Fictional Stage 2 report — версия 1 (report2.pdf)
+    - term: PDF списка участников
+    - definition: Не приложен
+    - term: PDF приложения
+    - definition: Не приложен
+    - paragraph:
+      - strong: Отправки этого документа
+    - paragraph: Отправки не записаны.
+    - button "Исправить отчёт этапа 2"
+    - region "Наблюдения этапа 2":
+      - heading "Наблюдения этапа 2" [level=6]
+      - paragraph: Руководитель утверждённой аудиторской группы записывает каждое наблюдение с требованием, процессом или областью, формулировкой, классификацией и точными свидетельствами, затем ведёт работу с каждым несоответствием. Утверждающий, не входящий в группу, может переклассифицировать наблюдение с указанием причины. Каждая версия остаётся в истории.
+      - list:
+        - listitem "Наблюдение 1 — Значительное несоответствие":
+          - strong: Наблюдение 1 — Значительное несоответствие
+          - term: Классификация
+          - definition: Значительное несоответствие
+          - term: Требование (пункт)
+          - definition: 8.5.1
+          - term: Процесс или область
+          - definition: Recepția laptelui / Приёмка молока (fictiv)
+          - term: Формулировка
+          - definition: "Exemplu fictiv: analiza pericolelor nu acoperă alergenii la recepție."
+          - term: Свидетельства
+          - definition:
+            - list:
+              - listitem:
+                - text: Fictional receiving evidence — версия 1 (evidence.pdf)
+                - button "Скачать Fictional receiving evidence — версия 1"
+          - term: Работа с наблюдением
+          - definition: "Проверено: результативно"
+          - term: Ответ ожидается до
+          - definition:
+            - time: 9 нояб. 2026 г.
+          - term: Шестимесячный срок
+          - definition:
+            - time: 26 апр. 2027 г.
+          - group: История наблюдения 1
+          - button "Исправить формулировку наблюдения 1"
+          - button "Изменить классификацию наблюдения 1"
+      - paragraph: "Вы не можете переклассифицировать наблюдения: вы связаны с участником аудиторской группы. Переклассифицирует утверждающий, не входящий в группу."
+      - button "Записать наблюдение этапа 2"
+  - region "Рекомендация группы":
+    - heading "Рекомендация группы" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Рекомендация
+    - definition: Выдать сертификацию
+    - term: Основание рекомендации
+    - definition: "Exemplu fictiv: neconformitatea majoră a fost verificată ca eliminată."
+    - term: Дата рекомендации
+    - definition:
+      - time: 17 нояб. 2026 г.
+    - button "Исправить рекомендацию группы"
+  - region "Данные сертификата, согласованные с клиентом":
+    - heading "Данные сертификата, согласованные с клиентом" [level=5]
+    - paragraph:
+      - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+      - time: 17 нояб. 2026 г., 17:55
+    - term: Дата согласования
+    - definition:
+      - time: 17 нояб. 2026 г.
+    - term: Подписанная форма данных сертификата
+    - definition: Fictional agreed Certificate data — версия 1 (certificateData.pdf)
+    - list "Согласованные тексты сертификата":
+      - listitem:
+        - term: Язык
+        - definition: ro
+        - term: Наименование держателя
+        - definition: Lactis Demo SRL
+        - term: Адрес
+        - definition: Str. Exemplu 1, Demo City
+        - term: Область
+        - definition: Producerea laptelui pasteurizat (exemplu)
+  - region "Анализ досье":
+    - heading "Анализ досье" [level=5]
+    - paragraph: Анализ досье ещё не записан.
+    - paragraph: "Вы не можете анализировать это досье: вы связаны с участником аудиторской группы. Его анализирует утверждающий, не входящий в группу."
+  - region "Решение о сертификации":
+    - heading "Решение о сертификации" [level=5]
+    - paragraph: Решение о сертификации ещё не записано.
+    - paragraph: "Вы не можете записать решение о сертификации: вы связаны с участником аудиторской группы. Решение принимает утверждающий, не входящий в группу."
+  - region "Выпуск сертификата":
+    - heading "Выпуск сертификата" [level=5]
+    - paragraph: Для этого участника выпуск доступен только для чтения.
+    - list:
+      - listitem:
+        - heading "Проект" [level=6]
+        - paragraph: Проект сертификата не зарегистрирован.
+      - listitem:
+        - heading "Мнение клиента" [level=6]
+        - paragraph: Не зарегистрировано
+      - listitem:
+        - heading "Утверждение" [level=6]
+        - paragraph: Не зарегистрировано
+        - list:
+          - listitem: Требуется решение о предоставлении сертификации.
+          - listitem: Сначала зарегистрируйте проект сертификата.
+          - listitem: Зарегистрируйте мнение клиента или причину пропуска для этого проекта.
+      - listitem:
+        - heading "Выдача" [level=6]
+        - paragraph: Не зарегистрировано
+        - list:
+          - listitem: Требуется решение о предоставлении сертификации.
+          - listitem: Сначала зарегистрируйте проект сертификата.
+          - listitem: Зарегистрируйте мнение клиента или причину пропуска для этого проекта.
+          - listitem: Текущий проект должен быть утверждён до выдачи.
+      - listitem:
+        - heading "Передача" [level=6]
+        - paragraph: Не зарегистрировано
+  - region "Реестр досье в PDF":
+    - heading "Реестр досье в PDF" [level=5]
+    - paragraph: Сформированный PDF со всеми версиями шагов и всеми версиями документов, на которые ссылается это дело, на языке интерфейса. Это не официальная форма органа по сертификации, и он не заменяет ни один подписанный оригинал.
+    - button "Скачать реестр досье (PDF)"
+  - region "Хронология":
+    - heading "Хронология" [level=5]
+    - list:
+      - listitem:
+        - strong: Заявка — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Заявка — версия 2
+        - paragraph:
+          - text: "Версия 2 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+          - text: "Причина исправления: Corecție concurentă fictivă înregistrată înaintea primei ferestre."
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Анализ заявки — Принята
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Продолжительность аудита — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Договор о сертификации — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Аудиторская группа — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Решение по группе — Утверждена (версия группы 1)
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Workspace Owner · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: План этапа 1 — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Отчёт этапа 1 — Готов к этапу 2 (версия 1)
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: План этапа 2 — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Наблюдение 1 записано — Значительное несоответствие (этап 2)
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Отчёт этапа 2 — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Наблюдение 1 — записан ответ клиента (версия 1)
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: "Наблюдение 1 — оценка плана: Адекватен (версия 1)"
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: "Наблюдение 1 — проверка: Результативно (версия 1)"
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Рекомендация группы — Выдать сертификацию (версия 1)
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ion Popa · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения
+      - listitem:
+        - strong: Данные сертификата — версия 1
+        - paragraph:
+          - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:55
+        - group: Показать записанные значения

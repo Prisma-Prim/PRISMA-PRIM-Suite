@@ -1,0 +1,9 @@
+- tabpanel "Certificare":
+  - region "Certificare":
+    - heading "Certificare" [level=3]
+    - button "Actualizați dosarele de certificare"
+    - paragraph: "Dosarele de certificare ale acestui Proiect: cererea clientului, analiza ei, durata auditului, originalele semnate atașate, contractul de certificare, echipa de audit cu aprobarea ei, auditurile de etapa 1 și 2 cu planurile, rapoartele și constatările lor, recomandarea echipei, analiza dosarului, decizia de certificare și certificatul, cu fiecare versiune înregistrată."
+    - button "Deschideți un dosar de certificare"
+    - paragraph: "Dosare de certificare: 0"
+    - paragraph: Niciun dosar de certificare nu este deschis în acest Proiect.
+    - list

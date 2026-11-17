@@ -1,0 +1,90 @@
+- form "Înregistrați cererea":
+  - text: Data cererii semnate
+  - textbox "Data cererii semnate": 2026-10-03
+  - text: "Opțional: data scrisă pe cererea semnată, când dosarul pe hârtie o conține. Denumirea juridică declarată"
+  - textbox "Denumirea juridică declarată": Lactis Demo SRL
+  - text: Adresa declarată
+  - textbox "Adresa declarată": Str. Exemplu 1, Demo City
+  - group "Amplasamente":
+    - text: Amplasamente
+    - group "Amplasamentul 1":
+      - text: Amplasamentul 1 Adresa amplasamentului
+      - textbox "Adresa amplasamentului": Str. Exemplu 1, Demo City
+      - text: Activitatea pe amplasament
+      - textbox "Activitatea pe amplasament": Fabrică de lactate / Молочный завод (fictiv)
+    - button "Adăugați un amplasament"
+  - text: Domeniul solicitat
+  - textbox "Domeniul solicitat": Producerea laptelui pasteurizat (exemplu)
+  - group "Subcategoriile lanțului alimentar (ISO 22003-1)":
+    - text: Subcategoriile lanțului alimentar (ISO 22003-1)
+    - checkbox "AI"
+    - text: AI
+    - checkbox "AII"
+    - text: AII
+    - checkbox "BI"
+    - text: BI
+    - checkbox "BII"
+    - text: BII
+    - checkbox "BIII"
+    - text: BIII
+    - checkbox "C0"
+    - text: C0
+    - checkbox "CI" [checked]
+    - text: CI
+    - checkbox "CII"
+    - text: CII
+    - checkbox "CIII"
+    - text: CIII
+    - checkbox "CIV"
+    - text: CIV
+    - checkbox "D"
+    - text: D
+    - checkbox "E"
+    - text: E
+    - checkbox "FI"
+    - text: FI
+    - checkbox "FII"
+    - text: FII
+    - checkbox "G"
+    - text: G
+    - checkbox "H"
+    - text: H
+    - checkbox "I"
+    - text: I
+    - checkbox "J"
+    - text: J
+    - checkbox "K"
+    - text: K
+  - text: Studii HACCP
+  - textbox "Studii HACCP": "2"
+  - text: Număr total de angajați
+  - textbox "Număr total de angajați": "40"
+  - text: Echivalent normă întreagă efectiv
+  - textbox "Echivalent normă întreagă efectiv": "40"
+  - text: Mai mare decât zero, cu cel mult o zecimală. Schimburi
+  - textbox "Schimburi": "1"
+  - text: Activitate sezonieră
+  - textbox "Activitate sezonieră"
+  - text: Opțional Alte sisteme certificate
+  - textbox "Alte sisteme certificate"
+  - text: Opțional Procese externalizate
+  - textbox "Procese externalizate"
+  - text: Opțional
+  - group "Clientul a apelat la un consultant?":
+    - text: Clientul a apelat la un consultant?
+    - radio "Da"
+    - text: Da
+    - radio "Nu" [checked]
+    - text: Nu
+  - group "Limbile auditului":
+    - text: Limbile auditului Limba auditului 1
+    - textbox "Limba auditului 1": ro
+    - button "Eliminați limba 1"
+    - text: Limba auditului 2
+    - textbox "Limba auditului 2": ru
+    - button "Eliminați limba 2"
+    - button "Adăugați o limbă"
+  - text: Perioada preferată pentru audit
+  - textbox "Perioada preferată pentru audit"
+  - text: Opțional
+  - button "Înregistrați cererea"

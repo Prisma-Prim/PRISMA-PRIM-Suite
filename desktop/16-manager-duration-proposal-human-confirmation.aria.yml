@@ -1,0 +1,20 @@
+- form "Confirmați durata auditului":
+  - paragraph: Zile-auditor cu cel mult două zecimale, precompletate cu propunerea rotunjită la sutimi. Etapa 1 și etapa 2 totalizează auditul inițial pe amplasament.
+  - text: Auditul inițial pe amplasament
+  - textbox "Auditul inițial pe amplasament": "3"
+  - text: Etapa 1 pe amplasament
+  - textbox "Etapa 1 pe amplasament": "1"
+  - text: Etapa 2 pe amplasament
+  - textbox "Etapa 2 pe amplasament": "2"
+  - text: Auditul de supraveghere pe amplasament
+  - textbox "Auditul de supraveghere pe amplasament": "1"
+  - text: Auditul de recertificare pe amplasament
+  - textbox "Auditul de recertificare pe amplasament": "2"
+  - text: Justificare
+  - textbox "Justificare"
+  - text: Opțional
+  - group "Aprobarea duratei de către organismul de certificare":
+    - text: Aprobarea duratei de către organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - button "Confirmați durata auditului"

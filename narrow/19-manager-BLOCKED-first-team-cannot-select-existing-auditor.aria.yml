@@ -1,0 +1,3 @@
+- listbox "Участник рабочего пространства":
+  - option "Не связан" [selected]
+  - option "Ada Ionescu (вы)"

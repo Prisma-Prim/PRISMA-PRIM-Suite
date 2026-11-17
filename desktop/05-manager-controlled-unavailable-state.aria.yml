@@ -1,0 +1,4 @@
+- article "Certificare":
+  - button "Reîncărcați dosarul"
+  - button "Înapoi la dosarele de certificare"
+  - alert: Citirea a eșuat. Actualizați înainte de a considera pagina curentă.

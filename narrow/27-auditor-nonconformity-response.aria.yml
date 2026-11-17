@@ -1,0 +1,18 @@
+- form "Записать ответ клиента на наблюдение 1":
+  - paragraph: Запишите коррекцию, анализ причин и план корректирующих действий клиента в полученном виде, с необязательными свидетельствами. Новый ответ после плана, признанного неадекватным, — это новая версия.
+  - text: Коррекция
+  - textbox "Коррекция": "Exemplu fictiv: alergenii adăugați în analiză."
+  - text: Причина
+  - textbox "Причина": "Exemplu fictiv: formular incomplet."
+  - text: Корректирующее действие
+  - textbox "Корректирующее действие": "Exemplu fictiv: formular revizuit și instruire efectuată."
+  - text: Получен
+  - textbox "Получен": 2026-11-07
+  - text: Плановое завершение
+  - textbox "Плановое завершение"
+  - group "Свидетельства":
+    - text: Свидетельства PDF, приложенные к этому делу с ролью «Свидетельство», не более десяти.
+    - checkbox "Fictional receiving evidence — версия 1 (evidence.pdf)"
+    - text: Fictional receiving evidence — версия 1 (evidence.pdf)
+  - button "Записать ответ"
+  - button "Отмена"

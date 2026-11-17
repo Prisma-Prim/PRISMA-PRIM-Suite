@@ -1,0 +1,64 @@
+{
+  "schema": "public-fictional-journey-audit/v1",
+  "issue": 1438,
+  "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "auditVerdict": "fail",
+  "findingIssues": [
+    1439
+  ],
+  "fullUiContinuity": "blocked",
+  "runs": {
+    "full-09": {
+      "startTime": "2026-11-17T16:53:16.718Z",
+      "duration": 201808.52800000002,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "meaning": "Harness assertions passed; audit verdict remains blocked at first-team UI selection"
+    },
+    "state-evidence": {
+      "startTime": "2026-11-17T17:00:06.599Z",
+      "duration": 39842.937,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "meaning": "Focused resilience evidence only"
+    }
+  },
+  "baseline": {
+    "result": "pass",
+    "casesPassed": 2,
+    "startedAt": "2026-11-17T16:09:07.532Z",
+    "finishedAt": "2026-11-17T16:14:15.898Z",
+    "builds": [
+      "API build passed",
+      "Web build passed"
+    ],
+    "businessActsSeededThroughApi": true
+  },
+  "publication": {
+    "fullJourneyViewportCaptures": 150,
+    "resilienceViewportCaptures": 8,
+    "canonicalRegionCaptures": 16,
+    "downloadedRegisterPdfs": 2,
+    "reviewedPdfPagePreviews": 10,
+    "allData": "fictional fixtures, not derived from private dossiers",
+    "rawDiagnosticsPublished": false
+  },
+  "checks": {
+    "pageErrorsInFull09": 0,
+    "horizontalPageOverflowAtCaptures": 0,
+    "injectedOrExpectedHttpFailuresPerViewport": [
+      "read 503",
+      "committed POST acknowledgement 503",
+      "stale correction 409"
+    ],
+    "pdfFactsMatched": true,
+    "otherCompanyHiddenAndAbsentResponses": {
+      "status": 403,
+      "identicalBody": true
+    }
+  }
+}

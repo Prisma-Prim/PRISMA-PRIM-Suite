@@ -1,0 +1,15 @@
+- form "Înregistrați recomandarea echipei":
+  - paragraph: "Șeful echipei de audit aprobate recomandă acordarea certificării, neacordarea ei sau un audit suplimentar și indică temeiul. Nimic nu este preselectat. Un audit suplimentar nu face parte din acest parcurs: cu această recomandare, dosarul poate fi doar refuzat."
+  - group "Recomandare":
+    - text: Recomandare
+    - radio "Acordarea certificării" [checked]
+    - text: Acordarea certificării
+    - radio "Neacordarea certificării"
+    - text: Neacordarea certificării
+    - radio "Este necesar un audit suplimentar"
+    - text: Este necesar un audit suplimentar
+  - text: Temeiul recomandării
+  - textbox "Temeiul recomandării": "Exemplu fictiv: neconformitatea majoră a fost verificată ca eliminată."
+  - text: Data recomandării
+  - textbox "Data recomandării": 2026-11-17
+  - button "Înregistrați recomandarea"

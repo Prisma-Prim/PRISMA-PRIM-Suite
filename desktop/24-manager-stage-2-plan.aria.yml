@@ -1,0 +1,20 @@
+- form "Înregistrați planul etapei 2":
+  - paragraph: "Planificați această etapă: datele, zilele-auditor pe amplasament și la distanță, obiectivele și domeniul, precum și PDF-ul planului atașat cu data trimiterii lui către client."
+  - text: Data de început
+  - textbox "Data de început": 2026-10-23
+  - text: Data de sfârșit
+  - textbox "Data de sfârșit": 2026-10-26
+  - text: Zile-auditor pe amplasament
+  - textbox "Zile-auditor pe amplasament": "2"
+  - text: "Durata confirmată pe amplasament pentru această etapă, în zile-auditor: 2. Alt număr de zile pe amplasament necesită o notă care explică abaterea. Zile-auditor la distanță"
+  - textbox "Zile-auditor la distanță": "0"
+  - text: Cel mult două zecimale, cu punct, de exemplu 0.5. Obiective
+  - textbox "Obiective": Verificarea documentelor și proceselor fictive / Учебная проверка процессов.
+  - text: Domeniul auditului
+  - textbox "Domeniul auditului": Producerea laptelui pasteurizat (exemplu)
+  - text: PDF-ul planului de audit
+  - combobox "PDF-ul planului de audit": Fictional Stage 2 plan — versiunea 1 (plan2.pdf)
+  - text: Trimis clientului la
+  - textbox "Trimis clientului la": 2026-10-13
+  - text: Lăsați gol cât timp planul nu a fost trimis clientului.
+  - button "Înregistrați planul etapei 2"

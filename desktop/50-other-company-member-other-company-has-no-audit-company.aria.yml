@@ -1,0 +1,122 @@
+- text: Limba interfeței
+- combobox "Limba interfeței": Română
+- link "Săriți la conținut":
+  - /url: "#prisme-page-title"
+- banner:
+  - text: Operational Acceptance Workspace
+  - strong: BIC
+  - text: Prisme & lumière
+- navigation "Navigare principală":
+  - link "Pagina principală PRISMA-PRIM Suite":
+    - /url: "#overview"
+    - strong: PRISMA
+    - text: Expertiză conectată.
+  - region "Contextul Companiei":
+    - text: Companie activă
+    - combobox "Companie activă" [expanded]: BIC
+  - paragraph: Spațiu de lucru
+  - list:
+    - listitem:
+      - link "Prezentare generală":
+        - /url: "#overview"
+    - listitem:
+      - link "Documente de lucru":
+        - /url: "#documents"
+    - listitem:
+      - link "Clienți":
+        - /url: "#clients"
+    - listitem:
+      - link "Proiecte":
+        - /url: "#projects"
+    - listitem:
+      - link "Jurnal de activitate":
+        - /url: "#activity"
+  - strong: Other Company Member
+  - text: other-company-member@example.test
+  - button "Deconectare"
+- main:
+  - paragraph: Operational Acceptance Workspace
+  - heading "Bună, Other Company Member." [level=1]
+  - paragraph: Spațiul dumneavoastră de lucru, dintr-o perspectivă mai clară.
+  - region "Claritate pentru a merge înainte.":
+    - button "Mișcare redusă" [disabled]
+    - paragraph: Fiecare detaliu. O perspectivă mai clară.
+    - heading "Claritate pentru a merge înainte." [level=2]
+    - paragraph: Găsiți Clienții, gestionați accesul și urmăriți activitatea înregistrată într-un singur spațiu de lucru.
+    - link "Clienți":
+      - /url: "#clients"
+  - region "Rezumatul Companiei":
+    - heading "Rezumatul Companiei" [level=2]
+    - paragraph: Numărat la 17 nov. 2026 din înregistrările pe care le puteți deschide în BIC.
+    - button "Actualizați rezumatul Companiei"
+    - list:
+      - listitem:
+        - 'button "Clienți activi: 1. Deschideți lista de Clienți"':
+          - text: Clienți activi
+          - strong: "1"
+          - text: Clienți cu o relație activă cu BIC
+      - listitem:
+        - 'button "Proiecte deschise: 1. Deschideți lista de Proiecte"':
+          - text: Proiecte deschise
+          - strong: "1"
+          - text: Proiecte pe care le puteți deschide și care nu sunt închise
+  - region "Modificări recente":
+    - heading "Modificări recente" [level=2]
+    - paragraph: Cele mai recente cinci evenimente datate pe care le puteți vedea în contextul actual de Activitate. Datele pot fi mai vechi.
+    - list:
+      - listitem:
+        - strong: Commercial Reader — identitate creată
+        - text: "Țintă: Commercial Reader"
+        - time: 17 nov. 2026, 17:53
+      - listitem:
+        - strong: Other Company Member a creat un Proiect pregătitor
+        - text: "Țintă: Proiect: Other Company Confidential Project"
+        - time: 17 nov. 2026, 17:53
+      - listitem:
+        - strong: Other Company Member a asociat un Client cu o Companie
+        - text: "Țintă: Other Company Confidential Client — BIC"
+        - time: 17 nov. 2026, 17:53
+      - listitem:
+        - strong: Other Company Member a creat un Client
+        - text: "Țintă: Other Company Confidential Client"
+        - time: 17 nov. 2026, 17:53
+      - listitem:
+        - strong: Other Company Member — identitate creată
+        - text: "Țintă: Other Company Member"
+        - time: 17 nov. 2026, 17:53
+    - button "Actualizați modificările recente"
+    - button "Deschideți întregul Jurnal de activitate"
+  - button "Rezumatele tuturor Companiilor"
+  - region "Spațiul dumneavoastră de lucru":
+    - heading "Spațiul dumneavoastră de lucru" [level=2]
+    - paragraph: Deschideți o funcție disponibilă pentru a continua lucrul.
+    - list:
+      - listitem:
+        - link "Documente de lucru Documente de lucru confidențiale ale Companiei.":
+          - /url: "#documents"
+          - strong: Documente de lucru
+          - text: Documente de lucru confidențiale ale Companiei.
+      - listitem:
+        - link "Clienți Găsiți Clienți și lucrați cu dosarele lor comune.":
+          - /url: "#clients"
+          - strong: Clienți
+          - text: Găsiți Clienți și lucrați cu dosarele lor comune.
+      - listitem:
+        - link "Proiecte Înregistrați și redeschideți Proiecte pregătitoare.":
+          - /url: "#projects"
+          - strong: Proiecte
+          - text: Înregistrați și redeschideți Proiecte pregătitoare.
+      - listitem:
+        - link "Jurnal de activitate Citiți activitatea disponibilă în contextul curent.":
+          - /url: "#activity"
+          - strong: Jurnal de activitate
+          - text: Citiți activitatea disponibilă în contextul curent.
+  - region "Operational Acceptance Workspace":
+    - paragraph: Contextul curent
+    - heading "Operational Acceptance Workspace" [level=2]
+    - term: Companie activă
+    - definition: BIC
+    - paragraph: Alegeți o Companie disponibilă din navigare pentru a schimba contextul curent.
+- listbox "Companie activă":
+  - option "Selectați o Companie"
+  - option "BIC" [selected]

@@ -1,0 +1,16 @@
+{
+  "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "artifact": "narrow/dossier-register-ru.pdf",
+  "method": "UI download; native text/font/geometry inspection; independent pdftotext comparison",
+  "matchedFacts": [
+    "case reference",
+    "holder name",
+    "certificate number",
+    "validity start/end",
+    "surveillance deadline",
+    "finding clause",
+    "Romanian and Cyrillic finding text",
+    "exact fictional evidence filename"
+  ],
+  "passed": true
+}

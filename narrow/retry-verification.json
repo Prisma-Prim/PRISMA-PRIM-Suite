@@ -1,0 +1,6 @@
+{
+  "method": "UI POST committed; first acknowledgement replaced by503",
+  "unchangedIntentAndKey": true,
+  "attempts": 2,
+  "confirmedApplicationVersion": 1
+}

@@ -1,0 +1,602 @@
+[
+  {
+    "step": "01-manager-empty-certification-list",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "01-manager-empty-certification-list-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "02-manager-open-case",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "02-manager-open-case-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "03-manager-opened-case",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "03-manager-opened-case-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "04-manager-controlled-loading-state",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "04-manager-controlled-loading-state-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "05-manager-controlled-unavailable-state",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "05-manager-controlled-unavailable-state-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "06-manager-recovered-after-read-failure",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "06-manager-recovered-after-read-failure-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "07-manager-application-required-fields",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "07-manager-application-required-fields-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "07-manager-application-required-fields",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "07-manager-application-required-fields-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "08-manager-application-complete",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "08-manager-application-complete-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "08-manager-application-complete",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "08-manager-application-complete-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "08-manager-application-complete",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "08-manager-application-complete-3.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "09-manager-lost-success-acknowledgement-uncertain",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "09-manager-lost-success-acknowledgement-uncertain-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "09-manager-lost-success-acknowledgement-uncertain",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "09-manager-lost-success-acknowledgement-uncertain-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "10-manager-exact-unchanged-retry-confirmed",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "10-manager-exact-unchanged-retry-confirmed-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "11-manager-application-saved-review-ready",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "11-manager-application-saved-review-ready-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "12-manager-stale-correction-refused-draft-preserved",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "12-manager-stale-correction-refused-draft-preserved-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "12-manager-stale-correction-refused-draft-preserved",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "12-manager-stale-correction-refused-draft-preserved-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "13-manager-explicit-reload-shows-current-application",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "13-manager-explicit-reload-shows-current-application-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "14-manager-attach-exact-source",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "14-manager-attach-exact-source-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "15-manager-application-review-explicit-answers",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "15-manager-application-review-explicit-answers-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "15-manager-application-review-explicit-answers",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "15-manager-application-review-explicit-answers-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "16-manager-duration-proposal-human-confirmation",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "16-manager-duration-proposal-human-confirmation-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "17-manager-signed-agreement",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "17-manager-signed-agreement-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "18-manager-team-competence-impartiality",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "18-manager-team-competence-impartiality-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "18-manager-team-competence-impartiality",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "18-manager-team-competence-impartiality-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "19-manager-BLOCKED-first-team-cannot-select-existing-auditor",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "19-manager-BLOCKED-first-team-cannot-select-existing-auditor-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "20-auditor-team-member-cannot-approve-own-team",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "20-auditor-team-member-cannot-approve-own-team-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "21-approver-independent-team-approval",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "21-approver-independent-team-approval-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "22-manager-stage-1-plan",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "22-manager-stage-1-plan-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "22-manager-stage-1-plan",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "22-manager-stage-1-plan-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "23-auditor-stage-1-report",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "23-auditor-stage-1-report-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "23-auditor-stage-1-report",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "23-auditor-stage-1-report-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "24-manager-stage-2-plan",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "24-manager-stage-2-plan-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "24-manager-stage-2-plan",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "24-manager-stage-2-plan-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "25-auditor-major-finding-exact-evidence",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "25-auditor-major-finding-exact-evidence-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "25-auditor-major-finding-exact-evidence",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "25-auditor-major-finding-exact-evidence-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "26-auditor-stage-2-report",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "26-auditor-stage-2-report-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "27-auditor-nonconformity-response",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "27-auditor-nonconformity-response-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "27-auditor-nonconformity-response",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "27-auditor-nonconformity-response-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "28-auditor-corrective-plan-judgment",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "28-auditor-corrective-plan-judgment-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "29-auditor-implementation-effectiveness-verification",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "29-auditor-implementation-effectiveness-verification-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "29-auditor-implementation-effectiveness-verification",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "29-auditor-implementation-effectiveness-verification-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "30-auditor-team-leader-recommendation",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "30-auditor-team-leader-recommendation-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "31-auditor-core-audit-complete-awaiting-certificate-data",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "31-auditor-core-audit-complete-awaiting-certificate-data-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "32-manager-client-agreed-certificate-data",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "32-manager-client-agreed-certificate-data-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "32-manager-client-agreed-certificate-data",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "32-manager-client-agreed-certificate-data-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "33-auditor-audit-team-cannot-review-or-decide",
+    "actor": "auditor",
+    "locale": "ro",
+    "screenshot": "33-auditor-audit-team-cannot-review-or-decide-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "34-approver-independent-dossier-review",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "34-approver-independent-dossier-review-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "34-approver-independent-dossier-review",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "34-approver-independent-dossier-review-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "34-approver-independent-dossier-review",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "34-approver-independent-dossier-review-3.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "35-approver-independent-certification-decision",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "35-approver-independent-certification-decision-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "35-approver-independent-certification-decision",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "35-approver-independent-certification-decision-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "36-manager-certificate-draft",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "36-manager-certificate-draft-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "37-manager-exchange-sent-draft",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "37-manager-exchange-sent-draft-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "37-manager-exchange-sent-draft",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "37-manager-exchange-sent-draft-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "38-manager-exchange-received-opinion",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "38-manager-exchange-received-opinion-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "38-manager-exchange-received-opinion",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "38-manager-exchange-received-opinion-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "39-manager-client-opinion-agreed",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "39-manager-client-opinion-agreed-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "40-approver-certificate-draft-independent-approval",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "40-approver-certificate-draft-independent-approval-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "41-approver-certificate-issuance",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "41-approver-certificate-issuance-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "41-approver-certificate-issuance",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "41-approver-certificate-issuance-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "42-manager-exchange-sent-certificate",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "42-manager-exchange-sent-certificate-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "42-manager-exchange-sent-certificate",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "42-manager-exchange-sent-certificate-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "43-approver-certificate-revision-preserves-number-validity",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "43-approver-certificate-revision-preserves-number-validity-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "43-approver-certificate-revision-preserves-number-validity",
+    "actor": "approver",
+    "locale": "ro",
+    "screenshot": "43-approver-certificate-revision-preserves-number-validity-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "44-manager-exchange-sent-revision",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "44-manager-exchange-sent-revision-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "44-manager-exchange-sent-revision",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "44-manager-exchange-sent-revision-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "45-reader-reader-completed-release",
+    "actor": "reader",
+    "locale": "ro",
+    "screenshot": "45-reader-reader-completed-release-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "45-reader-reader-completed-release",
+    "actor": "reader",
+    "locale": "ro",
+    "screenshot": "45-reader-reader-completed-release-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "46-reader-reader-revision-history",
+    "actor": "reader",
+    "locale": "ro",
+    "screenshot": "46-reader-reader-revision-history-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "46-reader-reader-revision-history",
+    "actor": "reader",
+    "locale": "ro",
+    "screenshot": "46-reader-reader-revision-history-2.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "47-reader-reader-locale-ru",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "47-reader-reader-locale-ru-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "48-reader-reader-locale-en",
+    "actor": "reader",
+    "locale": "en",
+    "screenshot": "48-reader-reader-locale-en-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "49-reader-reader-locale-fr",
+    "actor": "reader",
+    "locale": "fr",
+    "screenshot": "49-reader-reader-locale-fr-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "50-other-company-member-other-company-has-no-audit-company",
+    "actor": "other-company-member",
+    "locale": "ro",
+    "screenshot": "50-other-company-member-other-company-has-no-audit-company-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  }
+]

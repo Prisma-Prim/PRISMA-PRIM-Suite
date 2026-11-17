@@ -1,0 +1,47 @@
+- form "Schimb nou":
+  - text: Sens
+  - combobox "Sens": Trimis
+  - text: Tip de element
+  - combobox "Tip de element": Certificat
+  - group "Versiunile documentelor schimbate":
+    - text: Versiunile documentelor schimbate
+    - checkbox "Fictional signed questionnaire, versiunea 1"
+    - text: Fictional signed questionnaire, versiunea 1
+    - checkbox "Fictional signed certification agreement, versiunea 1"
+    - text: Fictional signed certification agreement, versiunea 1
+    - checkbox "Fictional Stage 1 plan, versiunea 1"
+    - text: Fictional Stage 1 plan, versiunea 1
+    - checkbox "Fictional Stage 1 report, versiunea 1"
+    - text: Fictional Stage 1 report, versiunea 1
+    - checkbox "Fictional Stage 2 plan, versiunea 1"
+    - text: Fictional Stage 2 plan, versiunea 1
+    - checkbox "Fictional Stage 2 report, versiunea 1"
+    - text: Fictional Stage 2 report, versiunea 1
+    - checkbox "Fictional receiving evidence, versiunea 1"
+    - text: Fictional receiving evidence, versiunea 1
+    - checkbox "Fictional agreed Certificate data, versiunea 1"
+    - text: Fictional agreed Certificate data, versiunea 1
+    - checkbox "Fictional Certificate draft DEMO-0001, versiunea 1"
+    - text: Fictional Certificate draft DEMO-0001, versiunea 1
+    - checkbox "Fictional client opinion, versiunea 1"
+    - text: Fictional client opinion, versiunea 1
+    - checkbox "Fictional Certificate DEMO-0001, versiunea 1"
+    - text: Fictional Certificate DEMO-0001, versiunea 1
+    - checkbox "Fictional Certificate revision 1, versiunea 1" [checked]
+    - text: Fictional Certificate revision 1, versiunea 1
+  - text: Tip de interlocutor
+  - combobox "Tip de interlocutor": Client
+  - text: Numele interlocutorului
+  - textbox "Numele interlocutorului": Lactis Demo SRL
+  - paragraph: Persoana sau biroul, de exemplu „Lactis Demo SRL, responsabil calitate”.
+  - text: Data schimbului
+  - textbox "Data schimbului": 2026-11-17
+  - text: Canal
+  - combobox "Canal": E-mail
+  - text: Referință (opțională)
+  - textbox "Referință (opțională)": FICTIONAL-sent-revision
+  - text: Notă
+  - textbox "Notă"
+  - paragraph: Obligatorie când canalul este „Altul”.
+  - button "Înregistrați schimbul"
+  - button "Anulați"

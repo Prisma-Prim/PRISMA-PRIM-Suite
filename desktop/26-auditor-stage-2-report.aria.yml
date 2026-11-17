@@ -1,0 +1,17 @@
+- form "Înregistrați raportul etapei 2":
+  - paragraph: Înregistrați finalizarea auditului de etapa 2 cu raportul atașat, lista participanților și o anexă opțională.
+  - text: Data raportului
+  - textbox "Data raportului": 2026-10-26
+  - text: Sinteza auditului de etapa 2
+  - textbox "Sinteza auditului de etapa 2": Audit fictiv finalizat cu o neconformitate majoră / Учебное несоответствие.
+  - text: PDF-ul raportului de audit
+  - combobox "PDF-ul raportului de audit": Fictional Stage 2 report — versiunea 1 (report2.pdf)
+  - text: PDF-ul listei participanților
+  - combobox "PDF-ul listei participanților": Fără listă a participanților
+  - text: PDF-ul anexei
+  - combobox "PDF-ul anexei": Fără anexă
+  - group "Aprobarea raportului de către organismul de certificare":
+    - text: Aprobarea raportului de către organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - button "Înregistrați raportul etapei 2"

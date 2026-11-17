@@ -1,0 +1,124 @@
+- region "Выпуск сертификата":
+  - heading "Выпуск сертификата" [level=5]
+  - paragraph: Для этого участника выпуск доступен только для чтения.
+  - list:
+    - listitem:
+      - heading "Проект" [level=6]
+      - paragraph:
+        - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+        - time: 17 нояб. 2026 г., 17:54
+      - paragraph:
+        - text: DEMO-0001 ·
+        - time: 17 нояб. 2026 г.
+        - text: · Текущий проект
+      - paragraph: Fictional Certificate draft DEMO-0001 — версия 1 (draft.pdf)
+    - listitem:
+      - heading "Мнение клиента" [level=6]
+      - paragraph:
+        - text: "Версия 1 · Записал(а): Ada Ionescu · Дата записи:"
+        - time: 17 нояб. 2026 г., 17:54
+      - paragraph:
+        - text: Согласовано ·
+        - time: 17 нояб. 2026 г.
+    - listitem:
+      - heading "Утверждение" [level=6]
+      - term: Действителен с
+      - definition:
+        - time: 17 нояб. 2026 г.
+      - term: Действителен до
+      - definition:
+        - time: 16 нояб. 2029 г.
+      - term: Начало первого надзора не позднее
+      - definition:
+        - time: 17 нояб. 2027 г.
+      - paragraph:
+        - text: "Версия 1 · Записал(а): Workspace Owner · Дата записи:"
+        - time: 17 нояб. 2026 г., 17:54
+      - paragraph:
+        - time: 17 нояб. 2026 г.
+    - listitem:
+      - heading "Выдача" [level=6]
+      - paragraph:
+        - time: 17 нояб. 2026 г.
+        - text: · Workspace Owner
+      - region "Сертификат":
+        - heading "Сертификат" [level=5]
+        - paragraph:
+          - text: "Записал(а): Workspace Owner · Дата записи:"
+          - time: 17 нояб. 2026 г., 17:54
+        - term: Номер сертификата
+        - definition: DEMO-0001
+        - term: PDF сертификата
+        - definition: Fictional Certificate DEMO-0001 — версия 1 (certificate.pdf)
+        - term: Подписал(а)
+        - definition: Decision Maker Demo
+        - term: Должность подписанта
+        - definition: Head of the fictional certification body
+        - term: Независимость от аудиторской группы
+        - definition: Подтверждено участником, внёсшим запись
+        - term: Действителен с
+        - definition:
+          - time: 17 нояб. 2026 г.
+        - term: Действителен до
+        - definition:
+          - time: 16 нояб. 2029 г.
+        - term: Начало первого надзора не позднее
+        - definition:
+          - time: 17 нояб. 2027 г.
+        - paragraph: "Вычислено сервером от даты решения: действителен три года минус один день; первый надзор начинается в течение двенадцати месяцев."
+        - button "Скачать Fictional Certificate DEMO-0001 — версия 1"
+        - list "Тексты сертификата":
+          - listitem:
+            - term: Язык
+            - definition: ro
+            - term: Наименование держателя
+            - definition: Lactis Demo SRL
+            - term: Адрес
+            - definition: Str. Exemplu 1, Demo City
+            - term: Область
+            - definition: Producerea laptelui pasteurizat (exemplu)
+    - listitem:
+      - heading "Передача" [level=6]
+      - paragraph:
+        - time: 17 нояб. 2026 г.
+        - text: · Ada Ionescu · Электронная почта · 17 нояб. 2026 г., 17:54
+  - region "Исправления сертификата":
+    - heading "Исправления сертификата" [level=6]
+    - paragraph: Номер сертификата, юридическое лицо владельца, дата решения и срок действия остаются неизменными.
+    - list "История исправлений":
+      - listitem:
+        - heading "Выдача 0 — Заменено" [level=6]
+        - paragraph:
+          - text: DEMO-0001 ·
+          - time: 17 нояб. 2026 г.
+          - text: · Workspace Owner
+        - paragraph: Fictional Certificate DEMO-0001 — версия 1 (certificate.pdf)
+        - button "Открыть PDF исправления 0"
+        - paragraph:
+          - text: Запись обмена 3 — Отправлено — Сертификат ·
+          - time: 17 нояб. 2026 г.
+          - text: · Ada Ionescu · Электронная почта · FICTIONAL-sent-certificate
+      - listitem:
+        - heading "Исправление 1 — Текущее" [level=6]
+        - paragraph:
+          - time: 17 нояб. 2026 г.
+          - text: · Workspace Owner · 17 нояб. 2026 г., 17:54
+        - paragraph: "Exemplu fictiv: corectarea prezentării PDF; număr și valabilitate neschimbate."
+        - term: Независимость от аудиторской группы
+        - definition: Подтверждено участником, внёсшим запись
+        - paragraph: Fictional Certificate revision 1 — версия 1 (revision.pdf)
+        - button "Открыть PDF исправления 1"
+        - list "Тексты сертификата":
+          - listitem:
+            - term: Язык
+            - definition: ro
+            - term: Наименование держателя
+            - definition: Lactis Demo SRL
+            - term: Адрес
+            - definition: Str. Exemplu 1, Demo City
+            - term: Область
+            - definition: Producerea laptelui pasteurizat (exemplu)
+        - paragraph:
+          - text: Запись обмена 4 — Отправлено — Сертификат ·
+          - time: 17 нояб. 2026 г.
+          - text: · Ada Ionescu · Электронная почта · FICTIONAL-sent-revision

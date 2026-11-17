@@ -1,0 +1,12 @@
+- form "Apreciați planul constatării 1":
+  - paragraph: Apreciați dacă ultimul răspuns este adecvat pentru eliminarea neconformității și pe ce temei.
+  - group "Adecvarea planului":
+    - text: Adecvarea planului
+    - radio "Adecvat" [checked]
+    - text: Adecvat
+    - radio "Neadecvat"
+    - text: Neadecvat
+  - text: Temeiul aprecierii
+  - textbox "Temeiul aprecierii": Plan fictiv adecvat; implementarea necesită verificare.
+  - button "Înregistrați aprecierea"
+  - button "Anulați"

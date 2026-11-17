@@ -1,0 +1,42 @@
+- region "Заявка":
+  - heading "Заявка" [level=5]
+  - paragraph:
+    - text: "Версия 2 · Записал(а): Ada Ionescu · Дата записи:"
+    - time: 17 нояб. 2026 г., 18:00
+    - text: "Причина исправления: Corecție concurentă fictivă înregistrată înaintea primei ferestre."
+  - term: Дата подписанной заявки
+  - definition:
+    - time: 3 окт. 2026 г.
+  - term: Заявленное юридическое наименование
+  - definition: Lactis Demo SRL
+  - term: Заявленный адрес
+  - definition: Str. Exemplu 1, Demo City
+  - term: Площадки
+  - definition:
+    - list:
+      - listitem: Str. Exemplu 1, Demo City — Fabrică de lactate / Молочный завод (fictiv)
+  - term: Запрашиваемая область
+  - definition: Producerea laptelui pasteurizat (exemplu)
+  - term: Подкатегории пищевой цепи (ISO 22003-1)
+  - definition: CI
+  - term: Исследования HACCP
+  - definition: "2"
+  - term: Общая численность персонала
+  - definition: "40"
+  - term: Фактические эквиваленты полной занятости
+  - definition: "40"
+  - term: Смены
+  - definition: "1"
+  - term: Сезонная деятельность
+  - definition: Activitate permanentă — a doua fereastră (fictiv).
+  - term: Другие сертифицированные системы
+  - definition: Не указано
+  - term: Процессы на аутсорсинге
+  - definition: Не указано
+  - term: Консультант
+  - definition: Без консультанта
+  - term: Языки аудита
+  - definition: ro, ru
+  - term: Предпочтительный период аудита
+  - definition: Не указано
+  - button "Исправить заявку"

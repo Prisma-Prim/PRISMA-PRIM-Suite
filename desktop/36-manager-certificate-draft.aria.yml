@@ -1,0 +1,11 @@
+- form "Înregistrează un proiect de certificat":
+  - heading "Înregistrează un proiect de certificat" [level=6]
+  - text: PDF-ul proiectului certificatului
+  - combobox "PDF-ul proiectului certificatului":
+    - option "—"
+    - option "Fictional Certificate draft DEMO-0001 — versiunea 1 (draft.pdf)" [selected]
+  - text: Numărul certificatului indicat în proiect
+  - textbox "Numărul certificatului indicat în proiect": DEMO-0001
+  - text: Data proiectului
+  - textbox "Data proiectului": 2026-11-17
+  - button "Înregistrează un proiect de certificat"

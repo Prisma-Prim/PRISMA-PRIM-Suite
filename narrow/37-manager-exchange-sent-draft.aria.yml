@@ -1,0 +1,47 @@
+- form "Новая запись обмена":
+  - text: Направление
+  - combobox "Направление": Отправлено
+  - text: Вид документа
+  - combobox "Вид документа": Проект сертификата
+  - group "Переданные версии документов":
+    - text: Переданные версии документов
+    - checkbox "Fictional signed questionnaire, версия 1"
+    - text: Fictional signed questionnaire, версия 1
+    - checkbox "Fictional signed certification agreement, версия 1"
+    - text: Fictional signed certification agreement, версия 1
+    - checkbox "Fictional Stage 1 plan, версия 1"
+    - text: Fictional Stage 1 plan, версия 1
+    - checkbox "Fictional Stage 1 report, версия 1"
+    - text: Fictional Stage 1 report, версия 1
+    - checkbox "Fictional Stage 2 plan, версия 1"
+    - text: Fictional Stage 2 plan, версия 1
+    - checkbox "Fictional Stage 2 report, версия 1"
+    - text: Fictional Stage 2 report, версия 1
+    - checkbox "Fictional receiving evidence, версия 1"
+    - text: Fictional receiving evidence, версия 1
+    - checkbox "Fictional agreed Certificate data, версия 1"
+    - text: Fictional agreed Certificate data, версия 1
+    - checkbox "Fictional Certificate draft DEMO-0001, версия 1" [checked]
+    - text: Fictional Certificate draft DEMO-0001, версия 1
+    - checkbox "Fictional client opinion, версия 1"
+    - text: Fictional client opinion, версия 1
+    - checkbox "Fictional Certificate DEMO-0001, версия 1"
+    - text: Fictional Certificate DEMO-0001, версия 1
+    - checkbox "Fictional Certificate revision 1, версия 1"
+    - text: Fictional Certificate revision 1, версия 1
+  - text: Тип контрагента
+  - combobox "Тип контрагента": Клиент
+  - text: Имя контрагента
+  - textbox "Имя контрагента": Lactis Demo SRL
+  - paragraph: Лицо или служба, например «Lactis Demo SRL, менеджер по качеству».
+  - text: Дата обмена
+  - textbox "Дата обмена": 2026-11-17
+  - text: Канал
+  - combobox "Канал": Электронная почта
+  - text: Номер (необязательно)
+  - textbox "Номер (необязательно)": FICTIONAL-sent-draft
+  - text: Примечание
+  - textbox "Примечание"
+  - paragraph: Обязательно, если канал «Другое».
+  - button "Записать обмен"
+  - button "Отмена"

@@ -1,0 +1,15 @@
+- form "Înregistrați certificatul emis":
+  - paragraph: Înregistrează PDF-ul exact emis și data emiterii după aprobarea proiectului curent. Numărul provine din proiect; valabilitatea se calculează de la data deciziei.
+  - text: Numărul certificatului
+  - textbox "Numărul certificatului": DEMO-0001
+  - text: Data emiterii
+  - textbox "Data emiterii": 2026-11-17
+  - text: PDF-ul certificatului
+  - combobox "PDF-ul certificatului": Fictional Certificate DEMO-0001 — versiunea 1 (certificate.pdf)
+  - text: Semnat de
+  - textbox "Semnat de": Decision Maker Demo
+  - text: Funcția semnatarului
+  - textbox "Funcția semnatarului": Head of the fictional certification body
+  - checkbox "Atest că semnatarul nu este membru al echipei de audit." [checked]
+  - text: Atest că semnatarul nu este membru al echipei de audit.
+  - button "Înregistrați certificatul"

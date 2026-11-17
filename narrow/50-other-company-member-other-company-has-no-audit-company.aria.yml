@@ -1,0 +1,122 @@
+- text: Язык интерфейса
+- combobox "Язык интерфейса": Русский
+- link "Перейти к содержанию":
+  - /url: "#prisme-page-title"
+- banner:
+  - button "Закрыть навигацию" [expanded]
+  - text: Operational Acceptance Workspace
+  - strong: BIC
+- navigation "Основная навигация":
+  - link "Главная страница PRISMA-PRIM Suite":
+    - /url: "#overview"
+    - strong: PRISMA
+    - text: Экспертиза объединена.
+  - region "Контекст Компании":
+    - text: Активная Компания
+    - combobox "Активная Компания" [expanded]: BIC
+  - paragraph: Рабочее пространство
+  - list:
+    - listitem:
+      - link "Обзор":
+        - /url: "#overview"
+    - listitem:
+      - link "Рабочие Документы":
+        - /url: "#documents"
+    - listitem:
+      - link "Клиенты":
+        - /url: "#clients"
+    - listitem:
+      - link "Проекты":
+        - /url: "#projects"
+    - listitem:
+      - link "Журнал активности":
+        - /url: "#activity"
+  - strong: Other Company Member
+  - text: other-company-member@example.test
+  - button "Выйти"
+- main:
+  - paragraph: Operational Acceptance Workspace
+  - heading "Здравствуйте, Other Company Member." [level=1]
+  - paragraph: Ваше рабочее пространство с более ясной перспективой.
+  - region "Ясность для движения вперёд.":
+    - button "Уменьшенное движение" [disabled]
+    - paragraph: Каждая деталь. Более ясная перспектива.
+    - heading "Ясность для движения вперёд." [level=2]
+    - paragraph: Находите Клиентов, управляйте доступом и отслеживайте зарегистрированную активность в одном рабочем пространстве.
+    - link "Клиенты":
+      - /url: "#clients"
+  - region "Сводка Компании":
+    - heading "Сводка Компании" [level=2]
+    - paragraph: Подсчитано на 17 нояб. 2026 г. по записям, которые вы можете открыть в BIC.
+    - button "Обновить сводку Компании"
+    - list:
+      - listitem:
+        - 'button "Активные Клиенты: 1. Открыть список Клиентов"':
+          - text: Активные Клиенты
+          - strong: "1"
+          - text: Клиенты с активными отношениями с BIC
+      - listitem:
+        - 'button "Открытые Проекты: 1. Открыть список Проектов"':
+          - text: Открытые Проекты
+          - strong: "1"
+          - text: Доступные вам Проекты, которые не закрыты
+  - region "Последние изменения":
+    - heading "Последние изменения" [level=2]
+    - paragraph: Пять последних датированных событий, доступных вам в текущем контексте журнала. Даты могут быть давними.
+    - list:
+      - listitem:
+        - strong: Commercial Reader — создание идентификационной записи
+        - text: "Объект: Commercial Reader"
+        - time: 17 нояб. 2026 г., 17:53
+      - listitem:
+        - strong: Other Company Member — создание подготовительного Проекта
+        - text: "Объект: Проект: Other Company Confidential Project"
+        - time: 17 нояб. 2026 г., 17:53
+      - listitem:
+        - strong: Other Company Member — связывание Клиента с Компанией
+        - text: "Объект: Other Company Confidential Client — BIC"
+        - time: 17 нояб. 2026 г., 17:53
+      - listitem:
+        - strong: Other Company Member — создание Клиента
+        - text: "Объект: Other Company Confidential Client"
+        - time: 17 нояб. 2026 г., 17:53
+      - listitem:
+        - strong: Other Company Member — создание идентификационной записи
+        - text: "Объект: Other Company Member"
+        - time: 17 нояб. 2026 г., 17:53
+    - button "Обновить последние изменения"
+    - button "Открыть полный Журнал действий"
+  - button "Сводки всех Компаний"
+  - region "Ваше рабочее пространство":
+    - heading "Ваше рабочее пространство" [level=2]
+    - paragraph: Откройте доступную функцию, чтобы продолжить работу.
+    - list:
+      - listitem:
+        - link "Рабочие Документы Конфиденциальные рабочие Документы Компании.":
+          - /url: "#documents"
+          - strong: Рабочие Документы
+          - text: Конфиденциальные рабочие Документы Компании.
+      - listitem:
+        - link "Клиенты Находите Клиентов и работайте с их общими досье.":
+          - /url: "#clients"
+          - strong: Клиенты
+          - text: Находите Клиентов и работайте с их общими досье.
+      - listitem:
+        - link "Проекты Регистрируйте и повторно открывайте подготовительные Проекты.":
+          - /url: "#projects"
+          - strong: Проекты
+          - text: Регистрируйте и повторно открывайте подготовительные Проекты.
+      - listitem:
+        - link "Журнал активности Просматривайте активность, доступную в текущем контексте.":
+          - /url: "#activity"
+          - strong: Журнал активности
+          - text: Просматривайте активность, доступную в текущем контексте.
+  - region "Operational Acceptance Workspace":
+    - paragraph: Текущий контекст
+    - heading "Operational Acceptance Workspace" [level=2]
+    - term: Активная Компания
+    - definition: BIC
+    - paragraph: Выберите доступную Компанию в навигации, чтобы изменить текущий контекст.
+- listbox "Активная Компания":
+  - option "Выберите Компанию"
+  - option "BIC" [selected]
