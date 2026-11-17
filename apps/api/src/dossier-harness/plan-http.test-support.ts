@@ -94,8 +94,16 @@ export async function createPlanHttpFixture() {
         JSON.parse(text(object(body.input[0]).content, 64_000)),
       );
       if (!Array.isArray(data.passages)) throw new Error('Expected passages');
-      const p = object(data.passages[0]);
+      const p =
+        data.passages
+          .map(object)
+          .find(
+            (passage) =>
+              typeof passage.locator === 'string' &&
+              passage.locator.includes('#table:'),
+          ) ?? object(data.passages[0]);
       if (typeof p.start !== 'number') throw new Error('Expected offset');
+      const start = p.start;
       const quote = text(p.text).slice(0, 20);
       const result = Array.from({ length: controls.verbose ? 8 : 1 }, () => ({
         field: 'scope',
@@ -109,8 +117,8 @@ export async function createPlanHttpFixture() {
             documentVersionId: p.documentVersionId,
             locator: p.locator,
             passageSha256: p.passageSha256,
-            start: p.start,
-            end: p.start + quote.length,
+            start,
+            end: start + quote.length,
             quote: controls.failure === 'fabricated' ? 'invented' : quote,
           },
         ],

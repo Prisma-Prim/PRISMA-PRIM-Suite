@@ -602,6 +602,8 @@ describe.skipIf(!databaseUrl)(
             {},
           );
         expect(result.state).toBe('failed');
+        if (typeof result.totalBatches !== 'number')
+          throw new Error('Expected batch count');
         expect(result.nextBatch).toBeLessThan(result.totalBatches);
         expect(
           (

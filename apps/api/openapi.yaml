@@ -203,7 +203,10 @@ paths:
                             {
                               'type': 'object',
                               'properties':
-                                { 'remoteRevoked': { 'type': 'boolean' } },
+                                {
+                                  'state': { 'const': 'disconnected' },
+                                  'remoteRevoked': { 'type': 'boolean' },
+                                },
                               'required': ['state', 'remoteRevoked'],
                               'additionalProperties': false,
                             },

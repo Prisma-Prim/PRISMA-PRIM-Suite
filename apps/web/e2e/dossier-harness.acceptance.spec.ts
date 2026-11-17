@@ -93,6 +93,10 @@ test('an editor uses a subscription harness inside PRISMA and reviews exact nati
     panel.getByText('Проверить документ', { exact: true }),
   ).toBeVisible();
   await expect(panel.locator('blockquote')).toHaveCount(1);
+  await expect(panel.locator('blockquote')).toContainText('Cod fiscal');
+  await expect(panel.locator('blockquote')).toContainText(
+    'word/document.xml#table:1/row:1',
+  );
   await panel
     .getByRole('button', { name: 'Import proposals for review', exact: true })
     .click();
