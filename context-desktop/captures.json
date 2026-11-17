@@ -1,0 +1,26 @@
+[
+  {
+    "step": "07-manager-company-switch-retires-pending-case-read",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "07-manager-company-switch-retires-pending-case-read-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "08-manager-late-old-company-result-does-not-return",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "08-manager-late-old-company-result-does-not-return-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  },
+  {
+    "step": "09-manager-original-company-case-reloads-unchanged",
+    "actor": "manager",
+    "locale": "ro",
+    "screenshot": "09-manager-original-company-case-reloads-unchanged-1.png",
+    "viewportWidth": 1440,
+    "contentWidth": 1440
+  }
+]

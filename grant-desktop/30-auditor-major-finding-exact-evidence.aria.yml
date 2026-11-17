@@ -1,0 +1,22 @@
+- form "Înregistrați o constatare a etapei 2":
+  - paragraph: Alegeți clasificarea, indicați cerința, procesul sau zona și enunțul și citați dovezile exacte atașate acestui dosar. O neconformitate citează cel puțin un PDF de dovadă; o oportunitate de îmbunătățire poate omite cerința și zona.
+  - group "Clasificare":
+    - text: Clasificare
+    - radio "Neconformitate majoră" [checked]
+    - text: Neconformitate majoră
+    - radio "Neconformitate minoră"
+    - text: Neconformitate minoră
+    - radio "Oportunitate de îmbunătățire"
+    - text: Oportunitate de îmbunătățire
+  - text: Cerința (clauza)
+  - textbox "Cerința (clauza)": 8.5.1
+  - text: De exemplu 8.5.1. Opțional doar pentru o oportunitate de îmbunătățire. Procesul sau zona
+  - textbox "Procesul sau zona": Recepția laptelui / Приёмка молока (fictiv)
+  - text: Enunț
+  - textbox "Enunț": "Exemplu fictiv: analiza pericolelor nu acoperă alergenii la recepție."
+  - group "Dovezi":
+    - text: Dovezi PDF-uri atașate acestui dosar cu rolul Dovadă, cel mult zece.
+    - checkbox "Fictional receiving evidence — versiunea 1 (evidence.pdf)" [checked]
+    - text: Fictional receiving evidence — versiunea 1 (evidence.pdf)
+  - button "Înregistrați constatarea"
+  - button "Anulați"

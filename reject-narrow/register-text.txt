@@ -1,0 +1,109 @@
+Сформированный реестр досье, не являющийся официальной формой органа по сертификации. Он
+сопровождает подписанные оригиналы и не заменяет ни один из них.
+
+
+Реестр досье
+
+Дело по сертификации
+Идентификатор дела                 f7515fc5-d2ba-46c1-b887-8c61ec1302b6
+Номер заказа                       AUDIT-1441-reject-narrow
+Юридическое лицо клиента           Lactis Demo SRL
+Стандарт                           ISO 22000:2018
+Тип аудита                         Первичная сертификация
+Статус                             Заявка отклонена
+Редакция дела                      15
+Открыто                            2026-11-17 19:29:10 UTC
+Редакция достигнута                2026-11-17 19:29:25 UTC
+
+
+Записанные версии
+Заявка — версия 1
+Записано                           2026-11-17 19:29:11 UTC
+Записал(а)                         Ada Ionescu
+Дата заявки                        2026-10-03
+Заявленное наименование            Lactis Demo SRL
+Категории пищевой цепи             CI
+Эффективная численность            40
+(ЭПЗ)
+Исследования ХАССП                 2
+
+Анализ заявки — версия 1
+Записано                           2026-11-17 19:29:25 UTC
+Записал(а)                         Ada Ionescu
+Результат                          Отклонена
+Причина отклонения                 Exemplu fictiv: domeniul solicitat nu poate fi certificat / Учебный отказ.
+
+
+Согласованность досье
+Набор правил: dossier-consistency-2026-11.4. Открыто: критических 0, ошибок 0, требуют уточнения 0
+Набор правил dossier-consistency-2026-11.4 не нашёл расхождений.
+
+Обмены и сроки
+Процедурные сроки не настроены.
+Обмены не записаны.
+
+Пункты для повторной проверки
+Крайний срок начала первого надзора устанавливается вместе с сертификатом.
+Нечего проверять повторно.
+
+Выдача сертификата
+Проект: Не записано
+Мнение клиента: Не записано
+Утверждение проекта: Не записано
+Выдача: Не записано
+Передача: Не записано
+
+Указанные версии документов
+Роль           Документ                  Версия документа                       SHA-256
+Анкета         Fictional signed          70917deb-6956-4cf7-ade0-6f1f0d010b3d   ed5bbbd62e0a5d77042803266e0c679ceaf
+               questionnaire                                                    de1a37d5566ccefe41d803bb8568d
+               questionnaire.pdf
+
+
+
+
+Страница 1
+Сформированный реестр досье, не являющийся официальной формой органа по сертификации. Он
+сопровождает подписанные оригиналы и не заменяет ни один из них.
+
+
+Роль          Документ                      Версия документа                       SHA-256
+Договор       Fictional signed              7fd6c318-1149-4682-bb7e-becdc613a6d4   ed5bbbd62e0a5d77042803266e0c679ceaf
+              certification agreement                                              de1a37d5566ccefe41d803bb8568d
+              agreement.pdf
+План аудита   Fictional Stage 1 plan        43f46d25-7e8b-4b90-a6f1-287e548788fe   ed5bbbd62e0a5d77042803266e0c679ceaf
+              plan1.pdf                                                            de1a37d5566ccefe41d803bb8568d
+
+Отчёт об      Fictional Stage 1 report      c5213fe7-80cd-49ec-901a-eca621403f0f   ed5bbbd62e0a5d77042803266e0c679ceaf
+аудите        report1.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+План аудита   Fictional Stage 2 plan        5def04fb-f2d5-468d-9aba-5b2bc47edad1   ed5bbbd62e0a5d77042803266e0c679ceaf
+              plan2.pdf                                                            de1a37d5566ccefe41d803bb8568d
+
+Отчёт об      Fictional Stage 2 report      976667d1-6a5f-42aa-8dda-7a57e072d223   ed5bbbd62e0a5d77042803266e0c679ceaf
+аудите        report2.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Свидетельст   Fictional receiving           7101fb48-937b-403e-af52-b3bd56d25251   ed5bbbd62e0a5d77042803266e0c679ceaf
+во            evidence                                                             de1a37d5566ccefe41d803bb8568d
+              evidence.pdf
+Данные        Fictional agreed              c1c92886-9b47-46ac-914a-35a0d375da21   ed5bbbd62e0a5d77042803266e0c679ceaf
+сертификата   Certificate data                                                     de1a37d5566ccefe41d803bb8568d
+              certificateData.pdf
+Проект        Fictional Certificate draft   3e9f5929-d3f8-4096-8c39-84aa9e925518   905bb3fc568405355affa0e153c0733fb504
+сертификата   DEMO-0001                                                            123af1c0fd0ecf70101cb0446605
+              draft.pdf
+Мнение        Fictional client opinion      27feddf5-6783-4cc7-a1fc-91564c6a7d91   ed5bbbd62e0a5d77042803266e0c679ceaf
+клиента       opinion.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Сертификат    Fictional Certificate         f7d6cea2-8984-4022-b980-1bd8c2bfbb26   0062b5a1998c1d565b4291e3c1f23cf4809
+              DEMO-0001                                                            136066985583fc80ca3994720577b
+              certificate.pdf
+Сертификат    Fictional Certificate         929a8fd5-f30e-43fb-a43c-fb4a56512657   905bb3fc568405355affa0e153c0733fb504
+              revision 1                                                           123af1c0fd0ecf70101cb0446605
+              revision.pdf
+
+
+
+
+Страница 2
+

@@ -1,0 +1,34 @@
+[
+  {
+    "step": "08-manager-rejection-requires-written-reason",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "08-manager-rejection-requires-written-reason-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "09-manager-rejected-application-closes-core-journey",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "09-manager-rejected-application-closes-core-journey-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "10-reader-application-rejected-case-closed",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "10-reader-application-rejected-case-closed-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "11-reader-refused-case-has-no-issued-certificate",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "11-reader-refused-case-has-no-issued-certificate-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  }
+]

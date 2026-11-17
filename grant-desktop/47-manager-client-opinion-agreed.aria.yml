@@ -1,0 +1,16 @@
+- form "Înregistrează opinia clientului sau omiterea":
+  - heading "Înregistrează opinia clientului sau omiterea" [level=6]
+  - paragraph: Trimite proiectul în afara Suite și înregistrează schimbul. Înregistrează răspunsul primit înaintea opiniei.
+  - text: Data opiniei sau omiterii
+  - textbox "Data opiniei sau omiterii": 2026-11-17
+  - text: Rezultatul opiniei clientului
+  - combobox "Rezultatul opiniei clientului":
+    - option "—"
+    - option "Agreat" [selected]
+    - option "Modificări solicitate"
+    - option "Opinie omisă"
+  - text: Înregistrarea schimbului primit cu opinia clientului
+  - combobox "Înregistrarea schimbului primit cu opinia clientului":
+    - option "—"
+    - option "2 · 17 nov. 2026 · Lactis Demo SRL" [selected]
+  - button "Înregistrează opinia clientului sau omiterea"

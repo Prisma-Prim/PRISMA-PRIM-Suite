@@ -1,0 +1,18 @@
+- form "Înregistrați răspunsul clientului la constatarea 1":
+  - paragraph: Înregistrați corecția, analiza cauzelor și planul de acțiuni corective ale clientului așa cum au fost primite, cu dovezi opționale. Un răspuns nou după un plan apreciat ca neadecvat este o versiune nouă.
+  - text: Corecție
+  - textbox "Corecție": "Exemplu fictiv: corecția a fost completată după verificarea neeficace."
+  - text: Cauză
+  - textbox "Cauză": "Exemplu fictiv: instruirea inițială nu fusese aplicată."
+  - text: Acțiune corectivă
+  - textbox "Acțiune corectivă": "Exemplu fictiv: instruire repetată și verificarea aplicării la recepție."
+  - text: Primit la
+  - textbox "Primit la": 2026-11-14
+  - text: Finalizare planificată
+  - textbox "Finalizare planificată"
+  - group "Dovezi":
+    - text: Dovezi PDF-uri atașate acestui dosar cu rolul Dovadă, cel mult zece.
+    - checkbox "Fictional receiving evidence — versiunea 1 (evidence.pdf)"
+    - text: Fictional receiving evidence — versiunea 1 (evidence.pdf)
+  - button "Înregistrați răspunsul"
+  - button "Anulați"

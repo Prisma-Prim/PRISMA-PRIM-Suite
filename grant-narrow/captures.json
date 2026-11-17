@@ -1,0 +1,218 @@
+[
+  {
+    "step": "05-manager-controlled-unavailable-state",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "05-manager-controlled-unavailable-state-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "10-manager-exact-unchanged-retry-confirmed",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "10-manager-exact-unchanged-retry-confirmed-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "13-manager-stale-correction-refused-draft-preserved",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "13-manager-stale-correction-refused-draft-preserved-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "14-manager-explicit-reload-shows-current-application",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "14-manager-explicit-reload-shows-current-application-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "19-manager-team-without-category-is-refused",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "19-manager-team-without-category-is-refused-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "20-manager-self-linked-leader-and-qualified-technical-expert",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "20-manager-self-linked-leader-and-qualified-technical-expert-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "21-auditor-team-member-cannot-approve-own-team",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "21-auditor-team-member-cannot-approve-own-team-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "22-approver-independent-approver-returns-team",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "22-approver-independent-approver-returns-team-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "23-manager-returned-team-reproposed-with-reason",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "23-manager-returned-team-reproposed-with-reason-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "24-approver-independent-team-approval",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "24-approver-independent-team-approval-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "27-manager-not-ready-stage-1-blocks-stage-2",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "27-manager-not-ready-stage-1-blocks-stage-2-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "28-auditor-stage-1-corrected-to-ready",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "28-auditor-stage-1-corrected-to-ready-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "30-auditor-major-finding-exact-evidence",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "30-auditor-major-finding-exact-evidence-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "34-auditor-ineffective-verification-keeps-major-open",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "34-auditor-ineffective-verification-keeps-major-open-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "35-auditor-major-still-blocks-recommendation",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "35-auditor-major-still-blocks-recommendation-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "36-auditor-revised-client-response-after-ineffective-verification",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "36-auditor-revised-client-response-after-ineffective-verification-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "37-auditor-implementation-effectiveness-verification",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "37-auditor-implementation-effectiveness-verification-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "40-manager-client-agreed-certificate-data",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "40-manager-client-agreed-certificate-data-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "42-approver-independent-dossier-review",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "42-approver-independent-dossier-review-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "43-approver-independent-certification-decision",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "43-approver-independent-certification-decision-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "47-manager-client-opinion-agreed",
+    "actor": "manager",
+    "locale": "ru",
+    "screenshot": "47-manager-client-opinion-agreed-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "48-approver-certificate-draft-independent-approval",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "48-approver-certificate-draft-independent-approval-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "49-approver-certificate-issuance",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "49-approver-certificate-issuance-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "51-approver-certificate-revision-preserves-number-validity",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "51-approver-certificate-revision-preserves-number-validity-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "53-reader-reader-completed-release",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "53-reader-reader-completed-release-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "54-reader-reader-revision-history",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "54-reader-reader-revision-history-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "58-other-company-member-other-company-has-no-audit-company",
+    "actor": "other-company-member",
+    "locale": "ru",
+    "screenshot": "58-other-company-member-other-company-has-no-audit-company-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  }
+]

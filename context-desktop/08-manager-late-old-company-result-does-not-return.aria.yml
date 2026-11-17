@@ -1,0 +1,24 @@
+- main:
+  - paragraph: Operational Acceptance Workspace
+  - heading "Bună, Ada Ionescu." [level=1]
+  - paragraph: Spațiul dumneavoastră de lucru, dintr-o perspectivă mai clară.
+  - region "Claritate pentru a merge înainte.":
+    - button "Mișcare redusă" [disabled]
+    - paragraph: Fiecare detaliu. O perspectivă mai clară.
+    - heading "Claritate pentru a merge înainte." [level=2]
+    - paragraph: Găsiți Clienții, gestionați accesul și urmăriți activitatea înregistrată într-un singur spațiu de lucru.
+  - region "Spațiul dumneavoastră de lucru":
+    - heading "Spațiul dumneavoastră de lucru" [level=2]
+    - paragraph: Deschideți o funcție disponibilă pentru a continua lucrul.
+    - list:
+      - listitem:
+        - link "Jurnal de activitate Citiți activitatea disponibilă în contextul curent.":
+          - /url: "#activity"
+          - strong: Jurnal de activitate
+          - text: Citiți activitatea disponibilă în contextul curent.
+  - region "Operational Acceptance Workspace":
+    - paragraph: Contextul curent
+    - heading "Operational Acceptance Workspace" [level=2]
+    - term: Companie activă
+    - definition: Other Fictional Audit Body desktop
+    - paragraph: Alegeți o Companie disponibilă din navigare pentru a schimba contextul curent.

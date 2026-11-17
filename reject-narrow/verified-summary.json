@@ -1,0 +1,12 @@
+{
+  "reference": "AUDIT-1441-reject-narrow",
+  "locale": "ru",
+  "width": "narrow",
+  "variant": "reject",
+  "status": "rejected",
+  "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "auditVerdict": "passed",
+  "allBusinessActsViaUi": true,
+  "certificate": null,
+  "apiCheckpoints": []
+}

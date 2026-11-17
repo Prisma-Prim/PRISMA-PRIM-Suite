@@ -1,0 +1,1201 @@
+{
+  "applicationSource": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "tests": [
+    {
+      "file": "apps/api/src/certification/certification-attribution.test.ts",
+      "test": "accepts the date that is already today in the most advanced time zone",
+      "fullName": "certification attribution helpers accepts the date that is already today in the most advanced time zone",
+      "status": "passed",
+      "durationMs": 1.8937589999999886
+    },
+    {
+      "file": "apps/api/src/certification/certification-attribution.test.ts",
+      "test": "compares names without case, accents or repeated spaces",
+      "fullName": "certification attribution helpers compares names without case, accents or repeated spaces",
+      "status": "passed",
+      "durationMs": 0.674240999999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-certificate-attestation.migration.test.ts",
+      "test": "requires the attestation on every new Certificate on a database migrated from empty",
+      "fullName": "Certificate independence attestation schema requires the attestation on every new Certificate on a database migrated from empty",
+      "status": "passed",
+      "durationMs": 3136.275111
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.migration.test.ts",
+      "test": "accepts only the Discrepancy events and keeps the Discrepancy records immutable on a database migrated from empty",
+      "fullName": "Dossier consistency schema accepts only the Discrepancy events and keeps the Discrepancy records immutable on a database migrated from empty",
+      "status": "passed",
+      "durationMs": 2730.649375
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "reads no Discrepancy for the consistent Case, then each raised one with its verdict, values and sources, and its correction",
+      "fullName": "Certification Case dossier consistency reads no Discrepancy for the consistent Case, then each raised one with its verdict, values and sources, and its correction",
+      "status": "passed",
+      "durationMs": 6159.63717
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "accepts per verdict and bundle with a reason, keeps the acceptance on the same values and raises new values again",
+      "fullName": "Certification Case dossier consistency accepts per verdict and bundle with a reason, keeps the acceptance on the same values and raises new values again",
+      "status": "passed",
+      "durationMs": 6860.764024
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "lets only an approver outside the team accept an error, and never a critical Discrepancy",
+      "fullName": "Certification Case dossier consistency lets only an approver outside the team accept an error, and never a critical Discrepancy",
+      "status": "passed",
+      "durationMs": 6051.394885999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "records a manual Discrepancy and resolves one as corrected, another as accepted",
+      "fullName": "Certification Case dossier consistency records a manual Discrepancy and resolves one as corrected, another as accepted",
+      "status": "passed",
+      "durationMs": 7680.910097
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "refuses the decision while a critical or unaccepted error is open, naming them, and the Certificate the same way after it",
+      "fullName": "Certification Case dossier consistency refuses the decision while a critical or unaccepted error is open, naming them, and the Certificate the same way after it",
+      "status": "passed",
+      "durationMs": 10866.802305999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "lists the open and resolved Discrepancies in the dossier register PDF",
+      "fullName": "Certification Case dossier consistency lists the open and resolved Discrepancies in the dossier register PDF",
+      "status": "passed",
+      "durationMs": 6975.298863999997
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.rest.test.ts",
+      "test": "records each Discrepancy event in its transaction with closed codes and denies another Company like a missing Case",
+      "fullName": "Certification Case dossier consistency records each Discrepancy event in its transaction with closed codes and denies another Company like a missing Case",
+      "status": "passed",
+      "durationMs": 5986.792478000003
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R01 raises the duration proposal when the headcount moves to the next band",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R01 raises the duration proposal when the headcount moves to the next band",
+      "status": "passed",
+      "durationMs": 4.800357000000076
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R01 is not raised when a correction to 45 stays in the same band",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R01 is not raised when a correction to 45 stays in the same band",
+      "status": "passed",
+      "durationMs": 0.8435839999999644
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R01 is closed by a new duration confirmed on the corrected application",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R01 is closed by a new duration confirmed on the corrected application",
+      "status": "passed",
+      "durationMs": 0.6331390000000283
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R02 raises a prior-certification reduction without a declared certification",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R02 raises a prior-certification reduction without a declared certification",
+      "status": "passed",
+      "durationMs": 0.6019619999999577
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R02 is not raised for a declared certification with or without a capped reduction",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R02 is not raised for a declared certification with or without a capped reduction",
+      "status": "passed",
+      "durationMs": 0.6284319999999752
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R03 raises a Stage plan whose days differ from the share of a later duration",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R03 raises a Stage plan whose days differ from the share of a later duration",
+      "status": "passed",
+      "durationMs": 0.4171959999999899
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R03 shows a deviation justified against the same duration version as accepted",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R03 shows a deviation justified against the same duration version as accepted",
+      "status": "passed",
+      "durationMs": 3.7519949999999653
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R04 raises auditor-days beyond calendar days times the leader and auditors on site",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R04 raises auditor-days beyond calendar days times the leader and auditors on site",
+      "status": "passed",
+      "durationMs": 1.3640950000000203
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R05 raises a decision dated before the dossier review approval, never equal or unrecorded dates",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R05 raises a decision dated before the dossier review approval, never equal or unrecorded dates",
+      "status": "passed",
+      "durationMs": 1.7911550000000034
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R05 asks to clarify a Stage report dated before its Stage’s last day",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R05 asks to clarify a Stage report dated before its Stage’s last day",
+      "status": "passed",
+      "durationMs": 0.4409810000000789
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R08 raises an item answered present without its record, critical",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R08 raises an item answered present without its record, critical",
+      "status": "passed",
+      "durationMs": 0.5667399999999816
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R08 is not raised when the record exists at the review",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R08 is not raised when the record exists at the review",
+      "status": "passed",
+      "durationMs": 0.6330090000000155
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R09 asks to clarify an item answered missing while its record and PDF exist",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R09 asks to clarify an item answered missing while its record and PDF exist",
+      "status": "passed",
+      "durationMs": 0.4610410000000229
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R13 compares only the draft number with issued Company numbers without exposing another Case",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R13 compares only the draft number with issued Company numbers without exposing another Case",
+      "status": "passed",
+      "durationMs": 4.181369000000018
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R10 raises a record corrected after the dossier review until a new review covers it",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R10 raises a record corrected after the dossier review until a new review covers it",
+      "status": "passed",
+      "durationMs": 0.7969349999999622
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R11 raises a granted address that differs from the agreed one, critical",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R11 raises a granted address that differs from the agreed one, critical",
+      "status": "passed",
+      "durationMs": 0.5660179999999855
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R12 compares house numbers and postal codes, not the wording across languages",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R12 compares house numbers and postal codes, not the wording across languages",
+      "status": "passed",
+      "durationMs": 0.7250569999999925
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R12 reads a house-number letter written after a space or a hyphen",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R12 reads a house-number letter written after a space or a hyphen",
+      "status": "passed",
+      "durationMs": 21.416979000000083
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R14 asks to clarify a record relying on a Version older than an unused attached one",
+      "fullName": "Dossier Consistency Check rules (PRD §8.1 vectors) R14 asks to clarify a record relying on a Version older than an unused attached one",
+      "status": "passed",
+      "durationMs": 0.6372259999999415
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "opens a Discrepancy at the revision that produces it and closes it as corrected by the version that makes the values agree",
+      "fullName": "Discrepancy history, acceptance and persistence (PRD §9.1) opens a Discrepancy at the revision that produces it and closes it as corrected by the version that makes the values agree",
+      "status": "passed",
+      "durationMs": 1.5591980000000376
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "keeps an acceptance recorded under an earlier rule-set version, with that version",
+      "fullName": "Discrepancy history, acceptance and persistence (PRD §9.1) keeps an acceptance recorded under an earlier rule-set version, with that version",
+      "status": "passed",
+      "durationMs": 1.1556729999999789
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "keeps an acceptance across versions with the same values, opens a new Discrepancy for new values and accepts returning values again",
+      "fullName": "Discrepancy history, acceptance and persistence (PRD §9.1) keeps an acceptance across versions with the same values, opens a new Discrepancy for new values and accepts returning values again",
+      "status": "passed",
+      "durationMs": 17.050869000000034
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "lists a manual Discrepancy until its resolution, and blocks with an error or critical verdict",
+      "fullName": "Discrepancy history, acceptance and persistence (PRD §9.1) lists a manual Discrepancy until its resolution, and blocks with an error or critical verdict",
+      "status": "passed",
+      "durationMs": 2.678796000000034
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "blocks draft approval after a granting decision and nothing once issued",
+      "fullName": "Discrepancy history, acceptance and persistence (PRD §9.1) blocks draft approval after a granting decision and nothing once issued",
+      "status": "passed",
+      "durationMs": 5.542641000000003
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "gives a Discrepancy the same identity for the same rule, subject and values",
+      "fullName": "Discrepancy history, acceptance and persistence (PRD §9.1) gives a Discrepancy the same identity for the same rule, subject and values",
+      "status": "passed",
+      "durationMs": 0.7782160000000431
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R06 asks to clarify a Stage plan sent on S1 + 1, never on S1 or before",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R06 asks to clarify a Stage plan sent on S1 + 1, never on S1 or before",
+      "status": "passed",
+      "durationMs": 0.3988880000000563
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R07 raises a plan sending date no register record has, as an error",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R07 raises a plan sending date no register record has, as an error",
+      "status": "passed",
+      "durationMs": 0.5196789999999964
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R07 is not raised before any sending, nor for a matching date and Version",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R07 is not raised before any sending, nor for a matching date and Version",
+      "status": "passed",
+      "durationMs": 0.2516170000000102
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R07 asks to clarify when the client received only another Version of the plan",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R07 asks to clarify when the client received only another Version of the plan",
+      "status": "passed",
+      "durationMs": 0.4762640000000147
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R15 asks to clarify one outgoing reference on two sendings of different dates, not one record sending several Versions",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R15 asks to clarify one outgoing reference on two sendings of different dates, not one record sending several Versions",
+      "status": "passed",
+      "durationMs": 1.2887930000000551
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R16 raises the Stage 2 report sent before the decision, as an error that blocks it until accepted",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R16 raises the Stage 2 report sent before the decision, as an error that blocks it until accepted",
+      "status": "passed",
+      "durationMs": 2.5791659999999865
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R16 compares a sending recorded after the decision with the decision date",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R16 compares a sending recorded after the decision with the decision date",
+      "status": "passed",
+      "durationMs": 0.9809000000000196
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R16 keeps a sending recorded before the decision early when a later correction changes only its note or reference",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R16 keeps a sending recorded before the decision early when a later correction changes only its note or reference",
+      "status": "passed",
+      "durationMs": 0.740460999999982
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "R16 is not raised while the deadline is not configured",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) R16 is not raised while the deadline is not configured",
+      "status": "passed",
+      "durationMs": 0.2325190000000248
+    },
+    {
+      "file": "apps/api/src/certification/certification-consistency.test.ts",
+      "test": "closes an exchange Discrepancy as corrected by the Exchange Record version that resolves it",
+      "fullName": "Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16) closes an exchange Discrepancy as corrected by the Exchange Record version that resolves it",
+      "status": "passed",
+      "durationMs": 0.5636049999999386
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "refuses a granting decision without recorded Certificate data",
+      "fullName": "Certification Case decision and Certificate refuses a granting decision without recorded Certificate data",
+      "status": "passed",
+      "durationMs": 3455.9203259999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "decides and records the Certificate with its computed validity",
+      "fullName": "Certification Case decision and Certificate decides and records the Certificate with its computed validity",
+      "status": "passed",
+      "durationMs": 6360.8638009999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "keeps every team member, past ones included, apart from the review and the decision",
+      "fullName": "Certification Case decision and Certificate keeps every team member, past ones included, apart from the review and the decision",
+      "status": "passed",
+      "durationMs": 3191.787786000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "keeps the Stage 2 report approval made on behalf of the certification body",
+      "fullName": "Certification Case decision and Certificate keeps the Stage 2 report approval made on behalf of the certification body",
+      "status": "passed",
+      "durationMs": 2686.0266410000004
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "keeps the Stage report approver on behalf of the certification body off the audit team and out of the future",
+      "fullName": "Certification Case decision and Certificate keeps the Stage report approver on behalf of the certification body off the audit team and out of the future",
+      "status": "passed",
+      "durationMs": 3318.877722000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "refuses a dossier review on behalf of the certification body dated after the latest business date",
+      "fullName": "Certification Case decision and Certificate refuses a dossier review on behalf of the certification body dated after the latest business date",
+      "status": "passed",
+      "durationMs": 3061.8587679999982
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "corrects the decided texts with a reason and keeps the decided outcome",
+      "fullName": "Certification Case decision and Certificate corrects the decided texts with a reason and keeps the decided outcome",
+      "status": "passed",
+      "durationMs": 4595.365519999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-decision.rest.test.ts",
+      "test": "refuses a decision with unmet preconditions, against the recommendation or by a team member",
+      "fullName": "Certification Case decision and Certificate refuses a decision with unmet preconditions, against the recommendation or by a team member",
+      "status": "passed",
+      "durationMs": 7366.514535000002
+    },
+    {
+      "file": "apps/api/src/certification/certification-documents.rest.test.ts",
+      "test": "attaches an exact signed original, lists it, opens its bytes and records the agreement",
+      "fullName": "Certification Case signed originals and agreement attaches an exact signed original, lists it, opens its bytes and records the agreement",
+      "status": "passed",
+      "durationMs": 1102.477366000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-documents.rest.test.ts",
+      "test": "refuses an agreement before the duration, without an agreement attachment or in the future",
+      "fullName": "Certification Case signed originals and agreement refuses an agreement before the duration, without an agreement attachment or in the future",
+      "status": "passed",
+      "durationMs": 1463.3694700000015
+    },
+    {
+      "file": "apps/api/src/certification/certification-documents.rest.test.ts",
+      "test": "refuses unknown documents like missing ones and keeps attaching to programme managers",
+      "fullName": "Certification Case signed originals and agreement refuses unknown documents like missing ones and keeps attaching to programme managers",
+      "status": "passed",
+      "durationMs": 625.4300169999988
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.rest.test.ts",
+      "test": "proposes from the accepted application and confirms the proposal with its justified factors",
+      "fullName": "Certification Case duration determination proposes from the accepted application and confirms the proposal with its justified factors",
+      "status": "passed",
+      "durationMs": 526.2231069999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.rest.test.ts",
+      "test": "confirms an unadjusted proposal without a justification",
+      "fullName": "Certification Case duration determination confirms an unadjusted proposal without a justification",
+      "status": "passed",
+      "durationMs": 361.22180000000026
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.rest.test.ts",
+      "test": "refuses before an accepted review, inconsistent inputs, stage sums and readers",
+      "fullName": "Certification Case duration determination refuses before an accepted review, inconsistent inputs, stage sums and readers",
+      "status": "passed",
+      "durationMs": 730.9682560000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.rest.test.ts",
+      "test": "requires a manual justified determination where the FTE band is ambiguous",
+      "fullName": "Certification Case duration determination requires a manual justified determination where the FTE band is ambiguous",
+      "status": "passed",
+      "durationMs": 346.1989050000002
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "proposes one day for a small farm with one HACCP study",
+      "fullName": "ISO 22000 audit-duration proposal proposes one day for a small farm with one HACCP study",
+      "status": "passed",
+      "durationMs": 2.395610999999974
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "adds HACCP and FTE time and nets increases against reductions for a dairy",
+      "fullName": "ISO 22000 audit-duration proposal adds HACCP and FTE time and nets increases against reductions for a dairy",
+      "status": "passed",
+      "durationMs": 0.9174349999999833
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "counts the first study of the primary subcategory only, across subcategories",
+      "fullName": "ISO 22000 audit-duration proposal counts the first study of the primary subcategory only, across subcategories",
+      "status": "passed",
+      "durationMs": 0.28391500000000747
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "accepts reductions up to their caps for a catering kitchen",
+      "fullName": "ISO 22000 audit-duration proposal accepts reductions up to their caps for a catering kitchen",
+      "status": "passed",
+      "durationMs": 0.3560939999999846
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "rounds the FTE up to a whole number and proposes for a chemistry plant",
+      "fullName": "ISO 22000 audit-duration proposal rounds the FTE up to a whole number and proposes for a chemistry plant",
+      "status": "passed",
+      "durationMs": 0.2666499999999985
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "asks for a manual determination where the FTE bands overlap",
+      "fullName": "ISO 22000 audit-duration proposal asks for a manual determination where the FTE bands overlap",
+      "status": "passed",
+      "durationMs": 0.15946900000000142
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "refuses inconsistent primaries, HACCP studies and reductions beyond their caps",
+      "fullName": "ISO 22000 audit-duration proposal refuses inconsistent primaries, HACCP studies and reductions beyond their caps",
+      "status": "passed",
+      "durationMs": 0.32949399999998263
+    },
+    {
+      "file": "apps/api/src/certification/certification-duration.test.ts",
+      "test": "rounds exact amounts half up to hundredths",
+      "fullName": "ISO 22000 audit-duration proposal rounds exact amounts half up to hundredths",
+      "status": "passed",
+      "durationMs": 0.38570900000001984
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.migration.test.ts",
+      "test": "accepts only the exchange events, rules and role and keeps the exchange records immutable on a database migrated from empty",
+      "fullName": "Exchange register schema accepts only the exchange events, rules and role and keeps the exchange records immutable on a database migrated from empty",
+      "status": "passed",
+      "durationMs": 3079.60023
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "lets the Company administrator set and change the procedure deadline set with a readable history, scoped to the active Company",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items lets the Company administrator set and change the procedure deadline set with a readable history, scoped to the active Company",
+      "status": "passed",
+      "durationMs": 503.0400179999997
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "records Exchange Records with every field and corrects them with a reason, deriving the deadline states",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items records Exchange Records with every field and corrects them with a reason, deriving the deadline states",
+      "status": "passed",
+      "durationMs": 8799.317595999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "refuses an exchange through \"other\" without a note, a Version not attached to the Case, a date after today, and members other than the programme manager",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items refuses an exchange through \"other\" without a note, a Version not attached to the Case, a date after today, and members other than the programme manager",
+      "status": "passed",
+      "durationMs": 9372.868609999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "raises R16 for the Stage 2 report sent before any decision and blocks the decision until an approver outside the team accepts it",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items raises R16 for the Stage 2 report sent before any decision and blocks the decision until an approver outside the team accepts it",
+      "status": "passed",
+      "durationMs": 9562.715225
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "records exchanges on certified and refused Cases",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items records exchanges on certified and refused Cases",
+      "status": "passed",
+      "durationMs": 18410.492426999997
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "lists automatic and manual Re-verification Items, withdraws a manual one with a reason and adds one from an accepted Discrepancy",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items lists automatic and manual Re-verification Items, withdraws a manual one with a reason and adds one from an accepted Discrepancy",
+      "status": "passed",
+      "durationMs": 9377.523828000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "gives another Company the missing-Case denial for the register, its commands and the register PDF, and prints the register",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items gives another Company the missing-Case denial for the register, its commands and the register PDF, and prints the register",
+      "status": "passed",
+      "durationMs": 7323.587188000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.rest.test.ts",
+      "test": "pages every Exchange Record and correction beyond 200, keeps the Stage sending met and prints every record",
+      "fullName": "Certification Case exchange register, deadlines and Re-verification Items pages every Exchange Record and correction beyond 200, keeps the Stage sending met and prints every record",
+      "status": "passed",
+      "durationMs": 27473.271125
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "meets the Stage 1 plan deadline when it is sent on S1 − 12, and meets the Stage 2 plan late when sent 7 days before",
+      "fullName": "Procedure deadline states (PRD §9.2, fixed clock) meets the Stage 1 plan deadline when it is sent on S1 − 12, and meets the Stage 2 plan late when sent 7 days before",
+      "status": "passed",
+      "durationMs": 3.203261999999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "keeps a deadline due until its due date and overdue from the next calendar day",
+      "fullName": "Procedure deadline states (PRD §9.2, fixed clock) keeps a deadline due until its due date and overdue from the next calendar day",
+      "status": "passed",
+      "durationMs": 1.0160789999999906
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "meets the audit dossier deadline only with a sending of kind audit dossier to the certification body",
+      "fullName": "Procedure deadline states (PRD §9.2, fixed clock) meets the audit dossier deadline only with a sending of kind audit dossier to the certification body",
+      "status": "passed",
+      "durationMs": 0.5623630000000048
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "marks the Stage 2 report sent too early before D, and while no decision exists",
+      "fullName": "Procedure deadline states (PRD §9.2, fixed clock) marks the Stage 2 report sent too early before D, and while no decision exists",
+      "status": "passed",
+      "durationMs": 0.6410709999999824
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "produces no state for a kind without a value, and none at all without a set",
+      "fullName": "Procedure deadline states (PRD §9.2, fixed clock) produces no state for a kind without a value, and none at all without a set",
+      "status": "passed",
+      "durationMs": 0.42424599999998236
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "waits for the anchor of a deadline whose record is not recorded yet",
+      "fullName": "Procedure deadline states (PRD §9.2, fixed clock) waits for the anchor of a deadline whose record is not recorded yet",
+      "status": "passed",
+      "durationMs": 0.23299000000000092
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "keeps a sending recorded before the decision early after a correction of its reference or note only",
+      "fullName": "Exchange chronology across corrections keeps a sending recorded before the decision early after a correction of its reference or note only",
+      "status": "passed",
+      "durationMs": 0.6297639999999944
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "dates the sending from the correction that changes a transmission fact",
+      "fullName": "Exchange chronology across corrections dates the sending from the correction that changes a transmission fact",
+      "status": "passed",
+      "durationMs": 0.23077599999999165
+    },
+    {
+      "file": "apps/api/src/certification/certification-exchanges.test.ts",
+      "test": "reads the latest version of each record, in sequence order",
+      "fullName": "Exchange Record versions reads the latest version of each record, in sequence order",
+      "status": "passed",
+      "durationMs": 0.32568800000001374
+    },
+    {
+      "file": "apps/api/src/certification/certification-findings.rest.test.ts",
+      "test": "follows a Stage 1 nonconformity to verification before Stage 2, then a major one before the recommendation",
+      "fullName": "Certification Case Findings and nonconformities follows a Stage 1 nonconformity to verification before Stage 2, then a major one before the recommendation",
+      "status": "passed",
+      "durationMs": 4889.926583
+    },
+    {
+      "file": "apps/api/src/certification/certification-findings.rest.test.ts",
+      "test": "refuses an unchanged response and a verification after the six-month limit",
+      "fullName": "Certification Case Findings and nonconformities refuses an unchanged response and a verification after the six-month limit",
+      "status": "passed",
+      "durationMs": 1834.9759939999985
+    },
+    {
+      "file": "apps/api/src/certification/certification-findings.rest.test.ts",
+      "test": "refuses unsupported classifications, missing or foreign evidence and out-of-order follow-up, and lets the approver reclassify",
+      "fullName": "Certification Case Findings and nonconformities refuses unsupported classifications, missing or foreign evidence and out-of-order follow-up, and lets the approver reclassify",
+      "status": "passed",
+      "durationMs": 3264.9598849999984
+    },
+    {
+      "file": "apps/api/src/certification/certification-findings.rest.test.ts",
+      "test": "accepts an opportunity for improvement without clause or area, but not other Findings",
+      "fullName": "Certification Case Findings and nonconformities accepts an opportunity for improvement without clause or area, but not other Findings",
+      "status": "passed",
+      "durationMs": 1610.0666130000009
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses an application recorded before its date and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses an application recorded before its date and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3242.8159530000003
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses an audit team with first-format boolean declarations and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses an audit team with first-format boolean declarations and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3946.3939999999993
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses a team decision recorded before the attestation and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses a team decision recorded before the attestation and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 4022.8935250000013
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses a dossier review recorded before the attestation and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses a dossier review recorded before the attestation and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3737.741247
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses a dossier review read as not attested and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses a dossier review read as not attested and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 4198.432739000002
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses a Case receipt recorded before exchange pagination and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses a Case receipt recorded before exchange pagination and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3591.504442999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses a Case receipt recorded before the Certificate release and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses a Case receipt recorded before the Certificate release and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3673.305354
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "refuses a Case receipt whose release has no validity and asks to recreate the development database",
+      "fullName": "Certification payload current-shape migration refuses a Case receipt whose release has no validity and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3385.282160999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-payloads-current-shape.migration.test.ts",
+      "test": "applies over current-shape steps and receipts and leaves them byte-identical",
+      "fullName": "Certification payload current-shape migration applies over current-shape steps and receipts and leaves them byte-identical",
+      "status": "passed",
+      "durationMs": 3665.954095000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "records the application date and the review made on behalf of the certification body with its signed form",
+      "fullName": "Certification acts on behalf of the certification body records the application date and the review made on behalf of the certification body with its signed form",
+      "status": "passed",
+      "durationMs": 750.1162629999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "requires an impartiality analysis after a declared consultant and keeps a declaration to verify from approval",
+      "fullName": "Certification acts on behalf of the certification body requires an impartiality analysis after a declared consultant and keeps a declaration to verify from approval",
+      "status": "passed",
+      "durationMs": 1010.970703
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "refuses an act on behalf of the certification body dated after the latest business date",
+      "fullName": "Certification acts on behalf of the certification body refuses an act on behalf of the certification body dated after the latest business date",
+      "status": "passed",
+      "durationMs": 1104.2411790000006
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "keeps the duration approval made on behalf of the certification body",
+      "fullName": "Certification acts on behalf of the certification body keeps the duration approval made on behalf of the certification body",
+      "status": "passed",
+      "durationMs": 244.36514700000043
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "refuses to read an audit team with first-format boolean declarations, an earlier shape, instead of defaulting it",
+      "fullName": "Certification acts on behalf of the certification body refuses to read an audit team with first-format boolean declarations, an earlier shape, instead of defaulting it",
+      "status": "passed",
+      "durationMs": 843.1452989999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "refuses to read a team decision without the independence attestation, an earlier shape, instead of defaulting it",
+      "fullName": "Certification acts on behalf of the certification body refuses to read a team decision without the independence attestation, an earlier shape, instead of defaulting it",
+      "status": "passed",
+      "durationMs": 1132.4737989999994
+    },
+    {
+      "file": "apps/api/src/certification/certification-pilot-fit.rest.test.ts",
+      "test": "refuses to read a dossier review without the independence attestation, an earlier shape, instead of defaulting it",
+      "fullName": "Certification acts on behalf of the certification body refuses to read a dossier review without the independence attestation, an earlier shape, instead of defaulting it",
+      "status": "passed",
+      "durationMs": 4579.869908000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "lets a reader download the register of every step version and referenced Document Version, without recording Activity",
+      "fullName": "Certification Case dossier register lets a reader download the register of every step version and referenced Document Version, without recording Activity",
+      "status": "passed",
+      "durationMs": 1199.4310779999996
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "renders Romanian and Russian labels with their own glyphs",
+      "fullName": "Certification Case dossier register renders Romanian and Russian labels with their own glyphs",
+      "status": "passed",
+      "durationMs": 2467.336778000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "states the issuance without a pre-circuit paragraph in every language",
+      "fullName": "Certification Case dossier register states the issuance without a pre-circuit paragraph in every language",
+      "status": "passed",
+      "durationMs": 3122.5371080000023
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "yields byte-identical PDFs for the same Case revision",
+      "fullName": "Certification Case dossier register yields byte-identical PDFs for the same Case revision",
+      "status": "passed",
+      "durationMs": 1437.715293000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "reads the whole register at one Case revision while another transaction commits",
+      "fullName": "Certification Case dossier register reads the whole register at one Case revision while another transaction commits",
+      "status": "passed",
+      "durationMs": 955.7254060000014
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "refuses an unknown language or query with a closed code",
+      "fullName": "Certification Case dossier register refuses an unknown language or query with a closed code",
+      "status": "passed",
+      "durationMs": 40.9900979999984
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.rest.test.ts",
+      "test": "answers hidden, foreign and missing Cases with the Case view denial",
+      "fullName": "Certification Case dossier register answers hidden, foreign and missing Cases with the Case view denial",
+      "status": "passed",
+      "durationMs": 195.525067999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "accepts only an optional closed language",
+      "fullName": "Certification Case dossier register accepts only an optional closed language",
+      "status": "passed",
+      "durationMs": 4.1331259999999475
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "has a non-empty label for every key in every language",
+      "fullName": "Certification Case dossier register has a non-empty label for every key in every language",
+      "status": "passed",
+      "durationMs": 10.466271000000006
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "shows an unrecognized step generically and prints user texts as entered",
+      "fullName": "Certification Case dossier register shows an unrecognized step generically and prints user texts as entered",
+      "status": "passed",
+      "durationMs": 973.6482369999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "has a non-empty consistency label for every key in every language",
+      "fullName": "Certification Case dossier register has a non-empty consistency label for every key in every language",
+      "status": "passed",
+      "durationMs": 6.342008000000078
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "lists the open and resolved Discrepancies with their values, sources and resolution",
+      "fullName": "Certification Case dossier register lists the open and resolved Discrepancies with their values, sources and resolution",
+      "status": "passed",
+      "durationMs": 2160.9179510000004
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "lists the Exchange Records with their deadline states at generation time and the Re-verification Items",
+      "fullName": "Certification Case dossier register lists the Exchange Records with their deadline states at generation time and the Re-verification Items",
+      "status": "passed",
+      "durationMs": 2054.0044129999997
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "wraps long texts and tables within the page and repeats the notice on every page",
+      "fullName": "Certification Case dossier register wraps long texts and tables within the page and repeats the notice on every page",
+      "status": "passed",
+      "durationMs": 1420.2788949999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "refuses text the bundled fonts cannot draw exactly",
+      "fullName": "Certification Case dossier register refuses text the bundled fonts cannot draw exactly",
+      "status": "passed",
+      "durationMs": 4.55259500000011
+    },
+    {
+      "file": "apps/api/src/certification/certification-register.test.ts",
+      "test": "refuses a register longer than the page bound",
+      "fullName": "Certification Case dossier register refuses a register longer than the page bound",
+      "status": "passed",
+      "durationMs": 1794.222922
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.migration.test.ts",
+      "test": "refuses a Certificate stored without an issue date and an approved draft and asks to recreate the development database",
+      "fullName": "Certificate release migrations refuses a Certificate stored without an issue date and an approved draft and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3545.8055390000004
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.migration.test.ts",
+      "test": "refuses a Certificate stored without the independence attestation and asks to recreate the development database",
+      "fullName": "Certificate release migrations refuses a Certificate stored without the independence attestation and asks to recreate the development database",
+      "status": "passed",
+      "durationMs": 3883.6859910000003
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.migration.test.ts",
+      "test": "requires the issue date, approved draft and attestation on every Certificate and keeps release records immutable",
+      "fullName": "Certificate release migrations requires the issue date, approved draft and attestation on every Certificate and keeps release records immutable",
+      "status": "passed",
+      "durationMs": 3510.725319
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "revises an issued Certificate while preserving its original number and validity",
+      "fullName": "Certificate release revises an issued Certificate while preserving its original number and validity",
+      "status": "passed",
+      "durationMs": 10073.704083
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "keeps post-issuance text corrections pending until a revision applies the matching Data and Decision",
+      "fullName": "Certificate release keeps post-issuance text corrections pending until a revision applies the matching Data and Decision",
+      "status": "passed",
+      "durationMs": 10911.943212999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "records an exact draft only after a grant and preserves its decision and data versions",
+      "fullName": "Certificate release records an exact draft only after a grant and preserves its decision and data versions",
+      "status": "passed",
+      "durationMs": 7733.974096000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "requires an opinion and explicit confirmations, then issues only the approved number and bounded issue date",
+      "fullName": "Certificate release requires an opinion and explicit confirmations, then issues only the approved number and bounded issue date",
+      "status": "passed",
+      "durationMs": 10357.193282
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "requires a new draft after requested changes, then the new matching data and same-outcome decision versions",
+      "fullName": "Certificate release requires a new draft after requested changes, then the new matching data and same-outcome decision versions",
+      "status": "passed",
+      "durationMs": 12699.792333000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "derives transmission from the exact issued Version and client sending, including corrected exchanges",
+      "fullName": "Certificate release derives transmission from the exact issued Version and client sending, including corrected exchanges",
+      "status": "passed",
+      "durationMs": 8388.040656000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "raises R13 privately and preserves unique issuance when two approved Cases race for one number",
+      "fullName": "Certificate release raises R13 privately and preserves unique issuance when two approved Cases race for one number",
+      "status": "passed",
+      "durationMs": 17870.343873000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "replays the original draft response and refuses stale commands without extra events",
+      "fullName": "Certificate release replays the original draft response and refuses stale commands without extra events",
+      "status": "passed",
+      "durationMs": 5159.605240000004
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "gives another Company the same missing-Case denial for release reads, commands and PDF",
+      "fullName": "Certificate release gives another Company the same missing-Case denial for release reads, commands and PDF",
+      "status": "passed",
+      "durationMs": 4478.330796000009
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "records agreement from the exact received client opinion and invalidates approval on a later identical-text data version",
+      "fullName": "Certificate release records agreement from the exact received client opinion and invalidates approval on a later identical-text data version",
+      "status": "passed",
+      "durationMs": 7124.551967000007
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "keeps a same-clock later Company issuance out of the earlier clean draft history and preserves accepted pairs",
+      "fullName": "Certificate release keeps a same-clock later Company issuance out of the earlier clean draft history and preserves accepted pairs",
+      "status": "passed",
+      "durationMs": 12641.41388800001
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "attributes a same-clock already-issued number to the new draft that first states it",
+      "fullName": "Certificate release attributes a same-clock already-issued number to the new draft that first states it",
+      "status": "passed",
+      "durationMs": 10859.07617900001
+    },
+    {
+      "file": "apps/api/src/certification/certification-release.rest.test.ts",
+      "test": "reapproves a corrected opinion on the same business date while a still-valid approval remains a no-op",
+      "fullName": "Certificate release reapproves a corrected opinion on the same business date while a still-valid approval remains a no-op",
+      "status": "passed",
+      "durationMs": 5839.118908000004
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.migration.test.ts",
+      "test": "keeps scoped Certificate Revisions immutable and checked and the issued Certificate fixed on a database migrated from empty",
+      "fullName": "Certificate Revision schema keeps scoped Certificate Revisions immutable and checked and the issued Certificate fixed on a database migrated from empty",
+      "status": "passed",
+      "durationMs": 12101.404277
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "records an explicit false mark answer and shows the warning beside its revision in the real register PDF",
+      "fullName": "Certificate Revisions records an explicit false mark answer and shows the warning beside its revision in the real register PDF",
+      "status": "passed",
+      "durationMs": 8734.913105
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "keeps every exact PDF readable and assigns a separate sent client exchange to each revision",
+      "fullName": "Certificate Revisions keeps every exact PDF readable and assigns a separate sent client exchange to each revision",
+      "status": "passed",
+      "durationMs": 9154.646074999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "refuses changed fixed fields, absent answers, reused Versions and foreign or wrong-role PDFs without an event",
+      "fullName": "Certificate Revisions refuses changed fixed fields, absent answers, reused Versions and foreign or wrong-role PDFs without an event",
+      "status": "passed",
+      "durationMs": 14729.091209999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "fixes all non-text Decision facts after issuance and refuses mismatched or unchanged corrections",
+      "fullName": "Certificate Revisions fixes all non-text Decision facts after issuance and refuses mismatched or unchanged corrections",
+      "status": "passed",
+      "durationMs": 6354.462484999996
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "requires independent live approver authority, validates an act on behalf, and gives hidden Cases the missing denial",
+      "fullName": "Certificate Revisions requires independent live approver authority, validates an act on behalf, and gives hidden Cases the missing denial",
+      "status": "passed",
+      "durationMs": 8297.224721999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "serializes index races and replays the exact first response after later revisions without new events",
+      "fullName": "Certificate Revisions serializes index races and replays the exact first response after later revisions without new events",
+      "status": "passed",
+      "durationMs": 8024.664678000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "rolls back revision, Case head and receipt when the final event fails, then retries the same key once",
+      "fullName": "Certificate Revisions rolls back revision, Case head and receipt when the final event fails, then retries the same key once",
+      "status": "passed",
+      "durationMs": 7521.711299999995
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "denies revision and receipt replay when revocation commits before the live grant check",
+      "fullName": "Certificate Revisions denies revision and receipt replay when revocation commits before the live grant check",
+      "status": "passed",
+      "durationMs": 7033.413444000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-revisions.rest.test.ts",
+      "test": "finds a revision transmission beyond 200 exchanges and re-evaluates the current corrected exchange",
+      "fullName": "Certificate Revisions finds a revision transmission beyond 200 exchanges and re-evaluates the current corrected exchange",
+      "status": "passed",
+      "durationMs": 27802.409905000008
+    },
+    {
+      "file": "apps/api/src/certification/certification-stages.rest.test.ts",
+      "test": "plans and reports both Stages, with a justified Stage 2 deviation",
+      "fullName": "Certification Case Stage 1 and Stage 2 Audits plans and reports both Stages, with a justified Stage 2 deviation",
+      "status": "passed",
+      "durationMs": 4147.935674
+    },
+    {
+      "file": "apps/api/src/certification/certification-stages.rest.test.ts",
+      "test": "keeps Stage 2 closed after a not-ready Stage 1 until a corrected report",
+      "fullName": "Certification Case Stage 1 and Stage 2 Audits keeps Stage 2 closed after a not-ready Stage 1 until a corrected report",
+      "status": "passed",
+      "durationMs": 2721.059434999999
+    },
+    {
+      "file": "apps/api/src/certification/certification-stages.rest.test.ts",
+      "test": "refuses plans before team approval, wrong roles, incomplete document review and non-leaders",
+      "fullName": "Certification Case Stage 1 and Stage 2 Audits refuses plans before team approval, wrong roles, incomplete document review and non-leaders",
+      "status": "passed",
+      "durationMs": 3466.612463999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-team.rest.test.ts",
+      "test": "proposes a team, lets an approver outside it return and then approve a new version",
+      "fullName": "Certification Case audit team proposes a team, lets an approver outside it return and then approve a new version",
+      "status": "passed",
+      "durationMs": 1401.7846709999994
+    },
+    {
+      "file": "apps/api/src/certification/certification-team.rest.test.ts",
+      "test": "refuses compositions without one leader or without the category, and first-format boolean declarations",
+      "fullName": "Certification Case audit team refuses compositions without one leader or without the category, and first-format boolean declarations",
+      "status": "passed",
+      "durationMs": 1195.4921730000005
+    },
+    {
+      "file": "apps/api/src/certification/certification-team.rest.test.ts",
+      "test": "refuses a later team version that links a member who decided on an earlier one",
+      "fullName": "Certification Case audit team refuses a later team version that links a member who decided on an earlier one",
+      "status": "passed",
+      "durationMs": 963.5761789999997
+    },
+    {
+      "file": "apps/api/src/certification/certification-team.rest.test.ts",
+      "test": "refuses an approver on the team, a declared conflict and a programme manager without the approver role",
+      "fullName": "Certification Case audit team refuses an approver on the team, a declared conflict and a programme manager without the approver role",
+      "status": "passed",
+      "durationMs": 1702.988061
+    },
+    {
+      "file": "apps/api/src/certification/certification.fuzz.rest.test.ts",
+      "test": "keeps Company isolation, step order, decision, history, revocation and replay invariants",
+      "fullName": "Certification Case invariant fuzzing keeps Company isolation, step order, decision, history, revocation and replay invariants",
+      "status": "passed",
+      "durationMs": 2237.0565240000014
+    },
+    {
+      "file": "apps/api/src/certification/certification.migration.test.ts",
+      "test": "refuses uncaptured Certification role versions and guards Case history on a database migrated from empty",
+      "fullName": "Certification Case schema refuses uncaptured Certification role versions and guards Case history on a database migrated from empty",
+      "status": "passed",
+      "durationMs": 3254.708805
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "opens a Case, records and corrects the application, accepts the review and keeps every version",
+      "fullName": "Certification Case public REST boundary opens a Case, records and corrects the application, accepts the review and keeps every version",
+      "status": "passed",
+      "durationMs": 345.2944800000005
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "closes the Case when the review rejects the application with a reason",
+      "fullName": "Certification Case public REST boundary closes the Case when the review rejects the application with a reason",
+      "status": "passed",
+      "durationMs": 240.89699099999962
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "refuses an unanswered criterion, a review before the application and a first application with a reason",
+      "fullName": "Certification Case public REST boundary refuses an unanswered criterion, a review before the application and a first application with a reason",
+      "status": "passed",
+      "durationMs": 284.03225699999984
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "replays an exact retry, refuses a key reused for another body and a stale revision",
+      "fullName": "Certification Case public REST boundary replays an exact retry, refuses a key reused for another body and a stale revision",
+      "status": "passed",
+      "durationMs": 164.86487399999987
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "refuses a duplicate order reference and a legal entity of another Client",
+      "fullName": "Certification Case public REST boundary refuses a duplicate order reference and a legal entity of another Client",
+      "status": "passed",
+      "durationMs": 85.31548399999974
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "lets a reader consult but not mutate, and denies members without the reader grant",
+      "fullName": "Certification Case public REST boundary lets a reader consult but not mutate, and denies members without the reader grant",
+      "status": "passed",
+      "durationMs": 183.77257200000076
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "answers a Case of another Company exactly like a missing one",
+      "fullName": "Certification Case public REST boundary answers a Case of another Company exactly like a missing one",
+      "status": "passed",
+      "durationMs": 111.55960099999993
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "stops serving a member whose programme manager grant was revoked",
+      "fullName": "Certification Case public REST boundary stops serving a member whose programme manager grant was revoked",
+      "status": "passed",
+      "durationMs": 149.3997990000007
+    },
+    {
+      "file": "apps/api/src/certification/certification.rest.test.ts",
+      "test": "stops replaying and answers hidden and missing Cases alike once Project access is revoked",
+      "fullName": "Certification Case public REST boundary stops replaying and answers hidden and missing Cases alike once Project access is revoked",
+      "status": "passed",
+      "durationMs": 445.2550510000001
+    },
+    {
+      "file": "apps/api/src/certification/certification-auditor-authority.rest.test.ts",
+      "test": "refuses report replay and new Findings after auditor revocation, then restores exact replay without duplicate history",
+      "fullName": "Certification auditor authority after recorded work refuses report replay and new Findings after auditor revocation, then restores exact replay without duplicate history",
+      "status": "passed",
+      "durationMs": 1733.1804819999998
+    },
+    {
+      "file": "apps/api/src/certification/certification-auditor-authority.rest.test.ts",
+      "test": "refuses new Findings by a replaced leader despite retained Company grants and permits the newly approved leader",
+      "fullName": "Certification auditor authority after recorded work refuses new Findings by a replaced leader despite retained Company grants and permits the newly approved leader",
+      "status": "passed",
+      "durationMs": 1515.4715050000013
+    },
+    {
+      "file": "apps/api/src/certification/certification-documents.rest.test.ts",
+      "test": "keeps the signed agreement bound to its exact PDF after the source gains a newer official Version",
+      "fullName": "Certification Case signed originals and agreement keeps the signed agreement bound to its exact PDF after the source gains a newer official Version",
+      "status": "passed",
+      "durationMs": 1003.1546309999994
+    }
+  ],
+  "counts": {
+    "uniqueTests": 170,
+    "passed": 170,
+    "restTests": 90,
+    "migrationTests": 17
+  }
+}

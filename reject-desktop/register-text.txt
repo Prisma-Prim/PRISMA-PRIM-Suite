@@ -1,0 +1,106 @@
+Registru generat al dosarului, nu un formular oficial al organismului de certificare. Însoțește originalele
+semnate și nu înlocuiește niciunul dintre ele.
+
+
+Registrul dosarului
+
+Dosarul de certificare
+Identificatorul dosarului               d3236bba-2093-458f-8480-6637edf136bb
+Referința comenzii                      AUDIT-1441-reject-desktop
+Entitatea juridică a clientului         Lactis Demo SRL
+Standard                                ISO 22000:2018
+Tipul auditului                         Certificare inițială
+Stare                                   Cerere respinsă
+Revizia dosarului                       15
+Deschis la                              2026-11-17 19:27:16 UTC
+Revizie atinsă la                       2026-11-17 19:27:33 UTC
+
+
+Versiuni înregistrate
+Cerere — versiunea 1
+Înregistrat la                          2026-11-17 19:27:18 UTC
+Înregistrat de                          Ada Ionescu
+Cerere datată                           2026-10-03
+Denumirea juridică declarată            Lactis Demo SRL
+Categoriile lanțului alimentar          CI
+Personal efectiv (ENI)                  40
+Studii HACCP                            2
+
+Analiza cererii — versiunea 1
+Înregistrat la                          2026-11-17 19:27:33 UTC
+Înregistrat de                          Ada Ionescu
+Rezultat                                Respinsă
+Motivul respingerii                     Exemplu fictiv: domeniul solicitat nu poate fi certificat / Учебный отказ.
+
+
+Coerența dosarului
+Set de reguli: dossier-consistency-2026-11.4. Deschise: 0 critice, 0 erori, 0 de clarificat
+Nicio neconcordanță găsită de setul de reguli dossier-consistency-2026-11.4.
+
+Schimburi și termene
+Niciun termen de procedură configurat.
+Niciun schimb înregistrat.
+
+Elemente de reverificat
+Începerea cel târziu a primei supravegheri se stabilește odată cu certificatul.
+Nimic de reverificat.
+
+Eliberarea certificatului
+Proiect: Neînregistrat
+Opinia clientului: Neînregistrat
+Aprobarea proiectului: Neînregistrat
+Emiterea: Neînregistrat
+Transmiterea: Neînregistrat
+
+Versiuni de documente referite
+Rol               Document                     Versiunea documentului                 SHA-256
+Chestionar        Fictional signed             20678687-5651-4d46-bd32-13e96567e41f   ed5bbbd62e0a5d77042803266e0c679ceaf
+                  questionnaire                                                       de1a37d5566ccefe41d803bb8568d
+                  questionnaire.pdf
+Contract          Fictional signed             5af4d860-68e8-499b-9de5-e2adb0150798   ed5bbbd62e0a5d77042803266e0c679ceaf
+                  certification agreement                                             de1a37d5566ccefe41d803bb8568d
+                  agreement.pdf
+
+
+Pagina 1
+Registru generat al dosarului, nu un formular oficial al organismului de certificare. Însoțește originalele
+semnate și nu înlocuiește niciunul dintre ele.
+
+
+Rol              Document                      Versiunea documentului                 SHA-256
+Plan de audit    Fictional Stage 1 plan        70878aae-3961-490c-a417-e2e5446b278f   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 plan1.pdf                                                            de1a37d5566ccefe41d803bb8568d
+
+Raport de        Fictional Stage 1 report      454ed6e4-dee6-4055-96f9-76d469169a55   ed5bbbd62e0a5d77042803266e0c679ceaf
+audit            report1.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Plan de audit    Fictional Stage 2 plan        7ea0d123-a4c1-4237-98a2-cbd2b0a571fe   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 plan2.pdf                                                            de1a37d5566ccefe41d803bb8568d
+
+Raport de        Fictional Stage 2 report      58c04379-8f1b-4376-adfe-6e83a3a390a6   ed5bbbd62e0a5d77042803266e0c679ceaf
+audit            report2.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Dovadă           Fictional receiving           44d3ee59-25b1-439c-9018-2b25f45dd19b   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 evidence                                                             de1a37d5566ccefe41d803bb8568d
+                 evidence.pdf
+Datele           Fictional agreed              b9068c17-df85-4e35-867d-54c321069737   ed5bbbd62e0a5d77042803266e0c679ceaf
+certificatului   Certificate data                                                     de1a37d5566ccefe41d803bb8568d
+                 certificateData.pdf
+Proiectul        Fictional Certificate draft   249f9ecc-39aa-4477-a9d3-ab7bc8d8f172   905bb3fc568405355affa0e153c0733fb504
+certificatului   DEMO-0001                                                            123af1c0fd0ecf70101cb0446605
+                 draft.pdf
+Opinia           Fictional client opinion      bd455413-beb9-44b7-9a57-815a2d5421f0   ed5bbbd62e0a5d77042803266e0c679ceaf
+clientului       opinion.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Certificat       Fictional Certificate         e9c185f6-7e6d-43d5-bd51-6de14dc9c51d   0062b5a1998c1d565b4291e3c1f23cf4809
+                 DEMO-0001                                                            136066985583fc80ca3994720577b
+                 certificate.pdf
+Certificat       Fictional Certificate         c58f875d-5801-49f2-a0e2-9e810b1175f2   905bb3fc568405355affa0e153c0733fb504
+                 revision 1                                                           123af1c0fd0ecf70101cb0446605
+                 revision.pdf
+
+
+
+
+Pagina 2
+

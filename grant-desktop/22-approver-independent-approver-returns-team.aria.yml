@@ -1,0 +1,17 @@
+- form "Înregistrați decizia":
+  - paragraph: "Decideți asupra versiunii 1 a echipei: aprobați-o sau returnați-o managerului de program cu un motiv."
+  - group "Decizie":
+    - text: Decizie
+    - radio "Aprobați echipa"
+    - text: Aprobați echipa
+    - radio "Returnați echipa" [checked]
+    - text: Returnați echipa
+  - text: Motivul returnării
+  - textbox "Motivul returnării": "Exemplu fictiv: precizați competența șefului echipei."
+  - group "Decizia privind echipa de către organismul de certificare":
+    - text: Decizia privind echipa de către organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - checkbox "Atest că persoana care decide asupra acestei echipe nu este membru al echipei de audit." [checked]
+  - text: Atest că persoana care decide asupra acestei echipe nu este membru al echipei de audit.
+  - button "Înregistrați decizia"

@@ -1,0 +1,14 @@
+[
+  {
+    "actor": "manager",
+    "operation": "/api/projects/{id}/certification-cases",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/application",
+    "status": 201,
+    "source": "browser"
+  }
+]

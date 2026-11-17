@@ -1,0 +1,158 @@
+[
+  {
+    "variant": "grant",
+    "width": "desktop",
+    "executedCaptures": 88,
+    "publishedCaptures": 27,
+    "summary": {
+      "reference": "AUDIT-1441-grant-desktop",
+      "locale": "ro",
+      "width": "desktop",
+      "status": "certified",
+      "certificate": {
+        "number": "DEMO-0001",
+        "validFrom": "2026-11-17",
+        "validUntil": "2029-11-16",
+        "firstSurveillanceBy": "2027-11-17"
+      },
+      "revisionIndex": 1,
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "grant",
+    "width": "narrow",
+    "executedCaptures": 88,
+    "publishedCaptures": 27,
+    "summary": {
+      "reference": "AUDIT-1441-grant-narrow",
+      "locale": "ru",
+      "width": "narrow",
+      "status": "certified",
+      "certificate": {
+        "number": "DEMO-0001",
+        "validFrom": "2026-11-17",
+        "validUntil": "2029-11-16",
+        "firstSurveillanceBy": "2027-11-17"
+      },
+      "revisionIndex": 1,
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "refuse",
+    "width": "desktop",
+    "executedCaptures": 63,
+    "publishedCaptures": 4,
+    "summary": {
+      "reference": "AUDIT-1441-refuse-desktop",
+      "locale": "ro",
+      "width": "desktop",
+      "variant": "refuse",
+      "status": "refused",
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "certificate": null,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "refuse",
+    "width": "narrow",
+    "executedCaptures": 63,
+    "publishedCaptures": 4,
+    "summary": {
+      "reference": "AUDIT-1441-refuse-narrow",
+      "locale": "ru",
+      "width": "narrow",
+      "variant": "refuse",
+      "status": "refused",
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "certificate": null,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "reject",
+    "width": "desktop",
+    "executedCaptures": 17,
+    "publishedCaptures": 4,
+    "summary": {
+      "reference": "AUDIT-1441-reject-desktop",
+      "locale": "ro",
+      "width": "desktop",
+      "variant": "reject",
+      "status": "rejected",
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "certificate": null,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "reject",
+    "width": "narrow",
+    "executedCaptures": 17,
+    "publishedCaptures": 4,
+    "summary": {
+      "reference": "AUDIT-1441-reject-narrow",
+      "locale": "ru",
+      "width": "narrow",
+      "variant": "reject",
+      "status": "rejected",
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "certificate": null,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "context",
+    "width": "desktop",
+    "executedCaptures": 12,
+    "publishedCaptures": 3,
+    "summary": {
+      "reference": "AUDIT-1441-context-desktop",
+      "locale": "ro",
+      "width": "desktop",
+      "variant": "context",
+      "status": "open",
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "pendingReadRetired": true,
+      "unchangedCaseRevision": 2,
+      "apiCheckpoints": []
+    }
+  },
+  {
+    "variant": "context",
+    "width": "narrow",
+    "executedCaptures": 12,
+    "publishedCaptures": 3,
+    "summary": {
+      "reference": "AUDIT-1441-context-narrow",
+      "locale": "ru",
+      "width": "narrow",
+      "variant": "context",
+      "status": "open",
+      "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+      "auditVerdict": "passed",
+      "allBusinessActsViaUi": true,
+      "pendingReadRetired": true,
+      "unchangedCaseRevision": 2,
+      "apiCheckpoints": []
+    }
+  }
+]

@@ -1,0 +1,24 @@
+- form "Проверить выполнение по наблюдению 1":
+  - paragraph: Запишите, когда и как проверено выполнение, результативно ли оно, и необязательные свидетельства.
+  - text: Дата проверки
+  - textbox "Дата проверки": 2026-11-12
+  - group "Метод проверки":
+    - text: Метод проверки
+    - radio "Анализ документов" [checked]
+    - text: Анализ документов
+    - radio "На месте"
+    - text: На месте
+  - group "Результативность":
+    - text: Результативность
+    - radio "Результативно"
+    - text: Результативно
+    - radio "Нерезультативно" [checked]
+    - text: Нерезультативно
+  - text: Примечание к проверке
+  - textbox "Примечание к проверке": "Verificare fictivă: dovezile NU demonstrează implementarea eficace."
+  - group "Свидетельства":
+    - text: Свидетельства PDF, приложенные к этому делу с ролью «Свидетельство», не более десяти.
+    - checkbox "Fictional receiving evidence — версия 1 (evidence.pdf)" [checked]
+    - text: Fictional receiving evidence — версия 1 (evidence.pdf)
+  - button "Записать проверку"
+  - button "Отмена"

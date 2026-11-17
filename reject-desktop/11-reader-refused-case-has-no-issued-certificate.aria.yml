@@ -1,0 +1,28 @@
+- region "Eliberarea certificatului":
+  - heading "Eliberarea certificatului" [level=5]
+  - paragraph: Eliberarea este doar pentru citire pentru acest membru.
+  - list:
+    - listitem:
+      - heading "Proiect" [level=6]
+      - paragraph: Nu este înregistrat niciun proiect de certificat.
+    - listitem:
+      - heading "Opinia clientului" [level=6]
+      - paragraph: Neînregistrat
+    - listitem:
+      - heading "Aprobare" [level=6]
+      - paragraph: Neînregistrat
+      - list:
+        - listitem: Este necesară o decizie de acordare a certificării.
+        - listitem: Înregistrează mai întâi un proiect de certificat.
+        - listitem: Înregistrează opinia clientului sau motivul omiterii pentru acest proiect.
+    - listitem:
+      - heading "Emitere" [level=6]
+      - paragraph: Neînregistrat
+      - list:
+        - listitem: Este necesară o decizie de acordare a certificării.
+        - listitem: Înregistrează mai întâi un proiect de certificat.
+        - listitem: Înregistrează opinia clientului sau motivul omiterii pentru acest proiect.
+        - listitem: Proiectul curent trebuie aprobat înainte de emitere.
+    - listitem:
+      - heading "Transmitere" [level=6]
+      - paragraph: Neînregistrat

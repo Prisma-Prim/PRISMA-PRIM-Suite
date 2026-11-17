@@ -1,0 +1,132 @@
+- form "Înregistrați analiza dosarului":
+  - paragraph: "Un aprobator care nu face parte din echipa de audit răspunde pentru fiecare element al dosarului: prezent, lipsă sau nu se aplică. Nimic nu este preselectat; un element lipsă necesită o notă. Această analiză este distinctă de registrul documentelor."
+  - group "Cerere":
+    - text: Cerere
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Analiza cererii":
+    - text: Analiza cererii
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Durata auditului":
+    - text: Durata auditului
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Contract de certificare":
+    - text: Contract de certificare
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Aprobarea echipei de audit":
+    - text: Aprobarea echipei de audit
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Planul de audit al etapei 1":
+    - text: Planul de audit al etapei 1
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Raportul de audit al etapei 1":
+    - text: Raportul de audit al etapei 1
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Planul de audit al etapei 2":
+    - text: Planul de audit al etapei 2
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Raportul de audit al etapei 2":
+    - text: Raportul de audit al etapei 2
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Listele participanților":
+    - text: Listele participanților
+    - radio "Prezent"
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică" [checked]
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Urmărirea neconformităților":
+    - text: Urmărirea neconformităților
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Recomandarea echipei":
+    - text: Recomandarea echipei
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - group "Datele certificatului convenite cu clientul":
+    - text: Datele certificatului convenite cu clientul
+    - radio "Prezent" [checked]
+    - text: Prezent
+    - radio "Lipsă"
+    - text: Lipsă
+    - radio "Nu se aplică"
+    - text: Nu se aplică Notă
+    - textbox "Notă"
+  - text: Concluzia analizei
+  - textbox "Concluzia analizei": Dosar fictiv verificat integral; neconformitatea majoră este închisă cu dovezi.
+  - group "Evaluatorul dosarului pentru organismul de certificare":
+    - text: Evaluatorul dosarului pentru organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - group "Aprobatorul pentru organismul de certificare":
+    - text: Aprobatorul pentru organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - checkbox "Atest că evaluatorul dosarului și aprobatorul nu sunt membri ai echipei de audit." [checked]
+  - text: Atest că evaluatorul dosarului și aprobatorul nu sunt membri ai echipei de audit.
+  - button "Înregistrați analiza"

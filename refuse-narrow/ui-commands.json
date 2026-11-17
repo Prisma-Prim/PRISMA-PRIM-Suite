@@ -1,0 +1,230 @@
+[
+  {
+    "actor": "manager",
+    "operation": "/api/projects/{id}/certification-cases",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/application",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/documents",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/application-review",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/duration-proposal",
+    "status": 200,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/duration",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/agreement",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/team",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "approver",
+    "operation": "/api/certification-cases/{id}/team-decision",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/team",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "approver",
+    "operation": "/api/certification-cases/{id}/team-decision",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/stages/stage-1/plan",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/stages/stage-1/report",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/stages/stage-1/report",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/stages/stage-2/plan",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/stages/stage-2/report",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings/{id}/response",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings/{id}/plan-judgment",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings/{id}/verification",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings/{id}/response",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings/{id}/plan-judgment",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/findings/{id}/verification",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "auditor",
+    "operation": "/api/certification-cases/{id}/recommendation",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "manager",
+    "operation": "/api/certification-cases/{id}/certificate-data",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "approver",
+    "operation": "/api/certification-cases/{id}/dossier-review",
+    "status": 201,
+    "source": "browser"
+  },
+  {
+    "actor": "approver",
+    "operation": "/api/certification-cases/{id}/decision",
+    "status": 201,
+    "source": "browser"
+  }
+]

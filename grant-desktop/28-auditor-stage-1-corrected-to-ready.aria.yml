@@ -1,0 +1,27 @@
+- form "Corectați raportul etapei 1":
+  - paragraph: O corectare înregistrează o versiune nouă cu motivul ei. Versiunile anterioare rămân în cronologie.
+  - paragraph: "Înregistrați concluzia etapei 1: analiza documentației finalizată, dacă clientul este pregătit pentru etapa 2 și pe ce temei, cu raportul și lista participanților atașate."
+  - text: Data raportului
+  - textbox "Data raportului": 2026-10-16
+  - checkbox "Analiza documentației este finalizată" [checked]
+  - text: Analiza documentației este finalizată
+  - group "Pregătirea pentru etapa 2":
+    - text: Pregătirea pentru etapa 2
+    - radio "Pregătit pentru etapa 2" [checked]
+    - text: Pregătit pentru etapa 2
+    - radio "Nepregătit pentru etapa 2"
+    - text: Nepregătit pentru etapa 2
+  - text: Temeiul concluziei
+  - textbox "Temeiul concluziei": "Exemplu fictiv: documentația a fost completată; pregătit pentru etapa 2."
+  - text: PDF-ul raportului de audit
+  - combobox "PDF-ul raportului de audit": Fictional Stage 1 report — versiunea 1 (report1.pdf)
+  - text: PDF-ul listei participanților
+  - combobox "PDF-ul listei participanților": Fără listă a participanților
+  - group "Aprobarea raportului de către organismul de certificare":
+    - text: Aprobarea raportului de către organismul de certificare
+    - checkbox "O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei."
+    - text: O persoană a organismului de certificare a efectuat acest act; îl înregistrez în numele ei. Rămâneți înregistrat ca membrul care l-a introdus. Indicați persoana care a acționat, funcția ei și data actului; un formular semnat atașat la dosar este opțional.
+  - text: Motivul corectării
+  - textbox "Motivul corectării": "Exemplu fictiv: condițiile de pregătire au fost remediate."
+  - button "Înregistrați corectarea"
+  - button "Anulați"

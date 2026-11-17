@@ -1,0 +1,34 @@
+[
+  {
+    "step": "30-auditor-team-leader-recommendation",
+    "actor": "auditor",
+    "locale": "ru",
+    "screenshot": "30-auditor-team-leader-recommendation-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "36-approver-grant-blocked-by-do-not-grant-recommendation",
+    "actor": "approver",
+    "locale": "ru",
+    "screenshot": "36-approver-grant-blocked-by-do-not-grant-recommendation-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "37-reader-independent-refusal-no-issued-certificate",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "37-reader-independent-refusal-no-issued-certificate-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  },
+  {
+    "step": "38-reader-refused-case-has-no-issued-certificate",
+    "actor": "reader",
+    "locale": "ru",
+    "screenshot": "38-reader-refused-case-has-no-issued-certificate-1.png",
+    "viewportWidth": 390,
+    "contentWidth": 390
+  }
+]

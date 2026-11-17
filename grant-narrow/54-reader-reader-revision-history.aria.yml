@@ -1,0 +1,40 @@
+- region "Исправления сертификата":
+  - heading "Исправления сертификата" [level=6]
+  - paragraph: Номер сертификата, юридическое лицо владельца, дата решения и срок действия остаются неизменными.
+  - list "История исправлений":
+    - listitem:
+      - heading "Выдача 0 — Заменено" [level=6]
+      - paragraph:
+        - text: DEMO-0001 ·
+        - time: 17 нояб. 2026 г.
+        - text: · Workspace Owner
+      - paragraph: Fictional Certificate DEMO-0001 — версия 1 (certificate.pdf)
+      - button "Открыть PDF исправления 0"
+      - paragraph:
+        - text: Запись обмена 3 — Отправлено — Сертификат ·
+        - time: 17 нояб. 2026 г.
+        - text: · Ada Ionescu · Электронная почта · FICTIONAL-sent-certificate
+    - listitem:
+      - heading "Исправление 1 — Текущее" [level=6]
+      - paragraph:
+        - time: 17 нояб. 2026 г.
+        - text: · Workspace Owner · 17 нояб. 2026 г., 20:20
+      - paragraph: "Exemplu fictiv: corectarea prezentării PDF; număr și valabilitate neschimbate."
+      - term: Независимость от аудиторской группы
+      - definition: Подтверждено участником, внёсшим запись
+      - paragraph: Fictional Certificate revision 1 — версия 1 (revision.pdf)
+      - button "Открыть PDF исправления 1"
+      - list "Тексты сертификата":
+        - listitem:
+          - term: Язык
+          - definition: ro
+          - term: Наименование держателя
+          - definition: Lactis Demo SRL
+          - term: Адрес
+          - definition: Str. Exemplu 1, Demo City
+          - term: Область
+          - definition: Producerea laptelui pasteurizat (exemplu)
+      - paragraph:
+        - text: Запись обмена 4 — Отправлено — Сертификат ·
+        - time: 17 нояб. 2026 г.
+        - text: · Ada Ionescu · Электронная почта · FICTIONAL-sent-revision

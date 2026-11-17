@@ -1,0 +1,24 @@
+- main:
+  - paragraph: Operational Acceptance Workspace
+  - heading "Здравствуйте, Ada Ionescu." [level=1]
+  - paragraph: Ваше рабочее пространство с более ясной перспективой.
+  - region "Ясность для движения вперёд.":
+    - button "Уменьшенное движение" [disabled]
+    - paragraph: Каждая деталь. Более ясная перспектива.
+    - heading "Ясность для движения вперёд." [level=2]
+    - paragraph: Находите Клиентов, управляйте доступом и отслеживайте зарегистрированную активность в одном рабочем пространстве.
+  - region "Ваше рабочее пространство":
+    - heading "Ваше рабочее пространство" [level=2]
+    - paragraph: Откройте доступную функцию, чтобы продолжить работу.
+    - list:
+      - listitem:
+        - link "Журнал активности Просматривайте активность, доступную в текущем контексте.":
+          - /url: "#activity"
+          - strong: Журнал активности
+          - text: Просматривайте активность, доступную в текущем контексте.
+  - region "Operational Acceptance Workspace":
+    - paragraph: Текущий контекст
+    - heading "Operational Acceptance Workspace" [level=2]
+    - term: Активная Компания
+    - definition: Other Fictional Audit Body narrow
+    - paragraph: Выберите доступную Компанию в навигации, чтобы изменить текущий контекст.

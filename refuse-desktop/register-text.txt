@@ -1,0 +1,255 @@
+Registru generat al dosarului, nu un formular oficial al organismului de certificare. Însoțește originalele
+semnate și nu înlocuiește niciunul dintre ele.
+
+
+Registrul dosarului
+
+Dosarul de certificare
+Identificatorul dosarului          81b80a4b-95f7-4b36-ad79-f1cf2406c585
+Referința comenzii                 AUDIT-1441-refuse-desktop
+Entitatea juridică a clientului    Lactis Demo SRL
+Standard                           ISO 22000:2018
+Tipul auditului                    Certificare inițială
+Stare                              Certificare refuzată
+Revizia dosarului                  37
+Deschis la                         2026-11-17 19:25:43 UTC
+Revizie atinsă la                  2026-11-17 19:27:00 UTC
+
+
+Versiuni înregistrate
+Cerere — versiunea 1
+Înregistrat la                     2026-11-17 19:25:45 UTC
+Înregistrat de                     Ada Ionescu
+Cerere datată                      2026-10-03
+Denumirea juridică declarată       Lactis Demo SRL
+Categoriile lanțului alimentar     CI
+Personal efectiv (ENI)             40
+Studii HACCP                       2
+
+Analiza cererii — versiunea 1
+Înregistrat la                     2026-11-17 19:25:59 UTC
+Înregistrat de                     Ada Ionescu
+Rezultat                           Acceptată
+
+Durata auditului — versiunea 1
+Înregistrat la                     2026-11-17 19:26:00 UTC
+Înregistrat de                     Ada Ionescu
+Audit inițial (zile-auditor)       3
+Etapa 1 la fața locului            1
+(zile-auditor)
+Etapa 2 la fața locului            2
+(zile-auditor)
+Regula de durată                   iso22000-basic-2026-11
+
+Contractul de certificare — versiunea 1
+Înregistrat la                     2026-11-17 19:26:01 UTC
+Înregistrat de                     Ada Ionescu
+Semnat la                          2026-10-08
+
+Echipa de audit — versiunea 1
+Înregistrat la                     2026-11-17 19:26:05 UTC
+Înregistrat de                     Ada Ionescu
+Membri                             Ada Ionescu (Conducătorul echipei); Expert Tehnic Demo (Expert tehnic)
+
+Decizia privind echipa — versiunea 1
+Înregistrat la                     2026-11-17 19:26:09 UTC
+Înregistrat de                     Workspace Owner
+Decizie                            Returnată
+Versiunea echipei                  1
+Motivul returnării                 Exemplu fictiv: precizați competența șefului echipei.
+
+Echipa de audit — versiunea 2
+Înregistrat la                     2026-11-17 19:26:12 UTC
+Înregistrat de                     Ada Ionescu
+Motivul corecției                  Exemplu fictiv: răspuns la returnarea independentă a echipei.
+Membri                             Ada Ionescu (Conducătorul echipei); Expert Tehnic Demo (Expert tehnic)
+
+
+Pagina 1
+Registru generat al dosarului, nu un formular oficial al organismului de certificare. Însoțește originalele
+semnate și nu înlocuiește niciunul dintre ele.
+
+
+Decizia privind echipa — versiunea 2
+Înregistrat la                     2026-11-17 19:26:15 UTC
+Înregistrat de                     Workspace Owner
+Decizie                            Aprobată
+Versiunea echipei                  2
+
+Planul etapei 1 — versiunea 1
+Înregistrat la                     2026-11-17 19:26:19 UTC
+Înregistrat de                     Ada Ionescu
+Date                               2026-10-13 – 2026-10-16
+Zile la fața locului               1
+
+Raportul etapei 1 — versiunea 1
+Înregistrat la                     2026-11-17 19:26:23 UTC
+Înregistrat de                     Ada Ionescu
+Data raportului                    2026-10-16
+Concluzie                          Nepregătit
+
+Raportul etapei 1 — versiunea 2
+Înregistrat la                     2026-11-17 19:26:28 UTC
+Înregistrat de                     Ada Ionescu
+Motivul corecției                  Exemplu fictiv: condițiile de pregătire au fost remediate.
+Data raportului                    2026-10-16
+Concluzie                          Pregătit pentru etapa 2
+
+Planul etapei 2 — versiunea 1
+Înregistrat la                     2026-11-17 19:26:32 UTC
+Înregistrat de                     Ada Ionescu
+Date                               2026-10-23 – 2026-10-26
+Zile la fața locului               2
+
+Constatare 1 (Etapa 2) — Enunț — versiunea 1
+Înregistrat la                     2026-11-17 19:26:35 UTC
+Înregistrat de                     Ada Ionescu
+Cerință                            8.5.1
+Proces sau zonă                    Recepția laptelui / Приёмка молока (fictiv)
+
+Constatare 1 (Etapa 2) — Clasificare — versiunea 1
+Înregistrat la                     2026-11-17 19:26:35 UTC
+Înregistrat de                     Ada Ionescu
+Clasificare                        Neconformitate majoră
+
+Raportul etapei 2 — versiunea 1
+Înregistrat la                     2026-11-17 19:26:37 UTC
+Înregistrat de                     Ada Ionescu
+Data raportului                    2026-10-26
+
+Constatare 1 (Etapa 2) — Răspunsul clientului — versiunea 1
+Înregistrat la                     2026-11-17 19:26:38 UTC
+Înregistrat de                     Ada Ionescu
+Primit la                          2026-11-07
+
+Constatare 1 (Etapa 2) — Evaluarea planului de acțiuni — versiunea 1
+Înregistrat la                     2026-11-17 19:26:39 UTC
+Înregistrat de                     Ada Ionescu
+Rezultat                           Adecvat
+
+Constatare 1 (Etapa 2) — Verificare — versiunea 1
+Înregistrat la                     2026-11-17 19:26:41 UTC
+Înregistrat de                     Ada Ionescu
+Verificat la                       2026-11-12
+Rezultat                           Ineficace
+
+
+
+
+Pagina 2
+Registru generat al dosarului, nu un formular oficial al organismului de certificare. Însoțește originalele
+semnate și nu înlocuiește niciunul dintre ele.
+
+
+Constatare 1 (Etapa 2) — Răspunsul clientului — versiunea 2
+Înregistrat la                          2026-11-17 19:26:42 UTC
+Înregistrat de                          Ada Ionescu
+Primit la                               2026-11-14
+
+Constatare 1 (Etapa 2) — Evaluarea planului de acțiuni — versiunea 2
+Înregistrat la                          2026-11-17 19:26:43 UTC
+Înregistrat de                          Ada Ionescu
+Rezultat                                Adecvat
+
+Constatare 1 (Etapa 2) — Verificare — versiunea 2
+Înregistrat la                          2026-11-17 19:26:45 UTC
+Înregistrat de                          Ada Ionescu
+Verificat la                            2026-11-16
+Rezultat                                Eficace
+
+Recomandarea echipei — versiunea 1
+Înregistrat la                          2026-11-17 19:26:46 UTC
+Înregistrat de                          Ada Ionescu
+Recomandare                             Neacordare
+Recomandat la                           2026-11-17
+
+Datele certificatului — versiunea 1
+Înregistrat la                          2026-11-17 19:26:50 UTC
+Înregistrat de                          Ada Ionescu
+Convenit la                             2026-11-17
+Limbi                                   ro
+
+Analiza dosarului — versiunea 1
+Înregistrat la                          2026-11-17 19:26:57 UTC
+Înregistrat de                          Workspace Owner
+Concluzie                               Dosar fictiv verificat integral; neconformitatea majoră este închisă cu dovezi.
+
+Decizia de certificare — versiunea 1
+Înregistrat la                          2026-11-17 19:27:00 UTC
+Înregistrat de                          Workspace Owner
+Decizie                                 Refuzată
+Decis la                                2026-11-17
+Decis de                                Decision Maker Demo, Head of the fictional certification body
+
+
+Coerența dosarului
+Set de reguli: dossier-consistency-2026-11.4. Deschise: 0 critice, 0 erori, 0 de clarificat
+Nicio neconcordanță găsită de setul de reguli dossier-consistency-2026-11.4.
+
+Schimburi și termene
+Niciun termen de procedură configurat.
+Niciun schimb înregistrat.
+
+Elemente de reverificat
+Începerea cel târziu a primei supravegheri se stabilește odată cu certificatul.
+Nimic de reverificat.
+
+Eliberarea certificatului
+Proiect: Neînregistrat
+Opinia clientului: Neînregistrat
+Aprobarea proiectului: Neînregistrat
+Emiterea: Neînregistrat
+Transmiterea: Neînregistrat
+
+
+
+
+Pagina 3
+Registru generat al dosarului, nu un formular oficial al organismului de certificare. Însoțește originalele
+semnate și nu înlocuiește niciunul dintre ele.
+
+
+Versiuni de documente referite
+Rol              Document                      Versiunea documentului                 SHA-256
+Chestionar       Fictional signed              4339f08a-de44-4a17-8920-28701334ecb6   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 questionnaire                                                        de1a37d5566ccefe41d803bb8568d
+                 questionnaire.pdf
+Contract         Fictional signed              b5d4d0e9-291d-4a91-8a97-ccb2bc878ca0   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 certification agreement                                              de1a37d5566ccefe41d803bb8568d
+                 agreement.pdf
+Plan de audit    Fictional Stage 1 plan        794cfa5c-41a2-4df9-8799-1bcc8fa07c46   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 plan1.pdf                                                            de1a37d5566ccefe41d803bb8568d
+
+Raport de        Fictional Stage 1 report      6b67f19e-cd61-4872-ab8f-98f12a43cb33   ed5bbbd62e0a5d77042803266e0c679ceaf
+audit            report1.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Plan de audit    Fictional Stage 2 plan        59ceff6e-a741-4d59-be64-b940a3487f79   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 plan2.pdf                                                            de1a37d5566ccefe41d803bb8568d
+
+Raport de        Fictional Stage 2 report      caa5da5f-6fec-4af4-8dc3-8431af2f3f7b   ed5bbbd62e0a5d77042803266e0c679ceaf
+audit            report2.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Dovadă           Fictional receiving           83131b54-60b8-49f7-a451-cd4703fa1689   ed5bbbd62e0a5d77042803266e0c679ceaf
+                 evidence                                                             de1a37d5566ccefe41d803bb8568d
+                 evidence.pdf
+Datele           Fictional agreed              c4fc5268-4a15-417a-8ceb-1d0ee93d7c1a   ed5bbbd62e0a5d77042803266e0c679ceaf
+certificatului   Certificate data                                                     de1a37d5566ccefe41d803bb8568d
+                 certificateData.pdf
+Proiectul        Fictional Certificate draft   00eb72ee-53b1-4c32-8b5e-0a2be94b7b4e   905bb3fc568405355affa0e153c0733fb504
+certificatului   DEMO-0001                                                            123af1c0fd0ecf70101cb0446605
+                 draft.pdf
+Opinia           Fictional client opinion      7234d82c-4c61-4fe8-9b81-98315a9602ca   ed5bbbd62e0a5d77042803266e0c679ceaf
+clientului       opinion.pdf                                                          de1a37d5566ccefe41d803bb8568d
+
+Certificat       Fictional Certificate         0826dd0f-91e3-4421-9d08-fa91b0f8ad80   0062b5a1998c1d565b4291e3c1f23cf4809
+                 DEMO-0001                                                            136066985583fc80ca3994720577b
+                 certificate.pdf
+Certificat       Fictional Certificate         879d1f87-af91-4045-9df4-dabcf12212a2   905bb3fc568405355affa0e153c0733fb504
+                 revision 1                                                           123af1c0fd0ecf70101cb0446605
+                 revision.pdf
+
+
+
+
+Pagina 4
+

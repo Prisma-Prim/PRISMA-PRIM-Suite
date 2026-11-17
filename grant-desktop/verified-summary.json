@@ -1,0 +1,17 @@
+{
+  "reference": "AUDIT-1441-grant-desktop",
+  "locale": "ro",
+  "width": "desktop",
+  "status": "certified",
+  "certificate": {
+    "number": "DEMO-0001",
+    "validFrom": "2026-11-17",
+    "validUntil": "2029-11-16",
+    "firstSurveillanceBy": "2027-11-17"
+  },
+  "revisionIndex": 1,
+  "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "auditVerdict": "passed",
+  "allBusinessActsViaUi": true,
+  "apiCheckpoints": []
+}

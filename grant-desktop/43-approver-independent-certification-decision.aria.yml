@@ -1,0 +1,33 @@
+- form "Înregistrați decizia de certificare":
+  - paragraph: Un aprobator care nu face parte din echipa de audit înregistrează decizia organismului de certificare. Până la înregistrarea certificatului, o corecție motivată îi poate schimba textele și referințele, niciodată rezultatul. Nimic nu este preselectat. O acordare indică textul certificatului acordat pentru fiecare limbă a certificatului.
+  - group "Decizie":
+    - text: Decizie
+    - radio "Certificare acordată" [checked]
+    - text: Certificare acordată
+    - radio "Certificare refuzată"
+    - text: Certificare refuzată
+  - group "Textele certificatului acordate":
+    - text: Textele certificatului acordate
+    - group "Textul certificatului 1":
+      - text: Textul certificatului 1 Limba
+      - textbox "Limba": ro
+      - text: Codul limbii acestui text al certificatului, de exemplu ro sau en; fiecare limbă o singură dată. Numele titularului
+      - textbox "Numele titularului": Lactis Demo SRL
+      - text: Adresa
+      - textbox "Adresa": Str. Exemplu 1, Demo City
+      - text: Domeniul
+      - textbox "Domeniul": Producerea laptelui pasteurizat (exemplu)
+    - button "Adăugați o limbă a certificatului"
+  - text: Data deciziei
+  - textbox "Data deciziei": 2026-11-17
+  - text: Decident
+  - textbox "Decident": Decision Maker Demo
+  - text: Funcția decidentului
+  - textbox "Funcția decidentului": Head of the fictional certification body
+  - text: Motivare
+  - textbox "Motivare": "Decizie fictivă: recomandare susținută de dosar și verificarea acțiunilor."
+  - text: Informații suplimentare folosite
+  - textbox "Informații suplimentare folosite"
+  - checkbox "Atest că decidentul nu este membru al echipei de audit." [checked]
+  - text: Atest că decidentul nu este membru al echipei de audit.
+  - button "Înregistrați decizia"

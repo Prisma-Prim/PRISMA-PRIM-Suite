@@ -1,0 +1,78 @@
+- form "Предложить группу":
+  - paragraph: Предложите участников, которые будут проводить аудит по этому делу. В группе ровно один руководитель группы, а категорией пищевой цепи клиента владеет руководитель группы или, если нет, технический эксперт. Каждый участник явно отвечает на четыре заявления о беспристрастности; ответ «нет» требует описания конфликта.
+  - group "Участник 1":
+    - text: Участник 1 Имя
+    - textbox "Имя": Ada Ionescu
+    - text: Роль в группе
+    - combobox "Роль в группе": Руководитель группы
+    - text: Участник рабочего пространства
+    - combobox "Участник рабочего пространства": Ada Ionescu (вы)
+    - text: "Необязательно. Связать можно только людей, уже известных в этом деле: вас и тех, кто записал этап или приложил документ. Связь позволяет серверу не допустить, чтобы этот человек утвердил группу."
+    - checkbox "Владеет категорией пищевой цепи клиента"
+    - text: Владеет категорией пищевой цепи клиента Компетентность
+    - textbox "Компетентность": Auditor fictiv; expertul tehnic deține categoria C.
+    - group "Заявления о беспристрастности":
+      - text: Заявления о беспристрастности
+      - group "Не оказывал(а) клиенту консультационных услуг":
+        - text: Не оказывал(а) клиенту консультационных услуг
+        - radio "Подтверждено" [checked]
+        - text: Подтверждено
+        - radio "Конфликт"
+        - text: Конфликт
+        - radio "Требует проверки"
+        - text: Требует проверки
+      - group "Не работал(а) у клиента":
+        - text: Не работал(а) у клиента
+        - radio "Подтверждено" [checked]
+        - text: Подтверждено
+        - radio "Конфликт"
+        - text: Конфликт
+        - radio "Требует проверки"
+        - text: Требует проверки
+      - group "Не участвует в управлении клиентом":
+        - text: Не участвует в управлении клиентом
+        - radio "Подтверждено" [checked]
+        - text: Подтверждено
+        - radio "Конфликт"
+        - text: Конфликт
+        - radio "Требует проверки"
+        - text: Требует проверки
+      - group "Обязался(ась) соблюдать конфиденциальность":
+        - text: Обязался(ась) соблюдать конфиденциальность
+        - radio "Подтверждено" [checked]
+        - text: Подтверждено
+        - radio "Конфликт"
+        - text: Конфликт
+        - radio "Требует проверки"
+        - text: Требует проверки
+  - button "Добавить участника"
+  - group "Анализ беспристрастности":
+    - text: "Анализ беспристрастности Необязательно: опишите, как анализировалась беспристрастность группы, с доказательствами, приложенными к делу. Анализ"
+    - textbox "Анализ"
+    - group "Доказательства, приложенные к делу":
+      - text: Доказательства, приложенные к делу
+      - checkbox "Fictional signed questionnaire — версия 1 (questionnaire.pdf)"
+      - text: Fictional signed questionnaire — версия 1 (questionnaire.pdf)
+      - checkbox "Fictional signed certification agreement — версия 1 (agreement.pdf)"
+      - text: Fictional signed certification agreement — версия 1 (agreement.pdf)
+      - checkbox "Fictional Stage 1 plan — версия 1 (plan1.pdf)"
+      - text: Fictional Stage 1 plan — версия 1 (plan1.pdf)
+      - checkbox "Fictional Stage 1 report — версия 1 (report1.pdf)"
+      - text: Fictional Stage 1 report — версия 1 (report1.pdf)
+      - checkbox "Fictional Stage 2 plan — версия 1 (plan2.pdf)"
+      - text: Fictional Stage 2 plan — версия 1 (plan2.pdf)
+      - checkbox "Fictional Stage 2 report — версия 1 (report2.pdf)"
+      - text: Fictional Stage 2 report — версия 1 (report2.pdf)
+      - checkbox "Fictional receiving evidence — версия 1 (evidence.pdf)"
+      - text: Fictional receiving evidence — версия 1 (evidence.pdf)
+      - checkbox "Fictional agreed Certificate data — версия 1 (certificateData.pdf)"
+      - text: Fictional agreed Certificate data — версия 1 (certificateData.pdf)
+      - checkbox "Fictional Certificate draft DEMO-0001 — версия 1 (draft.pdf)"
+      - text: Fictional Certificate draft DEMO-0001 — версия 1 (draft.pdf)
+      - checkbox "Fictional client opinion — версия 1 (opinion.pdf)"
+      - text: Fictional client opinion — версия 1 (opinion.pdf)
+      - checkbox "Fictional Certificate DEMO-0001 — версия 1 (certificate.pdf)"
+      - text: Fictional Certificate DEMO-0001 — версия 1 (certificate.pdf)
+      - checkbox "Fictional Certificate revision 1 — версия 1 (revision.pdf)"
+      - text: Fictional Certificate revision 1 — версия 1 (revision.pdf)
+  - button "Предложить группу"

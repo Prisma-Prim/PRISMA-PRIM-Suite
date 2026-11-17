@@ -1,0 +1,8 @@
+- region "Auditul de etapa 2":
+  - heading "Auditul de etapa 2" [level=5]
+  - heading "Plan de audit" [level=6]
+  - paragraph: Niciun plan nu este încă înregistrat pentru această etapă.
+  - paragraph: Raportul etapei 1 concluzionează că clientul nu este pregătit. Etapa 2 poate fi planificată după ce un raport corectat al etapei 1 concluzionează că clientul este pregătit.
+  - heading "Raport de audit" [level=6]
+  - paragraph: Niciun raport nu este încă înregistrat pentru această etapă.
+  - paragraph: Raportul se înregistrează după planificarea acestei etape.

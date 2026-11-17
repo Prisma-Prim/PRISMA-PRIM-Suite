@@ -1,0 +1,24 @@
+- form "Verificați implementarea constatării 1":
+  - paragraph: Înregistrați când și cum a fost verificată implementarea, dacă este eficace și dovezi opționale.
+  - text: Verificată la
+  - textbox "Verificată la": 2026-11-16
+  - group "Metoda de verificare":
+    - text: Metoda de verificare
+    - radio "Analiză documentară" [checked]
+    - text: Analiză documentară
+    - radio "La fața locului"
+    - text: La fața locului
+  - group "Eficacitate":
+    - text: Eficacitate
+    - radio "Eficace" [checked]
+    - text: Eficace
+    - radio "Neeficace"
+    - text: Neeficace
+  - text: Nota verificării
+  - textbox "Nota verificării": "Verificare fictivă: dovezile demonstrează implementarea eficace."
+  - group "Dovezi":
+    - text: Dovezi PDF-uri atașate acestui dosar cu rolul Dovadă, cel mult zece.
+    - checkbox "Fictional receiving evidence — versiunea 1 (evidence.pdf)" [checked]
+    - text: Fictional receiving evidence — versiunea 1 (evidence.pdf)
+  - button "Înregistrați verificarea"
+  - button "Anulați"

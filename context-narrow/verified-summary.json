@@ -1,0 +1,13 @@
+{
+  "reference": "AUDIT-1441-context-narrow",
+  "locale": "ru",
+  "width": "narrow",
+  "variant": "context",
+  "status": "open",
+  "source": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "auditVerdict": "passed",
+  "allBusinessActsViaUi": true,
+  "pendingReadRetired": true,
+  "unchangedCaseRevision": 2,
+  "apiCheckpoints": []
+}

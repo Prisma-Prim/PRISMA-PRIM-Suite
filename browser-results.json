@@ -1,0 +1,91 @@
+{
+  "runs": [
+    {
+      "run": "risk-full-01",
+      "title": "walks grant through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-desktop",
+      "status": "expected",
+      "durationMs": 109930
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks refuse through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-desktop",
+      "status": "unexpected",
+      "durationMs": 93784
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks reject through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-desktop",
+      "status": "unexpected",
+      "durationMs": 41211
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks context through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-desktop",
+      "status": "expected",
+      "durationMs": 14357
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks grant through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-narrow",
+      "status": "expected",
+      "durationMs": 105564
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks refuse through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-narrow",
+      "status": "unexpected",
+      "durationMs": 92724
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks reject through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-narrow",
+      "status": "unexpected",
+      "durationMs": 45495
+    },
+    {
+      "run": "risk-full-01",
+      "title": "walks context through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-narrow",
+      "status": "expected",
+      "durationMs": 14008
+    },
+    {
+      "run": "risk-refusals-02",
+      "title": "walks refuse through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-desktop",
+      "status": "expected",
+      "durationMs": 91426
+    },
+    {
+      "run": "risk-refusals-02",
+      "title": "walks reject through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-desktop",
+      "status": "expected",
+      "durationMs": 32181
+    },
+    {
+      "run": "risk-refusals-02",
+      "title": "walks refuse through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-narrow",
+      "status": "expected",
+      "durationMs": 83832
+    },
+    {
+      "run": "risk-refusals-02",
+      "title": "walks reject through the UI with a combined manager and auditor",
+      "project": "operational-acceptance-narrow",
+      "status": "expected",
+      "durationMs": 25260
+    }
+  ],
+  "finalUniqueVariantsPassed": 8,
+  "automaticRetries": 0,
+  "note": "Grant/context use risk-full-01. Refuse/reject use corrected risk-refusals-02. The earlier four driver expectation failures remain visible."
+}
