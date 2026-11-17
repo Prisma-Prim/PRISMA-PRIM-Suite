@@ -116,3 +116,33 @@ Qualify the chosen PDF and DOCX libraries against bounded, malformed and adversa
 ## 23. Readiness and blockers
 
 This contract specifies the user-authorized runtime scope; integration and verification are tracked separately by #1434. Implementation must resolve exact native seams, bounded parser behavior, source scanning and safe storage before claiming the corresponding acceptance criteria. Fictional software verification does not establish source rights, real representative quality, legal/security readiness or production activation. Existing cross-cutting authority and production promotion gates remain in force.
+
+## 25. Subscription-backed document harness — owner extension 2026-11-17
+
+Dan explicitly authorized implementation after selecting a harness used inside PRISMA and funded primarily by the user's ChatGPT subscription. This section supersedes this PRD's earlier no-model/subscription-login exclusion only for this extension. OCR remains future work; Russian and Romanian are the priority languages. No merge or deployment is authorized.
+
+### Observable outcome
+
+An authorized Project source editor connects an eligible ChatGPT account, selects an account-available model and Romanian or Russian output, deliberately starts a cited dossier review, inspects progress and limitations, pauses/resumes work, and imports the resulting proposals through the existing deterministic validator and attributed human review. No automatic canonical fact, certification, pricing or approval change occurs.
+
+### Execution and privacy contract
+
+- Use the official public Responses API with a specifically granted ChatGPT-plan OAuth scope, never ChatGPT browser endpoints, copied cookies, another app's client identity or an automatic API-key/payment fallback. A valid identity token alone grants no inference permission.
+- Hosted sign-in requires an actually provisioned client and exact HTTPS callback. Local development may use loopback. Missing configuration is visibly unavailable; non-commercial status or a public repository does not establish eligibility. This delivery does not change the repository license, submit an external interest form or activate a real account.
+- Preserve PRISMA identity and Access authority independently. Bind one-use state, nonce and S256 PKCE to the authenticated actor, Workspace, Company and Project; expire unfinished authorizations. Verify OpenAI issuer/JWKS signature, audience, expiry, nonce and granted scopes. Encrypt server-side credentials with a required operator-owned key; never send tokens to the browser, model, logs or repository. Serialize rotating-token refresh and stop use after disconnect.
+- Deliberate start discloses external processing. Bind jobs to their initiating actor, Company, Project, exact immutable run/snapshot, connection and model. Recheck live native source permissions and freshness before each external disclosure and before accepting any result. Hidden and missing resources have the same denial.
+- Divide text into bounded cited batches without destroying passage identity or offsets; retain coverage of every batch, unreadable material and any explicit omission. Derived caches remain inside the same actor/Company/Project/account/model/pipeline scope and are reused only after current authorization and matching exact inputs.
+- Persist queue/progress/checkpoints. The active authorized browser drives one bounded step at a time; closing it preserves the checkpoint and does not claim detached background execution. Serialize competing steps with a lease. An expired lease is an uncertain external attempt requiring deliberate recovery, never proof that no provider work occurred.
+- Stop on quota, expired grant, invalid output, interruption or stale source. Resume deliberately; never buy credits, switch accounts/models or fall back to paid API keys automatically. Preserve completed checkpoints and display exact analyzed/remaining coverage.
+- Validate every proposed citation against the supplied batch and exact frozen source; accept only terminal completed provider responses, not a streamed fragment. Empty valid results mean no proposal, not completeness or conformity. Import is a separate explicit idempotent command through existing suggestion ownership; reviews retain attribution.
+
+### Acceptance criteria for the extension
+
+H1. Eligible hosted OAuth flow and encrypted token lifecycle; rejected/replayed/mismatched/expired callbacks and missing inference grant fail closed.
+H2. Real PostgreSQL job lifecycle and scoped resumability, competing step exclusion, source/access change denial, account isolation and exact-input cache reuse.
+H3. Public streaming protocol: bounded input/output/time, completed-only acceptance, malformed/failed/interrupted stream and quota handling; no automatic charged fallback.
+H4. Exact parser/run provenance through cited proposal validation and deliberate native import/review; complete batch accounting and honest partial/unreadable states.
+H5. Accessible ro/ru/fr/en Project UI, account/configuration/limit errors, progress, exact retries, current-actor fencing, desktop/narrow native journey and inspected captures.
+H6. Format/lint/types, relevant native tests, independent Standards/Spec review, publication CI, execution proof and cost record. Protocol fixtures do not establish actual account eligibility, model quality or private-corpus capacity.
+
+Official references checked 2026-11-17: [Sign in with ChatGPT](https://developers.openai.com/siwc/quickstart), [hosted website flow](https://developers.openai.com/siwc/website), [plan scopes and registration](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [runtime limits](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations), and [credential lifecycle](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions). Actual hosted-client entitlement/configuration must match its provisioned contract; the open dynamic-registration loopback flow is not repurposed as hosted approval.
