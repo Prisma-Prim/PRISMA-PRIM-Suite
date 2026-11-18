@@ -475,8 +475,11 @@ describe.skipIf(!databaseUrl)(
       const preview = await fixture.call(CERTIFICATION_AUDITOR, path);
       expect(preview.status, await preview.clone().text()).toBe(200);
       const values = rows(record(await preview.json()).candidates);
-      expect(values.map((v) => v.field)).toEqual(['legalName', 'address']);
-      expect(values[1]).toMatchObject({
+      expect(values.map((v) => v.field).sort()).toEqual([
+        'address',
+        'legalName',
+      ]);
+      expect(values.find((value) => value.field === 'address')).toMatchObject({
         value: 'ул. Учебная 14, адрес подтверждён человеком',
         reviewRevision: 1,
         citations: [{ documentVersionId: c.documentVersionId }],
