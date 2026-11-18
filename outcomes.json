@@ -1,0 +1,384 @@
+{
+  "schema": "prisma-prim-native-owner-qualification/v1",
+  "classification": "Prepared fictional App/API/PostgreSQL examples; no real Client or production qualification.",
+  "issue": 1464,
+  "qualifiedRun": "1464-sequences-admitted-qualified",
+  "source": {
+    "schema": "prisma-prim-native-owner-source/v1",
+    "base": "eca7e9488ba465d2f370e56e5a37f5611508964d",
+    "head": "a07dbded72b5348d33364338c63eff2d73f2cf15",
+    "files": {
+      ".agents/skills/journey-audit/journey-map.md": "6e7d550d82b133b5d40bfc82f3c4e04dac2c13c38e94693817475b2a4c788319",
+      ".audit/1464.tsv": "ef5cfc92ce19b2bf2a4fda13f3f8e7e0ec66bcf35afb75001b21284801755159",
+      ".github/workflows/nightly-ui-chaos.yml": "978a37195b78c24485e352dae85467fbaf574a32ed79e0512481ca0877c79048",
+      "apps/web/e2e/commercial-owner-browser.fixture.ts": "4bd79c29bde2348f5817144e8a2bae29c800d0147eaffe11272658be16b248bd",
+      "apps/web/e2e/commercial-owner-sequence-source.fixture.ts": "23d9565717ef0dec129399448b91a67c6187c3ed46caec1bea77425596656b04",
+      "apps/web/e2e/native-grant-loss.fixture.ts": "92d598eadcfab1b0b4f68616bf1ca8807b6e8cfccde0ef936412168853f9d90e",
+      "apps/web/e2e/profitability-owner-action-sequences.acceptance.spec.ts": "228d803dd3fa1ce1b1b3a411ac69f02f58b1f15f301122e8ab80070d61e9a487",
+      "apps/web/e2e/profitability-owner-browser-sequences.fixture.ts": "1f83aa0c4be7a83eb08c38c9b0a7d4fb7031c233466458fec20100d806142388",
+      "apps/web/e2e/select-option.ts": "322c1f9af8e4587f600ffb586ea3eecd5e0e7b98cfc99326b79442d3e9554473",
+      "apps/web/src/api/use-captured-access-rejection.ts": "a05e4b80e797dd5d1fd7add972fbae9a010f1f3b14d8d0610853f5e9a469a9cb",
+      "apps/web/src/profitability-estimate/ProfitabilityDecisionQueue.tsx": "006f19a4b53abf7f0c45b75a8cf62c218a37ec71099848b5dd19705c1baa4fd4",
+      "apps/web/src/profitability-estimate/ProfitabilityEstimatePanel.test.tsx": "858478b1cc430f87820aef0e8662f459b2a7513ef9ce2b402c706be10b6a950b",
+      "apps/web/src/profitability-estimate/ProfitabilityEstimatePanel.tsx": "332248a25159084004532a70a9ec52302e2f6a2b4d2077e12889b928a2933fcc",
+      "eslint-suppressions.json": "3b44e65b3cb31c96960f8ebfe6be844b1077f23d6075f3efc69100e21037afbf",
+      "scripts/browser-sequences.mjs": "6d0fda2702e67e986bc5da575154e3bdab1f54573c5f080e6be080af45412cd1",
+      "scripts/browser-sequences.test.mjs": "a27989670d04df7f5c5961f60bec6d69da12f07fbc5edcb824d5576231e8f77c",
+      "scripts/nightly-ui-chaos-report.mjs": "d711842efe56261310273a8842de5fc0f6075cede7ef6b3f15edf3981ec313e0",
+      "scripts/nightly-ui-chaos-report.test.mjs": "50b0009a5b65e509550eac18713249ca7c0adf19dbe31d8a2df285e8e5338101",
+      "scripts/verify-journey.test.mjs": "b1900e0e3f0c0adb7cac4d414e6955d14b136a8af494fa930c8528a157df101f"
+    }
+  },
+  "defaultExplorationBounds": {
+    "runs": 2,
+    "maxSteps": 10,
+    "milliseconds": 60000
+  },
+  "controlledDefect": {
+    "issue": 1464,
+    "journey": "profitability-owner-action-sequences",
+    "seed": "1464001",
+    "replay": "profitability-version-owner@desktop~10~0",
+    "budgetMilliseconds": 60000,
+    "file": "apps/web/src/profitability-estimate/ProfitabilityEstimatePanel.tsx",
+    "restoredSha256": "332248a25159084004532a70a9ec52302e2f6a2b4d2077e12889b928a2933fcc",
+    "defectSha256": "8d7fec9bd64b62a6c4f1a55ef863e7d89109d1f7b7578b41a958c23eae35c525",
+    "injected": {
+      "exitCode": 1,
+      "reports": [
+        {
+          "caseId": "profitability-version-owner",
+          "width": "desktop",
+          "status": "failed",
+          "path": "0",
+          "replay": "UI_SEQUENCE_REPLAY='profitability-version-owner@desktop~10~0' pnpm verify:journey profitability-owner-action-sequences --chaos 1464001",
+          "interrupted": false,
+          "durationMilliseconds": 11172
+        }
+      ]
+    },
+    "sourceRestored": true,
+    "restored": {
+      "exitCode": 0,
+      "reports": [
+        {
+          "caseId": "profitability-version-owner",
+          "width": "desktop",
+          "status": "passed",
+          "path": "0",
+          "replay": "UI_SEQUENCE_REPLAY='profitability-version-owner@desktop~10~0' pnpm verify:journey profitability-owner-action-sequences --chaos 1464001",
+          "interrupted": false,
+          "durationMilliseconds": 17710
+        }
+      ]
+    }
+  },
+  "outcomes": [
+    {
+      "run": "1464-defect-injected",
+      "journey": "profitability-owner-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1464001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 0,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "profitability-version-owner",
+              "width": "desktop",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "failed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 11172,
+              "path": "0",
+              "coverage": {
+                "edit-explicit-cost-and-price": 1,
+                "save-confirmed-native-estimate": 0
+              },
+              "replay": "UI_SEQUENCE_REPLAY='profitability-version-owner@desktop~10~0' pnpm verify:journey profitability-owner-action-sequences --chaos 1464001"
+            }
+          ],
+          "failures": [
+            {
+              "title": "profitability-owner-action-sequences.acceptance.spec.ts \u203a generated profitability owners \u203a explores generated native profitability owner sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences profitability-version-owner@desktop: failed. expect(received).toEqual(expected) // deep equality"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1464-defect-restored",
+      "journey": "profitability-owner-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1464001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "profitability-version-owner",
+              "width": "desktop",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 17710,
+              "path": "0",
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1
+              },
+              "replay": "UI_SEQUENCE_REPLAY='profitability-version-owner@desktop~10~0' pnpm verify:journey profitability-owner-action-sequences --chaos 1464001"
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1464-sequences-admitted-qualified",
+      "journey": "profitability-owner-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1464001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "profitability-version-owner",
+              "width": "desktop",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 26617,
+              "path": null,
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1,
+                "locale:ru": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "profitability-version-owner",
+              "width": "narrow",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 22753,
+              "path": null,
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1,
+                "locale:ru": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1464-sequences-first",
+      "journey": "profitability-owner-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1464001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "profitability-version-owner",
+              "width": "desktop",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 31601,
+              "path": null,
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1,
+                "locale:ru": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "profitability-version-owner",
+              "width": "narrow",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 22541,
+              "path": null,
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1,
+                "locale:ru": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "profitability-owner-action-sequences.acceptance.spec.ts \u203a preserves literal profitability history, exact retry and stale native intentions through Company replacement",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:"
+            },
+            {
+              "title": "profitability-owner-action-sequences.acceptance.spec.ts \u203a preserves literal profitability history, exact retry and stale native intentions through Company replacement",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1464-sequences-navigation-qualified",
+      "journey": "profitability-owner-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1464001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "profitability-version-owner",
+              "width": "desktop",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 29835,
+              "path": null,
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1,
+                "locale:ru": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "profitability-version-owner",
+              "width": "narrow",
+              "seed": 1464001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 22309,
+              "path": null,
+              "coverage": {
+                "edit-explicit-cost-and-price": 2,
+                "save-confirmed-native-estimate": 1,
+                "leave-native-estimate-company": 1,
+                "return-to-native-estimate-company": 1,
+                "open-exact-earlier-estimate-version": 1,
+                "approve-exact-human-selected-version": 1,
+                "locale:ru": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "profitability-owner-action-sequences.acceptance.spec.ts \u203a preserves literal profitability history, exact retry and stale native intentions through Company replacement",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: expect(received).toBe(expected) // Object.is equality"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1464-sequences-reviewed-final",
+      "journey": "profitability-owner-action-sequences",
+      "status": "error",
+      "exitCode": 3,
+      "chaosSeed": 1464001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 0,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [],
+          "failures": []
+        }
+      ]
+    }
+  ],
+  "inspection": "Selected RO desktop/RU narrow PNGs inspected. Actual original PDF text inspected when present. Raw traces/logs remain private; full native evidence also retained by PR CI.",
+  "limits": "Finite prepared examples and bounded generated sequences; retained failed/incomplete attempts do not count as complete proof. Exact replay selects one retained case with its original seed/path. No business rule, native grant policy, schema, real data, model/provider call or deployment introduced."
+}
