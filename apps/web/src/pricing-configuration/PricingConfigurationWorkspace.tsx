@@ -1,15 +1,18 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
 import {
   useCallback,
   useEffect,
   useId,
   useRef,
+  useLayoutEffect,
   useState,
   type FormEvent,
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { holds } from '../access/company-grants';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { holds, grantOf } from '../access/company-grants';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { localInstant, type LocalInstant } from './local-instant';
@@ -123,7 +126,9 @@ type Feedback =
 
 type PublicationOutcome = Feedback | { kind: 'uncertain' };
 
-type HttpResult = { status: number; body: unknown } | { status: 'network' };
+type HttpResult = (
+  { status: number; body: unknown } | { status: 'network' }
+) & { recover?: ReturnType<typeof useCapturedAccessRejection> };
 
 const scopePath = '/pricing-configuration/rule-scope';
 const versionsPath = '/pricing-configuration/rule-versions';
@@ -146,6 +151,20 @@ export function PricingConfigurationWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      actor.active,
+      actor.workspaceId,
+      actor.internalUserId,
+      actor.workspaceMembershipId,
+      actor.activeCompany?.id,
+      identity.loaded,
+      identity.signedIn,
+      grantOf(actor.activeCompany, 'company_pricing_configuration') ?? null,
+      grantOf(actor.activeCompany, 'company_pricing_user') ?? null,
+    ]),
+  );
   const copy = usePricingConfigurationCopy();
   const [denied, setDenied] = useState(false);
   const [view, setView] = useState<ViewState>({ kind: 'loading' });
@@ -156,15 +175,23 @@ export function PricingConfigurationWorkspace({
   // explicit retry is sent, unchanged, and no other publication replaces it.
   const [unresolved, setUnresolved] = useState<Publication>();
   const fieldId = useId();
-  const loadRequest = useRef<AbortController | undefined>(undefined);
-  const olderRequest = useRef<AbortController | undefined>(undefined);
-  const commandRequest = useRef<AbortController | undefined>(undefined);
-  const rejectCompany = useRef(onCompanyContextRejected);
-  const acceptActor = useRef(onActorRevalidated);
-  const rejectWorkspace = useRef(onWorkspaceAccessRejected);
-  rejectCompany.current = onCompanyContextRejected;
-  acceptActor.current = onActorRevalidated;
-  rejectWorkspace.current = onWorkspaceAccessRejected;
+  const loadRequest = useScopedOperationGroup(`${lifetime}:loadRequest`);
+  const olderRequest = useScopedOperationGroup(`${lifetime}:olderRequest`);
+  const commandRequest = useScopedOperationGroup(`${lifetime}:commandRequest`);
+  const capturedAccess = useCapturedAccessRejection({
+    actor,
+    identity,
+    companyContextId: actor.activeCompany?.id,
+    scope: String(lifetime),
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+  });
+  const rejection = useRef(capturedAccess);
+  useLayoutEffect(() => {
+    rejection.current = capturedAccess;
+  });
+
   const companyId = actor.activeCompany?.id;
   const companyName = actor.activeCompany?.displayName ?? actor.workspaceName;
   const canPublish = holds(
@@ -190,10 +217,13 @@ export function PricingConfigurationWorkspace({
       body?: string;
       idempotencyKey?: string;
     }): Promise<HttpResult> => {
+      const recover = rejection.current;
       try {
         const token = identity.requestHeaders
           ? null
           : await identity.getToken();
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
         const workspaceId = selectedWorkspaceId();
         const response = await fetch(
           `${import.meta.env.VITE_API_URL ?? '/api'}${path}`,
@@ -212,20 +242,24 @@ export function PricingConfigurationWorkspace({
             signal,
           },
         );
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
         let responseBody: unknown;
         try {
           responseBody = await response.json();
         } catch {
           responseBody = undefined;
         }
-        return { status: response.status, body: responseBody };
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
+        return { status: response.status, body: responseBody, recover };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
           throw error;
         return { status: 'network' };
       }
     },
-    [identity],
+    [identity, lifetime],
   );
 
   const handleAccess = useCallback(
@@ -236,22 +270,12 @@ export function PricingConfigurationWorkspace({
     ): Promise<boolean> => {
       if (signal.aborted) return true;
       if (result.status === 401) {
-        await identity.rejectSession();
+        await result.recover?.({ status: 'unauthorized' }, signal);
         return true;
       }
       if (result.status !== 403) return false;
       try {
-        await handleAuthenticatedAccessRejection({
-          result: { status: 'forbidden' },
-          identity,
-          companyContextId,
-          onCompanyContextRejected: (rejectedCompanyId) =>
-            rejectCompany.current(rejectedCompanyId),
-          onActorRevalidated: (revalidatedActor) =>
-            acceptActor.current(revalidatedActor),
-          onWorkspaceAccessRejected: () => rejectWorkspace.current(),
-          signal,
-        });
+        await result.recover?.({ status: 'forbidden' }, signal);
       } finally {
         if (!signal.aborted) {
           setDenied(true);
@@ -259,14 +283,14 @@ export function PricingConfigurationWorkspace({
           setDraft(emptyDraft);
           setFeedback(undefined);
           setUnresolved(undefined);
-          loadRequest.current?.abort();
-          olderRequest.current?.abort();
-          commandRequest.current?.abort();
+          loadRequest.retire();
+          olderRequest.retire();
+          commandRequest.retire();
         }
       }
       return true;
     },
-    [identity],
+    [identity, lifetime],
   );
 
   const readRules = useCallback(
@@ -342,10 +366,10 @@ export function PricingConfigurationWorkspace({
   // at most `loadPasses` passes in all, then asks the owner to reload.
   const load = useCallback(
     async (companyContextId: string): Promise<void> => {
-      loadRequest.current?.abort();
-      olderRequest.current?.abort();
-      const controller = new AbortController();
-      loadRequest.current = controller;
+      loadRequest.retire();
+      olderRequest.retire();
+      const controller = loadRequest.beginLatest();
+      if (!controller) return;
       setView({ kind: 'loading' });
       try {
         for (let pass = 1; pass <= loadPasses; pass += 1) {
@@ -377,6 +401,8 @@ export function PricingConfigurationWorkspace({
         setView({ kind: 'changing' });
       } catch {
         if (!controller.signal.aborted) setView({ kind: 'error' });
+      } finally {
+        controller.release();
       }
     },
     [readRules],
@@ -385,7 +411,7 @@ export function PricingConfigurationWorkspace({
   useEffect(() => {
     // A new Company, membership or Workspace starts from nothing: drafts,
     // retries and every in-flight reply of the previous context are dropped.
-    commandRequest.current?.abort();
+    commandRequest.retire();
     setUnresolved(undefined);
     setDenied(false);
     setDraft(emptyDraft);
@@ -397,17 +423,17 @@ export function PricingConfigurationWorkspace({
     }
     void load(companyId);
     return () => {
-      loadRequest.current?.abort();
-      olderRequest.current?.abort();
-      commandRequest.current?.abort();
+      loadRequest.retire();
+      olderRequest.retire();
+      commandRequest.retire();
     };
   }, [actor.workspaceId, actor.workspaceMembershipId, companyId, load]);
 
   async function loadOlder(cursor: string): Promise<void> {
     if (!companyId) return;
-    olderRequest.current?.abort();
-    const controller = new AbortController();
-    olderRequest.current = controller;
+    olderRequest.retire();
+    const controller = olderRequest.beginLatest();
+    if (!controller) return;
     setView((current) =>
       current.kind === 'ready' ? { ...current, olderPage: 'loading' } : current,
     );
@@ -441,6 +467,8 @@ export function PricingConfigurationWorkspace({
             ? { ...current, olderPage: 'error' }
             : current,
         );
+    } finally {
+      controller.release();
     }
   }
 
@@ -476,9 +504,9 @@ export function PricingConfigurationWorkspace({
 
   async function send(publication: Publication): Promise<void> {
     if (!companyId) return;
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    if (commandRequest.isPending()) return;
+    const controller = commandRequest.beginLatest();
+    if (!controller) return;
     setPending(true);
     setFeedback(undefined);
     try {
@@ -507,6 +535,7 @@ export function PricingConfigurationWorkspace({
     } catch {
       if (!controller.signal.aborted) setUnresolved(publication);
     } finally {
+      controller.release();
       if (!controller.signal.aborted) setPending(false);
     }
   }
