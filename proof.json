@@ -1,0 +1,82 @@
+{
+  "kind": "actual_native_execution_on_fictional_prepared_examples",
+  "issue": 1453,
+  "codeCommit": "31f8ca16f327f3b5f06080d11c4fb4665af65049",
+  "journey": "certification-draft-preparation",
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0
+  },
+  "startedAt": "2026-11-18T10:57:48.658Z",
+  "finishedAt": "2026-11-18T10:59:24.107Z",
+  "captures": [
+    {
+      "file": "desktop-ro-preview.png",
+      "sha256": "c4b618540eca0fc42f219835f68632fda4a39c5347ddb88e97791d3bccd0c140",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Playwright Locator.screenshot, real rendered application region, original pixels"
+    },
+    {
+      "file": "desktop-ro-edited.png",
+      "sha256": "bb82f5725a937a0c24f5c5c6a8ad282537e44060ab02411f54f5020de2e273d6",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Playwright Locator.screenshot, real rendered application region, original pixels"
+    },
+    {
+      "file": "desktop-ro-saved.png",
+      "sha256": "37f95db32330b86f97ca3469e5577ca37d377ec0c4d7592bae36c8ad319eb361",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Playwright Locator.screenshot, real rendered application region, original pixels"
+    },
+    {
+      "file": "narrow-ru-preview.png",
+      "sha256": "22cb60f1130ce2d7236a71fb4341789ba29fc5c7508d273cc57d6dd3d654bebb",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Playwright Locator.screenshot, real rendered application region, original pixels"
+    },
+    {
+      "file": "narrow-ru-edited.png",
+      "sha256": "9307313c983a9f7de2220d341da73910f938b8112ec38ff87cec6e73b831aa60",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Playwright Locator.screenshot, real rendered application region, original pixels"
+    },
+    {
+      "file": "narrow-ru-saved.png",
+      "sha256": "385df729feeb5e5cc6cd225765f40b153679c65ccf3c5a655cc3da958a269520",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Playwright Locator.screenshot, real rendered application region, original pixels"
+    }
+  ],
+  "limits": [
+    "Fictional generated RU/RO DOCX, simulated test authentication and scan protocol; no private corpus or live account activation.",
+    "Three direct descriptive application fields only; no employee-count, Standard, date, declaration or decision inference.",
+    "Local draft insertion is separate from native submission and formal source adoption.",
+    "No main merge or deployment. Required PR CI pending when this local evidence was published."
+  ]
+}
