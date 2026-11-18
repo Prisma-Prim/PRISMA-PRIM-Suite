@@ -244,6 +244,40 @@ describe('Controlled application draft preparation', () => {
     expect(server.mutations()).toEqual([]);
   });
 
+  it.each([403, 404])(
+    'withholds the reviewed source preview after final access denial%s while preserving the human draft',
+    async (status) => {
+      const { server, form } = await prepared((value, index) =>
+        index === 0 ? Response.json(value) : new Response(null, { status }),
+      );
+      expect(screen.getByText('word/document.xml:p:1')).toBeVisible();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Insert selected values into draft',
+        }),
+      );
+      expect(
+        await screen.findByText(
+          'Preparation could not be read. Your draft is unchanged. Try again.',
+        ),
+      ).toBeVisible();
+      expect(screen.queryByText('word/document.xml:p:1')).toBeNull();
+      expect(screen.queryByText(/fictiv-ru-ro.docx/u)).toBeNull();
+      expect(
+        screen.queryByRole('checkbox', {
+          name: 'Use Declared legal name: Firma Fictivă SRL',
+        }),
+      ).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Preview reviewed values' }),
+      ).toBeDisabled();
+      expect(within(form).getByLabelText('Declared legal name')).toHaveValue(
+        'Protected literal draft',
+      );
+      expect(server.mutations()).toEqual([]);
+    },
+  );
+
   it('preserves text typed while the final source check is held and refuses to report an insertion', async () => {
     const held: { complete?: (response: Response) => void } = {};
     const pending = new Promise<Response>((resolve) => {
