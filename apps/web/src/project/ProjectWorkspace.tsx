@@ -2,6 +2,11 @@ import { WorkingEvidenceWorkspace } from '../working-evidence/WorkingEvidenceWor
 import { workingEvidenceAuthority } from '../working-evidence/working-evidence-access';
 import { useWorkingEvidenceCopy } from '../working-evidence/working-evidence.copy';
 import { CertificationWorkspace } from '../certification/CertificationWorkspace';
+import {
+  DossierAnalysisWorkspace,
+  dossierAnalysisAuthority,
+  useDossierAnalysisTitle,
+} from '../dossier-analysis/DossierAnalysisWorkspace';
 import { certificationAuthority } from '../certification/certification-access';
 import { useCertificationCopy } from '../certification/certification.copy';
 import { ProjectPdfBundle } from './ProjectPdfBundle';
@@ -52,7 +57,12 @@ import { useProjectDirectory } from './use-project-directory';
 import type { ProjectNavigationRequest } from './use-project-navigation';
 import './project.css';
 
-type DetailPanel = 'tasks' | 'documents' | 'working-evidence' | 'certification';
+type DetailPanel =
+  | 'tasks'
+  | 'documents'
+  | 'working-evidence'
+  | 'certification'
+  | 'dossier-analysis';
 /** Either the free-text search or one exact dossier identity is active. */
 type ProjectFilter =
   | { kind: 'text'; query: string }
@@ -154,6 +164,8 @@ export function ProjectWorkspace({
   const evidenceAuthority = workingEvidenceAuthority(actor);
   const certificationCopy = useCertificationCopy();
   const certificationReader = certificationAuthority(actor).read;
+  const analysisReader = dossierAnalysisAuthority(actor);
+  const analysisTitle = useDossierAnalysisTitle();
   const documentsCopy = useProjectDocumentsCopy();
   const templateCopy = useProjectTemplateCopy();
   const planTaskRequestId = useRef(0);
@@ -168,7 +180,8 @@ export function ProjectWorkspace({
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   if (
     (!evidenceAuthority && detailPanel === 'working-evidence') ||
-    (!certificationReader && detailPanel === 'certification')
+    (!certificationReader && detailPanel === 'certification') ||
+    (!analysisReader && detailPanel === 'dossier-analysis')
   )
     setDetailPanel('tasks');
   const [generation, setGeneration] = useState(0);
@@ -706,6 +719,7 @@ export function ProjectWorkspace({
     const panels: DetailPanel[] = ['tasks', 'documents'];
     if (evidenceAuthority) panels.push('working-evidence');
     if (certificationReader) panels.push('certification');
+    if (analysisReader) panels.push('dossier-analysis');
     const index = panels.indexOf(panel);
     const next =
       event.key === 'ArrowRight'
@@ -1115,6 +1129,20 @@ export function ProjectWorkspace({
                 {certificationCopy('title')}
               </button>
             )}
+            {analysisReader && (
+              <button
+                id="project-dossier-analysis-tab"
+                type="button"
+                role="tab"
+                aria-selected={detailPanel === 'dossier-analysis'}
+                aria-controls="project-dossier-analysis-panel"
+                tabIndex={detailPanel === 'dossier-analysis' ? 0 : -1}
+                onClick={() => setDetailPanel('dossier-analysis')}
+                onKeyDown={(event) => moveDetailTab(event, 'dossier-analysis')}
+              >
+                {analysisTitle}
+              </button>
+            )}
           </div>
           <MissionPlanProjectCopy
             actor={actor}
@@ -1223,6 +1251,24 @@ export function ProjectWorkspace({
                 actor={actor}
                 identity={identity}
                 projectId={selected.project.id}
+                onActorRevalidated={onActorRevalidated}
+                onCompanyContextRejected={onCompanyContextRejected}
+                onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              />
+            </div>
+          )}
+          {analysisReader && detailPanel === 'dossier-analysis' && (
+            <div
+              className="project-detail-panel"
+              id="project-dossier-analysis-panel"
+              role="tabpanel"
+              aria-labelledby="project-dossier-analysis-tab"
+            >
+              <DossierAnalysisWorkspace
+                actor={actor}
+                identity={identity}
+                projectId={selected.project.id}
+                authorityGeneration={String(clientIdentityRevision)}
                 onActorRevalidated={onActorRevalidated}
                 onCompanyContextRejected={onCompanyContextRejected}
                 onWorkspaceAccessRejected={onWorkspaceAccessRejected}

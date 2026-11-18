@@ -2,6 +2,10 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import {
+  MAXIMUM_DOCUMENT_PDF_BYTES,
+  useVerifiedPdfDownload,
+} from './use-verified-pdf-download';
 import { useRequestLifetime } from '../api/use-actor-requests';
 import {
   useScopedOperation,
@@ -120,6 +124,7 @@ export function DocumentPdfContent({
   );
   const uploadRequests = useScopedOperationGroup(String(uploadLifetime));
   const downloads = useScopedOperation(String(readLifetime));
+  const verifiedDownload = useVerifiedPdfDownload();
   const historyReads = useScopedOperation(
     JSON.stringify([readLifetime, workingRevision]),
   );
@@ -235,7 +240,7 @@ export function DocumentPdfContent({
       !file ||
       file.type !== 'application/pdf' ||
       file.size < 1 ||
-      file.size > 5242880 ||
+      file.size > MAXIMUM_DOCUMENT_PDF_BYTES ||
       file.name.length < 5 ||
       file.name.length > 120 ||
       file.name !== file.name.trim() ||
@@ -264,14 +269,15 @@ export function DocumentPdfContent({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!allowed()) return;
-      const result = await api.download(
-        `${path}/${encodeURIComponent(pdf.representationId)}`,
-        {
-          companyContextId: companyId,
-          signal,
-          maximumBytes: 5242880,
-        },
-      );
+      const result = await verifiedDownload({
+        client: api,
+        path: `${path}/${encodeURIComponent(pdf.representationId)}`,
+        companyId,
+        signal,
+        isCurrent: allowed,
+        file: pdf,
+        signature: 'unchecked',
+      });
       if (!allowed()) return;
       if (result.status === 'unauthorized') {
         setDownload('error');
@@ -285,34 +291,9 @@ export function DocumentPdfContent({
         await onDenied(currentRecovery).catch(() => undefined);
         return;
       }
-      if (
-        result.status !== 'ok' ||
-        result.value.type !== 'application/pdf' ||
-        result.value.size !== pdf.size
-      ) {
+      if (result.status !== 'ok') {
         setDownload('error');
         return;
-      }
-      const bytes = await result.value.arrayBuffer();
-      if (!allowed()) return;
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
-      const sha256 = Array.from(new Uint8Array(digest), (byte) =>
-        byte.toString(16).padStart(2, '0'),
-      ).join('');
-      if (!allowed()) return;
-      if (sha256 !== pdf.sha256) {
-        setDownload('error');
-        return;
-      }
-      const url = URL.createObjectURL(result.value);
-      try {
-        if (!allowed()) return;
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = pdf.fileName;
-        anchor.click();
-      } finally {
-        URL.revokeObjectURL(url);
       }
       setDownload('idle');
     } catch {

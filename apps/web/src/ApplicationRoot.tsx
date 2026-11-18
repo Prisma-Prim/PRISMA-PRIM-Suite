@@ -9,6 +9,7 @@ import {
 import { InterfaceLocaleProvider } from './localization/interface-locale';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import { PublicWelcome } from './welcome/PublicWelcome';
+import { ChatGptCallback } from './dossier-analysis/ChatGptCallback';
 
 const PrismaCertUiBaseline = lazy(async () => {
   const module = await import('./ui-baseline/PrismaCertUiBaseline');
@@ -45,7 +46,11 @@ export function ApplicationRoot({ pathname, identity }: ApplicationRootProps) {
   return (
     <InterfaceLocaleProvider>
       <InterfaceLocaleSelect />
-      <ProductionApplicationRoot pathname={pathname} identity={identity} />
+      {pathname === '/chatgpt/callback' ? (
+        <ChatGptCallback />
+      ) : (
+        <ProductionApplicationRoot pathname={pathname} identity={identity} />
+      )}
     </InterfaceLocaleProvider>
   );
 }

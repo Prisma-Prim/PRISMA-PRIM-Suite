@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { Select } from '../presentation/Select';
 import { useCommercialRequestCopy } from './commercial-request.copy';
 
@@ -77,8 +79,18 @@ export function RequestClientAssociation({
   const [selectedClientId, setSelectedClientId] = useState('');
   const [search, setSearch] = useState<SearchState>({ kind: 'idle' });
   const [association, setAssociation] = useState<AssociationState>('idle');
-  const searchRequest = useRef<AbortController | undefined>(undefined);
-  const associationRequest = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      companyId,
+      requestId,
+      clientIdentityRevision,
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
+  const searches = useScopedOperationGroup(String(lifetime));
+  const associations = useScopedOperationGroup(String(lifetime));
   const retry = useRef<Retry | undefined>(undefined);
 
   useEffect(() => {
@@ -105,11 +117,18 @@ export function RequestClientAssociation({
     setAssociation('idle');
     retry.current = undefined;
     return () => {
-      searchRequest.current?.abort();
-      associationRequest.current?.abort();
+      searches.retire();
+      associations.retire();
       retry.current = undefined;
     };
-  }, [companyId, identity, requestId, clientIdentityRevision]);
+  }, [
+    companyId,
+    identity,
+    requestId,
+    clientIdentityRevision,
+    searches,
+    associations,
+  ]);
 
   async function searchClients(): Promise<void> {
     if (blocked) return;
@@ -119,24 +138,23 @@ export function RequestClientAssociation({
       setSearch({ kind: 'validation' });
       return;
     }
-    searchRequest.current?.abort();
-    const controller = new AbortController();
-    searchRequest.current = controller;
+    const operation = searches.beginLatest();
+    if (!operation) return;
     setSearch({ kind: 'loading' });
     try {
       const result = await request({
         path: `/clients/search?query=${encodeURIComponent(trimmed)}`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'client-search',
       );
-      if (controller.signal.aborted || access === 'rejected') return;
+      if (operation.signal.aborted || access === 'rejected') return;
       if (access === 'retained') {
         setSearch({ kind: 'denied' });
         return;
@@ -152,49 +170,51 @@ export function RequestClientAssociation({
           : { kind: 'error' },
       );
     } catch {
-      if (!controller.signal.aborted) setSearch({ kind: 'error' });
+      if (!operation.signal.aborted) setSearch({ kind: 'error' });
+    } finally {
+      operation.release();
     }
   }
 
   async function associate(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (blocked || association === 'loading') return;
+    if (blocked || association === 'loading' || associations.isPending())
+      return;
     if (!selectedClientId && !retry.current) {
       setAssociation('validation');
       return;
     }
-    const command =
-      retry.current ??
-      ({
-        payload: JSON.stringify({
-          expectedVersion,
-          clientAccountId: selectedClientId,
-        }),
-        key: crypto.randomUUID(),
-        identityRevision: clientIdentityRevision,
-      } satisfies Retry);
-    retry.current = command;
-    associationRequest.current?.abort();
-    const controller = new AbortController();
-    associationRequest.current = controller;
-    setAssociation('loading');
+    const operation = associations.begin();
+    if (!operation) return;
     try {
+      const command =
+        retry.current ??
+        ({
+          payload: JSON.stringify({
+            expectedVersion,
+            clientAccountId: selectedClientId,
+          }),
+          key: crypto.randomUUID(),
+          identityRevision: clientIdentityRevision,
+        } satisfies Retry);
+      retry.current = command;
+      setAssociation('loading');
       const result = await request({
         path: `/commercial-intake/requests/${encodeURIComponent(requestId)}/client-association`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: command.payload,
         idempotencyKey: command.key,
       });
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'client-association',
       );
-      if (controller.signal.aborted || access === 'rejected') return;
+      if (operation.signal.aborted || access === 'rejected') return;
       if (access === 'retained') {
         retry.current = undefined;
         setAssociation('denied');
@@ -212,7 +232,7 @@ export function RequestClientAssociation({
           result.body.request,
           command.identityRevision,
         );
-        if (controller.signal.aborted) return;
+        if (operation.signal.aborted) return;
         if (!accepted) {
           retry.current = undefined;
           setAssociation('error');
@@ -254,7 +274,9 @@ export function RequestClientAssociation({
       retry.current = undefined;
       setAssociation('error');
     } catch {
-      if (!controller.signal.aborted) setAssociation('uncertain');
+      if (!operation.signal.aborted) setAssociation('uncertain');
+    } finally {
+      operation.release();
     }
   }
 
@@ -278,7 +300,7 @@ export function RequestClientAssociation({
           maxLength={200}
           disabled={blocked || waiting || uncertain}
           onChange={(event) => {
-            searchRequest.current?.abort();
+            searches.retire();
             setQuery(event.target.value);
             setSelectedClientId('');
             setSearch({ kind: 'idle' });

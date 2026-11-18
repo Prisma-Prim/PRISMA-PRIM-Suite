@@ -6,6 +6,7 @@ import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
+import { useVerifiedPdfDownload } from '../documents/use-verified-pdf-download';
 import { useReportedSigningCopy } from './reported-signing.copy';
 import type { SigningPdfReference } from './reported-signing-response';
 
@@ -40,6 +41,7 @@ export function SigningPdfDownload({
     ]),
   );
   const downloads = useScopedOperationGroup(String(lifetime));
+  const verifiedDownload = useVerifiedPdfDownload();
   const callbacks = useRef({ reject });
   useLayoutEffect(() => {
     callbacks.current = { reject };
@@ -55,10 +57,15 @@ export function SigningPdfDownload({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.download(
-        `/documents/${encodeURIComponent(pdf.documentId)}/versions/${encodeURIComponent(pdf.documentVersionId)}/content/${encodeURIComponent(pdf.representationId)}`,
-        { companyContextId: companyId, signal: controller.signal },
-      );
+      const result = await verifiedDownload({
+        client: api,
+        path: `/documents/${encodeURIComponent(pdf.documentId)}/versions/${encodeURIComponent(pdf.documentVersionId)}/content/${encodeURIComponent(pdf.representationId)}`,
+        companyId,
+        signal: controller.signal,
+        isCurrent: () => !controller.signal.aborted,
+        file: pdf,
+        signature: 'unchecked',
+      });
       if (controller.signal.aborted) return;
       if (await rejected(result, controller.signal)) {
         if (!controller.signal.aborted) setState('denied');
@@ -69,32 +76,7 @@ export function SigningPdfDownload({
         setState('denied');
         return;
       }
-      if (
-        result.status !== 'ok' ||
-        result.value.type !== 'application/pdf' ||
-        result.value.size !== pdf.size
-      )
-        throw new Error('Unavailable exact PDF.');
-      const digest = await crypto.subtle.digest(
-        'SHA-256',
-        await result.value.arrayBuffer(),
-      );
-      if (controller.signal.aborted) return;
-      if (
-        Array.from(new Uint8Array(digest), (byte) =>
-          byte.toString(16).padStart(2, '0'),
-        ).join('') !== pdf.sha256
-      )
-        throw new Error('PDF digest mismatch.');
-      const url = URL.createObjectURL(result.value);
-      try {
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = pdf.fileName;
-        anchor.click();
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      if (result.status !== 'ok') throw new Error('Unavailable exact PDF.');
       setState('idle');
     } catch {
       if (!controller.signal.aborted) setState('unavailable');

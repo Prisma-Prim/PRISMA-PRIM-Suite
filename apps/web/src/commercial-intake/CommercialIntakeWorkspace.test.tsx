@@ -1,4 +1,5 @@
 import { changeValue } from '../test/select-option';
+import { startTransition, Suspense, useState } from 'react';
 import {
   act,
   fireEvent,
@@ -350,6 +351,695 @@ function fillRequiredFields() {
 
 describe('CommercialIntakeWorkspace', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it('refreshes the current Request list after a confirmed save survives independent Client revalidation', async () => {
+    const initial = buildClientRequest({
+      ...createdRequest,
+      version: 2,
+      clientAssociationStatus: 'visible',
+      clientReference: {
+        originalClientId: 'client-original',
+        currentClientId: 'client-original',
+        displayName: 'Original Client',
+      },
+    });
+    const current = buildClientRequest({
+      ...initial,
+      clientReference: {
+        originalClientId: 'client-original',
+        currentClientId: 'client-current',
+        displayName: 'Current Client',
+      },
+    });
+    const held = deferredResponse();
+    let confirmed = false;
+    let posts = 0;
+    let details = 0;
+    vi.stubGlobal('fetch', async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        posts += 1;
+        return held.promise;
+      }
+      if (path.includes('?limit=25'))
+        return Response.json({
+          items: [
+            requestListItemFor(current, {
+              clientDisplayName: 'Current Client',
+              clientDossierId: 'client-current',
+              initialOpportunity: {
+                nextAction: confirmed
+                  ? 'Confirmed after Client revalidation'
+                  : initial.initialOpportunity.nextAction,
+              },
+            }),
+          ],
+        });
+      details += 1;
+      return Response.json(details === 1 ? initial : current);
+    });
+    const identity = deterministicBrowserIdentity();
+    const editor = editorActor();
+    const view = render(workspaceElement(editor, {}, identity));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /^Quality process preparation/u,
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit next action' }),
+    );
+    changeValue(
+      screen.getByLabelText('Next action'),
+      'Confirmed after Client revalidation',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await waitFor(() => expect(posts).toBe(1));
+    view.rerender(
+      workspaceElement(editor, { clientIdentityRevision: 1 }, identity),
+    );
+    await screen.findByText('Current Client');
+    confirmed = true;
+    await act(async () =>
+      held.resolve(
+        Response.json({
+          receipt: {
+            opportunityId: 'opportunity-1',
+            nextAction: 'Confirmed after Client revalidation',
+            version: 2,
+            outcome: 'updated',
+          },
+          request: buildClientRequest({
+            ...initial,
+            initialOpportunity: {
+              ...initial.initialOpportunity,
+              nextAction: 'Confirmed after Client revalidation',
+              version: 2,
+            },
+          }),
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Back to Requests' }),
+      ).toBeEnabled(),
+    );
+    expect(
+      screen.getByText('Next action: Confirmed after Client revalidation'),
+    ).toBeVisible();
+    expect(screen.getByText('Current Client')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Requests' }));
+    expect(
+      listedRequestButton(/^Quality process preparation/u),
+    ).toHaveTextContent('Confirmed after Client revalidation');
+    expect(screen.getByRole('listitem')).toHaveTextContent('Current Client');
+    expect(posts).toBe(1);
+  });
+
+  it('preserves a held Client projection when only the manager capture changes', async () => {
+    if (!actor.activeCompany) throw new Error('Expected the active Company');
+    const managerActor: ActorContext = {
+      ...actor,
+      activeCompany: {
+        ...actor.activeCompany,
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_opportunity_manager',
+          version: 'v2',
+          assignmentId: 'initial-manager',
+        }),
+      },
+    };
+    const initial = buildClientRequest({
+      ...createdRequest,
+      version: 2,
+      clientAssociationStatus: 'visible',
+      clientReference: {
+        originalClientId: 'client-1',
+        currentClientId: 'client-1',
+        displayName: 'Preserved Client',
+      },
+    });
+    const held = deferredResponse();
+    const details: RequestInit[] = [];
+    vi.stubGlobal('fetch', async (path: string, init?: RequestInit) => {
+      if (path.includes('?limit=25'))
+        return Response.json({ items: [requestListItemFor(initial)] });
+      if (!init) throw new Error('Expected native request options');
+      details.push(init);
+      return details.length === 1 ? Response.json(initial) : held.promise;
+    });
+    const identity = deterministicBrowserIdentity();
+    const view = render(workspaceElement(managerActor, {}, identity));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /^Quality process preparation/u,
+      }),
+    );
+    await screen.findByRole('article', { name: 'Quality process preparation' });
+    view.rerender(
+      workspaceElement(managerActor, { clientIdentityRevision: 1 }, identity),
+    );
+    await waitFor(() => expect(details).toHaveLength(2));
+    if (!managerActor.activeCompany)
+      throw new Error('Expected the manager Company');
+    view.rerender(
+      workspaceElement(
+        {
+          ...managerActor,
+          activeCompany: {
+            ...managerActor.activeCompany,
+            grants: withCompanyGrants(managerActor.activeCompany.grants, {
+              bundle: 'company_opportunity_manager',
+              version: 'v2',
+              assignmentId: 'replacement-manager',
+            }),
+          },
+        },
+        { clientIdentityRevision: 1 },
+        identity,
+      ),
+    );
+    expect(details[1]?.signal?.aborted).toBe(false);
+    expect(details).toHaveLength(2);
+    await act(async () =>
+      held.resolve(
+        Response.json(
+          buildClientRequest({
+            ...initial,
+            clientReference: {
+              originalClientId: 'client-1',
+              currentClientId: 'client-1',
+              displayName: 'Refreshed Client',
+            },
+          }),
+        ),
+      ),
+    );
+    expect(await screen.findByText('Refreshed Client')).toBeVisible();
+    expect(details).toHaveLength(2);
+  });
+
+  it.each(['http', 'parser'])(
+    'does not start Actor recovery from a retired observation after held %s completion',
+    async (boundary) => {
+      const olderActor: ActorContext = {
+        ...actor,
+        workspacePermissions: ['company.manage'],
+      };
+      const held = deferredResponse();
+      let releaseBody: (body: unknown) => void = () => undefined;
+      const heldBody = new Promise<unknown>((resolve) => {
+        releaseBody = resolve;
+      });
+      const response = Response.json({}, { status: 403 });
+      const parser = vi
+        .spyOn(response, 'json')
+        .mockImplementation(() => heldBody);
+      let searches = 0;
+      let recoveries = 0;
+      let lists = 0;
+      let recoveredActor = olderActor;
+      vi.stubGlobal('fetch', async (path: string) => {
+        const url = new URL(path, 'http://localhost');
+        if (url.pathname === '/api/access/current-actor') {
+          recoveries += 1;
+          return Response.json(recoveredActor);
+        }
+        if (url.pathname === '/api/clients/search') {
+          searches += 1;
+          if (searches === 1)
+            return boundary === 'http' ? held.promise : response;
+          return Response.json({}, { status: 403 });
+        }
+        if (url.pathname === '/api/commercial-intake/requests') {
+          lists += 1;
+          return Response.json({ items: [] });
+        }
+        throw new Error(`Unexpected native path: ${url.pathname}`);
+      });
+      const callbacks = {
+        onActorRevalidated: vi.fn(),
+        onCompanyContextRejected: vi.fn(),
+        onWorkspaceAccessRejected: vi.fn(),
+      };
+      const identity = deterministicBrowserIdentity();
+      const view = render(workspaceElement(olderActor, callbacks, identity));
+      await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
+      changeValue(
+        screen.getByLabelText('Original request text'),
+        'Preserve the committed draft',
+      );
+      changeValue(screen.getByLabelText('Search Clients by name'), 'Client');
+      fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+      await waitFor(() => expect(searches).toBe(1));
+      if (boundary === 'parser')
+        await waitFor(() => expect(parser).toHaveBeenCalledOnce());
+      view.rerender(workspaceElement(actor, callbacks, identity));
+      await act(async () => {
+        if (boundary === 'http')
+          held.resolve(Response.json({}, { status: 403 }));
+        else releaseBody({});
+      });
+      expect(callbacks.onActorRevalidated).not.toHaveBeenCalled();
+      expect(recoveries).toBe(0);
+      expect(lists).toBe(1);
+      expect(screen.getByLabelText('Original request text')).toHaveValue(
+        'Preserve the committed draft',
+      );
+      recoveredActor = actor;
+      fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+      await waitFor(() =>
+        expect(callbacks.onActorRevalidated).toHaveBeenCalledExactlyOnceWith(
+          actor,
+        ),
+      );
+      expect(recoveries).toBe(1);
+    },
+  );
+
+  it('restarts a held list under a replacement Intake capture without accepting the retired result', async () => {
+    const held = deferredResponse();
+    const reads: RequestInit[] = [];
+    vi.stubGlobal('fetch', async (_path: string, init?: RequestInit) => {
+      if (!init) throw new Error('Expected native request options');
+      reads.push(init);
+      return reads.length === 1
+        ? held.promise
+        : Response.json({ items: [listItem(77)] });
+    });
+    const identity = deterministicBrowserIdentity();
+    const current = editorActor();
+    const view = render(workspaceElement(current, {}, identity));
+    await waitFor(() => expect(reads).toHaveLength(1));
+    if (!current.activeCompany) throw new Error('Expected the editor Company');
+    view.rerender(
+      workspaceElement(
+        {
+          ...current,
+          activeCompany: {
+            ...current.activeCompany,
+            grants: withCompanyGrants(current.activeCompany.grants, {
+              bundle: 'company_commercial_intake',
+              version: 'v2',
+              assignmentId: 'replacement-intake',
+            }),
+          },
+        },
+        {},
+        identity,
+      ),
+    );
+    expect(
+      await screen.findByRole('button', { name: requestButton(77) }),
+    ).toBeVisible();
+    expect(reads).toHaveLength(2);
+    expect(reads[0]?.signal?.aborted).toBe(true);
+    await act(async () =>
+      held.resolve(Response.json({ items: [listItem(0)] })),
+    );
+    expect(visibleRequests()).toBe(1);
+    expect(
+      screen.queryByRole('button', { name: requestButton(0) }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([200, 403])(
+    'ignores a held response parser after Company A-B-A retirement (status %i)',
+    async (status) => {
+      let releaseBody: (body: unknown) => void = () => undefined;
+      const heldBody = new Promise<unknown>((resolve) => {
+        releaseBody = resolve;
+      });
+      const response = Response.json({}, { status });
+      const parser = vi
+        .spyOn(response, 'json')
+        .mockImplementation(() => heldBody);
+      const transport = vi
+        .fn()
+        .mockResolvedValueOnce(response)
+        .mockResolvedValueOnce(Response.json({ items: [listItem(77)] }))
+        .mockResolvedValueOnce(Response.json({ items: [listItem(78)] }));
+      vi.stubGlobal('fetch', transport);
+      const callbacks = {
+        onActorRevalidated: vi.fn(),
+        onCompanyContextRejected: vi.fn(),
+        onWorkspaceAccessRejected: vi.fn(),
+      };
+      const identity = deterministicBrowserIdentity();
+      const view = render(workspaceElement(actor, callbacks, identity));
+      await waitFor(() => expect(parser).toHaveBeenCalledOnce());
+      view.rerender(
+        workspaceElement(
+          actorForCompany('company-2', 'Second Company'),
+          callbacks,
+          identity,
+        ),
+      );
+      await screen.findByRole('button', { name: requestButton(77) });
+      view.rerender(workspaceElement(actor, callbacks, identity));
+      await screen.findByRole('button', { name: requestButton(78) });
+      await act(async () => releaseBody({ items: [listItem(0)] }));
+      expect(
+        screen.getByRole('button', { name: requestButton(78) }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: requestButton(0) }),
+      ).not.toBeInTheDocument();
+      expect(transport).toHaveBeenCalledTimes(3);
+      expect(callbacks.onActorRevalidated).not.toHaveBeenCalled();
+      expect(callbacks.onCompanyContextRejected).not.toHaveBeenCalled();
+      expect(callbacks.onWorkspaceAccessRejected).not.toHaveBeenCalled();
+    },
+  );
+
+  it('retires a held next-action save on Intake capture replacement and admits a fresh authorized save', async () => {
+    const held = deferredResponse();
+    const posts: RequestInit[] = [];
+    const activity = vi.fn();
+    vi.stubGlobal('fetch', async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        posts.push(init);
+        return posts.length === 1
+          ? held.promise
+          : updateResult('Fresh authorized next action', 2);
+      }
+      return path.includes('?limit=25')
+        ? requestListPage()
+        : Response.json(createdRequest);
+    });
+    const view = await openDetailForEditing({ onActivityRecorded: activity });
+    changeValue(screen.getByLabelText('Next action'), 'Retired next action');
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    const replacement = editorActor();
+    if (!replacement.activeCompany)
+      throw new Error('Expected the editor Company');
+    view.revalidateActor({
+      ...replacement,
+      activeCompany: {
+        ...replacement.activeCompany,
+        grants: withCompanyGrants(replacement.activeCompany.grants, {
+          bundle: 'company_commercial_intake',
+          version: 'v2',
+          assignmentId: 'replacement-intake-assignment',
+        }),
+      },
+    });
+    expect(posts[0]?.signal?.aborted).toBe(true);
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Back to Requests' }),
+    ).toBeEnabled();
+    await act(async () => held.resolve(Response.json({}, { status: 503 })));
+    expect(activity).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Next action: Arrange a qualification call'),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit next action' }));
+    changeValue(
+      screen.getByLabelText('Next action'),
+      'Fresh authorized next action',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    expect(
+      await screen.findByText('Next action saved.', {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
+    expect(posts).toHaveLength(2);
+    expect(posts[1]?.signal?.aborted).toBe(false);
+    expect(activity).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the committed Client projection and draft when a speculative identity revision is abandoned', async () => {
+    const identity = deterministicBrowserIdentity();
+    const pending = new Promise<never>(() => undefined);
+    let attemptedRevision = false;
+    function PendingRevision(): never {
+      attemptedRevision = true;
+      throw pending;
+    }
+    const transport = vi.fn(async () =>
+      Response.json({
+        items: [
+          requestListItemFor(createdRequest, {
+            clientDisplayName: 'Preserved Client',
+            clientDossierId: 'client-1',
+          }),
+        ],
+      }),
+    );
+    vi.stubGlobal('fetch', transport);
+    function Frame() {
+      const [selection, setSelection] = useState({
+        revision: 0,
+        suspended: false,
+      });
+      return (
+        <>
+          <button
+            onClick={() =>
+              startTransition(() =>
+                setSelection({ revision: 1, suspended: true }),
+              )
+            }
+          >
+            Consider another Client revision
+          </button>
+          <button
+            onClick={() => setSelection({ revision: 0, suspended: false })}
+          >
+            Keep current Client revision
+          </button>
+          <Suspense fallback={<p>Pending revision</p>}>
+            {workspaceElement(
+              actor,
+              { clientIdentityRevision: selection.revision },
+              identity,
+            )}
+            {selection.suspended && <PendingRevision />}
+          </Suspense>
+        </>
+      );
+    }
+    render(<Frame />);
+    await screen.findByText('Client: Preserved Client');
+    changeValue(
+      screen.getByLabelText('Original request text'),
+      'Literal committed draft',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Consider another Client revision' }),
+    );
+    await waitFor(() => expect(attemptedRevision).toBe(true));
+    expect(screen.getByText('Client: Preserved Client')).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Keep current Client revision' }),
+    );
+    expect(screen.getByText('Client: Preserved Client')).toBeVisible();
+    expect(screen.getByLabelText('Original request text')).toHaveValue(
+      'Literal committed draft',
+    );
+    expect(transport).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the confirmed next action and refreshes its row when independent Activity refresh fails', async () => {
+    const activity = vi
+      .fn()
+      .mockRejectedValue(new Error('Synthetic Activity refresh failure'));
+    const transport = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(updateResult('Confirmed next action', 2))
+      .mockResolvedValueOnce(requestListPage('Confirmed next action'));
+    vi.stubGlobal('fetch', transport);
+    await openDetailForEditing({ onActivityRecorded: activity });
+    changeValue(screen.getByLabelText('Next action'), 'Confirmed next action');
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Back to Requests' }),
+      ).toBeEnabled(),
+    );
+    expect(
+      screen.getByText('Next action saved.', { selector: '[role="alert"]' }),
+    ).toBeVisible();
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Next action: Confirmed next action'),
+    ).toBeVisible();
+    expect(screen.getByText('Version: 2')).toBeVisible();
+    expect(activity).toHaveBeenCalledOnce();
+    await waitFor(() => expect(transport).toHaveBeenCalledTimes(4));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Requests' }));
+    expect(
+      listedRequestButton(/^Quality process preparation/u),
+    ).toHaveTextContent('Confirmed next action');
+  });
+
+  it('does not restore an older Actor after held Client-search recovery, while preserving the independent intake draft', async () => {
+    const olderActor: ActorContext = {
+      ...actor,
+      activeCompany: actor.activeCompany && {
+        ...actor.activeCompany,
+        grants: withCompanyGrants(actor.activeCompany.grants, {
+          bundle: 'company_document_content_reader',
+          version: 'v1',
+          assignmentId: 'unrelated-content-reader',
+        }),
+      },
+    };
+    const recoveries: ReturnType<typeof deferredResponse>[] = [];
+    let reads = 0;
+    vi.stubGlobal('fetch', async (path: string) => {
+      const url = new URL(path, 'http://localhost');
+      if (url.pathname === '/api/access/current-actor') {
+        const held = deferredResponse();
+        recoveries.push(held);
+        return held.promise;
+      }
+      if (url.pathname === '/api/clients/search')
+        return Response.json({}, { status: 403 });
+      if (url.pathname === '/api/commercial-intake/requests') {
+        reads += 1;
+        return Response.json({ items: [] });
+      }
+      throw new Error(`Unexpected native path: ${url.pathname}`);
+    });
+    const props = {
+      onActorRevalidated: vi.fn(),
+      onCompanyContextRejected: vi.fn(),
+      onWorkspaceAccessRejected: vi.fn(),
+    };
+    const identity = deterministicBrowserIdentity();
+    const view = render(workspaceElement(olderActor, props, identity));
+    await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
+    changeValue(
+      screen.getByLabelText('Original request text'),
+      'Preserve this independent draft',
+    );
+    changeValue(screen.getByLabelText('Search Clients by name'), 'Client');
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    await waitFor(() => expect(recoveries).toHaveLength(1));
+    view.rerender(workspaceElement(actor, props, identity));
+    await act(async () => recoveries[0]?.resolve(Response.json(olderActor)));
+    expect(props.onActorRevalidated).not.toHaveBeenCalled();
+    expect(props.onCompanyContextRejected).not.toHaveBeenCalled();
+    expect(props.onWorkspaceAccessRejected).not.toHaveBeenCalled();
+    expect(reads).toBe(1);
+    expect(screen.getByLabelText('Original request text')).toHaveValue(
+      'Preserve this independent draft',
+    );
+    expect(
+      await screen.findByText(
+        'Client search is not available. You can capture this Request without a Client.',
+      ),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    await waitFor(() => expect(recoveries).toHaveLength(2));
+    await act(async () => recoveries[1]?.resolve(Response.json(actor)));
+    await waitFor(() =>
+      expect(props.onActorRevalidated).toHaveBeenCalledExactlyOnceWith(actor),
+    );
+    expect(screen.getByLabelText('Original request text')).toHaveValue(
+      'Preserve this independent draft',
+    );
+  });
+
+  it('admits one capture when its public form is submitted twice synchronously', async () => {
+    const held = deferredResponse();
+    const commands: RequestInit[] = [];
+    const activity = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          commands.push(init);
+          return held.promise;
+        }
+        return Response.json({ items: [] });
+      }),
+    );
+    renderWorkspace({ onActivityRecorded: activity });
+    await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
+    fillRequiredFields();
+    const form = screen
+      .getByRole('button', { name: 'Capture Request' })
+      .closest('form');
+    if (!form) throw new Error('Expected the public capture form');
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+    });
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.signal?.aborted).toBe(false);
+    const command = commands[0];
+    expect(commandBodyOf(command)).toBe(
+      JSON.stringify({
+        originalText: createdRequest.originalText,
+        opportunity: {
+          title: createdRequest.initialOpportunity.title,
+          nextAction: createdRequest.initialOpportunity.nextAction,
+        },
+      }),
+    );
+    expect(idempotencyKeyOf(command)).toEqual(expect.any(String));
+    await act(async () =>
+      held.resolve(Response.json(createdRequest, { status: 201 })),
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Quality process preparation',
+      }),
+    ).toBeVisible();
+    expect(activity).toHaveBeenCalledOnce();
+  });
+
+  it('does not dispatch a retired Company read after its held token arrives, and permits a fresh return', async () => {
+    let releaseToken: (token: string) => void = () => undefined;
+    const heldToken = new Promise<string>((resolve) => {
+      releaseToken = resolve;
+    });
+    const getToken = vi
+      .fn()
+      .mockImplementationOnce(() => heldToken)
+      .mockResolvedValue('current-token');
+    const identity = { ...deterministicBrowserIdentity(), getToken };
+    const reads: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        reads.push(
+          new Headers(init?.headers).get('x-company-context-id') ?? '',
+        );
+        return Response.json({ items: [] });
+      }),
+    );
+    const view = render(workspaceElement(actor, {}, identity));
+    await waitFor(() => expect(getToken).toHaveBeenCalledOnce());
+    view.rerender(
+      workspaceElement(
+        actorForCompany('company-2', 'Second Company'),
+        {},
+        identity,
+      ),
+    );
+    await screen.findByText('No Client Requests for Second Company yet.');
+    expect(reads).toEqual(['company-2']);
+    await act(async () => {
+      releaseToken('retired-token');
+      await heldToken;
+    });
+    expect(reads).toEqual(['company-2']);
+    view.rerender(workspaceElement(actor, {}, identity));
+    await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
+    expect(reads).toEqual(['company-2', 'company-1']);
+  });
 
   it('shows an empty active-Company list and explains the immutable manual source', async () => {
     vi.stubGlobal(
@@ -1553,6 +2243,7 @@ describe('CommercialIntakeWorkspace', () => {
         }),
       ).toBeVisible();
 
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
       revalidateActor(actor);
       revalidateActor(editorActor());
 
@@ -1624,6 +2315,7 @@ describe('CommercialIntakeWorkspace', () => {
       .mockResolvedValueOnce(Response.json({ items: [listItem(77)] }));
     vi.stubGlobal('fetch', fetchMock);
     renderWorkspace();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     changeValue(
       screen.getByRole('combobox', { name: 'Request view' }),
       'mine_open',
@@ -1673,6 +2365,7 @@ describe('CommercialIntakeWorkspace', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Show older Requests' }),
     );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     changeValue(
       screen.getByRole('combobox', { name: 'Request view' }),
       'mine_open',
@@ -1875,6 +2568,7 @@ describe('CommercialIntakeWorkspace', () => {
       screen.getByRole('combobox', { name: 'Request view' }),
       'mine_open',
     );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     selectCompany(actorForCompany('company-2', 'Second Company'));
     expect(await screen.findByText('New Company Request')).toBeVisible();
     await act(async () => {
@@ -2203,6 +2897,7 @@ describe('CommercialIntakeWorkspace', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Show older Requests' }),
     );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     selectCompany(actorForCompany('company-2', 'Second Company'));
     expect(await screen.findByText('Second Company request')).toBeVisible();
 
@@ -2520,6 +3215,7 @@ describe('CommercialIntakeWorkspace', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Show older Requests' }),
     );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     selectCompany(actorForCompany('company-2', 'Second Company'));
 
     expect(await screen.findByText('Second Company request')).toBeVisible();

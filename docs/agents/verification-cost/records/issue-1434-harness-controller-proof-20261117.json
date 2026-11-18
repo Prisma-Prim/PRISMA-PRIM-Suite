@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-harness-controller-proof-20261117",
+  "date": "2026-11-17",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": 1435,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T09:38:12.000Z",
+    "end": "2026-11-17T09:41:31.000Z",
+    "durationSeconds": 199
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "CI44055179013 identified missing harness-controller registration in the actor-context test inventory. Reproduced 1 failure, added all ten handlers, passed355 cases and the exact CI three-repetition script. Target formatting/lint/API types pass. Runtime and auth unchanged; usage/price unavailable."
+  }
+}
