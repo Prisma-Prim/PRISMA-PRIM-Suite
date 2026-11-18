@@ -1,0 +1,65 @@
+{
+  "issue": 1439,
+  "source": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+  "preparedFictionalData": true,
+  "run": {
+    "startedAt": "2026-11-18T08:11:26.593Z",
+    "finishedAt": "2026-11-18T08:13:01.984Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "screenshots": [
+    {
+      "path": "final/desktop/auditor-cannot-approve-own-team-ro.png",
+      "sha256": "8351a6098369528b02179add3a15bd77a8ae5c4c328656f9b33d33b08c345ab9",
+      "bytes": 101622,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/desktop/first-team-authorized-different-auditor-ro.png",
+      "sha256": "6e51e662a539cbf0b483e9d46fd5bbf7abe22ec52ba5a680e9da36507b67d372",
+      "bytes": 91333,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/desktop/selected-auditor-stage-report-confirmed-ro.png",
+      "sha256": "a06c5a1560581ff3b2e6034afb75bfe0e4c2ce92d033dfbabd55e8fdef0156c6",
+      "bytes": 118363,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/desktop/test-finished-1.png",
+      "sha256": "a06c5a1560581ff3b2e6034afb75bfe0e4c2ce92d033dfbabd55e8fdef0156c6",
+      "bytes": 118363,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/narrow/auditor-cannot-approve-own-team-ru.png",
+      "sha256": "fba10e0ac8fabea3208f66c53600f23a9941d35501f0e61a511f51f307406b52",
+      "bytes": 51768,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/narrow/first-team-authorized-different-auditor-ru.png",
+      "sha256": "e2b3e78566181c554e439ee3676d1d525d9f143dcf42f9e8d7ce165ce374ca71",
+      "bytes": 61459,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/narrow/selected-auditor-stage-report-confirmed-ru.png",
+      "sha256": "194b25bfd40eed145a22e1e72d3ba7eca74407a70f323ea64e3a87684885860a",
+      "bytes": 54153,
+      "visuallyInspected": true
+    },
+    {
+      "path": "final/narrow/test-finished-1.png",
+      "sha256": "194b25bfd40eed145a22e1e72d3ba7eca74407a70f323ea64e3a87684885860a",
+      "bytes": 54153,
+      "visuallyInspected": true
+    }
+  ]
+}
