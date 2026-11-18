@@ -1,0 +1,100 @@
+{
+  "executedSource": "87c6946bc23bae08f98ae43c5fedb8a8be1580eb",
+  "journey": "document-intake",
+  "priorProof": "ba142bb40461c73812f9bf9f83fa29212401d771",
+  "start": "2026-11-18T20:12:58.448Z",
+  "finish": "2026-11-18T20:14:31.116Z",
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0
+  },
+  "cliCheck": {
+    "exitCode": 0,
+    "ownedPortsClosed": [
+      4173,
+      4174
+    ]
+  },
+  "nativeIntake": [
+    {
+      "locale": "ro",
+      "batchId": "adf70278-7b77-4d57-bb8e-df98e909bfcb",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "d9743a55c579064b60dc14fe283cb31429322c503b51f6aa21c3fe4e89de0a8f",
+          "documentId": "d48d0c68-398b-408a-926c-5b6e6a148c4c",
+          "sourceId": "f235c84e-8340-4091-b245-40a070574178"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "e4d0c15e812b636cab54ddbbeb2dcefaa6c28c6e4ce893c3f742c6a323715cdb",
+          "documentId": "925efca4-f129-43ea-8f19-7bf86a6d7e88",
+          "sourceId": "8ab685f8-9280-4345-ab78-cccf357e9349"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "b7849df7fd656db540c327b574470bb8b59a5d7a2bc9b88bef968bce82838df7",
+          "documentId": "1845acab-b52b-48f6-ab65-6563f123aef2",
+          "sourceId": "9dcee9d6-b5b4-4496-b37f-ad994ba451fd"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    },
+    {
+      "locale": "ru",
+      "batchId": "b79123eb-5f27-4d6f-a600-5189559cb1ad",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "97e7bcb2180cfc28ea82806f47d92dd2ae8e7e2ea98b6a412de64c92cd43db57",
+          "documentId": "c2c64311-a090-4730-bad8-ee1e7c648205",
+          "sourceId": "81b15d23-6a91-4daf-982a-a98bf8d49651"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "5b1a0e370c81c9dd3afaa62d17cc30b8725c3e48d2ed91f03ffac2123aa27092",
+          "documentId": "abd3fe52-1c0e-4848-95b5-f21e9c540436",
+          "sourceId": "8261505c-08a8-4229-9f79-7ea77b73c3c7"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "60e9e3c54bc552d5b468d3870896147c211979a0a31f6e37ee8fcaf9b1617ede",
+          "documentId": "986a43b5-d6c4-4024-b17b-196073505f47",
+          "sourceId": "ed26a9c2-8ae7-4c12-a54c-8a5380604412"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-ro-partial-paused.png",
+      "locale": "ro",
+      "viewport": "desktop",
+      "sha256": "6ecb87eaf206d40abf622de0068f485bfcc18fd3017a9e989393d79a67e10eec"
+    },
+    {
+      "file": "desktop-ro-resumed-complete.png",
+      "locale": "ro",
+      "viewport": "desktop",
+      "sha256": "61e7c535afbdf82575780b3cc3046bc3dbee75b7b2eafb5907033077c7957093"
+    },
+    {
+      "file": "narrow-ru-partial-paused.png",
+      "locale": "ru",
+      "viewport": "narrow",
+      "sha256": "8775fd0669be0338b280d9a15319bbcb96413d3073512819684cb974b455ab96"
+    },
+    {
+      "file": "narrow-ru-resumed-complete.png",
+      "locale": "ru",
+      "viewport": "narrow",
+      "sha256": "6440be003d1087a8f6f6e88c0bb4e88873795b652db5e02fa0295d19725ef827"
+    }
+  ]
+}
