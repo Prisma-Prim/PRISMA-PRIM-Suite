@@ -140,6 +140,46 @@ const additionalSubjects = Array.from(
       );
     });
 
+    it('revalidates exact draft-linked auditors outside a filtered result and conceals ineligible identities', async () => {
+      const caseId = await fixture.agreedCase();
+      const path = `/certification-cases/${caseId}/team-candidates`;
+      const auditor = fixture.membership(CERTIFICATION_AUDITOR);
+      const linked = new URLSearchParams({
+        search: 'Unmatched synthetic label',
+        linked: [
+          auditor,
+          fixture.membership(CERTIFICATION_READER),
+          randomUUID(),
+        ].join(','),
+      });
+      const visible = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${path}?${linked}`,
+      );
+      expect(visible.status).toBe(200);
+      const result = record(await visible.json());
+      expect(result).toMatchObject({
+        caseId,
+        items: [],
+        nextCursor: null,
+        draftLinks: [{ workspaceMembershipId: auditor }],
+      });
+      expect(
+        (await fixture.call(CERTIFICATION_READER, `${path}?${linked}`)).status,
+      ).toBe(403);
+      const oversized = new URLSearchParams({
+        linked: Array.from({ length: 11 }, () => randomUUID()).join(','),
+      });
+      expect(
+        (await fixture.call(CERTIFICATION_OWNER, `${path}?${oversized}`))
+          .status,
+      ).toBe(400);
+      expect(
+        (await fixture.call(CERTIFICATION_OWNER, `${path}?linked=invalid`))
+          .status,
+      ).toBe(400);
+    });
+
     it('removes revoked auditors and missing Project prerequisites and refuses the manager after its grant is revoked', async () => {
       const caseId = await fixture.agreedCase();
       const path = `/certification-cases/${caseId}/team-candidates`;
@@ -150,9 +190,18 @@ const additionalSubjects = Array.from(
           { method: 'DELETE', company: null },
         );
         expect(response.status).toBe(200);
-        const read = await fixture.call(CERTIFICATION_OWNER, path);
+        const linked = new URLSearchParams({
+          linked: fixture.membership(CERTIFICATION_AUDITOR),
+        });
+        const read = await fixture.call(
+          CERTIFICATION_OWNER,
+          `${path}?${linked}`,
+        );
         expect(read.status).toBe(200);
-        expect(record(await read.json()).items).toEqual([]);
+        expect(record(await read.json())).toMatchObject({
+          items: [],
+          draftLinks: [],
+        });
         await fixture.grant(
           CERTIFICATION_AUDITOR,
           `/company-${bundle}-assignments`,
