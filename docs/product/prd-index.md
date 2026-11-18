@@ -124,16 +124,17 @@ require that answer.
 
 ## 4. Cross-cutting PRDs
 
-| PRD                                                                                              | Document status | Primary authority                                                         |
-| ------------------------------------------------------------------------------------------------ | --------------- | ------------------------------------------------------------------------- |
-| [Tenant, Company, Client and Authorization](tenant-company-client-authorization-prd.md)          | Draft           | Scope, ownership, membership, permissions and approvals                   |
-| [Activity Log and Accountability](activity-log-accountability-prd.md)                            | Draft           | Attributable business events and durable audit history                    |
-| [Governed Documents](governed-documents-prd.md)                                                  | Draft           | Document, Version, Representation, evidence and correction                |
-| [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft           | Import provenance, findability, export and reconciliation                 |
-| [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft           | AI authority, citations, privacy and human approval                       |
-| [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft           | Security controls, recovery, observability and service posture            |
-| [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
-| [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
+| PRD                                                                                              | Document status    | Primary authority                                                                                   |
+| ------------------------------------------------------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------- |
+| [Tenant, Company, Client and Authorization](tenant-company-client-authorization-prd.md)          | Draft              | Scope, ownership, membership, permissions and approvals                                             |
+| [Activity Log and Accountability](activity-log-accountability-prd.md)                            | Draft              | Attributable business events and durable audit history                                              |
+| [Governed Documents](governed-documents-prd.md)                                                  | Draft              | Document, Version, Representation, evidence and correction                                          |
+| [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft              | Import provenance, findability, export and reconciliation                                           |
+| [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft              | AI authority, citations, privacy and human approval                                                 |
+| [Dossier Analysis](dossier-analysis-prd.md)                                                      | Approved direction | Project evidence extraction, coverage, candidate comparisons, search and human-reviewed suggestions |
+| [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft              | Security controls, recovery, observability and service posture                                      |
+| [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft              | Equivalent-work qualification, processing resource bounds and evidence                              |
+| [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft              | Accessible workflows, terminology, localization and bounded configuration                           |
 
 The [read-only cited-evidence connection](ai-knowledge-governance-prd.md#19-read-only-cited-evidence-connection-for-codex--bounded-software-contract) owns the bounded source-admission/REST/Codex MCP software contract; production AI promotion remains separately gated.
 

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useVerifiedPdfDownload } from '../documents/use-verified-pdf-download';
 import type { PaymentLiveSource } from './payment.types';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { paymentCopy } from './ui';
@@ -37,74 +38,27 @@ export function PaymentDownload(
   });
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const pending = useRef(false);
-  const urls = useRef(new Set<string>());
-  useEffect(() => {
-    const owned = urls.current;
-    return () => {
-      for (const url of owned) URL.revokeObjectURL(url);
-      owned.clear();
-    };
-  }, []);
+  const verifiedDownload = useVerifiedPdfDownload();
   async function download() {
     if (pending.current || content.kind !== 'AVAILABLE') return;
     pending.current = true;
     setState('loading');
-    const result = await owner.run<boolean>(async (api, signal, current) => {
-      const downloaded = await api.download(
-        `/payments/${encodeURIComponent(props.recordId)}/source`,
-        {
-          signal,
-          companyContextId: props.companyId,
-          cache: 'no-store',
-          maximumBytes: 5 * 1024 * 1024,
+    const result = await owner.run<boolean>((api, signal, current) =>
+      verifiedDownload({
+        client: api,
+        path: `/payments/${encodeURIComponent(props.recordId)}/source`,
+        companyId: props.companyId,
+        signal,
+        isCurrent: current,
+        file: {
+          size: content.byteLength,
+          sha256: content.sha256,
+          fileName: content.fileName,
         },
-      );
-      if (!current()) return { status: 'error' };
-      if (downloaded.status !== 'ok') return downloaded;
-      const blob = downloaded.value;
-      if (
-        blob.type !== 'application/pdf' ||
-        blob.size !== content.byteLength ||
-        blob.size < 5 ||
-        blob.size > 5 * 1024 * 1024
-      )
-        return { status: 'error' };
-      const bytes = await blob.arrayBuffer();
-      if (!current()) return { status: 'error' };
-      const signature = new Uint8Array(bytes, 0, 5);
-      if (
-        signature[0] !== 37 ||
-        signature[1] !== 80 ||
-        signature[2] !== 68 ||
-        signature[3] !== 70 ||
-        signature[4] !== 45
-      )
-        return { status: 'error' };
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
-      if (!current()) return { status: 'error' };
-      const hash = Array.from(new Uint8Array(digest), (byte) =>
-        byte.toString(16).padStart(2, '0'),
-      ).join('');
-      if (hash !== content.sha256 || !current()) return { status: 'error' };
-      const url = URL.createObjectURL(blob);
-      urls.current.add(url);
-      const link = document.createElement('a');
-      try {
-        if (!current()) return { status: 'error' };
-        link.href = url;
-        link.download = content.fileName;
-        link.rel = 'noopener';
-        link.hidden = true;
-        document.body.append(link);
-        if (!current()) return { status: 'error' };
-        link.click();
-        return { status: 'ok', value: true };
-      } finally {
-        link.remove();
-        URL.revokeObjectURL(url);
-        urls.current.delete(url);
-      }
-    });
+        signature: 'required',
+        cache: 'no-store',
+      }),
+    );
     if (!owner.isLive() || result.status === 'retired') return;
     pending.current = false;
     if (accessRejected(result) || result.status === 'notFound') {

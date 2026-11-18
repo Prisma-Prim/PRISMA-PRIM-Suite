@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useVerifiedPdfDownload } from '../documents/use-verified-pdf-download';
 import { useRequestLifetime } from '../api/use-actor-requests';
 import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
@@ -108,6 +109,7 @@ function PaymentEvidencePdfRead({
   const metadataReads = useScopedOperationGroup(String(generation));
   const historyReads = useScopedOperationGroup(String(generation));
   const downloads = useScopedOperationGroup(String(generation));
+  const verifiedDownload = useVerifiedPdfDownload();
   const retired = useRef(false);
   const rejected = useRef(onRejected);
   useLayoutEffect(() => {
@@ -298,15 +300,16 @@ function PaymentEvidencePdfRead({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!current()) return;
-      const result = await api.download(
-        path + '/' + encodeURIComponent(pdf.representationId),
-        {
-          companyContextId: companyId,
-          signal: request.signal,
-          cache: 'no-store',
-          maximumBytes: 5242880,
-        },
-      );
+      const result = await verifiedDownload({
+        client: api,
+        path: path + '/' + encodeURIComponent(pdf.representationId),
+        companyId,
+        signal: request.signal,
+        isCurrent: current,
+        file: pdf,
+        signature: 'unchecked',
+        cache: 'no-store',
+      });
       if (!current()) return;
       if (result.status !== 'ok') {
         if (
@@ -327,30 +330,6 @@ function PaymentEvidencePdfRead({
           return;
         }
         throw new Error('PDF download unavailable');
-      }
-      if (
-        result.value.type !== 'application/pdf' ||
-        result.value.size !== pdf.size
-      )
-        throw new Error('Invalid PDF bytes');
-      const bytes = await result.value.arrayBuffer();
-      if (!current()) return;
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
-      if (!current()) return;
-      const hash = Array.from(new Uint8Array(digest), (byte) =>
-        byte.toString(16).padStart(2, '0'),
-      ).join('');
-      if (hash !== pdf.sha256) throw new Error('PDF integrity mismatch');
-      const url = URL.createObjectURL(result.value);
-      try {
-        if (!current()) return;
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = pdf.fileName;
-        if (!current()) return;
-        anchor.click();
-      } finally {
-        URL.revokeObjectURL(url);
       }
       if (current()) setDownload('idle');
     } catch {

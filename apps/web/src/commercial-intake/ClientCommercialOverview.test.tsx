@@ -6,7 +6,12 @@ import {
   waitFor,
 } from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
-import type { ComponentProps } from 'react';
+import {
+  startTransition,
+  Suspense,
+  useState,
+  type ComponentProps,
+} from 'react';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
 import { buildRequestListItem } from '../test/commercial-intake-responses';
@@ -378,4 +383,111 @@ it('retires loaded affairs on a current refusal and revalidates without clearing
   await waitFor(() => expect(input.onActorRevalidated).toHaveBeenCalledOnce());
   expect(screen.getByText('Shared identity stays readable')).toBeVisible();
   expect(input.onCompanyContextRejected).not.toHaveBeenCalled();
+});
+
+it('retires an older Actor recovery while preserving the current commercial read owner', async () => {
+  const olderActor: ActorContext = {
+    ...actor,
+    activeCompany: {
+      ...company,
+      grants: withCompanyGrants(company.grants, {
+        bundle: 'company_document_content_reader',
+        version: 'v1',
+        assignmentId: 'unrelated-content-reader',
+      }),
+    },
+  };
+  const input = props({
+    actor: olderActor,
+    onWorkspaceAccessRejected: vi.fn(),
+  });
+  const recoveries: ((value: Response) => void)[] = [];
+  let reads = 0;
+  vi.stubGlobal('fetch', async (path: string) => {
+    const url = new URL(path, 'http://localhost');
+    if (url.pathname === '/api/access/current-actor')
+      return new Promise<Response>((resolve) => recoveries.push(resolve));
+    if (url.pathname === '/api/commercial-intake/requests') {
+      reads += 1;
+      return Response.json({}, { status: 403 });
+    }
+    throw new Error(`Unexpected native HTTP path: ${url.pathname}`);
+  });
+  const view = render(<ClientCommercialOverview {...input} />);
+  await waitFor(() => expect(recoveries).toHaveLength(1));
+  view.rerender(<ClientCommercialOverview {...input} actor={actor} />);
+  await act(async () => recoveries[0]?.(Response.json(olderActor)));
+  expect(reads).toBe(1);
+  expect(input.onActorRevalidated).not.toHaveBeenCalled();
+  expect(input.onCompanyContextRejected).not.toHaveBeenCalled();
+  expect(input.onWorkspaceAccessRejected).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retry this page' }));
+  await waitFor(() => expect(recoveries).toHaveLength(2));
+  await act(async () => recoveries[1]?.(Response.json(actor)));
+  await waitFor(() =>
+    expect(input.onActorRevalidated).toHaveBeenCalledExactlyOnceWith(actor),
+  );
+});
+
+it('retains the displayed affairs page after an uncommitted session replacement is abandoned', async () => {
+  const replacement = deterministicBrowserIdentity({
+    'x-test-external-subject': 'abandoned-commercial-session',
+  });
+  const pending = new Promise<never>(() => undefined);
+  let attemptedReplacement = false;
+  function PendingReplacement(): never {
+    attemptedReplacement = true;
+    throw pending;
+  }
+  const first = Array.from({ length: 25 }, (_, index) => row(`first-${index}`));
+  const fetch = vi.fn(async (path: string) => {
+    const url = new URL(path, 'http://localhost');
+    return Response.json(
+      url.searchParams.has('cursor')
+        ? { items: [row('older')] }
+        : { items: first, nextCursor: 'older-affairs-cursor' },
+    );
+  });
+  vi.stubGlobal('fetch', fetch);
+  const input = props();
+  function Frame() {
+    const [selection, setSelection] = useState({ identity, suspended: false });
+    return (
+      <>
+        <button
+          onClick={() =>
+            startTransition(() =>
+              setSelection({ identity: replacement, suspended: true }),
+            )
+          }
+        >
+          Consider another session
+        </button>
+        <button onClick={() => setSelection({ identity, suspended: false })}>
+          Keep the displayed session
+        </button>
+        <Suspense fallback={<p>Pending session</p>}>
+          <ClientCommercialOverview {...input} identity={selection.identity} />
+          {selection.suspended && <PendingReplacement />}
+        </Suspense>
+      </>
+    );
+  }
+  render(<Frame />);
+  await screen.findByText('Follow up first-0');
+  fireEvent.click(screen.getByRole('button', { name: 'Older affairs' }));
+  await screen.findByText('Follow up older');
+  const previousCalls = fetch.mock.calls.length;
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Consider another session' }),
+  );
+  await waitFor(() => expect(attemptedReplacement).toBe(true));
+  expect(screen.getByText('Follow up older')).toBeVisible();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Keep the displayed session' }),
+  );
+  expect(screen.getByRole('status')).toHaveTextContent('Page 2');
+  expect(screen.getByText('Follow up older')).toBeVisible();
+  expect(fetch).toHaveBeenCalledTimes(previousCalls);
 });
