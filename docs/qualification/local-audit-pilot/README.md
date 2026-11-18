@@ -48,7 +48,7 @@ The HTTP echo in the preview unit test proves transport/body/key preservation on
 
 ## Delivery order
 
-The five focused PRs for this delivery stay separately reviewable. Their source branches and frozen verification bases are retained until integration is authorized.
+The five focused PRs for this delivery stay separately reviewable. On2026-11-18 the owner subsequently authorized incremental main integration after required CI and review, with each delivered issue updated or closed as its PR merges. Frozen proof inputs remain reproducible; deployment and external activation are excluded.
 
 | PR                                                                  | Delivery                                                | Required predecessor                                                   |
 | ------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -58,4 +58,4 @@ The five focused PRs for this delivery stay separately reviewable. Their source 
 | [#1469](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1469) | Human-reviewed Stage plan/report drafts                 | Application draft #1457                                                |
 | [#1470](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1470) | Composed fictional pilot and native compatibility proof | All four above, combined qualification #1458 and guided launcher #1468 |
 
-The last two inputs are owned by separate Work sessions. The exact commits and CI runs are in the source manifest. A frozen composition proves these inputs together before integration; it does not authorize merging a verification branch or closing unmerged delivery issues. Required CI, review dispositions and native proof remain explicit in each PR.
+The last two inputs are owned by separate Work sessions. The exact commits and CI runs are in the source manifest. A frozen composition proves these inputs together before integration; integrate the original focused PRs in dependency order and close their issues only after the corresponding qualified merge. Required CI, review dispositions and native proof remain explicit in each PR.
