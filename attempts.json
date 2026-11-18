@@ -1,0 +1,116 @@
+{
+  "schema": "prisma-prim-complete-audit-pilot-qualification/v1",
+  "classification": "actual native execution on prepared fictional examples; no real-world audit qualification",
+  "inputBase": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+  "promotionRule": "Every pinned input and this compatibility PR require successful required CI; local proof alone is not the CI gate.",
+  "nativePilot": {
+    "journey": "local-audit-pilot",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T15:02:56.233Z",
+    "finishedAt": "2026-11-18T15:05:55.401Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "recoverableIntake": {
+    "journey": "document-intake",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T15:13:19.779Z",
+    "finishedAt": "2026-11-18T15:14:57.032Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "reviewedStageDrafts": {
+    "journey": "certification-stage-preparation",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T15:15:07.789Z",
+    "finishedAt": "2026-11-18T15:17:13.597Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "cliCheck": {
+    "command": "pnpm pilot:audit --check",
+    "status": "passed",
+    "exitCode": 0,
+    "nativeCaseReady": true,
+    "ownedPortsClosed": [4173, 4174],
+    "limits": "Bounded startup/readiness check; the prior guided-pilot input separately proves interactive SIGINT lifecycle."
+  },
+  "nativeCompatibility": {
+    "suite": "apps/api/src/dossier-analysis-acceptance/pilot-draft-compatibility.rest.test.ts",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "proof": "Exact batch Word bytes, extracted citation, deliberate human correction, unchanged Case before ordinary Save, draft ownership unchanged, independent target/source freshness and retained historical review."
+  },
+  "focusedChecks": {
+    "nativeCompatibilityAndStage": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nodePilotContractsAndOcr": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "embeddedPythonTests": 23
+    },
+    "format": "passed",
+    "lint": "passed",
+    "types": "passed",
+    "drizzleDrift": "passed",
+    "strictPilotE2eTypes": "passed after truthful MJS inference and object-shaped fictional grant entries; first check retained as failed"
+  },
+  "earlierCompositionOutcomes": [
+    {
+      "run": "programme-compatibility-01",
+      "status": "failed",
+      "reason": "The first test incorrectly expected a generic unbound Project source run to become stale after an unrelated Case write; the native owners correctly preserve independent freshness. Test now proves both independent revision checks."
+    },
+    {
+      "run": "programme-pilot-red-01",
+      "journey": "local-audit-pilot",
+      "status": "failed",
+      "exitCode": 1,
+      "startedAt": "2026-11-18T14:59:26.690Z",
+      "finishedAt": "2026-11-18T15:01:09.000Z",
+      "tests": {
+        "passed": 0,
+        "failed": 2,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "reason": "Original fictional personas lacked the existing native batch organizer and audited-source read grants. Ordinary native grants are now seeded only in the disposable fictional Company."
+    },
+    {
+      "run": "programme-final-e2e-types",
+      "status": "failed",
+      "reason": "A tuple inferred as a general array exposed possible undefined IDs; the fictional grant entries now use inferred objects. The private strict harness also enables inference of existing imported MJS files instead of treating them as implicit any."
+    }
+  ],
+  "baselineQualification": {
+    "source": "ff314c142179ff2c04e0c59baa44b69548bf11d7",
+    "publicPath": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/ff314c142179ff2c04e0c59baa44b69548bf11d7/docs/qualification/local-audit-pilot/outcomes.json",
+    "note": "Earlier guided-pilot proof including original combined entry point, lifecycle, independent review and browser-cache correction; separate source and timing, not re-labelled as current composition."
+  },
+  "limits": [
+    "No main merge or deployment under1452",
+    "No real account, provider/model call, scanner/OCR qualification or private1279 pilot",
+    "No OCR/product wiring or automated professional conclusion. Native permissions, current versions and separate human Save remain authoritative.",
+    "The three current browser journeys overlap in preparation and are not a claim of every possible audit or document case."
+  ]
+}
