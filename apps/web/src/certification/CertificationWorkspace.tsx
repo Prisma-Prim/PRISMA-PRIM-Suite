@@ -459,6 +459,7 @@ function CertificationRegistry(
   const callbacks = useRef(props);
   callbacks.current = props;
   const listOperation = useScopedOperation(props.scope);
+  const accessRecoveryOperation = useScopedOperation(props.scope);
   const detailOperation = useScopedOperation(props.scope);
   const entitiesOperation = useScopedOperation(props.scope);
   const mutationOperation = useScopedOperation(props.scope);
@@ -891,7 +892,10 @@ function CertificationRegistry(
     result: ApiResult<unknown>,
     access: Access,
   ) {
-    if (result.status !== 'unauthorized' && result.status !== 'forbidden')
+    if (
+      signal.aborted ||
+      (result.status !== 'unauthorized' && result.status !== 'forbidden')
+    )
       return;
     if (result.status === 'unauthorized' || access === 'certification') {
       for (const other of [
@@ -908,12 +912,15 @@ function CertificationRegistry(
         if (other !== slot) other.retire();
       retirePrivateState();
     }
-    // Settle local state first; session and actor recovery have their own owner.
+    // A refused Case read can close that Case before actor recovery settles.
+    // Recovery stays live for this registry and retires with its authority.
+    const recoverySignal = accessRecoveryOperation.begin();
+    if (!recoverySignal) return;
     void handleAuthenticatedAccessRejection({
       result,
       identity,
       companyContextId: companyId || undefined,
-      signal,
+      signal: recoverySignal,
       onActorRevalidated: (next) =>
         callbacks.current.onActorRevalidated?.(next),
       onCompanyContextRejected: (id) =>
