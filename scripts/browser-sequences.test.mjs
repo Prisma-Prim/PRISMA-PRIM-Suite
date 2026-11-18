@@ -248,3 +248,36 @@ test('validates each native Contract replay against its own journey', () => {
     );
   }
 });
+
+test('selects the native Offer version replay only in its registered journey', () => {
+  const command = browserSequenceReplayCommand({
+    caseId: 'offer-version-owner',
+    width: 'narrow',
+    seed: 1462001,
+    steps: 10,
+    path: '0:1',
+  });
+  assert.equal(
+    command,
+    "UI_SEQUENCE_REPLAY='offer-version-owner@narrow~10~0:1' pnpm verify:journey offer-owner-action-sequences --chaos 1462001",
+  );
+  const environment = {
+    UI_CHAOS_SEED: '1462001',
+    UI_SEQUENCE_REPLAY: 'offer-version-owner@narrow~10~0:1',
+  };
+  assert.equal(
+    readBrowserSequenceOptions({
+      journey: 'offer-owner-action-sequences',
+      environment,
+    }).replay.caseId,
+    'offer-version-owner',
+  );
+  assert.throws(
+    () =>
+      readBrowserSequenceOptions({
+        journey: 'financial-action-sequences',
+        environment,
+      }),
+    /Unknown sequence case/u,
+  );
+});

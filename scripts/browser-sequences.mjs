@@ -42,6 +42,11 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'contract-action-sequences',
     title: 'explores generated native Contract signing action sequences',
   },
+  {
+    id: 'offer-version-owner',
+    journey: 'offer-owner-action-sequences',
+    title: 'explores generated native Offer version owner sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {
