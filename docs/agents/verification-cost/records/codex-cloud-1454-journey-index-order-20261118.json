@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1454-journey-index-order-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1454,
+  "pullRequest": 1466,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Corrected the section list to its required canonical order. Fail-fast subprocess receipt verifies journey-map4/4 and format; prior index record corrected to actual3/4 fail without discarding its Git history. Runtime/original-byte proof unchanged. Required CI pending; time/model/tokens/price not reported."
+  }
+}
