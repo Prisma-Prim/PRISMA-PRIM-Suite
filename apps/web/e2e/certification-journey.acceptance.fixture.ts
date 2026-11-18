@@ -139,6 +139,9 @@ const CONFIRMED = {
 export async function prepareCertificationJourney(
   request: APIRequestContext,
   suffix: string,
+  options: { stopAfter: 'agreement' | 'recommendation' } = {
+    stopAfter: 'recommendation',
+  },
 ) {
   const { manager, auditor, approver, reader } = certificationMembers;
   const pdf = await readFile(
@@ -184,9 +187,10 @@ export async function prepareCertificationJourney(
   }
 
   const companyName = `Synthetic Certification Body DEMO ${suffix}`;
-  companyId = text(
+  const preparedCompanyId = text(
     (await created(approver, '/companies', { displayName: companyName })).id,
   );
+  companyId = preparedCompanyId;
   const memberships = new Map<Identity, string>();
   const bundles: [Identity, string[]][] = [
     [
@@ -416,6 +420,9 @@ export async function prepareCertificationJourney(
     signedOn: addDays(today, -40),
     attachmentId: agreement,
   });
+  const stage1 = { start: addDays(today, -30), end: addDays(today, -30) };
+  const stage2 = { start: addDays(today, -21), end: addDays(today, -21) };
+  if (options.stopAfter === 'agreement') return preparedJourney();
 
   // A team leader without category C and a technical expert holding it,
   // both declaring no conflict, approved by an approver outside the team.
@@ -448,7 +455,6 @@ export async function prepareCertificationJourney(
   });
 
   // Stage 1: planned, one area of concern, reported "ready".
-  const stage1 = { start: addDays(today, -30), end: addDays(today, -30) };
   await step(
     manager,
     `${base}/stages/stage-1/plan`,
@@ -479,7 +485,6 @@ export async function prepareCertificationJourney(
   // plan states 2 auditor-days over one calendar day with Ion Popa as the
   // only auditor on site, which the consistency check asks to clarify (R04).
   // S2 is 21 days ago: the audit dossier, due within S2 + 20, is overdue.
-  const stage2 = { start: addDays(today, -21), end: addDays(today, -21) };
   await step(
     manager,
     `${base}/stages/stage-2/plan`,
@@ -548,50 +553,55 @@ export async function prepareCertificationJourney(
     };
   }
 
-  return {
-    companyId,
-    companyName,
-    clientName,
-    projectTitle,
-    orderReference,
-    caseId,
-    base,
-    today,
-    read,
-    async download(member: Identity, path: string) {
-      const response = await request.get(`${api}${path}`, {
-        headers: headers(member),
-      });
-      expect(response.status()).toBe(200);
-      expect(response.headers()['content-type']).toContain('application/pdf');
-      return response.body();
-    },
-    post,
-    step,
-    attach,
-    decision,
-    /** The first days of both Stages and S2, the last day of Stage 2. */
-    stages: { stage1, stage2 },
-    /** The duration inputs and confirmed values of the first determination. */
-    durationInputs: inputs,
-    confirmedDuration: confirmed,
-    /** The approver outside the team reviews a complete dossier. */
-    async reviewDossier() {
-      return step(approver, `${base}/dossier-review`, {
-        items: Object.fromEntries(
-          DOSSIER_ITEMS.map((item) => [
-            item,
-            {
-              // No participant list is attached in this fictional dossier.
-              answer:
-                item === 'participant_lists' ? 'not_applicable' : 'present',
-              note: null,
-            },
-          ]),
-        ),
-        conclusion: 'Fictional dossier complete; recommendation supported.',
-        independenceAttested: true,
-      });
-    },
-  };
+  return preparedJourney();
+
+  function preparedJourney() {
+    return {
+      companyId: preparedCompanyId,
+      auditorMembership,
+      companyName,
+      clientName,
+      projectTitle,
+      orderReference,
+      caseId,
+      base,
+      today,
+      read,
+      async download(member: Identity, path: string) {
+        const response = await request.get(`${api}${path}`, {
+          headers: headers(member),
+        });
+        expect(response.status()).toBe(200);
+        expect(response.headers()['content-type']).toContain('application/pdf');
+        return response.body();
+      },
+      post,
+      step,
+      attach,
+      decision,
+      /** The first days of both Stages and S2, the last day of Stage 2. */
+      stages: { stage1, stage2 },
+      /** The duration inputs and confirmed values of the first determination. */
+      durationInputs: inputs,
+      confirmedDuration: confirmed,
+      /** The approver outside the team reviews a complete dossier. */
+      async reviewDossier() {
+        return step(approver, `${base}/dossier-review`, {
+          items: Object.fromEntries(
+            DOSSIER_ITEMS.map((item) => [
+              item,
+              {
+                // No participant list is attached in this fictional dossier.
+                answer:
+                  item === 'participant_lists' ? 'not_applicable' : 'present',
+                note: null,
+              },
+            ]),
+          ),
+          conclusion: 'Fictional dossier complete; recommendation supported.',
+          independenceAttested: true,
+        });
+      },
+    };
+  }
 }
