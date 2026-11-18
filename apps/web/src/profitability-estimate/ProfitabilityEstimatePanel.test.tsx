@@ -74,6 +74,47 @@ function fillForm() {
   fireEvent.click(screen.getByRole('checkbox'));
 }
 describe('Profitability Estimate production public seam', () => {
+  it('does not recover an older denied read after a new complete Actor observation', async () => {
+    let release: (response: Response) => void = () => {
+      throw new Error('Read not initialized');
+    };
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const fetch = vi
+      .fn()
+      .mockReturnValueOnce(held)
+      .mockImplementation(async () => Response.json(actor));
+    vi.stubGlobal('fetch', fetch);
+    window.localStorage.setItem('prisma-prim.interface-locale', 'en');
+    const identity = deterministicBrowserIdentity();
+    const recovered = vi.fn();
+    function panel(current: ActorContext) {
+      return (
+        <InterfaceLocaleProvider>
+          <ProfitabilityEstimatePanel
+            actor={current}
+            identity={identity}
+            opportunityId="opportunity-1"
+            onCompanyContextRejected={() => undefined}
+            onActorRevalidated={recovered}
+          />
+        </InterfaceLocaleProvider>
+      );
+    }
+    const view = render(panel(actor));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    view.rerender(panel(structuredClone(actor)));
+    await act(async () => {
+      release(new Response('', { status: 403 }));
+    });
+    await screen.findByText(
+      'The estimate is unavailable with your current access.',
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(recovered).not.toHaveBeenCalled();
+  });
+
   it('opens the requested exact earlier Version instead of choosing the latest history item', async () => {
     const fetch = vi.fn(async (input: string) =>
       input.endsWith('/versions/version-1')

@@ -1,11 +1,20 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProfitabilityForm } from './ProfitabilityForm';
 import { ProfitabilityVersionDetail } from './ProfitabilityVersionDetail';
@@ -50,17 +59,8 @@ type Mutation =
 
 export function ProfitabilityEstimatePanel(props: Props) {
   const authority = profitabilityAuthority(props.actor);
-  // Session replacement must retire a command even if its principal IDs match.
-  const identityGeneration = useRef({
-    identity: props.identity,
-    generation: 0,
-  });
-  if (identityGeneration.current.identity !== props.identity) {
-    identityGeneration.current = {
-      identity: props.identity,
-      generation: identityGeneration.current.generation + 1,
-    };
-  }
+  const identityGeneration = useRequestLifetime(props.identity, 'estimate');
+
   if (
     !authority.read ||
     !props.identity.loaded ||
@@ -70,7 +70,7 @@ export function ProfitabilityEstimatePanel(props: Props) {
     return null;
   return (
     <ProfitabilityEstimateOwner
-      key={`${profitabilityContextKey(props.actor)}:${props.opportunityId}:${props.requestedVersionId ?? 'history'}:${identityGeneration.current.generation}`}
+      key={`${profitabilityContextKey(props.actor)}:${props.opportunityId}:${props.requestedVersionId ?? 'history'}:${identityGeneration}`}
       {...props}
       company={props.actor.activeCompany}
       authority={authority}
@@ -104,19 +104,38 @@ function ProfitabilityEstimateOwner({
   const [confirmationRevision, setConfirmationRevision] = useState(0);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState(false);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const reads = useScopedOperationGroup('history-source');
+  const histories = useScopedOperationGroup('older-history');
+  const details = useScopedOperationGroup('exact-version');
+  const writes = useScopedOperationGroup('estimate-command');
   const callbacks = useRef({
     onProtectedAccessRejected,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
   });
-  callbacks.current = {
-    onProtectedAccessRejected,
+  useLayoutEffect(() => {
+    callbacks.current = {
+      onProtectedAccessRejected,
+      onCompanyContextRejected,
+      onActorRevalidated,
+      onWorkspaceAccessRejected,
+    };
+  });
+  const capturedAccess = useCapturedAccessRejection({
+    actor,
+    identity,
+    companyContextId: company.id,
+    scope: `${opportunityId}:${requestedVersionId ?? 'history'}`,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
-  };
+  });
+  const rejection = useRef(capturedAccess);
+  useLayoutEffect(() => {
+    rejection.current = capturedAccess;
+  });
+
   const basePath = `/opportunities/${encodeURIComponent(opportunityId)}/profitability-estimates`;
   const scope = {
     workspaceId: actor.workspaceId,
@@ -130,14 +149,14 @@ function ProfitabilityEstimateOwner({
   const request = useCallback(
     async (
       path: string,
-      controller: AbortController,
+      signal: AbortSignal,
       command?: Command,
     ): Promise<ApiResult<unknown> | undefined> => {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return undefined;
+      if (signal.aborted) return undefined;
       return api.request(path, {
         companyContextId: company.id,
-        signal: controller.signal,
+        signal,
         ...(command
           ? {
               method: 'POST',
@@ -154,7 +173,12 @@ function ProfitabilityEstimateOwner({
   );
 
   const reject = useCallback(
-    async (result: ApiResult<unknown>, controller: AbortController) => {
+    async (
+      result: ApiResult<unknown>,
+      signal: AbortSignal,
+      recover: ReturnType<typeof useCapturedAccessRejection>,
+    ) => {
+      if (signal.aborted) return true;
       if (
         result.status !== 'unauthorized' &&
         result.status !== 'forbidden' &&
@@ -167,33 +191,29 @@ function ProfitabilityEstimateOwner({
       setCorrection(undefined);
       setMutation({ kind: 'idle' });
       callbacks.current.onProtectedAccessRejected?.();
-      await handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId: company.id,
-        signal: controller.signal,
-        ...callbacks.current,
-      });
+      await recover(result, signal);
       return true;
     },
     [company.id, identity],
   );
 
   const load = useCallback(async () => {
-    pending.current?.abort();
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = reads.beginLatest();
+    if (!controller) return;
+    histories.retire();
+    details.retire();
+    const recover = rejection.current;
     setView({ kind: 'loading' });
     setSelected(undefined);
     setConfirmationRevision((current) => current + 1);
     setMutation({ kind: 'idle' });
     setReadError(false);
     try {
-      const result = await request(basePath, controller);
+      const result = await request(basePath, controller.signal);
       if (
         !result ||
         controller.signal.aborted ||
-        (await reject(result, controller))
+        (await reject(result, controller.signal, recover))
       )
         return;
       if (result.status !== 'ok') {
@@ -208,12 +228,12 @@ function ProfitabilityEstimateOwner({
       if (requestedVersionId) {
         const exact = await request(
           `${basePath}/versions/${encodeURIComponent(requestedVersionId)}`,
-          controller,
+          controller.signal,
         );
         if (
           !exact ||
           controller.signal.aborted ||
-          (await reject(exact, controller))
+          (await reject(exact, controller.signal, recover))
         )
           return;
         if (exact.status !== 'ok')
@@ -231,10 +251,9 @@ function ProfitabilityEstimateOwner({
     } catch {
       if (!controller.signal.aborted) setView({ kind: 'error' });
     } finally {
-      if (pending.current === controller) {
-        pending.current = undefined;
-        setReading(false);
-      }
+      controller.release();
+      if (!controller.signal.aborted)
+        setReading(histories.isPending() || details.isPending());
     }
   }, [
     actor.workspaceId,
@@ -249,8 +268,10 @@ function ProfitabilityEstimateOwner({
   useEffect(() => {
     void load();
     return () => {
-      pending.current?.abort();
-      pending.current = undefined;
+      reads.retire();
+      histories.retire();
+      details.retire();
+      writes.retire();
     };
   }, [load]);
 
@@ -260,19 +281,20 @@ function ProfitabilityEstimateOwner({
     versionId?: string,
   ) {
     if (view.kind !== 'ready' || locked) return;
-    pending.current?.abort();
-    const controller = new AbortController();
-    pending.current = controller;
+    const controller = (kind === 'older' ? histories : details).beginLatest();
+    if (!controller) return;
+    const recover = rejection.current;
     setReading(true);
     setReadError(false);
     try {
-      const result = await request(path, controller);
+      const result = await request(path, controller.signal);
       if (
         !result ||
         controller.signal.aborted ||
-        (await reject(result, controller))
+        (await reject(result, controller.signal, recover))
       )
         return;
+      if (controller.signal.aborted) return;
       if (result.status !== 'ok') {
         setReadError(true);
         return;
@@ -282,15 +304,19 @@ function ProfitabilityEstimateOwner({
         if (detail.id !== versionId)
           throw new Error('Unexpected exact profitability version.');
         setSelected(detail);
-        setView({
-          kind: 'ready',
-          history: {
-            ...view.history,
-            items: view.history.items.map((item) =>
-              item.id === detail.id ? detail : item,
-            ),
-          },
-        });
+        setView((current) =>
+          current.kind === 'ready'
+            ? {
+                ...current,
+                history: {
+                  ...current.history,
+                  items: current.history.items.map((item) =>
+                    item.id === detail.id ? detail : item,
+                  ),
+                },
+              }
+            : current,
+        );
       } else {
         const page = parseEstimateHistory(result.value, scope);
         const last = view.history.items.at(-1);
@@ -303,37 +329,51 @@ function ProfitabilityEstimateOwner({
           )
         )
           throw new Error('Invalid continued profitability history.');
-        setView({
-          kind: 'ready',
-          history: { ...page, items: [...view.history.items, ...page.items] },
-        });
+        setView((current) =>
+          current.kind === 'ready'
+            ? {
+                ...current,
+                history: {
+                  ...page,
+                  items: [...current.history.items, ...page.items],
+                },
+              }
+            : current,
+        );
       }
     } catch {
       if (!controller.signal.aborted) setReadError(true);
     } finally {
-      if (pending.current === controller) {
-        pending.current = undefined;
-        setReading(false);
-      }
+      controller.release();
+      if (!controller.signal.aborted)
+        setReading(histories.isPending() || details.isPending());
     }
   }
 
   async function execute(command: Command) {
-    if (view.kind !== 'ready' || busy) return;
-    pending.current?.abort();
-    const controller = new AbortController();
-    pending.current = controller;
+    if (view.kind !== 'ready' || busy || writes.isPending()) return;
+    const controller = writes.beginLatest();
+    if (!controller) return;
+    reads.retire();
+    histories.retire();
+    details.retire();
+    const recover = rejection.current;
+    const current = writes.capture();
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      controller.retire();
+    }, 15_000);
     setMutation({ kind: 'sending', command });
     // Aborting our local wait cannot prove a rollback. The exact command remains retryable.
-    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
-      const result = await request(command.path, controller, command);
-      if (pending.current !== controller) return;
+      const result = await request(command.path, controller.signal, command);
+      if (!current()) return;
       if (!result || controller.signal.aborted) {
         setMutation({ kind: 'uncertain', command });
         return;
       }
-      if (await reject(result, controller)) return;
+      if (await reject(result, controller.signal, recover)) return;
       if (result.status === 'validation') {
         setMutation({ kind: 'invalid' });
         return;
@@ -379,11 +419,11 @@ function ProfitabilityEstimateOwner({
       if (command.kind === 'submit') setCorrection(version);
       setMutation({ kind: command.kind === 'submit' ? 'saved' : 'decided' });
     } catch {
-      if (pending.current === controller)
+      if (current() && (!controller.signal.aborted || timedOut))
         setMutation({ kind: 'uncertain', command });
     } finally {
       window.clearTimeout(timeout);
-      if (pending.current === controller) pending.current = undefined;
+      controller.release();
     }
   }
 

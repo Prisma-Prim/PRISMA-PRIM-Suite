@@ -1,13 +1,16 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
 import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentProps,
 } from 'react';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProfitabilityEstimatePanel } from './ProfitabilityEstimatePanel';
 import {
@@ -35,12 +38,8 @@ type View =
   | { kind: 'ready'; page: DecisionQueuePage };
 
 export function ProfitabilityDecisionQueue(props: Props) {
-  const generation = useRef({ identity: props.identity, n: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      n: generation.current.n + 1,
-    };
+  const generation = useRequestLifetime(props.identity, 'decision-queue');
+
   if (
     !props.identity.loaded ||
     !props.identity.signedIn ||
@@ -50,7 +49,7 @@ export function ProfitabilityDecisionQueue(props: Props) {
     return null;
   return (
     <QueueOwner
-      key={`${profitabilityContextKey(props.actor)}:${generation.current.n}`}
+      key={`${profitabilityContextKey(props.actor)}:${generation}`}
       {...props}
       company={props.actor.activeCompany}
     />
@@ -65,20 +64,33 @@ function QueueOwner(
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [selected, setSelected] = useState<DecisionQueueItem>();
-  const pending = useRef<AbortController | undefined>(undefined);
+  const reads = useScopedOperationGroup('queue-page');
   const heading = useRef<HTMLHeadingElement>(null);
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
+  const capturedAccess = useCapturedAccessRejection({
+    ...props,
+    onActorRevalidated: props.onActorRevalidated ?? (() => undefined),
+    companyContextId: props.company.id,
+    scope: 'decision-queue',
+  });
+  const rejection = useRef(capturedAccess);
+  useLayoutEffect(() => {
+    rejection.current = capturedAccess;
+  });
   const retire = useCallback(() => {
-    pending.current?.abort();
+    reads.retire();
     setView({ kind: 'denied' });
     setSelected(undefined);
-  }, []);
+  }, [reads]);
   const load = useCallback(
     async (cursor: string | undefined, focus = false) => {
-      pending.current?.abort();
-      const controller = new AbortController();
-      pending.current = controller;
+      reads.retire();
+      const controller = reads.beginLatest();
+      if (!controller) return;
+      const recover = rejection.current;
       setView({ kind: 'loading' });
       setSelected(undefined);
       try {
@@ -97,18 +109,7 @@ function QueueOwner(
           result.status === 'notFound'
         ) {
           setView({ kind: 'denied' });
-          await handleAuthenticatedAccessRejection({
-            result,
-            identity: callbacks.current.identity,
-            companyContextId: props.company.id,
-            signal: controller.signal,
-            onCompanyContextRejected:
-              callbacks.current.onCompanyContextRejected,
-            onActorRevalidated:
-              callbacks.current.onActorRevalidated ?? (() => undefined),
-            onWorkspaceAccessRejected:
-              callbacks.current.onWorkspaceAccessRejected,
-          });
+          await recover(result, controller.signal);
           return;
         }
         if (result.status !== 'ok') {
@@ -126,15 +127,15 @@ function QueueOwner(
         if (!controller.signal.aborted) setView({ kind: 'error' });
       } finally {
         if (!controller.signal.aborted && focus) heading.current?.focus();
-        if (pending.current === controller) pending.current = undefined;
+        controller.release();
       }
     },
-    [props.actor.workspaceId, props.company.id],
+    [props.actor.workspaceId, props.company.id, reads],
   );
   const cursor = cursors.at(-1);
   useEffect(() => {
     void load(undefined);
-    return () => pending.current?.abort();
+    return () => reads.retire();
   }, [load]);
   function move(next: (string | undefined)[]) {
     setCursors(next);

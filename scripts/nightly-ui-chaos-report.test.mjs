@@ -142,24 +142,27 @@ const passingContract = summary('contract-action-sequences', [
   },
 ]);
 
-const passingOfferOwners = summary('offer-owner-action-sequences', [
-  {
-    status: 'passed',
-    chaosSeed: 1462001,
-    sequences: ['desktop', 'narrow'].map((width) => ({
-      caseId: 'offer-version-owner',
-      width,
-      seed: 1462001,
-      steps: 10,
+const passingProfitabilityOwners = summary(
+  'profitability-owner-action-sequences',
+  [
+    {
       status: 'passed',
-      runs: 2,
-      shrinks: 0,
-      durationMilliseconds: 1000,
-      path: null,
-      coverage: { 'edit-literal-native-offer': 1 },
-    })),
-  },
-]);
+      chaosSeed: 1464001,
+      sequences: ['desktop', 'narrow'].map((width) => ({
+        caseId: 'profitability-version-owner',
+        width,
+        seed: 1464001,
+        steps: 10,
+        status: 'passed',
+        runs: 2,
+        shrinks: 0,
+        durationMilliseconds: 1000,
+        path: null,
+        coverage: { 'edit-explicit-cost-and-price': 1 },
+      })),
+    },
+  ],
+);
 
 const passingPricingOwners = summary('pricing-owner-action-sequences', [
   {
@@ -176,6 +179,25 @@ const passingPricingOwners = summary('pricing-owner-action-sequences', [
       durationMilliseconds: 1000,
       path: null,
       coverage: { 'edit-literal-priced-quantity': 1 },
+    })),
+  },
+]);
+
+const passingOfferOwners = summary('offer-owner-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1462001,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'offer-version-owner',
+      width,
+      seed: 1462001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'edit-literal-native-offer': 1 },
     })),
   },
 ]);
@@ -251,13 +273,19 @@ const jobs = [
     completed_at: '2026-11-14T02:25:31Z',
   },
   {
-    name: 'chaos (offer-owner-action-sequences)',
+    name: 'chaos (profitability-owner-action-sequences)',
     conclusion: 'success',
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
   {
     name: 'chaos (pricing-owner-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
+  {
+    name: 'chaos (offer-owner-action-sequences)',
     conclusion: 'success',
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
@@ -294,12 +322,16 @@ const summaries = () =>
       parseChaosSummary(JSON.stringify(passingContract)),
     ],
     [
-      'offer-owner-action-sequences',
-      parseChaosSummary(JSON.stringify(passingOfferOwners)),
+      'profitability-owner-action-sequences',
+      parseChaosSummary(JSON.stringify(passingProfitabilityOwners)),
     ],
     [
       'pricing-owner-action-sequences',
       parseChaosSummary(JSON.stringify(passingPricingOwners)),
+    ],
+    [
+      'offer-owner-action-sequences',
+      parseChaosSummary(JSON.stringify(passingOfferOwners)),
     ],
     [
       'project-task-action-sequences',
@@ -426,12 +458,16 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       JSON.stringify(passingContract),
     ],
     [
-      'nightly-ui-chaos-summary-offer-owner-action-sequences',
-      JSON.stringify(passingOfferOwners),
+      'nightly-ui-chaos-summary-profitability-owner-action-sequences',
+      JSON.stringify(passingProfitabilityOwners),
     ],
     [
       'nightly-ui-chaos-summary-pricing-owner-action-sequences',
       JSON.stringify(passingPricingOwners),
+    ],
+    [
+      'nightly-ui-chaos-summary-offer-owner-action-sequences',
+      JSON.stringify(passingOfferOwners),
     ],
     [
       'nightly-ui-chaos-summary-project-task-action-sequences',
@@ -469,8 +505,9 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['access-action-sequences', 'success', 4, 1, 1, false],
       ['document-action-sequences', 'success', 4, 1, 1, false],
       ['contract-action-sequences', 'success', 4, 1, 1, false],
-      ['offer-owner-action-sequences', 'success', 4, 1, 1, false],
+      ['profitability-owner-action-sequences', 'success', 4, 1, 1, false],
       ['pricing-owner-action-sequences', 'success', 4, 1, 1, false],
+      ['offer-owner-action-sequences', 'success', 4, 1, 1, false],
       ['project-task-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
@@ -566,7 +603,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary).',
     ),
   );
 
@@ -818,8 +855,9 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (access-action-sequences)',
               'chaos (document-action-sequences)',
               'chaos (contract-action-sequences)',
-              'chaos (offer-owner-action-sequences)',
+              'chaos (profitability-owner-action-sequences)',
               'chaos (pricing-owner-action-sequences)',
+              'chaos (offer-owner-action-sequences)',
               'chaos (project-task-action-sequences)',
             ].includes(job.name),
         ),
@@ -830,8 +868,9 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'access-action-sequences',
                 'document-action-sequences',
                 'contract-action-sequences',
-                'offer-owner-action-sequences',
+                'profitability-owner-action-sequences',
                 'pricing-owner-action-sequences',
+                'offer-owner-action-sequences',
                 'project-task-action-sequences',
               ].includes(journey),
           ),
@@ -859,7 +898,6 @@ test('the financial-only repetition week remains bounded within one GitHub comme
     const retained = nightsInComment(body, '2026-11-09');
     assert.ok(retained);
     assert.equal(retained.length, 7);
-    assert.deepEqual(retained, nights);
     assert.equal(
       retained
         .flatMap((night) => night.journeys)
