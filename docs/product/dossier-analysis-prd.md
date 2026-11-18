@@ -156,3 +156,18 @@ The bounded read-only preparation retains the original proposal, reviewed value,
 Preparation and local insertion create no canonical fact, certification step, approval or Activity event. The manager may edit inserted values before a separate ordinary native application command, which retains its complete validation, authorization, revision and history rules. Citations remain in the analysis history; this assistance makes no formal source-adoption or professional-approval claim. Broader questionnaire fields and plan/report preparation remain follow-through under #1452.
 
 The reproducible model-free check is `pnpm --filter @prisma-prim/api evaluate:dossier`. It builds the current engine and prints the fixture observations, precision/recall numerators and denominators, citation scores and named scenario outcomes as JSON. A failing scenario exits nonzero. These synthetic fixtures check software behavior; they do not estimate accuracy on real Client files or a future model.
+
+## Recoverable native local intake (#1454)
+
+The Project workbench composes [Document Registry §27](release-1-document-registry-prd.md#27-project-working-originals-and-recoverable-intake-1454)
+for multi-file PDF/DOCX intake. A Project Working Source preserves an incoming
+original as a draft. Dossier Analysis owns supplementary Word originals and
+explicit source selection; native Documents retain registration, Project
+associations, PDF storage, scans and receipts.
+
+The human admits reviewed ownership, metadata and language, then starts a foreground
+batch. Pause/reopen/resume retains every invalid, duplicate, failed, incomplete,
+skipped and completed item. Failed reads and later item failures retain confirmed
+receipts. Reopening verifies exact reselected bytes and current native authority
+and target revisions. Preservation does not establish readable text, interpreted
+diagrams, OCR quality or validated audit facts.

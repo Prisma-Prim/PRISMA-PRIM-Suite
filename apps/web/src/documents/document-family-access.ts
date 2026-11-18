@@ -21,6 +21,8 @@ export function documentFamilyCaptureKey(
       return 'payment-evidence-explicit-operation-owner';
     case 'questionnaire':
       return 'questionnaire';
+    case 'project-source':
+      return 'project-source';
     case 'received-audit-source':
       return JSON.stringify([
         hasReceivedAuditSourceAccess(company),
@@ -61,6 +63,8 @@ export function hasDocumentFamilyAccess(
       // This family consumes the full Actor and separate operation keys at its source owner.
       return false;
     case 'questionnaire':
+      return true;
+    case 'project-source':
       return true;
     case 'received-audit-source':
       return hasReceivedAuditSourceAccess(company);
