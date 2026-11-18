@@ -3,6 +3,11 @@ import { pathToFileURL } from 'node:url';
 
 export const BROWSER_SEQUENCE_CASES = [
   {
+    id: 'project-task',
+    journey: 'project-task-action-sequences',
+    title: 'explores generated native Project and Task action sequences',
+  },
+  {
     id: 'payment-observation',
     journey: 'financial-action-sequences',
     title: 'explores generated native Payment action sequences',

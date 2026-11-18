@@ -24,6 +24,32 @@ import {
 
 test.use({ actionTimeout: 20_000 });
 
+function atNativeLocale(adapter: typeof documentVersionSequenceAdapter) {
+  return {
+    ...adapter,
+    async open(input: Parameters<typeof adapter.open>[0]) {
+      const world = await adapter.open(input);
+      const locale = input.info.project.name.endsWith('narrow') ? 'ru' : 'ro';
+      async function chooseLocale() {
+        const action = world
+          .actions({ locale, variant: input.initial })
+          .find((action) => action.label === 'change-interface-locale');
+        if (!action) throw new Error('Expected native Document locale action');
+        await action.run();
+      }
+      await chooseLocale();
+      return {
+        ...world,
+        async settle() {
+          await world.settle();
+          await chooseLocale();
+          await world.verify();
+        },
+      };
+    },
+  };
+}
+
 test.describe('generated Document sequences', () => {
   test.use({ chaosOwner: 'sequence' });
   test('explores generated native Document Version action sequences', async ({
@@ -33,7 +59,7 @@ test.describe('generated Document sequences', () => {
     await runBrowserSequences({
       page,
       info,
-      adapter: documentVersionSequenceAdapter,
+      adapter: atNativeLocale(documentVersionSequenceAdapter),
     });
   });
 
@@ -44,7 +70,7 @@ test.describe('generated Document sequences', () => {
     await runBrowserSequences({
       page,
       info,
-      adapter: documentPdfSequenceAdapter,
+      adapter: atNativeLocale(documentPdfSequenceAdapter),
     });
   });
 

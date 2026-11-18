@@ -7,6 +7,38 @@ import {
   readBrowserSequenceOptions,
 } from './browser-sequences.mjs';
 
+test('validates a Project Task replay only for the native Project Task journey', () => {
+  const environment = {
+    UI_CHAOS_SEED: '1447001',
+    UI_SEQUENCE_REPLAY: 'project-task@narrow~10~0:1',
+  };
+  assert.equal(
+    readBrowserSequenceOptions({
+      journey: 'project-task-action-sequences',
+      environment,
+    }).replay.caseId,
+    'project-task',
+  );
+  assert.throws(
+    () =>
+      readBrowserSequenceOptions({
+        journey: 'document-action-sequences',
+        environment,
+      }),
+    /Unknown sequence case/u,
+  );
+  assert.equal(
+    browserSequenceReplayCommand({
+      caseId: 'project-task',
+      width: 'narrow',
+      seed: 1447001,
+      steps: 10,
+      path: '0:1',
+    }),
+    "UI_SEQUENCE_REPLAY='project-task@narrow~10~0:1' pnpm verify:journey project-task-action-sequences --chaos 1447001",
+  );
+});
+
 test('validates a replay against its actual journey before invoking any harness', () => {
   const script = fileURLToPath(
     new URL('./browser-sequences.mjs', import.meta.url),
