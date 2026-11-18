@@ -4,6 +4,7 @@ import {
   useScopedOperation,
   type ScopedOperation,
 } from '../api/use-scoped-operation';
+import { TEAM_LIMITS } from './certification-team';
 import { useTeamCandidateCopy } from './certification-team-candidates.copy';
 
 interface Candidate {
@@ -12,12 +13,14 @@ interface Candidate {
 }
 interface Page {
   items: Candidate[];
+  draftLinks: Candidate[];
   nextCursor: string | null;
 }
 type Selection = {
   owner: ScopedOperation;
   query: string;
   items: Candidate[];
+  draftLinks: Candidate[];
   page:
     | { status: 'loading' | 'error' }
     | { status: 'ready'; nextCursor: string | null; empty: boolean };
@@ -28,6 +31,7 @@ export function useTeamCandidates(input: {
   scope: string;
   caseId: string | undefined;
   enabled: boolean;
+  linkedIds: readonly string[];
   read: (
     owner: ScopedOperation,
     signal: AbortSignal,
@@ -50,12 +54,15 @@ export function useTeamCandidates(input: {
       owner: operation,
       query,
       items: previous,
+      draftLinks: [],
       page: { status: 'loading' },
     });
     try {
       const params = new URLSearchParams();
       if (query.trim()) params.set('search', query.trim());
       if (after) params.set('after', after);
+      const linked = new Set(input.linkedIds.filter(isUuid));
+      if (linked.size) params.set('linked', [...linked].join(','));
       const reply = await input.read(
         operation,
         signal,
@@ -63,9 +70,18 @@ export function useTeamCandidates(input: {
       );
       if (signal.aborted) return;
       if (reply.status !== 'ok') throw new Error('Candidate read unavailable.');
-      const page = candidatePage(reply.value, input.caseId);
+      const page = candidatePage(reply.value, input.caseId, linked);
+      const eligibleLinks = new Set(
+        page.draftLinks.map((item) => item.workspaceMembershipId),
+      );
       const known = new Map(
-        previous.map((item) => [item.workspaceMembershipId, item]),
+        previous
+          .filter(
+            (item) =>
+              !linked.has(item.workspaceMembershipId) ||
+              eligibleLinks.has(item.workspaceMembershipId),
+          )
+          .map((item) => [item.workspaceMembershipId, item]),
       );
       for (const item of page.items)
         known.set(item.workspaceMembershipId, item);
@@ -73,6 +89,7 @@ export function useTeamCandidates(input: {
         owner: operation,
         query,
         items: [...known.values()],
+        draftLinks: page.draftLinks,
         page: {
           status: 'ready',
           nextCursor: page.nextCursor,
@@ -85,6 +102,7 @@ export function useTeamCandidates(input: {
           owner: operation,
           query,
           items: previous,
+          draftLinks: [],
           page: { status: 'error' },
         });
     }
@@ -95,7 +113,12 @@ export function useTeamCandidates(input: {
   }, [operation, input.enabled]);
 
   return {
-    options: current?.items ?? [],
+    options: [
+      ...(current?.items ?? []),
+      ...(current?.draftLinks ?? []).filter((item) =>
+        input.linkedIds.includes(item.workspaceMembershipId),
+      ),
+    ],
     selection: current,
     search: (query: string) => {
       void load(query);
@@ -149,17 +172,34 @@ export function TeamCandidateSearch(props: {
 }
 
 /** The HTTP boundary proves the exact Case, bounded page and safe projection. */
-function candidatePage(value: unknown, caseId: string): Page {
+function candidatePage(
+  value: unknown,
+  caseId: string,
+  linked: ReadonlySet<string>,
+): Page {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid candidates.');
   const body = Object.fromEntries(Object.entries(value));
+  if (body.caseId !== caseId) throw new Error('Invalid candidate Case.');
+  const items = candidateRows(body.items, 25);
+  const draftLinks = linked.size
+    ? candidateRows(body.draftLinks, TEAM_LIMITS.members)
+    : [];
   if (
-    body.caseId !== caseId ||
-    !Array.isArray(body.items) ||
-    body.items.length > 25
+    draftLinks.some((item) => !linked.has(item.workspaceMembershipId)) ||
+    (body.nextCursor !== null && !isUuid(body.nextCursor)) ||
+    (body.nextCursor !== null &&
+      (items.length !== 25 ||
+        body.nextCursor !== items.at(-1)?.workspaceMembershipId))
   )
+    throw new Error('Invalid candidate continuation.');
+  return { items, draftLinks, nextCursor: body.nextCursor };
+}
+
+function candidateRows(value: unknown, maximum: number): Candidate[] {
+  if (!Array.isArray(value) || value.length > maximum)
     throw new Error('Invalid candidate page.');
-  const rows: unknown[] = body.items;
+  const rows: unknown[] = value;
   const items = rows.map((value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value))
       throw new Error('Invalid candidate.');
@@ -178,14 +218,10 @@ function candidatePage(value: unknown, caseId: string): Page {
   });
   if (
     new Set(items.map((item) => item.workspaceMembershipId)).size !==
-      items.length ||
-    (body.nextCursor !== null && !isUuid(body.nextCursor)) ||
-    (body.nextCursor !== null &&
-      (items.length !== 25 ||
-        body.nextCursor !== items.at(-1)?.workspaceMembershipId))
+    items.length
   )
-    throw new Error('Invalid candidate continuation.');
-  return { items, nextCursor: body.nextCursor };
+    throw new Error('Duplicate candidate.');
+  return items;
 }
 
 function isUuid(value: unknown): value is string {
