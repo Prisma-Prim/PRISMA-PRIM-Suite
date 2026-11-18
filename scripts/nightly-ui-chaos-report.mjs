@@ -389,13 +389,18 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
   const base = `${server}/${repository}`;
   const retained = nights.map(compactNight);
   const rows = retained.flatMap((night) =>
-    night.journeys.map((entry) => {
-      const time = night.startedAt.slice(0, 16).replace('T', ' ');
-      const runs = `${entry.passed} of ${entry.runs}${entry.stoppedByBudget ? ' (budget)' : ''}`;
-      const minutes =
-        entry.jobMinutes === null ? '—' : `${entry.jobMinutes.toFixed(1)} min`;
-      return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}][run-${night.runId}] | [\`${night.sha.slice(0, 7)}\`][commit-${night.sha}] | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
-    }),
+    night.journeys
+      // Missing jobs remain explicit below and in the retained data block.
+      .filter((entry) => entry.conclusion !== null || entry.status !== null)
+      .map((entry) => {
+        const time = night.startedAt.slice(0, 16).replace('T', ' ');
+        const runs = `${entry.passed} of ${entry.runs}${entry.stoppedByBudget ? ' (budget)' : ''}`;
+        const minutes =
+          entry.jobMinutes === null
+            ? '—'
+            : `${entry.jobMinutes.toFixed(1)} min`;
+        return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}][run-${night.runId}] | [\`${night.sha.slice(0, 7)}\`][commit-${night.sha}] | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
+      }),
   );
   const sequenceRows = retained.flatMap((night) =>
     night.journeys.flatMap((entry) =>

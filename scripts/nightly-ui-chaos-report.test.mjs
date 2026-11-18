@@ -784,6 +784,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
     const retained = nightsInComment(body, '2026-11-09');
     assert.ok(retained);
     assert.equal(retained.length, 7);
+    assert.deepEqual(retained, nights);
     assert.equal(
       retained
         .flatMap((night) => night.journeys)
