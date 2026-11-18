@@ -463,5 +463,63 @@
       "previousAttempt": "First desktop passed. The narrow attempt served an app 404 while a concurrent build changed served assets. The serial rerun passed both widths."
     },
     "qualification": "These are completed local executions on the listed immutable inputs. Required PR checks and review must still pass on the committed integration heads before merging."
+  },
+  "releaseCandidateVerification": {
+    "source": "0ef583062b99604facb40e853c096e7ef8de4af5",
+    "tree": "060c2035a9ea7c0d035e1aed5b8e368526e7badc",
+    "evidence": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/tree/b5b43aa29a075bb1fc9a8436f4229058c8b97357",
+    "native": {
+      "files": 4,
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0
+    },
+    "journeys": [
+      {
+        "journey": "document-intake",
+        "startedAt": "2026-11-18T22:48:44.725Z",
+        "finishedAt": "2026-11-18T22:50:15.339Z",
+        "status": "passed",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        },
+        "retries": 0
+      },
+      {
+        "journey": "certification-stage-preparation",
+        "startedAt": "2026-11-18T22:50:25.128Z",
+        "finishedAt": "2026-11-18T22:52:16.147Z",
+        "status": "passed",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        },
+        "retries": 0
+      },
+      {
+        "journey": "local-audit-pilot",
+        "startedAt": "2026-11-18T22:52:25.007Z",
+        "finishedAt": "2026-11-18T22:55:24.240Z",
+        "status": "passed",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        },
+        "retries": 0
+      }
+    ],
+    "launcher": {
+      "command": "pnpm pilot:audit --check",
+      "exitCode": 0,
+      "releasedPorts": [4173, 4174]
+    },
+    "previousLauncherQualification": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/d72f10fb1980ff141d68928a8b4b08c435078a35/docs/qualification/local-audit-pilot/outcomes.json"
   }
 }

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1452-main-release-verification-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1452,
+  "pullRequest": 1470,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "At 0ef58306, 35 native tests and six Romanian desktop/Russian narrow browser cases passed. Intake, Stage and complete audit runner windows totaled 380.866 seconds. The bounded launcher passed. Ten fictional screenshots inspected and twelve remote blobs verified. The distinct earlier review replay totaled 491.489 browser seconds. Overall time, tokens and price were unreported."
+  }
+}
