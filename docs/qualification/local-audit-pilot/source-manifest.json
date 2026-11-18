@@ -41,5 +41,50 @@
       "recoverableIntake1466": "eb809c7b79ec62e2d3fcd965de235089b6438390",
       "reason": "Previous green source CI was followed by a demonstrated PDF selection metadata race after preflight. Native selection now shares the admitted Word/PDF target fence under its insertion transaction locks; original receipts retain replay semantics."
     }
-  ]
+  ],
+  "incrementalMainIntegration": {
+    "authorization": "The owner requested progressive main merges and issue updates after each delivery on 2026-11-18.",
+    "executionSources": {
+      "intake": "e687e77ed50cd04c0dded99701749c37f512209e",
+      "pilotAndStage": "5da711bd2e47bb63b9f3e316c5ad70065d5e16b7"
+    },
+    "inputs": [
+      {
+        "pr": 1449,
+        "head": "82c1f450a2b013e2137ed0a108d601ba16467354",
+        "requiredCi": 44373521302
+      },
+      {
+        "pr": 1457,
+        "head": "6e3d449d5249ab7339187d3a3052485ea15d8b55",
+        "requiredCi": 44367941290
+      },
+      {
+        "pr": 1458,
+        "head": "795bc55a5afc61be45b7ca20fcb06858a56a77ba",
+        "requiredCi": 44369231797
+      },
+      {
+        "pr": 1459,
+        "head": "118a8ae8f7a8875997874eecb5d36449f56e90cf",
+        "requiredCi": 44367575546
+      },
+      {
+        "pr": 1466,
+        "head": "3d8611def9536e7c953f9278845f55787b8d8f5e",
+        "requiredCi": 44368075457
+      },
+      {
+        "pr": 1468,
+        "head": "a64cad30c1910c7c1fe3ed9ae1caf93d0c2f922a",
+        "requiredCi": 44372396436
+      },
+      {
+        "pr": 1469,
+        "head": "cb7cb0256746082b52c0e496df68d50ddb97a1e5",
+        "requiredCi": 44372164293
+      }
+    ],
+    "gate": "These are the exact inputs to the integration candidate and the associated PR runs. The public review and successful quality on the applicable main PR head are required before each merge."
+  }
 }

@@ -393,5 +393,75 @@
       }
     ],
     "mechanicalChecks": "Source and composed global format/lint/types passed; final documentation formatting and cost checks passed."
+  },
+  "incrementalMainIntegration": {
+    "browserJourneys": [
+      {
+        "journey": "document-intake",
+        "startedAt": "2026-11-18T18:41:16.782Z",
+        "finishedAt": "2026-11-18T18:42:56.010Z",
+        "status": "passed",
+        "exitCode": 0,
+        "source": "e687e77ed50cd04c0dded99701749c37f512209e",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "journey": "certification-stage-preparation",
+        "startedAt": "2026-11-18T18:53:24.190Z",
+        "finishedAt": "2026-11-18T18:55:36.049Z",
+        "status": "passed",
+        "exitCode": 0,
+        "source": "5da711bd2e47bb63b9f3e316c5ad70065d5e16b7",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      {
+        "journey": "local-audit-pilot",
+        "startedAt": "2026-11-18T18:49:56.844Z",
+        "finishedAt": "2026-11-18T18:53:12.236Z",
+        "status": "passed",
+        "exitCode": 0,
+        "source": "5da711bd2e47bb63b9f3e316c5ad70065d5e16b7",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      }
+    ],
+    "nativeCompatibility": {
+      "source": "e687e77ed50cd04c0dded99701749c37f512209e",
+      "passed": 1
+    },
+    "nativeStageAndIntake": {
+      "source": "cb7cb0256746082b52c0e496df68d50ddb97a1e5",
+      "passed": 27
+    },
+    "renderedStageAndApplication": {
+      "source": "cb7cb0256746082b52c0e496df68d50ddb97a1e5",
+      "passed": 19
+    },
+    "renderedCertificationRecovery": {
+      "source": "82c1f450a2b013e2137ed0a108d601ba16467354",
+      "passed": 530,
+      "regression": "The held actor refresh had zero callbacks after a candidate denial before the fix. The registry now regains reader authority after the selected Case closes."
+    },
+    "launcherCheck": {
+      "source": "a64cad30c1910c7c1fe3ed9ae1caf93d0c2f922a",
+      "status": "ready",
+      "exitCode": 0,
+      "previousAttempt": "First desktop passed. The narrow attempt served an app 404 while a concurrent build changed served assets. The serial rerun passed both widths."
+    },
+    "qualification": "These are completed local executions on the listed immutable inputs. Required PR checks and review must still pass on the committed integration heads before merging."
   }
 }
