@@ -1,0 +1,1 @@
+ALTER TABLE "dossier_harness_connections" ADD CONSTRAINT "dossier_harness_connection_company_fk" FOREIGN KEY ("workspace_id","company_id") REFERENCES "public"."companies"("workspace_id","id") ON DELETE no action ON UPDATE no action;

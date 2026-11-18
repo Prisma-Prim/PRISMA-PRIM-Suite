@@ -26,7 +26,10 @@ import {
   requestListItemFor,
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
-import { companyGrants } from '../access/company-grants.test-fixture';
+import {
+  companyGrants,
+  withCompanyGrants,
+} from '../access/company-grants.test-fixture';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import {
   salesStageMessages,
@@ -235,6 +238,62 @@ function bodyOf(init: RequestInit | undefined): unknown {
 describe('Sales Stage settings', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it('admits one stage creation when its public form is submitted twice synchronously', async () => {
+    let complete: ((value: Response) => void) | undefined;
+    const held = new Promise<Response>((resolve) => {
+      complete = resolve;
+    });
+    const recorded = vi.fn();
+    const transport = stubRoutes({
+      [listPath]: [reply(listPage())],
+      [stagesPath]: [reply(stageList())],
+      [createPath]: [() => held, () => held],
+    });
+    renderWorkspace(configurator, recorded);
+    const settings = await openSettings();
+    await within(settings).findByText(stage('salesStagesEmpty'));
+    fireEvent.change(
+      within(settings).getByLabelText(stage('salesStageLabel')),
+      {
+        target: { value: 'Qualification' },
+      },
+    );
+    const form = within(settings)
+      .getByRole('button', { name: stage('createSalesStage') })
+      .closest('form');
+    if (!form) throw new Error('Expected the public stage creation form.');
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+    });
+    expect(transport.calls(createPath)).toHaveLength(1);
+    expect(transport.calls(createPath)[0]?.[1]?.signal?.aborted).toBe(false);
+    await act(async () =>
+      complete?.(
+        Response.json(
+          {
+            receipt: {
+              operation: 'CREATED',
+              salesStageId: qualification.id,
+              label: qualification.label,
+              position: 1,
+              revision: 1,
+            },
+            configuration: stageList([qualification]),
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+    expect(await screen.findByText(stage('salesStageCreated'))).toBeVisible();
+    expect(recorded).toHaveBeenCalledOnce();
+    expect(transport.unexpected).toEqual([]);
+  });
+
   it('shows the ordered stages read-only to a Commercial Intake reader without the configuration bundle', async () => {
     const transport = stubRoutes({
       [listPath]: [reply(listPage())],
@@ -264,6 +323,175 @@ describe('Sales Stage settings', () => {
         name: stage('openSalesStageSettings'),
       }),
     ).toBeVisible();
+    expect(transport.unexpected).toEqual([]);
+  });
+
+  it('retires a held create on configuration capture replacement without restarting the independent stage list', async () => {
+    const currentCompany = configurator.activeCompany;
+    if (!currentCompany)
+      throw new Error('Expected the synthetic configuration Company.');
+    let complete: ((value: Response) => void) | undefined;
+    const held = new Promise<Response>((resolve) => {
+      complete = resolve;
+    });
+    const fresh = buildSalesStage({
+      id: 'fresh-stage',
+      label: 'Fresh stage',
+      position: 3,
+    });
+    const recorded = vi.fn();
+    const transport = stubRoutes({
+      [listPath]: [reply(listPage())],
+      [stagesPath]: [
+        reply(stageList([qualification])),
+        reply(stageList([qualification, negotiation])),
+      ],
+      [createPath]: [
+        () => held,
+        reply(
+          {
+            receipt: {
+              operation: 'CREATED',
+              salesStageId: fresh.id,
+              label: fresh.label,
+              position: 3,
+              revision: 3,
+            },
+            configuration: stageList([qualification, negotiation, fresh]),
+          },
+          201,
+        ),
+      ],
+    });
+    const view = renderWorkspace(configurator, recorded);
+    const settings = await openSettings();
+    await within(settings).findByText(qualification.label);
+    fireEvent.change(
+      within(settings).getByLabelText(stage('salesStageLabel')),
+      { target: { value: negotiation.label } },
+    );
+    await act(async () =>
+      fireEvent.click(
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
+      ),
+    );
+    expect(transport.calls(createPath)).toHaveLength(1);
+    view.selectActor({
+      ...configurator,
+      activeCompany: {
+        ...currentCompany,
+        grants: withCompanyGrants(currentCompany.grants, {
+          bundle: 'company_sales_stage_configuration',
+          version: 'v1',
+          assignmentId: 'replacement-configuration',
+        }),
+      },
+    });
+    expect(transport.calls(createPath)[0]?.[1]?.signal?.aborted).toBe(true);
+    expect(
+      within(settings).getByLabelText(stage('salesStageLabel')),
+    ).toHaveValue('');
+    expect(within(settings).getByText(qualification.label)).toBeVisible();
+    expect(transport.calls(stagesPath)).toHaveLength(1);
+    await act(async () =>
+      complete?.(
+        Response.json(
+          {
+            receipt: {
+              operation: 'CREATED',
+              salesStageId: negotiation.id,
+              label: negotiation.label,
+              position: 2,
+              revision: 2,
+            },
+            configuration: stageList([qualification, negotiation]),
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+    expect(
+      within(settings).queryByText(negotiation.label),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(stage('salesStageCreated')),
+    ).not.toBeInTheDocument();
+    expect(recorded).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(settings).getByRole('button', { name: stage('backToRequests') }),
+    );
+    const reopened = await openSettings();
+    await within(reopened).findByText(negotiation.label);
+    fireEvent.change(
+      within(reopened).getByLabelText(stage('salesStageLabel')),
+      { target: { value: fresh.label } },
+    );
+    await act(async () =>
+      fireEvent.click(
+        within(reopened).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
+      ),
+    );
+    expect(await screen.findByText(stage('salesStageCreated'))).toBeVisible();
+    expect(bodyOf(transport.calls(createPath)[1]?.[1])).toEqual({
+      expectedRevision: 2,
+      label: fresh.label,
+    });
+    expect(keyOf(transport.calls(createPath)[1]?.[1])).not.toBe(
+      keyOf(transport.calls(createPath)[0]?.[1]),
+    );
+    expect(recorded).toHaveBeenCalledOnce();
+    expect(transport.unexpected).toEqual([]);
+  });
+
+  it('keeps a confirmed stage creation when the independent Activity refresh fails', async () => {
+    const recorded = vi.fn(async () => {
+      throw new Error('Independent Activity refresh unavailable');
+    });
+    const transport = stubRoutes({
+      [listPath]: [reply(listPage())],
+      [stagesPath]: [reply(stageList())],
+      [createPath]: [
+        reply(
+          {
+            receipt: {
+              operation: 'CREATED',
+              salesStageId: qualification.id,
+              label: qualification.label,
+              position: 1,
+              revision: 1,
+            },
+            configuration: stageList([qualification]),
+          },
+          201,
+        ),
+      ],
+    });
+    renderWorkspace(configurator, recorded);
+    const settings = await openSettings();
+    await within(settings).findByText(stage('salesStagesEmpty'));
+    fireEvent.change(
+      within(settings).getByLabelText(stage('salesStageLabel')),
+      { target: { value: qualification.label } },
+    );
+    await act(async () =>
+      fireEvent.click(
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
+      ),
+    );
+    expect(recorded).toHaveBeenCalledOnce();
+    expect(screen.getByText(stage('salesStageCreated'))).toBeVisible();
+    expect(
+      screen.queryByText(stage('salesStageUncertain')),
+    ).not.toBeInTheDocument();
+    expect(within(settings).getByText(qualification.label)).toBeVisible();
+    expect(transport.calls(createPath)).toHaveLength(1);
     expect(transport.unexpected).toEqual([]);
   });
 

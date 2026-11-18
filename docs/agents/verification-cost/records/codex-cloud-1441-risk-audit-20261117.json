@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1441-risk-audit-20261117",
+  "date": "2026-11-17",
+  "runType": "journey-audit",
+  "issue": 1441,
+  "pullRequest": 1442,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T18:39:56.000Z",
+    "end": "2026-11-17T19:34:05.000Z",
+    "durationSeconds": 3249
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "42 risk families; 170 deduplicated API tests, 535 rendered tests, eight final unique browser variants; 76 inspected original screenshots and six PDFs (24 pages). No new defect; existing #1439 remains open. Earlier driver failures retained. Includes the separately recorded baseline window; durations overlap. Usage and subscription price not reported."
+  }
+}

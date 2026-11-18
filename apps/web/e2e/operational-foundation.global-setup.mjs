@@ -1,5 +1,5 @@
 import { startDocumentAcceptanceScanner } from './document-content-scanner.mjs';
-/* global URL, fetch, process */
+/* global URL, fetch, process, Buffer */
 
 import { fileURLToPath } from 'node:url';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -82,11 +82,20 @@ export default async function globalSetup() {
   let documentScanner;
   try {
     documentScanner = await startDocumentAcceptanceScanner();
+    // Replace only the external OAuth/model HTTP boundary with fictional signed responses.
+    const { createPlanHttpFixture } =
+      await import('../../api/dist/dossier-harness/plan-http.test-support.js');
+    const plan = await createPlanHttpFixture();
     harness = await harnessModule.createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
       serverClock,
+      planHttp: plan.transport,
       environment: {
         NODE_ENV: 'test',
+        DOSSIER_HARNESS_ENABLED: 'true',
+        CHATGPT_PLAN_CLIENT_ID: 'fictional-client',
+        CHATGPT_PLAN_REDIRECT_URI: 'http://127.0.0.1:4173/chatgpt/callback',
+        DOSSIER_HARNESS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         WEB_ORIGIN: 'http://127.0.0.1:4173',
         ACCESS_IDENTITY_MODE: 'test',
         KNOWLEDGE_EVIDENCE_ENABLED: 'true',

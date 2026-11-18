@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-harness-ci-catalog-20261117",
+  "date": "2026-11-17",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": 1435,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T09:21:42.000Z",
+    "end": "2026-11-17T09:22:58.000Z",
+    "durationSeconds": 76
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "CI44053587009 found the new acceptance journey missing from its catalog. Reproduced with the unchanged native catalog guard; registered the journey and Project route. Four focused script tests and documentation validation pass. No runtime or auth change. Usage and price unavailable."
+  }
+}

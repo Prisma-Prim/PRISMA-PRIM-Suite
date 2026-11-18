@@ -64,6 +64,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
     DocumentWorkingEvidenceReferenceService,
+    DocumentMalwareScanner,
   ],
 })
 export class DocumentsModule {}
