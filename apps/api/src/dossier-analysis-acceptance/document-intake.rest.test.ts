@@ -470,6 +470,164 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
+    it('replays one committed PDF source when its selection checkpoint acknowledgement fails', async () => {
+      const pdf = await PDFDocument.create();
+      pdf.addPage().drawText('Fictional PDF source selection replay');
+      const bytes = Buffer.from(await pdf.save({ useObjectStreams: false }));
+      let batch = await createdBatch([file(bytes, 'selection-recovery.pdf')]);
+      batch = await step(await step(await action(batch, 'start'), 0), 0);
+      batch = await uploaded(batch, 0, bytes);
+      const prior = record(records(batch.items)[0]?.progress);
+      const target = record(prior.target);
+      await fixture.databasePool.query(
+        `CREATE FUNCTION reject_test_pdf_selection_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF jsonb_path_exists(NEW.manifest, '$.items[*].progress ? (@.stage == "source_stored")') THEN RAISE EXCEPTION 'Synthetic PDF selection checkpoint failure'; END IF; RETURN NEW; END $$`,
+      );
+      await fixture.databasePool.query(
+        'CREATE TRIGGER test_pdf_selection_ack BEFORE UPDATE ON dossier_intake_batches FOR EACH ROW EXECUTE FUNCTION reject_test_pdf_selection_ack()',
+      );
+      try {
+        const response = await fixture.call(
+          CERTIFICATION_OWNER,
+          `${batchPath(batch)}/items/${text(records(batch.items)[0]?.id)}/advance`,
+          { method: 'POST', body: { expectedRevision: batch.revision } },
+        );
+        expect(response.status).toBe(503);
+      } finally {
+        await fixture.databasePool.query(
+          'DROP TRIGGER test_pdf_selection_ack ON dossier_intake_batches',
+        );
+        await fixture.databasePool.query(
+          'DROP FUNCTION reject_test_pdf_selection_ack()',
+        );
+      }
+      const workspacePath = `/projects/${fixture.projectId}/dossier-analysis`;
+      async function originals() {
+        return records(
+          record(
+            await (
+              await fixture.call(CERTIFICATION_OWNER, workspacePath)
+            ).json(),
+          ).sources,
+        ).filter((source) => source.documentId === target.documentId);
+      }
+      const before = await originals();
+      expect(before).toHaveLength(1);
+      batch = await reopened(batch);
+      expect(record(records(batch.items)[0]?.progress)).toEqual(prior);
+      batch = await step(batch, 0);
+      expect(record(records(batch.items)[0]?.progress).sourceId).toBe(
+        before[0]?.id,
+      );
+      batch = await step(batch, 0);
+      expect(batch.phase).toBe('completed');
+      expect(await originals()).toEqual(before);
+      const original = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${workspacePath}/sources/${text(before[0]?.id)}/original`,
+      );
+      expect(original.status).toBe(200);
+      expect(Buffer.from(await original.arrayBuffer())).toEqual(bytes);
+    });
+
+    it('refuses PDF source selection when native metadata changes after preflight commits', async () => {
+      const pdf = await PDFDocument.create();
+      pdf.addPage().drawText('Fictional source selection metadata fence');
+      const bytes = Buffer.from(await pdf.save({ useObjectStreams: false }));
+      let batch = await createdBatch([file(bytes, 'selection-metadata.pdf')]);
+      batch = await step(await step(await action(batch, 'start'), 0), 0);
+      batch = await uploaded(batch, 0, bytes);
+      const prior = record(records(batch.items)[0]?.progress);
+      expect(prior.stage).toBe('pdf_stored');
+      const target = record(prior.target);
+      const documentPath = `/documents/${text(target.documentId)}`;
+      const hold = await fixture.holdTable('dossier_intake_batches', 'SHARE');
+      const gate = await fixture.databasePool.connect();
+      const itemId = text(records(batch.items)[0]?.id);
+      const pending = fixture.call(
+        CERTIFICATION_OWNER,
+        `${batchPath(batch)}/items/${itemId}/advance`,
+        { method: 'POST', body: { expectedRevision: batch.revision } },
+      );
+      try {
+        await gate.query('BEGIN');
+        const gatePid = (
+          await gate.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (typeof gatePid !== 'number')
+          throw new Error('Expected native gate pid');
+        await expect.poll(() => hold.waiting(), { timeout: 10_000 }).toBe(true);
+        const projectKey = JSON.stringify([
+          'dossier-analysis-project',
+          '00000000-0000-4000-8000-000000001454',
+          fixture.companyId,
+          fixture.projectId,
+        ]);
+        const acquired = gate.query(
+          'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+          [projectKey],
+        );
+        await expect
+          .poll(
+            async () => {
+              const result = await fixture.databasePool.query<{
+                waiting: boolean;
+              }>(
+                "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND locktype='advisory' AND NOT granted) AS waiting",
+                [gatePid],
+              );
+              return result.rows[0]?.waiting;
+            },
+            { timeout: 10_000 },
+          )
+          .toBe(true);
+        // The gate queues before source selection can reacquire this lock.
+        // After preflight commits, it holds selection until the native edit commits.
+        await hold.release();
+        await acquired;
+        // A separate database writer commits the same native metadata CAS.
+        // It avoids the owner's permission locks serializing the HTTP edit
+        // behind source selection while the Project gate is deliberately held.
+        const changed = await gate.query(
+          `UPDATE working_documents
+             SET title=$2, purpose=$3, working_revision=working_revision+1
+           WHERE id=$1 AND working_revision=2`,
+          [
+            target.documentId,
+            'Native metadata changed after selection preflight',
+            'Human correction commits before native source selection',
+          ],
+        );
+        expect(changed.rowCount).toBe(1);
+      } finally {
+        await hold.release();
+        await gate.query('COMMIT');
+        gate.release();
+      }
+      const response = await pending;
+      expect(response.status, await response.clone().text()).toBe(409);
+      const workspacePath = `/projects/${fixture.projectId}/dossier-analysis`;
+      const workspace = record(
+        await (await fixture.call(CERTIFICATION_OWNER, workspacePath)).json(),
+      );
+      expect(
+        records(workspace.sources).some(
+          (source) => source.documentId === target.documentId,
+        ),
+      ).toBe(false);
+      batch = await reopened(batch);
+      expect(records(batch.items)[0]).toMatchObject({
+        progress: prior,
+        lastAttempt: { outcome: 'failed', code: 'stale_target' },
+      });
+      const original = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${documentPath}/versions/${text(target.versionId)}/content/${text(prior.representationId)}`,
+      );
+      expect(original.status).toBe(200);
+      expect(Buffer.from(await original.arrayBuffer())).toEqual(bytes);
+      expect((await step(batch, 0, 'skip')).phase).toBe('completed');
+    });
+
     it.each(['unlink', 'unlink-relink', 'move'])(
       'refuses a PDF whose admitted Project association changes during scanning: %s',
       async (change) => {
