@@ -131,26 +131,6 @@
       "count": 1
     }
   },
-  "apps/web/src/commercial-intake/ClientCommercialOverview.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/commercial-intake/CommercialIntakeWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 13
-    }
-  },
-  "apps/web/src/commercial-intake/RequestClientAssociation.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/commercial-intake/SalesStageSettings.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/commercial-intake/opportunity-outcome.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 3
