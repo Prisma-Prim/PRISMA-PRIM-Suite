@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "ci-1449-44262900958",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1439,
+  "pullRequest": 1449,
+  "harness": "ci",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-18T07:57:18.000Z",
+    "end": "2026-11-18T08:07:28.000Z",
+    "durationSeconds": 610
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "fail",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Actual CI1 workflow: checks failed because the new deterministic acceptance test accidentally opted into UI chaos without a nightly matrix entry. Downstream application suites were skipped and quality failed; none count as passes. Focused correction removes that unintended opt-in and restores unchanged runner fixtures. No paid model or provider call."
+  }
+}
