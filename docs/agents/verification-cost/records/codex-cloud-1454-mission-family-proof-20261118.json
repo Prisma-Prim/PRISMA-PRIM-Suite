@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1454-mission-family-proof-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1454,
+  "pullRequest": 1466,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-18T14:49:11.558Z",
+    "end": "2026-11-18T14:50:47.400Z",
+    "durationSeconds": 96
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1
+    },
+    "notes": "CI44319947378 passed128acceptance per width and failed the same old mission-family assertion once per width. The test now retains native404/hidden-document checks and proves mission option absent while generic Project source remains allowed. Native desktop/narrow2/2 pass with0retry/skip; window is this journey only. Runtime unchanged. Required CI retry pending; tokens/model/price not reported."
+  }
+}
