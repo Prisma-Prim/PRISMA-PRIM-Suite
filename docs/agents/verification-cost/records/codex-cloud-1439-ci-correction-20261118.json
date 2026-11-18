@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1439-ci-correction-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1439,
+  "pullRequest": 1449,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-18T08:11:26.593Z",
+    "end": "2026-11-18T08:13:01.984Z",
+    "durationSeconds": 95
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Measured fresh native browser05 verification window only:2/2 RO desktop/RU narrow, no retries or skips. Focused runner/workflow34/34, affected strict E2E types and format/lint also pass. Corrected accidental chaos opt-in; CI1 failure is recorded separately. Diagnosis and earlier focused-check time and all token/price figures not reported. Required CI rerun pending."
+  }
+}

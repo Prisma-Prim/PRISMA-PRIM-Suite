@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type Locator } from '@playwright/test';
-import { expect, test } from './ui-chaos.fixture';
+import { expect, test, type Locator } from '@playwright/test';
 import { openSelect, selectOption } from './select-option';
 import {
   prepareCertificationJourney,
