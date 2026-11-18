@@ -2630,6 +2630,26 @@ export class CertificationService {
     return { caseId: row.id, projectId: row.projectId, revision: row.revision };
   }
 
+  /** Only a current programme manager may discover eligible internal auditors. */
+  teamCandidates({
+    actor,
+    caseId,
+    query,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    query: unknown;
+  }) {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'programme_manager', async (companyId) => {
+      await this.visibleCase(actor, companyId, targetId);
+      return {
+        caseId: targetId,
+        ...(await this.teamAccess.candidates({ actor, companyId, query })),
+      };
+    });
+  }
+
   /** Exact native evidence relations; the caller owns the transaction. */
   async dossierDocumentsWithinTransaction(input: {
     actor: ActorContext;
@@ -2715,26 +2735,6 @@ export class CertificationService {
         result.push({ ...attachment, currentCaseRevision: current.revision });
     }
     return result;
-  }
-
-  /** Only a current programme manager may discover eligible internal auditors. */
-  teamCandidates({
-    actor,
-    caseId,
-    query,
-  }: {
-    actor: ActorContext;
-    caseId: string;
-    query: unknown;
-  }) {
-    const targetId = requireUuid(caseId);
-    return this.read(actor, 'programme_manager', async (companyId) => {
-      await this.visibleCase(actor, companyId, targetId);
-      return {
-        caseId: targetId,
-        ...(await this.teamAccess.candidates({ actor, companyId, query })),
-      };
-    });
   }
 
   /** A bounded continuation of a Case register, at the initial read's revision. */
