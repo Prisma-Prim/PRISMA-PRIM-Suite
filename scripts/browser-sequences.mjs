@@ -52,6 +52,11 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'pricing-owner-action-sequences',
     title: 'explores generated native pricing owner sequences',
   },
+  {
+    id: 'offer-version-owner',
+    journey: 'offer-owner-action-sequences',
+    title: 'explores generated native Offer version owner sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {

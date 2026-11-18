@@ -1,3 +1,5 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
 import { useModelOfferCopy } from './model-offer.copy';
 import {
   declaredGross,
@@ -7,7 +9,7 @@ import {
 } from './model-offer-response';
 import { SelectedOfferModelContent } from './ModelOfferDetails';
 import { exactRecord, text } from '../offer-model/offer-model-content';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { holds } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -116,15 +118,11 @@ type PreparationProps = {
   onOpen: (open: boolean) => void;
 };
 export function EstimateOfferPreparation(props: PreparationProps) {
-  const generation = useRef({ identity: props.identity, value: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      value: generation.current.value + 1,
-    };
-  return (
-    <EstimateOfferPreparationOwner key={generation.current.value} {...props} />
+  const generation = useRequestLifetime(
+    props.identity,
+    'estimate-offer-preparation',
   );
+  return <EstimateOfferPreparationOwner key={generation} {...props} />;
 }
 
 /** Owns only price-source selection and an exact literal preparation command. */
@@ -170,8 +168,8 @@ function EstimateOfferPreparationOwner({
     offer?.version.commercialConditions ?? '',
   );
   const attempt = useRef<Attempt | undefined>(undefined);
-  const active = useRef<AbortController | undefined>(undefined);
-  useEffect(() => () => active.current?.abort(), []);
+  const reads = useScopedOperationGroup('approved-sources');
+  const writes = useScopedOperationGroup('preparation-command');
   const companyId = actor.activeCompany?.id;
   const selected = sources.find(
     (source) => source.estimateVersionId === sourceId,
@@ -180,9 +178,8 @@ function EstimateOfferPreparationOwner({
 
   async function load(nextCursor?: string) {
     if (!companyId || !permitted) return;
-    active.current?.abort();
-    const request = new AbortController();
-    active.current = request;
+    const request = reads.beginLatest();
+    if (!request) return;
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -267,11 +264,14 @@ function EstimateOfferPreparationOwner({
       setState('ready');
     } catch {
       if (!request.signal.aborted) setState('unavailable');
+    } finally {
+      request.release();
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (writes.isPending()) return;
     if (!companyId || (locked && state !== 'uncertain') || !permitted) return;
     const validityDays = Number(days);
     const modelIntent =
@@ -343,9 +343,9 @@ function EstimateOfferPreparationOwner({
     if (!command) return;
     attempt.current = command;
     setState('sending');
-    active.current?.abort();
-    const request = new AbortController();
-    active.current = request;
+    reads.retire();
+    const request = writes.beginLatest();
+    if (!request) return;
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
@@ -406,6 +406,8 @@ function EstimateOfferPreparationOwner({
       } else setState('uncertain');
     } catch {
       if (!request.signal.aborted) setState('uncertain');
+    } finally {
+      request.release();
     }
   }
 
@@ -645,7 +647,8 @@ function EstimateOfferPreparationOwner({
         type="button"
         disabled={locked}
         onClick={() => {
-          active.current?.abort();
+          reads.retire();
+          writes.retire();
           attempt.current = undefined;
           setOpen(false);
           onOpen(false);

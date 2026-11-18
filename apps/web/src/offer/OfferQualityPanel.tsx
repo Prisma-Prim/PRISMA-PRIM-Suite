@@ -1,3 +1,4 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -52,21 +53,20 @@ export function OfferQualityPanel({
   const copy = useOfferQualityCopy();
   const [run, setRun] = useState(initialRun);
   const [state, setState] = useState<CommandState>('idle');
-  const pending = useRef<AbortController | undefined>(undefined);
+  const writes = useScopedOperationGroup('quality');
   const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
-  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => setRun(initialRun), [initialRun]);
   useOfferCommandLock(
     state === 'running' || state === 'uncertain',
     onCommandLockChange,
   );
   async function execute() {
+    if (writes.isPending()) return;
     if (!mayRun || state === 'running') return;
     const command = attempt.current ?? { body: '{}', key: crypto.randomUUID() };
     attempt.current = command;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
+    const request = writes.beginLatest();
+    if (!request) return;
     setState('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -118,6 +118,8 @@ export function OfferQualityPanel({
       } else setState('uncertain');
     } catch {
       if (!request.signal.aborted) setState('uncertain');
+    } finally {
+      request.release();
     }
   }
   const outcome = run?.results.some((result) => result.status === 'ERROR')
