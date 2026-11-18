@@ -1,0 +1,109 @@
+{
+  "schema": "prisma-prim-reviewed-evidence-publication/v1",
+  "pullRequest": 1458,
+  "run": "20261118",
+  "source": "2903ac4169d3289dbce2613367c399a84e4af6be",
+  "base": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+  "integration": "2903ac4169d3289dbce2613367c399a84e4af6be",
+  "integrationTree": "b77ffccdff6addce3ba60bd448b2a6783bad9cf9",
+  "classification": "selected reviewed fictional evidence; no real Client data",
+  "selection": "Inspected PNGs, actual downloaded PDFs/DOCX when present and compact native observations. Complete original traces/build logs remain local; fresh complete native evidence is also retained by CI. This selection is not the full original browser artifact.",
+  "publicationBoundary": "Same-repository documented orphan Git fallback; release asset upload unavailable in this harness. Never merge evidence into source. Retain while needed by open review; final compact report and linked evidence14days after merge.",
+  "files": [
+    {
+      "path": "fictional-evidence-2903ac41.tar.gz",
+      "bytes": 2495138,
+      "sha256": "c657e5d3d70fe8d593b010a2d4c6212042b6c76ea25dc6faf7b5892a932e6b96"
+    },
+    {
+      "path": "combined-analysis-historical-ro.png",
+      "bytes": 48055,
+      "sha256": "5394b314253b9732c5ffdfe40844ffa9917e337b036d7a2c7fc983f764ee5e95"
+    },
+    {
+      "path": "combined-analysis-historical-ru.png",
+      "bytes": 54536,
+      "sha256": "ccb8fcf7e1871a9992e02be57afec6bcbc67774aa13e327f95e50eed3da5d8b6"
+    },
+    {
+      "path": "combined-analysis-reviewed-ro.png",
+      "bytes": 279515,
+      "sha256": "c4fa14912605a2bb750aa53265f1ba08f4c12028e3ce43068c0c4731d4ae3554"
+    },
+    {
+      "path": "combined-analysis-reviewed-ru.png",
+      "bytes": 282425,
+      "sha256": "ab635e90eef05f66f5140a15bbc4d728ea8ff6d09790db0aee72e70df7120cbb"
+    },
+    {
+      "path": "combined-certificate-release-ro.png",
+      "bytes": 146171,
+      "sha256": "f78420d9eb34008b00f22598f2f1cbf95476a02f4ff7d7c249e09b6d3fcba10b"
+    },
+    {
+      "path": "combined-certificate-release-ru.png",
+      "bytes": 169300,
+      "sha256": "30222471a0f52dbb1cf11280153b0f9fa157a0348acb6f8c5a60d0bbd98a2c60"
+    },
+    {
+      "path": "combined-dossier-register-ro.pdf",
+      "bytes": 948898,
+      "sha256": "7caeb12d1dd669d4b62d09baeeef449b37b0422cbb8a5cbac6eaa8b1b9892fb3"
+    },
+    {
+      "path": "combined-dossier-register-ru.pdf",
+      "bytes": 949440,
+      "sha256": "391839b4f44b7a4f55f78901c17f2f8721e36bc7a9eda05d78e3e6bf063084a7"
+    },
+    {
+      "path": "combined-issued-certificate-ro.pdf",
+      "bytes": 12977,
+      "sha256": "f8043137300529e6c72aae57150c51c7f2a110cae39d531464bdf83924409e9f"
+    },
+    {
+      "path": "combined-issued-certificate-ru.pdf",
+      "bytes": 12933,
+      "sha256": "dbcab2921251ff5032dea2bf54880abe87e3799fff114aa338e7ec8a7d8fb6ff"
+    },
+    {
+      "path": "desktop-analysis-native-original.pdf",
+      "bytes": 13887,
+      "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+    },
+    {
+      "path": "desktop-analysis-supplement.docx",
+      "bytes": 1089,
+      "sha256": "1e304089dde9582b9b50e4d6db4386c35cebdfb7adc421fb5bea90d7d720985c"
+    },
+    {
+      "path": "desktop-combined-native-outcome.json",
+      "bytes": 1203,
+      "sha256": "ba28b140c034d153cec315dbd03a10d80f832d1c4f638cad49180499081efcad"
+    },
+    {
+      "path": "narrow-analysis-native-original.pdf",
+      "bytes": 13887,
+      "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+    },
+    {
+      "path": "narrow-analysis-supplement.docx",
+      "bytes": 1089,
+      "sha256": "235cca842403e994b21f4cc763922e3be97005457d7fd12edd3d1cf7e926230c"
+    },
+    {
+      "path": "narrow-combined-native-outcome.json",
+      "bytes": 1203,
+      "sha256": "79837c30f853640651465dcfcd8dbd4c54179dcf3cf91982de7da8ad80f42708"
+    },
+    {
+      "path": "prepared-2026-11-18.json",
+      "bytes": 108218,
+      "sha256": "a95f0841b3d777871fc1b6a889c2b4159797066980fcd049a6e149b994a102af"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 2308,
+      "sha256": "a6a5d59c06af9b17fd94b1756ad137d17313bf167d13cb3c59528d42170a70ed"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "prisma-prim-combined-audit-outcome/v1",
+  "locale": "ru",
+  "fixture": "fictional",
+  "caseId": "542c5404-53b5-4b9e-97e5-845fd818c349",
+  "runId": "d3d6d2da-8caa-4011-a573-f32f731f4bb9",
+  "freshRunId": "b37e2f86-0102-4141-b031-6ee32f966114",
+  "exactSource": {
+    "documentId": "a80d419d-2e3a-4b43-bd35-be0906af67a1",
+    "documentVersionId": "a55649ae-2f1f-4984-9eff-28bf2796c4b5",
+    "representationId": "89f07345-ff97-4e2c-8de5-78d2b5636baf",
+    "caseId": "542c5404-53b5-4b9e-97e5-845fd818c349",
+    "attachmentId": "f0929703-3262-40e5-9ad4-75cd4b84f6cd"
+  },
+  "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+  "supplementarySha256": "235cca842403e994b21f4cc763922e3be97005457d7fd12edd3d1cf7e926230c",
+  "registerSha256": "391839b4f44b7a4f55f78901c17f2f8721e36bc7a9eda05d78e3e6bf063084a7",
+  "certificateSha256": "dbcab2921251ff5032dea2bf54880abe87e3799fff114aa338e7ec8a7d8fb6ff",
+  "certificateNumber": "QUAL-542c5404",
+  "status": "certified",
+  "boundaries": [
+    "local-demo identities",
+    "synthetic malware scanner",
+    "lost review receipt"
+  ],
+  "modelCalls": 0,
+  "privatePilotQualified": false,
+  "productionQualified": false
+}
