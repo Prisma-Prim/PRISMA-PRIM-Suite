@@ -4,6 +4,10 @@ import {
 } from './CertificationRelease';
 import './certification.css';
 import {
+  TeamCandidateSearch,
+  useTeamCandidates,
+} from './CertificationTeamCandidates';
+import {
   useEffect,
   useId,
   useMemo,
@@ -458,6 +462,7 @@ function CertificationRegistry(
   const callbacks = useRef(props);
   callbacks.current = props;
   const listOperation = useScopedOperation(props.scope);
+  const accessRecoveryOperation = useScopedOperation(props.scope);
   const detailOperation = useScopedOperation(props.scope);
   const entitiesOperation = useScopedOperation(props.scope);
   const mutationOperation = useScopedOperation(props.scope);
@@ -515,6 +520,14 @@ function CertificationRegistry(
   const [agreementFeedback, setAgreementFeedback] = useState<Feedback>(IDLE);
   /** Null until edited: a first team starts with one empty member. */
   const [teamDraft, setTeamDraft] = useState<TeamDraft | null>(null);
+  const teamCandidates = useTeamCandidates({
+    scope: props.scope,
+    caseId: selectedId,
+    enabled: authority.manage,
+    linkedIds:
+      teamDraft?.members.map((member) => member.workspaceMembershipId) ?? [],
+    read: query,
+  });
   /** The user is editing a new team version. */
   const [teamOpen, setTeamOpen] = useState(false);
   const [teamFeedback, setTeamFeedback] = useState<Feedback>(IDLE);
@@ -884,7 +897,10 @@ function CertificationRegistry(
     result: ApiResult<unknown>,
     access: Access,
   ) {
-    if (result.status !== 'unauthorized' && result.status !== 'forbidden')
+    if (
+      signal.aborted ||
+      (result.status !== 'unauthorized' && result.status !== 'forbidden')
+    )
       return;
     if (result.status === 'unauthorized' || access === 'certification') {
       for (const other of [
@@ -901,12 +917,15 @@ function CertificationRegistry(
         if (other !== slot) other.retire();
       retirePrivateState();
     }
-    // Settle local state first; session and actor recovery have their own owner.
+    // A refused Case read can close that Case before actor recovery settles.
+    // Recovery stays live for this registry and retires with its authority.
+    const recoverySignal = accessRecoveryOperation.begin();
+    if (!recoverySignal) return;
     void handleAuthenticatedAccessRejection({
       result,
       identity,
       companyContextId: companyId || undefined,
-      signal,
+      signal: recoverySignal,
       onActorRevalidated: (next) =>
         callbacks.current.onActorRevalidated?.(next),
       onCompanyContextRejected: (id) =>
@@ -2045,8 +2064,8 @@ function CertificationRegistry(
   }
 
   /**
-   * The links a team member may carry: the people the Case names, and any
-   * link the latest team keeps so that a new version can preserve it.
+   * The links a team member may carry: Case people, eligible Company auditors
+   * discovered by Access, and links retained by the latest recorded team.
    */
   function linkOptions(view: CaseView): { value: string; label: string }[] {
     const people = casePeople(view).map((person) => ({
@@ -2055,6 +2074,16 @@ function CertificationRegistry(
         ? formatMessage(copy('teamMemberYou'), { name: person.displayName })
         : person.displayName,
     }));
+    const named = new Set(people.map((option) => option.value));
+    for (const candidate of teamCandidates.options) {
+      if (!named.has(candidate.workspaceMembershipId)) {
+        people.push({
+          value: candidate.workspaceMembershipId,
+          label: candidate.displayLabel,
+        });
+        named.add(candidate.workspaceMembershipId);
+      }
+    }
     const known = new Set(people.map((option) => option.value));
     const kept = (view.caseDetail.team?.value.members ?? []).flatMap(
       (member) =>
@@ -3608,36 +3637,43 @@ function CertificationRegistry(
         </>
       );
     return (
-      <TeamForm
-        idPrefix={`${prefix}-team`}
-        draft={teamDraft ?? teamDraftFor(null)}
-        correcting={proposed !== null}
-        linkOptions={linkOptions(view)}
-        documents={view.register.items}
-        consultant={declaredConsultant(current)}
-        disabled={busy}
-        submitting={teamFeedback.status === 'saving'}
-        submitBlocked={blockedUntilReload(teamFeedback)}
-        feedbackId={describedFeedback('team', teamFeedback)}
-        onChange={(draft) => {
-          setTeamDraft(draft);
-          setTeamOpen(true);
-          if (
-            teamFeedback.status === 'saved' ||
-            (teamFeedback.status === 'refused' && !teamFeedback.reload)
-          )
-            setTeamFeedback(IDLE);
-        }}
-        onSubmit={submitTeam}
-        onCancel={
-          proposed
-            ? () => {
-                resetTeamDraft();
-                setTeamFeedback(IDLE);
-              }
-            : undefined
-        }
-      />
+      <>
+        <TeamCandidateSearch
+          key={current.id}
+          candidates={teamCandidates}
+          disabled={busy}
+        />
+        <TeamForm
+          idPrefix={`${prefix}-team`}
+          draft={teamDraft ?? teamDraftFor(null)}
+          correcting={proposed !== null}
+          linkOptions={linkOptions(view)}
+          documents={view.register.items}
+          consultant={declaredConsultant(current)}
+          disabled={busy}
+          submitting={teamFeedback.status === 'saving'}
+          submitBlocked={blockedUntilReload(teamFeedback)}
+          feedbackId={describedFeedback('team', teamFeedback)}
+          onChange={(draft) => {
+            setTeamDraft(draft);
+            setTeamOpen(true);
+            if (
+              teamFeedback.status === 'saved' ||
+              (teamFeedback.status === 'refused' && !teamFeedback.reload)
+            )
+              setTeamFeedback(IDLE);
+          }}
+          onSubmit={submitTeam}
+          onCancel={
+            proposed
+              ? () => {
+                  resetTeamDraft();
+                  setTeamFeedback(IDLE);
+                }
+              : undefined
+          }
+        />
+      </>
     );
   }
 
@@ -4988,6 +5024,8 @@ function teamMessage(
       return 'teamConflictNoteRequired';
     case 'link':
       return 'teamLinkInvalid';
+    case 'unavailableLink':
+      return 'teamMemberUnknown';
     case 'leader':
       return 'teamLeaderRule';
     case 'category':

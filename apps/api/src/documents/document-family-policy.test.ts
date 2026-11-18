@@ -43,14 +43,22 @@ describe('Document family policy', () => {
     ).toEqual(Object.keys(DOCUMENT_FAMILY_POLICY).sort());
   });
 
-  it('links only questionnaires, mission deliverables and received contracts to Projects', () => {
+  it('links working questionnaires, Project sources, mission deliverables and received contracts to Projects', () => {
     expect(
       workingDocuments.type.enumValues.filter((type) =>
         isProjectLinkable(type),
       ),
-    ).toEqual(['questionnaire', 'mission-deliverable', 'received-contract']);
+    ).toEqual([
+      'questionnaire',
+      'project-source',
+      'mission-deliverable',
+      'received-contract',
+    ]);
     expectTypeOf<ProjectLinkableDocumentType>().toEqualTypeOf<
-      'questionnaire' | 'mission-deliverable' | 'received-contract'
+      | 'questionnaire'
+      | 'project-source'
+      | 'mission-deliverable'
+      | 'received-contract'
     >();
   });
 

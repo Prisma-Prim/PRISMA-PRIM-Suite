@@ -76,13 +76,18 @@ export async function openCertificationFixture(input: {
   databaseUrl: string;
   namePrefix: string;
   workspaceId: string;
+  additionalSubjects?: readonly string[];
+  synchronizeIdentityProfile?: boolean;
 }) {
   let database: IsolatedPostgresTestDatabase | undefined;
   let scanner:
     Awaited<ReturnType<typeof openDocumentScannerFixture>> | undefined;
   let clientId = '';
   let harness: PostgresRestTestHarness | undefined;
-  const memberships = new Map<CertificationSubject, string>();
+  const subjects = [
+    ...new Set([...MEMBERS, ...(input.additionalSubjects ?? [])]),
+  ];
+  const memberships = new Map<string, string>();
   let companyId = '';
   let entityId = '';
   let projectId = '';
@@ -92,7 +97,7 @@ export async function openCertificationFixture(input: {
     return harness.origin;
   }
   function call(
-    subject: CertificationSubject,
+    subject: string,
     path: string,
     options: {
       method?: string;
@@ -127,7 +132,7 @@ export async function openCertificationFixture(input: {
       throw new Error(`${response.status}: ${await response.text()}`);
     return record(await response.json());
   }
-  async function grant(subject: CertificationSubject, path: string) {
+  async function grant(subject: string, path: string) {
     const membershipId = memberships.get(subject);
     if (!membershipId) throw new Error(`Unknown member ${subject}`);
     await created(
@@ -516,6 +521,7 @@ export async function openCertificationFixture(input: {
     });
     harness = await createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
+      synchronizeIdentityProfile: input.synchronizeIdentityProfile,
       serverClock: { now: () => new Date('2026-11-07T08:00:00.000Z') },
       environment: {
         NODE_ENV: 'test',
@@ -525,20 +531,18 @@ export async function openCertificationFixture(input: {
         ACCESS_BOOTSTRAP_WORKSPACE_ID: input.workspaceId,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Certification Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify(
-          [
-            CERTIFICATION_READER,
-            CERTIFICATION_APPROVER,
-            CERTIFICATION_AUDITOR,
-          ].map((subject) => ({
-            provider: 'deterministic-test',
-            subject,
-            workspaceId: input.workspaceId,
-          })),
+          subjects
+            .filter((subject) => subject !== CERTIFICATION_OWNER)
+            .map((subject) => ({
+              provider: 'deterministic-test',
+              subject,
+              workspaceId: input.workspaceId,
+            })),
         ),
         ...scanner.environment,
       },
     });
-    for (const subject of MEMBERS) {
+    for (const subject of subjects) {
       const actor = await call(subject, '/access/current-actor', {
         company: null,
       });
@@ -651,6 +655,10 @@ export async function openCertificationFixture(input: {
       if (!harness) throw new Error('Fixture is closed.');
       return harness.pool;
     },
+    holdNextScan() {
+      if (!scanner) throw new Error('Fixture is closed.');
+      return scanner.holdNextScan();
+    },
     call,
     created,
     grant,
@@ -666,7 +674,7 @@ export async function openCertificationFixture(input: {
     approvedTeamCase,
     attach,
     receivedSource,
-    membership(subject: CertificationSubject): string {
+    membership(subject: string): string {
       const id = memberships.get(subject);
       if (!id) throw new Error(`Unknown member ${subject}`);
       return id;

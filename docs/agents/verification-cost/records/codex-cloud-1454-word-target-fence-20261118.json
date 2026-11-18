@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1454-word-target-fence-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1454,
+  "pullRequest": 1466,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 1,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Automatic review P1 reproduced: metadata/PDF/association changes during Word scan each returned201 on baseline. Native fence under existing row locks now refuses stale insert;14 intake plus1 original native suite tests pass, exact lost Word acknowledgement recovers one source. Full format/lint/types pass; fresh bounded Standards0/Spec0. Required CI refresh pending. No rollout; usage/time/price not reported. No main merge/deploy."
+  }
+}

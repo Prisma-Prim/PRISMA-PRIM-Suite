@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1439-first-team-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1439,
+  "pullRequest": 1449,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-18T06:49:34.000Z",
+    "end": "2026-11-18T07:56:45.000Z",
+    "durationSeconds": 4031
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 1,
+      "P2": 2,
+      "P3": 0
+    },
+    "notes": "Local proof only; required CI pending. Fixed the P1 bootstrap gap and two introduced P2 defects (profile-refresh concurrency and stale candidate cache). Five local browser invocations include one build error, one partial failure and three passes; all retain private records. Tokens and price not reported; no paid provider call."
+  }
+}

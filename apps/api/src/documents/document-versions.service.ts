@@ -69,6 +69,7 @@ export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
       representation: { id: string; url: string };
     }
   | { documentType: 'mission-deliverable'; representation: null }
+  | { documentType: 'project-source'; status: 'draft'; representation: null }
   | { documentType: 'received-audit-source'; representation: null }
   | { documentType: 'received-contract'; representation: null }
   | { documentType: 'received-addendum'; representation: null }
@@ -190,6 +191,18 @@ export class DocumentVersionsService {
     )
       throw new Error('The Document has no working Version.');
     const identity = { id: working.id, status: working.status };
+    if (documentType === 'project-source') {
+      if (working.status !== 'draft')
+        throw new Error(
+          'A working Project source must remain a reference-free draft.',
+        );
+      return {
+        id: working.id,
+        status: 'draft',
+        documentType,
+        representation: null,
+      };
+    }
     if (documentType !== 'questionnaire') {
       if (working.representationId !== null)
         throw new Error(
@@ -484,6 +497,7 @@ export class DocumentVersionsService {
       expectedRevision: number;
       idempotencyKey: string;
       pdf: ValidatedDocumentPdf;
+      expectedAssociation: { projectId: string; revision: number } | null;
     },
   ): Promise<DocumentVersionReceipt> {
     const command: VersionCommandIdentity = {
@@ -542,6 +556,14 @@ export class DocumentVersionsService {
       authorize: async () =>
         (await this.authorizePdfUpload(actor, command)).companyId,
       apply: async (scope, document) => {
+        const expected = input.expectedAssociation;
+        if (
+          expected !== null &&
+          (document.type !== 'project-source' ||
+            document.projectId !== expected.projectId ||
+            document.projectRevision !== expected.revision)
+        )
+          throw new ConflictException('The admitted PDF association changed.');
         const draft = await this.requirePdfDraft(scope, input.versionId);
         const representationId = await this.pdfs.insert({
           scope,
@@ -879,6 +901,11 @@ export class DocumentVersionsService {
     document: DocumentRow,
     versionId: string,
   ): Promise<AppliedCommand> {
+    if (document.type === 'project-source')
+      throw new ConflictException({
+        code: 'project_source_working_only',
+        message: 'Working Project sources are retained as drafts.',
+      });
     const versions = await this.versionsOf(scope);
     const draft = versions.find((version) => version.id === versionId);
     if (draft?.status !== 'draft') throw documentVersionStateInvalid();
