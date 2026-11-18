@@ -3,9 +3,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSystemAdapter } from '../managed-postgres.mjs';
+import { preservePilotBrowserInstallation } from './browser-environment.mjs';
 
 /** The existing managed runner owns PostgreSQL and child-process cleanup. */
 export async function supervisePilot(options) {
+  const environment = preservePilotBrowserInstallation(process.env);
   const directory = await mkdtemp(join(tmpdir(), 'prisma-audit-pilot-'));
   const readyFile = join(directory, 'ready.json');
   const controller = new AbortController();
@@ -55,7 +57,7 @@ export async function supervisePilot(options) {
       ],
       {
         signal: controller.signal,
-        env: { ...process.env, PRISMA_AUDIT_PILOT_READY_FILE: readyFile },
+        env: { ...environment, PRISMA_AUDIT_PILOT_READY_FILE: readyFile },
         stdio: 'inherit',
       },
     );

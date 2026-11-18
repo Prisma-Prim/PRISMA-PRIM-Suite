@@ -107,5 +107,11 @@
       "P2": 1,
       "disposition": "Guide incorrectly assigned Stage plans to auditor; public HTTP test failed, guide corrected in both locales, test and full native2/2 pass. Correction62d013d4f16aebb9161598a4725ce9ed297c82d7."
     }
+  },
+  "browserCacheCorrection": {
+    "finding": "Automatic PR1468 review: managed Linux XDG isolation hid ordinary Playwright browser installation",
+    "red": "Actual third-party Playwright default location differs after managed-cache replacement",
+    "green": "Default, hermetic0, absolute and relative path resolution remains identical;5 CLI/preview/browser tests pass; native public --check passes with no explicit browser path",
+    "boundary": "Capture Linux default browser installation before managed environment; preserve configured paths; no business/identity authority change"
   }
 }
