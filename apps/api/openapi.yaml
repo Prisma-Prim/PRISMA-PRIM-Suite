@@ -3,6 +3,345 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/projects/{projectId}/dossier-analysis/intake-batches:
+    get:
+      operationId: listDossierIntakeBatches
+      summary: List this actor’s recoverable Project batches
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakePage'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+    post:
+      operationId: createDossierIntakeBatch
+      summary: Admit reviewed native original metadata
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakeBatch'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DossierIntakeAdmission'
+  /api/projects/{projectId}/dossier-analysis/intake-batches/{batchId}:
+    get:
+      operationId: getDossierIntakeBatch
+      summary: Reopen a durable native intake checkpoint
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakeBatch'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+  /api/projects/{projectId}/dossier-analysis/intake-batches/{batchId}/state:
+    post:
+      operationId: controlDossierIntakeBatch
+      summary: Start, pause or stop foreground intake
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakeBatch'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DossierIntakeStateCommand'
+  /api/projects/{projectId}/dossier-analysis/intake-batches/{batchId}/items/{itemId}/advance:
+    post:
+      operationId: advanceDossierIntakeItem
+      summary: Perform one native step
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakeBatch'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DossierIntakeRevision'
+  /api/projects/{projectId}/dossier-analysis/intake-batches/{batchId}/items/{itemId}/skip:
+    post:
+      operationId: skipDossierIntakeItem
+      summary: Deliberately leave a duplicate or failed item aside
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakeBatch'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DossierIntakeRevision'
+  /api/projects/{projectId}/dossier-analysis/intake-batches/{batchId}/items/{itemId}/content:
+    post:
+      operationId: preserveDossierIntakeOriginal
+      summary: Preserve the exact admitted PDF or DOCX original
+      tags:
+        - Dossier Analysis
+      security:
+        - PrismaKnowledgeBearer: []
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: expectedRevision
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^[1-9][0-9]{0,9}$
+      responses:
+        '201':
+          description: Current actor-owned native checkpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DossierIntakeBatch'
+        '400':
+          description: Malformed request or mismatched original.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current native authority required.
+        '404':
+          description: Opaque missing or concealed resource.
+        '409':
+          description:
+            Read the current checkpoint and deliberately resume; native targets or scope may
+            have changed.
+        '413':
+          description: The bounded original is too large.
+        '503':
+          description: Preservation or checkpoint could not be confirmed; prior native receipts remain authoritative.
+      requestBody:
+        required: true
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+              maxLength: 5242880
+          application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+            schema:
+              type: string
+              format: binary
+              maxLength: 5242880
+      description:
+        Foreground bounded stream, exact admitted SHA256/size, current grants and native target
+        revalidation. Uses the frozen native upload receipt key; scan and structural validation remain owned
+        by the native PDF/DOCX preservation service. No official designation.
   /api/projects/{projectId}/dossier-analysis/harness:
     {
       'get':
@@ -9824,6 +10163,514 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    RegisterProjectSourceDocumentInput:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - clientId
+        - title
+        - purpose
+      properties:
+        type:
+          type: string
+          const: project-source
+        clientId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ProjectSourceDraftVersion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - representation
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: draft
+        representation:
+          type: 'null'
+    DossierIntakeInvalidFile:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - fileName
+        - size
+        - reason
+      properties:
+        kind:
+          type: string
+          const: invalid
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        reason:
+          enum:
+            - unsupported_type
+            - too_large
+            - empty_file
+            - invalid_name
+            - unreadable_file
+    DossierIntakeOriginal:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - fileName
+        - language
+        - size
+        - sha256
+        - title
+        - purpose
+      properties:
+        kind:
+          enum:
+            - pdf
+            - docx
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        language:
+          $ref: '#/components/schemas/DossierAnalysisLanguage'
+        size:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    DossierIntakeAdmission:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - expectedClientId
+        - items
+      properties:
+        format:
+          type: string
+          const: DOCUMENT_INTAKE/1
+        expectedClientId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          minItems: 1
+          maxItems: 25
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/DossierIntakeOriginal'
+              - $ref: '#/components/schemas/DossierIntakeInvalidFile'
+      description:
+        Review Project/Client, metadata and language before admission. At most 20 MiB of valid
+        bytes in total; each safe original filename must match its PDF/DOCX kind. Invalid files remain counted.
+    DossierIntakeTarget:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+        - versionId
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        versionId:
+          type: string
+          format: uuid
+    DossierIntakeDuplicate:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+          properties:
+            kind:
+              enum:
+                - item
+                - source
+            id:
+              type: string
+              format: uuid
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+            - itemId
+          properties:
+            kind:
+              type: string
+              const: batch
+            id:
+              type: string
+              format: uuid
+            itemId:
+              type: string
+              format: uuid
+    DossierIntakeCheckpoint:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+          properties:
+            stage:
+              type: string
+              const: queued
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+            - target
+          properties:
+            stage:
+              enum:
+                - registered
+                - linked
+            target:
+              $ref: '#/components/schemas/DossierIntakeTarget'
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+            - target
+            - representationId
+          properties:
+            stage:
+              type: string
+              const: pdf_stored
+            target:
+              $ref: '#/components/schemas/DossierIntakeTarget'
+            representationId:
+              type: string
+              format: uuid
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+            - target
+            - sourceId
+            - representationId
+          properties:
+            stage:
+              type: string
+              const: source_stored
+            target:
+              $ref: '#/components/schemas/DossierIntakeTarget'
+            sourceId:
+              type: string
+              format: uuid
+            representationId:
+              oneOf:
+                - type: string
+                  format: uuid
+                - type: 'null'
+    DossierIntakeProgress:
+      oneOf:
+        - $ref: '#/components/schemas/DossierIntakeCheckpoint'
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+            - target
+            - sourceId
+            - representationId
+          properties:
+            stage:
+              type: string
+              const: complete
+            target:
+              $ref: '#/components/schemas/DossierIntakeTarget'
+            sourceId:
+              type: string
+              format: uuid
+            representationId:
+              oneOf:
+                - type: string
+                  format: uuid
+                - type: 'null'
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+            - duplicateOf
+          properties:
+            stage:
+              type: string
+              const: duplicate
+            duplicateOf:
+              $ref: '#/components/schemas/DossierIntakeDuplicate'
+        - type: object
+          additionalProperties: false
+          required:
+            - stage
+            - reason
+            - duplicateOf
+            - retained
+          properties:
+            stage:
+              type: string
+              const: skipped
+            reason:
+              enum:
+                - duplicate
+                - failed
+            duplicateOf:
+              oneOf:
+                - $ref: '#/components/schemas/DossierIntakeDuplicate'
+                - type: 'null'
+            retained:
+              oneOf:
+                - $ref: '#/components/schemas/DossierIntakeCheckpoint'
+                - type: 'null'
+    DossierIntakeAttempt:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+          properties:
+            outcome:
+              type: string
+              const: none
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+            - id
+            - at
+          properties:
+            outcome:
+              enum:
+                - pending
+                - complete
+            id:
+              type: string
+              format: uuid
+            at:
+              type: string
+              format: date-time
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+            - id
+            - at
+            - code
+          properties:
+            outcome:
+              type: string
+              const: failed
+            id:
+              type: string
+              format: uuid
+            at:
+              type: string
+              format: date-time
+            code:
+              enum:
+                - invalid_file
+                - size_limit
+                - stale_target
+                - unavailable
+    DossierIntakeItem:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+            - file
+          properties:
+            kind:
+              type: string
+              const: invalid
+            id:
+              type: string
+              format: uuid
+            file:
+              $ref: '#/components/schemas/DossierIntakeInvalidFile'
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+            - file
+            - keys
+            - progress
+            - attempts
+            - failureCount
+            - lastAttempt
+          properties:
+            kind:
+              type: string
+              const: file
+            id:
+              type: string
+              format: uuid
+            file:
+              $ref: '#/components/schemas/DossierIntakeOriginal'
+            keys:
+              type: object
+              additionalProperties: false
+              required:
+                - register
+                - link
+                - upload
+                - select
+              properties:
+                register:
+                  type: string
+                  format: uuid
+                link:
+                  type: string
+                  format: uuid
+                upload:
+                  type: string
+                  format: uuid
+                select:
+                  type: string
+                  format: uuid
+            progress:
+              $ref: '#/components/schemas/DossierIntakeProgress'
+            attempts:
+              type: integer
+              minimum: 0
+              maximum: 100
+            failureCount:
+              type: integer
+              minimum: 0
+              maximum: 100
+            lastAttempt:
+              $ref: '#/components/schemas/DossierIntakeAttempt'
+    DossierIntakeBatch:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - id
+        - companyId
+        - projectId
+        - clientId
+        - revision
+        - phase
+        - createdAt
+        - updatedAt
+        - items
+      properties:
+        format:
+          type: string
+          const: DOCUMENT_INTAKE_VIEW/1
+        id:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        clientId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        phase:
+          enum:
+            - paused
+            - active
+            - stopped
+            - completed
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          minItems: 1
+          maxItems: 25
+          items:
+            $ref: '#/components/schemas/DossierIntakeItem'
+      description:
+        Private to its initiating actor and native Project/Company. Native receipts and original
+        bytes survive checkpoint failure. Pending means acknowledgement is uncertain, not that preservation
+        did not occur. A skipped failed item retains all earlier confirmed identifiers. Completion describes
+        preservation/selection, not extraction quality or professional approval.
+    DossierIntakePage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextBefore
+      properties:
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DossierIntakeBatch'
+        nextBefore:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+    DossierIntakeRevision:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+          maximum: 2147483646
+    DossierIntakeStateCommand:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+        - action
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+          maximum: 2147483646
+        action:
+          enum:
+            - start
+            - pause
+            - stop
     DossierHarnessConnection:
       {
         'type': 'object',
@@ -16202,6 +17049,7 @@ components:
     RegisterWorkingDocumentInput:
       oneOf:
         - $ref: '#/components/schemas/RegisterQuestionnaireDocumentInput'
+        - $ref: '#/components/schemas/RegisterProjectSourceDocumentInput'
         - $ref: '#/components/schemas/RegisterMissionDocumentInput'
         - $ref: '#/components/schemas/RegisterReceivedAuditSourceDocumentInput'
         - $ref: '#/components/schemas/RegisterReceivedContractDocumentInput'
@@ -16716,6 +17564,12 @@ components:
                         verification: { type: string, const: unverified }
                         access: { type: string, const: granted }
                         url: { type: string, format: uri }
+        - type: object
+          required: [type, version, createdAt, createdByMembershipId]
+          properties:
+            createdByMembershipId: { type: string, format: uuid }
+            type: { type: string, const: project-source }
+            version: { $ref: '#/components/schemas/ProjectSourceDraftVersion' }
         - type: object
           required: [type, version, createdAt, createdByMembershipId]
           properties:

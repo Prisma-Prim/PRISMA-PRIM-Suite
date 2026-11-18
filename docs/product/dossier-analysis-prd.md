@@ -99,6 +99,8 @@ The workspace is Project-scoped and separate from Knowledge and Certification. S
 
 Test through authenticated public HTTP/PostgreSQL and actual browser seams for association, permission, transaction and presentation behavior; use focused deterministic engine tests for extraction, comparison and search. Fixtures include real generated textual PDFs with known pages, image-only and mixed PDFs, DOCX with stable structural locations, corrupt/encrypted inputs, long and non-Latin text, contradictory and absent values. Exercise native and supplementary originals, malformed imports, size limits, invalid citations, replays, competing revisions, source and grant changes, inaccessible sources, cross-Company access, stale runs, partial failure and history. Test RO/RU/FR search independently of interface language and verify exact literal display after normalization. Assert no candidate or review modifies canonical records, no unauthorized metadata leaks and existing Knowledge/MCP behavior is unchanged.
 
+The reproducible model-free check is `pnpm --filter @prisma-prim/api evaluate:dossier`. It builds the current engine and prints the fixture observations, precision/recall numerators and denominators, citation scores and named scenario outcomes as JSON. A failing scenario exits nonzero. These synthetic fixtures check software behavior; they do not estimate accuracy on real Client files or a future model.
+
 ## 20. Acceptance journey
 
 A permitted editor selects a Project, associates an exact native PDF and a supplementary DOCX, and runs analysis. The result identifies readable pages and structural passages, names an unreadable scan, shows candidate tax IDs with cited agreement or possible conflict, and reports unsupported fields without treating the scan as proof of absence. A reader searches Romanian, Russian and French terms using text and filters, opens a related exact passage and original, and sees the original locator. The editor exports a bounded context, imports a cited structured suggestion, corrects it and sees both the original and attributed decision. Replacing a source marks that run stale; a new run leaves its predecessor intact. A revoked reader cannot retrieve the old context, a hidden title or count. The fictional evaluation reports actual numerator/denominator results and failures with no claim of production accuracy.
@@ -155,4 +157,17 @@ The bounded read-only preparation retains the original proposal, reviewed value,
 
 Preparation and local insertion create no canonical fact, certification step, approval or Activity event. The manager may edit inserted values before a separate ordinary native application command, which retains its complete validation, authorization, revision and history rules. Citations remain in the analysis history; this assistance makes no formal source-adoption or professional-approval claim. Broader questionnaire fields and plan/report preparation remain follow-through under #1452.
 
-The reproducible model-free check is `pnpm --filter @prisma-prim/api evaluate:dossier`. It builds the current engine and prints the fixture observations, precision/recall numerators and denominators, citation scores and named scenario outcomes as JSON. A failing scenario exits nonzero. These synthetic fixtures check software behavior; they do not estimate accuracy on real Client files or a future model.
+## Recoverable native local intake (#1454)
+
+The Project workbench composes [Document Registry §27](release-1-document-registry-prd.md#27-project-working-originals-and-recoverable-intake-1454)
+for multi-file PDF/DOCX intake. A Project Working Source preserves an incoming
+original as a draft. Dossier Analysis owns supplementary Word originals and
+explicit source selection; native Documents retain registration, Project
+associations, PDF storage, scans and receipts.
+
+The human admits reviewed ownership, metadata and language, then starts a foreground
+batch. Pause/reopen/resume retains every invalid, duplicate, failed, incomplete,
+skipped and completed item. Failed reads and later item failures retain confirmed
+receipts. Reopening verifies exact reselected bytes and current native authority
+and target revisions. Preservation does not establish readable text, interpreted
+diagrams, OCR quality or validated audit facts.
