@@ -1,0 +1,168 @@
+{
+  "kind": "reviewed_fictional_prepared_ocr_evidence",
+  "issue": 1446,
+  "pullRequest": 1451,
+  "source": "ac1088b49e6b671bff16b4cddf7fd0ceb757ce18",
+  "base": "b14c45c0ab7a7f540df9d1aa3ccc50a0bbc6ac94",
+  "tree": "6e0826455cbcdbb7851219119477a214eb215d3f",
+  "inspected": [
+    "1446-previews/contact-sheet.png",
+    "1446-previews/best-ru-grid-merged.png",
+    "1446-previews/best-ro-clean.png"
+  ],
+  "files": {
+    "1446-fixtures/ru-clean.png": {
+      "bytes": 31014,
+      "sha256": "a2a2fb860739f5da84519cb007916e0af03a60a34f310e8025af54276ff93933"
+    },
+    "1446-fixtures/ro-grid-merged.png": {
+      "bytes": 24648,
+      "sha256": "280fca185ef43d6a909c6963062e1e2059dce5871632389c94bf6531aaae13e7"
+    },
+    "1446-fixtures/ru-rotated.png": {
+      "bytes": 47326,
+      "sha256": "5fd65b933c045fe3f413e3fa78b500055ff73a40439e67bf1019176c4f694402"
+    },
+    "1446-fixtures/manifest.json": {
+      "bytes": 8357,
+      "sha256": "b5adf09aeb0f06f9b8e4b0e677712088c74331ecfcfd62588cbc0c8df01a0a65"
+    },
+    "1446-fixtures/ru-grid-merged.png": {
+      "bytes": 24196,
+      "sha256": "95762b96fc437ceede25709ba07a133959122fd9d437dcf9a247f21b287fdfe8"
+    },
+    "1446-fixtures/ro-noisy-low-resolution.png": {
+      "bytes": 26716,
+      "sha256": "7fc246a54d9e758efbbb006b7a182173fd6a5eb3ee1038f1db39dfd947a14ea5"
+    },
+    "1446-fixtures/ru-stamp-diagram.png": {
+      "bytes": 38860,
+      "sha256": "5b0d78b9630de169c0868947ec09cecc6058fcab727dfd4805e514270ff33509"
+    },
+    "1446-fixtures/ru-noisy-low-resolution.png": {
+      "bytes": 27725,
+      "sha256": "12411b6a606129e6babb83ec93aaa8d145b19dfcf9be177c6069ed6d9b808bb6"
+    },
+    "1446-fixtures/ro-clean.png": {
+      "bytes": 32664,
+      "sha256": "ab91d8375577176b56a68e9a8aa7999ed49c2fcdf953c0057b1ed1a79da7a433"
+    },
+    "1446-fixtures/ro-stamp-diagram.png": {
+      "bytes": 38723,
+      "sha256": "32d96fb3bd7659d878201c16a50db966700850598afd93c6b301a7f48eb7a473"
+    },
+    "1446-fixtures/ro-rotated.png": {
+      "bytes": 43719,
+      "sha256": "f3c0388ff79f955e5a5c0e2c7935c4a93f0acfc5e7c1aa68222c1456b21e44fe"
+    },
+    "1446-previews/best-ru-clean.png": {
+      "bytes": 43997,
+      "sha256": "1e7e3b9d624e22c78fdd388adf28caa55d84e97279d3e4f8af7266c595f17f5d"
+    },
+    "1446-previews/fast-ru-clean.png": {
+      "bytes": 44106,
+      "sha256": "209b144f50f9c820fe2ff1aa07b63dca7b39ae21095c336b5dd17cd5aa8541ae"
+    },
+    "1446-previews/best-ru-stamp-diagram.png": {
+      "bytes": 54408,
+      "sha256": "c7a9c0fb72a933b51eb3b5d2bb15ff45ca46d41a40c9712eebce4001ce05026b"
+    },
+    "1446-previews/best-ro-grid-merged.png": {
+      "bytes": 35213,
+      "sha256": "a0f5c229af8829d136a7b9f2e48efc53a22eb245496b2a09957cc14c3574f711"
+    },
+    "1446-previews/fast-ro-grid-merged.png": {
+      "bytes": 35429,
+      "sha256": "3876a01bcae76c57c64d072caad7939642eaedfc8835cb9993ea671183fe7b07"
+    },
+    "1446-previews/fast-ro-clean.png": {
+      "bytes": 42960,
+      "sha256": "ea64156ac38d56da330e53ef0d1d64511509833f03cc8e28ac1daccae439ac7a"
+    },
+    "1446-previews/best-ro-rotated.png": {
+      "bytes": 48583,
+      "sha256": "ac96d586c0c0a36ed56312334045363f675c347865c33250024c67ad3cdbaece"
+    },
+    "1446-previews/best-ru-rotated.png": {
+      "bytes": 53639,
+      "sha256": "809684c514aae879090dd9887a84cf74d81efdebe5f6fdbd02eed8c205334938"
+    },
+    "1446-previews/fast-ro-rotated.png": {
+      "bytes": 50831,
+      "sha256": "b27ee8d541096a77a746bfbc25143c507907da738b3ff946f161df58f3044037"
+    },
+    "1446-previews/fast-ru-rotated.png": {
+      "bytes": 51791,
+      "sha256": "4bfa09ecd3d1685fc6bd469d52b7063aa25e23a1bde7163697e20f47235d27b7"
+    },
+    "1446-previews/fast-ru-grid-merged.png": {
+      "bytes": 33237,
+      "sha256": "e4b485dac3a8ed47279c55e2506bb77be68adb9ad78dffc7e73d34dcc25f8990"
+    },
+    "1446-previews/best-ru-noisy-low-resolution.png": {
+      "bytes": 50475,
+      "sha256": "4169b898b14835c5650ea8c8d0807a02792344225b73093fd88bf475fb057688"
+    },
+    "1446-previews/best-ro-stamp-diagram.png": {
+      "bytes": 51278,
+      "sha256": "34909b2029e5b257cf455d3c2fc6afedc77b213a47870cd53976c50f1203c492"
+    },
+    "1446-previews/fast-ru-stamp-diagram.png": {
+      "bytes": 54413,
+      "sha256": "4e2ea4e64f5ec7881063972f56396c91b47451de5a409b26496b86dcd0973f6d"
+    },
+    "1446-previews/best-ro-noisy-low-resolution.png": {
+      "bytes": 50268,
+      "sha256": "5843871b809a570ec70b25ae21aff091ab678ceafef8e0dbec3694f4aeef68e0"
+    },
+    "1446-previews/contact-sheet.png": {
+      "bytes": 273796,
+      "sha256": "746a29e1a5aad14ac2dc9c757d49f62ecef05c887d19d805ea3ee7c97b2d5d45"
+    },
+    "1446-previews/fast-ru-noisy-low-resolution.png": {
+      "bytes": 53262,
+      "sha256": "c20d2a556778eb7717f13c4a793be060e7f083deca9beb5fa4f8f0d1fed3db65"
+    },
+    "1446-previews/fast-ro-stamp-diagram.png": {
+      "bytes": 51673,
+      "sha256": "a853ee85dd42d194ef8a92d2565fd95db6042170b58abdc84f00929cb2563fb5"
+    },
+    "1446-previews/best-ru-grid-merged.png": {
+      "bytes": 33394,
+      "sha256": "d41610a47a44c17124fdff8b2b442bd3d99d78c0fcd799c66dd576296da815c5"
+    },
+    "1446-previews/best-ro-clean.png": {
+      "bytes": 42873,
+      "sha256": "59ddbb48d92d3c062233e0484ff74ea48b66d844747250d291959421aaf170e0"
+    },
+    "1446-previews/fast-ro-noisy-low-resolution.png": {
+      "bytes": 49959,
+      "sha256": "001ea327bffee5d93f0e9d8044b61c9a64f4a13b23d165b2bd30c679a2ba56a3"
+    },
+    "1446-comparison/report.json": {
+      "bytes": 218459,
+      "sha256": "9158d2407375dc5552857675b386ca520e4a2f9dbade99dcf4f2fc9fcc6e37ca"
+    },
+    "1446-comparison-reviewed/report.json": {
+      "bytes": 220835,
+      "sha256": "c4fa8948f02104f756057ad7e926ccf112a5bc003f547fa73337a154cb4ba979"
+    },
+    "1446-final-comparison/report.json": {
+      "bytes": 220867,
+      "sha256": "76283dc1add67a59c18d6db1894f5c4a4372ca2c5af611e28d1f37929abeb5cc"
+    },
+    "1446-corrected-comparison/report.json": {
+      "bytes": 220870,
+      "sha256": "36e0699d05f968f013e38063ecf366ac3339c5b55d3cf36457613edd29c54c77"
+    },
+    "native-failures.json": {
+      "bytes": 535,
+      "sha256": "b1023d9dc707b2fb5a091000db4024265f8159cac842e16799a46c71d71d0e61"
+    },
+    "prepared-summary.json": {
+      "bytes": 229195,
+      "sha256": "be7479208595b0717c2411ff5eb0d99e43c2f80ae106b746e311c1848e59a7a6"
+    }
+  },
+  "privacy": "All source and recognized text is generated fiction. No original private Client data, credentials, raw environment or local corpus paths. Raw parser/model outputs preserved, not a real-world accuracy claim."
+}
