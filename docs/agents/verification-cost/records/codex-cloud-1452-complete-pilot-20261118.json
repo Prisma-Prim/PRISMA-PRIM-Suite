@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1452-complete-pilot-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1452,
+  "pullRequest": 1470,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Native compatibility/Stage7 and focused Node10 including Python23 pass; three composed RO/RU native journeys2/2 each, no retries/skips; launcher ready and ports cleaned. Existing native grants fix fictional persona access gap; fresh Standards0/Spec0. Required input/PR CI pending, no main merge/deploy. No rollout; model/tokens/whole-proof time/price not reported. Fictional identity/scanning only."
+  }
+}
