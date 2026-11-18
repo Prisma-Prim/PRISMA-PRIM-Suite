@@ -1,0 +1,1964 @@
+{
+  "schema": "prisma-prim-combined-audit-qualification/v1",
+  "issue": 1444,
+  "classification": "prepared fictional examples; native App/API/PostgreSQL, not private-pilot or production qualification",
+  "sourceManifest": "source-manifest.json",
+  "verifiedComposition": {
+    "tree": "98e2da29562989f4fc6eb6b7973b88e913e45b55",
+    "observations": [
+      {
+        "input": "e48a4b430e712be124a6e2d9e6d0fe9ac48fcd95",
+        "target": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+        "isAncestor": true
+      },
+      {
+        "input": "faca6d8e4c9ee6c92b3d4cc1b61e46ee7b28557e",
+        "target": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+        "isAncestor": true
+      },
+      {
+        "input": "4726e7ad7b76a95005abb7be3febddac44dc44ec",
+        "target": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+        "isAncestor": true
+      },
+      {
+        "input": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+        "target": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+        "isAncestor": true
+      },
+      {
+        "input": "e48a4b430e712be124a6e2d9e6d0fe9ac48fcd95",
+        "target": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+        "file": "apps/api/src/certification/certification.service.ts",
+        "method": "dossierDocumentsWithinTransaction",
+        "exactBodyPreserved": true,
+        "bodySha256": "23be42b7c373efbee0d0c5fc86297457801b7aeb7644266dc1f7c480ab348762"
+      },
+      {
+        "input": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+        "target": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+        "file": "apps/api/src/certification/certification.service.ts",
+        "method": "teamCandidates",
+        "exactBodyPreserved": true,
+        "bodySha256": "ba8956dde7a88a0b776a88c4c74c8279900e0e026047fea43f71aa284d061717"
+      }
+    ]
+  },
+  "qualificationSourceSha256": {
+    "apps/api/test-support/combined-audit-pdf.fixture.mjs": "dd2b7843820f2ac2ae67e6ea279b894688db685a15f2ca4e1e0d9f70e1805906",
+    "apps/web/e2e/combined-audit-qualification.fixture.ts": "adb51e17298ec2a5c4fdd3ca3526b4d84352b72b98051582bce6732021cfa5a1",
+    "apps/web/e2e/combined-audit-qualification.acceptance.spec.ts": "7d13dff1bc669d46b737d256ee251baed6ab3b5d5088a9e5fb08266b45ce7f32",
+    ".agents/skills/journey-audit/journey-map.md": "9bd676e78c99194f9bbd342ff47472fb863cefeed0b44b42d5b32e02a750b657"
+  },
+  "publicApiRegression": {
+    "command": "node scripts/managed-postgres.mjs -- pnpm --filter @prisma-prim/api exec vitest run --no-file-parallelism src/dossier-analysis-acceptance src/certification/certification-documents.rest.test.ts src/certification/certification-auditor-authority.rest.test.ts src/certification/certification-team-candidates.rest.test.ts",
+    "result": "passed",
+    "files": 6,
+    "tests": 19,
+    "logSha256": "639623b0aa8577791f96de528d0bec200d5e7faeb509f8bd4ed42986950f88aa"
+  },
+  "attempts": [
+    {
+      "name": "1444-first-combined",
+      "purpose": "historical test preparation failure/interruption; not qualifying",
+      "qualificationSourceSha256": null,
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "error",
+        "exitCode": 3,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T09:45:08.849Z",
+        "finishedAt": "2026-11-18T09:46:22.903Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-first-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-first-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-first-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-first-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "error",
+            "exitCode": 1,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 0,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": "SyntaxError: Named export 'combinedAuditPdf' not found. The requested module '../../api/test-support/combined-audit-pdf.fixture' is a CommonJS module, which may not support all module.exports as named exports.\nCommonJS modules can always be imported via the default export, for example using:\n\nimport pkg from '../../api/test-support/combined-audit-pdf.fixture';\nconst { combinedAuditPdf } = pkg;",
+            "log": "/workspace/work/batch-20261118/evidence/1444-first-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-first-combined/run-1/report.json",
+            "screenshots": [],
+            "traces": [],
+            "durationMilliseconds": 13144
+          }
+        ],
+        "message": "SyntaxError: Named export 'combinedAuditPdf' not found. The requested module '../../api/test-support/combined-audit-pdf.fixture' is a CommonJS module, which may not support all module.exports as named exports.\nCommonJS modules can always be imported via the default export, for example using:\n\nimport pkg from '../../api/test-support/combined-audit-pdf.fixture';\nconst { combinedAuditPdf } = pkg;"
+      },
+      "nativeOutcomes": [],
+      "artifacts": [
+        {
+          "path": "1444-first-combined/run-1/report.json",
+          "bytes": 3784,
+          "sha256": "e9a11bdf7a4f59e71a58fd0812f8cc4abd3e8f9914a68216244166a4a6750c08"
+        },
+        {
+          "path": "1444-first-combined/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "e22df5d0991eb28c09093b1e678b3fa8cd1fab48185d38e67cf79fb6e63ad5ea"
+        },
+        {
+          "path": "1444-first-combined/summary.json",
+          "bytes": 2539,
+          "sha256": "976907b92b7e63f20ec0ef29d01170adef56eb2c8a4b2cc6782f6f8798b13423"
+        }
+      ]
+    },
+    {
+      "name": "1444-esm-combined",
+      "purpose": "historical test preparation failure/interruption; not qualifying",
+      "qualificationSourceSha256": null,
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "interrupted",
+        "exitCode": 3,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T09:48:42.525Z",
+        "finishedAt": "2026-11-18T09:53:40.999Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-esm-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-esm-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-esm-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-esm-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "interrupted",
+            "exitCode": null,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 0,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-esm-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-esm-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f07dc8dc3fc1d966352e021ef7db91dbdacfa5cf.png"
+            ],
+            "traces": [],
+            "durationMilliseconds": 237950
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [],
+      "artifacts": [
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/0322d4d0ba6f7d4a83f477c430e175c668b673cb.json",
+          "bytes": 249,
+          "sha256": "18a5a60b844e5da6bbaa66a08a2310338cab69b99a48d9d10e0c275ddab3bd07"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/0754239bbcbfba055aab9aec70a64c3df11dca16.json",
+          "bytes": 235,
+          "sha256": "05e35297736319532e7f48216debc854acccebe3c82066a1424879720c28a6fc"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/08a965d8788e784241b24141ed69f7c4f77b4ee3.json",
+          "bytes": 235,
+          "sha256": "ea20d9a138d072201d34480a06f102bd2cd836949d8037cd6e80d815b2ff638e"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/0941dc3c120b90ee39059de25c809dc2b0b23710.json",
+          "bytes": 2544,
+          "sha256": "6e87be1a2f833537f27a77ba98143edec10b3d7ec86b195fb41701451c058714"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/0b32635e3f942bc16ebc146eb103f06d61ab5539.json",
+          "bytes": 108,
+          "sha256": "84bed7c244760c89ce3c6c8ef395528034ffad8770fb6e40838d95a4fef2ea17"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/106e997d4dcfcb4f5d86bbbbad1547cf3c15493c.json",
+          "bytes": 319,
+          "sha256": "aafa7a86bc5ded1121d533c67aab561f26ca6bc9b15116f08db28524b8fc24db"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/15d2c4b710dc06eaa7c6486c2c27705da693161f.json",
+          "bytes": 723,
+          "sha256": "73c7f6a211e79667464a599d442b3e0e045af0b20df370983673a972a82f2ad7"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/15e1ce8616de5c80df0256069c500a7200ce1dcd.json",
+          "bytes": 66,
+          "sha256": "869c13254acd478bd6fa12ed835a637e145b972717b8918523570b8857794845"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/160e0b87c0783c83ddb9ddb1c5d00b1cb002489d.json",
+          "bytes": 235,
+          "sha256": "563e2a926bb10ae8e0a528184d92a49c20943b6c39e816392f2494361b227c83"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/1c1e12ea4e8b697e9fe5785c343b26052720b4c7.json",
+          "bytes": 241,
+          "sha256": "d17afe6943e229abcda437882475d78cf6607901a5a1833693b0c2e4279ee0c4"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/1e8ec15841c6a3cef9040eac8be7bffb03223678.json",
+          "bytes": 115,
+          "sha256": "f3c3d0ed8178ee06dcf5bbdbc7bb107964bd32788b49b676dea0b4d68dde6fc1"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/2021ae90ef29ebc40acea4c6f76990a496cdf4b3.json",
+          "bytes": 76,
+          "sha256": "ee8e8b565a44c979569709d4becb7875797abd6a8c2b0dab6854ef510417b6e5"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/26acd9c2f0709b7b5e27d69d5cdf806efa519053.json",
+          "bytes": 265,
+          "sha256": "19339d8f3c16e38979dc5b194024b087cac7f40dd8c37cdcd3ebe7b4747df696"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/282b0a796c7f0d8ddf03be7825c767353231b4d7.json",
+          "bytes": 243,
+          "sha256": "723667aaf1b61467c45c877e4c8149bcc3a140aad96280b6627ccc31a31accad"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/33895816d445dabbba3eb3b282e105429f90e078.json",
+          "bytes": 115,
+          "sha256": "7fdc206dcaf9cea3a08e193b2172610fcb5a75e1e6a32cb1685418814a445cfb"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/34ddbade014a1a0eeb5b177ba03ba9233986ce0d.json",
+          "bytes": 4008,
+          "sha256": "aab2f2c5b7b393b0db30f982f7bc7019224ba9e6ca57215072bc7f6dabc959d0"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/35f368e6e89fe225ef932fedc91fced9b373902d.json",
+          "bytes": 2324,
+          "sha256": "f1a749763e3e1393e53e585628e55989adf0fb8afa3c41d1fe4e5eee95303753"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/397ba46f0caba83f388c4a83866f1ba2b84bfe3d.json",
+          "bytes": 408,
+          "sha256": "b0aec3ceb90d0eaa3e18527a0e6d07762978d8b9ffb53157bcf84770b4c6437b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/3a8f1b17423bc30915ba2805e439c19e8c413445.json",
+          "bytes": 356,
+          "sha256": "7b3fbd31180a539bfd1b051a2a2e9e58f3312a7a6ed13fcddecc305dbfe7942e"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/3c7c15abd13c870bc09c90ee2206530afd8bef18.json",
+          "bytes": 241,
+          "sha256": "a0d6cc1e0bfd4acebd9a364c23750de1398fcc42a1abf1c8549e872a460f813c"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/43e6aeddfe5123680d3dac2dc3a524080f9d7d75.json",
+          "bytes": 204,
+          "sha256": "9c28879f057ff39f886e5d86760bda3c9e17f924419219f339ead2c9d714f60a"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/44ed49401b66563b3f21afe2a146e4facea7e8a8.json",
+          "bytes": 243,
+          "sha256": "0d361bc243367c9c74f40f018c012672479e42e6262141d23fec0f9c3434a5e0"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/4658f92c0537c97559384995d112f0619d2b44aa.json",
+          "bytes": 108,
+          "sha256": "f463e18e891566bfe5b27f793b924a01f1e1fa5eda667fb243eae5559942d73b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/4801efe53b9fed7e015a9f9f87b9ab791f25412c.json",
+          "bytes": 190,
+          "sha256": "0dbea04448908c64cd2b70e943175b261e927fe0532cc4ace78eee68244ac326"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/4cb539d06d19ec7960b90820196135a1e5f4465a.json",
+          "bytes": 1949,
+          "sha256": "905d4c7d266f8b09d6bcb796ad02c0f644b8e0a0d233234954cd3662b20d577c"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/4e57aeea67534ad46f2f3f07b5e5c3a59c574f34.json",
+          "bytes": 404,
+          "sha256": "42e939ce6c271e3824cf4135c73b158393a6aee3606995a9c2bdadaf9f4f8465"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/54b6fe72a48ed96b0ed40a8da65f43447fc342e6.json",
+          "bytes": 68,
+          "sha256": "0ab4d359cfbf96c1d29ef48f824bf88cc7fb76f677fb7f3ffb0abb95d60c61a4"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/552750be1af62a66f0f85ae795829cb22f2cc284.json",
+          "bytes": 1539,
+          "sha256": "9423818052d4d898cb94df9b64143f146c62084db61d23125f355b8b112e636d"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/5539d09c1de5c049eb20b294720a007881d15550.json",
+          "bytes": 243,
+          "sha256": "3566191ae844cafc7e14385035f3baa079879554bb6ac7cb6e3f462012c2ed00"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/5987d2c75768be962bf6a92d2fceb3a56c30eb32.json",
+          "bytes": 287,
+          "sha256": "401d10f3f963ebc7ec5c24271c62fd2d5f7cd5b3e40374afea08d9cec1f5bc76"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/5beed20bcc08e296f2485ef8b2184e228a8066dc.json",
+          "bytes": 246,
+          "sha256": "26d9c4f2ffebeb94063a5db80c4178adab627e215dde5e383ca5009379095fa3"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/5e11d2912330388167a9a3226e7a43047de96210.json",
+          "bytes": 115,
+          "sha256": "9f9d20716ce021f9b4b54b9776f0aaa232da6c000fb006205cae09d60ff93a9b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/5f1128307346154c33e9e5a5bb42ae1a31bd112a.json",
+          "bytes": 71,
+          "sha256": "dac539794b8a7973c39cc0f6ff38f52f164eb3217b6a7e76999ad1ab4a8999aa"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/633dc96d23da0efc5a99f427e7a21eede52e3b18.json",
+          "bytes": 31,
+          "sha256": "ae8ea6a4df2e849709e194e6a6d81f6d381b7b33cee972a4aa892b6837b56082"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/6762145bec7a60dc49beab718ce9c66fb2dfe8bf.json",
+          "bytes": 710,
+          "sha256": "f815c9462b1fe35e4e87052e9bbca8cbcda217684f2bce51f7f091b1a80a7b5b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/6927e726ef6dda2370cd3f088706762766c6ddb8.json",
+          "bytes": 2889,
+          "sha256": "a1cf2c23359371fc608cfd837eed6057b3179abde2d87932923d642358acd4ec"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/6949c47802fafc2abe4fe5fd38e043ffde5a43db.json",
+          "bytes": 4340,
+          "sha256": "f1f693fb98b61f2229e3831675bd54c059fcb3fd88826b7faebf2e9f607e530f"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/750be4fbe66777cc81b197d2c86b57a1b1ca4b34.json",
+          "bytes": 204,
+          "sha256": "930d6289de5128cd364b1504c5a38e2b3eae381ef643bf1d43fd7df66a825f05"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/7b68348e9593a5da65d5b35749cf4aa14cc19e99.json",
+          "bytes": 1242,
+          "sha256": "ba0d51611a9dc08268560186b30572caffb6ad452709ec5167f18346ec40cffb"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/7baacc3f77e262583c82ee8deb7f18c7e5a32dc2.json",
+          "bytes": 538,
+          "sha256": "0d95995cb0a0d868e661ff83c13ac5533cd3a1e20902fc8e376ace905ed53753"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/80d61f5b53d390d416a88e356b03009e7e09c5b0.json",
+          "bytes": 244,
+          "sha256": "73594541ac8718262fdb90f1044cdbd4a1bc9dc4eafdb95dd983a3a5d5f518e7"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/847a1bedd6bd83fe429a7da5e8dc3660abb99a0c.json",
+          "bytes": 29,
+          "sha256": "5304b2d824ac7ad51ea6296ede324e86b9e5cd2ac54e8052e96a67ed3714541a"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/86b69c144b68c0878f6ec46d099c9857aa146b9a.json",
+          "bytes": 316,
+          "sha256": "c18fe8055f9e5d10f7ffbbaabc8eaf92384f563578b1839a9ba248fb4fe63a84"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/8b50eb48cfda2dfbbc1f387dd9c039952f23295c.json",
+          "bytes": 31,
+          "sha256": "05fb47f2c6f27c028eaba2ff2e46fa1fdd52addea265c88f9b1317ae3b1d5aec"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/8ec83d0598fb19ef30fe758d978abf69d18a4b93.json",
+          "bytes": 113,
+          "sha256": "32c40dae051a339e6d01d1a7bb2bb47c639743bddf1c5bef114571e04b7845af"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/91f3722e414ae9596390ef9a76a03b80320b0c3a.json",
+          "bytes": 564,
+          "sha256": "4628b7019d56190e87193a728155adae3c70bf66b9a39a756ce459a8bd532348"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a3d58284fc2c447702d7e12aea9ec48d0ae01312.json",
+          "bytes": 235,
+          "sha256": "3c99543d1f036a574264351b2ff7665bec017ee1d5668da3686a040039398c5b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a42f34e9c6909c3612848851bb42d9067855584b.json",
+          "bytes": 265,
+          "sha256": "53cb10cd7d35270a0e807396b84649fe811203b1ff7a68c593e8c02cc2ca6ea3"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a49b6f953996d946984ed946527429e172212c71.json",
+          "bytes": 241,
+          "sha256": "9b98af91cdabfbcb8c2918a44af6f25be684c3aff4bdebfa50e36d5334ce0d76"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a77f335951dc78f4502b9ce08322318fe03cac5f.json",
+          "bytes": 239,
+          "sha256": "0f46e1ac481a037532c1414010eba5286cbdab4876725368c53d4535f9dbb461"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a7f476d5818870a0b8d973f77cd81c73f751295c.json",
+          "bytes": 243,
+          "sha256": "dd14ad7de2dfb2b92d0d28cc42020b21960f50591c985eaf635edd35caa23608"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a8b978a5650cdd24da7f1dec50fb931d2e318228.json",
+          "bytes": 202,
+          "sha256": "ce89ec603d588fce4e445892a8430310a88a02b1fb3ca45cf0f5ad1d0c29274b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/a8ba826e56d754212b6fe0a458022b94327512d6.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/ab6f348221af62fcc9962691a1ae04fa48f71d1c.json",
+          "bytes": 158,
+          "sha256": "eefad5ff89ebfb0553bfcef4d1ff7c7156a59ed33dd8c80ff6bb0c83407561a4"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/adbfb8e7f415dc1742c24d59b2af7c07d555d2b8.json",
+          "bytes": 235,
+          "sha256": "5df1e2854018b3d8f4e865233311d6f2d671a4946c0961e033ab6109bfd8ed7a"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/b7509987f46225a16497d29cef39c5b65f28be87.json",
+          "bytes": 339,
+          "sha256": "72e50225e4b5e9dbebc281954a8ddb3c1d2b1154bf0e730162d22c844c16f191"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/b761a073d39015a86a0613146d4835a289596d99.json",
+          "bytes": 243,
+          "sha256": "e1b65874c88f5d5c57d958d3fd56bd5c6ed1ade1e0985cfdbf46b4356f29d65d"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/ba5f046151e90a1a62cd9881f46633f57db77505.json",
+          "bytes": 91,
+          "sha256": "7889387311f8adb89e2709e498ea2f7b908fc86d7068996d2d35a8e907f21855"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/bf5b5d6c1339a1cdc817d538cdcf4309824e830a.json",
+          "bytes": 235,
+          "sha256": "c54ad5fa597985a7ae02dcaca0eb075b8a3004cfaccc43b6e6c2b09551893752"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/c2e030a0c6fa4e2a96ad3dd304ba1fa9d9132d50.json",
+          "bytes": 235,
+          "sha256": "e1682fccca2062a45c0ea1966c490e13dc348230bc0996b1a8f8f10909f8616c"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/c52263345ac5c1aa9e5cbeb799075e802a88b270.json",
+          "bytes": 644,
+          "sha256": "d387ce86dcba83a36d45b2427d24e8e6d6c863000a32d4ce5fe1cd88eff669c8"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/c5e209b53803095abdf22da28013816e5e3b2197.json",
+          "bytes": 358,
+          "sha256": "c191959bf31b92d1b0b73b518d994a91c097ba382b98bff40a065b79c9e3fb8b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/c60450d6e8d2e7d90be818b8a525d711bf0ae511.json",
+          "bytes": 252,
+          "sha256": "70a2de793ce7fbded6b5776eefefa9f44a18f2b8f186687c9472a67df02f01ef"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/c7db628d91005f6e55cc5c096ffb660c8d205e50.json",
+          "bytes": 3007,
+          "sha256": "ced92a7e1e7f037ca15abcfea9346b16e0ccad43e7613654c742302c18c0890a"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/c80a689def9e4be33f50f9a8f8f06850d98a46b6.json",
+          "bytes": 243,
+          "sha256": "d7806ed8ec3edea42dccce838e3d49319868decc15aa3c2154697a3f61766657"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/ca34b5b1e997bef49510fc8f8afbbb00f4437b6d.json",
+          "bytes": 235,
+          "sha256": "d49fbef96daeb482668ed224055f2ec0750696bb8af3484a4786399b3dd683d8"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/cc07bbe45008fb1249dc1bdc2f7ed38ce4b1f8ed.json",
+          "bytes": 1446,
+          "sha256": "e2c3a64c3ce5b83a6920c4d4e7f5c7e8db15952aff2d65908f8da6239a5c6bcd"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/cfeef1764ee717b242e20e7963422ed819860d41.json",
+          "bytes": 241,
+          "sha256": "7c051586d9d1423f66ba075e9682b8b7f76b0146455baef89f905cc8ac3bd71a"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/d072210f8e94e14f95b6f74e2a9fd5a62285677c.json",
+          "bytes": 204,
+          "sha256": "76ec8155887045b2e5f13627decde9ec6b7195b91be99a7764b1251eba195999"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/d2a290cb076d0b260e44e547efd2ebc80a1e8699.json",
+          "bytes": 203,
+          "sha256": "88e60166ca204e81a1cc22db1b2822ef9ab3223dfa96e0056852d6d4a5294609"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/d2f9b86ff91c5127bc308f3827e12623b491552f.json",
+          "bytes": 105,
+          "sha256": "ca396fc53b6c5e0295a1b6a2dc5e354e6359265f9f2d28b05a200dd2418f5547"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/d447110a4d1512f293eefbee4a7454b7a6482d8f.json",
+          "bytes": 22,
+          "sha256": "c2ac76ee35365d2e3153767ab9acc6889261528d8435df74cb4326a72a95fc28"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/d483233394fae87b833ca2ba26aaf701ba48c890.json",
+          "bytes": 238,
+          "sha256": "220236fd48f58ef0921e52b1a1ebba96fa5d37f885f9ae7c6741eda0f950f1b6"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/daefcbbc20551ec984e684e9e3822987e24d9c2f.json",
+          "bytes": 103,
+          "sha256": "04a626cbfffbc8efb374881796919129d05a873832928f0c214283066653487f"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/dbcd3d21d257d835b6d77fcfc6b80fbd4b821a74.json",
+          "bytes": 201,
+          "sha256": "e8d7a1043f2f86212c3c6207af5d3efaf24056e95b7a0932781518926fdb91a0"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/dd8bbf814e124387f34a58078ee58ca890610ebd.json",
+          "bytes": 115,
+          "sha256": "5d2ad7ac65aa55f34cd194c43419c4bee70ce5c27e678dce1f9721170cccfe4f"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/ddfab9f6ae6df0b328fbe0b3a333f39cd824ed57.json",
+          "bytes": 377,
+          "sha256": "915bca3b8d53ce4ea39b551dd518ba615241e2ee878159d721bdfdc7bc60c5ae"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/e5e50b932aa04982f4961f565c99bbc06631738e.json",
+          "bytes": 100,
+          "sha256": "2b79871776577ade831280e531d8265d1dbf2e8b7d04daa484fffaada2d69d74"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/ed77d6ee1ff0f127df09d9820d85f75a040eec58.json",
+          "bytes": 244,
+          "sha256": "db367cf1e2153bac174c0f19be86f6c6d5d0a0c5cfec6103599e6525c6341b87"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/efd777c8c5da108024b599b9c867b4aab14406c7.json",
+          "bytes": 239,
+          "sha256": "0689de5d4031e8eb113784b9b2584021acf90a91356a5472ed8a60970491756b"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f017a7c36b0b1ea63a6de9dabd7b292649658624.json",
+          "bytes": 1944,
+          "sha256": "2ce5d22e5a03c5494fb86d328c72e42c80fff8c90039ba8bab7be170c09257d8"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f06ffe8ea34cbf21c21a6f17df1f9a409365d490.pdf",
+          "bytes": 595,
+          "sha256": "ed5bbbd62e0a5d77042803266e0c679ceafde1a37d5566ccefe41d803bb8568d"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f07dc8dc3fc1d966352e021ef7db91dbdacfa5cf.png",
+          "bytes": 373927,
+          "sha256": "221d722bdaa7e6da92e0263fb9891738371c6b887edbeb6d8b47d1d76bd3c2b8"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f14d6d5e9ba9d5e11adba4ed2870f19f78ac6e8e.json",
+          "bytes": 4340,
+          "sha256": "186634f64a6d7e1ab2e8642bf961ac65fc34c940cba2e9662710b1c940a71324"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f1a399362644d6deee68778ea53989e210c506cd.json",
+          "bytes": 249,
+          "sha256": "039b4afba50c2f7b5cc9793f27e8ba33d8c77a914124288b033e6265316b67e3"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f415e638e62ff99b20ee953dd54c5d52ddbfcb49.json",
+          "bytes": 401,
+          "sha256": "8d4b7e7af9b1ef3f79d233a57605cc83e98c02476f6d6e3c64fd2c1511479f5d"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f6a0d7bfb2551e354e2a4a73539ecd28fad0e4de.json",
+          "bytes": 242,
+          "sha256": "b05620089251f88955e0af624899969df5c38a516bc15c2eb22713344c947919"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/f6f03675659b2609d181ec53d8366746cce3128a.json",
+          "bytes": 228,
+          "sha256": "0bf28e991e74d9ef7928b8d9b199f0326208c70594899aae034398f56dd10461"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/fd22f4f282935d6ba99ec503f416bf3234d4142d.json",
+          "bytes": 4008,
+          "sha256": "7a7093a1119ea643ac88735e08446fb1e115ef0facd0f53a0d1341ee4421be43"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/fde78ee37c813cf6c485302ed45acb6f3f6c0734.json",
+          "bytes": 3889,
+          "sha256": "4f51f6f89430538f4d17a184d050bac0fb97d0a9569f7e9e55473695f7db4541"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/.playwright-artifacts-0/traces/resources/ff2247c6dec6408dc8582782801c346ba257e982.json",
+          "bytes": 530,
+          "sha256": "a73aa79665042f8f32c13893f0f5927bd7086c7ef5f3169b93525720662fc16d"
+        },
+        {
+          "path": "1444-esm-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 25050,
+          "sha256": "33a94636f8695b9393f59b231927764d3342210845bccbb17b82651acd976a14"
+        },
+        {
+          "path": "1444-esm-combined/summary.json",
+          "bytes": 1922,
+          "sha256": "7347fd66d34d3e82cd80378982792b9380b7ac9a26e2c1c81398780b1a2de88e"
+        }
+      ]
+    },
+    {
+      "name": "1444-select-combined",
+      "purpose": "historical test preparation failure/interruption; not qualifying",
+      "qualificationSourceSha256": null,
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:00:17.707Z",
+        "finishedAt": "2026-11-18T10:01:51.587Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-select-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-select-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-select-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-select-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 0,
+              "failed": 2,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "combined-audit-qualification.acceptance.spec.ts › qualifies exact bilingual analysis originals through independent audit and Certificate release on the pinned combined source",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: expect(received).toMatchObject(expected)"
+              },
+              {
+                "title": "combined-audit-qualification.acceptance.spec.ts › qualifies exact bilingual analysis originals through independent audit and Certificate release on the pinned combined source",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: expect(received).toMatchObject(expected)"
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-select-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-select-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-failed-1.png",
+              "/workspace/work/batch-20261118/evidence/1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-failed-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 35971
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [],
+      "artifacts": [
+        {
+          "path": "1444-select-combined/run-1/report.json",
+          "bytes": 16044,
+          "sha256": "b92d1ac660b63740b61b3f8658f61eb9a0c5909edb6df8e5c13dfddad5cadea1"
+        },
+        {
+          "path": "1444-select-combined/run-1/results/.last-run.json",
+          "bytes": 145,
+          "sha256": "8ace9f72f202c217c36e30d3c6ad0d23745a2924b70de32ae7222c5d22cc6528"
+        },
+        {
+          "path": "1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-failed-1.png",
+          "bytes": 85676,
+          "sha256": "7cf41fb319f27c9b1ddd3dfb62436a7251958cf2bc393746be1b36e808f4ba18"
+        },
+        {
+          "path": "1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 1783130,
+          "sha256": "b39bef0778e617a5bdf6216d2a2c8ee03a681017d89b4d4531ad48f3b2fe4880"
+        },
+        {
+          "path": "1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-failed-1.png",
+          "bytes": 42461,
+          "sha256": "7a9bcbc58dc01eabc15368659682a590e07ab1bb03c9fb02700cc0b90aab4bdd"
+        },
+        {
+          "path": "1444-select-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip",
+          "bytes": 1318174,
+          "sha256": "9fc7be8f83513759446fc97e3203d4240f709bdfa7ff19b3ac937ca8f6b5b917"
+        },
+        {
+          "path": "1444-select-combined/summary.json",
+          "bytes": 3222,
+          "sha256": "ae8bd6b3309fcb7647f77e8784ffb47c2d9206800ce62dde9db1bc88aab2a0e4"
+        }
+      ]
+    },
+    {
+      "name": "1444-binding-combined",
+      "purpose": "historical test preparation failure/interruption; not qualifying",
+      "qualificationSourceSha256": null,
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:09:02.707Z",
+        "finishedAt": "2026-11-18T10:11:19.342Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-binding-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-binding-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-binding-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-binding-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 0,
+              "failed": 2,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "combined-audit-qualification.acceptance.spec.ts › qualifies exact bilingual analysis originals through independent audit and Certificate release on the pinned combined source",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: PDF text outside qualified page geometry."
+              },
+              {
+                "title": "combined-audit-qualification.acceptance.spec.ts › qualifies exact bilingual analysis originals through independent audit and Certificate release on the pinned combined source",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: PDF text outside qualified page geometry."
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-failed-1.png",
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-failed-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 79040
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [],
+      "artifacts": [
+        {
+          "path": "1444-binding-combined/run-1/report.json",
+          "bytes": 13005,
+          "sha256": "c3b61db4f1925d018acfe515fc42547523610fb4089caea4f28c832923434389"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/.last-run.json",
+          "bytes": 145,
+          "sha256": "8ace9f72f202c217c36e30d3c6ad0d23745a2924b70de32ae7222c5d22cc6528"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "83a2f8a45229a362162693a16961d2486bf08dabdc9ef254788320df7aed981a"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+          "bytes": 47195,
+          "sha256": "e17e8d28fb8e46129fd973e103f634f3891145eb761658970d065efe45928c8f"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+          "bytes": 53708,
+          "sha256": "3824cf69d24f68975328b3c4000a11f7647dc078718e39d866a236d8d40b62d8"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-failed-1.png",
+          "bytes": 105972,
+          "sha256": "f7c45bb3e5f99b89f91b34b967ba9eee2f2c69ac2eddf5fecb4c42233f011b27"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 6229686,
+          "sha256": "2bad303b4537b8cce58ce076b26fd80ceb4bd140a09b9e3e8846d39aca3351fb"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "390783aa262a75aafc18673216c2ab14138a4a11fae500a500a4daf10a7ce0cd"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+          "bytes": 54045,
+          "sha256": "1681bead63d7b5da0f98e2a61da5278fa6427d9550b7f66f132048f7cf9f6c95"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+          "bytes": 53831,
+          "sha256": "189dfded1c13e6d7073c4d610887b7a7f99c61522d9f33956bb383d40bcd3dab"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-failed-1.png",
+          "bytes": 63764,
+          "sha256": "36bcc2bc4efd8bd673979120d4e1b1b3a122bce926c40a0404355e87842868fe"
+        },
+        {
+          "path": "1444-binding-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip",
+          "bytes": 5229389,
+          "sha256": "ac5f6418bb5d9ee884817a1732312ddeafdbc679619bfad29ade020648b68046"
+        },
+        {
+          "path": "1444-binding-combined/summary.json",
+          "bytes": 4088,
+          "sha256": "25f712a678b9f2ce2c6c12ce8cfe384beea1b265f56d777adfa563ebd0adeb1e"
+        }
+      ]
+    },
+    {
+      "name": "1444-certificate-combined",
+      "purpose": "earlier complete scenario; later assertions strengthened and rerun",
+      "qualificationSourceSha256": {
+        "apps/api/test-support/combined-audit-pdf.fixture.mjs": "dd2b7843820f2ac2ae67e6ea279b894688db685a15f2ca4e1e0d9f70e1805906",
+        "apps/web/e2e/combined-audit-qualification.fixture.ts": "4351c33a1f7886d0d9e5a7fdb3c6a31dbbec1f09dc5cf20515fe6717c9530201",
+        "apps/web/e2e/combined-audit-qualification.acceptance.spec.ts": "1a7171170b1cdbd81fbb76fec2bef91215c702066df0bc9d904781bf4bbe64d1"
+      },
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:20:16.817Z",
+        "finishedAt": "2026-11-18T10:22:56.035Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-certificate-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-certificate-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-certificate-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-certificate-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 2,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 104963
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ro",
+          "fixture": "fictional",
+          "caseId": "62bc8ed3-4214-4e13-b92a-213658e1826e",
+          "runId": "6ea5d5c8-da98-4af5-834c-155bcffe2ea8",
+          "freshRunId": "6f086a5e-aa99-40eb-9981-4cd9755a1aa9",
+          "exactSource": {
+            "documentId": "b53c9b2f-a287-44c2-8e9a-e5710b9fe70c",
+            "documentVersionId": "68ceecf3-3662-4978-92a8-5d11cb642330",
+            "representationId": "3ac2ffbe-9216-44af-8be4-b765935b3b3e",
+            "caseId": "62bc8ed3-4214-4e13-b92a-213658e1826e",
+            "attachmentId": "47ee1edc-09cb-46fb-868a-7e56ce8a16dc"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "3831e85b0b7bd3a8609b1a46a197c05a9f537acad0266c00e91173d336ee8bfd",
+          "registerSha256": "95584b7d6ff0fd66f22e6989e94d357930e00f6e6303c4a14f44addcda5dc9bc",
+          "certificateSha256": "e2241f2ef2fab9d0444a6bec96b0eb603c32d3c233c28c19bebf8087acc28d33",
+          "certificateNumber": "QUAL-62bc8ed3",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        },
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ru",
+          "fixture": "fictional",
+          "caseId": "74c7beba-47a8-4f59-a5c6-1644ac006fc6",
+          "runId": "447cb4b5-33cf-4fb5-a85c-a865ac5cdf47",
+          "freshRunId": "4349f01a-418c-44e9-9fde-e965b8d4aa0d",
+          "exactSource": {
+            "documentId": "d31fec5b-db94-466d-bd87-1712aaa6d859",
+            "documentVersionId": "8350304e-c022-4ba1-b7cf-90a85cb074d8",
+            "representationId": "f8a217fb-6e0b-48ed-a367-c39e5edea172",
+            "caseId": "74c7beba-47a8-4f59-a5c6-1644ac006fc6",
+            "attachmentId": "93af2134-0d1e-4b8c-8e95-29add1b6e3a2"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "921b74463430e03e73682a07868001f79246afbe12e207efca4963e3fb1e83bb",
+          "registerSha256": "044b0fc73b27aded9a6cad9a0bf83634a30ddf9019f6fca417b1a78834e4d9eb",
+          "certificateSha256": "188cd86d7d2b5bc79cff7e0bacca53466a0c867ca95f03bd818591dc928b6dab",
+          "certificateNumber": "QUAL-74c7beba",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1444-certificate-combined/run-1/report.json",
+          "bytes": 7409,
+          "sha256": "aabc336d85e8c38b7792d5f3399841ef11148462f63e83b608c49f18a65c7d15"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "3831e85b0b7bd3a8609b1a46a197c05a9f537acad0266c00e91173d336ee8bfd"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+          "bytes": 46988,
+          "sha256": "5c5ce62028d91cfbc89ee36be2661612e872313d3ac30e32b9e69e9b54576603"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+          "bytes": 53167,
+          "sha256": "a405ce4f77c7bc99fc71e8113774f5422e520e0b5e3eb3eac5c941b7abe9cf08"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+          "bytes": 144913,
+          "sha256": "5c1dfe050a447c0dfa0c924a845d0a272b55bf26b648d6c0ce0e748cc8ce18ee"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-dossier-register-ro.pdf",
+          "bytes": 948870,
+          "sha256": "95584b7d6ff0fd66f22e6989e94d357930e00f6e6303c4a14f44addcda5dc9bc"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-issued-certificate-ro.pdf",
+          "bytes": 12817,
+          "sha256": "e2241f2ef2fab9d0444a6bec96b0eb603c32d3c233c28c19bebf8087acc28d33"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "51262396d84cfb844748832057387b4cfd2df2ca649ebbf4d2d4e80456539a31"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 77410,
+          "sha256": "ee17b7465eede2958e4126948f0f7436efd7b3a1cd9f97f29bff22ed1cf9f6ab"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 10971865,
+          "sha256": "31d445d4f892dc4681a5f7b7d72f0d0c699d5e8d9a358adb6a29f22c9fc19d28"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "921b74463430e03e73682a07868001f79246afbe12e207efca4963e3fb1e83bb"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+          "bytes": 53058,
+          "sha256": "aae5c2c7ff3bbb72c259c0370d3a0911d1d7d6cd6dfe2434930807d94ab77cee"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+          "bytes": 52875,
+          "sha256": "ab2c6e25f9bf8f27bb156fa5bfa416928264a40b64fb97397229bc0023b94325"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+          "bytes": 169468,
+          "sha256": "b28afc694e29c0456b0c961764767938dbcdeb7fd780806cede3ba14605dd141"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-dossier-register-ru.pdf",
+          "bytes": 949438,
+          "sha256": "044b0fc73b27aded9a6cad9a0bf83634a30ddf9019f6fca417b1a78834e4d9eb"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-issued-certificate-ru.pdf",
+          "bytes": 12772,
+          "sha256": "188cd86d7d2b5bc79cff7e0bacca53466a0c867ca95f03bd818591dc928b6dab"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "3961af5c036879768506b5bfeac12e9450c47454bf1935249dc594faeea26974"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 50524,
+          "sha256": "742bb6bc43ab4b1c83afdaf23736115b87180da31c4ec6f5843485fd9d439169"
+        },
+        {
+          "path": "1444-certificate-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip",
+          "bytes": 9386145,
+          "sha256": "a12409b9595ca377c6a9634d67af1a0d8f7f2454eaa87c20df4f2c686f93f7ec"
+        },
+        {
+          "path": "1444-certificate-combined/summary.json",
+          "bytes": 3891,
+          "sha256": "bc92e99edafa40f580e27ec72e64b935154f0890adb8499cf4cf3b750ef6ac27"
+        }
+      ]
+    },
+    {
+      "name": "1444-final-combined",
+      "purpose": "earlier complete scenario; later assertions strengthened and rerun",
+      "qualificationSourceSha256": {
+        "apps/api/test-support/combined-audit-pdf.fixture.mjs": "dd2b7843820f2ac2ae67e6ea279b894688db685a15f2ca4e1e0d9f70e1805906",
+        "apps/web/e2e/combined-audit-qualification.fixture.ts": "adb51e17298ec2a5c4fdd3ca3526b4d84352b72b98051582bce6732021cfa5a1",
+        "apps/web/e2e/combined-audit-qualification.acceptance.spec.ts": "459ca6913d4dac00fcbf72b7f57ce1005efeb8a24f2f3279f787ed7ac28f258a"
+      },
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:32:39.114Z",
+        "finishedAt": "2026-11-18T10:35:29.146Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-final-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-final-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-final-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-final-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 2,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 113924
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ro",
+          "fixture": "fictional",
+          "caseId": "3e56d0c3-4dc2-4759-963b-bfb7c550bb19",
+          "runId": "7d294d7e-40d9-4190-be9f-e3577eb5704b",
+          "freshRunId": "b595af7f-e7de-48f2-a519-a2da107f6061",
+          "exactSource": {
+            "documentId": "83c37bdf-6884-47e2-ab6b-d7ee869b3902",
+            "documentVersionId": "743e3171-7966-4272-8b97-e8398921f8fb",
+            "representationId": "f0d1a517-570b-423e-8ffa-2e5356eee472",
+            "caseId": "3e56d0c3-4dc2-4759-963b-bfb7c550bb19",
+            "attachmentId": "a70ff655-85a9-4f80-9e2d-0b58f213b9ff"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "5c5bb2d8bb9ef73987941058bdf5cf5c45f97346f6548b8a6a80f45727202783",
+          "registerSha256": "8ead1820f19a17ee6b49822bfe0a2bd4fb9fc64c1f7520d0a89dbb27a6218727",
+          "certificateSha256": "6f7c5823a2438a9d96f175087675e94604ea8a8c08b26b500653d536cc06226f",
+          "certificateNumber": "QUAL-3e56d0c3",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        },
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ru",
+          "fixture": "fictional",
+          "caseId": "63eaf370-a816-442d-9fe7-ce81d1ee7246",
+          "runId": "8666b3fe-8f1e-4910-b79c-107da495abc9",
+          "freshRunId": "aa428f3e-e5fb-4277-ae14-2072b50a7aa4",
+          "exactSource": {
+            "documentId": "204dede8-ab4c-43c4-baa9-d9d0246d2417",
+            "documentVersionId": "72480d8d-61c2-408e-a730-d2846e8bebb5",
+            "representationId": "66b2fbf4-0c32-47f8-89be-ffe8ef20fad9",
+            "caseId": "63eaf370-a816-442d-9fe7-ce81d1ee7246",
+            "attachmentId": "51bdf73f-0101-4638-9518-54214d6fced4"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "950e9765ffddf4bd6e4a053e45456df2093d64d3a4b7bb792186c3a2f92f478d",
+          "registerSha256": "b9c357a69551d3694a053ec9489b60f2f4b4843c7ec16b15ac33d78a5d2a87b2",
+          "certificateSha256": "d51940407c2950e2338451c1ef39e5ec4b001e4d97d97f73c0580a9028ae3b8b",
+          "certificateNumber": "QUAL-63eaf370",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1444-final-combined/run-1/report.json",
+          "bytes": 7369,
+          "sha256": "cac75a8dc7a6adcbb8445675ccb68b24cb0c98564382cb83e2fdd8e8b95c9ef4"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "5c5bb2d8bb9ef73987941058bdf5cf5c45f97346f6548b8a6a80f45727202783"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+          "bytes": 48012,
+          "sha256": "0d7d78dcf42cd9435c7d5133d6e6a2f4bfd2d2f7f45a1f5a34fe9993e8fbb181"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+          "bytes": 54444,
+          "sha256": "dab98f88cdf79862bf6433b3a3693a811feed51bb175620dbf869e59613040ef"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+          "bytes": 146465,
+          "sha256": "e746a763d476a926892c302fc2212b1c7c1ed1f40ee62123fd619458c44f3600"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-dossier-register-ro.pdf",
+          "bytes": 948873,
+          "sha256": "8ead1820f19a17ee6b49822bfe0a2bd4fb9fc64c1f7520d0a89dbb27a6218727"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-issued-certificate-ro.pdf",
+          "bytes": 12980,
+          "sha256": "6f7c5823a2438a9d96f175087675e94604ea8a8c08b26b500653d536cc06226f"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "d62159125ecb98af0546f4db3b3f1bc7aca5127ae252ef919c007a2152ca4508"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 84897,
+          "sha256": "70752332cc6736e3828ce1bb3b0da96c48a90146858d151de59c73b7619a8e0d"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 11141982,
+          "sha256": "539d6fbf1ca3ff5969a09066899169f7c9327aefa8042d28db2b5698a6187c36"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "950e9765ffddf4bd6e4a053e45456df2093d64d3a4b7bb792186c3a2f92f478d"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+          "bytes": 53628,
+          "sha256": "e5a1e595a40f6b0a556b9ce0fd429e50f6d306e188c7c7fda0064a4ce8ceeda6"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+          "bytes": 53403,
+          "sha256": "92db730c828727e31342e8aea67bb6b5903da0e28728788af68a06a71c3b9eaa"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+          "bytes": 171177,
+          "sha256": "d6509399ea80e09b7461571629dc96e26929256a09276040b2af3fac6c82432f"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-dossier-register-ru.pdf",
+          "bytes": 949461,
+          "sha256": "b9c357a69551d3694a053ec9489b60f2f4b4843c7ec16b15ac33d78a5d2a87b2"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-issued-certificate-ru.pdf",
+          "bytes": 12816,
+          "sha256": "d51940407c2950e2338451c1ef39e5ec4b001e4d97d97f73c0580a9028ae3b8b"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "56e18bde5e30f52dc7b36bddcaaeaf95593fff86d709bcc8e2001ca76d8a15e5"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 47675,
+          "sha256": "047c168d15f75b74c18ee9c1e40d700c395c939306e1619ba3fdb4e4a60d1425"
+        },
+        {
+          "path": "1444-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip",
+          "bytes": 9683505,
+          "sha256": "546c6cb950b36dca3cb94b61bfb4078ab093b402a02743d1cebddb6c5fe8b93e"
+        },
+        {
+          "path": "1444-final-combined/summary.json",
+          "bytes": 3795,
+          "sha256": "6fd3a33911811a721dcac46d98219771b49cb24a44a2729992d0569409cbc848"
+        }
+      ]
+    },
+    {
+      "name": "1444-isolated-freshness-combined",
+      "purpose": "earlier complete scenario; later assertions strengthened and rerun",
+      "qualificationSourceSha256": {
+        "apps/api/test-support/combined-audit-pdf.fixture.mjs": "dd2b7843820f2ac2ae67e6ea279b894688db685a15f2ca4e1e0d9f70e1805906",
+        "apps/web/e2e/combined-audit-qualification.fixture.ts": "adb51e17298ec2a5c4fdd3ca3526b4d84352b72b98051582bce6732021cfa5a1",
+        "apps/web/e2e/combined-audit-qualification.acceptance.spec.ts": "2dc219238341ba7ae549246882b82ca1a542cda3b81e246a994e0c4dc5b92f49"
+      },
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:40:20.927Z",
+        "finishedAt": "2026-11-18T10:43:04.009Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 2,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 105844
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ro",
+          "fixture": "fictional",
+          "caseId": "f9e7be8e-73ff-41ef-9f69-6310fbeff84b",
+          "runId": "2f6f4b9e-605e-4c57-a422-519f91e8262c",
+          "freshRunId": "2e482c2b-2e0b-43fa-bc87-bda52881e08e",
+          "exactSource": {
+            "documentId": "5617c11c-5816-4630-886f-a32b7cb2dca7",
+            "documentVersionId": "aed398dc-12ef-4741-bb3f-ea1ce1ce34c5",
+            "representationId": "80b76e03-eff6-44b2-af32-58517dbd4bf7",
+            "caseId": "f9e7be8e-73ff-41ef-9f69-6310fbeff84b",
+            "attachmentId": "10e45754-7c91-496f-a078-ac22d8a0e58b"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "0a79945c026ed97b0bfbd8352b2b3a897275437941a4208ca69b02dacfeb85af",
+          "registerSha256": "88e427334f0076411bc378aefaef304bd60da19f31cb9bcec4bbdde06625ba04",
+          "certificateSha256": "362a21f1aefc3d439db5d1a07d158b74d3c8e8cf15d75d163a5e4e5e27132061",
+          "certificateNumber": "QUAL-f9e7be8e",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        },
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ru",
+          "fixture": "fictional",
+          "caseId": "84305a7e-e921-4277-b02d-56f542f34f9d",
+          "runId": "a64c7328-538b-4537-94c7-1f907ac93f8a",
+          "freshRunId": "a2a64aad-0432-4b37-bae1-5140171176fe",
+          "exactSource": {
+            "documentId": "97f36a8e-3796-402d-97d1-406f95041ddb",
+            "documentVersionId": "9b4fec12-ab70-43d0-886b-5435af324ce8",
+            "representationId": "1ebcf6b1-be23-4fd7-8a23-d97b97d84758",
+            "caseId": "84305a7e-e921-4277-b02d-56f542f34f9d",
+            "attachmentId": "13dd65c1-2337-4a2d-b027-1ee9c7d37bc7"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "d975532b4bc3a7c20f4b8e512ff50dd8bfc6561c1bff0c4b9016665a0596f2fc",
+          "registerSha256": "3a9a67847f15fa49f41ca464a0b94a6938a0eb726ad4dd19062d6534120953f0",
+          "certificateSha256": "4c4301772551a4e40512dce821be6ecf0a5692625737ae60ecd24cd59a325c2b",
+          "certificateNumber": "QUAL-84305a7e",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1444-isolated-freshness-combined/run-1/report.json",
+          "bytes": 7464,
+          "sha256": "730d0e76ffee972d985b59ee675169076cfa1a0110d3bda19a57f80313444fe1"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "0a79945c026ed97b0bfbd8352b2b3a897275437941a4208ca69b02dacfeb85af"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+          "bytes": 47243,
+          "sha256": "75b9224e58748917f189d63051ac8b9bb35399449804f3c5fe7fe2f83d9f2f32"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+          "bytes": 53576,
+          "sha256": "0e082319a19ac686c1a9c7cfc9b604edb7018ffb5fa296ec4ae4d84fab6e4381"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+          "bytes": 144950,
+          "sha256": "e10b825c82703a78fc63c6a6e39d21616ba548ac0d48fdc078b0b312ac3d2025"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-dossier-register-ro.pdf",
+          "bytes": 948874,
+          "sha256": "88e427334f0076411bc378aefaef304bd60da19f31cb9bcec4bbdde06625ba04"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-issued-certificate-ro.pdf",
+          "bytes": 12633,
+          "sha256": "362a21f1aefc3d439db5d1a07d158b74d3c8e8cf15d75d163a5e4e5e27132061"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "003ffdb298361554385a95f24d37569cedbf8263289ae8966d6f523b96492bbb"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 73449,
+          "sha256": "78998842e806ad7f333eb0aafdebfb0045503cf3401c4a2f7d3510073b023ff2"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 10255532,
+          "sha256": "87d3b811271efebaa3602990ac05843921bf0ce5dd295444f303f59456d0bae7"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "d975532b4bc3a7c20f4b8e512ff50dd8bfc6561c1bff0c4b9016665a0596f2fc"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+          "bytes": 53429,
+          "sha256": "a8dbaac0e58357be0ac7a89eb2dcab23075e09eae9c8d8939ed35a79635694c2"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+          "bytes": 53191,
+          "sha256": "ba7df1c00632c4a27f9e9e1438d632044605e0831f3f83179a9960034e4775d4"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+          "bytes": 170774,
+          "sha256": "d14b8567b17135fbdb349cfe7e36c0ebbfc50d05d8c35604d927b90405e246ed"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-dossier-register-ru.pdf",
+          "bytes": 949453,
+          "sha256": "3a9a67847f15fa49f41ca464a0b94a6938a0eb726ad4dd19062d6534120953f0"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-issued-certificate-ru.pdf",
+          "bytes": 13143,
+          "sha256": "4c4301772551a4e40512dce821be6ecf0a5692625737ae60ecd24cd59a325c2b"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "d61eab6f3dd94014fa43ec12b9c1431185f9430cdfb3cc016585e6ac846d79df"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 48445,
+          "sha256": "bc5402ecd29b4b0a94179d36a8d0d7939828f63313154088b78d153b3b20abdc"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip",
+          "bytes": 8543625,
+          "sha256": "4d59e34318cafd6247834bc319d30045a4d9905bef7ed6f229dd5f7d08108e10"
+        },
+        {
+          "path": "1444-isolated-freshness-combined/summary.json",
+          "bytes": 4003,
+          "sha256": "0137064041a4fb32aaa20c4f2a3015229655536b89eb6fe9bb5e159c5a25032e"
+        }
+      ]
+    },
+    {
+      "name": "1444-visual-final-combined",
+      "purpose": "final qualification: isolated Version/Case freshness, canonical Client/Case invariance, identical denials, and reopened review/coverage visual proof",
+      "qualificationSourceSha256": {
+        "apps/api/test-support/combined-audit-pdf.fixture.mjs": "dd2b7843820f2ac2ae67e6ea279b894688db685a15f2ca4e1e0d9f70e1805906",
+        "apps/web/e2e/combined-audit-qualification.fixture.ts": "adb51e17298ec2a5c4fdd3ca3526b4d84352b72b98051582bce6732021cfa5a1",
+        "apps/web/e2e/combined-audit-qualification.acceptance.spec.ts": "7d13dff1bc669d46b737d256ee251baed6ab3b5d5088a9e5fb08266b45ce7f32",
+        ".agents/skills/journey-audit/journey-map.md": "9bd676e78c99194f9bbd342ff47472fb863cefeed0b44b42d5b32e02a750b657"
+      },
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "combined-audit-qualification",
+        "spec": "/workspace/work/batch-20261118/1444/apps/web/e2e/combined-audit-qualification.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:56:51.761Z",
+        "finishedAt": "2026-11-18T11:00:14.362Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1444-visual-final-combined",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 2,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/report.json",
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 142243
+          }
+        ],
+        "message": null
+      },
+      "nativeOutcomes": [
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ro",
+          "fixture": "fictional",
+          "caseId": "4f394029-8c1b-4696-bf00-7924fecb30d2",
+          "runId": "a7ebac4c-f7b0-40ea-8911-7eaa29b51c43",
+          "freshRunId": "6bc49a4b-26b5-48cb-955d-4fe303c38dbb",
+          "exactSource": {
+            "documentId": "bde823bc-0be2-4444-8c6e-441d3143a687",
+            "documentVersionId": "3248ce0f-51aa-457d-b0ca-04de12f25d09",
+            "representationId": "d685aad2-a00f-4fb9-9c38-35cb1c82ccb6",
+            "caseId": "4f394029-8c1b-4696-bf00-7924fecb30d2",
+            "attachmentId": "6b7e824d-3808-403f-8919-9ba8701522df"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "1e304089dde9582b9b50e4d6db4386c35cebdfb7adc421fb5bea90d7d720985c",
+          "registerSha256": "7caeb12d1dd669d4b62d09baeeef449b37b0422cbb8a5cbac6eaa8b1b9892fb3",
+          "certificateSha256": "f8043137300529e6c72aae57150c51c7f2a110cae39d531464bdf83924409e9f",
+          "certificateNumber": "QUAL-4f394029",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        },
+        {
+          "schema": "prisma-prim-combined-audit-outcome/v1",
+          "locale": "ru",
+          "fixture": "fictional",
+          "caseId": "542c5404-53b5-4b9e-97e5-845fd818c349",
+          "runId": "d3d6d2da-8caa-4011-a573-f32f731f4bb9",
+          "freshRunId": "b37e2f86-0102-4141-b031-6ee32f966114",
+          "exactSource": {
+            "documentId": "a80d419d-2e3a-4b43-bd35-be0906af67a1",
+            "documentVersionId": "a55649ae-2f1f-4984-9eff-28bf2796c4b5",
+            "representationId": "89f07345-ff97-4e2c-8de5-78d2b5636baf",
+            "caseId": "542c5404-53b5-4b9e-97e5-845fd818c349",
+            "attachmentId": "f0929703-3262-40e5-9ad4-75cd4b84f6cd"
+          },
+          "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+          "supplementarySha256": "235cca842403e994b21f4cc763922e3be97005457d7fd12edd3d1cf7e926230c",
+          "registerSha256": "391839b4f44b7a4f55f78901c17f2f8721e36bc7a9eda05d78e3e6bf063084a7",
+          "certificateSha256": "dbcab2921251ff5032dea2bf54880abe87e3799fff114aa338e7ec8a7d8fb6ff",
+          "certificateNumber": "QUAL-542c5404",
+          "status": "certified",
+          "boundaries": [
+            "local-demo identities",
+            "synthetic malware scanner",
+            "lost review receipt"
+          ],
+          "modelCalls": 0,
+          "privatePilotQualified": false,
+          "productionQualified": false
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1444-visual-final-combined/run-1/report.json",
+          "bytes": 7417,
+          "sha256": "7e37a744ccb139f3532b7040dcb07daf13ae762b568ed25aaa9c5eb726737ae0"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "1e304089dde9582b9b50e4d6db4386c35cebdfb7adc421fb5bea90d7d720985c"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-historical-ro.png",
+          "bytes": 48055,
+          "sha256": "5394b314253b9732c5ffdfe40844ffa9917e337b036d7a2c7fc983f764ee5e95"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-analysis-reviewed-ro.png",
+          "bytes": 279515,
+          "sha256": "c4fa14912605a2bb750aa53265f1ba08f4c12028e3ce43068c0c4731d4ae3554"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-certificate-release-ro.png",
+          "bytes": 146171,
+          "sha256": "f78420d9eb34008b00f22598f2f1cbf95476a02f4ff7d7c249e09b6d3fcba10b"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-dossier-register-ro.pdf",
+          "bytes": 948898,
+          "sha256": "7caeb12d1dd669d4b62d09baeeef449b37b0422cbb8a5cbac6eaa8b1b9892fb3"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-issued-certificate-ro.pdf",
+          "bytes": 12977,
+          "sha256": "f8043137300529e6c72aae57150c51c7f2a110cae39d531464bdf83924409e9f"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "ba28b140c034d153cec315dbd03a10d80f832d1c4f638cad49180499081efcad"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 77410,
+          "sha256": "ee17b7465eede2958e4126948f0f7436efd7b3a1cd9f97f29bff22ed1cf9f6ab"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-desktop/trace.zip",
+          "bytes": 10758522,
+          "sha256": "f532e1559051a78446c56bbd9a43c60c52e8fef44db0563816720e6029b7b79b"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-native-original.pdf",
+          "bytes": 13887,
+          "sha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/analysis-supplement.docx",
+          "bytes": 1089,
+          "sha256": "235cca842403e994b21f4cc763922e3be97005457d7fd12edd3d1cf7e926230c"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-historical-ru.png",
+          "bytes": 54536,
+          "sha256": "ccb8fcf7e1871a9992e02be57afec6bcbc67774aa13e327f95e50eed3da5d8b6"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-analysis-reviewed-ru.png",
+          "bytes": 282425,
+          "sha256": "ab635e90eef05f66f5140a15bbc4d728ea8ff6d09790db0aee72e70df7120cbb"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-certificate-release-ru.png",
+          "bytes": 169300,
+          "sha256": "30222471a0f52dbb1cf11280153b0f9fa157a0348acb6f8c5a60d0bbd98a2c60"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-dossier-register-ru.pdf",
+          "bytes": 949440,
+          "sha256": "391839b4f44b7a4f55f78901c17f2f8721e36bc7a9eda05d78e3e6bf063084a7"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-issued-certificate-ru.pdf",
+          "bytes": 12933,
+          "sha256": "dbcab2921251ff5032dea2bf54880abe87e3799fff114aa338e7ec8a7d8fb6ff"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/combined-native-outcome.json",
+          "bytes": 1203,
+          "sha256": "79837c30f853640651465dcfcd8dbd4c54179dcf3cf91982de7da8ad80f42708"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 47675,
+          "sha256": "047c168d15f75b74c18ee9c1e40d700c395c939306e1619ba3fdb4e4a60d1425"
+        },
+        {
+          "path": "1444-visual-final-combined/run-1/results/combined-audit-qualificati-74069--the-pinned-combined-source-operational-acceptance-narrow/trace.zip",
+          "bytes": 9698500,
+          "sha256": "d417c398040242e4b22c0805d857d89de5c238eb720a52b1d843dd22b360e4d5"
+        },
+        {
+          "path": "1444-visual-final-combined/summary.json",
+          "bytes": 3907,
+          "sha256": "29e401b89b26d156446848b01e96d9661d3e1e44e9b3b0152a47f8edf80f2c95"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Demonstration identity headers and synthetic scanner replace external boundaries only",
+    "Separate human API Stage/NC/recommendation/decision acts; UI analysis/team/release acts",
+    "No provider/subscription activation or real Client data",
+    "No private pilot1279 or production qualification",
+    "Earlier failed intermediate qualification source was not frozen; failed attempts do not count as passes"
+  ]
+}
