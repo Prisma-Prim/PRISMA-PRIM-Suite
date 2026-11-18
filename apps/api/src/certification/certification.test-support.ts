@@ -651,6 +651,10 @@ export async function openCertificationFixture(input: {
       if (!harness) throw new Error('Fixture is closed.');
       return harness.pool;
     },
+    holdNextScan() {
+      if (!scanner) throw new Error('Fixture is closed.');
+      return scanner.holdNextScan();
+    },
     call,
     created,
     grant,

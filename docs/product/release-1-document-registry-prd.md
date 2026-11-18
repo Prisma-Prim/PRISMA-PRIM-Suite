@@ -1009,3 +1009,34 @@ For snapshot reads, reuse or narrowly extend exported Document read/exact-Versio
 Adding the family requires deliberate exhaustive qualification of native API registration/validation/DTO/Version/content/history/read boundaries, OpenAPI readers, web decoders/forms/detail/history/locales and actual Company assignment/current-actor controls. Filter family visibility before Document/Client lists, cursors, lookahead, counts or Activity labels. Preserve all old captures and explicit family gates, including read alternatives and native denial semantics. Existing Task-result and Knowledge source admission stays closed; neither Case output nor the new family is automatically indexed, projected, accepted as a Task result, selected as signing/financial evidence or admitted to a selected Project PDF bundle. Native source events retain ordinary actions/minimal metadata as internal records only; generic Activity/Home/search/AI/finance gains no Case/source projection. Public fictional upgrade/consumer negatives must prove those exclusions.
 
 The combined runtime slice must extend family/assignment constraints additively, retain native PDF/official-Version integrity and old migration histories, and, from launch on ([#1356](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1356)), prove a populated predecessor upgrade without grants or reclassification. No native storage ownership change, new dependency, provider activation or actual source publication is authorized here.
+
+## 27. Project working originals and recoverable intake (#1454)
+
+Native registration explicitly accepts `project-source`, original `clientId`,
+reviewed `title` and `purpose`, without an external URL. It preserves a working
+original as a draft using the existing Document/Client permissions and receipts.
+Questionnaire registration retains its HTTPS reference contract. The family has
+no official designation, successor drafts, signing, finance, Knowledge indexing
+or Task-result admission. Stored PDFs retain their separate native content and
+upload history; supplementary Word originals remain Dossier Analysis sources.
+Project linking uses an explicit family allow-list; Knowledge keeps its existing
+separate allow-list. No existing captured grant expands.
+
+An actor-owned batch records orchestration under the server-established Workspace,
+Company, Project and original Client. It admits 1–25 items, up to 5 MiB per valid
+file and 20 MiB total valid bytes. The human reviews ownership, metadata and
+language before admission. Invalid files, duplicates, failures and unfinished
+items remain visible and counted. Exact native command keys are frozen before
+one foreground step is invoked; native owners commit scans, original bytes,
+associations, selections and receipts in their own transactions.
+
+A failed checkpoint acknowledgement does not undo a committed original. Deliberate
+resume uses its exact native receipt identity and bytes, with fresh grants,
+Project/Client, draft, metadata and association/version checks. Late competing
+attempts cannot replace another attempt's checkpoint. Pause/stop prevents further
+foreground steps; an already admitted native command may complete and retain its
+checkpoint. Browser closure preserves server progress, not browser-stored raw files
+or detached work. Reopening may require reselecting the exact hashed original.
+A deliberate skip retains all previously confirmed native identifiers and files.
+Completion measures preservation and selection; extraction accuracy and professional
+review remain separate actions.

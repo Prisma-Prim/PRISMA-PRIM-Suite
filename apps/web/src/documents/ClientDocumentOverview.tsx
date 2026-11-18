@@ -55,6 +55,7 @@ function captures(company: ActorContext['activeCompany']) {
       'received-audit-source',
     ),
     questionnaire: documentFamilyCaptureKey(company, 'questionnaire'),
+    'project-source': documentFamilyCaptureKey(company, 'project-source'),
     'mission-deliverable': documentFamilyCaptureKey(
       company,
       'mission-deliverable',
@@ -314,6 +315,7 @@ function DocumentEntry({
   const status = {
     'received-audit-source': auditSource(item.version.status),
     questionnaire: documents[item.version.status],
+    'project-source': documents.draft,
     'mission-deliverable': mission.t(item.version.status),
     'received-contract': received.t(item.version.status),
     'received-addendum': addendum.t(item.version.status),

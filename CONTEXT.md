@@ -185,6 +185,12 @@ _Avoid_: Waiver, override
 A managed business artifact whose original file, ownership, status, and version history are preserved.
 _Avoid_: File when lifecycle and governance are meant
 
+**Project Working Source**:
+A Client-owned working original explicitly linked to a Project, preserved through
+native Document ownership as a draft for working analysis. It carries no official
+designation or professional conclusion. Behavior: [Document Registry §27](docs/product/release-1-document-registry-prd.md#27-project-working-originals-and-recoverable-intake-1454).
+_Avoid_: Questionnaire, official deliverable, approved evidence
+
 **Working Evidence Case**:
 A Company-owned, Project-related record of literal human context and an unclassified
 working statement with exact preserved source references and immutable revisions.

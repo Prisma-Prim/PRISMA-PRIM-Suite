@@ -17,6 +17,57 @@ import { certificationCaseDocuments } from './certification.js';
 import { documentVersions } from './documents.js';
 import { workspaceMemberships } from './core.js';
 
+/** Foreground orchestration only: native owners retain bytes and command receipts. */
+export const dossierIntakeBatches = pgTable(
+  'dossier_intake_batches',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    clientId: uuid('client_id').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    revision: integer('revision').notNull().default(1),
+    phase: text('phase', {
+      enum: ['paused', 'active', 'stopped', 'completed'],
+    }).notNull(),
+    manifest: jsonb('manifest').$type<unknown>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('dossier_intake_batches_actor_key_unique').on(
+      t.workspaceId,
+      t.actorMembershipId,
+      t.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'dossier_intake_batches_project_fk',
+      columns: [t.workspaceId, t.companyId, t.clientId, t.projectId],
+      foreignColumns: [
+        projects.workspaceId,
+        projects.companyId,
+        projects.clientAccountId,
+        projects.id,
+      ],
+    }),
+    foreignKey({
+      name: 'dossier_intake_batches_actor_fk',
+      columns: [t.workspaceId, t.actorMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    check(
+      'dossier_intake_batches_state_check',
+      sql`(${t.revision} > 0 AND ${t.phase} IN ('paused','active','stopped','completed') AND ${t.fingerprint} ~ '^[a-f0-9]{64}$' AND length(${t.idempotencyKey}) BETWEEN 1 AND 200 AND jsonb_typeof(${t.manifest}) = 'object' AND ${t.manifest}->>'format' = 'DOCUMENT_INTAKE_STATE/1' AND jsonb_typeof(${t.manifest}->'items') = 'array' AND jsonb_array_length(${t.manifest}->'items') BETWEEN 1 AND 25 AND octet_length(${t.manifest}::text) <= 131072) IS TRUE`,
+    ),
+  ],
+);
+
 const bytes = customType<{ data: Buffer; driverData: Buffer }>({
   dataType: () => 'bytea',
 });

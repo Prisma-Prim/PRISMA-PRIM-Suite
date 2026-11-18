@@ -46,6 +46,10 @@ const DELIVERED_DOCUMENT_ACCESS = {
  */
 export const DOCUMENT_FAMILY_POLICY = {
   questionnaire: { projectLinkable: true, access: DELIVERED_DOCUMENT_ACCESS },
+  'project-source': {
+    projectLinkable: true,
+    access: DELIVERED_DOCUMENT_ACCESS,
+  },
   'mission-deliverable': {
     projectLinkable: true,
     access: DELIVERED_DOCUMENT_ACCESS,

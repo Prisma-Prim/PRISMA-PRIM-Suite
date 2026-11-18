@@ -51,6 +51,7 @@ export class DocumentFamilyAccess {
   /** Whether the family is visible at all; a commanding read also locks it. */
   private readonly visibility: Record<DocumentType, FamilyVisibility> = {
     questionnaire: () => Promise.resolve(true),
+    'project-source': () => Promise.resolve(true),
     'mission-deliverable': (actor, lock) =>
       this.authorization.hasPermissions(actor, {
         permissions: ['document.mission_deliverable.access'],
