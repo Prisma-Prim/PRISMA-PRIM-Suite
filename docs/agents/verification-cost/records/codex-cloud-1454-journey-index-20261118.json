@@ -24,13 +24,13 @@
     "priceTable": "2026-11-11"
   },
   "outcome": {
-    "result": "pass",
+    "result": "fail",
     "findings": {
       "P0": 0,
       "P1": 0,
       "P2": 0,
       "P3": 1
     },
-    "notes": "Required CI44312143402 caught missing document-intake journey index entry. Added the Project section reference and native roles/PRD/access row. Existing journey-map checks reproduced RED then passed4/4; runtime and inspected proof unchanged. Full new CI pending; time/model/tokens/price not reported."
+    "notes": "Correction: this first index edit passed3/4 local guards; the Project section order was wrong. The earlier pass note was incorrect. Original failure remains in private logs and Git history. The follow-up index-order record covers the corrected4/4 pass. Product runtime and inspected original-byte proof were unchanged."
   }
 }
