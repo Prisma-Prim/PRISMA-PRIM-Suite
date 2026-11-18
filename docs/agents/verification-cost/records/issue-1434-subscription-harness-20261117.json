@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-subscription-harness-20261117",
+  "date": "2026-11-17",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": 1435,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T08:43:24.000Z",
+    "end": "2026-11-17T09:12:07.000Z",
+    "durationSeconds": 1723
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 4,
+      "P3": 0
+    },
+    "notes": "Final local harness proof: malformed completion classification and three reproduced review defects corrected; native PostgreSQL, focused tests, UI and Chromium proof passed. Earlier failed attempts retained. Account/model activation unverified. Model, usage and price unavailable."
+  }
+}

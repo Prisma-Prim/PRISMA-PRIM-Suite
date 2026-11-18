@@ -13,6 +13,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
+import { PLAN_HTTP } from '../dossier-harness/provider.js';
 import {
   createIdempotentCleanup,
   rethrowAfterCleanup,
@@ -30,6 +31,7 @@ export interface PostgresRestTestHarness {
 }
 
 export interface CreatePostgresRestTestHarnessOptions {
+  readonly planHttp?: typeof fetch;
   /** Keep stored profiles fixed while testing same-member domain lock ordering. */
   readonly synchronizeIdentityProfile?: boolean;
   readonly sessionRevoker?: IdentitySessionRevoker;
@@ -76,6 +78,7 @@ export async function createPostgresRestTestHarness({
   serverClock,
   applicationPoolConfiguration,
   synchronizeIdentityProfile,
+  planHttp,
 }: CreatePostgresRestTestHarnessOptions): Promise<PostgresRestTestHarness> {
   assertLocalTestDatabaseUrl(databaseUrl);
   Object.assign(process.env, environment, { DATABASE_URL: databaseUrl });
@@ -110,6 +113,7 @@ export async function createPostgresRestTestHarness({
         .useValue(sessionRevoker);
     if (serverClock)
       builder.overrideProvider(SERVER_CLOCK).useValue(serverClock);
+    if (planHttp) builder.overrideProvider(PLAN_HTTP).useValue(planHttp);
     const moduleRef = await builder.compile();
     const app = moduleRef.createNestApplication<NestExpressApplication>();
     ownedResources.unshift({

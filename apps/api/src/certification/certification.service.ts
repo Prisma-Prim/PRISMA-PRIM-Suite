@@ -28,7 +28,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, desc, eq, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, getTableColumns, ne } from 'drizzle-orm';
 import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import type { ActorContext } from '../access/access.types.js';
 import {
@@ -102,6 +102,7 @@ import {
 import { pdfRefusal } from '../commercial-pdf/commercial-pdf-source.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
 import { workspaceMemberships } from '../database/schema/core.js';
+import { workingDocuments } from '../database/schema/documents.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentWorkingEvidenceReferenceService } from '../documents/document-working-evidence-reference.service.js';
 import {
@@ -2604,6 +2605,93 @@ export class CertificationService {
     );
   }
 
+  /** Exact native evidence relations; the caller owns the transaction. */
+  async dossierDocumentsWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    lock: boolean;
+  }) {
+    const { actor, lock } = input;
+    const projectId = requireUuid(input.projectId);
+    const companyId = await this.authorize(actor, 'reader', { lock });
+    const project = await this.projects.missionContextWithinTransaction({
+      actor,
+      projectId,
+      lock,
+    });
+    // Case attachments are received audit sources. Establish their native
+    // family/content and original-Client visibility before bounded discovery.
+    await this.sources.requireCurrentAuthority({
+      actor,
+      context: { companyId, originalClientId: project.clientAccountId },
+      tuples: [],
+      lock,
+    });
+    const query = this.database.connection
+      .select({
+        id: certificationCases.id,
+        revision: certificationCases.revision,
+      })
+      .from(certificationCases)
+      .where(
+        and(
+          eq(certificationCases.workspaceId, actor.workspaceId),
+          eq(certificationCases.companyId, companyId),
+          eq(certificationCases.projectId, projectId),
+        ),
+      )
+      .orderBy(asc(certificationCases.id))
+      .limit(201);
+    const cases = await (lock ? query.for('share') : query);
+    if (cases.length > 200)
+      throw new BadRequestException(
+        'The Project evidence inventory is too large.',
+      );
+    const result: (typeof certificationCaseDocuments.$inferSelect & {
+      currentCaseRevision: number;
+    })[] = [];
+    for (const current of cases) {
+      const attachments = await this.database.connection
+        .select(getTableColumns(certificationCaseDocuments))
+        .from(certificationCaseDocuments)
+        .innerJoin(
+          workingDocuments,
+          and(
+            eq(
+              workingDocuments.workspaceId,
+              certificationCaseDocuments.workspaceId,
+            ),
+            eq(
+              workingDocuments.companyId,
+              certificationCaseDocuments.companyId,
+            ),
+            eq(workingDocuments.id, certificationCaseDocuments.documentId),
+            eq(workingDocuments.clientId, project.clientAccountId),
+            eq(workingDocuments.type, 'received-audit-source'),
+          ),
+        )
+        .where(
+          and(
+            eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
+            eq(certificationCaseDocuments.companyId, companyId),
+            eq(certificationCaseDocuments.caseId, current.id),
+          ),
+        )
+        .orderBy(asc(certificationCaseDocuments.id))
+        .limit(1001);
+      if (
+        attachments.length > 1000 ||
+        result.length + attachments.length > 1000
+      )
+        throw new BadRequestException(
+          'The Project evidence inventory is too large.',
+        );
+      for (const attachment of attachments)
+        result.push({ ...attachment, currentCaseRevision: current.revision });
+    }
+    return result;
+  }
+
   /** A bounded continuation of a Case register, at the initial read's revision. */
   exchanges({
     actor,
@@ -4381,19 +4469,20 @@ export class CertificationService {
   private async authorize(
     actor: ActorContext,
     role: CertificationRole,
+    options: { lock: boolean } = { lock: true },
   ): Promise<string> {
     const companyId = (
       await this.authorization.requirePermissions(actor, {
         permissions: [CERTIFICATION_REQUIRED_PERMISSION[role]],
         prerequisites: [{ permissions: ['certification.read'] }],
-        lock: true,
+        lock: options.lock,
       })
     ).companyId;
     if (
       (
         await this.authorization.requirePermissions(actor, {
           permissions: ['project.read'],
-          lock: true,
+          lock: options.lock,
           prerequisites: [
             {
               permissions: ['client.read'],
