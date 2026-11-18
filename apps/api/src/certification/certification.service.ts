@@ -2607,6 +2607,29 @@ export class CertificationService {
     );
   }
 
+  /** Working draft preparation only; the caller owns the read transaction. */
+  async applicationDraftContextWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    caseId: string;
+    expectedRevision: number;
+  }) {
+    const companyId = await this.authorize(input.actor, 'programme_manager', {
+      lock: false,
+    });
+    const row = await this.visibleCase(
+      input.actor,
+      companyId,
+      requireUuid(input.caseId),
+    );
+    if (row.projectId !== requireUuid(input.projectId))
+      throw new NotFoundException();
+    if (row.revision !== input.expectedRevision)
+      throw new ConflictException('The Case changed. Reload its draft.');
+    requireUndecided(await this.steps(input.actor, companyId, row.id));
+    return { caseId: row.id, projectId: row.projectId, revision: row.revision };
+  }
+
   /** Exact native evidence relations; the caller owns the transaction. */
   async dossierDocumentsWithinTransaction(input: {
     actor: ActorContext;

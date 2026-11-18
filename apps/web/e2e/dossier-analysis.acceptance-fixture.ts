@@ -139,7 +139,16 @@ export async function prepareDossier(
       ),
     ),
   );
-  return { companyId, projectId, documentId, versionId, title, bytes, docx };
+  return {
+    companyId,
+    clientId,
+    projectId,
+    documentId,
+    versionId,
+    title,
+    bytes,
+    docx,
+  };
 }
 
 export async function startNativeVersion(
