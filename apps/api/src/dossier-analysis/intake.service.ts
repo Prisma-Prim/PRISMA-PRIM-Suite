@@ -113,17 +113,23 @@ export class DossierIntakeService {
           progress = { ...current, stage: 'linked' };
           break;
         case 'pdf_stored': {
-          const source = await this.sources.addPdf(
-            input.actor,
-            begun.projectId,
-            {
+          const source = await this.sources.addPdfForIntake({
+            actor: input.actor,
+            projectId: begun.projectId,
+            command: {
               documentId: current.target.documentId,
               documentVersionId: current.target.versionId,
               representationId: current.representationId,
               language: item.file.language,
             },
-            item.keys.select,
-          );
+            key: item.keys.select,
+            expectedTarget: {
+              title: item.file.title,
+              purpose: item.file.purpose,
+              workingRevision: 2,
+              projectRevision: 1,
+            },
+          });
           progress = {
             ...current,
             stage: 'source_stored',
