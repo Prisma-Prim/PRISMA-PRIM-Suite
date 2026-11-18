@@ -3,13 +3,46 @@ import { strToU8, zipSync } from 'fflate';
 import { prepareCombinedAudit } from './combined-audit-qualification.fixture';
 import { parseCaseDetail } from '../src/certification/certification-response';
 import { combinedCertificatePdf } from '../../api/test-support/combined-audit-pdf.fixture.mjs';
-import { certificationMembers } from './certification-journey.acceptance.fixture';
+import {
+  certificationMembers,
+  text,
+} from './certification-journey.acceptance.fixture';
 
 export async function preparePilotDossier(
   request: APIRequestContext,
   suffix: string,
 ) {
   const specimen = await prepareCombinedAudit(request, suffix);
+  const managerMembership = text(
+    (await specimen.read(certificationMembers.manager, '/access/current-actor'))
+      .workspaceMembershipId,
+  );
+  // Fictional Company only, using the ordinary native grant owner. These
+  // participants exercise the composed source workflow without a policy bypass.
+  for (const { workspaceMembershipId, bundles } of [
+    {
+      workspaceMembershipId: managerMembership,
+      bundles: ['document-project-organizer'],
+    },
+    {
+      workspaceMembershipId: specimen.auditorMembership,
+      bundles: [
+        'document-registrar',
+        'received-audit-source-access',
+        'document-content-reader',
+      ],
+    },
+  ]) {
+    for (const bundle of bundles) {
+      const grant = await specimen.post(
+        certificationMembers.approver,
+        `/company-${bundle}-assignments`,
+        { companyId: specimen.companyId, workspaceMembershipId },
+      );
+      if (grant.status() !== 201)
+        throw new Error('Fictional pilot source rights could not be prepared.');
+    }
+  }
   const parts = {
     '[Content_Types].xml':
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',

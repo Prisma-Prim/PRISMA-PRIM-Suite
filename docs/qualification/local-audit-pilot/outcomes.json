@@ -1,12 +1,14 @@
 {
-  "schema": "prisma-prim-local-audit-pilot-qualification/v1",
-  "classification": "prepared fictional examples; no real-world audit qualification",
+  "schema": "prisma-prim-complete-audit-pilot-qualification/v1",
+  "classification": "actual native execution on prepared fictional examples; no real-world audit qualification",
+  "inputBase": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+  "promotionRule": "Every pinned input and this compatibility PR require successful required CI; local proof alone is not the CI gate.",
   "nativePilot": {
     "journey": "local-audit-pilot",
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-18T13:25:12.359Z",
-    "finishedAt": "2026-11-18T13:28:04.905Z",
+    "startedAt": "2026-11-18T15:02:56.233Z",
+    "finishedAt": "2026-11-18T15:05:55.401Z",
     "tests": {
       "passed": 2,
       "failed": 0,
@@ -14,12 +16,12 @@
       "skipped": 0
     }
   },
-  "originalCombinedRegression": {
-    "journey": "combined-audit-qualification",
+  "recoverableIntake": {
+    "journey": "document-intake",
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-18T13:16:22.947Z",
-    "finishedAt": "2026-11-18T13:19:11.408Z",
+    "startedAt": "2026-11-18T15:13:19.779Z",
+    "finishedAt": "2026-11-18T15:14:57.032Z",
     "tests": {
       "passed": 2,
       "failed": 0,
@@ -27,91 +29,88 @@
       "skipped": 0
     }
   },
-  "nativeLifecycle": {
-    "schema": "prisma-prim-audit-pilot-lifecycle-evidence/v1",
+  "reviewedStageDrafts": {
+    "journey": "certification-stage-preparation",
     "status": "passed",
-    "command": ["node", "scripts/audit-pilot.mjs"],
-    "signal": "SIGINT",
-    "ready": {
-      "schema": "prisma-prim-local-audit-pilot/v1",
-      "status": "ready",
-      "classification": "fictional local demonstration; not real-pilot qualification",
-      "guideUrl": "http://127.0.0.1:4173/__pilot",
-      "manifestUrl": "http://127.0.0.1:4173/__pilot/manifest",
-      "caseId": "891ece0b-ee5e-4c22-acec-a2fec2eb729c"
-    },
-    "exitCode": 130,
-    "ownedPortsClosed": [4173, 4174]
+    "exitCode": 0,
+    "startedAt": "2026-11-18T15:15:07.789Z",
+    "finishedAt": "2026-11-18T15:17:13.597Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
   },
-  "inspection": "RO/RU guide, native reviewed analysis, Certificate release and reopened Case inspected; issued PDF text inspected. Published selection excludes raw traces.",
-  "earlierOutcomes": [
+  "cliCheck": {
+    "command": "pnpm pilot:audit --check",
+    "status": "passed",
+    "exitCode": 0,
+    "nativeCaseReady": true,
+    "ownedPortsClosed": [4173, 4174],
+    "limits": "Bounded startup/readiness check; the prior guided-pilot input separately proves interactive SIGINT lifecycle."
+  },
+  "nativeCompatibility": {
+    "suite": "apps/api/src/dossier-analysis-acceptance/pilot-draft-compatibility.rest.test.ts",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "proof": "Exact batch Word bytes, extracted citation, deliberate human correction, unchanged Case before ordinary Save, draft ownership unchanged, independent target/source freshness and retained historical review."
+  },
+  "focusedChecks": {
+    "nativeCompatibilityAndStage": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nodePilotContractsAndOcr": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "embeddedPythonTests": 23
+    },
+    "format": "passed",
+    "lint": "passed",
+    "types": "passed",
+    "drizzleDrift": "passed",
+    "strictPilotE2eTypes": "passed after truthful MJS inference and object-shaped fictional grant entries; first check retained as failed"
+  },
+  "earlierCompositionOutcomes": [
     {
-      "run": "native-app-check-red",
+      "run": "programme-compatibility-01",
       "status": "failed",
-      "reason": "test startup used an empty API prefix; fixed to /api and actual Chromium readiness passed"
+      "reason": "The first test incorrectly expected a generic unbound Project source run to become stale after an unrelated Case write; the native owners correctly preserve independent freshness. Test now proves both independent revision checks."
     },
     {
-      "run": "provider-refusal-red",
+      "run": "programme-pilot-red-01",
+      "journey": "local-audit-pilot",
       "status": "failed",
-      "reason": "default synthetic provider fixture was enabled; interactive pilot now explicitly disables it; native connect503 and Chromium check pass"
+      "exitCode": 1,
+      "startedAt": "2026-11-18T14:59:26.690Z",
+      "finishedAt": "2026-11-18T15:01:09.000Z",
+      "tests": {
+        "passed": 0,
+        "failed": 2,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "reason": "Original fictional personas lacked the existing native batch organizer and audited-source read grants. Ordinary native grants are now seeded only in the disposable fictional Company."
     },
     {
-      "run": "pilot-native-first",
-      "status": "passed",
-      "tests": 2,
-      "limitation": "earlier source before provider configuration flag and fresh-context reopen assertion"
-    },
-    {
-      "run": "pilot-browser-reopen-direct-invocation",
-      "status": "incomplete",
-      "reason": "missing managed TEST_DATABASE_URL; corrected invocation used existing managed runner"
-    },
-    {
-      "run": "interactive-pty-interruption",
-      "status": "incomplete",
-      "reason": "PTY harness interrupted its wrapper without forwarding the terminal signal; SIGINT subsequently sent to the exact owned launcher cleaned its resources; fresh direct-process native lifecycle test passed with130"
-    },
-    {
-      "run": "final-scripts-with-live-pilot",
+      "run": "programme-final-e2e-types",
       "status": "failed",
-      "reason": "occupied-port fixture could not bind because the interactive proof was running; rerun after cleanup passes"
-    },
-    {
-      "run": "preview-host-refusal-fetch",
-      "status": "incomplete",
-      "reason": "Node fetch did not transmit the overridden Host; direct node:http Host request proves403; no preview production change required"
+      "reason": "A tuple inferred as a general array exposed possible undefined IDs; the fictional grant entries now use inferred objects. The private strict harness also enables inference of existing imported MJS files instead of treating them as implicit any."
     }
   ],
+  "baselineQualification": {
+    "source": "ff314c142179ff2c04e0c59baa44b69548bf11d7",
+    "publicPath": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/ff314c142179ff2c04e0c59baa44b69548bf11d7/docs/qualification/local-audit-pilot/outcomes.json",
+    "note": "Earlier guided-pilot proof including original combined entry point, lifecycle, independent review and browser-cache correction; separate source and timing, not re-labelled as current composition."
+  },
   "limits": [
     "No main merge or deployment under1452",
     "No real account, provider/model call, scanner/OCR qualification or private1279 pilot",
-    "Input1457 draft-preparation semantics are qualified by its native API tests and inputCI; this pilot does not claim every possible draft-preparation UI act"
-  ],
-  "reviewedNativePilot": {
-    "journey": "local-audit-pilot",
-    "status": "passed",
-    "exitCode": 0,
-    "startedAt": "2026-11-18T13:39:35.476Z",
-    "finishedAt": "2026-11-18T13:42:49.046Z",
-    "tests": {
-      "passed": 2,
-      "failed": 0,
-      "flaky": 0,
-      "skipped": 0
-    }
-  },
-  "review": {
-    "source": "0c9b5b4fe74a6b0ba912054b4d7fe98c4f58bc75",
-    "standards": 0,
-    "spec": {
-      "P2": 1,
-      "disposition": "Guide incorrectly assigned Stage plans to auditor; public HTTP test failed, guide corrected in both locales, test and full native2/2 pass. Correction62d013d4f16aebb9161598a4725ce9ed297c82d7."
-    }
-  },
-  "browserCacheCorrection": {
-    "finding": "Automatic PR1468 review: managed Linux XDG isolation hid ordinary Playwright browser installation",
-    "red": "Actual third-party Playwright default location differs after managed-cache replacement",
-    "green": "Default, hermetic0, absolute and relative path resolution remains identical;5 CLI/preview/browser tests pass; native public --check passes with no explicit browser path",
-    "boundary": "Capture Linux default browser installation before managed environment; preserve configured paths; no business/identity authority change"
-  }
+    "No OCR/product wiring or automated professional conclusion. Native permissions, current versions and separate human Save remain authoritative.",
+    "The three current browser journeys overlap in preparation and are not a claim of every possible audit or document case."
+  ]
 }
