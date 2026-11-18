@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import importlib.metadata
+from layout import parse_structure, structure_metrics
 
 from fixtures import generate, UNSUPPORTED
 
@@ -76,13 +78,13 @@ def load_fixtures(directory):
     return manifest
 
 
-def child_limits():
-    resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
+def child_limits(address_space=1024 * 1024 * 1024):
+    resource.setrlimit(resource.RLIMIT_AS, (address_space, address_space))
     resource.setrlimit(resource.RLIMIT_FSIZE, (8 * 1024 * 1024, 8 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_CPU, (20, 21))
 
 
-def infer(binary, image, model_directory, language, deadline, control):
+def infer(binary, image, model_directory, language, deadline, control, engine='tesseract'):
     start = time.monotonic()
     peak_rss = 0
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -90,10 +92,12 @@ def infer(binary, image, model_directory, language, deadline, control):
         output = Path(temporary) / 'ocr'
         argv = [binary, str(image), str(output), '--tessdata-dir', str(model_directory),
                 '-l', language, '--oem', '1', '--psm', '6', '-c', 'tessedit_create_tsv=1', '-c', 'tessedit_create_txt=0']
+        if engine == 'easyocr':
+            argv = [sys.executable, str(Path(__file__).parent / 'easy_worker.py'), str(image), str(output), str(model_directory), language]
         with (Path(temporary) / 'stderr').open('wb') as errors:
             process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors,
-                                       env={'PATH': os.environ.get('PATH', ''), 'LANG': 'C.UTF-8', 'OMP_THREAD_LIMIT': '1'},
-                                       start_new_session=True, preexec_fn=child_limits)
+                                       env={'PATH': os.environ.get('PATH', ''), 'LANG': 'C.UTF-8', 'OMP_THREAD_LIMIT': '1', 'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'},
+                                       start_new_session=True, preexec_fn=lambda: child_limits((4 if engine == 'easyocr' else 1) * 1024 ** 3))
             state = 'completed'
             while process.poll() is None:
                 try:
@@ -124,6 +128,19 @@ def infer(binary, image, model_directory, language, deadline, control):
             return observation, None
         try:
             tsv = read_bounded(output.with_suffix('.tsv'), 8 * 1024 * 1024).decode('utf-8')
+            if engine == 'easyocr':
+                layout = json.loads(read_bounded(output.with_suffix('.layout.json'), 256 * 1024))
+                if not isinstance(layout, dict) or set(layout) != {'schema', 'tables', 'preprocessing'} or layout['schema'] != 'automatic-ruled-table-proposals/v1':
+                    raise ValueError('invalid_layout')
+                from PIL import Image
+                with Image.open(image) as raster:
+                    parse_structure(layout['tables'], raster.size)
+                    preprocessing = layout['preprocessing']
+                    if (not isinstance(preprocessing, dict) or preprocessing.get('originalSize') != list(raster.size)
+                            or preprocessing.get('clockwiseDegrees') not in (0, 90)
+                            or preprocessing.get('originalToProcessed') != ([0, -1, raster.height, 1, 0, 0] if preprocessing['clockwiseDegrees'] == 90 else [1, 0, 0, 0, 1, 0])):
+                        raise ValueError('invalid_transform')
+                observation['automaticLayout'] = layout
         except (OSError, ValueError, UnicodeError):
             return {**observation, 'status': 'failed', 'error': 'missing_or_invalid_result'}, None
         return observation, tsv
@@ -150,6 +167,15 @@ def run(options):
     config_states = {}
     for engine in engines:
         try:
+            if engine == 'easyocr':
+                configuration = facts['configurations'][engine]
+                if any(importlib.metadata.version(package) != expected for package, expected in configuration['runtime'].items()):
+                    raise ValueError('engine_version_mismatch')
+                for name, weight in configuration['weights'].items():
+                    if hashlib.sha256(read_bounded(options.models / engine / name, 128 * 1024 * 1024)).hexdigest() != weight['sha256']:
+                        raise ValueError('model_hash_mismatch')
+                config_states[engine] = 'available'
+                continue
             if version != facts['engineVersion']:
                 raise ValueError('engine_version_mismatch')
             for language in {page['language'] for page in pages}:
@@ -158,8 +184,17 @@ def run(options):
                 if hashlib.sha256(model).hexdigest() != facts['configurations'][engine][key]:
                     raise ValueError('model_hash_mismatch')
             config_states[engine] = 'available'
-        except (OSError, ValueError):
+        except (OSError, ValueError, importlib.metadata.PackageNotFoundError):
             config_states[engine] = 'configuration_unavailable'
+    labels = None
+    if 'easyocr' in engines:
+        labels = json.loads(read_bounded(options.fixtures / 'structure-labels.json', 128 * 1024))
+        if not isinstance(labels, dict) or set(labels) != {'schema', 'pages'} or labels['schema'] != 'fictional-table-labels/v1' or not isinstance(labels['pages'], list) or len(labels['pages']) != len(fixtures['pages']):
+            raise ValueError('invalid_table_labels')
+        for page, label in zip(fixtures['pages'], labels['pages']):
+            if not isinstance(label, dict) or set(label) != {'case', 'imageSha256', 'tables'} or label['case'] != page['id'] or label['imageSha256'] != page['sha256']:
+                raise ValueError('invalid_table_labels')
+            parse_structure(label['tables'], (page['width'], page['height']))
     options.output.mkdir(parents=True, exist_ok=False)
     control = {'stop': False}
     def stop(_signum, _frame):
@@ -191,13 +226,16 @@ def run(options):
                                 raise ValueError('invalid_image_dimensions')
                             raster.verify()
                         observation, tsv = infer(binary, image, options.models / engine, {'ro': 'ron', 'ru': 'rus'}[page['language']],
-                                                 min(started + MAX_RUN_SECONDS, time.monotonic() + MAX_CASE_SECONDS), control)
+                                                 min(started + MAX_RUN_SECONDS, time.monotonic() + MAX_CASE_SECONDS), control, engine)
                         row.update(observation)
                         if tsv is not None:
                             words = parse_tsv(tsv, (page['width'], page['height']))
                             text = ' '.join(word['text'] for word in words)
                             row.update(text=character_metrics(page['text'], text), critical=critical_metrics(page['critical'], text),
                                        cells=cell_metrics(page['cells'], words), observedText=text, words=words)
+                            if 'automaticLayout' in observation:
+                                label = next(p for p in labels['pages'] if p['case'] == page['id'])
+                                row['structure'] = structure_metrics(label['tables'], observation['automaticLayout']['tables'])
                             row['qualityStatus'] = 'literal_mismatch' if row['text']['edits'] or row['critical']['missing'] or row['cells']['missingOrWrong'] else 'exact_on_labels'
                     except (OSError, ValueError, UnicodeError, SyntaxError, Image.DecompressionBombError):
                         row.update(status='failed', error='invalid_input_or_result')
@@ -205,7 +243,7 @@ def run(options):
         for signum, handler in previous_handlers.items():
             signal.signal(signum, handler)
     report = {'schema': 'fictional-local-ocr-comparison/v1', 'kind': 'actual_inference_on_fictional_prepared_examples',
-              'sourceInputHashes': {name: hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest() for name in ['benchmark.py', 'fixtures.py', 'metrics.py', 'models.json']},
+              'sourceInputHashes': {name: hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest() for name in ['benchmark.py', 'fixtures.py', 'metrics.py', 'models.json', 'layout.py', 'easy_worker.py']},
               'invocation': ['python3', 'tools/ocr-benchmark/benchmark.py', 'run', '--fixtures', 'LOCAL_FICTIONAL_FIXTURE_DIRECTORY', '--models', 'PINNED_LOCAL_MODEL_DIRECTORY', '--output', 'NEW_PRIVATE_RESULT_DIRECTORY', '--engines', options.engines, '--repeat', str(options.repeat)] + (['--cases', options.cases] if options.cases else []),
               'startedAt': started_at, 'finishedAt': datetime.now(timezone.utc).isoformat(),
               'machine': {'platform': platform.system(), 'release': platform.release(), 'arch': platform.machine(),
@@ -213,8 +251,9 @@ def run(options):
               'engineVersion': version, 'engineBinarySha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest() if binary else None,
               'models': {key: facts['configurations'][key] for key in engines},
               'fixtureManifestSha256': hashlib.sha256((options.fixtures / 'manifest.json').read_bytes()).hexdigest(),
+              'structureLabelsSha256': hashlib.sha256((options.fixtures / 'structure-labels.json').read_bytes()).hexdigest() if labels is not None else None,
               'bounds': {'concurrentProcesses': 1, 'threads': 1, 'perCaseSeconds': MAX_CASE_SECONDS,
-                         'runSeconds': MAX_RUN_SECONDS, 'childAddressSpaceBytes': 1024 * 1024 * 1024,
+                         'runSeconds': MAX_RUN_SECONDS, 'childAddressSpaceBytes': {'tesseract': 1024 ** 3, 'easyocr': 4 * 1024 ** 3},
                          'childFileBytes': 8 * 1024 * 1024, 'sourceBytes': MAX_FILE_BYTES, 'pixels': MAX_PIXELS},
               'accounting': {'planned': len(rows), 'completed': sum(r['status'] == 'completed' for r in rows),
                              'failed': sum(r['status'] == 'failed' for r in rows),
