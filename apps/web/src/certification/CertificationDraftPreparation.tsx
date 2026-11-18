@@ -117,6 +117,21 @@ export function CertificationDraftPreparation(props: PreparationProps) {
       );
   }, [work, props]);
 
+  function preparedValue(reply: ApiResult<unknown>) {
+    if (reply.status === 'ok') return reply.value;
+    if (
+      reply.status === 'forbidden' ||
+      reply.status === 'notFound' ||
+      reply.status === 'unauthorized'
+    ) {
+      setSelection({ status: 'empty' });
+      setHistory({ runs: [], runsNextCursor: null });
+      setRunId('');
+      seen.current.clear();
+    }
+    throw new Error('Unavailable preparation.');
+  }
+
   async function loadHistory(after?: string) {
     const signal = owner.begin();
     if (!signal) return;
@@ -129,8 +144,7 @@ export function CertificationDraftPreparation(props: PreparationProps) {
         `${base}${after ? `/runs?cursor=${encodeURIComponent(after)}` : ''}`,
       );
       if (signal.aborted) return;
-      if (reply.status !== 'ok') throw new Error('Unavailable history.');
-      const page = historyPage(reply.value);
+      const page = historyPage(preparedValue(reply));
       if (
         (page.runsNextCursor && seen.current.has(page.runsNextCursor)) ||
         (after &&
@@ -178,24 +192,12 @@ export function CertificationDraftPreparation(props: PreparationProps) {
         `${base}/runs/${encodeURIComponent(runId)}/${props.kind === 'stage' ? 'certification-stage-draft' : 'certification-draft'}?${query}`,
       );
       if (signal.aborted) return;
-      if (reply.status !== 'ok') {
-        if (
-          reply.status === 'forbidden' ||
-          reply.status === 'notFound' ||
-          reply.status === 'unauthorized'
-        ) {
-          setSelection({ status: 'empty' });
-          setHistory({ runs: [], runsNextCursor: null });
-          setRunId('');
-          seen.current.clear();
-        }
-        throw new Error('Unavailable preparation.');
-      }
+      const body = preparedValue(reply);
       const value = (() => {
         try {
           return props.kind === 'stage'
-            ? stageDraftPreparation(reply.value, { ...props, runId })
-            : draftPreparation(reply.value, { ...props, runId });
+            ? stageDraftPreparation(body, { ...props, runId })
+            : draftPreparation(body, { ...props, runId });
         } catch (error) {
           setSelection({ status: 'empty' });
           throw error;

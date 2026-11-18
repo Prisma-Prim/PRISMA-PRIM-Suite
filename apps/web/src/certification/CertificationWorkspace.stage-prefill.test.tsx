@@ -29,6 +29,7 @@ type Mode = 'plan' | 'report' | 'reference';
 async function prepared(
   mode: Mode = 'plan',
   respond?: (value: unknown, index: number) => Response | Promise<Response>,
+  historyCursor: string | null = null,
 ) {
   const actor = certificationActor({
     manager: mode === 'plan',
@@ -101,7 +102,7 @@ async function prepared(
             stale: false,
           },
         ],
-        runsNextCursor: null,
+        runsNextCursor: historyCursor,
       }),
   });
   for (let i = 0; i < 2; i++)
@@ -382,6 +383,43 @@ it.each([403, 404])(
     expect(server.mutations()).toEqual([]);
   },
 );
+it.each([403, 404])(
+  'withholds the visible preview after history continuation is denied (%s)',
+  async (status) => {
+    const { server, form, preparation } = await prepared(
+      'plan',
+      undefined,
+      'next-history-page',
+    );
+    expect(preparation.getByText('word/document.xml:p:3')).toBeVisible();
+    fireEvent.change(within(form).getByLabelText('Audit scope'), {
+      target: { value: 'Protected literal scope' },
+    });
+    server.interceptions.push({
+      match: (request) => request.path.endsWith('/dossier-analysis/runs'),
+      respond: () => new Response(null, { status }),
+    });
+    fireEvent.click(
+      preparation.getByRole('button', { name: 'Load more analyses' }),
+    );
+    await preparation.findByText(
+      'Preparation could not be read. Your draft is unchanged. Try again.',
+    );
+    expect(preparation.queryByText('word/document.xml:p:3')).toBeNull();
+    expect(preparation.queryByText(/domeniu.docx/u)).toBeNull();
+    expect(
+      preparation.queryByRole('checkbox', { name: `Use Scope: ${literal}` }),
+    ).toBeNull();
+    expect(
+      preparation.getByRole('button', { name: 'Preview reviewed values' }),
+    ).toBeDisabled();
+    expect(within(form).getByLabelText('Audit scope')).toHaveValue(
+      'Protected literal scope',
+    );
+    expect(server.mutations()).toEqual([]);
+  },
+);
+
 it('offers a corrected eligible scope while preserving its multiline original proposal verbatim', async () => {
   const { preparation, form, server } = await prepared('plan', (value) => {
     const current = object(value),
