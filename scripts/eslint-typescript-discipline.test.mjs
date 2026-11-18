@@ -141,14 +141,15 @@ test('a baseline entry for a fixed violation fails lint until it is pruned', asy
 });
 
 // `no-restricted-syntax` is baselined for a web AbortController (#1135) and
-// for a `legacy` identifier (#1349) in API and web source; the API's
+// for a `legacy` identifier (#1349) in API and web source. Six remaining
+// native Document family migration calls are recorded by #1212. The API's
 // append-only Activity Log rule is never baselined. `no-warning-comments`
 // is baselined only for `legacy` comments (#1349).
 const webSyntaxRule = 'no-restricted-syntax';
 const legacyCommentRule = 'no-warning-comments';
 const applicationSource = /^apps\/(web|api)\/src\//;
 
-test('the committed baseline records only the discipline rules and web AbortControllers for existing files', async () => {
+test('the committed baseline records only discipline rules and application migrations for existing files', async () => {
   const baseline = JSON.parse(
     await readFile(
       new URL('../eslint-suppressions.json', import.meta.url),
@@ -164,7 +165,7 @@ test('the committed baseline records only the discipline rules and web AbortCont
         [nonNullRule, assertionRule].includes(rule) ||
           ([webSyntaxRule, legacyCommentRule].includes(rule) &&
             applicationSource.test(file)),
-        `${file} suppresses ${rule}; the baseline is reserved for the TypeScript discipline rules, web AbortControllers and legacy names`,
+        `${file} suppresses ${rule}; the baseline is reserved for discipline rules, web AbortControllers, legacy names and recorded Document family migrations`,
       );
       assert.ok(Number.isInteger(count) && count > 0, `${file} ${rule}`);
     }

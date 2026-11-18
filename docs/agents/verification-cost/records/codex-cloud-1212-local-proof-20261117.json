@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1212-local-proof-20261117",
+  "date": "2026-11-17",
+  "runType": "pull-request-proof",
+  "issue": 1212,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T07:16:39.000Z",
+    "end": "2026-11-17T07:25:23.000Z",
+    "durationSeconds": 524
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Observed local proof window: 26 boundary/discipline tests, historical 37-call check, one rejected mutation, root lint/types and documentation validation. Initial registration-selector failure was corrected; earlier intentional RED and toolchain preparation are outside this window. Tokens/model/price not reported."
+  }
+}

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   CERTIFICATION_OWNER,
   CERTIFICATION_READER,
@@ -165,6 +165,116 @@ withPostgres(
         'CERTIFICATION_CORRECTION_UNCHANGED',
       );
       expect(await fixture.eventCount(caseId)).toBe(6);
+    });
+
+    it('keeps the signed agreement bound to its exact PDF after the source gains a newer official Version', async () => {
+      const caseId = await caseReadyForAgreement();
+      const base = `/certification-cases/${caseId}`;
+      const source = await fixture.receivedSource('Fictional signed agreement');
+      await fixture.created(
+        await fixture.call(CERTIFICATION_OWNER, `${base}/documents`, {
+          method: 'POST',
+          body: { expectedRevision: 4, role: 'agreement', ...source },
+        }),
+      );
+      const before = await fixture.call(
+        CERTIFICATION_READER,
+        `${base}/documents`,
+      );
+      expect(before.status).toBe(200);
+      const register = record(await before.json());
+      if (!Array.isArray(register.items)) throw new Error('Expected items.');
+      const attachmentId = text(record(register.items[0]).id);
+      await fixture.created(
+        await fixture.call(CERTIFICATION_OWNER, `${base}/agreement`, {
+          method: 'POST',
+          body: {
+            expectedRevision: 5,
+            signedOn: '2026-11-02',
+            attachmentId,
+          },
+        }),
+      );
+      const successor = await fixture.created(
+        await fixture.call(
+          CERTIFICATION_OWNER,
+          `/documents/${source.documentId}/versions`,
+          { method: 'POST', body: { expectedRevision: 3 } },
+        ),
+      );
+      const versionId = text(successor.versionId);
+      expect(successor).toMatchObject({
+        versionNumber: 2,
+        workingRevision: 4,
+      });
+      const bytes = Buffer.from(
+        SYNTHETIC_PDF.toString('utf8').replace(
+          'DEMO questionnaire A',
+          'DEMO questionnaire B',
+        ),
+      );
+      expect(bytes).not.toEqual(SYNTHETIC_PDF);
+      // The observed public response supplies the isolated HTTP origin.
+      const upload = new URL(
+        `/api/documents/${source.documentId}/versions/${versionId}/content?expectedRevision=4&fileName=newer-agreement.pdf`,
+        before.url,
+      );
+      const uploaded = await fetch(upload, {
+        method: 'POST',
+        headers: {
+          'x-test-external-provider': 'deterministic-test',
+          'x-test-external-subject': CERTIFICATION_OWNER,
+          'x-test-display-name': `Synthetic ${CERTIFICATION_OWNER}`,
+          'x-test-email': `${CERTIFICATION_OWNER}@example.test`,
+          'x-company-context-id': fixture.companyId,
+          'content-type': 'application/pdf',
+          'idempotency-key': randomUUID(),
+        },
+        body: new Uint8Array(bytes),
+      });
+      expect(uploaded.status).toBe(201);
+      expect(await fixture.created(uploaded)).toMatchObject({
+        versionNumber: 2,
+        workingRevision: 5,
+      });
+      const designated = await fixture.call(
+        CERTIFICATION_OWNER,
+        `/documents/${source.documentId}/versions/${versionId}/official-designation`,
+        { method: 'POST', body: { expectedRevision: 5 } },
+      );
+      expect(designated.status).toBe(200);
+      const currentSource = await fixture.call(
+        CERTIFICATION_OWNER,
+        `/documents/${source.documentId}/versions/${versionId}/content`,
+      );
+      expect(currentSource.status).toBe(200);
+      expect(Buffer.from(await currentSource.arrayBuffer())).toEqual(bytes);
+      const after = await fixture.call(
+        CERTIFICATION_READER,
+        `${base}/documents`,
+      );
+      expect(after.status).toBe(200);
+      expect(record(await after.json()).items).toEqual([
+        expect.objectContaining({
+          id: attachmentId,
+          ...source,
+          versionNumber: 1,
+          sizeBytes: SYNTHETIC_PDF.length,
+          sha256: createHash('sha256').update(SYNTHETIC_PDF).digest('hex'),
+        }),
+      ]);
+      const original = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${base}/documents/${attachmentId}/content`,
+      );
+      expect(original.status).toBe(200);
+      expect(Buffer.from(await original.arrayBuffer())).toEqual(SYNTHETIC_PDF);
+      const currentCase = await fixture.call(CERTIFICATION_READER, base);
+      expect(currentCase.status).toBe(200);
+      expect(record(await currentCase.json())).toMatchObject({
+        revision: 6,
+        agreement: { version: 1, value: { attachmentId } },
+      });
     });
 
     it('refuses an agreement before the duration, without an agreement attachment or in the future', async () => {

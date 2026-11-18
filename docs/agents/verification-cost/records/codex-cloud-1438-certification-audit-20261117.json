@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1438-certification-audit-20261117",
+  "date": "2026-11-17",
+  "runType": "journey-audit",
+  "issue": 1438,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T16:06:22.000Z",
+    "end": "2026-11-17T17:06:53.000Z",
+    "durationSeconds": 3631
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "fail",
+    "findings": {
+      "P0": 0,
+      "P1": 1,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Public fictional certification audit: five roles, two widths; native baseline and extended UI scenarios passed, but first-team member selection blocked continuous UI completion (#1439). One explicit API team checkpoint; earlier partial attempts retained. Usage and subscription price unavailable."
+  }
+}

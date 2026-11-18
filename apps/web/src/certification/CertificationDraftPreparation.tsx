@@ -118,7 +118,19 @@ export function CertificationDraftPreparation(props: {
         `${base}/runs/${encodeURIComponent(runId)}/certification-draft?${query}`,
       );
       if (signal.aborted) return;
-      if (reply.status !== 'ok') throw new Error('Unavailable preparation.');
+      if (reply.status !== 'ok') {
+        if (
+          reply.status === 'forbidden' ||
+          reply.status === 'notFound' ||
+          reply.status === 'unauthorized'
+        ) {
+          setSelection({ status: 'empty' });
+          setHistory({ runs: [], runsNextCursor: null });
+          setRunId('');
+          seen.current.clear();
+        }
+        throw new Error('Unavailable preparation.');
+      }
       const value = draftPreparation(reply.value, { ...props, runId });
       if (apply) {
         if (

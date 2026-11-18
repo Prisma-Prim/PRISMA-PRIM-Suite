@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentProps,
@@ -16,6 +17,14 @@ import {
   type ClientCommercialPage,
 } from './client-commercial-response';
 import { grantOf, holds } from '../access/company-grants';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperationGroup,
+  type PendingOperation,
+} from '../api/use-scoped-operation';
 import { useClientCommercialCopy } from './client-commercial.copy';
 import { useCommercialRequestCopy } from './commercial-request.copy';
 import { useSalesStageCopy } from './sales-stage.copy';
@@ -38,12 +47,10 @@ type View =
   | { kind: 'ready'; page: ClientCommercialPage };
 
 export function ClientCommercialOverview(props: Props) {
-  const identity = useRef({ value: props.identity, generation: 0 });
-  if (identity.current.value !== props.identity)
-    identity.current = {
-      value: props.identity,
-      generation: identity.current.generation + 1,
-    };
+  const identity = useRequestLifetime(
+    props.identity,
+    JSON.stringify([props.identity.loaded, props.identity.signedIn]),
+  );
   const company = props.actor.activeCompany;
   // A live grant always carries a non-blank assignment and a registry version.
   const clientGrant = grantOf(company, 'company_director_client_access');
@@ -72,7 +79,7 @@ export function ClientCommercialOverview(props: Props) {
     [...intakeGrant.permissions].sort(),
     props.clientDossierId,
     props.clientIdentityRevision,
-    identity.current.generation,
+    identity,
   ];
   return (
     <CommercialOwner
@@ -92,74 +99,106 @@ function CommercialOwner(
   const id = useId();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const pending = useRef<AbortController | undefined>(undefined);
-  const lifetime = useRef<AbortController | undefined>(undefined);
-  useEffect(() => {
-    lifetime.current = new AbortController();
+  const reads = useScopedOperationGroup('Client commercial pages');
+  const navigations = useScopedOperationGroup('Client commercial navigation');
+  const navigation = useRef<PendingOperation | null>(null);
+  useLayoutEffect(() => {
+    navigation.current = navigations.beginLatest();
     return () => {
-      lifetime.current?.abort();
-      lifetime.current = undefined;
+      navigation.current = null;
     };
-  }, []);
-  const callbacks = useRef(props);
-  callbacks.current = props;
+  }, [navigations]);
+  const observation = useActorObservation(props.actor);
+  const recoveries = useScopedOperationGroup(String(observation));
+  const callbacks = useRef({ props, recoveries });
+  useLayoutEffect(() => {
+    callbacks.current = { props, recoveries };
+  });
   const heading = useRef<HTMLHeadingElement>(null);
   const load = useCallback(
-    (cursor: string | undefined, focus = false) => {
+    async (cursor: string | undefined, focus = false) => {
+      const operation = reads.beginLatest();
+      if (!operation) return;
+      const captured = callbacks.current;
       setView({ kind: 'loading' });
-      return runLatestAuthenticatedRequest({
-        pending,
-        identity: callbacks.current.identity,
-        execute: (api, signal) =>
-          api.request(
-            `/commercial-intake/requests?clientDossierId=${encodeURIComponent(props.clientDossierId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
-            { companyContextId: props.company.id, signal },
-          ),
-        onResult: async (result, signal) => {
-          if (
-            result.status === 'unauthorized' ||
-            result.status === 'forbidden' ||
-            result.status === 'notFound'
-          ) {
-            lifetime.current?.abort();
-            setView({ kind: 'denied' });
-            await handleAuthenticatedAccessRejection({
-              result,
-              signal,
-              identity: callbacks.current.identity,
-              companyContextId: props.company.id,
-              onCompanyContextRejected:
-                callbacks.current.onCompanyContextRejected,
-              onActorRevalidated:
-                callbacks.current.onActorRevalidated ?? (() => undefined),
-              onWorkspaceAccessRejected:
-                callbacks.current.onWorkspaceAccessRejected,
-            });
-          } else if (result.status === 'ok') {
-            const page = parseClientCommercialPage(
-              result.value,
-              props.clientDossierId,
-            );
-            if (lifetime.current?.signal.aborted)
-              lifetime.current = new AbortController();
-            setView({
-              kind: 'ready',
-              page,
-            });
-          } else setView({ kind: 'error' });
-        },
-        onError: () => setView({ kind: 'error' }),
-        onSettled: () => {
-          if (focus) heading.current?.focus();
-        },
-      });
+      try {
+        await runLatestAuthenticatedRequest({
+          signal: operation.signal,
+          identity: captured.props.identity,
+          execute: (api, signal) =>
+            api.request(
+              `/commercial-intake/requests?clientDossierId=${encodeURIComponent(props.clientDossierId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+              { companyContextId: props.company.id, signal },
+            ),
+          onResult: async (result, signal) => {
+            if (
+              result.status === 'unauthorized' ||
+              result.status === 'forbidden' ||
+              result.status === 'notFound'
+            ) {
+              navigations.retire();
+              setView({ kind: 'denied' });
+              const recovery = captured.recoveries.begin();
+              if (!recovery) return;
+              const current = () =>
+                captured.recoveries.isLive() &&
+                !recovery.signal.aborted &&
+                !signal.aborted;
+              signal.addEventListener('abort', recovery.retire, { once: true });
+              try {
+                await handleAuthenticatedAccessRejection({
+                  result,
+                  signal: recovery.signal,
+                  isCurrent: current,
+                  identity: captured.props.identity,
+                  companyContextId: props.company.id,
+                  onCompanyContextRejected: (companyId) => {
+                    if (current())
+                      callbacks.current.props.onCompanyContextRejected(
+                        companyId,
+                      );
+                  },
+                  onActorRevalidated: (actor) =>
+                    current()
+                      ? callbacks.current.props.onActorRevalidated?.(actor)
+                      : undefined,
+                  onWorkspaceAccessRejected: () =>
+                    current()
+                      ? callbacks.current.props.onWorkspaceAccessRejected?.()
+                      : undefined,
+                });
+              } finally {
+                signal.removeEventListener('abort', recovery.retire);
+                recovery.release();
+              }
+            } else if (result.status === 'ok') {
+              const page = parseClientCommercialPage(
+                result.value,
+                props.clientDossierId,
+              );
+              if (!navigation.current || navigation.current.signal.aborted)
+                navigation.current = navigations.beginLatest();
+              setView({
+                kind: 'ready',
+                page,
+              });
+            } else setView({ kind: 'error' });
+          },
+          onError: () => setView({ kind: 'error' }),
+          onSettled: () => {
+            if (focus) heading.current?.focus();
+          },
+        });
+      } finally {
+        operation.release();
+      }
     },
-    [props.company.id, props.clientDossierId],
+    [props.company.id, props.clientDossierId, reads, navigations],
   );
   useEffect(() => {
     void load(undefined);
-    return () => pending.current?.abort();
-  }, [load]);
+    return reads.retire;
+  }, [load, reads]);
   function move(next: (string | undefined)[]) {
     setCursors(next);
     void load(next.at(-1), true);
@@ -208,8 +247,9 @@ function CommercialOwner(
                     className="client-secondary-action"
                     aria-label={`${copy('open')}: ${item.title}`}
                     onClick={() => {
-                      if (lifetime.current)
-                        props.onOpenRequest(item.id, lifetime.current.signal);
+                      const source = navigation.current;
+                      if (source && !source.signal.aborted)
+                        props.onOpenRequest(item.id, source.signal);
                     }}
                   >
                     {item.title}
