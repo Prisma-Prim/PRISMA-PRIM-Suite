@@ -17,7 +17,8 @@
     "test:company:postgres": "REQUIRE_COMPANY_POSTGRES=true vitest run --no-file-parallelism src/company/company.rest.test.ts src/company/company-idempotency.rest.test.ts",
     "test:client:postgres": "REQUIRE_CLIENT_POSTGRES=true vitest run --no-file-parallelism src/client/client.rest.test.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "qualify:dossier-volume": "pnpm build && node dist/dossier-volume-qualification/main.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1157.0",
