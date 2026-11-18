@@ -142,6 +142,25 @@ const passingContract = summary('contract-action-sequences', [
   },
 ]);
 
+const passingPricingOwners = summary('pricing-owner-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1463001,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'pricing-snapshot-owner',
+      width,
+      seed: 1463001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'edit-literal-priced-quantity': 1 },
+    })),
+  },
+]);
+
 const passingProjects = summary('project-task-action-sequences', [
   {
     status: 'passed',
@@ -212,6 +231,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (pricing-owner-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
   { name: 'report', conclusion: null, started_at: null, completed_at: null },
   {
     name: 'chaos (project-task-action-sequences)',
@@ -242,6 +267,10 @@ const summaries = () =>
     [
       'contract-action-sequences',
       parseChaosSummary(JSON.stringify(passingContract)),
+    ],
+    [
+      'pricing-owner-action-sequences',
+      parseChaosSummary(JSON.stringify(passingPricingOwners)),
     ],
     [
       'project-task-action-sequences',
@@ -368,6 +397,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       JSON.stringify(passingContract),
     ],
     [
+      'nightly-ui-chaos-summary-pricing-owner-action-sequences',
+      JSON.stringify(passingPricingOwners),
+    ],
+    [
       'nightly-ui-chaos-summary-project-task-action-sequences',
       JSON.stringify(passingProjects),
     ],
@@ -403,6 +436,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['access-action-sequences', 'success', 4, 1, 1, false],
       ['document-action-sequences', 'success', 4, 1, 1, false],
       ['contract-action-sequences', 'success', 4, 1, 1, false],
+      ['pricing-owner-action-sequences', 'success', 4, 1, 1, false],
       ['project-task-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
@@ -419,15 +453,23 @@ test('the first night of a week opens its comment with runtime, failure, seed, r
   assert.equal(post.path, 'issues/1132/comments');
   const body = post.body.body;
   assert.ok(
+    body.includes('[run-501]: https://github.com/owner/repo/actions/runs/501'),
+  );
+  assert.ok(
+    body.includes(
+      `[commit-${sha}]: https://github.com/owner/repo/commit/${sha}`,
+    ),
+  );
+  assert.ok(
     body.startsWith(
       '<!-- nightly-ui-chaos week=2026-11-09 -->\n## Nightly UI chaos, week of 2026-11-09',
     ),
   );
   assert.ok(
     body.includes(
-      '| 2026-11-14 02:21 | [nightly](https://github.com/owner/repo/actions/runs/501) | [`c0ffee1`](https://github.com/owner/repo/commit/' +
+      '| 2026-11-14 02:21 | [nightly][run-501] | [`c0ffee1`][commit-' +
         sha +
-        ') | certification-journey | 2 of 2 (budget) | passed | 18.5 min |',
+        '] | certification-journey | 2 of 2 (budget) | passed | 18.5 min |',
     ),
   );
   assert.ok(
@@ -490,7 +532,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary).',
     ),
   );
 
@@ -742,6 +784,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (access-action-sequences)',
               'chaos (document-action-sequences)',
               'chaos (contract-action-sequences)',
+              'chaos (pricing-owner-action-sequences)',
               'chaos (project-task-action-sequences)',
             ].includes(job.name),
         ),
@@ -752,6 +795,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'access-action-sequences',
                 'document-action-sequences',
                 'contract-action-sequences',
+                'pricing-owner-action-sequences',
                 'project-task-action-sequences',
               ].includes(journey),
           ),

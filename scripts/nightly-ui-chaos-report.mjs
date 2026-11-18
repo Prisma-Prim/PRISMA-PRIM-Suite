@@ -23,6 +23,7 @@ export const CHAOS_JOURNEYS = [
   'access-action-sequences',
   'document-action-sequences',
   'contract-action-sequences',
+  'pricing-owner-action-sequences',
   'project-task-action-sequences',
 ];
 const INSPECTION_LABEL = 'weekly-inspection';
@@ -394,7 +395,7 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
       const runs = `${entry.passed} of ${entry.runs}${entry.stoppedByBudget ? ' (budget)' : ''}`;
       const minutes =
         entry.jobMinutes === null ? '—' : `${entry.jobMinutes.toFixed(1)} min`;
-      return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}](${base}/actions/runs/${night.runId}) | [\`${night.sha.slice(0, 7)}\`](${base}/commit/${night.sha}) | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
+      return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}][run-${night.runId}] | [\`${night.sha.slice(0, 7)}\`][commit-${night.sha}] | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
     }),
   );
   const sequenceRows = retained.flatMap((night) =>
@@ -436,7 +437,7 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
     marker(week),
     `## Nightly UI chaos, week of ${week}`,
     '',
-    'Seeded UI chaos (#1376, stage 2 of #1155) replays acceptance journeys on a throwaway database under response delays, out-of-order responses, a slowed CPU, double submits and back navigation, with the Company switch and access loss of `multi-company-home`. It never blocks a pull request. Generated financial, Access, Document and Contract action sequences (#1422, #1425, #1427, #1431) vary native actions and values, retain reductions and exact replay, and report only measured coverage. Every failure stays counted here.',
+    'Seeded UI chaos (#1376, stage 2 of #1155) replays acceptance journeys on a throwaway database under response delays, out-of-order responses, a slowed CPU, double submits and back navigation, with the Company switch and access loss of `multi-company-home`. It never blocks a pull request. Generated financial, Access, Document, Contract, pricing and Project Task action sequences (#1422, #1425, #1427, #1431, #1447, #1463) vary native actions and values, retain reductions and exact replay, and report only measured coverage. Every failure stays counted here.',
     '',
     '| Night (UTC) | Run | Commit | Journey | Runs passed | Result | Job time |',
     '| --- | --- | --- | --- | ---: | --- | ---: |',
@@ -477,6 +478,15 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
         ]),
     '',
     'Replay a failure on a local `*_test` database as the verify skill describes. Triage at the weekly inspection: a real bug becomes an issue labelled `fuzz-found` that cites its seed, and this comment then names it; a failure left unfiled counts as a false alarm.',
+    '',
+    ...[
+      ...new Set(
+        retained.flatMap((night) => [
+          `[run-${night.runId}]: ${base}/actions/runs/${night.runId}`,
+          `[commit-${night.sha}]: ${base}/commit/${night.sha}`,
+        ]),
+      ),
+    ],
     '',
     `<!-- nightly-ui-chaos-data ${data} -->`,
   ].join('\n');

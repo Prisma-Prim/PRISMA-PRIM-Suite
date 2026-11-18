@@ -303,6 +303,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
     'document-action-sequences',
     'financial-action-sequences',
     'multi-company-home',
+    'pricing-owner-action-sequences',
     'project-task-action-sequences',
   ]);
 
@@ -722,7 +723,7 @@ test('command line: chaos on a journey without the chaos fixture is a usage erro
   assert.match(child.stderr, /"ideas" has not opted into UI chaos/u);
   assert.match(
     child.stderr,
-    /certification-journey, contract-action-sequences, document-action-sequences, financial-action-sequences, multi-company-home/u,
+    /certification-journey, contract-action-sequences, document-action-sequences, financial-action-sequences, multi-company-home, pricing-owner-action-sequences/u,
   );
   assert.equal(child.final.status, 'usage-error');
 });
