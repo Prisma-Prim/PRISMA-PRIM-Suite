@@ -31,6 +31,41 @@ const legacyNameRestriction = {
     'Do not name something legacy: nothing is deployed before launch, so move the data, fixtures and readers to the new shape (#1343, docs/agents/typescript-discipline.md); a product variant gets its real name.',
 };
 
+const apiSyntaxRestrictions = [
+  {
+    selector:
+      'CallExpression[callee.property.name=/^(update|delete)$/] > Identifier.arguments[name=/Events$/]',
+    message:
+      'Activity Log events are append-only: never update or delete one; append a correcting event in the same transaction instead.',
+  },
+  legacyNameRestriction,
+];
+const apiSyntaxExemptFiles = [
+  '**/*.{test,spec}.ts',
+  '**/*.test-{support,fixture}.ts',
+  'apps/api/test-support/**',
+];
+const nativeDocumentFamilyMethod =
+  '/^require(ReceivedAuditSource|ReceivedAddendum|ExternalInvoice|PaymentEvidence)NativeAccess$/';
+const nativeDocumentFamilyCall = `CallExpression:matches([callee.property.name=${nativeDocumentFamilyMethod}], [callee.computed=true][callee.property.value=${nativeDocumentFamilyMethod}], [callee.computed=true][callee.property.type="TemplateLiteral"][callee.property.expressions.length=0][callee.property.quasis.0.value.cooked=${nativeDocumentFamilyMethod}])`;
+const nativeDocumentFamilyMessage =
+  'Use DocumentFamilyAccess.requireFamilyAccess and DOCUMENT_FAMILY_POLICY for native Document family access; only registration adapters may call native access directly for their register action (#1212).';
+const nativeDocumentFamilyRestriction = {
+  selector: nativeDocumentFamilyCall,
+  message: nativeDocumentFamilyMessage,
+};
+// :has evaluates a subtree. Anchor the options to its root call so a nested
+// helper's register action cannot exempt an outer content-read call. Spreads
+// and computed keys cannot override the established literal action.
+const explicitDocumentRegistration =
+  'CallExpression:not(CallExpression CallExpression) > ObjectExpression.arguments:nth-child(2):not(:has(SpreadElement)):not(:has(Property[computed=true])) > Property[key.name="action"][value.type="Literal"][value.value="register"]';
+const documentRegistrationAdapters = [
+  'apps/api/src/documents/documents.service.ts',
+  'apps/api/src/documents/received-addendum-relations.service.ts',
+  'apps/api/src/documents/external-invoice-relations.service.ts',
+  'apps/api/src/documents/payment-evidence-sources.service.ts',
+];
+
 // The `frame` URL parameter selects nothing since the Classic frame was retired
 // (#1355), so no test or source opens a URL carrying it (#1401). The test that
 // proves a retired `?frame=classic` link opens Prisme, and its browser
@@ -121,22 +156,50 @@ export default tseslint.config(
     // (scripts/eslint-module-boundaries.test.mjs checks the schema). Extend
     // this block rather than configuring the rule again.
     files: ['apps/api/**/*.ts'],
+    ignores: apiSyntaxExemptFiles,
+    rules: {
+      'no-restricted-syntax': ['error', ...apiSyntaxRestrictions],
+    },
+  },
+  {
+    files: ['apps/api/src/**/*.ts'],
     ignores: [
-      '**/*.{test,spec}.ts',
-      '**/*.test-{support,fixture}.ts',
-      'apps/api/test-support/**',
+      ...apiSyntaxExemptFiles,
+      'apps/api/src/access/**',
+      'apps/api/src/documents/document-family-access.ts',
+      ...documentRegistrationAdapters,
     ],
     rules: {
       'no-restricted-syntax': [
         'error',
-        {
-          selector:
-            'CallExpression[callee.property.name=/^(update|delete)$/] > Identifier.arguments[name=/Events$/]',
-          message:
-            'Activity Log events are append-only: never update or delete one; append a correcting event in the same transaction instead.',
-        },
-        legacyNameRestriction,
+        ...apiSyntaxRestrictions,
+        nativeDocumentFamilyRestriction,
       ],
+    },
+  },
+  {
+    files: documentRegistrationAdapters,
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...apiSyntaxRestrictions,
+        {
+          selector: `${nativeDocumentFamilyCall}:not(:has(${explicitDocumentRegistration}))`,
+          message: nativeDocumentFamilyMessage,
+        },
+      ],
+    },
+  },
+  {
+    // Fixtures do not inherit production Activity/name restrictions, but a
+    // consumer test cannot introduce a new native family bypass either.
+    files: [
+      'apps/api/src/**/*.{test,spec}.ts',
+      'apps/api/src/**/*.test-{support,fixture}.ts',
+    ],
+    ignores: ['apps/api/src/access/**'],
+    rules: {
+      'no-restricted-syntax': ['error', nativeDocumentFamilyRestriction],
     },
   },
   {
