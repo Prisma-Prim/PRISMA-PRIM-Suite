@@ -14,6 +14,32 @@
       "licence": "Apache-2.0",
       "ron": "93588d7e59a28fad7920db07767345438ee5eeefa3c5f20541dfb9ad083a6d2e",
       "rus": "b617eb6830ffabaaa795dd87ea7fd251adfe9cf0efe05eb9a2e8128b7728d6b6"
+    },
+    "easyocr": {
+      "repository": "https://github.com/JaidedAI/EasyOCR",
+      "tag": "v1.7.2",
+      "licence": "Apache-2.0",
+      "architecture": "CRAFT detection and generation-2 CNN/BiLSTM/CTC recognition",
+      "runtime": {
+        "easyocr": "1.7.2",
+        "torch": "2.9.1+cpu",
+        "torchvision": "0.24.1+cpu",
+        "opencv-python-headless": "5.1.0.95"
+      },
+      "weights": {
+        "craft_mlt_25k.pth": {
+          "sha256": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+          "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip"
+        },
+        "cyrillic_g2.pth": {
+          "sha256": "48d0f3b58f28aa64651ab1032cc2d498c4de25135829668e87c14e7a07529f29",
+          "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.6.1/cyrillic_g2.zip"
+        },
+        "latin_g2.pth": {
+          "sha256": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+          "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/latin_g2.zip"
+        }
+      }
     }
   }
 }

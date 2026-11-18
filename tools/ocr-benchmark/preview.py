@@ -28,11 +28,16 @@ def preview(fixtures, report_path, output):
         for word in row['words']:
             x, y, w, h = word['box']
             draw.rectangle((x, y, x + w, y + h), outline='red', width=2)
+        for table in row.get('automaticLayout', {}).get('tables', []):
+            for cell in table['cells']:
+                x, y, w, h = cell['box']
+                draw.rectangle((x, y, x + w, y + h), outline='blue', width=2)
+                draw.text((x + 3, y + 2), f"r{cell['row']} c{cell['column']} ({cell['rowSpan']}x{cell['columnSpan']})", font=font, fill='blue')
         image.thumbnail((700, 650))
         canvas = Image.new('RGB', (1000, 1000), 'white')
         canvas.paste(image, (10, 55))
         draw = ImageDraw.Draw(canvas)
-        draw.text((10, 10), f"{row['engine']} / {row['case']} — observed boxes red; independent cells green", font=font, fill='black')
+        draw.text((10, 10), f"{row['engine']} / {row['case']} — OCR red; labels green; automatic grid blue", font=font, fill='black')
         label = f"CER {row['text']['edits']}/{row['text']['expected']}; critical {row['critical']['matched']}/{row['critical']['expected']}; cells {row['cells']['exact']}/{row['cells']['expected']}"
         draw.text((10, 725), label, font=font, fill='black')
         draw.multiline_text((10, 765), '\n'.join(textwrap.wrap('Observed: ' + row['observedText'], width=90)), font=font, fill='black', spacing=5)
