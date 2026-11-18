@@ -340,6 +340,40 @@ function submitDraft() {
 }
 
 describe('PricingConfigurationWorkspace', () => {
+  it('does not recover an older denial after a new complete Actor observation', async () => {
+    let release: (response: Response) => void = () => {
+      throw new Error('Read not initialized');
+    };
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const fetch = stubApi({
+      [SCOPE]: () => held,
+      'GET /api/access/current-actor': () => Response.json(actor),
+    });
+    const identity = deterministicBrowserIdentity();
+    const recovered = vi.fn();
+    function panel(current: ActorContext) {
+      return (
+        <PricingConfigurationWorkspace
+          actor={current}
+          identity={identity}
+          onCompanyContextRejected={() => undefined}
+          onActorRevalidated={recovered}
+        />
+      );
+    }
+    const view = render(panel(actor));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    view.rerender(panel(structuredClone(actor)));
+    await act(async () => {
+      release(new Response('', { status: 403 }));
+    });
+    await screen.findByRole('alert');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(recovered).not.toHaveBeenCalled();
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     restoreBrowserTimeZone();

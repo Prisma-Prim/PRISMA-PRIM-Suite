@@ -42,7 +42,9 @@ export class DocumentReadBoundary {
   async requireVisible(
     actor: ActorContext,
     idValue: unknown,
-    options: { lockFamily: boolean } = { lockFamily: false },
+    options: { lockFamily: boolean; lockDocument?: boolean } = {
+      lockFamily: false,
+    },
   ): Promise<VisibleDocument> {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requirePermissions(actor, {
@@ -56,7 +58,7 @@ export class DocumentReadBoundary {
       ],
     });
     const id = requireUuid(idValue);
-    const [document] = await this.database.connection
+    const query = this.database.connection
       .select()
       .from(workingDocuments)
       .where(
@@ -66,6 +68,11 @@ export class DocumentReadBoundary {
           eq(workingDocuments.id, id),
         ),
       );
+    // Opt in only inside the caller-owned transaction. Native metadata,
+    // Version and association writes all serialize on this same row.
+    const [document] = options.lockDocument
+      ? await query.for('share')
+      : await query;
     if (!document) throw new NotFoundException();
     await this.familyAccess.requireVisibleFamily(actor, document.type, {
       lock: options.lockFamily,

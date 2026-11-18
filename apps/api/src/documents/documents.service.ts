@@ -381,6 +381,7 @@ export class DocumentsService {
           eq(workingDocuments.companyId, companyId),
           inArray(workingDocuments.type, [
             'questionnaire',
+            'project-source',
             ...(paymentAllowed ? ['payment-evidence' as const] : []),
             ...(externalAllowed ? ['external-invoice' as const] : []),
             ...(familyAllowed ? ['mission-deliverable' as const] : []),
@@ -591,35 +592,46 @@ export class DocumentsService {
                     createdByMembershipId: row.createdByMembershipId,
                     version: { ...identity, representation: null },
                   }
-                : working.documentType === 'mission-deliverable'
+                : working.documentType === 'project-source'
                   ? {
                       ...registered,
-                      type: 'mission-deliverable',
-                      createdByMembershipId: row.createdByMembershipId,
-                      version: { ...identity, representation: null },
-                    }
-                  : {
-                      ...registered,
-                      type: 'questionnaire',
+                      type: 'project-source',
                       createdByMembershipId: row.createdByMembershipId,
                       version: {
-                        ...identity,
-                        representation: canReadReference(actor)
-                          ? {
-                              id: working.representation.id,
-                              kind: 'external-reference',
-                              verification: 'unverified',
-                              access: 'granted',
-                              url: working.representation.url,
-                            }
-                          : {
-                              id: working.representation.id,
-                              kind: 'external-reference',
-                              verification: 'unverified',
-                              access: 'denied',
-                            },
+                        id: working.id,
+                        status: 'draft',
+                        representation: null,
                       },
-                    };
+                    }
+                  : working.documentType === 'mission-deliverable'
+                    ? {
+                        ...registered,
+                        type: 'mission-deliverable',
+                        createdByMembershipId: row.createdByMembershipId,
+                        version: { ...identity, representation: null },
+                      }
+                    : {
+                        ...registered,
+                        type: 'questionnaire',
+                        createdByMembershipId: row.createdByMembershipId,
+                        version: {
+                          ...identity,
+                          representation: canReadReference(actor)
+                            ? {
+                                id: working.representation.id,
+                                kind: 'external-reference',
+                                verification: 'unverified',
+                                access: 'granted',
+                                url: working.representation.url,
+                              }
+                            : {
+                                id: working.representation.id,
+                                kind: 'external-reference',
+                                verification: 'unverified',
+                                access: 'denied',
+                              },
+                        },
+                      };
     return { document, projectId: row.projectId };
   }
   /**
@@ -958,7 +970,7 @@ function registration(value: unknown) {
       );
     return { type: 'received-audit-source' as const, clientId, title, purpose };
   }
-  if (row.type === 'mission-deliverable') {
+  if (row.type === 'mission-deliverable' || row.type === 'project-source') {
     if (
       Object.keys(row).some(
         (key) => !['type', 'clientId', 'title', 'purpose'].includes(key),
@@ -967,7 +979,12 @@ function registration(value: unknown) {
       throw new BadRequestException(
         'Mission deliverables do not accept external references.',
       );
-    return { type: 'mission-deliverable' as const, clientId, title, purpose };
+    return { type: row.type, clientId, title, purpose } satisfies {
+      type: 'mission-deliverable' | 'project-source';
+      clientId: string;
+      title: string;
+      purpose: string;
+    };
   }
   if (row.type !== undefined && row.type !== 'questionnaire')
     throw new BadRequestException('Unsupported Document family.');

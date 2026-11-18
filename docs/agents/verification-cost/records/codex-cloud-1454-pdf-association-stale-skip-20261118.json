@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1454-pdf-association-stale-skip-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1454,
+  "pullRequest": 1466,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 0
+    },
+    "notes": "Late automatic review2P2 reproduced:3 PDF association scanner races and2 stale-refusal recovery cases RED. Native19 intake+37 shared Content/Versions tests pass; rendered10 proves409 refresh then explicit skip. Native PDF guard holds Document lock after exact receipt replay; stale checkpoints commit before409. Full format/lint/types pass. Prior CIgreen is baseline only; refreshed CI pending. Self Standards/Spec0. No rollout; usage/time/price unreported. No merge/deploy."
+  }
+}

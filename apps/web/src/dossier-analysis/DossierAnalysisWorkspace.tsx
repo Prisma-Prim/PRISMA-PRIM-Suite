@@ -31,6 +31,8 @@ import {
 import './analysis.css';
 import { DossierHarnessPanel } from './DossierHarnessPanel';
 import { dossierAnalysisAuthority } from './analysis-access';
+import { DossierIntakePanel } from './DossierIntakePanel';
+import { useIntakeCopy } from './intake-copy';
 
 export interface DossierAnalysisProps {
   actor: ActorContext;
@@ -134,6 +136,8 @@ function AnalysisOwner(
   props: DossierAnalysisProps & { companyId: string; scope: string },
 ) {
   const c = useAnalysisCopy();
+  const intakeCopy = useIntakeCopy();
+  const [intakeOpen, setIntakeOpen] = useState(false);
   const selectId = useId();
   const cursors = useRef(new Set<string>());
   const term = useAnalysisTerms();
@@ -596,6 +600,28 @@ function AnalysisOwner(
       <h2>{c[0]}</h2>
       <p>{c[1]}</p>
       <p>{c[2]}</p>
+      {editable &&
+        holds(
+          props.actor.activeCompany,
+          'company_document_project_organizer',
+          'document.project.manage',
+        ) && (
+          <>
+            <button onClick={() => setIntakeOpen(true)}>
+              {intakeCopy('open')}
+            </button>
+            {intakeOpen && (
+              <DossierIntakePanel
+                identity={props.identity}
+                companyId={props.companyId}
+                projectId={props.projectId}
+                scope={props.scope}
+                onDenied={deny}
+                onImported={refresh}
+              />
+            )}
+          </>
+        )}
       {loading && <p role="status">{c[47]}</p>}
       {error && (
         <div role="alert">
