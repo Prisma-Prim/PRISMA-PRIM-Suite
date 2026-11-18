@@ -1280,7 +1280,7 @@ export const certificationMessages = defineMessages(keys, {
     teamMemberLink: 'Workspace member',
     teamMemberNotLinked: 'Not linked',
     teamMemberLinkHelp:
-      'Optional. Only people already known in this Case can be linked: you and those who recorded a step or attached a document. A link lets the server keep that person from approving the team.',
+      'Optional. Link a person already named in this Case or find an eligible internal auditor above. A link lets the server keep that person from approving the team; it grants no permission.',
     teamMemberLinkedUnknown: 'Linked to a Workspace member',
     teamMemberYou: '{name} (you)',
     holdsCategory: 'Holds the client’s food chain category',
@@ -2408,7 +2408,7 @@ export const certificationMessages = defineMessages(keys, {
     teamMemberLink: 'Membre de l’espace de travail',
     teamMemberNotLinked: 'Non lié',
     teamMemberLinkHelp:
-      'Facultatif. Seules les personnes déjà connues dans ce dossier peuvent être liées : vous et celles qui ont enregistré une étape ou joint un document. Un lien permet au serveur d’empêcher cette personne d’approuver l’équipe.',
+      'Facultatif. Liez une personne déjà nommée dans ce dossier ou recherchez un auditeur interne éligible ci-dessus. Le lien empêche cette personne d’approuver l’équipe ; il ne donne aucun droit.',
     teamMemberLinkedUnknown: 'Lié à un membre de l’espace de travail',
     teamMemberYou: '{name} (vous)',
     holdsCategory: 'Détient la catégorie de la chaîne alimentaire du client',
@@ -3560,7 +3560,7 @@ export const certificationMessages = defineMessages(keys, {
     teamMemberLink: 'Membru al spațiului de lucru',
     teamMemberNotLinked: 'Nelegat',
     teamMemberLinkHelp:
-      'Opțional. Pot fi legate doar persoanele deja cunoscute în acest dosar: dvs. și cei care au înregistrat o etapă sau au atașat un document. Legătura permite serverului să împiedice acea persoană să aprobe echipa.',
+      'Opțional. Asociați o persoană deja numită în dosar sau căutați mai sus un auditor intern eligibil. Legătura împiedică acea persoană să aprobe echipa; nu acordă permisiuni.',
     teamMemberLinkedUnknown: 'Legat de un membru al spațiului de lucru',
     teamMemberYou: '{name} (dvs.)',
     holdsCategory: 'Deține categoria lanțului alimentar a clientului',
@@ -4702,7 +4702,7 @@ export const certificationMessages = defineMessages(keys, {
     teamMemberLink: 'Участник рабочего пространства',
     teamMemberNotLinked: 'Не связан',
     teamMemberLinkHelp:
-      'Необязательно. Связать можно только людей, уже известных в этом деле: вас и тех, кто записал этап или приложил документ. Связь позволяет серверу не допустить, чтобы этот человек утвердил группу.',
+      'Необязательно. Свяжите человека, уже указанного в деле, или найдите выше доступного внутреннего аудитора. Связь не позволяет ему утвердить группу и не предоставляет прав доступа.',
     teamMemberLinkedUnknown: 'Связан с участником рабочего пространства',
     teamMemberYou: '{name} (вы)',
     holdsCategory: 'Владеет категорией пищевой цепи клиента',
