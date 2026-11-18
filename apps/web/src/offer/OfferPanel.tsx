@@ -1,3 +1,6 @@
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   supportedOfferMessageTarget,
   useOfferMessageCopy,
@@ -14,6 +17,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -29,7 +33,6 @@ import {
   conflictCode,
   createAuthenticatedApiClient,
 } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import {
   readClientLegalEntityList,
   type ClientLegalEntity,
@@ -90,19 +93,14 @@ const ignoreWorkspace = (): void => undefined;
 
 /** Scope/session/grant changes unmount all protected children and uncertain intent. */
 export function OfferPanel(props: Parameters<typeof OfferPanelOwner>[0]) {
-  const generation = useRef({ identity: props.identity, value: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      value: generation.current.value + 1,
-    };
+  const generation = useRequestLifetime(props.identity, 'offer');
   const ownerKey = JSON.stringify([
     offerAuthorityStamp(props.actor),
     props.opportunityId,
     props.requestedVersionId,
     props.expectedOfferId,
     props.currentClientId,
-    generation.current.value,
+    generation,
   ]);
   return <OfferPanelOwner key={ownerKey} {...props} />;
 }
@@ -214,7 +212,9 @@ function OfferPanelOwner({
     | 'created'
   >();
   const contentLocked = pending || feedback === 'uncertain';
-  const pendingRequest = useRef<AbortController | undefined>(undefined);
+  const reads = useScopedOperationGroup('offer');
+  const preparation = useScopedOperationGroup('preparation-sources');
+  const writes = useScopedOperationGroup('offer-command');
   const attempt = useRef<Attempt | undefined>(undefined);
   const [workflowCommand, setWorkflowCommand] =
     useState<WorkflowCommand | null>(null);
@@ -238,43 +238,34 @@ function OfferPanelOwner({
     };
   }, []);
 
-  const reject = useCallback(
-    async (
-      result: Parameters<
-        typeof handleAuthenticatedAccessRejection
-      >[0]['result'],
-      signal: AbortSignal,
-    ) =>
-      handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId: companyId,
-        onCompanyContextRejected,
-        onActorRevalidated,
-        onWorkspaceAccessRejected,
-        signal,
-      }),
-    [
-      companyId,
-      identity,
-      onActorRevalidated,
-      onCompanyContextRejected,
-      onWorkspaceAccessRejected,
-    ],
-  );
+  const reject = useCapturedAccessRejection({
+    actor,
+    identity,
+    companyContextId: companyId,
+    scope: authorityStamp,
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+  });
+  const rejection = useRef(reject);
+  useLayoutEffect(() => {
+    rejection.current = reject;
+  });
 
   const load = useCallback(async () => {
-    pendingRequest.current?.abort();
-    const request = new AbortController();
-    pendingRequest.current = request;
+    const request = reads.beginLatest();
+    if (!request) return;
+    const reject = rejection.current;
     setView({ kind: 'loading' });
     setPending(false);
     if (!mayRead || !companyId) {
       setView({ kind: 'denied' });
+      request.release();
       return;
     }
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const offerResult = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}${
           requestedVersionId === undefined
@@ -360,6 +351,8 @@ function OfferPanelOwner({
       if (request.signal.aborted) return;
       if (error instanceof DOMException && error.name === 'AbortError') return;
       setView({ kind: 'error' });
+    } finally {
+      request.release();
     }
   }, [
     companyId,
@@ -368,7 +361,7 @@ function OfferPanelOwner({
     mayPrepare,
     mayRead,
     opportunityId,
-    reject,
+    reads,
     requestedVersionId,
     expectedOfferId,
   ]);
@@ -379,7 +372,7 @@ function OfferPanelOwner({
     estimateOpenRef.current = false;
     setEstimateOpen(false);
     void load();
-    return () => pendingRequest.current?.abort();
+    return reads.retire;
   }, [load, authorityStamp]);
 
   async function beginVersion() {
@@ -393,13 +386,14 @@ function OfferPanelOwner({
     )
       return;
     const offer = view.offer;
-    pendingRequest.current?.abort();
-    const request = new AbortController();
-    pendingRequest.current = request;
+    reads.retire();
+    const request = preparation.beginLatest();
+    if (!request) return;
     setPending(true);
     setFeedback(undefined);
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const [snapshots, entities] = await Promise.all([
         api.request(
           `/pricing/opportunities/${encodeURIComponent(opportunityId)}/snapshots?limit=25`,
@@ -445,12 +439,14 @@ function OfferPanelOwner({
     } catch {
       if (!request.signal.aborted) setFeedback('targetUnavailable');
     } finally {
+      request.release();
       if (!request.signal.aborted) setPending(false);
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (writes.isPending()) return;
     if ((view.kind !== 'empty' && view.kind !== 'version') || !companyId)
       return;
     const days = Number(validityDays);
@@ -477,10 +473,11 @@ function OfferPanelOwner({
     attempt.current = command;
     setPending(true);
     setFeedback(undefined);
-    const request = new AbortController();
-    pendingRequest.current = request;
+    const request = writes.beginLatest();
+    if (!request) return;
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const result = await api.request(
         `/offers/opportunities/${encodeURIComponent(opportunityId)}${view.kind === 'version' ? '/versions' : ''}`,
         {
@@ -527,6 +524,7 @@ function OfferPanelOwner({
       if (!(error instanceof DOMException && error.name === 'AbortError'))
         setFeedback('uncertain');
     } finally {
+      request.release();
       if (!request.signal.aborted) setPending(false);
     }
   }
@@ -635,13 +633,17 @@ function OfferPanelOwner({
                     setPreparationMode(mode);
                     estimateOpenRef.current = open;
                     if (open) {
-                      pendingRequest.current?.abort();
+                      reads.retire();
+                      preparation.retire();
+                      writes.retire();
                       setPending(false);
                     }
                     setEstimateOpen(open);
                   }}
                   onCreated={(offer) => {
-                    pendingRequest.current?.abort();
+                    reads.retire();
+                    preparation.retire();
+                    writes.retire();
                     attempt.current = undefined;
                     setFeedback(undefined);
                     setView({ kind: 'offer', offer });
@@ -816,7 +818,9 @@ function OfferPanelOwner({
                     workflowCommandRef.current !== null
                   )
                     return;
-                  pendingRequest.current?.abort();
+                  reads.retire();
+                  preparation.retire();
+                  writes.retire();
                   setPending(false);
                   attempt.current = undefined;
                   setFeedback(undefined);

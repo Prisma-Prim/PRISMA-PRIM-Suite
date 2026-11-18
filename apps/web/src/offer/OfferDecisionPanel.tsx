@@ -1,3 +1,4 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -57,9 +58,8 @@ export function OfferDecisionPanel({
     Array<OfferQualityRunView['results'][number]['code']>
   >([]);
   const attempt = useRef<Attempt | undefined>(undefined);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const writes = useScopedOperationGroup('decision');
   const displayedRun = useRef(offer.version.latestQualityRun?.id);
-  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
     if (displayedRun.current !== offer.version.latestQualityRun?.id) {
       displayedRun.current = offer.version.latestQualityRun?.id;
@@ -73,6 +73,7 @@ export function OfferDecisionPanel({
   const locked = state === 'running' || state === 'uncertain';
   useOfferCommandLock(locked, onCommandLockChange);
   async function execute(kind: 'approve' | 'reject') {
+    if (writes.isPending()) return;
     if (
       state === 'running' ||
       offer.version.decision ||
@@ -100,9 +101,8 @@ export function OfferDecisionPanel({
       ),
     };
     attempt.current = command;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
+    const request = writes.beginLatest();
+    if (!request) return;
     setState('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -151,6 +151,8 @@ export function OfferDecisionPanel({
       } else setState('uncertain');
     } catch {
       if (!request.signal.aborted) setState('uncertain');
+    } finally {
+      request.release();
     }
   }
   if (offer.version.decision)

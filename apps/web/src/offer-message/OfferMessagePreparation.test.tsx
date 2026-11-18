@@ -1,3 +1,4 @@
+import { Suspense, startTransition, useState } from 'react';
 import {
   act,
   fireEvent,
@@ -40,6 +41,56 @@ function clipboard(
 }
 
 describe('exact Offer manual message preparation', () => {
+  it('keeps the committed literal draft actionable while a replacement authority render suspends', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      json(observation()),
+    );
+    const { writeText } = clipboard();
+    const actor = messageActor();
+    const proposed = messageActor(`offer-message-read.v1.${'c'.repeat(64)}`);
+    const suspended = new Promise<void>(() => undefined);
+    const attempted = vi.fn();
+    function PendingReplacement({ active }: { active: boolean }) {
+      if (active) {
+        attempted();
+        throw suspended;
+      }
+      return null;
+    }
+    function Workspace() {
+      const [replacement, setReplacement] = useState(false);
+      return (
+        <>
+          <button onClick={() => startTransition(() => setReplacement(true))}>
+            Propose another authority
+          </button>
+          <Suspense fallback={<p>Replacement is waiting</p>}>
+            {panel({ actor: replacement ? proposed : actor })}
+            <PendingReplacement active={replacement} />
+          </Suspense>
+        </>
+      );
+    }
+    render(<Workspace />);
+    await ready();
+    fillAndReview();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Propose another authority' }),
+    );
+    expect(attempted).toHaveBeenCalled();
+    expect(
+      screen.queryByText('Replacement is waiting'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Message body' })).toHaveValue(
+      literal.body,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy body' }));
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(literal.body),
+    );
+    await screen.findByText(/browser accepted this field/u);
+  });
+
   it('starts empty and copies three separately reviewed literal fields after three fresh protected observations', async () => {
     const fetch = vi
       .spyOn(globalThis, 'fetch')
