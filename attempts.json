@@ -1,0 +1,314 @@
+{
+  "schema": "prisma-prim-complete-audit-pilot-qualification/v1",
+  "classification": "actual native execution on prepared fictional examples; no real-world audit qualification",
+  "inputBase": "6f3a9056c957b329adcb2451267f7ebb03679b89",
+  "promotionRule": "Every pinned input and this compatibility PR require successful required CI; local proof alone is not the CI gate.",
+  "nativePilot": {
+    "journey": "local-audit-pilot",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T17:03:38.569Z",
+    "finishedAt": "2026-11-18T17:06:35.608Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "recoverableIntake": {
+    "journey": "document-intake",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T16:59:06.582Z",
+    "finishedAt": "2026-11-18T17:01:21.557Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "reviewedStageDrafts": {
+    "journey": "certification-stage-preparation",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T17:01:31.199Z",
+    "finishedAt": "2026-11-18T17:03:29.716Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "cliCheck": {
+    "command": "pnpm pilot:audit --check",
+    "status": "passed",
+    "exitCode": 0,
+    "nativeCaseReady": true,
+    "ownedPortsClosed": [4173, 4174],
+    "limits": "Bounded startup/readiness check; the prior guided-pilot input separately proves interactive SIGINT lifecycle.",
+    "scope": "Retained launcher readiness/cleanup proof before the bounded Word preservation correction. Launcher and pilot personas were not changed by that correction."
+  },
+  "nativeCompatibility": {
+    "suite": "apps/api/src/dossier-analysis-acceptance/pilot-draft-compatibility.rest.test.ts",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "proof": "Exact batch Word bytes, extracted citation, deliberate human correction, unchanged Case before ordinary Save, draft ownership unchanged, independent target/source freshness and retained historical review."
+  },
+  "focusedChecks": {
+    "nativeCompatibilityAndStage": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nodePilotContractsAndOcr": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "embeddedPythonTests": 23
+    },
+    "format": "passed",
+    "lint": "passed",
+    "types": "passed",
+    "drizzleDrift": "passed",
+    "strictPilotE2eTypes": "passed after truthful MJS inference and object-shaped fictional grant entries; first check retained as failed"
+  },
+  "earlierCompositionOutcomes": [
+    {
+      "run": "programme-compatibility-01",
+      "status": "failed",
+      "reason": "The first test incorrectly expected a generic unbound Project source run to become stale after an unrelated Case write; the native owners correctly preserve independent freshness. Test now proves both independent revision checks."
+    },
+    {
+      "run": "programme-pilot-red-01",
+      "journey": "local-audit-pilot",
+      "status": "failed",
+      "exitCode": 1,
+      "startedAt": "2026-11-18T14:59:26.690Z",
+      "finishedAt": "2026-11-18T15:01:09.000Z",
+      "tests": {
+        "passed": 0,
+        "failed": 2,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "reason": "Original fictional personas lacked the existing native batch organizer and audited-source read grants. Ordinary native grants are now seeded only in the disposable fictional Company."
+    },
+    {
+      "run": "programme-final-e2e-types",
+      "status": "failed",
+      "reason": "A tuple inferred as a general array exposed possible undefined IDs; the fictional grant entries now use inferred objects. The private strict harness also enables inference of existing imported MJS files instead of treating them as implicit any."
+    }
+  ],
+  "baselineQualification": {
+    "source": "ff314c142179ff2c04e0c59baa44b69548bf11d7",
+    "publicPath": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/ff314c142179ff2c04e0c59baa44b69548bf11d7/docs/qualification/local-audit-pilot/outcomes.json",
+    "note": "Earlier guided-pilot proof including original combined entry point, lifecycle, independent review and browser-cache correction; separate source and timing, not re-labelled as current composition."
+  },
+  "limits": [
+    "No main merge or deployment under1452",
+    "No real account, provider/model call, scanner/OCR qualification or private1279 pilot",
+    "No OCR/product wiring or automated professional conclusion. Native permissions, current versions and separate human Save remain authoritative.",
+    "The three current browser journeys overlap in preparation and are not a claim of every possible audit or document case."
+  ],
+  "sourceCorrection": {
+    "inputCommit": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+    "productCommit": "74567f0787f4896c80e2cbe2235108c538925179",
+    "review": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4615218054",
+    "defect": "Word target could change after preflight while scanning; access alone did not prove the admitted metadata and revisions stayed current.",
+    "baseline": {
+      "source": "092dcecb04a1af4f9a18b22c233c1369bc50d557",
+      "nativeRacesFailed": 3,
+      "intentionallyFiltered": 11,
+      "actual": "metadata correction, competing PDF upload and Project unlink/relink each returned201 instead of409"
+    },
+    "correction": "Server-owned expected metadata, working revision and association revision are checked under native Document/Version transaction locks before a new source insert, after exact receipt recovery.",
+    "sourceNativeChecks": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "composition": "14 intake tests and1 original native regression"
+    },
+    "composedChecks": {
+      "nativeIntake": 14,
+      "nativeStage": 6,
+      "nativeCompatibility": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Separate public REST/PostgreSQL runs; no overlapping source checks are summed."
+    },
+    "confirmationReview": {
+      "standards": 0,
+      "spec": 0
+    },
+    "lostWordAcknowledgement": "A real failed database checkpoint returns503 after source preservation; exact retry recovers1 selected source and byte-identical original.",
+    "status": "Retained Word-preservation correction proof; later PDF/refusal corrections and current verification follow below."
+  },
+  "review": {
+    "compatibilityDiff": {
+      "source": "80f9054c935d19240eb63d2d3a6d8a52ce57a115",
+      "standards": 0,
+      "spec": 0
+    },
+    "correctedInputDiff": {
+      "source": "74567f0787f4896c80e2cbe2235108c538925179",
+      "standards": 0,
+      "spec": 0
+    }
+  },
+  "earlierCompositionProofs": [
+    {
+      "inputBase": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+      "nativePilot": {
+        "journey": "local-audit-pilot",
+        "status": "passed",
+        "exitCode": 0,
+        "startedAt": "2026-11-18T15:02:56.233Z",
+        "finishedAt": "2026-11-18T15:05:55.401Z",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      "recoverableIntake": {
+        "journey": "document-intake",
+        "status": "passed",
+        "exitCode": 0,
+        "startedAt": "2026-11-18T15:13:19.779Z",
+        "finishedAt": "2026-11-18T15:14:57.032Z",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      "reviewedStageDrafts": {
+        "journey": "certification-stage-preparation",
+        "status": "passed",
+        "exitCode": 0,
+        "startedAt": "2026-11-18T15:15:07.789Z",
+        "finishedAt": "2026-11-18T15:17:13.597Z",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      "finalReplayBeforeCorrection": {
+        "startedAt": "2026-11-18T15:20:36.384Z",
+        "finishedAt": "2026-11-18T15:23:54.158Z",
+        "passed": 2
+      },
+      "sourceCommit": "80f9054c935d19240eb63d2d3a6d8a52ce57a115",
+      "publicEvidence": "043862b0785dafded2442de5dc71d800c9b53229",
+      "limitation": "These passing journeys preceded a separately demonstrated Word preservation race. Their original evidence is retained; it does not prove the later transaction correction."
+    },
+    {
+      "inputBase": "9fe29e2fcf4114edfe03595a00a9db41e037a11d",
+      "nativePilot": {
+        "journey": "local-audit-pilot",
+        "status": "passed",
+        "exitCode": 0,
+        "startedAt": "2026-11-18T15:47:10.999Z",
+        "finishedAt": "2026-11-18T15:50:07.535Z",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      "recoverableIntake": {
+        "journey": "document-intake",
+        "status": "passed",
+        "exitCode": 0,
+        "startedAt": "2026-11-18T15:42:41.228Z",
+        "finishedAt": "2026-11-18T15:44:54.614Z",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      "reviewedStageDrafts": {
+        "journey": "certification-stage-preparation",
+        "status": "passed",
+        "exitCode": 0,
+        "startedAt": "2026-11-18T15:45:04.098Z",
+        "finishedAt": "2026-11-18T15:47:01.995Z",
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      },
+      "sourceCommit": "c6596d3fdcf1007a5a827a6e07183869f4dcb33f",
+      "publicEvidence": "0382416773d146add9dafc90518e46c69d27e6e1",
+      "requiredCi": 44340414303,
+      "ciStatus": "success",
+      "limitation": "This passing composition preceded two later demonstrated P2 gaps in PDF association fencing and stale-target skip recovery."
+    }
+  ],
+  "lateIntakeCorrections": {
+    "inputCommit": "eb809c7b79ec62e2d3fcd965de235089b6438390",
+    "reviews": [
+      "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4616643966",
+      "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4616643977"
+    ],
+    "pdfAssociationRace": {
+      "baseline": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+      "actualRed": 3,
+      "modes": ["unlink", "unlink-relink", "move"],
+      "before": "201 and PDF preservation after admitted association changed while scanning",
+      "after": "409, zero native PDF uploads, unchanged working revision and retained failed checkpoint",
+      "authority": "Server-admitted Project id/revision checked under native Document update lock before PDF insertion, after exact receipt replay. Direct HTTP query and receipt fingerprint unchanged."
+    },
+    "stalePreflightRecovery": {
+      "actualRed": 2,
+      "operations": ["advance", "upload"],
+      "before": "Native target conflict left a successful previous attempt, so the unfinished item could not be skipped",
+      "after": "Durable failed stale_target checkpoint commits before409; deliberate Skip completes with exact retained progress and unchanged human-edited native Document",
+      "scope": "Only actual target conflicts record an attempt; CAS, phase and authority refusals retain existing no-false-attempt semantics."
+    },
+    "nativeIntake": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sharedPdfInputRegression": {
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0
+    },
+    "renderedIntake": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "proof": "Actual scoped request hook receives409, reloads committed failure and enables the existing deliberate Skip control."
+    },
+    "composedNativeChecks": {
+      "intake": 19,
+      "stageDrafts": 6,
+      "compatibility": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Separate native REST/PostgreSQL runs; overlapping source/input checks are not summed."
+    },
+    "mechanicalChecks": "Global source and composed format/lint/types passed.",
+    "reviewDisposition": "Both automatic findings fixed with public RED-to-GREEN proof; root Standards/Spec self-review found0 additional material defects; both threads answered/resolved.",
+    "earlierNativeAttempt": {
+      "passed": 17,
+      "failed": 2,
+      "reason": "The test compared a Document correction receipt to a later GET detail. Corrected to compare the actual GET view before/after skip; final19/19 passes."
+    }
+  }
+}

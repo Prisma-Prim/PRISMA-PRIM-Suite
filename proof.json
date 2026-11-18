@@ -1,0 +1,458 @@
+{
+  "kind": "actual_native_execution_on_fictional_prepared_examples",
+  "programme": 1452,
+  "pullRequest": 1470,
+  "productCommit": "ee1cfe7aed8daafdf901041926f88fd3599c3803",
+  "productTree": "2633ea14e076010ef828fa82794b69be8490d022",
+  "inputBase": "6f3a9056c957b329adcb2451267f7ebb03679b89",
+  "inputs": {
+    "schema": "prisma-prim-complete-audit-pilot-inputs/v1",
+    "classification": "fictional local pilot; no real Client or account qualification",
+    "base": "6f3a9056c957b329adcb2451267f7ebb03679b89",
+    "inputs": {
+      "combinedQualification1458": "8b5303b7e62cab9c374ccdfa8b71a15a26c4f83a",
+      "controlledDraftPreparation1457": "ba7634306e456852376a289d35ae7b184ecf3033",
+      "freeOcrStructure1459": "e770566ff0ebb7a2794596c42c82a42719f8241c",
+      "recoverableIntake1466": "eb809c7b79ec62e2d3fcd965de235089b6438390",
+      "guidedPilot1468": "ff314c142179ff2c04e0c59baa44b69548bf11d7",
+      "reviewedAuditDrafts1469": "6ac39d6ffee713f0c8e89dfc166b1a12faf07233"
+    },
+    "inputCi": [
+      44292369089,
+      44291134310,
+      44295203174,
+      44352294698,
+      44321032687,
+      44327225196
+    ],
+    "conflicts": "Preserve the Stage superset of the byte-identical original application runtime; retain every pilot addition. Union sorted journey metadata, additive module imports/providers, OpenAPI paths/schemas and both PRD sections. No new production workflow or permission rule.",
+    "production": "No main merge or deployment. Synthetic identity/scanner/provider boundaries remain explicit. Native grants, validation, immutable bytes and decisions remain authoritative.",
+    "promotionRule": "Every pinned input must have a successful required PR CI before the complete source is called qualified; pending, failed or cancelled checks are not a pass.",
+    "fictionalPilotProfiles": {
+      "managerAdditionalNativeGrants": [
+        "document-project-organizer"
+      ],
+      "auditorAdditionalNativeGrants": [
+        "document-registrar",
+        "received-audit-source-access",
+        "document-content-reader"
+      ],
+      "authority": "Ordinary native grant commands by the seeded Workspace Owner, confined to the fresh fictional Company. No production default or policy change."
+    },
+    "earlierInputs": [
+      {
+        "base": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+        "recoverableIntake1466": "092dcecb04a1af4f9a18b22c233c1369bc50d557",
+        "reason": "Native scanner-barrier proof reproduced a Word target race after preflight; the corrected input validates admitted metadata and native revisions inside preservation. Prior green local journeys are retained as earlier-source evidence."
+      },
+      {
+        "base": "9fe29e2fcf4114edfe03595a00a9db41e037a11d",
+        "recoverableIntake1466": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+        "reason": "Previous green CI was followed by two demonstrated review findings: PDF association change during scanning and an unskippable stale-target refusal. The latest native owner and checkpoint corrections are independently reproduced by public native/rendered regressions."
+      }
+    ]
+  },
+  "journeys": [
+    {
+      "journey": "local-audit-pilot",
+      "startedAt": "2026-11-18T17:03:38.569Z",
+      "finishedAt": "2026-11-18T17:06:35.608Z",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "journey": "document-intake",
+      "startedAt": "2026-11-18T16:59:06.582Z",
+      "finishedAt": "2026-11-18T17:01:21.557Z",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "journey": "certification-stage-preparation",
+      "startedAt": "2026-11-18T17:01:31.199Z",
+      "finishedAt": "2026-11-18T17:03:29.716Z",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-ro-pilot-guide.png",
+      "sha256": "ad468209fdfe3bd53e87ea62449a0714a3821469f06e49db610ab74ec8002838",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "narrow-ru-pilot-guide.png",
+      "sha256": "1e1c671e27c2c0fa994e16dc3ffca95f261033c9a8dfcefee9f99c5f1d3df644",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "desktop-ro-intake-paused.png",
+      "sha256": "6ecb87eaf206d40abf622de0068f485bfcc18fd3017a9e989393d79a67e10eec",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "desktop-ro-intake-complete.png",
+      "sha256": "22abd0edf7d6d791988c715e5a192170d375143863bc07d29761f46db4e6c550",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "narrow-ru-intake-paused.png",
+      "sha256": "8775fd0669be0338b280d9a15319bbcb96413d3073512819684cb974b455ab96",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "narrow-ru-intake-complete.png",
+      "sha256": "3013d8ea7fc3124e24abab480577ecf0cfa5fe96965db663bcb282c5ab009a74",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "desktop-ro-stage-edited-plan.png",
+      "sha256": "d64790c256e629794a78ff1d9533646a09ec5d6bd47744f97579f1e3d89b746e",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "desktop-ro-stage-edited-report.png",
+      "sha256": "587f359fd42eeca3cf841ad3ff98992e9e73c3cfcce18a55985ffd288e6c1b40",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "narrow-ru-stage-edited-plan.png",
+      "sha256": "77d5bc5198de0c22642d6e255ff6f3d00da79d808751541d94bb3763f00c90e2",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    },
+    {
+      "file": "narrow-ru-stage-edited-report.png",
+      "sha256": "d908616689368bebfbfcd16df30cc265f026db64d02f858e794c05f70e15fe0d",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "inspection": "Original Playwright pixels inspected before publication. Guide/import panels may be taller than viewport; edited Stage forms use ordinary viewport captures."
+    }
+  ],
+  "nativePilotOutcomes": [
+    {
+      "schema": "prisma-prim-combined-audit-outcome/v1",
+      "locale": "ro",
+      "fixture": "fictional",
+      "caseId": "a3da0637-cfc3-4dc5-9d2f-e38d20c6d72e",
+      "runId": "2c5eb3a3-bdf6-4762-ac03-4835b91c7748",
+      "freshRunId": "7ea3d0af-199d-439a-8a9d-faf3e7770994",
+      "exactSource": {
+        "documentId": "622856f7-a7e6-4836-9aad-f62f3adbf27e",
+        "documentVersionId": "6f59fa48-c1c5-465c-b5b9-aa8e874cf09a",
+        "representationId": "04af6f09-2de6-4ffc-afed-2942dd206bd5",
+        "caseId": "a3da0637-cfc3-4dc5-9d2f-e38d20c6d72e",
+        "attachmentId": "8bfaa78a-8aba-4b43-abd9-68938562ee4b"
+      },
+      "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+      "supplementarySha256": "c8dea38a8c08f73e220ca7d0161b681af4c5966df251cdc4e7ecb4bc7ef48a1e",
+      "registerSha256": "4f0645ebca74be86f479642592b3f7d6d9f16cf8c0de2726afbee8d354b7c7dc",
+      "certificateSha256": "efac3f1b845fad7218a18861cea0e861138128e6bf490607c5d01de3feea6f29",
+      "certificateNumber": "QUAL-a3da0637",
+      "status": "certified",
+      "boundaries": [
+        "local-demo identities",
+        "synthetic malware scanner",
+        "lost review receipt"
+      ],
+      "modelCalls": 0,
+      "privatePilotQualified": false,
+      "productionQualified": false
+    },
+    {
+      "schema": "prisma-prim-combined-audit-outcome/v1",
+      "locale": "ru",
+      "fixture": "fictional",
+      "caseId": "32ae37a6-8593-47ab-b077-c270cde51eda",
+      "runId": "08c6e2eb-62ac-4b98-a2b7-d7a40f83fc86",
+      "freshRunId": "b1c9e42d-4d80-4833-8e18-e5b4ceb32a3d",
+      "exactSource": {
+        "documentId": "bb8baac3-9cf7-4415-9c59-aa9beb2992f3",
+        "documentVersionId": "9e1e8563-3c61-494c-a99e-27187815a40c",
+        "representationId": "5caa365e-74a1-48a5-95c3-8d5e85a91237",
+        "caseId": "32ae37a6-8593-47ab-b077-c270cde51eda",
+        "attachmentId": "745bbbae-4e59-4b8b-bf20-9ba636042209"
+      },
+      "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+      "supplementarySha256": "0359b3e0f4a958e182bd56e6a7812cc25c5ad994a1f848de0d30fe3bcfd64933",
+      "registerSha256": "cac9a9841658ad0486f76767dd028870e703291841bc887eac65eee4dd8a5975",
+      "certificateSha256": "651ecced176bad39519d1a04014d775b6b92860b5f3e89f7ec08b8c080f178a6",
+      "certificateNumber": "QUAL-32ae37a6",
+      "status": "certified",
+      "boundaries": [
+        "local-demo identities",
+        "synthetic malware scanner",
+        "lost review receipt"
+      ],
+      "modelCalls": 0,
+      "privatePilotQualified": false,
+      "productionQualified": false
+    }
+  ],
+  "nativeStageDrafts": [
+    {
+      "dataKind": "fictional",
+      "locale": "ro",
+      "caseId": "1d113f21-1b2c-44b4-953c-468d1b17dc6b",
+      "run1": "01001669-f581-4a47-8650-5adeaeb6e859",
+      "run2": "65034b47-36db-4426-b6ee-8b2ef1bc0d3e",
+      "sourceId": "65e077a4-4106-4f6d-a39e-e879e84587e4",
+      "sourceVersionId": "4f243ff0-d281-4892-b341-fd03f366ca8c",
+      "originalSha256": "0d182380af4755fc20be42cbcdbeca39035232c4284669884b952c3dec283ea1",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nContext citat din surse — date din dosar verificate de o persoană, fără concluzii de audit\nDomeniu: «Producție de lactate — verificat»\nVerificare umană: Ada Ionescu · 2026-11-18T17:03:00.420Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · 4f243ff0-d281-4892-b341-fd03f366ca8c · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    },
+    {
+      "dataKind": "fictional",
+      "locale": "ru",
+      "caseId": "6ab64ddb-70b3-4661-b09d-63f24806cacf",
+      "run1": "9486a523-02fb-4a60-bfab-cfdfa8ebe082",
+      "run2": "93f248d5-b88a-4af1-b9ac-c905afa4f139",
+      "sourceId": "6c485ec7-1f7a-40c0-ae7c-06520a1db716",
+      "sourceVersionId": "d8fc77fd-cec1-40de-b571-7587e43c98f5",
+      "originalSha256": "6b2a2e4e0303635927f43f18ec744baa748cdff7d247b21d7fb5b2a3134daa25",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nЦитируемый контекст источников — данные досье, проверенные человеком, без выводов аудита\nОбласть: «Producție de lactate — verificat»\nПроверка человеком: Ada Ionescu · 2026-11-18T17:03:22.449Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · d8fc77fd-cec1-40de-b571-7587e43c98f5 · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    }
+  ],
+  "cliCheck": {
+    "command": "pnpm pilot:audit --check",
+    "exitCode": 0,
+    "ready": true,
+    "ownedPortsClosed": [
+      4173,
+      4174
+    ],
+    "scope": "Retained launcher readiness/cleanup proof before the bounded Word preservation correction; launcher and fictional profiles unchanged by that correction."
+  },
+  "review": {
+    "standards": 0,
+    "spec": 0
+  },
+  "limits": [
+    "Prepared fictional examples, native App/API/PostgreSQL, synthetic identity/scanning boundaries. No real Client/account/provider or model call.",
+    "Different-engine RU/RO OCR remains a separately qualified free offline benchmark, not application wiring or frontier/private-corpus quality.",
+    "All pinned inputs and this compatibility PR require successful required CI. Local evidence alone does not establish that gate.",
+    "Tall whole-Case captures are excluded from the public selection. The native certified/reopened state and download hashes are in the outcome JSON."
+  ],
+  "nativeIntakeRecoveryCorrections": {
+    "inputCommit": "eb809c7b79ec62e2d3fcd965de235089b6438390",
+    "reviews": [
+      "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4616643966",
+      "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4616643977"
+    ],
+    "pdfAssociationRace": {
+      "baseline": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+      "actualRed": 3,
+      "modes": [
+        "unlink",
+        "unlink-relink",
+        "move"
+      ],
+      "before": "201 and PDF preservation after admitted association changed while scanning",
+      "after": "409, zero native PDF uploads, unchanged working revision and retained failed checkpoint",
+      "authority": "Server-admitted Project id/revision checked under native Document update lock before PDF insertion, after exact receipt replay. Direct HTTP query and receipt fingerprint unchanged."
+    },
+    "stalePreflightRecovery": {
+      "actualRed": 2,
+      "operations": [
+        "advance",
+        "upload"
+      ],
+      "before": "Native target conflict left a successful previous attempt, so the unfinished item could not be skipped",
+      "after": "Durable failed stale_target checkpoint commits before409; deliberate Skip completes with exact retained progress and unchanged human-edited native Document",
+      "scope": "Only actual target conflicts record an attempt; CAS, phase and authority refusals retain existing no-false-attempt semantics."
+    },
+    "nativeIntake": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sharedPdfInputRegression": {
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0
+    },
+    "renderedIntake": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "proof": "Actual scoped request hook receives409, reloads committed failure and enables the existing deliberate Skip control."
+    },
+    "composedNativeChecks": {
+      "intake": 19,
+      "stageDrafts": 6,
+      "compatibility": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Separate native REST/PostgreSQL runs; overlapping source/input checks are not summed."
+    },
+    "mechanicalChecks": "Global source and composed format/lint/types passed.",
+    "reviewDisposition": "Both automatic findings fixed with public RED-to-GREEN proof; root Standards/Spec self-review found0 additional material defects; both threads answered/resolved.",
+    "earlierNativeAttempt": {
+      "passed": 17,
+      "failed": 2,
+      "reason": "The test compared a Document correction receipt to a later GET detail. Corrected to compare the actual GET view before/after skip; final19/19 passes."
+    }
+  },
+  "nativeWordCorrection": {
+    "inputCommit": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+    "productCommit": "74567f0787f4896c80e2cbe2235108c538925179",
+    "review": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4615218054",
+    "defect": "Word target could change after preflight while scanning; access alone did not prove the admitted metadata and revisions stayed current.",
+    "baseline": {
+      "source": "092dcecb04a1af4f9a18b22c233c1369bc50d557",
+      "nativeRacesFailed": 3,
+      "intentionallyFiltered": 11,
+      "actual": "metadata correction, competing PDF upload and Project unlink/relink each returned201 instead of409"
+    },
+    "correction": "Server-owned expected metadata, working revision and association revision are checked under native Document/Version transaction locks before a new source insert, after exact receipt recovery.",
+    "sourceNativeChecks": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "composition": "14 intake tests and1 original native regression"
+    },
+    "composedChecks": {
+      "nativeIntake": 14,
+      "nativeStage": 6,
+      "nativeCompatibility": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Separate public REST/PostgreSQL runs; no overlapping source checks are summed."
+    },
+    "confirmationReview": {
+      "standards": 0,
+      "spec": 0
+    },
+    "lostWordAcknowledgement": "A real failed database checkpoint returns503 after source preservation; exact retry recovers1 selected source and byte-identical original.",
+    "status": "Retained Word-preservation correction proof; later PDF/refusal corrections and current verification follow below."
+  },
+  "execution": {
+    "baseCommit": "0f4981eb593827b76ae5095717c426996bc1023e",
+    "workingInputManifest": "f633fc14358af35df11dbbf66b5fb9d2919e409d7821b00530e9c6b33c717f3c",
+    "postExecutionPublication": "Only qualification documentation and cost records differ from the execution source; the pinned input manifest was already current during the native journeys."
+  },
+  "nativeIntakeOriginals": [
+    {
+      "locale": "ro",
+      "batchId": "b4ce71c3-6b08-433d-94b1-0c6f6fdbc42f",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "567a2c7354f1d61da6e09e029948749eb4b4bddf8a593f281c5532ff7f8aa8da",
+          "documentId": "e1203ea6-ed6b-46fa-b7a5-915be47f0d8a",
+          "sourceId": "3cf7279f-e802-479c-afa9-a396ba20e4d3"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "706042e89ba4baaf18da31ccd3a63888f9f4e95d25e606363865e8727894615d",
+          "documentId": "6bf7f340-d3b2-4079-af61-689f677d8bc1",
+          "sourceId": "c65c6eb6-6bd0-47de-9ce1-bfff496c15d8"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "404904bd840d4922bcbd5eabe4f684af8162108ac21b1c216519a6f4f7727f43",
+          "documentId": "a00c640b-577a-4b0f-aa6d-795220917483",
+          "sourceId": "a8537a4e-a26c-4a16-92fe-7af7e7a61369"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    },
+    {
+      "locale": "ru",
+      "batchId": "72dac5c9-564d-4faa-8f57-388148899df5",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "8f6442a0d6e12e3747ecf3e8eec1e286f7b9498dc227c87de5c14813c02f6708",
+          "documentId": "8d10e557-6a30-471b-b5d0-06d08c26040b",
+          "sourceId": "465310aa-1aaa-41d1-a820-cd4ee683edf1"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "daa4a0e5340052769e6a291c8c15dae1ed704fdeca59f5e68cca8fdc6e5dd3b1",
+          "documentId": "a47caa71-5261-44d2-b93c-ad80f4aeb24d",
+          "sourceId": "73af0e46-b916-42b0-86c2-0ded027a96ae"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "877cb240fa0cb65dffa61a714baa7dd444eacad0ffca05973e411192c6a49f49",
+          "documentId": "47dff8e3-ea6f-42ef-827e-10091673e3d8",
+          "sourceId": "79cc2522-8845-4f84-87aa-94f51afd30fd"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    }
+  ]
+}
