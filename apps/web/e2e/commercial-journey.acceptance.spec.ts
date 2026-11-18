@@ -759,8 +759,10 @@ test('prepares a pending-Offer Contract, revises its exact source and executes o
     path: `/contracts/opportunities/${opportunityId}/versions/${text(object(created.version).id)}`,
     decode: decodeAgreementDetail,
   });
-  expect(history.contract.version.sourceOfferVersionId).toBe(firstSource.id);
-  expect(history.contract.version.specialConditions).toBe(literal);
+  expect(object(history.contract.version).sourceOfferVersionId).toBe(
+    firstSource.id,
+  );
+  expect(object(history.contract.version).specialConditions).toBe(literal);
   await capture(page, testInfo, 'early-executed-project-eligible');
 });
 

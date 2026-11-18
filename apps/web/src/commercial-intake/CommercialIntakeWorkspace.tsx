@@ -11,6 +11,7 @@ import { ContractPanel } from '../contract/ContractPanel';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -20,6 +21,14 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperationGroup,
+  type ScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useCommercialRequestCopy } from './commercial-request.copy';
@@ -174,9 +183,7 @@ type RequestedDetailVersion = {
   requestId: number;
 };
 
-// What the one shared in-flight controller serves: an ordinary detail read, or
-// a capture, next-action, responsible-actor, outcome status or Sales Stage
-// command until the reads that follow its outcome end.
+// The foreground business operation, including its post-confirmation refresh.
 type InFlight =
   | 'none'
   | 'read'
@@ -426,33 +433,17 @@ export function CommercialIntakeWorkspace({
     generation: 0,
     active: false,
   });
-  const listRequest = useRef<AbortController | undefined>(undefined);
-  const commandRequest = useRef<AbortController | undefined>(undefined);
-  const clientSearchRequest = useRef<AbortController | undefined>(undefined);
   const retry = useRef<
     { payload: string; key: string; hasClient: boolean } | undefined
   >(undefined);
   const nextActionRetry = useRef<NextActionRetry | undefined>(undefined);
-  // The next-action save whose response has not arrived yet; commandRequest
-  // is shared with capture and detail reads.
-  const nextActionCommand = useRef<AbortController | undefined>(undefined);
   const responsibleRetry = useRef<ResponsibleRetry | undefined>(undefined);
-  // The responsible-actor save whose response has not arrived yet, and the
-  // eligible-member read of an open responsible-actor editor.
-  const responsibleCommand = useRef<AbortController | undefined>(undefined);
-  const membersRequest = useRef<AbortController | undefined>(undefined);
   const outcomeRetry = useRef<OutcomeRetry | undefined>(undefined);
-  // The outcome status save whose response has not arrived yet.
-  const outcomeCommand = useRef<AbortController | undefined>(undefined);
   const stageRetry = useRef<StageRetry | undefined>(undefined);
-  // The Sales Stage save whose response has not arrived yet, and the stage
-  // list read of an open Sales Stage editor.
-  const stageCommand = useRef<AbortController | undefined>(undefined);
-  const stageListRequest = useRef<AbortController | undefined>(undefined);
-  // The ordinary detail read in flight, if any; never a command.
-  const detailRead = useRef<AbortController | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
-  identityRevision.current = clientIdentityRevision;
+  useLayoutEffect(() => {
+    identityRevision.current = clientIdentityRevision;
+  });
   const nextActionEditOpen =
     nextActionEdit.kind === 'editing' ||
     nextActionEdit.kind === 'saving' ||
@@ -469,35 +460,27 @@ export function CommercialIntakeWorkspace({
     selected?.request.id,
     selected ? followUpOutcomeObservation(selected.request) : null,
   ]);
-  const followUpGeneration = useRef({
-    signature: followUpSignature,
-    identity,
-    generation: 0,
+  const followUpOwner = useRequestLifetime(identity, followUpSignature);
+  const followUpGeneration = useRef(followUpOwner);
+  useLayoutEffect(() => {
+    followUpGeneration.current = followUpOwner;
   });
-  if (
-    followUpGeneration.current.signature !== followUpSignature ||
-    followUpGeneration.current.identity !== identity
-  )
-    followUpGeneration.current = {
-      signature: followUpSignature,
-      identity,
-      generation: followUpGeneration.current.generation + 1,
-    };
-  const followUpOwner = followUpGeneration.current.generation;
   const followUpProtected =
     Boolean(followUpAuthority) &&
     followUpProtection.generation === followUpOwner &&
     followUpProtection.active;
   // At most one Opportunity editor is open; any one is protected work.
   const opportunityEditInProgress = useRef(false);
-  opportunityEditInProgress.current =
-    nextActionEditOpen ||
-    responsibleEditOpen ||
-    outcomeEditOpen ||
-    stageEditOpen ||
-    followUpProtected;
   const associationInProgress = useRef(false);
-  associationInProgress.current = associationProtection !== 'idle';
+  useLayoutEffect(() => {
+    opportunityEditInProgress.current =
+      nextActionEditOpen ||
+      responsibleEditOpen ||
+      outcomeEditOpen ||
+      stageEditOpen ||
+      followUpProtected;
+    associationInProgress.current = associationProtection !== 'idle';
+  });
   const protectedWork =
     associationProtection !== 'idle'
       ? 'client-association'
@@ -515,13 +498,15 @@ export function CommercialIntakeWorkspace({
                   ? 'capture'
                   : undefined;
   const listDenied = useRef(false);
-  listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
-  rejectCompany.current = onCompanyContextRejected;
-  acceptActor.current = onActorRevalidated;
-  rejectWorkspace.current = onWorkspaceAccessRejected;
+  useLayoutEffect(() => {
+    listDenied.current = load.kind === 'denied';
+    rejectCompany.current = onCompanyContextRejected;
+    acceptActor.current = onActorRevalidated;
+    rejectWorkspace.current = onWorkspaceAccessRejected;
+  });
   const company = actor.activeCompany;
   const companyId = company?.id;
   const clientGrant = grantOf(company, 'company_director_client_access');
@@ -575,16 +560,14 @@ export function CommercialIntakeWorkspace({
     clientReadAuthority,
     clientIdentityRevision,
   ]);
-  const clientProjection = useRef({
-    authority: projectionAuthority,
-    revision: 0,
+  const clientProjectionRevision = useRequestLifetime(
+    identity,
+    projectionAuthority,
+  );
+  const clientProjection = useRef({ revision: clientProjectionRevision });
+  useLayoutEffect(() => {
+    clientProjection.current = { revision: clientProjectionRevision };
   });
-  if (clientProjection.current.authority !== projectionAuthority)
-    clientProjection.current = {
-      authority: projectionAuthority,
-      revision: clientProjection.current.revision + 1,
-    };
-  const clientProjectionRevision = clientProjection.current.revision;
   const clientSearch: ClientSearchState =
     canSearchClients && searchProjectionRevision === clientProjectionRevision
       ? clientSearchState
@@ -646,6 +629,119 @@ export function CommercialIntakeWorkspace({
       'company_sales_stage_configuration',
       'commercial.sales_stage.configure',
     ) && intakeReads;
+  const stageReadAuthority = JSON.stringify([
+    actor.active,
+    actor.workspaceId,
+    actor.internalUserId,
+    actor.workspaceMembershipId,
+    companyId,
+    intakeGrant,
+  ]);
+  const stageConfigurationAuthority = JSON.stringify([
+    stageReadAuthority,
+    grantOf(company, 'company_sales_stage_configuration'),
+    canConfigureStages,
+  ]);
+
+  const sessionLifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      identity.loaded,
+      identity.signedIn,
+      actor.active,
+      actor.workspaceId,
+      actor.internalUserId,
+      actor.workspaceMembershipId,
+      companyId,
+    ]),
+  );
+  const intakeScope = JSON.stringify([sessionLifetime, intakeGrant]);
+  const projectedScope = JSON.stringify([
+    intakeScope,
+    clientProjectionRevision,
+  ]);
+  const listReads = useScopedOperationGroup(projectedScope);
+  const projectionReads = useScopedOperationGroup(
+    JSON.stringify([projectedScope, selected?.request.id]),
+  );
+  const clientSearches = useScopedOperationGroup(projectedScope);
+  const detailReads = useScopedOperationGroup(intakeScope);
+  const responsibleMembers = useScopedOperationGroup(
+    JSON.stringify([intakeScope, responsibleAuthority, selected?.request.id]),
+  );
+  const stageChoices = useScopedOperationGroup(
+    JSON.stringify([intakeScope, stageAuthority, selected?.request.id]),
+  );
+  const historyScope = JSON.stringify([
+    intakeScope,
+    selected?.request.id,
+    selected?.request.initialOpportunity.version,
+  ]);
+  const outcomeHistoryReads = useScopedOperationGroup(historyScope);
+  const stageHistoryReads = useScopedOperationGroup(historyScope);
+  const captures = useScopedOperationGroup(intakeScope);
+  const clientCaptures = useScopedOperationGroup(projectedScope);
+  const nextActionWrites = useScopedOperationGroup(
+    JSON.stringify([intakeScope, canEditNextAction]),
+  );
+  const responsibleWrites = useScopedOperationGroup(
+    JSON.stringify([intakeScope, responsibleAuthority]),
+  );
+  const outcomeWrites = useScopedOperationGroup(
+    JSON.stringify([intakeScope, outcomeAuthority]),
+  );
+  const stageWrites = useScopedOperationGroup(
+    JSON.stringify([intakeScope, stageAuthority]),
+  );
+  const actorObservation = useActorObservation(actor);
+  const recoveries = useScopedOperationGroup(
+    JSON.stringify([sessionLifetime, actorObservation]),
+  );
+  const requestRecoveries = useRef(
+    new WeakMap<AbortSignal, ScopedOperationGroup>(),
+  );
+
+  function writePending(): boolean {
+    return (
+      captures.isPending() ||
+      clientCaptures.isPending() ||
+      nextActionWrites.isPending() ||
+      responsibleWrites.isPending() ||
+      outcomeWrites.isPending() ||
+      stageWrites.isPending()
+    );
+  }
+
+  const retireWrites = useCallback((): void => {
+    captures.retire();
+    clientCaptures.retire();
+    nextActionWrites.retire();
+    responsibleWrites.retire();
+    outcomeWrites.retire();
+    stageWrites.retire();
+  }, [
+    captures,
+    clientCaptures,
+    nextActionWrites,
+    responsibleWrites,
+    outcomeWrites,
+    stageWrites,
+  ]);
+
+  const intakeObservation = {
+    recoveries,
+    companyId,
+    intakeReads,
+    listReads,
+    retireWrites,
+    detailReads,
+    responsibleMembers,
+    stageChoices,
+  };
+  const accessObservation = useRef(intakeObservation);
+  useLayoutEffect(() => {
+    accessObservation.current = intakeObservation;
+  });
 
   const request = useCallback(
     async ({
@@ -664,9 +760,16 @@ export function CommercialIntakeWorkspace({
       idempotencyKey?: string;
     }): Promise<HttpResult> => {
       try {
+        signal.throwIfAborted();
+        if (!requestRecoveries.current.has(signal))
+          requestRecoveries.current.set(
+            signal,
+            accessObservation.current.recoveries,
+          );
         const token = identity.requestHeaders
           ? null
           : await identity.getToken();
+        signal.throwIfAborted();
         const workspaceId = selectedWorkspaceId();
         const headers = {
           ...(identity.requestHeaders ??
@@ -686,12 +789,14 @@ export function CommercialIntakeWorkspace({
             signal,
           },
         );
+        signal.throwIfAborted();
         let responseBody: unknown;
         try {
           responseBody = await response.json();
         } catch {
           responseBody = undefined;
         }
+        signal.throwIfAborted();
         return { status: response.status, body: responseBody };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
@@ -726,35 +831,53 @@ export function CommercialIntakeWorkspace({
         return 'rejected';
       }
       if (result.status !== 403) return 'ok';
+      const recovery = requestRecoveries.current.get(signal)?.begin();
+      const current = () =>
+        Boolean(recovery && !signal.aborted && !recovery.signal.aborted);
+      const retire = () => recovery?.retire();
+      signal.addEventListener('abort', retire, { once: true });
       let retainAuthorizedIntake = false;
       try {
-        await handleAuthenticatedAccessRejection({
-          result: { status: 'forbidden' },
-          identity,
-          companyContextId,
-          onCompanyContextRejected: (rejectedCompanyId) =>
-            rejectCompany.current(rejectedCompanyId),
-          onActorRevalidated: (revalidatedActor) => {
-            const revalidated = revalidatedActor.activeCompany;
-            retainAuthorizedIntake =
-              resource !== 'intake' &&
-              revalidated?.id === companyContextId &&
-              holds(
-                revalidated,
-                'company_commercial_intake',
-                'commercial.request.read',
-              ) &&
-              holds(
-                revalidated,
-                'company_commercial_intake',
-                'commercial.opportunity.read',
-              );
-            return acceptActor.current(revalidatedActor);
-          },
-          onWorkspaceAccessRejected: () => rejectWorkspace.current(),
-          signal,
-        });
+        if (recovery)
+          await handleAuthenticatedAccessRejection({
+            result: { status: 'forbidden' },
+            identity,
+            companyContextId,
+            onCompanyContextRejected: (rejectedCompanyId) =>
+              rejectCompany.current(rejectedCompanyId),
+            onActorRevalidated: (revalidatedActor) => {
+              const revalidated = revalidatedActor.activeCompany;
+              retainAuthorizedIntake =
+                resource !== 'intake' &&
+                revalidated?.id === companyContextId &&
+                holds(
+                  revalidated,
+                  'company_commercial_intake',
+                  'commercial.request.read',
+                ) &&
+                holds(
+                  revalidated,
+                  'company_commercial_intake',
+                  'commercial.opportunity.read',
+                );
+              return acceptActor.current(revalidatedActor);
+            },
+            onWorkspaceAccessRejected: () => rejectWorkspace.current(),
+            signal: recovery.signal,
+            isCurrent: current,
+          });
       } finally {
+        signal.removeEventListener('abort', retire);
+        recovery?.release();
+        // A newer Actor may retire only recovery while this narrow operation
+        // and the independent Intake draft still have their original authority.
+        if (!current() && !signal.aborted) {
+          const committed = accessObservation.current;
+          retainAuthorizedIntake =
+            resource !== 'intake' &&
+            committed.companyId === companyContextId &&
+            committed.intakeReads;
+        }
         if (!signal.aborted && !retainAuthorizedIntake) {
           setLoad({ kind: 'denied' });
           setSelected(undefined);
@@ -776,10 +899,12 @@ export function CommercialIntakeWorkspace({
           responsibleRetry.current = undefined;
           outcomeRetry.current = undefined;
           stageRetry.current = undefined;
-          listRequest.current?.abort();
-          commandRequest.current?.abort();
-          membersRequest.current?.abort();
-          stageListRequest.current?.abort();
+          const committed = accessObservation.current;
+          committed.listReads.retire();
+          committed.retireWrites();
+          committed.detailReads.retire();
+          committed.responsibleMembers.retire();
+          committed.stageChoices.retire();
         }
       }
       return retainAuthorizedIntake && !signal.aborted
@@ -791,15 +916,14 @@ export function CommercialIntakeWorkspace({
 
   const loadRequests = useCallback(
     async (companyContextId: string, cursor?: string): Promise<void> => {
-      listRequest.current?.abort();
-      const controller = new AbortController();
-      listRequest.current = controller;
+      const operation = listReads.beginLatest();
+      if (!operation) return;
       // An authority or identity change retires the old page, including late
       // older-page responses; only its own revalidated read publishes.
       const startedUnderRevision = clientProjection.current.revision;
       const startedUnderView = listViewScope.current;
       const superseded = () =>
-        controller.signal.aborted ||
+        operation.signal.aborted ||
         clientProjection.current.revision !== startedUnderRevision ||
         listViewScope.current !== startedUnderView;
       setLoad((current) => startedPage({ current, companyContextId, cursor }));
@@ -809,11 +933,11 @@ export function CommercialIntakeWorkspace({
             cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
           }${startedUnderView === 'mine_open' ? '&view=mine_open' : ''}`,
           companyContextId,
-          signal: controller.signal,
+          signal: operation.signal,
         });
         if (superseded()) return;
         if (
-          (await handleAccess(result, companyContextId, controller.signal)) !==
+          (await handleAccess(result, companyContextId, operation.signal)) !==
           'ok'
         )
           return;
@@ -842,10 +966,18 @@ export function CommercialIntakeWorkspace({
               clientProjectionRevision: startedUnderRevision,
             }),
           );
+      } finally {
+        operation.release();
       }
     },
-    [handleAccess, request],
+    [handleAccess, request, listReads],
   );
+
+  // Confirmation refreshes the current projection, independent of its old reader.
+  const refreshRequests = useRef(loadRequests);
+  useLayoutEffect(() => {
+    refreshRequests.current = loadRequests;
+  });
 
   function changeListView(value: string): void {
     if (value !== 'all' && value !== 'mine_open') return;
@@ -858,15 +990,16 @@ export function CommercialIntakeWorkspace({
   }
 
   useEffect(() => {
-    commandRequest.current?.abort();
-    clientSearchRequest.current?.abort();
-    membersRequest.current?.abort();
+    retireWrites();
+    detailReads.retire();
+    clientSearches.retire();
+    responsibleMembers.retire();
     retry.current = undefined;
     nextActionRetry.current = undefined;
     responsibleRetry.current = undefined;
     outcomeRetry.current = undefined;
     stageRetry.current = undefined;
-    stageListRequest.current?.abort();
+    stageChoices.retire();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
@@ -884,19 +1017,58 @@ export function CommercialIntakeWorkspace({
     setRestriction(undefined);
     listViewScope.current = 'all';
     setListView('all');
-    if (!companyId) {
+    if (!companyId || !intakeReads) {
       setLoad({ kind: 'denied' });
       return;
     }
     void loadRequests(companyId);
     return () => {
-      listRequest.current?.abort();
-      commandRequest.current?.abort();
-      clientSearchRequest.current?.abort();
-      membersRequest.current?.abort();
-      stageListRequest.current?.abort();
+      listReads.retire();
+      retireWrites();
+      detailReads.retire();
+      clientSearches.retire();
+      responsibleMembers.retire();
+      stageChoices.retire();
     };
-  }, [actor.workspaceId, actor.workspaceMembershipId, companyId, loadRequests]);
+  }, [sessionLifetime]);
+
+  const readIntakeCapture = useRef({ sessionLifetime, intakeScope });
+  useEffect(() => {
+    const previous = readIntakeCapture.current;
+    readIntakeCapture.current = { sessionLifetime, intakeScope };
+    if (
+      previous.sessionLifetime !== sessionLifetime ||
+      previous.intakeScope === intakeScope
+    )
+      return;
+    retry.current = undefined;
+    nextActionRetry.current = undefined;
+    responsibleRetry.current = undefined;
+    outcomeRetry.current = undefined;
+    stageRetry.current = undefined;
+    setNextActionEdit({ kind: 'idle' });
+    setResponsibleEdit({ kind: 'idle' });
+    setOutcomeEdit({ kind: 'idle' });
+    setStageEdit({ kind: 'idle' });
+    setInFlight('none');
+    setCaptureUncertain(false);
+    if (
+      inFlight !== 'none' ||
+      nextActionEditOpen ||
+      responsibleEditOpen ||
+      outcomeEditOpen ||
+      stageEditOpen ||
+      captureUncertain
+    )
+      setFeedback('');
+    if (
+      companyId &&
+      intakeReads &&
+      (load.kind === 'loading' ||
+        (load.kind === 'ready' && load.olderPage === 'loading'))
+    )
+      void loadRequests(companyId);
+  }, [sessionLifetime, intakeScope, companyId, intakeReads, loadRequests]);
 
   // The shell owns the navigation intent. A newly requested restriction shows
   // its loaded rows instead of a plain detail; a retired one only clears it.
@@ -909,9 +1081,8 @@ export function CommercialIntakeWorkspace({
     )
       return;
     // An active editor or uncertain retry stays open until Back.
-    const read = detailRead.current;
-    if (read && !read.signal.aborted) {
-      read.abort();
+    if (detailReads.isPending()) {
+      detailReads.retire();
       setInFlight('none');
     }
     setSelected(undefined);
@@ -921,7 +1092,7 @@ export function CommercialIntakeWorkspace({
     responsibleRetry.current = undefined;
     setOutcomeEdit({ kind: 'idle' });
     outcomeRetry.current = undefined;
-    stageListRequest.current?.abort();
+    stageChoices.retire();
     setStageEdit({ kind: 'idle' });
     stageRetry.current = undefined;
   }, [clientRestriction]);
@@ -967,14 +1138,14 @@ export function CommercialIntakeWorkspace({
     readProjectionRevision.current = clientProjectionRevision;
     const companyChanged = readProjectionCompany.current !== companyId;
     readProjectionCompany.current = companyId;
-    clientSearchRequest.current?.abort();
+    clientSearches.retire();
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
     setForm((current) => ({ ...current, clientAccountId: '' }));
     if (retry.current?.hasClient) {
       retry.current = undefined;
       if (inFlight === 'capture') {
-        commandRequest.current?.abort();
+        clientCaptures.retire();
         setInFlight('none');
       }
       setCaptureUncertain(false);
@@ -996,20 +1167,21 @@ export function CommercialIntakeWorkspace({
       selectedProjectionRevision === clientProjectionRevision
     )
       return;
-    const controller = new AbortController();
+    const operation = projectionReads.beginLatest();
+    if (!operation) return;
     const startedUnderProjection = clientProjectionRevision;
     const superseded = () =>
-      controller.signal.aborted ||
+      operation.signal.aborted ||
       clientProjection.current.revision !== startedUnderProjection;
     void (async () => {
       try {
         const result = await request({
           path: `/commercial-intake/requests/${encodeURIComponent(selectedRequestId)}`,
           companyContextId: companyId,
-          signal: controller.signal,
+          signal: operation.signal,
         });
         if (superseded()) return;
-        if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+        if ((await handleAccess(result, companyId, operation.signal)) !== 'ok')
           return;
         if (
           superseded() ||
@@ -1034,15 +1206,18 @@ export function CommercialIntakeWorkspace({
         );
       } catch {
         // The dossier target stays withheld; reopening reads it again.
+      } finally {
+        operation.release();
       }
     })();
-    return () => controller.abort();
+    return () => operation.retire();
   }, [
     companyId,
     selectedRequestId,
     selectedProjectionRevision,
     clientProjectionRevision,
     clientIdentityRevision,
+    projectionReads,
     handleAccess,
     request,
   ]);
@@ -1053,12 +1228,8 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     if (canEditNextAction) return;
     nextActionRetry.current = undefined;
-    const save = nextActionCommand.current;
-    nextActionCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    nextActionWrites.retire();
+    setInFlight((current) => (current === 'next-action' ? 'none' : current));
     if (nextActionEdit.kind === 'idle' || nextActionEdit.kind === 'conflict')
       return;
     setNextActionEdit({ kind: 'idle' });
@@ -1071,13 +1242,9 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     if (canChangeResponsible) return;
     responsibleRetry.current = undefined;
-    membersRequest.current?.abort();
-    const save = responsibleCommand.current;
-    responsibleCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    responsibleMembers.retire();
+    responsibleWrites.retire();
+    setInFlight((current) => (current === 'responsible' ? 'none' : current));
     if (responsibleEdit.kind === 'idle') return;
     setResponsibleEdit({ kind: 'idle' });
     if (responsibleEdit.kind !== 'conflict')
@@ -1090,12 +1257,8 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     if (canChangeOutcome) return;
     outcomeRetry.current = undefined;
-    const save = outcomeCommand.current;
-    outcomeCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    outcomeWrites.retire();
+    setInFlight((current) => (current === 'outcome' ? 'none' : current));
     if (outcomeEdit.kind === 'idle') return;
     setOutcomeEdit({ kind: 'idle' });
     if (outcomeEdit.kind !== 'conflict')
@@ -1108,13 +1271,9 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     if (canSetStage) return;
     stageRetry.current = undefined;
-    stageListRequest.current?.abort();
-    const save = stageCommand.current;
-    stageCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    stageChoices.retire();
+    stageWrites.retire();
+    setInFlight((current) => (current === 'stage' ? 'none' : current));
     if (stageEdit.kind === 'idle') return;
     setStageEdit({ kind: 'idle' });
     if (stageEdit.kind !== 'conflict') setFeedback(stageDeniedMessage);
@@ -1127,13 +1286,9 @@ export function CommercialIntakeWorkspace({
     if (readStageAuthority.current === stageAuthority) return;
     readStageAuthority.current = stageAuthority;
     stageRetry.current = undefined;
-    stageListRequest.current?.abort();
-    const save = stageCommand.current;
-    stageCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    stageChoices.retire();
+    stageWrites.retire();
+    setInFlight((current) => (current === 'stage' ? 'none' : current));
     setStageEdit({ kind: 'idle' });
   }, [stageAuthority]);
 
@@ -1144,12 +1299,8 @@ export function CommercialIntakeWorkspace({
     if (readOutcomeAuthority.current === outcomeAuthority) return;
     readOutcomeAuthority.current = outcomeAuthority;
     outcomeRetry.current = undefined;
-    const save = outcomeCommand.current;
-    outcomeCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    outcomeWrites.retire();
+    setInFlight((current) => (current === 'outcome' ? 'none' : current));
     setOutcomeEdit({ kind: 'idle' });
   }, [outcomeAuthority]);
 
@@ -1160,15 +1311,19 @@ export function CommercialIntakeWorkspace({
     if (readResponsibleAuthority.current === responsibleAuthority) return;
     readResponsibleAuthority.current = responsibleAuthority;
     responsibleRetry.current = undefined;
-    membersRequest.current?.abort();
-    const save = responsibleCommand.current;
-    responsibleCommand.current = undefined;
-    if (save && !save.signal.aborted) {
-      save.abort();
-      setInFlight('none');
-    }
+    responsibleMembers.retire();
+    responsibleWrites.retire();
+    setInFlight((current) => (current === 'responsible' ? 'none' : current));
     setResponsibleEdit({ kind: 'idle' });
   }, [responsibleAuthority]);
+
+  async function refreshRecordedActivity(): Promise<void> {
+    try {
+      await onActivityRecorded();
+    } catch {
+      // A failed UI refresh cannot unconfirm the server's committed receipt.
+    }
+  }
 
   function updateField(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -1182,12 +1337,11 @@ export function CommercialIntakeWorkspace({
       setClientSearch({ kind: 'validation' });
       return;
     }
-    clientSearchRequest.current?.abort();
-    const controller = new AbortController();
-    clientSearchRequest.current = controller;
+    const operation = clientSearches.beginLatest();
+    if (!operation) return;
     const startedUnderProjection = clientProjection.current.revision;
     const superseded = () =>
-      controller.signal.aborted ||
+      operation.signal.aborted ||
       clientProjection.current.revision !== startedUnderProjection;
     setSearchProjectionRevision(startedUnderProjection);
     setClientSearch({ kind: 'loading' });
@@ -1195,7 +1349,7 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: `/clients/search?query=${encodeURIComponent(query)}`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
       if (superseded()) return;
       if (result.status === 401) {
@@ -1206,7 +1360,7 @@ export function CommercialIntakeWorkspace({
         await handleAccess(
           result,
           companyId,
-          controller.signal,
+          operation.signal,
           'client-search',
         );
         if (superseded()) return;
@@ -1225,6 +1379,8 @@ export function CommercialIntakeWorkspace({
       );
     } catch {
       if (!superseded()) setClientSearch({ kind: 'error' });
+    } finally {
+      operation.release();
     }
   }
 
@@ -1234,16 +1390,13 @@ export function CommercialIntakeWorkspace({
     sourceSignal?: AbortSignal,
   ): Promise<void> {
     if (!companyId || sourceSignal?.aborted) return;
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
-    detailRead.current = controller;
+    if (writePending()) return;
+    const operation = detailReads.beginLatest();
+    if (!operation) return;
     const retire = () => {
-      controller.abort();
-      if (detailRead.current === controller) {
-        detailRead.current = undefined;
-        setInFlight('none');
-      }
+      if (operation.signal.aborted) return;
+      operation.retire();
+      setInFlight('none');
     };
     sourceSignal?.addEventListener('abort', retire, { once: true });
     const startedUnderProjection = clientProjection.current.revision;
@@ -1259,19 +1412,19 @@ export function CommercialIntakeWorkspace({
       outcomeRetry.current = undefined;
       setStageEdit({ kind: 'idle' });
       stageRetry.current = undefined;
-      membersRequest.current?.abort();
-      stageListRequest.current?.abort();
+      responsibleMembers.retire();
+      stageChoices.retire();
     }
     try {
       const result = await request({
         path: `/commercial-intake/requests/${encodeURIComponent(id)}`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
-      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+      if (operation.signal.aborted) return;
+      if ((await handleAccess(result, companyId, operation.signal)) !== 'ok')
         return;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (result.status === 200 && isClientRequest(result.body)) {
         setSelected({
           request: result.body,
@@ -1287,19 +1440,20 @@ export function CommercialIntakeWorkspace({
         stageRetry.current = undefined;
       } else setFeedback({ requestMessage: 'error' });
     } catch {
-      if (!controller.signal.aborted) setFeedback({ requestMessage: 'error' });
+      if (!operation.signal.aborted) setFeedback({ requestMessage: 'error' });
     } finally {
       sourceSignal?.removeEventListener('abort', retire);
-      if (!controller.signal.aborted) setInFlight('none');
-      if (detailRead.current === controller) detailRead.current = undefined;
+      if (!operation.signal.aborted) setInFlight('none');
+      operation.release();
     }
   }
 
   function closeDetail(): void {
-    commandRequest.current?.abort();
+    retireWrites();
+    detailReads.retire();
     setRequestedVersion(undefined);
-    membersRequest.current?.abort();
-    stageListRequest.current?.abort();
+    responsibleMembers.retire();
+    stageChoices.retire();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
@@ -1326,15 +1480,14 @@ export function CommercialIntakeWorkspace({
     stageRetry.current = undefined;
     setSelected(undefined);
     setFeedback({ requestMessage: 'nextActionMissing' });
-    await loadRequests(companyContextId);
+    await refreshRequests.current(companyContextId);
   }
 
   async function openResponsibleEditor(): Promise<void> {
-    if (!companyId || !selected || pending) return;
+    if (!companyId || !selected || pending || writePending()) return;
     const opportunity = selected.request.initialOpportunity;
-    membersRequest.current?.abort();
-    const controller = new AbortController();
-    membersRequest.current = controller;
+    const operation = responsibleMembers.beginLatest();
+    if (!operation) return;
     responsibleRetry.current = undefined;
     setResponsibleEdit({ kind: 'loading' });
     setFeedback('');
@@ -1342,16 +1495,16 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(opportunity.id)}/eligible-responsible-actors`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'responsible-update',
       );
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (access === 'retained') {
         setResponsibleEdit({ kind: 'idle' });
         setFeedback({ requestMessage: 'responsibleDenied' });
@@ -1380,13 +1533,12 @@ export function CommercialIntakeWorkspace({
       setResponsibleEdit({ kind: 'load-error' });
       setFeedback({ requestMessage: 'responsibleMembersError' });
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setResponsibleEdit({ kind: 'load-error' });
         setFeedback({ requestMessage: 'responsibleMembersError' });
       }
     } finally {
-      if (membersRequest.current === controller)
-        membersRequest.current = undefined;
+      operation.release();
     }
   }
 
@@ -1419,7 +1571,7 @@ export function CommercialIntakeWorkspace({
   }
 
   async function saveResponsible(): Promise<void> {
-    if (!companyId || !selected || pending) return;
+    if (!companyId || !selected || pending || writePending()) return;
     if (
       responsibleEdit.kind !== 'choosing' &&
       responsibleEdit.kind !== 'uncertain'
@@ -1454,10 +1606,9 @@ export function CommercialIntakeWorkspace({
       workspaceMembershipId,
       key,
     };
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
-    responsibleCommand.current = controller;
+    const operation = responsibleWrites.beginLatest();
+    if (!operation) return;
+    detailReads.retire();
     const startedUnderProjection = clientProjection.current.revision;
     setResponsibleEdit({
       kind: 'saving',
@@ -1470,21 +1621,19 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/responsible`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: JSON.stringify({ expectedVersion, workspaceMembershipId }),
         idempotencyKey: key,
       });
-      if (responsibleCommand.current === controller)
-        responsibleCommand.current = undefined;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'responsible-update',
       );
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (access === 'retained') {
         // Reassignment authority was lost while read authority remains: the
         // editor and pending command are dropped, the read-only detail stays.
@@ -1523,8 +1672,8 @@ export function CommercialIntakeWorkspace({
             ? { requestMessage: 'responsibleChanged' }
             : { requestMessage: 'responsibleUnchanged' },
         );
-        if (receipt.outcome === 'updated') await onActivityRecorded();
-        if (!controller.signal.aborted) await loadRequests(companyId);
+        if (receipt.outcome === 'updated') await refreshRecordedActivity();
+        if (!operation.signal.aborted) await refreshRequests.current(companyId);
         return;
       }
       setResponsibleEdit({
@@ -1534,7 +1683,7 @@ export function CommercialIntakeWorkspace({
       });
       setFeedback({ requestMessage: 'responsibleUncertain' });
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setResponsibleEdit({
           kind: 'uncertain',
           members,
@@ -1543,12 +1692,13 @@ export function CommercialIntakeWorkspace({
         setFeedback({ requestMessage: 'responsibleUncertain' });
       }
     } finally {
-      if (!controller.signal.aborted) setInFlight('none');
+      if (!operation.signal.aborted) setInFlight('none');
+      operation.release();
     }
   }
 
   async function saveOutcome(): Promise<void> {
-    if (!companyId || !selected || pending) return;
+    if (!companyId || !selected || pending || writePending()) return;
     if (outcomeEdit.kind !== 'editing' && outcomeEdit.kind !== 'uncertain')
       return;
     const { draft } = outcomeEdit;
@@ -1587,10 +1737,9 @@ export function CommercialIntakeWorkspace({
       key,
       previousStatus,
     };
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
-    outcomeCommand.current = controller;
+    const operation = outcomeWrites.beginLatest();
+    if (!operation) return;
+    detailReads.retire();
     const startedUnderProjection = clientProjection.current.revision;
     setOutcomeEdit({ kind: 'saving', draft });
     setInFlight('outcome');
@@ -1599,21 +1748,19 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/outcome`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: command,
         idempotencyKey: key,
       });
-      if (outcomeCommand.current === controller)
-        outcomeCommand.current = undefined;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'outcome-update',
       );
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (access === 'retained') {
         // Outcome authority was lost while read authority remains: the draft
         // and pending command are dropped, the read-only detail stays.
@@ -1654,19 +1801,20 @@ export function CommercialIntakeWorkspace({
         setOutcomeEdit({ kind: 'idle' });
         outcomeRetry.current = undefined;
         setFeedback({ outcomeMessage: 'outcomeChanged' });
-        await onActivityRecorded();
-        if (!controller.signal.aborted) await loadRequests(companyId);
+        await refreshRecordedActivity();
+        if (!operation.signal.aborted) await refreshRequests.current(companyId);
         return;
       }
       setOutcomeEdit({ kind: 'uncertain', draft });
       setFeedback({ outcomeMessage: 'outcomeUncertain' });
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setOutcomeEdit({ kind: 'uncertain', draft });
         setFeedback({ outcomeMessage: 'outcomeUncertain' });
       }
     } finally {
-      if (!controller.signal.aborted) setInFlight('none');
+      if (!operation.signal.aborted) setInFlight('none');
+      operation.release();
     }
   }
 
@@ -1674,30 +1822,33 @@ export function CommercialIntakeWorkspace({
   // Intake read is needed; a lost read authority clears the scoped content.
   const loadOlderOutcomeHistory: OlderOutcomeHistory = async (cursor) => {
     if (!companyId || !selected) return undefined;
-    const controller = new AbortController();
+    const operation = outcomeHistoryReads.beginLatest();
+    if (!operation) return undefined;
     try {
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(selected.request.initialOpportunity.id)}/outcome-history?cursor=${encodeURIComponent(cursor)}`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+      if ((await handleAccess(result, companyId, operation.signal)) !== 'ok')
         return undefined;
-      return result.status === 200 &&
+      return !operation.signal.aborted &&
+        result.status === 200 &&
         isOutcomeHistoryPage(result.body, isDisplayableTimestamp)
         ? result.body
         : undefined;
     } catch {
       return undefined;
+    } finally {
+      operation.release();
     }
   };
 
   async function openStageEditor(): Promise<void> {
-    if (!companyId || !selected || pending) return;
+    if (!companyId || !selected || pending || writePending()) return;
     const current = selected.request.initialOpportunity.salesStage;
-    stageListRequest.current?.abort();
-    const controller = new AbortController();
-    stageListRequest.current = controller;
+    const operation = stageChoices.beginLatest();
+    if (!operation) return;
     stageRetry.current = undefined;
     setStageEdit({ kind: 'loading' });
     setFeedback('');
@@ -1705,12 +1856,12 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: '/sales-stages',
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
-      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+      if (operation.signal.aborted) return;
+      if ((await handleAccess(result, companyId, operation.signal)) !== 'ok')
         return;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (result.status === 200 && isSalesStageList(result.body)) {
         // Only ACTIVE stages are offered, in their configured order.
         const stages = result.body.stages.filter(
@@ -1729,18 +1880,17 @@ export function CommercialIntakeWorkspace({
       setStageEdit({ kind: 'load-error' });
       setFeedback(stageCopy('stageListError'));
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setStageEdit({ kind: 'load-error' });
         setFeedback(stageCopy('stageListError'));
       }
     } finally {
-      if (stageListRequest.current === controller)
-        stageListRequest.current = undefined;
+      operation.release();
     }
   }
 
   async function saveStage(): Promise<void> {
-    if (!companyId || !selected || pending) return;
+    if (!companyId || !selected || pending || writePending()) return;
     if (stageEdit.kind !== 'choosing' && stageEdit.kind !== 'uncertain') return;
     const { stages } = stageEdit;
     const preservedRetry =
@@ -1768,10 +1918,9 @@ export function CommercialIntakeWorkspace({
         : crypto.randomUUID();
     stageRetry.current = { opportunityId, expectedVersion, salesStageId, key };
     const selection = salesStageId ?? NO_STAGE_SELECTION;
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
-    stageCommand.current = controller;
+    const operation = stageWrites.beginLatest();
+    if (!operation) return;
+    detailReads.retire();
     const startedUnderProjection = clientProjection.current.revision;
     setStageEdit({ kind: 'saving', stages, selection });
     setInFlight('stage');
@@ -1780,20 +1929,19 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/stage`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: JSON.stringify({ expectedVersion, salesStageId }),
         idempotencyKey: key,
       });
-      if (stageCommand.current === controller) stageCommand.current = undefined;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'stage-update',
       );
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (access === 'retained') {
         // Assignment authority was lost while read authority remains: the
         // editor and pending command are dropped, the read-only detail stays.
@@ -1844,19 +1992,20 @@ export function CommercialIntakeWorkspace({
             ? stageCopy('stageChanged')
             : stageCopy('stageUnchanged'),
         );
-        if (receipt.outcome === 'updated') await onActivityRecorded();
-        if (!controller.signal.aborted) await loadRequests(companyId);
+        if (receipt.outcome === 'updated') await refreshRecordedActivity();
+        if (!operation.signal.aborted) await refreshRequests.current(companyId);
         return;
       }
       setStageEdit({ kind: 'uncertain', stages, selection });
       setFeedback(stageCopy('stageUncertain'));
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setStageEdit({ kind: 'uncertain', stages, selection });
         setFeedback(stageCopy('stageUncertain'));
       }
     } finally {
-      if (!controller.signal.aborted) setInFlight('none');
+      if (!operation.signal.aborted) setInFlight('none');
+      operation.release();
     }
   }
 
@@ -1864,26 +2013,30 @@ export function CommercialIntakeWorkspace({
   // Commercial Intake read is needed; a lost read clears the scoped content.
   const loadOlderStageHistory: OlderStageHistory = async (cursor) => {
     if (!companyId || !selected) return undefined;
-    const controller = new AbortController();
+    const operation = stageHistoryReads.beginLatest();
+    if (!operation) return undefined;
     try {
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(selected.request.initialOpportunity.id)}/stage-history?cursor=${encodeURIComponent(cursor)}`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+      if ((await handleAccess(result, companyId, operation.signal)) !== 'ok')
         return undefined;
-      return result.status === 200 &&
+      return !operation.signal.aborted &&
+        result.status === 200 &&
         isStageHistoryPage(result.body, isDisplayableTimestamp)
         ? result.body
         : undefined;
     } catch {
       return undefined;
+    } finally {
+      operation.release();
     }
   };
 
   async function saveNextAction(): Promise<void> {
-    if (!companyId || !selected || pending) return;
+    if (!companyId || !selected || pending || writePending()) return;
     if (
       nextActionEdit.kind !== 'editing' &&
       nextActionEdit.kind !== 'uncertain'
@@ -1917,10 +2070,9 @@ export function CommercialIntakeWorkspace({
       nextAction: draft,
       key,
     };
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
-    nextActionCommand.current = controller;
+    const operation = nextActionWrites.beginLatest();
+    if (!operation) return;
+    detailReads.retire();
     const startedUnderProjection = clientProjection.current.revision;
     setNextActionEdit({ kind: 'saving', draft });
     setInFlight('next-action');
@@ -1929,21 +2081,19 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/next-action`,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: JSON.stringify({ expectedVersion, nextAction: draft }),
         idempotencyKey: key,
       });
-      if (nextActionCommand.current === controller)
-        nextActionCommand.current = undefined;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const access = await handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'next-action-update',
       );
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (access === 'retained') {
         // Update authority was lost while read authority remains: the draft
         // and pending command are dropped, the read-only detail stays.
@@ -1981,25 +2131,26 @@ export function CommercialIntakeWorkspace({
             ? { requestMessage: 'nextActionSaved' }
             : { requestMessage: 'nextActionUnchanged' },
         );
-        if (receipt.outcome === 'updated') await onActivityRecorded();
-        if (!controller.signal.aborted) await loadRequests(companyId);
+        if (receipt.outcome === 'updated') await refreshRecordedActivity();
+        if (!operation.signal.aborted) await refreshRequests.current(companyId);
         return;
       }
       setNextActionEdit({ kind: 'uncertain', draft });
       setFeedback({ requestMessage: 'nextActionUncertain' });
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setNextActionEdit({ kind: 'uncertain', draft });
         setFeedback({ requestMessage: 'nextActionUncertain' });
       }
     } finally {
-      if (!controller.signal.aborted) setInFlight('none');
+      if (!operation.signal.aborted) setInFlight('none');
+      operation.release();
     }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!companyId || pending) return;
+    if (!companyId || pending || writePending()) return;
     if (
       !form.originalText.trim() ||
       !form.opportunityTitle.trim() ||
@@ -2039,9 +2190,11 @@ export function CommercialIntakeWorkspace({
       key: idempotencyKey,
       hasClient: Boolean(form.clientAccountId),
     };
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    const operation = (
+      form.clientAccountId ? clientCaptures : captures
+    ).beginLatest();
+    if (!operation) return;
+    detailReads.retire();
     const startedUnderProjection = clientProjection.current.revision;
     setInFlight('capture');
     setCaptureUncertain(false);
@@ -2050,13 +2203,13 @@ export function CommercialIntakeWorkspace({
       const result = await request({
         path: '/commercial-intake/requests',
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: payload,
         idempotencyKey,
       });
-      if (controller.signal.aborted) return;
-      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+      if (operation.signal.aborted) return;
+      if ((await handleAccess(result, companyId, operation.signal)) !== 'ok')
         return;
       if (isUnavailableClient(result)) {
         setFeedback({ requestMessage: 'unavailableClient' });
@@ -2078,25 +2231,26 @@ export function CommercialIntakeWorkspace({
         });
         setForm(emptyForm);
         retry.current = undefined;
-        await onActivityRecorded();
-        if (!controller.signal.aborted) await loadRequests(companyId);
+        await refreshRecordedActivity();
+        if (!operation.signal.aborted) await refreshRequests.current(companyId);
         return;
       }
       setFeedback({ requestMessage: 'error' });
       setCaptureUncertain(true);
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setFeedback({ requestMessage: 'error' });
         setCaptureUncertain(true);
       }
     } finally {
-      if (!controller.signal.aborted) setInFlight('none');
+      if (!operation.signal.aborted) setInFlight('none');
+      operation.release();
     }
   }
 
   // The section is its own navigation destination, because the
   // shell's layout wrapper generates no box that could receive focus.
-  if (load.kind === 'denied') {
+  if (load.kind === 'denied' || !intakeReads) {
     return (
       <section
         id="requests"
@@ -2248,7 +2402,7 @@ export function CommercialIntakeWorkspace({
                     ),
                   onSave: () => void saveResponsible(),
                   onCancel: () => {
-                    membersRequest.current?.abort();
+                    responsibleMembers.retire();
                     setResponsibleEdit({ kind: 'idle' });
                     responsibleRetry.current = undefined;
                     setFeedback('');
@@ -2344,7 +2498,7 @@ export function CommercialIntakeWorkspace({
                     ),
                   onSave: () => void saveStage(),
                   onCancel: () => {
-                    stageListRequest.current?.abort();
+                    stageChoices.retire();
                     setStageEdit({ kind: 'idle' });
                     stageRetry.current = undefined;
                     setFeedback('');
@@ -2375,8 +2529,7 @@ export function CommercialIntakeWorkspace({
                 !stageEditOpen
               }
               onProtectedChange={(active) => {
-                if (followUpGeneration.current.generation !== followUpOwner)
-                  return;
+                if (followUpGeneration.current !== followUpOwner) return;
                 setFollowUpProtection({ generation: followUpOwner, active });
               }}
               onCompanyContextRejected={onCompanyContextRejected}
@@ -2438,7 +2591,7 @@ export function CommercialIntakeWorkspace({
                           },
                     );
                   setFeedback({ requestMessage: 'clientAssociationSuccess' });
-                  await onActivityRecorded();
+                  await refreshRecordedActivity();
                   return true;
                 }}
               />
@@ -2451,6 +2604,11 @@ export function CommercialIntakeWorkspace({
       ) : settingsOpen && companyId ? (
         <SalesStageSettings
           key={companyId}
+          identity={identity}
+          authority={{
+            read: stageReadAuthority,
+            configure: stageConfigurationAuthority,
+          }}
           companyId={companyId}
           canConfigure={canConfigureStages}
           request={request}
