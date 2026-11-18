@@ -14,6 +14,7 @@ import type {
   WorkingDocumentDetail,
 } from './document-response';
 import { useDocumentsCopy } from './documents.copy';
+import { useProjectSourceCopy } from './project-source.copy';
 import {
   canSelectExternalInvoiceSource,
   externalInvoiceCaptureKey,
@@ -68,6 +69,7 @@ type VersionStatus = WorkspaceDocumentDetail['version']['status'];
 export function useDocumentFamilyCopies() {
   return {
     documents: useDocumentsCopy(),
+    projectSource: useProjectSourceCopy(),
     auditSource: useReceivedAuditSourceCopy(),
     mission: useMissionDeliverableCopy(),
     received: useReceivedContractCopy(),
@@ -154,6 +156,13 @@ export const DOCUMENT_FAMILY_SCREENS = {
     label: (copies) => copies.mission.t('questionnaire'),
     warning: () => undefined,
     status: (copies, status) => workingVersionLabel(status, copies.documents),
+  },
+  'project-source': {
+    ...NATIVE,
+    projectLinkable: true,
+    label: (copies) => copies.projectSource('family'),
+    warning: (copies) => copies.projectSource('warning'),
+    status: (copies) => copies.projectSource('draft'),
   },
   'received-audit-source': {
     ...NATIVE,
@@ -296,6 +305,7 @@ export function withoutProtectedRelation(
     case 'received-contract':
       return { ...document, receivedContractRelation: { access: 'denied' } };
     case 'questionnaire':
+    case 'project-source':
     case 'mission-deliverable':
     case 'received-audit-source':
       return document;
@@ -381,6 +391,7 @@ export function useDocumentFamilyAuthority({
   );
   const captures = {
     questionnaire: 'questionnaire',
+    'project-source': 'project-source',
     'received-audit-source': JSON.stringify([
       auditSourceSignature,
       auditSourceGeneration,
@@ -396,6 +407,7 @@ export function useDocumentFamilyAuthority({
   } satisfies Record<DocumentFamily, string>;
   const selectable = {
     questionnaire: true,
+    'project-source': true,
     'received-audit-source': canUseAuditSource,
     'mission-deliverable': canUseMission,
     'external-invoice': canUseInvoice && canManageInvoice && sectionVisible,
@@ -404,6 +416,7 @@ export function useDocumentFamilyAuthority({
   } satisfies Record<WorkspaceFamily, boolean>;
   const sourceSelectable = {
     questionnaire: false,
+    'project-source': false,
     'received-audit-source': false,
     'mission-deliverable': false,
     'external-invoice':
@@ -418,6 +431,7 @@ export function useDocumentFamilyAuthority({
   // Only mission deliverables recheck family access when the native form submits.
   const nativeRegistrable = {
     questionnaire: true,
+    'project-source': true,
     'received-audit-source': true,
     'mission-deliverable': canUseMission,
     'external-invoice': true,
@@ -437,12 +451,7 @@ export function useDocumentFamilyAuthority({
       canUseInvoice ? invoiceCapture : undefined,
     ]),
     /** A family other than questionnaires can be chosen for registration. */
-    offersFamilyChoice:
-      canUseAuditSource ||
-      canUseMission ||
-      canUseReceived ||
-      canUseAddendum ||
-      canUseInvoice,
+    offersFamilyChoice: true,
     selectable: (type: WorkspaceFamily) => selectable[type],
     sourceSelectable: (type: WorkspaceFamily) => sourceSelectable[type],
     /** The native registration form may submit this family. */
